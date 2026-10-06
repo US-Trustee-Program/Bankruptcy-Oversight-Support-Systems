@@ -185,6 +185,8 @@ describe('SuggestedTransferCases component', () => {
     expect(description).toHaveTextContent(
       'Choose a new court division and enter a case number, and a case will be selected for this case event automatically.',
     );
+
+    expect(screen.getByTestId(`order-form-${order.id}`)).toBeInTheDocument();
   });
 
   test('should display case table if we get more than 0 suggested cases', async () => {

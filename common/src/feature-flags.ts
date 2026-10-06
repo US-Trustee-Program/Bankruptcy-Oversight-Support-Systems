@@ -15,12 +15,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-eleven-enabled': true,
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
-  'display-chpt12-standing-key-dates': true,
-  'display-chpt13-standing-key-dates': true,
-  'display-chpt7-panel-upcoming-key-dates': true,
-  'display-chpt7-elected-key-dates': true,
-  'display-chpt11-subv-past-key-dates': true,
-  'display-chpt12-13-case-by-case-upcoming-key-dates': true,
+  'trustee-appointment-accordions': true,
   'phonetic-search-enabled': true,
   'privileged-identity-management': true,
   'restrict-adding-trustees': true,
@@ -37,7 +32,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
   'software-vendor-typed-phones': true,
-  'tpr-display-updates': true,
 };
 
 export type LaunchDarklyContext = {

@@ -1,5 +1,18 @@
-export type PastKeyDatesVariant =
-  'chapter7-panel' | 'subv-pool' | 'chapter12-standing' | 'chapter13-standing' | 'chapter7-elected';
+export type PastKeyDatesVariant = 'chapter11-subv' | 'chapter12-standing' | 'chapter13-standing';
+
+const DEFAULT_PAST_KEY_DATES_LABELS = {
+  cardTitle: 'Past Key Dates',
+  editHeading: 'Edit Past Key Dates',
+};
+
+export const PAST_KEY_DATES_VARIANT_LABELS: Record<
+  PastKeyDatesVariant,
+  { cardTitle: string; editHeading: string }
+> = {
+  'chapter11-subv': { cardTitle: 'Other', editHeading: 'Edit Other Key Dates' },
+  'chapter12-standing': DEFAULT_PAST_KEY_DATES_LABELS,
+  'chapter13-standing': DEFAULT_PAST_KEY_DATES_LABELS,
+};
 
 export type PastDateFieldKey =
   | 'pastBackgroundQuestion'
@@ -13,7 +26,7 @@ export type PastDateFieldKey =
 interface PastKeyDatesFieldConfigBase {
   /** Label shown on the read-only Past Key Dates display card. */
   displayLabel: string;
-  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
+  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastAudit. */
   formLabel: string;
   hint?: string;
   /** Note shown below the value on the read-only Past Key Dates display card. */
@@ -42,49 +55,6 @@ interface MonthYearField extends PastKeyDatesFieldConfigBase {
 export type PastKeyDatesFieldConfig = DateField | YearField | MonthYearField;
 
 export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDatesFieldConfig[]> = {
-  'chapter7-panel': [
-    {
-      key: 'pastBackgroundQuestion',
-      displayLabel: 'Last Update to Background Questionnaire',
-      formLabel: 'Last Update to Background Questionnaire',
-      testId: 'past-background-question-row',
-      inputId: 'past-background-question',
-      kind: 'date',
-    },
-    {
-      key: 'pastFieldExam',
-      displayLabel: 'Field Exam Report Date',
-      formLabel: 'Field Exam Report Date',
-      testId: 'past-field-exam-row',
-      inputId: 'past-field-exam',
-      kind: 'date',
-    },
-    {
-      key: 'pastAudit',
-      displayLabel: 'Audit Report Date',
-      formLabel: 'Audit Report Date',
-      testId: 'past-audit-row',
-      inputId: 'past-audit',
-      kind: 'date',
-    },
-    {
-      key: 'lastAuditFiscalYear',
-      displayLabel: "Last Audit's Fiscal Year",
-      formLabel: "Last Audit's Fiscal Year",
-      hint: 'The fiscal year of the TIR data audited',
-      testId: 'past-last-audit-fiscal-year-row',
-      inputId: 'last-audit-fiscal-year',
-      kind: 'year',
-    },
-    {
-      key: 'pastTprSubmission',
-      displayLabel: 'TIR Letter',
-      formLabel: 'Trustee Interim Report Letter Date',
-      testId: 'past-tpr-submission-row',
-      inputId: 'past-tpr-submission',
-      kind: 'date',
-    },
-  ],
   'chapter12-standing': [
     {
       key: 'pastBackgroundQuestion',
@@ -111,7 +81,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       kind: 'year',
     },
   ],
-  'subv-pool': [
+  'chapter11-subv': [
     {
       key: 'lastMonthlyReportReceived',
       displayLabel: 'Last Monthly Report Received',
@@ -148,14 +118,12 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       inputId: 'last-compensation-study',
       kind: 'month-year',
     },
-  ],
-  'chapter7-elected': [
     {
-      key: 'bondIssuedDate',
-      displayLabel: 'Bond Issued',
-      formLabel: 'Bond Issued Date',
-      testId: 'bond-issued-date-row',
-      inputId: 'bond-issued-date',
+      key: 'pastTprSubmission',
+      displayLabel: 'Last TPR Submitted',
+      formLabel: 'Last TPR Submitted',
+      testId: 'last-tpr-submitted-row',
+      inputId: 'last-tpr-submitted',
       kind: 'date',
     },
   ],

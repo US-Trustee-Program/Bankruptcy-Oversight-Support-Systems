@@ -1,7 +1,7 @@
 import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
-import useFeatureFlags, { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from './UseFeatureFlags';
+import useFeatureFlags, * as FeatureFlags from './UseFeatureFlags';
 import { mockConfiguration } from '../testing/mock-configuration';
 import { renderHook } from '@testing-library/react';
 
@@ -66,7 +66,28 @@ describe('useFeatureFlag hook', () => {
     expect(result.current).toEqual(testFeatureFlags);
   });
 
-  test('testFeatureFlags includes DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES as true', () => {
-    expect(testFeatureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]).toBe(true);
+  // Flag-name constants are UseFeatureFlags' string-valued exports; its other
+  // exports (the hook and its two helper functions) are functions. Filtering
+  // on type isolates every flag automatically, so a newly added flag is
+  // covered here without editing this file.
+  const flagConstants = Object.values(FeatureFlags).filter(
+    (value) => typeof value === 'string',
+  ) as string[];
+
+  // system-maintenance-banner carries the banner's message text rather than a
+  // boolean (Header.tsx renders its raw value), so omitting it from
+  // testFeatureFlags -- same as every real environment where no maintenance
+  // is scheduled -- is the correct default, not a gap. It's excluded here
+  // rather than left to silently fail the loop below.
+  const booleanFlagConstants = flagConstants.filter(
+    (flag) => flag !== FeatureFlags.SYSTEM_MAINTENANCE_BANNER,
+  );
+
+  test.each(booleanFlagConstants)('testFeatureFlags includes %s as true', (flag) => {
+    expect(testFeatureFlags[flag]).toBe(true);
+  });
+
+  test('testFeatureFlags intentionally omits system-maintenance-banner', () => {
+    expect(FeatureFlags.SYSTEM_MAINTENANCE_BANNER in testFeatureFlags).toBe(false);
   });
 });

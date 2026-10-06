@@ -1,5 +1,6 @@
 import './MonthYearSelector.scss';
 import { useEffect, useRef, useState } from 'react';
+import Select from './Select';
 
 type MonthYearSelectorProps = {
   id: string;
@@ -95,6 +96,9 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     }
   }
 
+  const showsError = !isFocused && !!errorMessage;
+  const errorId = `${id}-error`;
+
   return (
     <fieldset
       className="usa-fieldset month-year-selector"
@@ -103,49 +107,33 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     >
       {label && <legend className="usa-legend">{label}</legend>}
       <div style={{ display: 'flex', gap: '1rem' }}>
-        <div className="usa-form-group">
-          <label className="usa-hint" htmlFor={`${id}-month`}>
-            Month
-          </label>
-          <select
-            id={`${id}-month`}
-            data-testid={`${id}-month`}
-            className="usa-select"
-            value={month}
-            onChange={handleMonthChange}
-            disabled={disabled}
-          >
-            <option value=""></option>
-            {MONTHS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="usa-form-group">
-          <label className="usa-hint" htmlFor={`${id}-year`}>
-            Year
-          </label>
-          <select
-            id={`${id}-year`}
-            data-testid={`${id}-year`}
-            className="usa-select"
-            value={year}
-            onChange={handleYearChange}
-            disabled={disabled}
-          >
-            <option value=""></option>
-            {YEARS.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          id={`${id}-month`}
+          label="Month"
+          compactLabel
+          placeholder="- Select -"
+          options={MONTHS}
+          value={month}
+          onChange={handleMonthChange}
+          disabled={disabled}
+          hasError={showsError}
+          ariaDescribedBy={showsError ? errorId : undefined}
+        />
+        <Select
+          id={`${id}-year`}
+          label="Year"
+          compactLabel
+          placeholder="- Select -"
+          options={YEARS.map((y) => ({ value: String(y), label: String(y) }))}
+          value={year}
+          onChange={handleYearChange}
+          disabled={disabled}
+          hasError={showsError}
+          ariaDescribedBy={showsError ? errorId : undefined}
+        />
       </div>
-      {!isFocused && errorMessage && (
-        <div className="date-error cams-field-error-message" aria-live="polite">
+      {showsError && (
+        <div id={errorId} className="date-error cams-field-error-message" aria-live="polite">
           {errorMessage}
         </div>
       )}

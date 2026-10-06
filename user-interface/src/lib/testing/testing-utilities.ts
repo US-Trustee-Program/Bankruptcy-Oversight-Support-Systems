@@ -149,27 +149,26 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
   const itemLabel = listItem.textContent ?? '';
 
   await userEvent.click(listItem);
+  // Whether this ComboBox is single- or multi-select isn't known up front, and which
+  // final state applies isn't reliable to snapshot mid-transition (the combo-box-input
+  // update and the dropdown-closing/'selected'-class update don't necessarily land in
+  // the same tick) -- so wait for EITHER definitive end state on every retry, rather
+  // than picking a branch from a possibly-still-settling snapshot and asserting deeper
+  // into it. Picking the wrong branch early made this helper flaky under slower CI
+  // runners: it could observe a single-select ComboBox mid-update, assume multi-select,
+  // and spin until timeout asserting a 'selected' class that single-select never sets.
   await waitFor(() => {
     const input = document.querySelector(`#${id}-combo-box-input`) as HTMLInputElement | null;
-    const inputUpdated = selected ? input?.value === itemLabel : input?.value === '';
-    if (inputUpdated) {
-      // Single-select: dropdown closed and input reflects the selection
-      expect(input).not.toBeNull();
-      if (selected) {
-        expect(input!.value).toBe(itemLabel);
-      } else {
-        expect(input!.value).toBe('');
-      }
-    } else {
-      // Multi-select: dropdown stays open, item remains in DOM with 'selected' class
-      const currentItem = document.querySelector(`[data-testid="${testId}"]`);
-      expect(currentItem).not.toBeNull();
-      if (selected) {
-        expect(currentItem).toHaveClass('selected');
-      } else {
-        expect(currentItem).not.toHaveClass('selected');
-      }
-    }
+    const singleSelectDone = selected ? input?.value === itemLabel : input?.value === '';
+
+    const currentItem = document.querySelector(`[data-testid="${testId}"]`);
+    const multiSelectDone =
+      currentItem !== null &&
+      (selected
+        ? currentItem.classList.contains('selected')
+        : !currentItem.classList.contains('selected'));
+
+    expect(singleSelectDone || multiSelectDone).toBe(true);
   });
 }
 

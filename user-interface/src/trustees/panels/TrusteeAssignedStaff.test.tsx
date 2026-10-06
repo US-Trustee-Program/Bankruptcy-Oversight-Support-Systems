@@ -77,7 +77,7 @@ describe('TrusteeAssignedStaff', () => {
 
     const container = document.querySelector('.right-side-screen-content');
     expect(container).toBeInTheDocument();
-    expect(container?.querySelector('.trustee-assigned-staff-container')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-assigned-staff-container')).toBeInTheDocument();
     expect(container?.querySelector('.assigned-staff-cards')).toBeInTheDocument();
     expect(screen.getByTestId('auditor-assignment-section')).toBeInTheDocument();
   });

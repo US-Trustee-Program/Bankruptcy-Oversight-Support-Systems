@@ -1,0 +1,36 @@
+.edit-chapter13-standing-audit-key-dates {
+  .date-picker .usa-date-picker {
+    max-width: 22rem;
+  }
+
+  .audit-completion-status-title {
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+
+  .audit-completion-status-group {
+    margin-top: 2rem;
+    margin-bottom: 0;
+
+    &__row {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5rem;
+      margin-top: 0;
+
+      .usa-form-group {
+        width: 10rem;
+        margin-top: 0;
+        margin-bottom: 0;
+
+        .usa-select {
+          width: 100%;
+        }
+      }
+    }
+  }
+
+  .usa-button-group {
+    margin-top: 2rem;
+  }
+}

@@ -377,7 +377,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should not call API when validation fails on submit (create)', async () => {
-    const mockPost = vi.spyOn(Api2, 'postTrustee').mockImplementation(vi.mocked(Api2.postTrustee));
+    const mockPost = vi.spyOn(Api2, 'postTrustee');
 
     renderWithProps({
       action: 'create',

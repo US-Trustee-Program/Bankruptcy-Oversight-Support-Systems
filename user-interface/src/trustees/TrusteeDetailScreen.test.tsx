@@ -12,6 +12,7 @@ import Api2 from '@/lib/models/api2';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
+import { buildAppointmentHeading } from './panels/appointmentDisplay';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('launchdarkly-react-client-sdk', () => ({
@@ -99,10 +100,6 @@ describe('TrusteeDetailScreen', () => {
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof LaunchDarkly.useLDClient>);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should set browser tab title to generic label while loading', async () => {
@@ -616,40 +613,65 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  describe('upcoming-key-dates/edit route', () => {
+  describe('key-dates edit route subheading', () => {
     beforeEach(() => {
       TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    });
-
-    test('should render UpcomingKeyDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': true,
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-appointment-accordions': true,
       });
     });
 
-    test('should redirect home when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': false,
+    test('derives the district/chapter subheading from the appointment, not router state', async () => {
+      const appointment = MockData.getTrusteeAppointment({
+        id: 'appt-1',
+        courtName: 'Southern District of New York',
+        courtDivisionName: 'Manhattan',
+        chapter: '7',
+        appointmentType: 'panel',
       });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appointment] });
 
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
+      // No location.state is provided here -- this is the scenario that previously
+      // left the subheading blank (direct link, refresh, or back/forward navigation).
+      renderWithRouter(['/trustees/123/appointments/appt-1/tpr-key-dates/edit']);
+
+      // The exact formatted string is buildAppointmentHeading's own contract,
+      // covered by appointmentDisplay.test.ts. This only confirms the screen
+      // fetches the appointment and wires its computed heading through.
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', {
+            level: 2,
+            name: buildAppointmentHeading(appointment),
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('shows no subheading when the appointment cannot be found', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+
+      renderWithRouter(['/trustees/123/appointments/appt-missing/tpr-key-dates/edit']);
 
       await waitFor(() => {
-        // When feature flag is disabled, GoHome is rendered instead of the edit form
-        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
+      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    });
+
+    test('shows no subheading when the appointment fetch fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('boom'));
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/tpr-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
     });
   });
 
@@ -663,15 +685,12 @@ describe('TrusteeDetailScreen', () => {
     });
 
     test.each([
-      [true, true, true],
-      [true, false, true],
-      [false, true, true],
-      [false, false, false],
-    ])('ch7=%s subv=%s → route enabled=%s', async (ch7Flag, subvFlag, expectEnabled) => {
+      [true, true],
+      [false, false],
+    ])('accordions flag=%s → route enabled=%s', async (accordionsFlag, expectEnabled) => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': ch7Flag,
-        'display-chpt11-subv-past-key-dates': subvFlag,
+        'trustee-appointment-accordions': accordionsFlag,
       });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
@@ -683,6 +702,9 @@ describe('TrusteeDetailScreen', () => {
       } else {
         await waitFor(() => {
           expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+          expect(mockNavigate).toHaveBeenCalledWith('/search');
         });
       }
     });
@@ -752,6 +774,9 @@ describe('TrusteeDetailScreen', () => {
           screen.queryByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
         ).not.toBeInTheDocument();
       });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
+      });
     });
   });
 
@@ -763,7 +788,7 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/assigned-staff']);
 
       await waitFor(() => {
-        expect(document.querySelector('.trustee-assigned-staff-container')).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-assigned-staff-container')).toBeInTheDocument();
       });
     });
 
@@ -780,6 +805,9 @@ describe('TrusteeDetailScreen', () => {
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
         expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
       });
     });
   });
@@ -814,6 +842,21 @@ describe('TrusteeDetailScreen', () => {
         // When feature flag is disabled, GoHome is rendered instead of the case list
         expect(screen.queryByTestId('trustee-case-list')).not.toBeInTheDocument();
       });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
+      });
     });
+  });
+});
+
+describe('TrusteeDetailScreen route path uniqueness', () => {
+  test('every routeConfigs path is unique', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const source = readFileSync(join(__dirname, 'TrusteeDetailScreen.tsx'), 'utf-8');
+    const paths = [...source.matchAll(/path:\s*'([^']+)'/g)].map((match) => match[1]);
+
+    expect(paths.length).toBeGreaterThan(0);
+    expect(new Set(paths).size).toBe(paths.length);
   });
 });

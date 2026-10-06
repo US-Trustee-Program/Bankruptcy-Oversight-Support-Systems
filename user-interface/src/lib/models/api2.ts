@@ -74,6 +74,7 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import {
+  normalizeTrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -680,9 +681,10 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
 }
 
 async function getUpcomingKeyDates(trusteeId: string, appointmentId: string) {
-  return api().get<TrusteeUpcomingKeyDates | null>(
+  const response = await api().get<TrusteeUpcomingKeyDates | null>(
     `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates`,
   );
+  return { ...response, data: normalizeTrusteeUpcomingKeyDates(response.data) };
 }
 
 async function putUpcomingKeyDates(

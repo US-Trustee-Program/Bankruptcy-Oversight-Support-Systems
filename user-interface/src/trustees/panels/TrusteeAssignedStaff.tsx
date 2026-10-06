@@ -23,7 +23,10 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
 
   return (
     <div className="right-side-screen-content">
-      <div className="trustee-assigned-staff-container">
+      <div
+        className="trustee-assigned-staff-container"
+        data-testid="trustee-assigned-staff-container"
+      >
         {error && (
           <Alert type={UswdsAlertStyle.Error} show={true}>
             {error}
