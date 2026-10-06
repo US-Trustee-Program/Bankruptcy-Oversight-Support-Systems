@@ -44,15 +44,15 @@ unless an npm script is listed.
   `MONGO_CONNECTION_STRING`/`COSMOS_DATABASE_NAME`.
 - `pipeline-replay-backtest.ts` — seeds the disposable Mongo with the trustees fixture, replays
   every professional-ids record's `evidence.sourceRaw` through the real `runTrusteeMatchPipeline`,
-  and writes `data/replay-backtest-report.jsonl` (full serialized state per record) plus
-  `data/replay-backtest-divergences-detail.csv` (records where the replay disagrees with the
+  and writes `../../../data/hold-2/replay-backtest-report.jsonl` (full serialized state per record) plus
+  `../../../data/hold-2/replay-backtest-divergences-detail.csv` (records where the replay disagrees with the
   exported disposition or trustee). Requires `MONGO_CONNECTION_STRING` and `COSMOS_DATABASE_NAME`
   set inline.
 - `partition-backtest-report.ts` — splits `replay-backtest-report.jsonl` into per-disposition CSVs
   (`no-match`, `ambiguous`, ambiguous with `suspectDuplicateCamsTrustee`, `skipped`) under `data/`,
   one row per (ACMS record, candidate) pair.
 - `auto-link-risk-triage.ts` — buckets the linked records in `replay-backtest-report.jsonl` by risk
-  tier and writes the suspects to `data/auto-link-risk-suspects.csv` for human review.
+  tier and writes the suspects to `../../../data/hold-2/auto-link-risk-suspects.csv` for human review.
 - `ai-candidate-review.ts` — sharded (`--shard=N --of=M`) second-opinion review of
   `replay-backtest-report.jsonl`: one isolated `claude -p` call per record, writing
   `data/ai-review-*.csv`. Requires an authenticated `claude` CLI; prompt template in
