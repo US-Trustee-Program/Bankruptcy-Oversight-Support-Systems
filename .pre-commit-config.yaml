@@ -68,6 +68,12 @@ repos:
         language: script
         files: '^\.github/workflows/(continuous-deployment|sub-deploy|reusable-deploy)\.yml$'
         pass_filenames: false
+      - id: guard-relay-job-secret-free
+        name: Guard azure-remove-branch.yml's relay job stays secret-free (CAMS-884)
+        entry: .pre-commit-hooks/guard-relay-job-secret-free.sh
+        language: script
+        files: '^\.github/workflows/azure-remove-branch\.yml$'
+        pass_filenames: false
       - id: guard-source-requires-checkout
         name: Guard that sourcing a pipeline script implies a prior checkout (CAMS-760)
         entry: .pre-commit-hooks/guard-source-requires-checkout.sh
