@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0  # required so the scanner can detect references properly
 
       - name: Run LaunchDarkly code references
-        uses: launchdarkly/find-code-references@89a7d369c85b1f4c84d7aa05e9bb5b52f1a67a36 # v2.14.0
+        uses: launchdarkly/find-code-references@f7fe438e8c0698254362e47bdb6cf500af28a245 #Commit f7fe438
         with:
           accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
           projKey: "cams"
