@@ -183,7 +183,7 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       await userEvent.type(passcodeInput, '12345abcde'); // pragma: allowlist secret
 
       await waitFor(() => {
-        expect(screen.getByText('Zoom Passcode must be 10 digits.')).toBeInTheDocument();
+        expect(screen.getByText('Zoom passcode must be 10 digits.')).toBeInTheDocument();
       });
     });
 
@@ -198,14 +198,14 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       await userEvent.type(passcodeInput, '12345');
 
       await waitFor(() => {
-        expect(screen.getByText('Zoom Passcode must be 10 digits.')).toBeInTheDocument();
+        expect(screen.getByText('Zoom passcode must be 10 digits.')).toBeInTheDocument();
       });
 
       await userEvent.clear(passcodeInput);
       await userEvent.type(passcodeInput, '0123456789');
 
       await waitFor(() => {
-        expect(screen.queryByText('Zoom Passcode must be 10 digits.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Zoom passcode must be 10 digits.')).not.toBeInTheDocument();
         expect(passcodeInput).toHaveValue('0123456789');
       });
     });
