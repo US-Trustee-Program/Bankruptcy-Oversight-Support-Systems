@@ -354,11 +354,12 @@ async function run() {
   const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types');
 
-  const outcomeCounts = {
-    resolved: 0,
+  const outcomeCounts: Record<ReturnType<typeof deriveDisposition>, number> = {
+    linked: 0,
     ambiguous: 0,
     'no-match': 0,
     skipped: 0,
+    error: 0,
   };
   let suspectDuplicateCamsTrusteeCount = 0;
   const outcomeByCandidate: Record<CandidateOutcome, number> = {
@@ -416,13 +417,7 @@ async function run() {
     // Uses the real production deriveDisposition rather than re-deriving the same rule here, so
     // this script's reported counts match what sync-acms-professional-ids.ts would actually persist.
     const disposition = deriveDisposition(serialized);
-    const finalOutcome: 'resolved' | 'ambiguous' | 'no-match' =
-      disposition === 'linked'
-        ? 'resolved'
-        : disposition === 'ambiguous'
-          ? 'ambiguous'
-          : 'no-match';
-    outcomeCounts[finalOutcome]++;
+    outcomeCounts[disposition]++;
     if (disposition === 'ambiguous' && deriveSuspectDuplicateCamsTrustee(serialized)) {
       suspectDuplicateCamsTrusteeCount++;
     }
@@ -491,14 +486,30 @@ async function run() {
     }
   }
 
-  console.log('\n=== Replay outcome (current main vs. what was actually persisted) ===\n');
-  for (const [k, v] of Object.entries(outcomeCounts)) {
+  const stagingCounts = new Map<string, number>();
+  for (const record of errored) {
+    const d = record.disposition === 'ambiguous-duplication' ? 'ambiguous' : record.disposition;
+    stagingCounts.set(d, (stagingCounts.get(d) ?? 0) + 1);
+  }
+  const dispositions = [
+    ...new Set([...Object.keys(outcomeCounts), ...stagingCounts.keys()]),
+  ] as string[];
+  const pct = (n: number) => `${((n / errored.length) * 100).toFixed(1)}%`.padStart(6);
+  const row = (label: string, staging: number, replay: number) =>
+    `  ${label.padEnd(12)} ${staging.toString().padStart(7)} ${pct(staging)} ` +
+    `${replay.toString().padStart(7)} ${pct(replay)}`;
+
+  console.log('\n=== Disposition counts: staging (persisted) vs. replay (current code) ===\n');
+  console.log(`  ${''.padEnd(12)} ${'staging'.padStart(14)} ${'replay'.padStart(14)}`);
+  for (const d of dispositions) {
     console.log(
-      `  ${k.padEnd(20)} ${v.toString().padStart(6)}  (${((v / errored.length) * 100).toFixed(1)}%)`,
+      row(d, stagingCounts.get(d) ?? 0, outcomeCounts[d as keyof typeof outcomeCounts] ?? 0),
     );
   }
+  const replayTotal = Object.values(outcomeCounts).reduce((a, b) => a + b, 0);
+  console.log(row('total', errored.length, replayTotal));
   console.log(
-    `    of which suspectDuplicateCamsTrustee: ${suspectDuplicateCamsTrusteeCount} ` +
+    `\n  Replay ambiguous with suspectDuplicateCamsTrustee: ${suspectDuplicateCamsTrusteeCount} ` +
       `(${((suspectDuplicateCamsTrusteeCount / errored.length) * 100).toFixed(1)}%)`,
   );
 
@@ -539,7 +550,7 @@ async function run() {
 
   console.log(
     `\nConclusion: replaying ${errored.length} staging records through the current pipeline ` +
-      `resolves ${outcomeCounts.resolved} (${((outcomeCounts.resolved / errored.length) * 100).toFixed(1)}%), with ` +
+      `links ${outcomeCounts.linked} (${((outcomeCounts.linked / errored.length) * 100).toFixed(1)}%), with ` +
       `${divergences.length} record(s) whose disposition/trusteeId disagrees with what staging ` +
       `actually persisted (see the divergences CSV above for detail).`,
   );
