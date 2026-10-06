@@ -39,7 +39,7 @@ function enterCaseNumber(value: string) {
   fireEvent.change(input, { target: { value } });
 }
 
-describe.sequential('CaseReload Component', () => {
+describe('CaseReload Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
