@@ -136,7 +136,11 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
       <AccordionGroup>
-        <Accordion id="district-filter" onExpand={() => viewModel.handleToggleExpanded()}>
+        <Accordion
+          id="district-filter"
+          onExpand={() => viewModel.handleToggleExpanded()}
+          onCollapse={() => viewModel.handleToggleExpanded()}
+        >
           <span>Filters</span>
           <div id="district-filter-content" className="filter-content">
             {viewModel.districtsError && (
