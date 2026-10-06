@@ -1,5 +1,5 @@
 import { beforeAll, vi } from 'vitest';
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { MOCK_ISSUER } from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
 
 // NOTE: We do NOT mock phonetic-utils here!
