@@ -12,7 +12,11 @@
 # loop only retried on a non-zero exit code. This harness pins the fix: a
 # clean exit with non-JSON stdout must be retried like any other transient
 # failure, and a persistently-bad response must fail with the offending
-# output visible, not a bare jq parse error.
+# output visible, not a bare jq parse error. It also pins a gap Sourcery
+# flagged in that fix's first version: validating with `jq -e .` alone
+# accepts any valid JSON (a lone object, a stream of several concatenated
+# JSON texts, etc.), not specifically the one JSON array callers need, so a
+# valid-but-wrong-shaped response must be retried too, not accepted.
 #
 # HOW IT WORKS
 # Same approach as kv-to-env-test.sh: no network, no Azure, no bats. `az` is
@@ -268,8 +272,51 @@ EOF
   assert_stdout '[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]'
   assert_call_count 2
   # The warning must make the bad response visible, not just say "it failed".
-  assert_output_contains 'not valid JSON'
+  assert_output_contains 'not a single JSON array'
   assert_output_contains "preview and under development"
+}
+
+# --- valid-but-wrong-shaped JSON is retried, not accepted as success --------
+# Sourcery finding on PR #3123: `jq -e .` alone accepts ANY valid JSON, not
+# specifically one array -- a lone object, string, or number would have
+# passed the old check and been handed to `find_branch_stacks`'s
+# `jq --argjson` merge as if it were the stack list, failing or silently
+# dropping stacks downstream instead of retrying.
+function case_retries_on_valid_non_array_json() {
+  new_responses_dir
+  queue_response 1 0 <<'EOF'
+{"error": "something went sideways"}
+EOF
+  queue_response 2 0 <<'EOF'
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  run_helper '_fbs_list_with_retry rg "tags.isBranchDeployment == '"'"'true'"'"'"'
+  assert_rc 0
+  assert_stdout '[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]'
+  assert_call_count 2
+  assert_output_contains 'not a single JSON array'
+}
+
+# --- a stream of multiple JSON values is retried, not accepted as success ---
+# Also from the Sourcery finding: `jq -e .` evaluates each whitespace-
+# separated JSON text in the input independently and only checks the LAST
+# one, so two concatenated arrays (or a stray-but-valid JSON notice followed
+# by the real array) would have passed the old check even though stdout is
+# not the single JSON array the caller expects.
+function case_retries_on_json_stream() {
+  new_responses_dir
+  queue_response 1 0 <<'EOF'
+[{"name":"stale-first-array"}]
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  queue_response 2 0 <<'EOF'
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  run_helper '_fbs_list_with_retry rg "tags.isBranchDeployment == '"'"'true'"'"'"'
+  assert_rc 0
+  assert_stdout '[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]'
+  assert_call_count 2
+  assert_output_contains 'not a single JSON array'
 }
 
 # --- persistently bad JSON fails closed with the offending output visible ---
@@ -281,7 +328,7 @@ EOF
   run_helper '_fbs_list_with_retry rg "tags.isBranchDeployment == '"'"'true'"'"'"'
   assert_rc_nonzero
   assert_call_count 3
-  assert_output_contains 'not valid JSON'
+  assert_output_contains 'not a single JSON array'
   assert_output_contains 'not json at all'
 }
 
@@ -300,6 +347,8 @@ EOF
 run_test_case merges_network_and_app               case_merges_network_and_app
 run_test_case retries_on_nonzero_exit               case_retries_on_nonzero_exit
 run_test_case retries_on_clean_exit_bad_json        case_retries_on_clean_exit_bad_json
+run_test_case retries_on_valid_non_array_json       case_retries_on_valid_non_array_json
+run_test_case retries_on_json_stream                case_retries_on_json_stream
 run_test_case persistent_bad_json_fails_with_diagnostic case_persistent_bad_json_fails_with_diagnostic
 run_test_case persistent_failure_exhausts_retries   case_persistent_failure_exhausts_retries
 

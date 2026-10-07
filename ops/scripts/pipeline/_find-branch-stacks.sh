@@ -63,14 +63,20 @@ function find_branch_stacks() {
 # the whole step, and a persistent case logs the offending output instead of
 # just a generic jq parse error.
 #
-# Echoes the command's stdout (the query's JSON) on success. A
+# The validation requires stdout decode to EXACTLY one JSON array, not merely
+# "parses as JSON": `jq -e .` alone would accept a lone object/string/number,
+# or a stream of several JSON texts concatenated (e.g. a stray notice that
+# happens to itself be valid JSON, followed by the real array) as success,
+# silently handing a malformed shape to callers instead of retrying it.
+#
+# Echoes the validated array (reserialized by jq, compact) on success. A
 # persistently-failing call still aborts the calling step via
 # `set -euo pipefail`, same as an unretried call would, just after the retry
 # budget is spent.
 function _fbs_list_with_retry() {
     local _fbs_rg=$1 _fbs_filter=$2
     local _fbs_maxAttempts=3 _fbs_delaySeconds=5 _fbs_attempt=1
-    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText _fbs_failReason
+    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText _fbs_failReason _fbs_validated
 
     while true; do
         # stderr captured to a FILE, not merged into stdout: stdout must stay
@@ -84,12 +90,20 @@ function _fbs_list_with_retry() {
         rm -f "${_fbs_stderrFile}"
 
         if [[ ${_fbs_rc} -eq 0 ]]; then
-            if jq -e . >/dev/null 2>&1 <<<"${_fbs_stdout}"; then
-                printf '%s' "${_fbs_stdout}"
+            if _fbs_validated=$(jq -ce '
+                if type != "array" then
+                    error("expected a JSON array, got " + type)
+                elif (try input catch null) != null then
+                    error("multiple JSON values in output, expected exactly one array")
+                else
+                    .
+                end
+            ' <<<"${_fbs_stdout}" 2>/dev/null); then
+                printf '%s' "${_fbs_validated}"
                 return 0
             fi
             _fbs_rc=1
-            _fbs_failReason="exit 0 but stdout was not valid JSON: ${_fbs_stdout}"
+            _fbs_failReason="exit 0 but stdout was not a single JSON array: ${_fbs_stdout}"
         else
             _fbs_failReason="${_fbs_stderrText}"
         fi
