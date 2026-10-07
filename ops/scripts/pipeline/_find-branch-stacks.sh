@@ -52,6 +52,17 @@ function find_branch_stacks() {
 # a blind retry on any failure can't double-apply a side effect, so there's
 # no need to pattern-match the error first.
 #
+# A zero exit code isn't enough on its own: az has occasionally been observed
+# to print a non-JSON notice (e.g. a one-time preview/extension message) to
+# stdout instead of stderr while still exiting 0, which produced stdout that
+# downstream `jq --argjson` calls rejected with an opaque "invalid JSON text"
+# error and no indication of which call or RG was the culprit (CAMS-884:
+# assert-clean-state failed this way with no retry-warning logged at all).
+# Validating the JSON shape here, with the SAME retry budget as an outright
+# `az` failure, means a one-off case like that self-heals instead of crashing
+# the whole step, and a persistent case logs the offending output instead of
+# just a generic jq parse error.
+#
 # Echoes the command's stdout (the query's JSON) on success. A
 # persistently-failing call still aborts the calling step via
 # `set -euo pipefail`, same as an unretried call would, just after the retry
@@ -59,7 +70,7 @@ function find_branch_stacks() {
 function _fbs_list_with_retry() {
     local _fbs_rg=$1 _fbs_filter=$2
     local _fbs_maxAttempts=3 _fbs_delaySeconds=5 _fbs_attempt=1
-    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText
+    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText _fbs_failReason
 
     while true; do
         # stderr captured to a FILE, not merged into stdout: stdout must stay
@@ -73,14 +84,21 @@ function _fbs_list_with_retry() {
         rm -f "${_fbs_stderrFile}"
 
         if [[ ${_fbs_rc} -eq 0 ]]; then
-            printf '%s' "${_fbs_stdout}"
-            return 0
+            if jq -e . >/dev/null 2>&1 <<<"${_fbs_stdout}"; then
+                printf '%s' "${_fbs_stdout}"
+                return 0
+            fi
+            _fbs_rc=1
+            _fbs_failReason="exit 0 but stdout was not valid JSON: ${_fbs_stdout}"
+        else
+            _fbs_failReason="${_fbs_stderrText}"
         fi
+
         if [[ ${_fbs_attempt} -ge ${_fbs_maxAttempts} ]]; then
-            echo "${_fbs_stderrText}" >&2
+            echo "${_fbs_failReason}" >&2
             return "${_fbs_rc}"
         fi
-        echo "WARNING: 'az stack group list -g ${_fbs_rg}' attempt ${_fbs_attempt} failed (${_fbs_stderrText}); retrying in ${_fbs_delaySeconds}s." >&2
+        echo "WARNING: 'az stack group list -g ${_fbs_rg}' attempt ${_fbs_attempt} failed (${_fbs_failReason}); retrying in ${_fbs_delaySeconds}s." >&2
         sleep "${_fbs_delaySeconds}"
         _fbs_attempt=$((_fbs_attempt + 1))
         _fbs_delaySeconds=$((_fbs_delaySeconds * 2))
