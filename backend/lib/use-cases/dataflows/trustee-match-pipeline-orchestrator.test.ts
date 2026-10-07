@@ -109,7 +109,7 @@ describe('runTrusteeMatchPipeline', () => {
       });
     });
 
-    test('does not resolve on name alone when address and phone both disagree', async () => {
+    test('does not resolve on name alone when the states conflict', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
         makeTrustee({
           trusteeId: 't1',

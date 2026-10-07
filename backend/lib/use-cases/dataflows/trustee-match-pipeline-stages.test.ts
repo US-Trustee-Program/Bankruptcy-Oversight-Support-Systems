@@ -231,6 +231,31 @@ describe('normalizeAcmsSourceName', () => {
     expect(state.sourceNormalized.middleName).toBe('spencer');
   });
 
+  // Both recoveries detect their shape in raw text ("CH13" digits, an "INC" suffix) that
+  // stripAdministrativeMarkers would remove, so they must run before it.
+  test.each([
+    {
+      shape: 'an office name with a glued chapter marker in firstName',
+      firstName: 'FICTIONBURGCH13',
+      lastName: 'ALDRIC Q VEXMORE',
+      expected: { firstName: 'aldric', middleName: 'q', lastName: 'vexmore' },
+    },
+    {
+      shape: 'a solo practice name in lastName with a blank firstName',
+      firstName: '',
+      lastName: 'TESSARIN Q ORSINO INC',
+      expected: { firstName: 'tessarin', middleName: 'q', lastName: 'orsino' },
+    },
+  ])('recovers the real name from $shape', async ({ firstName, lastName, expected }) => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ fullName: `${firstName} ${lastName}`, firstName, lastName }),
+      ),
+    );
+
+    expect(state.sourceNormalized).toMatchObject(expected);
+  });
+
   test('leaves a real name with no parenthetical unchanged', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1979,6 +2004,46 @@ describe('resolvers', () => {
       );
 
       expect(result.match).toBeNull();
+    });
+
+    // Exact first and last names plus an agreeing state outweigh a conflicting middle initial.
+    test('resolves an exact first and last name with a conflicting middle initial when the state agrees', async () => {
+      const state = await normalizeAcmsSourceName()(
+        createInitialState(
+          makeDxtrTrustee({
+            firstName: 'Aldric',
+            middleName: 'P',
+            lastName: 'Vexmore',
+            legacy: { cityStateZipCountry: 'FICTIONBURG DE 19801' } as never,
+          }),
+        ),
+      );
+      const candidate = addCandidate(
+        state,
+        projectTrustee(
+          makeTrustee({
+            trusteeId: 't1',
+            firstName: 'Aldric',
+            middleName: 'E',
+            lastName: 'Vexmore',
+            public: {
+              address: {
+                address1: '1 Elm St',
+                city: 'Hallowmere',
+                state: 'DE',
+                zipCode: '19901',
+                countryCode: 'US',
+              },
+            },
+          }),
+        ),
+        'test',
+      );
+      scoreCandidate(state.sourceNormalized, candidate);
+
+      const result = await resolveByStateOnly()(state);
+
+      expect(result.match).toMatchObject({ trusteeId: 't1', resolvedBy: 'resolveByStateOnly' });
     });
   });
 

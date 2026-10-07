@@ -64,7 +64,7 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { pass: false, quality: 'strong' },
+          doesNameMatch: { pass: false },
         }),
         makeCandidate({ doesNameMatch: { pass: false } }),
       ],
@@ -81,7 +81,7 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { pass: false, quality: 'strong' },
+          doesNameMatch: { pass: false },
         }),
         makeCandidate({
           doesNameMatch: { pass: true, quality: 'exact' },
@@ -248,10 +248,7 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
     const state = makeState({
       candidates: [
         makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
-        makeCandidate(
-          { doesNameMatch: { pass: false, quality: 'strong' } },
-          { phone: { number: '206-555-0100' } },
-        ),
+        makeCandidate({ doesNameMatch: { pass: false } }, { phone: { number: '206-555-0100' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
