@@ -39,6 +39,23 @@ if [[ ! -f "${HELPER}" ]]; then
   exit 1
 fi
 
+# The helper under test uses `jq` internally (not just this harness), so
+# without it every case fails the same way regardless of what's being
+# exercised -- indistinguishable from a real regression. No local repo hook
+# used `jq` before this one, so nothing previously established that
+# pre-commit.ci's `language: script` sandbox has it on PATH, and it turned
+# out not to: this hook failed there with every case expecting 2 az calls
+# getting 3 instead (every attempt failing the jq-based JSON check, every
+# case exhausting its retry budget), while the exact same suite passed
+# locally and in GitHub Actions (both of which do have jq). Skip rather than
+# false-fail when the precondition for running this test at all isn't met;
+# this still runs for real everywhere jq is present, which both the
+# production code path (GitHub Actions runners) and developer machines are.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "SKIP: jq is not available in this environment; _find-branch-stacks.sh's JSON handling cannot be exercised here. This is a known gap in some pre-commit.ci sandboxes -- these tests run for real on developer machines and in GitHub Actions CI, both of which have jq."
+  exit 0
+fi
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
