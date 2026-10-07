@@ -52,14 +52,31 @@ function find_branch_stacks() {
 # a blind retry on any failure can't double-apply a side effect, so there's
 # no need to pattern-match the error first.
 #
-# Echoes the command's stdout (the query's JSON) on success. A
+# A zero exit code isn't enough on its own: az has occasionally been observed
+# to print a non-JSON notice (e.g. a one-time preview/extension message) to
+# stdout instead of stderr while still exiting 0, which produced stdout that
+# downstream `jq --argjson` calls rejected with an opaque "invalid JSON text"
+# error and no indication of which call or RG was the culprit (CAMS-884:
+# assert-clean-state failed this way with no retry-warning logged at all).
+# Validating the JSON shape here, with the SAME retry budget as an outright
+# `az` failure, means a one-off case like that self-heals instead of crashing
+# the whole step, and a persistent case logs the offending output instead of
+# just a generic jq parse error.
+#
+# The validation requires stdout decode to EXACTLY one JSON array, not merely
+# "parses as JSON": `jq -e .` alone would accept a lone object/string/number,
+# or a stream of several JSON texts concatenated (e.g. a stray notice that
+# happens to itself be valid JSON, followed by the real array) as success,
+# silently handing a malformed shape to callers instead of retrying it.
+#
+# Echoes the validated array (reserialized by jq, compact) on success. A
 # persistently-failing call still aborts the calling step via
 # `set -euo pipefail`, same as an unretried call would, just after the retry
 # budget is spent.
 function _fbs_list_with_retry() {
     local _fbs_rg=$1 _fbs_filter=$2
     local _fbs_maxAttempts=3 _fbs_delaySeconds=5 _fbs_attempt=1
-    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText
+    local _fbs_rc _fbs_stdout _fbs_stderrFile _fbs_stderrText _fbs_failReason _fbs_validated
 
     while true; do
         # stderr captured to a FILE, not merged into stdout: stdout must stay
@@ -73,14 +90,37 @@ function _fbs_list_with_retry() {
         rm -f "${_fbs_stderrFile}"
 
         if [[ ${_fbs_rc} -eq 0 ]]; then
-            printf '%s' "${_fbs_stdout}"
-            return 0
+            # Slurp mode (-s) reads the WHOLE input into one array before the
+            # filter ever runs, so there is exactly one top-level evaluation.
+            # An `if type != "array" then error(...) ... elif (try input
+            # catch null) ...` version (per-document, not slurped) looked
+            # right but wasn't: jq moves on to the NEXT top-level document
+            # after a document's filter calls error(...), so a 3-plus-value
+            # stream like `[1] [2] [3]` re-ran the filter on the trailing
+            # `[3]` alone, which passed, making the overall exit code 0 with
+            # `[3]` on stdout -- silently accepting a malformed stream readily
+            # observable under the jq version on the actual runners.
+            if _fbs_validated=$(jq -cse '
+                if length == 1 and (.[0] | type) == "array" then
+                    .[0]
+                else
+                    error("expected exactly one JSON array, got \(length) value(s)")
+                end
+            ' <<<"${_fbs_stdout}" 2>/dev/null); then
+                printf '%s' "${_fbs_validated}"
+                return 0
+            fi
+            _fbs_rc=1
+            _fbs_failReason="exit 0 but stdout was not a single JSON array: ${_fbs_stdout}"
+        else
+            _fbs_failReason="${_fbs_stderrText}"
         fi
+
         if [[ ${_fbs_attempt} -ge ${_fbs_maxAttempts} ]]; then
-            echo "${_fbs_stderrText}" >&2
+            echo "az stack group list -g ${_fbs_rg}: ${_fbs_failReason}" >&2
             return "${_fbs_rc}"
         fi
-        echo "WARNING: 'az stack group list -g ${_fbs_rg}' attempt ${_fbs_attempt} failed (${_fbs_stderrText}); retrying in ${_fbs_delaySeconds}s." >&2
+        echo "WARNING: 'az stack group list -g ${_fbs_rg}' attempt ${_fbs_attempt} failed (${_fbs_failReason}); retrying in ${_fbs_delaySeconds}s." >&2
         sleep "${_fbs_delaySeconds}"
         _fbs_attempt=$((_fbs_attempt + 1))
         _fbs_delaySeconds=$((_fbs_delaySeconds * 2))
