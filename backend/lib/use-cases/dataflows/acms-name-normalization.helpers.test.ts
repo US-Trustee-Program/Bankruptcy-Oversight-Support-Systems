@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'vitest';
 import {
+  recoverCorruptedFirstName,
   recoverLastFirstRoleSwap,
+  recoverSoloPracticeName,
   shouldSkipAsNotAPerson,
   stripAdministrativeMarkers,
 } from './acms-name-normalization.helpers';
@@ -83,5 +85,31 @@ describe('recoverLastFirstRoleSwap', () => {
       firstName: '',
       lastName: 'Roe, Jordan',
     });
+  });
+});
+
+describe('recoverCorruptedFirstName', () => {
+  // Models a firstName holding an office name with a glued chapter marker, the real name having
+  // landed in lastName.
+  test.each([
+    ['ALDRIC', 'VEXMORE', { firstName: 'ALDRIC', lastName: 'VEXMORE' }],
+    ['FICTIONBURGCH13', 'Q. ALDRIC VEXMORE', { firstName: 'Q. ALDRIC', lastName: 'VEXMORE' }],
+    ['FICTIONBURGCH13', 'ALDRIC VEXMORE', { firstName: 'ALDRIC', lastName: 'VEXMORE' }],
+    ['ALDRIC13 Q', 'VEXMORE', { firstName: 'ALDRIC13', lastName: 'VEXMORE' }],
+  ])('recovers firstName "%s" with lastName "%s"', (firstName, lastName, expected) => {
+    expect(recoverCorruptedFirstName(firstName, lastName)).toEqual(expected);
+  });
+});
+
+describe('recoverSoloPracticeName', () => {
+  test.each([
+    ['', 'TESSARIN Q ORSINO INC', { firstName: 'TESSARIN Q', lastName: 'ORSINO' }],
+    ['', 'TESSARIN ORSINO, LLC', { firstName: 'TESSARIN', lastName: 'ORSINO' }],
+    ['', 'TESSARIN ORSINO PC.', { firstName: 'TESSARIN', lastName: 'ORSINO' }],
+    ['', 'ORSINO INC', { firstName: '', lastName: 'ORSINO INC' }],
+    ['', 'TESSARIN Q ORSINO', { firstName: '', lastName: 'TESSARIN Q ORSINO' }],
+    ['TESSARIN', 'ORSINO INC', { firstName: 'TESSARIN', lastName: 'ORSINO INC' }],
+  ])('recovers firstName "%s" with lastName "%s"', (firstName, lastName, expected) => {
+    expect(recoverSoloPracticeName(firstName, lastName)).toEqual(expected);
   });
 });

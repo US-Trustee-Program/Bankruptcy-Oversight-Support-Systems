@@ -532,7 +532,7 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'conflict', via: 'fingerprint' });
     });
 
-    test('should NOT record a TrusteeVariation while WRITE_ACMS_TRUSTEE_VARIATIONS is disabled', async () => {
+    test('should not record a TrusteeVariation for a name-matched auto-link', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const matchedPipelineState = {
         ...noMatchPipelineState,

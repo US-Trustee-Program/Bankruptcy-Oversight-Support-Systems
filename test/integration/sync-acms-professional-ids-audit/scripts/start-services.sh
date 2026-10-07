@@ -22,7 +22,7 @@ podman rm -f cams-876-replay-mongodb 2>/dev/null || true
 echo "Creating pod ${POD_NAME}..."
 podman pod create \
   --name "${POD_NAME}" \
-  --publish 27118:27017
+  --publish 127.0.0.1:27118:27017
 
 echo "Starting MongoDB..."
 podman run -d \

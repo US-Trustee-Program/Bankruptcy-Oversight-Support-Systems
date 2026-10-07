@@ -6,8 +6,8 @@ import {
   AcmsProfessionalIdSyncState,
   AcmsTrusteeProfessionalDetailRecord,
 } from '../gateways.types';
-import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
-import { ACMS_SYSTEM_USER_REFERENCE, createAuditRecord } from '@common/cams/auditable';
+import { TrusteeVariation } from '@common/cams/trustee-variation';
+import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -24,14 +24,6 @@ import {
 } from './trustee-professional-ids.types';
 
 const ACMS_PROFESSIONAL_ID_SYNC_STATE = 'ACMS_PROFESSIONAL_ID_SYNC_STATE' as const;
-
-/**
- * Disabled: when true, processResolvedNameMatch writes a TrusteeVariation, which (1) makes a later
- * ACMS id in the same run with the same variant short-circuit through processFingerprintMatch and
- * lose its pipeline evidence, and (2) survives purgeAll, so a purge + re-sync short-circuits on
- * variations written by earlier matching logic. Enable only after both are addressed.
- */
-const WRITE_ACMS_TRUSTEE_VARIATIONS = false;
 
 function createDeps(context: ApplicationContext) {
   return {
@@ -365,21 +357,6 @@ async function processResolvedNameMatch(
   if (existingTrusteeId) {
     await writeProfessionalId(deps, record, fingerprint, variant, state, existingTrusteeId);
     return { kind: 'conflict', via: 'name' };
-  }
-
-  // See WRITE_ACMS_TRUSTEE_VARIATIONS.
-  if (WRITE_ACMS_TRUSTEE_VARIATIONS) {
-    await deps.variationRepo.createVariation(
-      createAuditRecord(
-        {
-          documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
-          fingerprint,
-          variant,
-          trusteeId,
-        },
-        ACMS_SYSTEM_USER_REFERENCE,
-      ),
-    );
   }
 
   await writeProfessionalId(deps, record, fingerprint, variant, state);
