@@ -319,6 +319,57 @@ EOF
   assert_output_contains 'not a single JSON array'
 }
 
+# --- a valid-JSON notice followed by the real array is retried too ----------
+# James O'Brooks' follow-up on PR #3123: the comment above already named this
+# shape ("a stray-but-valid JSON notice followed by the real array"), but the
+# per-document `input`-based filter didn't actually reject it -- jq moves on
+# to the NEXT top-level document after a document's filter calls `error(...)`,
+# so a 2-value stream here happened to get rejected only because jq had
+# nothing left to fall through to, while a 3-plus-value stream (see above)
+# did not. The slurp-mode (`-cse`) rewrite reads every value up front, so
+# there's exactly one evaluation and this shape is rejected unconditionally.
+function case_retries_on_json_stream_with_notice_object() {
+  new_responses_dir
+  queue_response 1 0 <<'EOF'
+{"notice": "stack extension auto-installed"}
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  queue_response 2 0 <<'EOF'
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  run_helper '_fbs_list_with_retry rg "tags.isBranchDeployment == '"'"'true'"'"'"'
+  assert_rc 0
+  assert_stdout '[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]'
+  assert_call_count 2
+  assert_output_contains 'not a single JSON array'
+}
+
+# --- a THREE-plus-value stream is retried (not just a two-value one) --------
+# This is the exact shape that exposed the per-document filter's bug: jq
+# re-runs the whole filter on each top-level document in turn, and moves on
+# to the next one after a document's filter calls `error(...)`. For a
+# two-value stream there was nothing left to fall through to, so it happened
+# to get rejected; for three values, the filter's `error(...)` on document 1
+# didn't stop jq from evaluating document 3 fresh, which passed in isolation
+# and produced rc 0 with `[3]` on stdout -- silently discarding documents 1
+# and 2. The slurp-mode rewrite has no such fallthrough.
+function case_retries_on_three_value_json_stream() {
+  new_responses_dir
+  queue_response 1 0 <<'EOF'
+[{"name":"stale-first"}]
+[{"name":"stale-second"}]
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  queue_response 2 0 <<'EOF'
+[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]
+EOF
+  run_helper '_fbs_list_with_retry rg "tags.isBranchDeployment == '"'"'true'"'"'"'
+  assert_rc 0
+  assert_stdout '[{"name":"a-network","branchName":"foo","branchHashId":"010f93"}]'
+  assert_call_count 2
+  assert_output_contains 'not a single JSON array'
+}
+
 # --- persistently bad JSON fails closed with the offending output visible ---
 function case_persistent_bad_json_fails_with_diagnostic() {
   new_responses_dir
@@ -342,6 +393,10 @@ EOF
   assert_rc_nonzero
   assert_call_count 3
   assert_output_contains 'Forbidden'
+  # James O'"'"'Brooks' PR #3123 nit: the retry warnings name the RG, but the
+  # final line (what GitHub shows as the error annotation) didn't, so it
+  # wasn't enough on its own to identify which RG failed.
+  assert_output_contains 'az stack group list -g rg: ERROR: (403) Forbidden'
 }
 
 run_test_case merges_network_and_app               case_merges_network_and_app
@@ -349,6 +404,8 @@ run_test_case retries_on_nonzero_exit               case_retries_on_nonzero_exit
 run_test_case retries_on_clean_exit_bad_json        case_retries_on_clean_exit_bad_json
 run_test_case retries_on_valid_non_array_json       case_retries_on_valid_non_array_json
 run_test_case retries_on_json_stream                case_retries_on_json_stream
+run_test_case retries_on_json_stream_with_notice_object case_retries_on_json_stream_with_notice_object
+run_test_case retries_on_three_value_json_stream    case_retries_on_three_value_json_stream
 run_test_case persistent_bad_json_fails_with_diagnostic case_persistent_bad_json_fails_with_diagnostic
 run_test_case persistent_failure_exhausts_retries   case_persistent_failure_exhausts_retries
 

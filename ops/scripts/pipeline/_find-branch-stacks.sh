@@ -90,13 +90,21 @@ function _fbs_list_with_retry() {
         rm -f "${_fbs_stderrFile}"
 
         if [[ ${_fbs_rc} -eq 0 ]]; then
-            if _fbs_validated=$(jq -ce '
-                if type != "array" then
-                    error("expected a JSON array, got " + type)
-                elif (try input catch null) != null then
-                    error("multiple JSON values in output, expected exactly one array")
+            # Slurp mode (-s) reads the WHOLE input into one array before the
+            # filter ever runs, so there is exactly one top-level evaluation.
+            # An `if type != "array" then error(...) ... elif (try input
+            # catch null) ...` version (per-document, not slurped) looked
+            # right but wasn't: jq moves on to the NEXT top-level document
+            # after a document's filter calls error(...), so a 3-plus-value
+            # stream like `[1] [2] [3]` re-ran the filter on the trailing
+            # `[3]` alone, which passed, making the overall exit code 0 with
+            # `[3]` on stdout -- silently accepting a malformed stream readily
+            # observable under the jq version on the actual runners.
+            if _fbs_validated=$(jq -cse '
+                if length == 1 and (.[0] | type) == "array" then
+                    .[0]
                 else
-                    .
+                    error("expected exactly one JSON array, got \(length) value(s)")
                 end
             ' <<<"${_fbs_stdout}" 2>/dev/null); then
                 printf '%s' "${_fbs_validated}"
@@ -109,7 +117,7 @@ function _fbs_list_with_retry() {
         fi
 
         if [[ ${_fbs_attempt} -ge ${_fbs_maxAttempts} ]]; then
-            echo "${_fbs_failReason}" >&2
+            echo "az stack group list -g ${_fbs_rg}: ${_fbs_failReason}" >&2
             return "${_fbs_rc}"
         fi
         echo "WARNING: 'az stack group list -g ${_fbs_rg}' attempt ${_fbs_attempt} failed (${_fbs_failReason}); retrying in ${_fbs_delaySeconds}s." >&2
