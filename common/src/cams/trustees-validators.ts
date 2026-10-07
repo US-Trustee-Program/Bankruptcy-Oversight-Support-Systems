@@ -1,5 +1,11 @@
 import V from './validators';
-import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZIP_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
+import {
+  PHONE_REGEX,
+  WEBSITE_RELAXED_REGEX,
+  ZIP_REGEX,
+  ZOOM_MEETING_ID_REGEX,
+  ZOOM_PASSCODE_REGEX,
+} from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo, TrusteeContact } from './trustees';
@@ -31,7 +37,6 @@ export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required
 export const FIRST_NAME_MAX = 15;
 export const MIDDLE_NAME_MAX = 15;
 export const LAST_NAME_MAX = 20;
-export const FULL_NAME_MAX = FIRST_NAME_MAX + MIDDLE_NAME_MAX + LAST_NAME_MAX + 2;
 
 export const trusteeFirstName = V.checkFirst(V.minLength(1, 'First name is required')).then(
   V.maxLength(FIRST_NAME_MAX),
@@ -77,7 +82,9 @@ export const zoomMeetingId = V.matches(
   FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID,
 );
 
-export const zoomPasscode = V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED);
+export const zoomPasscode = V.checkFirst(
+  V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED),
+).then(V.matches(ZOOM_PASSCODE_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE));
 
 export const staffName = V.minLength(1);
 
