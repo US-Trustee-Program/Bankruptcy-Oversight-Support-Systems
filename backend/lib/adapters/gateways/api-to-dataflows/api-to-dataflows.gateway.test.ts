@@ -1,4 +1,4 @@
-import { CaseAssignment } from '@common/cams/assignments';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ApiToDataflowsGatewayImpl,
@@ -100,15 +100,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
   describe('queueCaseAssignmentEvent', () => {
     test('sends the case assignment event as-is to the case-assignment queue', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const eventData: any = {
-        caseId: '081-12-34567',
-        userId: 'user123',
-        name: 'Test User',
-        role: 'TrialAttorney',
-        assignedOn: '2024-01-01',
-      };
-      const event: CaseAssignment = eventData;
+      const event = MockData.getAttorneyAssignment();
 
       await gateway.queueCaseAssignmentEvent(event);
 
@@ -162,13 +154,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
       [
         'queueCaseAssignmentEvent',
         (gateway: ApiToDataflowsGatewayImpl) =>
-          gateway.queueCaseAssignmentEvent({
-            caseId: '081-12-34567',
-            userId: 'user123',
-            name: 'Test User',
-            role: 'TrialAttorney',
-            assignedOn: '2024-01-01',
-          } as CaseAssignment),
+          gateway.queueCaseAssignmentEvent(MockData.getAttorneyAssignment()),
       ],
       [
         'queueTrusteeVerificationRemap',

@@ -361,7 +361,18 @@ describe('Case assignment tests', () => {
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
-      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.objectContaining(assignmentTwo));
+      const persistedAssignment = createAssignment.mock.calls[0][0];
+      expect(persistedAssignment).toEqual(
+        expect.objectContaining({
+          ...assignmentTwo,
+          documentType: 'ASSIGNMENT',
+          assignedOn: expect.any(String),
+          updatedOn: expect.any(String),
+          updatedBy: expect.objectContaining({ id: user.id }),
+        }),
+      );
+      expect(assignmentEventSpy).toHaveBeenCalledTimes(1);
+      expect(assignmentEventSpy).toHaveBeenCalledWith(persistedAssignment);
     });
 
     test('should remove assignments', async () => {
