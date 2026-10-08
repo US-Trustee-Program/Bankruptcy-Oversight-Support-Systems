@@ -13,9 +13,14 @@
  * the whole sentinel logical partition.
  *
  * Do not start heal-sentinel-case-appointments until the index build has finished. Cosmos builds
- * the index in the background after createIndex returns; check progress with
- *   db.currentOp({ 'command.createIndexes': 'trustee-case-appointments' })
- * and wait until no build is reported for this collection.
+ * the index in the background after createIndex returns, and db.currentOp does not report it. Run
+ * a per-ID sentinel query, then read its cost:
+ *   db.getCollection('trustee-case-appointments')
+ *     .find({ trusteeId: '00000000-0000-0000-0000-000000000000', acmsProfessionalId: '<id>' })
+ *     .toArray();
+ *   db.runCommand({ getLastRequestStatistics: 1 });
+ * RequestCharge falls from a full scan of the sentinel partition to a cost proportional to the
+ * matches once the build finishes. Wait until it drops and holds.
  *
  * Idempotent and safe to re-run: an index that already exists is left alone.
  *

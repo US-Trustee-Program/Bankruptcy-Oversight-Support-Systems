@@ -926,6 +926,21 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  /** Records the collection each adapter was built for, so a test can tell the partitions apart. */
+  const trackAdapterCollections = () => {
+    const collections = new Map<unknown, string>();
+    const newAdapter = MongoCollectionAdapter.newAdapter.bind(MongoCollectionAdapter);
+    vi.spyOn(MongoCollectionAdapter, 'newAdapter').mockImplementation(
+      (moduleName, collection, database, client) => {
+        const adapter = newAdapter(moduleName, collection, database, client);
+        collections.set(adapter, collection);
+        return adapter;
+      },
+    );
+    return (spy: { mock: { contexts: unknown[] } }, call: number) =>
+      collections.get(spy.mock.contexts[call]);
+  };
+
   describe('findSentinelAppointmentsByAcmsProfessionalId', () => {
     const sentinelConditions = [
       {
@@ -964,6 +979,20 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         25,
       );
       expect(result).toEqual([sentinel]);
+      repo.release();
+    });
+
+    // Every sentinel shares one trusteeId, so the trustee partition routes this read to one
+    // logical partition, where the acmsProfessionalId index applies.
+    test('should read from the trustee partition', async () => {
+      const collectionOf = trackAdapterCollections();
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findSentinelAppointmentsByAcmsProfessionalId('NY-00063', null, 25);
+
+      expect(collectionOf(findSpy, 0)).toBe('trustee-case-appointments');
       repo.release();
     });
 
@@ -1007,15 +1036,17 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       rightOperand: 'appt-001',
     };
 
-    test('should scope each partition delete to that partition’s shard key', async () => {
+    test('should delete the case copy by caseId and id, and the trustee copy by sentinel trusteeId and _id', async () => {
+      const collectionOf = trackAdapterCollections();
       const deleteOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
         .mockResolvedValue(undefined);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await repo.deleteSentinel('081-25-00001', 'appt-001');
+      await repo.deleteSentinel('081-25-00001', 'appt-001', '64b000000000000000000001');
 
+      expect(collectionOf(deleteOneSpy, 0)).toBe('case-trustee-appointments');
       expect(deleteOneSpy).toHaveBeenNthCalledWith(1, {
         conjunction: 'AND',
         values: [
@@ -1023,6 +1054,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
           idCondition,
         ],
       });
+      expect(collectionOf(deleteOneSpy, 1)).toBe('trustee-case-appointments');
       expect(deleteOneSpy).toHaveBeenNthCalledWith(2, {
         conjunction: 'AND',
         values: [
@@ -1031,7 +1063,11 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
             leftOperand: { name: 'trusteeId' },
             rightOperand: SENTINEL_TRUSTEE_ID,
           },
-          idCondition,
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: '_id' },
+            rightOperand: '64b000000000000000000001',
+          },
         ],
       });
       repo.release();
@@ -1048,7 +1084,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).resolves.toBeUndefined();
+      await expect(
+        repo.deleteSentinel('081-25-00001', 'appt-001', '64b000000000000000000001'),
+      ).resolves.toBeUndefined();
 
       expect(deleteOneSpy).toHaveBeenCalledTimes(2);
       repo.release();
@@ -1061,9 +1099,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).rejects.toThrow(
-        'Failed to delete sentinel appointment appt-001 from the case partition.',
-      );
+      await expect(
+        repo.deleteSentinel('081-25-00001', 'appt-001', '64b000000000000000000001'),
+      ).rejects.toThrow('Failed to delete sentinel appointment appt-001 from the case partition.');
       repo.release();
     });
 
@@ -1074,7 +1112,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).rejects.toThrow(
+      await expect(
+        repo.deleteSentinel('081-25-00001', 'appt-001', '64b000000000000000000001'),
+      ).rejects.toThrow(
         'Failed to delete sentinel appointment appt-001 from the trustee partition.',
       );
       repo.release();

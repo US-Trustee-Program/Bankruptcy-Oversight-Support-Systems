@@ -128,7 +128,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     expect(upserted).not.toHaveProperty('acmsProfessionalId');
     expect(upserted).not.toHaveProperty('_id');
     expect(upserted).not.toHaveProperty('id');
-    expect(mockDeleteSentinel).toHaveBeenCalledWith(sentinel.caseId, sentinel.id);
+    expect(mockDeleteSentinel).toHaveBeenCalledWith(sentinel.caseId, sentinel.id, sentinel._id);
     expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
       mockDeleteSentinel.mock.invocationCallOrder[0],
     );
@@ -252,7 +252,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     );
 
     expect(mockDeleteSentinel).toHaveBeenCalledTimes(1);
-    expect(mockDeleteSentinel).toHaveBeenCalledWith(healed.caseId, healed.id);
+    expect(mockDeleteSentinel).toHaveBeenCalledWith(healed.caseId, healed.id, healed._id);
     expect(mockMarkSentinelsHealed).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('NY-00063'));
     expect(result).toMatchObject({
