@@ -2,7 +2,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
-import { resolveGroupMatchedProfessionalId } from './sync-trustee-case-appointments';
+import {
+  assertValidChapter,
+  resolveGroupMatchedProfessionalId,
+} from './sync-trustee-case-appointments';
 import { isAppointmentMatch } from './trustee-match.helpers';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import {
@@ -94,8 +97,12 @@ class TrusteeVerificationRemapUseCase {
         assignedOn: surrogate.assignedOn,
         appointedDate: surrogate.appointedDate,
         dateFiled: surrogate.dateFiled,
-        chapter: surrogate.chapter,
-        courtDivisionCode: surrogate.courtDivisionCode,
+        // Fresh values, not the surrogate's: the guard above validates isAppointmentMatch
+        // against caseSummary specifically to catch a case transferred since the surrogate
+        // was created, and persisting the surrogate's own chapter/courtDivisionCode here
+        // would write back exactly the stale data that guard exists to catch.
+        chapter: assertValidChapter(surrogate.caseId, caseSummary.chapter),
+        courtDivisionCode: caseSummary.courtDivisionCode,
       });
     }
 
