@@ -51,9 +51,7 @@ describe('buildQueueName', () => {
     expect(buildQueueName('SYNC-CASES', 'page')).toEqual('sync-cases-page');
     expect(buildQueueName('SYNC-CASES', 'dlq')).toEqual('sync-cases-dlq');
     expect(buildQueueName('MIGRATE-TRUSTEES', 'retry')).toEqual('migrate-trustees-retry');
-    expect(buildQueueName('DOWNSTREAM-CHAPTER15-ASSIGNMENTS', 'event')).toEqual(
-      'downstream-chapter15-assignments-event',
-    );
+    expect(buildQueueName('CASE-ASSIGNMENT-EVENT', 'dlq')).toEqual('case-assignment-event-dlq');
   });
 
   test('should handle already lowercase inputs', () => {

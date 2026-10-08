@@ -264,13 +264,13 @@ describe('AbstractMssqlClient.withTransaction', () => {
         async (_tx) => {
           throw new Error('query failed');
         },
-        { operationName: 'upsertCmmapCamsRow', logContext: { caseId: '081-24-12345' } },
+        { operationName: 'upsertRecord', logContext: { caseId: '081-24-12345' } },
       ),
     ).rejects.toMatchObject({ isCamsError: true });
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('TX_TEST'),
-      expect.stringContaining('upsertCmmapCamsRow'),
+      expect.stringContaining('upsertRecord'),
       expect.objectContaining({ caseId: '081-24-12345' }),
     );
   });
