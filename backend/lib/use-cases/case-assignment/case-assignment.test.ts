@@ -585,7 +585,7 @@ describe('Case assignment tests', () => {
       );
     });
 
-    test('should not write a sync error doc when queueCaseAssignmentEvent fails', async () => {
+    test('should keep queueing remaining assignment events after one enqueue fails', async () => {
       vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
         MockData.getCaseDetail({
           override: { caseId, courtDivisionCode: getCourtDivisionCodes(user)[0] },
@@ -594,24 +594,26 @@ describe('Case assignment tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(randomId());
-      vi.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(randomId);
 
-      assignmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+      assignmentEventSpy.mockRejectedValueOnce(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(applicationContext.logger, 'error');
 
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
-        [attorneyJoeNobel],
+        [attorneyJaneSmith, attorneyJoeNobel],
         role.toString(),
       );
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'CASE-ASSIGNMENT',
-        expect.stringContaining('Failed to enqueue staff assignment event'),
-        expect.any(Error),
+      expect(assignmentEventSpy).toHaveBeenCalledTimes(2);
+      expect(assignmentEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: attorneyJaneSmith.id }),
       );
+      expect(assignmentEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: attorneyJoeNobel.id }),
+      );
+      expect(errorSpy).toHaveBeenCalledTimes(1);
     });
 
     test('should not do anything if user does have the CaseAssignmentManager role but not for the correct division', async () => {
