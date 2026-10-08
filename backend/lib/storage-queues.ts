@@ -44,16 +44,6 @@ export const SYNC_CASES_PAGE_QUEUE = output.storageQueue({
   connection,
 });
 
-export const TRUSTEE_APPOINTMENT_EVENT_QUEUE = output.storageQueue({
-  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT),
-  connection,
-});
-
-export const TRUSTEE_APPOINTMENT_DOWNSTREAM_DLQ = output.storageQueue({
-  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM, 'DLQ'),
-  connection,
-});
-
 export const TRUSTEE_CHANGE_NOTIFICATION_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT),
   connection,
@@ -81,10 +71,5 @@ export const HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE = output.storageQueue({
 
 export const HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS, 'DLQ'),
-  connection,
-});
-
-export const STAFF_ASSIGNMENT_DOWNSTREAM_DLQ = output.storageQueue({
-  queueName: buildQueueName(ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM, 'DLQ'),
   connection,
 });

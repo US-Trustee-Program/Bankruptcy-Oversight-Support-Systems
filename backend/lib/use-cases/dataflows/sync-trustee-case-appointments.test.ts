@@ -12,13 +12,11 @@ import SyncTrusteeCaseAppointments, {
 import factory from '../../factory';
 import {
   TrusteeAppointmentSyncEvent,
-  TrusteeAppointmentDownstreamEvent,
   TrusteeAppointmentSyncErrorCode,
   CandidateScore,
 } from '@common/cams/dataflow-events';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import {
-  ApiToDataflowsGateway,
   CasesRepository,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
@@ -27,7 +25,6 @@ import {
   TrusteePetitionSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
-  TrusteeProfessionalIdsRepository,
   TrusteeVariationRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
@@ -38,7 +35,6 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { CasesInterface } from '../cases/cases.interface';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { SyncedCase } from '@common/cams/cases';
 
@@ -172,21 +168,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
         mockVariationRepo as TrusteeVariationRepository,
       );
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-        getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
-        getOfficeName: vi.fn(),
-      });
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueTrusteeAppointmentEvent: vi.fn().mockResolvedValue(undefined),
-        queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
-        queueCaseReload: vi.fn().mockResolvedValue(undefined),
-        queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
-        queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
-      } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'resolved',
         trusteeId: 'trustee-123',
@@ -3804,287 +3785,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
-
-  describe('downstream event emission', () => {
-    let context: ApplicationContext;
-    let mockCasesRepo: Partial<CasesRepository>;
-    let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
-    let mockTrusteeCaseAppointmentsRepo: Partial<TrusteeCaseAppointmentsRepository>;
-    let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
-    let queueTrusteeAppointmentEventSpy: ReturnType<typeof vi.fn>;
-
-    const makeEvent = (caseId: string): TrusteeAppointmentSyncEvent => ({
-      caseId,
-      courtId: '081',
-      courtDivisionCode: '081',
-      chapter: '7',
-      dxtrTrustee: { fullName: 'John Doe' },
-      appointedDate: '2024-01-15',
-    });
-
-    const syncedCase = {
-      caseId: 'case-001',
-      trusteeId: undefined,
-      courtId: '081',
-      courtDivisionCode: '081',
-      chapter: '7',
-    };
-
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      if (context) await closeDeferred(context);
-      context = await createMockApplicationContext();
-
-      mockCasesRepo = {
-        getCaseOrMovedCase: vi.fn().mockResolvedValue(syncedCase),
-        syncDxtrCase: vi.fn().mockResolvedValue(undefined),
-        release: vi.fn(),
-      };
-
-      mockAppointmentsRepo = {
-        getTrusteeAppointments: vi.fn().mockResolvedValue([]),
-        release: vi.fn(),
-      };
-
-      mockTrusteeCaseAppointmentsRepo = {
-        getActiveByCaseId: vi.fn().mockResolvedValue(null),
-        getByCaseId: vi.fn().mockResolvedValue([]),
-        upsert: vi.fn().mockResolvedValue({}),
-        updateCaseAppointment: vi.fn().mockResolvedValue({}),
-        findStrandedActiveInTrusteePartition: vi.fn().mockResolvedValue(null),
-        release: vi.fn(),
-      };
-
-      mockVerificationRepo = {
-        getVerification: vi.fn().mockResolvedValue(null),
-        findByFingerprint: vi.fn().mockResolvedValue([]),
-        upsertVerification: vi.fn().mockResolvedValue(undefined),
-        release: vi.fn(),
-      };
-
-      queueTrusteeAppointmentEventSpy = vi.fn().mockResolvedValue(undefined);
-
-      vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
-      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-        mockAppointmentsRepo as TrusteeAppointmentsRepository,
-      );
-      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-        mockTrusteeCaseAppointmentsRepo as TrusteeCaseAppointmentsRepository,
-      );
-      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
-        mockVerificationRepo as TrusteeMatchVerificationRepository,
-      );
-      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue({
-        read: vi.fn().mockResolvedValue({
-          trusteeId: 'trustee-123',
-          name: 'John Doe',
-          public: { address: {} },
-        }),
-        release: vi.fn(),
-      } as unknown as TrusteesRepository);
-      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-        getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
-        getOfficeName: vi.fn(),
-      });
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueTrusteeAppointmentEvent: queueTrusteeAppointmentEventSpy,
-        queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
-        queueCaseReload: vi.fn().mockResolvedValue(undefined),
-        queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
-        queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
-      } as ApiToDataflowsGateway);
-      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
-        kind: 'resolved',
-        trusteeId: 'trustee-123',
-        nameScore: 100,
-        nameMatchQuality: 'exact',
-      });
-      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
-    });
-
-    test('should emit active appointment event when acmsProfessionalId is resolved', async () => {
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
-      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining<Partial<TrusteeAppointmentDownstreamEvent>>({
-          caseId: 'case-001',
-          trusteeId: 'trustee-123',
-          acmsProfessionalId: 'NY-00063',
-          chapter: '7',
-          appointedDate: '2024-01-15',
-        }),
-      );
-      expect(queueTrusteeAppointmentEventSpy.mock.calls[0][0].unassignedOn).toBeUndefined();
-    });
-
-    test('should emit closed appointment event on soft-close of previous trustee', async () => {
-      const existingAppointment: Partial<CaseAppointment> = {
-        caseId: 'case-001',
-        trusteeId: 'trustee-old',
-        assignedOn: '2023-01-01T00:00:00.000Z',
-        appointedDate: '2023-01-01',
-      };
-      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi
-        .fn()
-        .mockResolvedValue(existingAppointment);
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(2);
-      const closeCall = queueTrusteeAppointmentEventSpy.mock
-        .calls[0][0] as TrusteeAppointmentDownstreamEvent;
-      expect(closeCall.trusteeId).toBe('trustee-old');
-      expect(closeCall.unassignedOn).toBeDefined();
-      const openCall = queueTrusteeAppointmentEventSpy.mock
-        .calls[1][0] as TrusteeAppointmentDownstreamEvent;
-      expect(openCall.trusteeId).toBe('trustee-123');
-      expect(openCall.unassignedOn).toBeUndefined();
-    });
-
-    test('should not emit close event or resolve professional id when non-transient soft-close fails', async () => {
-      const existingAppointment: Partial<CaseAppointment> = {
-        caseId: 'case-001',
-        trusteeId: 'trustee-old',
-        assignedOn: '2023-01-01T00:00:00.000Z',
-        appointedDate: '2023-01-01',
-      };
-      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi
-        .fn()
-        .mockResolvedValue(existingAppointment);
-      mockTrusteeCaseAppointmentsRepo.updateCaseAppointment = vi
-        .fn()
-        .mockRejectedValue(new Error('Cosmos write failed'));
-      const findByCamsTrusteeIdSpy = vi
-        .fn()
-        .mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]);
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: findByCamsTrusteeIdSpy,
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-      const getOfficesSpy = vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
-      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-        getOffices: getOfficesSpy,
-        getOfficeName: vi.fn(),
-      });
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      // Non-transient soft-close failure: the old appointment was NOT actually closed in
-      // Cosmos, so downstream must not be told it was. Gating on !softCloseError also skips
-      // the resolveGroupMatchedProfessionalId gateway reads (getOffices, findByCamsTrusteeId)
-      // on a path that's already failing.
-      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
-      expect(getOfficesSpy).not.toHaveBeenCalled();
-      expect(findByCamsTrusteeIdSpy).not.toHaveBeenCalled();
-    });
-
-    test('should queue event with sentinel professional ID when no matching professional ID found', async () => {
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
-      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
-      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          caseId: 'case-001',
-          trusteeId: 'trustee-123',
-          acmsProfessionalId: 'XX-99999',
-        }),
-      );
-    });
-
-    test('should not emit event when same trustee is already active', async () => {
-      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi.fn().mockResolvedValue({
-        caseId: 'case-001',
-        trusteeId: 'trustee-123', // same trustee — early return path
-        assignedOn: '2023-01-01T00:00:00.000Z',
-      });
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
-    });
-
-    test('should log error and not write sync error doc when open event queuing fails', async () => {
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-      queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
-      const errorSpy = vi.spyOn(context.logger, 'error');
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
-      expect(errorSpy).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
-        expect.stringContaining('Failed to queue open event'),
-        expect.any(Error),
-      );
-    });
-
-    test('should log error and not write sync error doc when close event queuing fails', async () => {
-      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
-        release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
-      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi.fn().mockResolvedValue({
-        caseId: 'case-001',
-        trusteeId: 'old-trustee-456',
-        assignedOn: '2023-01-01T00:00:00.000Z',
-      });
-      queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
-      const errorSpy = vi.spyOn(context.logger, 'error');
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        [makeEvent('case-001')],
-      );
-
-      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalled();
-      expect(errorSpy).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
-        expect.stringContaining('Failed to queue close event'),
-        expect.any(Error),
-      );
-    });
-  });
 });
 
 describe('assertSyncedCase', () => {
@@ -4257,13 +3957,6 @@ const closeFixtureEvent: TrusteeAppointmentSyncEvent = {
   chapter: '7',
   dxtrTrustee: { fullName: 'Jane Doe' },
 };
-const closeFixtureSyncedCase = {
-  caseId: 'case-001',
-  courtId: '081',
-  courtDivisionCode: '081',
-  chapter: '7',
-  dateFiled: '2026-01-07',
-} as unknown as SyncedCase;
 const closeFixtureExistingAppointment = {
   caseId: 'case-001',
   trusteeId: 'old-trustee-456',
@@ -4282,7 +3975,6 @@ function buildCloseFixtureAppointmentsRepo(
 
 describe('closeExistingAppointment', () => {
   const event = closeFixtureEvent;
-  const syncedCase = closeFixtureSyncedCase;
   const existingAppointment = closeFixtureExistingAppointment;
   const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
 
@@ -4296,7 +3988,6 @@ describe('closeExistingAppointment', () => {
       existingAppointment,
       '2024-06-15',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
@@ -4320,7 +4011,6 @@ describe('closeExistingAppointment', () => {
       existingAppointment,
       '2024-01-01',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
@@ -4345,7 +4035,6 @@ describe('closeExistingAppointment', () => {
       existingAppointment,
       '2022-06-15',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
@@ -4367,7 +4056,6 @@ describe('closeExistingAppointment', () => {
       existingAppointment,
       '2024-06-15',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
@@ -4387,7 +4075,6 @@ describe('closeExistingAppointment', () => {
       existingAppointment,
       '2024-06-15',
       appointmentsRepo,
-      syncedCase,
     );
 
     // closeExistingAppointment reports the error rather than throwing — throwing on transient
@@ -4397,34 +4084,10 @@ describe('closeExistingAppointment', () => {
     expect(result.softCloseError).toBeInstanceOf(TooManyRequestsError);
     expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
   });
-
-  test('does not notify downstream when the close failed', async () => {
-    const context = await createMockApplicationContext();
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent,
-    } as unknown as ApiToDataflowsGateway);
-    const appointmentsRepo = buildAppointmentsRepo({
-      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
-    });
-
-    await closeExistingAppointment(
-      context,
-      event,
-      existingAppointment,
-      '2024-06-15',
-      appointmentsRepo,
-      syncedCase,
-    );
-
-    expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
 });
 
 describe('softCloseExistingAppointment', () => {
   const event = closeFixtureEvent;
-  const syncedCase = closeFixtureSyncedCase;
   const existingAppointment = closeFixtureExistingAppointment;
   const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
 
@@ -4439,7 +4102,6 @@ describe('softCloseExistingAppointment', () => {
       'new-trustee-789',
       '2023-01-02T00:00:00.000Z',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
@@ -4467,7 +4129,6 @@ describe('softCloseExistingAppointment', () => {
         'new-trustee-789',
         '2023-01-02T00:00:00.000Z',
         appointmentsRepo,
-        syncedCase,
       ),
     ).rejects.toThrow();
 
@@ -4488,7 +4149,6 @@ describe('softCloseExistingAppointment', () => {
       'new-trustee-789',
       '2023-01-02T00:00:00.000Z',
       appointmentsRepo,
-      syncedCase,
     );
 
     expect(appointmentsRepo.upsert).toHaveBeenCalledWith({
@@ -4509,89 +4169,6 @@ describe('softCloseExistingAppointment', () => {
       expect.stringContaining('Soft-close failed'),
       expect.any(Object),
     );
-  });
-
-  test('does not notify downstream when the feature flag is disabled', async () => {
-    const context = await createMockApplicationContext();
-    context.featureFlags['downstream-trustee-appointments-enabled'] = false;
-    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent,
-    } as unknown as ApiToDataflowsGateway);
-    const appointmentsRepo = buildAppointmentsRepo();
-
-    await softCloseExistingAppointment(
-      context,
-      event,
-      existingAppointment,
-      'new-trustee-789',
-      '2023-01-02T00:00:00.000Z',
-      appointmentsRepo,
-      syncedCase,
-    );
-
-    expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-
-  test('notifies downstream of the closed appointment when the feature flag is enabled', async () => {
-    const context = await createMockApplicationContext();
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent,
-    } as unknown as ApiToDataflowsGateway);
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
-      findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      release: vi.fn(),
-    } as unknown as TrusteeProfessionalIdsRepository);
-    const appointmentsRepo = buildAppointmentsRepo();
-
-    await softCloseExistingAppointment(
-      context,
-      event,
-      existingAppointment,
-      'new-trustee-789',
-      '2023-01-02T00:00:00.000Z',
-      appointmentsRepo,
-      syncedCase,
-    );
-
-    expect(queueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        caseId: 'case-001',
-        trusteeId: 'old-trustee-456',
-        // Mirrors the persisted unassignedOn — downstream and Cosmos must agree.
-        unassignedOn: '2023-01-01',
-      }),
-    );
-  });
-
-  test('does not notify downstream when the soft-close failed', async () => {
-    const context = await createMockApplicationContext();
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent,
-    } as unknown as ApiToDataflowsGateway);
-    const appointmentsRepo = buildAppointmentsRepo({
-      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
-    });
-
-    await softCloseExistingAppointment(
-      context,
-      event,
-      existingAppointment,
-      'new-trustee-789',
-      '2023-01-02T00:00:00.000Z',
-      appointmentsRepo,
-      syncedCase,
-    );
-
-    expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
   });
 });
 
