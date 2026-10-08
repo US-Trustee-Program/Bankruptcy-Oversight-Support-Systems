@@ -31,7 +31,6 @@ import {
   normalizeAddressLine,
   scoreFirstNamePart,
   scoreMiddleNamePart,
-  isKnownNicknamePair,
   isFirstMiddleSwap,
   isOneSidedMiddleNameMatch,
   calculateNumericTokenScore,
@@ -2599,28 +2598,6 @@ describe('scoreMiddleNamePart', () => {
     },
   ])('should return $expected for $description', ({ dxtr, cams, expected }) => {
     expect(scoreMiddleNamePart(dxtr, cams)).toBe(expected);
-  });
-});
-
-describe('isKnownNicknamePair', () => {
-  test.each([
-    {
-      description: 'a known nickname-to-formal-name pair',
-      a: 'jim',
-      b: 'james',
-      expected: true,
-    },
-    {
-      description: 'a known formal-to-nickname pair (order reversed)',
-      a: 'elizabeth',
-      b: 'liz',
-      expected: true,
-    },
-    { description: 'an unrelated pair', a: 'jim', b: 'robert', expected: false },
-    { description: 'the first side is empty', a: '', b: 'james', expected: false },
-    { description: 'the second side is empty', a: 'jim', b: '', expected: false },
-  ])('should return $expected for $description', ({ a, b, expected }) => {
-    expect(isKnownNicknamePair(a, b)).toBe(expected);
   });
 });
 

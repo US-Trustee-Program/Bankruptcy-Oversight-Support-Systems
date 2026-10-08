@@ -13,9 +13,11 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
-import { generateBigrams } from '../../adapters/utils/phonetic-helper';
-import { getNameVariations } from 'name-match/src/name-normalizer';
-import * as natural from 'natural';
+import {
+  generateBigrams,
+  isKnownNicknamePair,
+  nameSimilarity,
+} from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
@@ -905,30 +907,6 @@ const isInitialOf = (initial: string, full: string): boolean =>
   initial.length === 1 && full.length > 0 && full.startsWith(initial);
 
 /**
- * Whether a and b are a known nickname/formal-name pair (e.g. "jim"/"james", "liz"/"elizabeth"),
- * via getNameVariations (name-match library - already a production dependency, used by
- * phonetic-helper.ts's candidate-discovery search) rather than a new, separately-maintained
- * nickname list. getNameVariations is directional in its underlying dictionary but is queried
- * from both sides here, since a caller may pass either the nickname or the formal name first.
- * Swallows lookup errors the same way phonetic-helper.ts does - an unrecognized name is simply
- * not a nickname match, not a hard failure.
- */
-export function isKnownNicknamePair(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  try {
-    if ((getNameVariations(a) as string[]).includes(b)) return true;
-  } catch {
-    // No variations available for a.
-  }
-  try {
-    if ((getNameVariations(b) as string[]).includes(a)) return true;
-  } catch {
-    // No variations available for b.
-  }
-  return false;
-}
-
-/**
  * Below this JaroWinklerDistance, two first names are not considered plausibly the same name for
  * scoreFirstNamePart's purposes. Every genuine nickname/spelling-variant pair found in a real
  * ambiguous-record population (e.g. a short form that is a true prefix of its formal name, or a
@@ -943,7 +921,7 @@ export function isKnownNicknamePair(a: string, b: string): boolean {
 const FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD = 0.8;
 
 export function isPlausibleNicknameByDistance(a: string, b: string): boolean {
-  return natural.JaroWinklerDistance(a, b) >= FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD;
+  return nameSimilarity(a, b) >= FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD;
 }
 
 /**
@@ -1538,8 +1516,7 @@ async function findLastNameTokenMatches(
         const candidateToken = firstLastNameToken(trustee.lastName);
         return (
           !!candidateToken &&
-          natural.JaroWinklerDistance(token, candidateToken) >=
-            LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD
+          nameSimilarity(token, candidateToken) >= LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD
         );
       });
     }),
