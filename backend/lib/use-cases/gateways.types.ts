@@ -688,7 +688,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
-  deleteSentinel(caseId: string, id: string): Promise<void>;
+  deleteSentinel(caseId: string, id: string, trusteePartitionMongoId: string): Promise<void>;
   getAllCaseAppointments(
     lastId: string | null,
     limit: number,

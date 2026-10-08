@@ -23,9 +23,9 @@ type HealStepResult = {
   next: HealCursor | null;
 };
 
-// _id (cursor bookkeeping) and reason/acmsProfessionalId (sentinel-only markers written by
-// migrate-case-appointments) are never valid on a real, resolved appointment and must not survive
-// into the healed upsert payload.
+// _id (the trustee partition's: the cursor and the sentinel delete key) and reason/acmsProfessionalId
+// (sentinel-only markers written by migrate-case-appointments) are never valid on a real, resolved
+// appointment and must not survive into the healed upsert payload.
 type SentinelAppointment = CaseAppointment & {
   _id: string;
   reason?: string;
@@ -73,7 +73,7 @@ class HealSentinelCaseAppointmentsUseCase {
       ...rest
     } = sentinel;
     await this.appointmentsRepo.upsert({ ...rest, trusteeId: camsTrusteeId });
-    await this.appointmentsRepo.deleteSentinel(sentinel.caseId, sentinel.id);
+    await this.appointmentsRepo.deleteSentinel(sentinel.caseId, sentinel.id, sentinel._id);
   }
 
   /**

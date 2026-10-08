@@ -559,6 +559,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     });
   }
 
+  /**
+   * Reads the trustee partition: every sentinel shares one trusteeId, so the shard key routes the
+   * read to one logical partition, where the acmsProfessionalId index applies. The returned _id is
+   * the trustee partition's, as deleteSentinel expects.
+   */
   async findSentinelAppointmentsByAcmsProfessionalId(
     acmsProfessionalId: string,
     lastId: string | null,
@@ -572,23 +577,28 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('acmsProfessionalId').equals(acmsProfessionalId),
     ];
     if (lastId) conditions.push(doc('_id').greaterThan(lastId));
-    return this.findByCursor<SentinelQueryable>(and(...conditions), {
-      limit,
-      sortField: '_id',
-      sortDirection: 'ASCENDING',
-    });
+    try {
+      return await this.trusteePartition
+        .adapter<SentinelQueryable>()
+        .find(and(...conditions), orderBy<SentinelQueryable>(['_id', 'ASCENDING']), limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve case appointments by cursor.',
+      });
+    }
   }
 
   /**
-   * Deletes a sentinel's two partition copies by id, scoping each delete to that partition's
-   * shard key. delete(id) carries no shard key, so on the trustee partition it fans out across
-   * every physical partition looking for an unindexed id.
+   * Deletes a sentinel's two copies, each by an indexed key within its own shard: the case copy by
+   * caseId and id, the trustee copy by the sentinel trusteeId and its trustee-partition _id. The
+   * sentinel partition holds every sentinel, and id is not indexed there.
    */
-  async deleteSentinel(caseId: string, id: string): Promise<void> {
-    const doc = using<CaseAppointmentDocument>();
+  async deleteSentinel(caseId: string, id: string, trusteePartitionMongoId: string): Promise<void> {
+    type SentinelDocument = CaseAppointmentDocument & { _id: string };
+    const doc = using<SentinelDocument>();
     try {
       await this.casePartition
-        .adapter<CaseAppointmentDocument>()
+        .adapter<SentinelDocument>()
         .deleteOne(and(doc('caseId').equals(caseId), doc('id').equals(id)));
     } catch (originalError) {
       if (!isNotFoundError(originalError)) {
@@ -600,8 +610,13 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
 
     try {
       await this.trusteePartition
-        .adapter<CaseAppointmentDocument>()
-        .deleteOne(and(doc('trusteeId').equals(SENTINEL_TRUSTEE_ID), doc('id').equals(id)));
+        .adapter<SentinelDocument>()
+        .deleteOne(
+          and(
+            doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+            doc('_id').equals(trusteePartitionMongoId),
+          ),
+        );
     } catch (originalError) {
       if (!isNotFoundError(originalError)) {
         throw getCamsErrorWithStack(originalError, MODULE_NAME, {
