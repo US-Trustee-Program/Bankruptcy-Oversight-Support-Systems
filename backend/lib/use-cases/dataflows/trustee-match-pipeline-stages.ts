@@ -1,5 +1,3 @@
-import * as natural from 'natural';
-import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
@@ -8,7 +6,6 @@ import {
   firstLastNameToken,
   isBlankAcmsValue,
   isFirstMiddleSwap,
-  isKnownNicknamePair,
   isOneSidedMiddleNameMatch,
   isPlausibleNicknameByDistance,
   lastNameSurnameCandidates,
@@ -28,6 +25,11 @@ import {
   shouldSkipAsUstStaff,
   stripAdministrativeMarkers,
 } from './acms-name-normalization.helpers';
+import {
+  isKnownNicknamePair,
+  nameSimilarity,
+  soundsAlike,
+} from '../../adapters/utils/phonetic-helper';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import {
@@ -61,11 +63,7 @@ const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.88;
 function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
   const a = acmsNamePart.toLowerCase();
   const b = camsNamePart.toLowerCase();
-  if (natural.JaroWinklerDistance(a, b) >= FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD) return true;
-
-  const soundex = new natural.SoundEx();
-  const metaphone = new natural.Metaphone();
-  return soundex.compare(a, b) || metaphone.compare(a, b);
+  return nameSimilarity(a, b) >= FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD || soundsAlike(a, b);
 }
 
 /** Memoized on the candidate, so the comparison is also kept in its persisted evidence. */
@@ -709,27 +707,11 @@ function memoizedNormalizeName(normalized: NormalizedTrustee, name: string): str
 /** JaroWinkler similarity of two full names, rounded to 3 decimals. Diagnostic only. */
 function fullNameSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
-  return Math.round(natural.JaroWinklerDistance(a, b) * 1000) / 1000;
+  return Math.round(nameSimilarity(a, b) * 1000) / 1000;
 }
 
 function isInitialOf(a: string, b: string): boolean {
   return a.length === 1 && b.length > 0 && b.startsWith(a);
-}
-
-/** Whether a and b are a known nickname pair ("Bill"/"William"). getNameVariations throws for a
- * name it has no data for, so each direction is guarded. */
-function isNicknamePair(a: string, b: string): boolean {
-  try {
-    if ((getNameVariations(a) as string[]).includes(b)) return true;
-  } catch {
-    // No variations available for a.
-  }
-  try {
-    if ((getNameVariations(b) as string[]).includes(a)) return true;
-  } catch {
-    // No variations available for b.
-  }
-  return false;
 }
 
 /** Fraction of ACMS name tokens matching some CAMS token exactly, as an initial, or as a known
@@ -741,7 +723,8 @@ function tokenNameMatchRate(normalizedAcms: string, normalizedCams: string): num
   let matched = 0;
   for (const at of acmsTokens) {
     const hit = camsTokens.some(
-      (ct) => at === ct || isInitialOf(at, ct) || isInitialOf(ct, at) || isNicknamePair(at, ct),
+      (ct) =>
+        at === ct || isInitialOf(at, ct) || isInitialOf(ct, at) || isKnownNicknamePair(at, ct),
     );
     if (hit) matched++;
   }
@@ -891,7 +874,7 @@ function cityMatch(
   if (acms.join('') === cams.join('')) return true;
   const [shorter, longer] = acms.length <= cams.length ? [acms, cams] : [cams, acms];
   return shorter.every((word) =>
-    longer.some((other) => natural.JaroWinklerDistance(word, other) >= FUZZY_WORD_THRESHOLD),
+    longer.some((other) => nameSimilarity(word, other) >= FUZZY_WORD_THRESHOLD),
   );
 }
 
@@ -1006,7 +989,7 @@ function tokenCloseness(a: string, b: string): number {
   const aIsNumber = /^\d+$/.test(a);
   const bIsNumber = /^\d+$/.test(b);
   if (aIsNumber || bIsNumber) return a === b ? 1 : 0;
-  const similarity = natural.JaroWinklerDistance(a, b);
+  const similarity = nameSimilarity(a, b);
   return similarity >= FUZZY_WORD_THRESHOLD ? similarity : 0;
 }
 
