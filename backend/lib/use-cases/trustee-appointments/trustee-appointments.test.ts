@@ -1164,7 +1164,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
         queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
       });
@@ -1516,7 +1515,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
         queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
       });

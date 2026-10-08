@@ -31,8 +31,6 @@ import {
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
-  CaseAssignmentDownstreamEvent,
-  TrusteeAppointmentDownstreamEvent,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
@@ -784,7 +782,6 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
-  | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE'
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE';
@@ -830,15 +827,6 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type CaseAppointmentDateBackfillState = RuntimeState & {
   documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
-  lastId: string | null;
-  processedCount: number;
-  startedAt: string;
-  lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-};
-
-export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {
-  documentType: 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
   startedAt: string;
@@ -959,8 +947,7 @@ export type OfficeAssignee = {
 };
 
 export interface ApiToDataflowsGateway {
-  queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void>;
-  queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void>;
+  queueCaseAssignmentEvent(event: CaseAssignment): Promise<void>;
   queueCaseReload(caseId: string): Promise<void>;
   queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void>;
   queueTrusteeChangeNotification(event: TrusteeChangeNotificationEvent): Promise<void>;

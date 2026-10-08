@@ -80,14 +80,8 @@ async function handleRemap(
 
   try {
     const useCase = new TrusteeVerificationRemapUseCase(context);
-    const {
-      documentsWritten,
-      documentsFailed,
-      downstreamNotificationFailedCount,
-      totalCandidates,
-      pageSize,
-      remainingCount,
-    } = await useCase.remapPage(message, REMAP_PAGE_SIZE);
+    const { documentsWritten, documentsFailed, totalCandidates, pageSize, remainingCount } =
+      await useCase.remapPage(message, REMAP_PAGE_SIZE);
 
     if (remainingCount > 0) {
       // Re-send the message unchanged: the next invocation re-queries
@@ -137,17 +131,7 @@ async function handleRemap(
           totalCandidates: String(totalCandidates),
           pageSize: String(pageSize),
           continuationQueued: String(remainingCount > 0),
-          // A case counted here also counts toward documentsWritten above -- the Cosmos remap
-          // (soft-close -> upsert -> delete) succeeded, only the downstream notification failed.
-          // Kept distinct so a partially-successful batch doesn't read as fully successful.
-          downstreamNotificationFailedCount: String(downstreamNotificationFailedCount),
         },
-        additionalMetrics: [
-          {
-            name: 'TrusteeVerificationRemapDownstreamNotificationFailedCount',
-            value: downstreamNotificationFailedCount,
-          },
-        ],
       },
     );
   } catch (error) {

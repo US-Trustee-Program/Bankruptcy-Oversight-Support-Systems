@@ -1,7 +1,7 @@
 import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from './case-assignment';
-import { CaseAssignmentDownstreamEvent } from '@common/cams/dataflow-events';
+import { CaseAssignment } from '@common/cams/assignments';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -97,7 +97,7 @@ describe('Case assignment tests', () => {
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
-    let assignmentEventSpy: Mock<(event: CaseAssignmentDownstreamEvent) => Promise<void>>;
+    let assignmentEventSpy: Mock<(event: CaseAssignment) => Promise<void>>;
 
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext({
@@ -106,7 +106,6 @@ describe('Case assignment tests', () => {
         },
       });
       applicationContext.session = await createMockApplicationContextSession({ user });
-      applicationContext.featureFlags['downstream-staff-assignments-enabled'] = true;
       vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(
         new Map([[caseId, []]]),
       );
@@ -128,7 +127,6 @@ describe('Case assignment tests', () => {
       assignmentEventSpy = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueCaseAssignmentEvent: assignmentEventSpy,
-        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
         queueTrusteeChangeNotification: vi.fn(),
@@ -363,9 +361,7 @@ describe('Case assignment tests', () => {
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
-      expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ ...assignmentTwo, acmsProfessionalId: null }),
-      );
+      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.objectContaining(assignmentTwo));
     });
 
     test('should remove assignments', async () => {
@@ -404,12 +400,10 @@ describe('Case assignment tests', () => {
 
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
-      expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ ...assignmentOne, acmsProfessionalId: null }),
-      );
+      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.objectContaining(assignmentOne));
     });
 
-    test('should log error and not propagate when downstream queue call throws', async () => {
+    test('should log error and not propagate when queue call throws', async () => {
       assignmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(applicationContext.logger, 'error');
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);

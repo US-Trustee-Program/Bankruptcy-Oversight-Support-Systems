@@ -53,7 +53,13 @@ when the professional ID is later corrected.
 
 ## Status
 
-Accepted — supersedes the CMMAP_ALL view approach introduced in CAMS-616.
+Superseded (rejected before shipping) — CAMS-874.
+
+The downstream sync described here (the `CMMAP_ALL` table, the dual-write event handler, and the
+daily ACMS sync timer trigger) never shipped to production. It was removed under CAMS-874, so this
+decision was not carried out. The record is kept for history only; do not build on it.
+
+Originally: Accepted — supersedes the CMMAP_ALL view approach introduced in CAMS-616.
 
 ## Consequences
 
