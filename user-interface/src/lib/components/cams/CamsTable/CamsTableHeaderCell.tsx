@@ -3,6 +3,7 @@ import { type JSX, type PropsWithChildren } from 'react';
 type CamsTableHeaderCellProps = PropsWithChildren<{
   className?: string;
   'data-testid'?: string;
+  'aria-label'?: string;
 }>;
 
 export function CamsTableHeaderCell({

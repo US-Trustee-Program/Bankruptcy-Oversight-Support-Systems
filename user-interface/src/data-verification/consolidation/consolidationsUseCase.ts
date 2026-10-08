@@ -28,6 +28,7 @@ export type OnOrderUpdate = (
   deletedOrder?: ConsolidationOrder,
 ) => void;
 type OnExpand = (id: string) => void;
+type OnCollapse = (id: string) => void;
 
 export interface ConsolidationsUseCase {
   updateSubmitButtonsState(): void;
@@ -45,6 +46,7 @@ export interface ConsolidationsUseCase {
   handleConfirmAction(action: ConfirmActionResults): void;
   handleIncludeCase(bCase: ConsolidationOrderCase): void;
   handleMarkLeadCase(bCase: ConsolidationOrderCase): void;
+  handleOnCollapse(id: string): void;
   handleOnExpand(): Promise<void>;
   handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
@@ -66,6 +68,7 @@ const consolidationUseCase = (
   controls: ConsolidationControls,
   onOrderUpdate: OnOrderUpdate,
   onExpand?: OnExpand,
+  onCollapse?: OnCollapse,
 ): ConsolidationsUseCase => {
   const clearLeadCase = (): void => {
     store.setLeadCase(null);
@@ -355,6 +358,13 @@ const consolidationUseCase = (
     controls.unsetConsolidationType();
   };
 
+  const handleOnCollapse = (id: string): void => {
+    handleClearInputs();
+    if (onCollapse) {
+      onCollapse(id);
+    }
+  };
+
   const handleAddCaseReset = (): void => {
     store.setCaseToAddCaseNumber('');
     store.setCaseToAddCourt('');
@@ -478,6 +488,7 @@ const consolidationUseCase = (
     handleConfirmAction,
     handleIncludeCase,
     handleMarkLeadCase,
+    handleOnCollapse,
     handleOnExpand,
     handleRejectButtonClick,
     handleSelectConsolidationType,

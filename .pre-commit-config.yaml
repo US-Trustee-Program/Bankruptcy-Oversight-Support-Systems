@@ -92,3 +92,12 @@ repos:
         files: '^ops/scripts/pipeline/(_kv-to-env\.sh|tests/kv-to-env-test\.sh)$'
         pass_filenames: false
         verbose: true
+      - id: find-branch-stacks-tests
+        name: Test _find-branch-stacks.sh against a mocked az CLI (CAMS-884)
+        entry: ops/scripts/pipeline/tests/find-branch-stacks-test.sh
+        language: script
+        # Runs on a change to the helper or to its own tests. Uses a stub az CLI on
+        # PATH -- no network, no Azure, no az login required.
+        files: '^ops/scripts/pipeline/(_find-branch-stacks\.sh|tests/find-branch-stacks-test\.sh)$'
+        pass_filenames: false
+        verbose: true

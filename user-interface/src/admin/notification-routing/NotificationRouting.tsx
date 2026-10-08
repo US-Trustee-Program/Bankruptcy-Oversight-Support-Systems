@@ -211,14 +211,14 @@ export function NotificationRouting() {
                       aria-invalid={hasError ? true : undefined}
                     />
                     {hasError && (
-                      <span
+                      <div
                         className="cams-field-error-message"
                         id={errorId}
                         data-testid={errorId}
                         role="alert"
                       >
                         {emailErrors[def.id][index]}
-                      </span>
+                      </div>
                     )}
                   </div>
                 );

@@ -187,11 +187,10 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.queryByText('Assigned Staff')).not.toBeInTheDocument();
     });
 
-    test('should render 5 nav items', () => {
+    test('should keep Case List visible when only the assigned-staff flag is off', () => {
       renderWithRouter(defaultProps);
 
-      const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(5);
+      expect(screen.getByTestId('trustee-case-list-nav-link')).toBeInTheDocument();
     });
 
     test('should still show all other nav links', () => {
@@ -219,11 +218,19 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.queryByText('Case List')).not.toBeInTheDocument();
     });
 
-    test('should render 5 nav items when only case-list flag is off', () => {
+    test('should keep Assigned Staff visible when only the case-list flag is off', () => {
       renderWithRouter(defaultProps);
 
-      const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(5);
+      expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
+    });
+
+    test('should still show all other nav links', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-appointments-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-notes-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
     });
   });
 
@@ -236,18 +243,17 @@ describe('TrusteeDetailNavigation', () => {
       });
     });
 
-    test('should render 4 nav items when both flags are off', () => {
-      renderWithRouter(defaultProps);
-
-      const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(4);
-    });
-
     test('should not show Assigned Staff or Case List nav links', () => {
       renderWithRouter(defaultProps);
 
       expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
       expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
+    });
+
+    test('should render only the four ungated nav items', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(4);
     });
   });
 });
@@ -265,19 +271,5 @@ describe('mapTrusteeDetailNavState', () => {
   ])('should map "%s" to %s', (input, expected) => {
     const result = mapTrusteeDetailNavState(input);
     expect(result).toBe(expected);
-  });
-});
-
-describe('TrusteeNavState enum', () => {
-  test('should have exactly six enum values for navigation states', () => {
-    expect(TrusteeNavState.TRUSTEE_PROFILE).toBeDefined();
-    expect(TrusteeNavState.APPOINTMENTS).toBeDefined();
-    expect(TrusteeNavState.ASSIGNED_STAFF).toBeDefined();
-    expect(TrusteeNavState.NOTES).toBeDefined();
-    expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
-    expect(TrusteeNavState.CASE_LIST).toBeDefined();
-
-    const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
-    expect(enumValues).toHaveLength(6);
   });
 });

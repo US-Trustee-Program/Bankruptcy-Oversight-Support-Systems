@@ -56,7 +56,7 @@
   "devDependencies": {
     "@azure/storage-blob": "12.33.0",
     "@azure/storage-queue": "12.31.0",
-    "@eslint-react/eslint-plugin": "5.20.5",
+    "@eslint-react/eslint-plugin": "5.20.8",
     "@eslint/js": "10.0.0",
     "@types/node": "24.13.6",
     "@typescript-eslint/eslint-plugin": "8.70.1",
@@ -68,10 +68,10 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.6",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.37.0",
+    "knip": "6.38.0",
     "mongodb": "7.6.0",
     "mssql": "12.7.2",
-    "prettier": "3.9.8",
+    "prettier": "3.9.9",
     "react": "19.3.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.1"

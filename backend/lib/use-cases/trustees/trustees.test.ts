@@ -13,7 +13,6 @@ import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import factory from '../../factory';
 import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
-import { AppointmentChapterType } from '@common/cams/trustees';
 import { ContactInformation, TypedPhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
@@ -236,6 +235,25 @@ describe('TrusteesUseCase tests', () => {
       const result = await trusteesUseCase.listTrustees(context);
 
       expect(result[0].appointments[0].courtName).toBeUndefined();
+    });
+
+    test('should set courtDivisionName to undefined when the appointment has no divisionCode', async () => {
+      const trusteeId = 'trustee-no-division-code';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({
+        trusteeId,
+        courtId: 'court-1',
+        divisionCode: undefined,
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtDivisionName).toBeUndefined();
     });
 
     test('should give trustees with no matching appointments an empty appointments array', async () => {
@@ -634,18 +652,29 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test.each([
-      ['empty string', ''],
-      ['null', null],
-      ['undefined', undefined],
+      ['empty string', '', ''],
+      ['null', null, undefined],
+      ['undefined', undefined, undefined],
     ])(
       'should update trustee public contact with website cleared (%s)',
-      async (_label, website) => {
+      async (_label, website, expectedPatchedWebsite) => {
+        const updatedBy = getCamsUserReference(context.session.user);
         const newPublicContact = {
           ...MockData.getContactInformation(),
           website,
         };
         const updateData = { public: newPublicContact };
         const updatedTrustee = { ...existingTrustee, public: newPublicContact };
+
+        // patchNestedObject (trustees.ts) strips null/undefined nested properties but keeps
+        // empty strings, so the payload actually sent to the repository omits `website` for the
+        // null/undefined cases even though the test's own `newPublicContact` fixture still has it.
+        const expectedPatchedPublicContact = { ...newPublicContact };
+        if (expectedPatchedWebsite === undefined) {
+          delete (expectedPatchedPublicContact as { website?: string }).website;
+        } else {
+          expectedPatchedPublicContact.website = expectedPatchedWebsite;
+        }
 
         const updateTrusteeSpy = vi
           .spyOn(MockMongoRepository.prototype, 'updateTrustee')
@@ -654,7 +683,11 @@ describe('TrusteesUseCase tests', () => {
 
         await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
-        expect(updateTrusteeSpy).toHaveBeenCalled();
+        expect(updateTrusteeSpy).toHaveBeenCalledWith(
+          trusteeId,
+          { ...existingTrustee, public: expectedPatchedPublicContact },
+          updatedBy,
+        );
       },
     );
 
@@ -1395,7 +1428,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: newZoomInfo };
         const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
@@ -1423,7 +1456,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '12345',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1439,7 +1472,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'not-a-valid-url',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1461,7 +1494,7 @@ describe('TrusteesUseCase tests', () => {
             link: 'https://us02web.zoom.us/j/1234567890',
             phone: '123-456-7890',
             meetingId,
-            passcode: MockData.randomAlphaNumeric(10),
+            passcode: '1234567890',
           };
           const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1473,12 +1506,35 @@ describe('TrusteesUseCase tests', () => {
         },
       );
 
+      test.each([
+        ['too short', '123456789'],
+        ['too long', '12345678901'],
+        ['non-numeric', 'ABCDEFGHIJ'],
+      ])(
+        'should throw BadRequestError for zoomInfo with invalid passcode (%s)',
+        async (_label, passcode) => {
+          const invalidZoomInfo = {
+            link: 'https://us02web.zoom.us/j/1234567890',
+            phone: '123-456-7890',
+            meetingId: '1234567890',
+            passcode,
+          };
+          const updateData = { zoomInfo: invalidZoomInfo };
+
+          const error = await getTheThrownError(() =>
+            trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+          );
+          expect(error.isCamsError).toBe(true);
+          expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE);
+        },
+      );
+
       test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300),
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1494,7 +1550,7 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1503,19 +1559,78 @@ describe('TrusteesUseCase tests', () => {
         );
       });
     });
+
+    test('should use the provided actingUser instead of context.session.user when given', async () => {
+      const systemUser = { id: 'SYSTEM', name: 'Zoom Info Import' };
+      const zoomInfo = {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: '1234567890',
+      };
+      const updateData = { zoomInfo };
+      const updatedTrustee = { ...existingTrustee, zoomInfo };
+
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData, systemUser);
+
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, systemUser);
+    });
+
+    test('should not require context.session when actingUser is provided', async () => {
+      const systemUser = { id: 'SYSTEM', name: 'Zoom Info Import' };
+      const zoomInfo = {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: '1234567890',
+      };
+      const updateData = { zoomInfo };
+      const updatedTrustee = { ...existingTrustee, zoomInfo };
+      const contextWithoutSession = { ...context, session: undefined };
+
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      await expect(
+        trusteesUseCase.updateTrustee(contextWithoutSession, trusteeId, updateData, systemUser),
+      ).resolves.toEqual(updatedTrustee);
+    });
   });
 
   describe('change set emission', () => {
     let updateTrusteeSpy: ReturnType<typeof vi.spyOn>;
+    let queueTrusteeChangeNotificationSpy: Mock<
+      (event: TrusteeChangeNotificationEvent) => Promise<void>
+    >;
 
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
+      context.featureFlags['trustee-change-notification-enabled'] = true;
+
+      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+        queueCaseAssignmentEvent: vi.fn(),
+        queueTrusteeAppointmentEvent: vi.fn(),
+        queueCaseReload: vi.fn(),
+        queueTrusteeVerificationRemap: vi.fn(),
+      });
+
       trusteesUseCase = new TrusteesUseCase(context);
+
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
       updateTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
     });
 
+    // Reads the enqueued changeSet through the public notification contract rather than reaching
+    // into the private recordAuditHistory method, so these tests survive refactors of that method.
     async function captureChangeSet(
       before: ReturnType<typeof MockData.getTrustee>,
       after: ReturnType<typeof MockData.getTrustee>,
@@ -1524,27 +1639,11 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(before);
       updateTrusteeSpy.mockResolvedValue(after);
 
-      const recordSpy = vi.spyOn(
-        trusteesUseCase as unknown as {
-          recordAuditHistory: TrusteesUseCase['updateTrustee'];
-        },
-        'recordAuditHistory',
-      );
-
       await trusteesUseCase.updateTrustee(context, before.trusteeId, diff);
 
-      const result = await recordSpy.mock.results[0].value;
-      return result;
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      return changeSet;
     }
-
-    test('returns an empty fields array when no fields differ', async () => {
-      const before = MockData.getTrustee();
-      const changeSet = await captureChangeSet(before, before, { name: before.name });
-
-      expect(changeSet.fields).toEqual([]);
-      expect(changeSet.trusteeId).toBe(before.trusteeId);
-      expect(changeSet.trusteeName).toBe(before.name);
-    });
 
     test('emits a single Name field for a name-only change', async () => {
       const before = MockData.getTrustee({ name: 'Henry Green' });
@@ -1552,6 +1651,8 @@ describe('TrusteesUseCase tests', () => {
 
       const changeSet = await captureChangeSet(before, after, { name: 'Henry G. Green' });
 
+      expect(changeSet.trusteeId).toBe(before.trusteeId);
+      expect(changeSet.trusteeName).toBe(after.name);
       expect(changeSet.fields).toHaveLength(1);
       expect(changeSet.fields[0]).toMatchObject({
         label: 'Name',
@@ -1582,14 +1683,14 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://zoom.us/j/1234567890',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'oldpass',
+          passcode: '1111111111',
         },
       });
       const newZoom = {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 
@@ -1612,7 +1713,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://zoom.us/j/1234567890',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'oldpass',
+          passcode: '1111111111',
           accountEmail: 'old@zoom.test',
         },
       });
@@ -1620,7 +1721,7 @@ describe('TrusteesUseCase tests', () => {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
         accountEmail: 'new@zoom.test',
       };
       const after = { ...before, zoomInfo: newZoom };
@@ -1648,7 +1749,7 @@ describe('TrusteesUseCase tests', () => {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 
@@ -1668,14 +1769,14 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'pass',
+          passcode: '1111111111',
         },
       });
       const newZoom = {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 
@@ -1706,7 +1807,7 @@ describe('TrusteesUseCase tests', () => {
       expect(addressComparison?.before ?? '').toBe('');
     });
 
-    test('software removal writes audit history but does not add to notification fields', async () => {
+    test('software removal writes audit history but does not enqueue a notification', async () => {
       const oldSoftwareId = 'sw-old';
       const trusteeWithSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
@@ -1724,40 +1825,33 @@ describe('TrusteesUseCase tests', () => {
       updateTrusteeSpy.mockResolvedValue(updatedTrustee);
       const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
 
-      const recordSpy = vi.spyOn(
-        trusteesUseCase as unknown as {
-          recordAuditHistory: TrusteesUseCase['updateTrustee'];
-        },
-        'recordAuditHistory',
-      );
-
       await trusteesUseCase.updateTrustee(context, trusteeWithSoftware.trusteeId, {
         softwareId: null,
       });
 
-      const changeSet = await recordSpy.mock.results[0].value;
-      expect(
-        changeSet.fields.find((f: { label: string }) => f.label === 'Software'),
-      ).toBeUndefined();
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
       expect(historySpy).toHaveBeenCalledWith(
         expect.objectContaining({ documentType: 'AUDIT_SOFTWARE' }),
       );
     });
 
-    test('removing all banks writes audit history but does not add to notification fields', async () => {
+    test('removing all banks writes audit history but does not enqueue a notification', async () => {
       const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
       const after = { ...before, banks: undefined };
       const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
 
-      const changeSet = await captureChangeSet(before, after, { banks: null });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(before);
+      updateTrusteeSpy.mockResolvedValue(after);
 
-      expect(changeSet.fields.find((f: { label: string }) => f.label === 'Banks')).toBeUndefined();
+      await trusteesUseCase.updateTrustee(context, before.trusteeId, { banks: null });
+
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
       expect(historySpy).toHaveBeenCalledWith(
         expect.objectContaining({ documentType: 'AUDIT_BANKS' }),
       );
     });
 
-    test('banks change writes audit history with resolved names but does not add to notification fields', async () => {
+    test('banks change writes audit history with resolved names but does not enqueue a notification', async () => {
       const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
       const after = { ...before, banks: ['bank-new'] };
       const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
@@ -1775,9 +1869,12 @@ describe('TrusteesUseCase tests', () => {
         ],
       });
 
-      const changeSet = await captureChangeSet(before, after, { banks: ['bank-new'] });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(before);
+      updateTrusteeSpy.mockResolvedValue(after);
 
-      expect(changeSet.fields.find((f: { label: string }) => f.label === 'Banks')).toBeUndefined();
+      await trusteesUseCase.updateTrustee(context, before.trusteeId, { banks: ['bank-new'] });
+
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
       expect(historySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_BANKS',
@@ -1804,87 +1901,6 @@ describe('TrusteesUseCase tests', () => {
         (c) => c.propertyName === 'Address',
       );
       expect(addressField?.before ?? '').toBe('');
-    });
-  });
-
-  describe('resolveChapters', () => {
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      context = await createMockApplicationContext();
-      trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    function callResolveChapters(trusteeId: string) {
-      return (
-        trusteesUseCase as unknown as {
-          resolveChapters: (id: string) => Promise<AppointmentChapterType[] | undefined>;
-        }
-      ).resolveChapters(trusteeId);
-    }
-
-    test('returns undefined when the trustee has no appointments', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
-
-      const chapters = await callResolveChapters('trustee-1');
-
-      expect(chapters).toBeUndefined();
-    });
-
-    test('returns the chapter of the only appointment', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        MockData.getTrusteeAppointment({
-          chapter: '7',
-          status: 'active',
-          appointedDate: '2020-01-15',
-        }),
-      ]);
-
-      const chapters = await callResolveChapters('trustee-1');
-
-      expect(chapters).toEqual(['7']);
-    });
-
-    test('returns every distinct chapter regardless of appointment status', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        MockData.getTrusteeAppointment({
-          chapter: '13',
-          status: 'inactive',
-          appointedDate: '2024-01-01',
-        }),
-        MockData.getTrusteeAppointment({
-          chapter: '7',
-          status: 'active',
-          appointedDate: '2020-01-15',
-        }),
-      ]);
-
-      const chapters = await callResolveChapters('trustee-1');
-
-      expect(chapters).toEqual(['13', '7']);
-    });
-
-    test('dedupes appointments that share a chapter', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        MockData.getTrusteeAppointment({
-          chapter: '7',
-          status: 'active',
-          appointedDate: '2020-01-15',
-        }),
-        MockData.getTrusteeAppointment({
-          chapter: '7',
-          status: 'inactive',
-          appointedDate: '2018-01-15',
-        }),
-        MockData.getTrusteeAppointment({
-          chapter: '11',
-          status: 'active',
-          appointedDate: '2024-06-01',
-        }),
-      ]);
-
-      const chapters = await callResolveChapters('trustee-1');
-
-      expect(chapters).toEqual(['7', '11']);
     });
   });
 
@@ -1960,6 +1976,74 @@ describe('TrusteesUseCase tests', () => {
           changedAt: expect.any(String),
         }),
       });
+    });
+
+    test('enqueued changeSet omits chapters when the trustee has no appointments', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.chapters).toBeUndefined();
+    });
+
+    test('enqueued changeSet includes every distinct chapter regardless of appointment status', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '13',
+          status: 'inactive',
+          appointedDate: '2024-01-01',
+        }),
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+      ]);
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.chapters).toEqual(['13', '7']);
+    });
+
+    test('enqueued changeSet dedupes appointments that share a chapter', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '7',
+          status: 'inactive',
+          appointedDate: '2018-01-15',
+        }),
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '11',
+          status: 'active',
+          appointedDate: '2024-06-01',
+        }),
+      ]);
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.chapters).toEqual(['7', '11']);
     });
 
     test('does not enqueue when the change set is empty', async () => {

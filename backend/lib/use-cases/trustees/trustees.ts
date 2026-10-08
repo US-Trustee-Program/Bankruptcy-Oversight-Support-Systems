@@ -6,6 +6,7 @@ import {
   BankruptcySoftwareRepository,
 } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
+import { CamsUserReference } from '@common/cams/users';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isCamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
@@ -310,10 +311,11 @@ export class TrusteesUseCase {
     context: ApplicationContext,
     trusteeId: string,
     trustee: Partial<TrusteeInput>,
+    actingUser?: CamsUserReference,
   ): Promise<Trustee> {
     try {
       const existingTrustee = await this.trusteesRepository.read(trusteeId);
-      const userReference = getCamsUserReference(context.session.user);
+      const userReference = actingUser ?? getCamsUserReference(context.session.user);
 
       const patchedTrustee = patchTrustee(existingTrustee, trustee, [
         'trusteeId',

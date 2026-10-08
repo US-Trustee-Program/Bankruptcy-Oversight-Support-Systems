@@ -417,6 +417,28 @@ describe('_Api2 functions', async () => {
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/oversight-assignments`, {});
   });
 
+  test('should call api.get function when calling getUpcomingKeyDates', async () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: null });
+    const trusteeId = 'trustee-id';
+    const appointmentId = 'appointment-id';
+    await api2.default.getUpcomingKeyDates(trusteeId, appointmentId);
+    expect(getSpy).toHaveBeenCalledWith(
+      `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates`,
+      {},
+    );
+  });
+
+  test('getUpcomingKeyDates strips an explicit null on a generic field (cams-2upxm)', async () => {
+    vi.spyOn(api.default, 'get').mockResolvedValue({
+      data: { id: 'doc-id', tirCompletionYear: 2024, tirCompletionStatus: null },
+    });
+
+    const response = await api2.default.getUpcomingKeyDates('trustee-id', 'appointment-id');
+
+    expect(response.data).toMatchObject({ id: 'doc-id', tirCompletionYear: 2024 });
+    expect('tirCompletionStatus' in (response.data as object)).toBe(false);
+  });
+
   test('should call api.post function when calling createTrusteeOversightAssignment', () => {
     const postSpy = vi
       .spyOn(api.default, 'post')
