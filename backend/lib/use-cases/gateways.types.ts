@@ -390,12 +390,6 @@ export interface AcmsGateway {
     groupDesignator: string,
     ustProfCode: number,
   ): Promise<AcmsActiveAppointment[]>;
-  getCmmapAppointments(
-    context: ApplicationContext,
-    lastId: number,
-    pageSize: number,
-    cutoffDate: string | null,
-  ): Promise<AcmsCaseAppointmentRecord[]>;
   getCmmapAppointmentsRaw(
     context: ApplicationContext,
     lastId: number,

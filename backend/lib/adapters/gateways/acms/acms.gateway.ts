@@ -7,7 +7,6 @@ import {
 import {
   AcmsGateway,
   AcmsActiveAppointment,
-  AcmsCaseAppointmentRecord,
   AcmsCaseAppointmentRawRecord,
   AcmsTrusteeProfessionalRecord,
   AcmsTrusteeProfessionalDetailRecord,
@@ -432,105 +431,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  async getCmmapAppointments(
-    context: ApplicationContext,
-    lastId: number,
-    pageSize: number,
-    cutoffDate: string | null,
-  ): Promise<AcmsCaseAppointmentRecord[]> {
-    const input: DbTableFieldSpec[] = [
-      { name: 'lastId', type: mssql.BigInt, value: lastId },
-      { name: 'pageSize', type: mssql.Int, value: pageSize },
-    ];
-
-    let cutoffClause = '';
-    if (cutoffDate !== null) {
-      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
-
-      if (!Number.isFinite(cutoffInt)) {
-        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
-      }
-
-      input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
-      cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
-    }
-
-    // Paginate the CMMAP+CMMDB join first (inner query), then join CMMKE against
-    // only the paged rows. Without this subquery pattern the LEFT OUTER JOIN on
-    // CMMKE — a table with millions of rows — must be evaluated before pagination,
-    // causing SQL timeouts at scale.
-    const query = `
-      SELECT
-        x.id AS id,
-        CONCAT(
-          RIGHT('000' + CAST(x.CASE_DIV AS VARCHAR), 3),
-          '-',
-          RIGHT('00' + CAST(x.CASE_YEAR AS VARCHAR), 2),
-          '-',
-          RIGHT('00000' + CAST(x.CASE_NUMBER AS VARCHAR), 5)
-        ) AS caseId,
-        CONCAT(x.GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(x.PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
-        x.APPT_DATE AS assignDate,
-        CASE WHEN x.APPT_DATE = 0 THEN NULL ELSE x.APPT_DATE END AS apptDate,
-        CASE WHEN x.DISP_DATE = 0 THEN NULL ELSE x.DISP_DATE END AS unassignDate,
-        CASE WHEN x.CASE_FILED_DATE = 0 THEN NULL ELSE x.CASE_FILED_DATE END AS caseFiledDate,
-        x.CURR_CASE_CHAPT AS chapter,
-        RIGHT('000' + CAST(x.CASE_DIV AS VARCHAR), 3) AS courtDivisionCode,
-        CASE WHEN x.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE x.CLOSED_BY_COURT_DATE END AS closedByCourtDate,
-        CASE WHEN x.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE x.CLOSED_BY_UST_DATE END AS closedByUstDate,
-        MAX(ke.ORIGINAL_OCC_DATE) AS reopenedDate
-      FROM (
-        SELECT
-          m.id,
-          m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
-          m.GROUP_DESIGNATOR, m.PROF_CODE,
-          m.APPT_DATE, m.DISP_DATE,
-          c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
-          c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
-        FROM [dbo].[CMMAP] m
-        INNER JOIN [dbo].[CMMDB] c
-          ON m.CASE_DIV = c.CASE_DIV
-          AND m.CASE_YEAR = c.CASE_YEAR
-          AND m.CASE_NUMBER = c.CASE_NUMBER
-        WHERE m.id > @lastId
-          AND m.DELETE_CODE != 'D'
-          AND m.PROF_CODE > 0
-          AND m.APPT_TYPE = 'TR'
-          AND c.DELETE_CODE != 'D'
-          AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
-            OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
-          ${cutoffClause}
-        ORDER BY m.id
-        OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY
-      ) AS x
-      LEFT OUTER JOIN [dbo].[CMMKE] ke
-        ON x.CASE_DIV = ke.CASE_DIV
-        AND x.CASE_YEAR = ke.CASE_YEAR
-        AND x.CASE_NUMBER = ke.CASE_NUMBER
-        AND ke.EVENT_CODE_TYPE = 'O'
-        AND ke.EVENT_CODE = 'OCO'
-      GROUP BY
-        x.id, x.CASE_DIV, x.CASE_YEAR, x.CASE_NUMBER,
-        x.GROUP_DESIGNATOR, x.PROF_CODE, x.APPT_DATE, x.DISP_DATE,
-        x.CASE_FILED_DATE, x.CURR_CASE_CHAPT,
-        x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE
-      ORDER BY x.id`;
-
-    // Large fetch: set per-request timeout to ACMS_REQUEST_TIMEOUT_MS to accommodate
-    // large fetches without changing the global pool requestTimeout used by other queries.
-    try {
-      const { results } = await this.executeQuery<AcmsCaseAppointmentRecord>(
-        context,
-        query,
-        input,
-        ACMS_REQUEST_TIMEOUT_MS,
-      );
-      return (results as mssql.IResult<AcmsCaseAppointmentRecord>).recordset;
-    } catch (originalError) {
-      throwCamsError(originalError);
-    }
-  }
-
   async getCmmapAppointmentsRaw(
     context: ApplicationContext,
     lastId: number,
@@ -552,7 +452,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
     }
 
-    // Same subquery pattern as getCmmapAppointments — paginate before joining CMMKE.
+    // Paginate the CMMAP+CMMDB join first (inner query), then join CMMKE against
+    // only the paged rows. Without this subquery pattern the LEFT OUTER JOIN on
+    // CMMKE — a table with millions of rows — must be evaluated before pagination,
+    // causing SQL timeouts at scale.
     const query = `
       SELECT
         x.id,
