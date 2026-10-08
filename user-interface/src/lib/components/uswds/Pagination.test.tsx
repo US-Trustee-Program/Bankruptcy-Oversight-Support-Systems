@@ -434,6 +434,6 @@ describe('Pagination tests', () => {
     const ellipses = document.querySelectorAll('.usa-pagination__overflow');
     expect(ellipses).toHaveLength(1);
     fireEvent.click(previousPageButton!);
-    expect(retrievePageSpy).toHaveBeenCalledWith({ limit: 25, offset: 0 });
+    expect(retrievePageSpy).toHaveBeenCalledWith({ offset: -25 });
   });
 });

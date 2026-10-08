@@ -22,8 +22,8 @@ const MOCK_TRUSTEE = MockData.getTrustee({
 
 const SAMPLE_MATCHED_TSV = [
   'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-  'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345\tJohn Doe\t1\t100.0\tYES\tPA,V\t',
-  'Jane Smith\tjane.smith@example.com\t987654321\txyz789\t098-765-4321\thttps://zoom.us/j/987654321\tmatched\tcomponent-name\t67890\tJane Smith\t1\t100.0\tYES\t1\t',
+  'John Doe\tjohn.doe@example.com\t123456789\t1234567890\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345\tJohn Doe\t1\t100.0\tYES\tPA,V\t',
+  'Jane Smith\tjane.smith@example.com\t987654321\t9876543210\t098-765-4321\thttps://zoom.us/j/987654321\tmatched\tcomponent-name\t67890\tJane Smith\t1\t100.0\tYES\t1\t',
 ].join('\n');
 
 describe('import-zoom-csv', () => {
@@ -32,6 +32,7 @@ describe('import-zoom-csv', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
+    vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
   });
 
   describe('parseZoomMatchedTsvFile', () => {
@@ -43,7 +44,7 @@ describe('import-zoom-csv', () => {
         zoomName: 'John Doe',
         zoomEmail: 'john.doe@example.com',
         meetingId: '123456789',
-        passcode: 'abc123',
+        passcode: '1234567890',
         phone: '123-456-7890',
         link: 'https://zoom.us/j/123456789',
         outcome: 'matched',
@@ -86,7 +87,7 @@ describe('import-zoom-csv', () => {
     test('should handle multiple ATS TRU_IDs', () => {
       const multipleIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John A. Doe\t2\t100.0\tYES; YES\tPA,V; 1\t',
+        'John Doe\tjohn.doe@example.com\t123456789\t1234567890\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John A. Doe\t2\t100.0\tYES; YES\tPA,V; 1\t',
       ].join('\n');
 
       const rows = parseZoomMatchedTsvFile(multipleIds);
@@ -101,7 +102,7 @@ describe('import-zoom-csv', () => {
       zoomName: 'John Doe',
       zoomEmail: 'john.doe@example.com',
       meetingId: '123456789',
-      passcode: 'abc123',
+      passcode: '1234567890',
       phone: '123-456-7890',
       link: 'https://zoom.us/j/123456789',
       outcome: 'matched',
@@ -119,6 +120,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
@@ -134,7 +136,7 @@ describe('import-zoom-csv', () => {
         expect.objectContaining({
           zoomInfo: {
             meetingId: '123456789',
-            passcode: 'abc123',
+            passcode: '1234567890',
             phone: '123-456-7890',
             link: 'https://zoom.us/j/123456789',
             accountEmail: 'john.doe@example.com',
@@ -144,11 +146,32 @@ describe('import-zoom-csv', () => {
       );
     });
 
+    test('should reject malformed passcode and not update trustee', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await processZoomMatchedRow(context, { ...row, passcode: 'abc123' });
+
+      expect(result.outcome).toBe('error');
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('Invalid zoom info'),
+      );
+    });
+
     test('should fall back to name matching when TRU_ID not found', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
         MOCK_TRUSTEE,
       ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
@@ -240,9 +263,13 @@ describe('import-zoom-csv', () => {
 
     test('should process matched report and generate import report', async () => {
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
+      const secondTrustee = { ...MOCK_TRUSTEE, trusteeId: 'trustee-789', name: 'Jane Smith' };
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
         .mockResolvedValueOnce(MOCK_TRUSTEE)
-        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-789', name: 'Jane Smith' });
+        .mockResolvedValueOnce(secondTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockImplementation(async (trusteeId) =>
+        trusteeId === secondTrustee.trusteeId ? secondTrustee : MOCK_TRUSTEE,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -261,6 +288,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       await importZoomCsv(context);
@@ -275,7 +303,7 @@ describe('import-zoom-csv', () => {
     test('should handle deduplicated TRU_IDs mapping to same trustee', async () => {
       const rowWithDeduplicatedIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
+        'John Doe\tjohn.doe@example.com\t123456789\t1234567890\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
       ].join('\n');
 
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithDeduplicatedIds);
@@ -283,6 +311,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -299,6 +328,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       await importZoomCsv(context);
@@ -319,6 +349,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -330,7 +361,7 @@ describe('import-zoom-csv', () => {
     test('should count all outcome types correctly', async () => {
       const mixedOutcomes = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-        'Match User\tmatch@example.com\t111\tabc\t111\thttps://zoom.us/j/111\tmatched\temail\t11111\tMatch User\t1\t100\tYES\tPA\t',
+        'Match User\tmatch@example.com\t111111111\t1111111111\t111-111-1111\thttps://zoom.us/j/111\tmatched\temail\t11111\tMatch User\t1\t100\tYES\tPA\t',
         'Unmatch User\tunmatch@example.com\t222\tdef\t222\thttps://zoom.us/j/222\tunmatched\tnone\t22222\t\t0\t\t\t\t',
         'Ambiguous User\tambig@example.com\t333\tghi\t333\thttps://zoom.us/j/333\tambiguous\tname\t33333,44444\tUser A; User B\t2\t100\tYES\tPA\t',
         'Error User\terror@example.com\t444\tjkl\t444\thttps://zoom.us/j/444\terror\tnone\t55555\t\t0\t\t\t\t',
@@ -354,6 +385,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
         [],
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee1);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -368,7 +400,7 @@ describe('import-zoom-csv', () => {
     test('should log debug for deduplicated TRU_IDs', async () => {
       const rowWithDeduplicatedIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
+        'John Doe\tjohn.doe@example.com\t123456789\t1234567890\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
       ].join('\n');
 
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithDeduplicatedIds);
@@ -376,6 +408,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
       const debugSpy = vi.spyOn(context.logger, 'debug');
 
@@ -390,7 +423,7 @@ describe('import-zoom-csv', () => {
     test('should log info when some TRU_IDs not found but others succeed', async () => {
       const rowWithMixedIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,99999\tJohn Doe\t1\t100.0\tYES\tPA,V\t',
+        'John Doe\tjohn.doe@example.com\t123456789\t1234567890\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,99999\tJohn Doe\t1\t100.0\tYES\tPA,V\t',
       ].join('\n');
 
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithMixedIds);
@@ -398,6 +431,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
         .mockResolvedValueOnce(MOCK_TRUSTEE)
         .mockResolvedValueOnce(null);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
       const infoSpy = vi.spyOn(context.logger, 'info');
 
@@ -422,13 +456,14 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await processZoomMatchedRow(context, {
         zoomName: 'John Doe',
         zoomEmail: 'john.doe@example.com',
         meetingId: '123456789',
-        passcode: 'abc123',
+        passcode: '1234567890',
         phone: '123-456-7890',
         link: 'https://zoom.us/j/123456789',
         outcome: 'matched',

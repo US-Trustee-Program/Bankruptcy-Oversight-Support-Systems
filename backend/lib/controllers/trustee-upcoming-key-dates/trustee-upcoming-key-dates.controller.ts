@@ -10,7 +10,7 @@ import {
   DATE_FIELDS,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
-  validateTrusteeUpcomingKeyDates,
+  validateTrusteeUpcomingKeyDatesForSave,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Validators from '@common/cams/validators';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -19,14 +19,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-CONTROLLER';
 
-export const KEY_DATE_FEATURE_FLAGS = [
-  'display-chpt7-panel-upcoming-key-dates',
-  'display-chpt11-subv-past-key-dates',
-  'display-chpt12-13-case-by-case-upcoming-key-dates',
-  'display-chpt12-standing-key-dates',
-  'display-chpt13-standing-key-dates',
-  'display-chpt7-elected-key-dates',
-] as const;
+export const KEY_DATE_FEATURE_FLAG = 'trustee-appointment-accordions';
 
 export class TrusteeUpcomingKeyDatesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -39,8 +32,7 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingKeyDates>> {
     try {
-      const keyDatesFlagEnabled = KEY_DATE_FEATURE_FLAGS.some((flag) => context.featureFlags[flag]);
-      if (!keyDatesFlagEnabled) {
+      if (!context.featureFlags[KEY_DATE_FEATURE_FLAG]) {
         throw new NotFoundError(MODULE_NAME);
       }
       const { trusteeId, appointmentId } = context.request.params;
@@ -71,7 +63,8 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
             message: `Invalid ISO date in field(s): ${invalidFields.join(', ')}`,
           });
         }
-        const validationResult = validateTrusteeUpcomingKeyDates(input);
+        const existing = await useCase.getUpcomingKeyDates(appointmentId);
+        const validationResult = validateTrusteeUpcomingKeyDatesForSave(input, existing);
         if (!validationResult.valid) {
           const messages = Object.values(validationResult.reasonMap ?? {})
             .flatMap((r) => r.reasons)

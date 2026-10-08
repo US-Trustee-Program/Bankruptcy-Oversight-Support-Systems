@@ -3,7 +3,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   TrusteeUpcomingKeyDatesController,
-  KEY_DATE_FEATURE_FLAGS,
+  KEY_DATE_FEATURE_FLAG,
 } from './trustee-upcoming-key-dates.controller';
 import { TrusteeUpcomingKeyDatesUseCase } from '../../use-cases/trustee-upcoming-key-dates/trustee-upcoming-key-dates';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
@@ -36,25 +36,12 @@ describe('TrusteeUpcomingKeyDatesController', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = true;
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = true;
     context.session.user.roles = [CamsRole.TrusteeAdmin];
   });
 
-  test('KEY_DATE_FEATURE_FLAGS contains the exact set of expected flags', () => {
-    expect(KEY_DATE_FEATURE_FLAGS).toEqual([
-      'display-chpt7-panel-upcoming-key-dates',
-      'display-chpt11-subv-past-key-dates',
-      'display-chpt12-13-case-by-case-upcoming-key-dates',
-      'display-chpt12-standing-key-dates',
-      'display-chpt13-standing-key-dates',
-      'display-chpt7-elected-key-dates',
-    ]);
-  });
-
-  test('throws NotFoundError when all key-dates flags are disabled', async () => {
-    KEY_DATE_FEATURE_FLAGS.forEach((f) => {
-      context.featureFlags[f] = false;
-    });
+  test('throws NotFoundError when the key-dates flag is disabled', async () => {
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
@@ -67,11 +54,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     );
   });
 
-  test.each(KEY_DATE_FEATURE_FLAGS)('GET succeeds when only %s flag is enabled', async (flag) => {
-    KEY_DATE_FEATURE_FLAGS.forEach((f) => {
-      context.featureFlags[f] = false;
-    });
-    context.featureFlags[flag] = true;
+  test('GET succeeds when the key-dates flag is enabled', async () => {
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = true;
     vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
       null,
     );
@@ -106,24 +90,6 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     expect(getSpy).toHaveBeenCalledWith('appointment-001');
   });
 
-  test('GET returns 200 with null when no document exists', async () => {
-    const getSpy = vi
-      .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates')
-      .mockResolvedValue(null);
-
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.statusCode).toBe(HttpStatusCodes.OK);
-    expect(response.body).toEqual({ data: null });
-    expect(getSpy).toHaveBeenCalledWith('appointment-001');
-  });
-
   test.each([
     ['trusteeId is missing', '', 'appointment-001'],
     ['appointmentId is missing', 'trustee-001', ''],
@@ -141,7 +107,43 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     });
   });
 
+  test('BadRequestError message uses plural wording when both params are missing', async () => {
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: '', appointmentId: '' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('Required parameters trusteeId, appointmentId are absent.'),
+    });
+  });
+
+  test('BadRequestError message uses singular wording when only one param is missing', async () => {
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: '', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('Required parameter trusteeId is absent.'),
+    });
+  });
+
   describe('PUT', () => {
+    beforeEach(() => {
+      // No pre-existing document by default; tests exercising the
+      // save-time pair-forgiveness behavior (cams-lw0kd) override this.
+      vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+        null,
+      );
+    });
+
     function buildValidInput(
       overrides: Partial<TrusteeUpcomingKeyDatesInput> = {},
     ): TrusteeUpcomingKeyDatesInput {
@@ -152,6 +154,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         pastBackgroundQuestion: null,
         pastAudit: null,
         pastTprSubmission: null,
+        lastTprSubmitted: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
@@ -169,12 +172,22 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         upcomingExamOrAuditYear: null,
         upcomingExamOrAuditType: null,
         lastAuditFiscalYear: null,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
         lastCompensationStudy: null,
         bondIssuedDate: null,
         bondRenewalDate: null,
+        annualReportCompletionYear: null,
+        annualReportCompletionStatus: null,
+        ch13AuditCompletionYear: null,
+        ch13AuditCompletionStatus: null,
         ...overrides,
       };
     }
@@ -243,11 +256,28 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
-    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400', async () => {
+    // validateTrusteeUpcomingKeyDates() covers all per-rule combinations exhaustively in
+    // common/src/cams/trustee-upcoming-key-dates.test.ts. One representative case per validation
+    // category is enough here to confirm the controller surfaces the 400 — mirroring the rationale
+    // at trustee-upcoming-key-dates.test.ts:213-218.
+    test.each([
+      {
+        name: 'pair validation: tprReviewPeriodStart set without tprReviewPeriodEnd',
+        overrides: { tprReviewPeriodStart: '2026-03-01', tprReviewPeriodEnd: null },
+      },
+      {
+        name: 'chronological-order validation: tprReviewPeriodStart after tprReviewPeriodEnd',
+        overrides: { tprReviewPeriodStart: '2026-06-01', tprReviewPeriodEnd: '2026-01-01' },
+      },
+      {
+        name: 'completion pair validation: auditCompletionYear set without auditCompletionStatus',
+        overrides: { auditCompletionYear: 2026, auditCompletionStatus: null },
+      },
+    ])('PUT with $name returns 400', async ({ overrides }) => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprReviewPeriodStart: '1900-03-01', tprReviewPeriodEnd: null }),
+        body: buildValidInput(overrides),
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
@@ -257,12 +287,90 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    // cams-lw0kd: a stored document can carry a stale half-set pair on a field
+    // no card renders for a given appointment type. The save-time forgiveness
+    // in validateTrusteeUpcomingKeyDatesForSave should let saves that don't
+    // touch that pair through, while still catching a genuinely invalid pair
+    // the caller IS touching.
+    describe('stale untouched pair forgiveness', () => {
+      test('PUT succeeds when an untouched pair is stale on the stored document', async () => {
+        vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+          { ...buildMockDocument(), tirCompletionYear: 2024 },
+        );
+        const putSpy = vi
+          .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
+          .mockResolvedValue(undefined);
+
+        // Caller edits only the Annual Report pair; tirCompletionYear is
+        // carried forward unchanged from the stored document, still missing
+        // its tirCompletionStatus partner.
+        const body = buildValidInput({
+          tirCompletionYear: 2024,
+          annualReportCompletionYear: 2026,
+          annualReportCompletionStatus: 'COMPLETE',
+        });
+        context.request = mockCamsHttpRequest({
+          method: 'PUT',
+          params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+          body,
+        });
+
+        const controller = new TrusteeUpcomingKeyDatesController(context);
+        const response = await controller.handleRequest(context);
+
+        expect(response.statusCode).toBe(HttpStatusCodes.OK);
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          body,
+          context.session.user,
+        );
+      });
+
+      test('PUT still returns 400 when the caller touches the invalid pair', async () => {
+        vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+          { ...buildMockDocument(), tirCompletionYear: 2024 },
+        );
+
+        // Caller sets a different tirCompletionYear without ever setting
+        // tirCompletionStatus -- this pair IS being touched, so it must still
+        // be validated.
+        context.request = mockCamsHttpRequest({
+          method: 'PUT',
+          params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+          body: buildValidInput({ tirCompletionYear: 2025 }),
+        });
+
+        const controller = new TrusteeUpcomingKeyDatesController(context);
+
+        await expect(controller.handleRequest(context)).rejects.toMatchObject({
+          status: 400,
+        });
+      });
+    });
+
     test.each([
       { name: 'lastCompensationStudy', overrides: { lastCompensationStudy: '2024-06-01' } },
       { name: 'tprFrequency', overrides: { tprFrequency: 'SEMI_ANNUAL' as const } },
       {
         name: 'tprDue and tprDueYearType',
         overrides: { tprDue: '1900-09-15', tprDueYearType: 'EVEN' as const },
+      },
+      {
+        name: 'auditCompletionYear and auditCompletionStatus',
+        overrides: { auditCompletionYear: 2026, auditCompletionStatus: 'CLOSED' as const },
+      },
+      {
+        name: 'tprCompletionYear and tprCompletionStatus',
+        overrides: { tprCompletionYear: 2026, tprCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'tirCompletionYear and tirCompletionStatus',
+        overrides: { tirCompletionYear: 2026, tirCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'lastTprSubmitted',
+        overrides: { lastTprSubmitted: '2026-01-15' },
       },
     ])('PUT with $name set passes through to use case', async ({ overrides }) => {
       const putSpy = vi

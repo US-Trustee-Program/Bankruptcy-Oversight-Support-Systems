@@ -16,7 +16,7 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
     link: 'https://zoom.us/j/1234567890',
     phone: '555-123-4567',
     meetingId: '1234567890',
-    passcode: 'test123', // pragma: allowlist secret
+    passcode: '1234567890', // pragma: allowlist secret
   };
 
   const mockGlobalAlert = {
@@ -40,8 +40,9 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
-    userEvent = TestingUtilities.setupUserEvent();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+    userEvent = TestingUtilities.setupUserEvent();
 
     // Mock debounce to execute immediately
     mockDebounce = vi.fn((callback: () => void) => {
@@ -54,10 +55,6 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
 
     patchTrusteeSpy = vi.fn();
     vi.spyOn(Api2, 'patchTrustee').mockImplementation(patchTrusteeSpy);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('rendering', () => {
@@ -134,6 +131,20 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       });
     });
 
+    test('validates zoom link max length on change', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const linkInput = screen.getByTestId('trustee-zoom-link');
+      await userEvent.clear(linkInput);
+      await userEvent.type(linkInput, 'https://zoom.us/j/' + 'a'.repeat(250));
+
+      await waitFor(() => {
+        expect(screen.getByText(/max length 255 characters/i)).toBeInTheDocument();
+      });
+    });
+
     test('validates phone field on change', async () => {
       const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
 
@@ -159,6 +170,43 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/must be 9 to 11 digits/i)).toBeInTheDocument();
+      });
+    });
+
+    test('validates passcode field on change', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const passcodeInput = screen.getByTestId('trustee-zoom-passcode');
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '12345abcde'); // pragma: allowlist secret
+
+      await waitFor(() => {
+        expect(screen.getByText('Zoom passcode must be 10 digits.')).toBeInTheDocument();
+      });
+    });
+
+    test('accepts a passcode with leading zeros and clears the error', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const passcodeInput = screen.getByTestId('trustee-zoom-passcode');
+
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '12345');
+
+      await waitFor(() => {
+        expect(screen.getByText('Zoom passcode must be 10 digits.')).toBeInTheDocument();
+      });
+
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '0123456789');
+
+      await waitFor(() => {
+        expect(screen.queryByText('Zoom passcode must be 10 digits.')).not.toBeInTheDocument();
+        expect(passcodeInput).toHaveValue('0123456789');
       });
     });
 
@@ -231,6 +279,63 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       await waitFor(() => {
         const saveButton = screen.getByText('Save');
         expect(saveButton).toBeEnabled();
+      });
+    });
+
+    test('Save button transitions from disabled to enabled as empty fields are filled in', async () => {
+      const trustee = MockData.getTrustee({
+        trusteeId: TEST_TRUSTEE_ID,
+        zoomInfo: undefined,
+      });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const saveButton = screen.getByTestId('button-button-trustee-zoom-info-form-submit');
+      expect(saveButton).toBeDisabled();
+
+      await userEvent.type(screen.getByTestId('trustee-zoom-link'), VALID_ZOOM_INFO.link);
+      await userEvent.type(screen.getByTestId('trustee-zoom-phone'), VALID_ZOOM_INFO.phone);
+      await userEvent.type(
+        screen.getByTestId('trustee-zoom-meeting-id'),
+        VALID_ZOOM_INFO.meetingId,
+      );
+      await userEvent.type(screen.getByTestId('trustee-zoom-passcode'), VALID_ZOOM_INFO.passcode);
+
+      await waitFor(
+        () => {
+          expect(saveButton).toBeEnabled();
+        },
+        { timeout: 2000 },
+      );
+    });
+
+    test('submits payload assembled from user-entered field values', async () => {
+      const trustee = MockData.getTrustee({
+        trusteeId: TEST_TRUSTEE_ID,
+        zoomInfo: undefined,
+      });
+
+      patchTrusteeSpy.mockResolvedValue({ data: trustee });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      await userEvent.type(screen.getByTestId('trustee-zoom-link'), VALID_ZOOM_INFO.link);
+      await userEvent.type(screen.getByTestId('trustee-zoom-phone'), VALID_ZOOM_INFO.phone);
+      await userEvent.type(
+        screen.getByTestId('trustee-zoom-meeting-id'),
+        VALID_ZOOM_INFO.meetingId,
+      );
+      await userEvent.type(screen.getByTestId('trustee-zoom-passcode'), VALID_ZOOM_INFO.passcode);
+
+      const saveButton = screen.getByTestId('button-button-trustee-zoom-info-form-submit');
+      await waitFor(() => expect(saveButton).toBeEnabled(), { timeout: 2000 });
+
+      await userEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(patchTrusteeSpy).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
+          zoomInfo: VALID_ZOOM_INFO,
+        });
       });
     });
   });
@@ -407,46 +512,6 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       await waitFor(() => {
         expect(patchTrusteeSpy).toHaveBeenCalled();
         expect(mockNavigate.navigateTo).not.toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('form updates', () => {
-    test('updates all fields correctly', async () => {
-      const trustee = MockData.getTrustee({
-        trusteeId: TEST_TRUSTEE_ID,
-        zoomInfo: undefined,
-      });
-
-      patchTrusteeSpy.mockResolvedValue({ data: trustee });
-
-      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
-
-      // Fill in all fields
-      const linkInput = screen.getByTestId('trustee-zoom-link');
-      const phoneInput = screen.getByTestId('trustee-zoom-phone');
-      const meetingIdInput = screen.getByTestId('trustee-zoom-meeting-id');
-      const passcodeInput = screen.getByTestId('trustee-zoom-passcode');
-
-      await userEvent.type(linkInput, VALID_ZOOM_INFO.link);
-      await userEvent.type(phoneInput, VALID_ZOOM_INFO.phone);
-      await userEvent.type(meetingIdInput, VALID_ZOOM_INFO.meetingId);
-      await userEvent.type(passcodeInput, VALID_ZOOM_INFO.passcode);
-
-      const saveButton = screen.getByTestId('button-button-trustee-zoom-info-form-submit');
-      await waitFor(
-        () => {
-          expect(saveButton).toBeEnabled();
-        },
-        { timeout: 2000 },
-      );
-
-      await userEvent.click(saveButton);
-
-      await waitFor(() => {
-        expect(patchTrusteeSpy).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
-          zoomInfo: VALID_ZOOM_INFO,
-        });
       });
     });
   });

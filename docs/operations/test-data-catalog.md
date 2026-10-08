@@ -18,18 +18,39 @@ Quick reference for available test data scenarios. For detailed setup instructio
 
 ### Trustees
 
-| Scenario                      | Source Script                                              | What It Tests                                                                                                                                                                                                                                                                                                                    |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Oversight Assignments**     | `oversight-assignments.ts`                                 | Attorney-only, auditor-only, both, paralegal-only, and no-oversight assignment states                                                                                                                                                                                                                                            |
-| **Trustee Staff**             | `trustee-staff.ts`                                         | Trustees with 0, 1, 2, and 3 staff for testing trustee staff management                                                                                                                                                                                                                                                          |
-| **Key Dates**                 | `trustee-key-dates.ts`                                     | Trustees with and without key dates                                                                                                                                                                                                                                                                                              |
-| **Match Verification**        | `trustee-match-all-scenarios.ts`                           | Multiple match candidates, imperfect matches, high-confidence matches, inactive trustees, status mismatches, multi-case mismatches (pending; already-resolved with a populated `affectedCaseIds` snapshot; already-resolved with no snapshot and no surviving surrogates, modeling the pre-CAMS-871 legacy state)                |
-| **Trustee Name Search**       | `trustee-fuzzy-search.ts`                                  | Exact/substring, phonetic (e.g. Smith/Smyth), nickname, and prefix name matching for trustee search — including the mismatch verification search modal                                                                                                                                                                           |
-| **341 Meeting Info**          | `dxtr-historical-trustees.ts`, `trustees-comprehensive.ts` | Trustees with Zoom meeting details for 341 hearings                                                                                                                                                                                                                                                                              |
-| **4-Level Sorting Test**      | `trustees-comprehensive.ts`                                | **Patricia Manhattan** (seed-trustee-ny-002) - 6 appointments demonstrating state → region → chapter → appointment type sorting across CA, ID, IA with real DXTR court IDs                                                                                                                                                       |
-| **Comprehensive Trustee Set** | `trustees-comprehensive.ts`                                | 24+ trustees with varied chapters, districts, and appointment types for pagination/filtering tests                                                                                                                                                                                                                               |
-| **Trustee Case List**         | `trustee-case-list.ts`                                     | Paginated trustee with 60 active case appointments (pages of 25/25/10) across chapters 7, 11, 13 with varied dateFiled dates (2020–2024). Empty trustee for empty-state testing. Cases seeded in both DXTR (AO_CS, AO_PY, AO_DE) and Cosmos (SYNCED_CASE) so case detail and docket tabs render completely when following links. |
-| **Missing Email Trustee**     | `trustee-data.ts`                                          | **Nolan Nocontact** (seed-trustee-nocontact-001) - active, searchable trustee with an address and phone but no email, for exercising the "Email not provided" placeholder in `TrusteeSearchModal`'s selected-trustee comparison column                                                                                           |
+| Scenario                         | Source Script                                              | What It Tests                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Oversight Assignments**        | `oversight-assignments.ts`                                 | Attorney-only, auditor-only, both, paralegal-only, and no-oversight assignment states                                                                                                                                                                                                                                                                                                             |
+| **Trustee Staff**                | `trustee-staff.ts`                                         | Trustees with 0, 1, 2, and 3 staff for testing trustee staff management                                                                                                                                                                                                                                                                                                                           |
+| **Key Dates**                    | `trustee-key-dates.ts`                                     | Trustees with and without key dates                                                                                                                                                                                                                                                                                                                                                               |
+| **Match Verification**           | `trustee-match-all-scenarios.ts`                           | Multiple match candidates, imperfect matches, high-confidence matches, inactive trustees, status mismatches, multi-case mismatches (pending; already-resolved with a populated `affectedCaseIds` snapshot; already-resolved with no snapshot and no surviving surrogates, modeling the pre-CAMS-871 legacy state)                                                                                 |
+| **Trustee Name Search**          | `trustee-fuzzy-search.ts`                                  | Exact/substring, phonetic (e.g. Smith/Smyth), nickname, and prefix name matching for trustee search — including the mismatch verification search modal                                                                                                                                                                                                                                            |
+| **341 Meeting Info**             | `dxtr-historical-trustees.ts`, `trustees-comprehensive.ts` | Trustees with Zoom meeting details for 341 hearings                                                                                                                                                                                                                                                                                                                                               |
+| **4-Level Sorting Test**         | `trustees-comprehensive.ts`                                | **Patricia Manhattan** (seed-trustee-ny-002) - 6 appointments demonstrating state → region → chapter → appointment type sorting across CA, ID, IA with real DXTR court IDs                                                                                                                                                                                                                        |
+| **Ch11 Accordion States**        | `trustees-comprehensive.ts`                                | **Olivia Ashworth** (seed-trustee-add-025) - one trustee holding both an active and an inactive Chapter 11 case-by-case appointment, for verifying the appointment accordion's green (active) vs. gray (inactive) status tags side by side on the same trustee; both appointments collapse by default and expand independently on click                                                           |
+| **Ch7 Elected Accordion States** | `trustees-comprehensive.ts`                                | **Marcus Whitfield** (seed-trustee-add-026) - one trustee holding both an active and an inactive Chapter 7 Elected appointment, for verifying the appointment accordion's green (active) vs. gray (inactive) status tags side by side on the same trustee; both appointments collapse by default and expand independently on click                                                                |
+| **Ch11 SubV Accordion States**   | `trustees-comprehensive.ts`                                | **Derek Pemberton** (seed-trustee-add-027) - one trustee holding both a Chapter 11 Subchapter V Pool appointment (active) and an Out of Pool appointment (resigned), for verifying the appointment accordion's Pool ("Other" key-dates card) vs. Out of Pool (no key-dates card) bodies side by side on the same trustee; both appointments collapse by default and expand independently on click |
+| **Comprehensive Trustee Set**    | `trustees-comprehensive.ts`                                | 24+ trustees with varied chapters, districts, and appointment types for pagination/filtering tests                                                                                                                                                                                                                                                                                                |
+| **Trustee Case List**            | `trustee-case-list.ts`                                     | Paginated trustee with 60 active case appointments (pages of 25/25/10) across chapters 7, 11, 13 with varied dateFiled dates (2020–2024). Empty trustee for empty-state testing. Cases seeded in both DXTR (AO_CS, AO_PY, AO_DE) and Cosmos (SYNCED_CASE) so case detail and docket tabs render completely when following links.                                                                  |
+| **Missing Email Trustee**        | `trustee-data.ts`                                          | **Nolan Nocontact** (seed-trustee-nocontact-001) - active, searchable trustee with an address and phone but no email, for exercising the "Email not provided" placeholder in `TrusteeSearchModal`'s selected-trustee comparison column                                                                                                                                                            |
+| **Ch13 Standing Key Dates**      | `trustee-key-dates.ts`                                     | **Felicia Keydates** (seed-trustee-keydates-ch13-standing-001) - active appointment with fully populated key dates across all four Ch13 Standing accordion cards, and **Gregory Nokeydates** (seed-trustee-keydates-ch13-standing-empty) - inactive appointment with no key dates, for testing the "No date added" placeholder state and the accordion's default-closed behavior                  |
+
+### Appointment Accordions (CAMS-909–915)
+
+One-stop matrix of the trustee-appointment accordion coverage, which otherwise spans two scripts and
+several rows above. Rows are the chapter/appointment-type variants the CAMS-909–915 epic migrated
+onto `AppointmentAccordion`.
+
+| Chapter / Appointment Type | Populated Key Dates                                                                            | Empty / No Saved Key Dates                  | Active + Inactive Side-by-Side (status tags)                                     | Source Script(s)                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Ch7 Panel**              | Marcus Keydates, Diana Keydates, Samuel Keydates (quarter/mid-quarter/year-boundary TIR dates) | Emily Nokeydates                            | —                                                                                | `trustee-key-dates.ts`                              |
+| **Ch7 Elected**            | Owen Keydates (bond dates)                                                                     | Owen Nokeydates                             | Owen Inactivekeydates (inactive appt); Marcus Whitfield (`seed-trustee-add-026`) | `trustee-key-dates.ts`, `trustees-comprehensive.ts` |
+| **Ch11 Case by Case**      | —                                                                                              | —                                           | Olivia Ashworth (`seed-trustee-add-025`)                                         | `trustees-comprehensive.ts`                         |
+| **Ch11 Subchapter V Pool** | Priya Keydates                                                                                 | Priya Nokeydates                            | Derek Pemberton (`seed-trustee-add-027` — Pool active + Out of Pool resigned)    | `trustee-key-dates.ts`, `trustees-comprehensive.ts` |
+| **Ch12 Case by Case**      | Nadia Keydates (TPR dates)                                                                     | —                                           | —                                                                                | `trustee-key-dates.ts`                              |
+| **Ch13 Case by Case**      | —                                                                                              | Nadia Nokeydates                            | —                                                                                | `trustee-key-dates.ts`                              |
+| **Ch12 Standing**          | Catherine Keydates (Audit/TPR completion status, Last TPR Submitted)                           | —                                           | —                                                                                | `trustee-key-dates.ts`                              |
+| **Ch13 Standing**          | Felicia Keydates (all four accordion cards populated)                                          | Gregory Nokeydates (inactive, no key dates) | Felicia Keydates (active) / Gregory Nokeydates (inactive) pair                   | `trustee-key-dates.ts`                              |
 
 ### Administrative Data
 
@@ -44,6 +65,30 @@ Quick reference for available test data scenarios. For detailed setup instructio
 ### 4-Level Appointment Sorting
 
 **Trustee:** Patricia Manhattan
+
+### Ch11 Accordion States
+
+**Trustee:** Olivia Ashworth (`seed-trustee-add-025`) — active Ch11 case-by-case appointment
+(Manhattan, division 091) and inactive Ch11 case-by-case appointment (Manhattan, division 081, dates
+distinct from the 2020-01-01 default)
+
+### Ch7 Elected Accordion States
+
+**Trustee:** Marcus Whitfield (`seed-trustee-add-026`) — active Ch7 Elected appointment (Manhattan,
+division 091) and inactive Ch7 Elected appointment (Manhattan, division 081, dates distinct from the
+2020-01-01 default)
+
+### Ch11 SubV Accordion States
+
+**Trustee:** Derek Pemberton (`seed-trustee-add-027`) — active Chapter 11 Subchapter V Pool
+appointment (Manhattan, division 091) and resigned Out of Pool appointment (Manhattan, division 081,
+dates distinct from the 2020-01-01 default)
+
+### Ch13 Standing Key Dates
+
+**Trustees:** Felicia Keydates (`seed-trustee-keydates-ch13-standing-001`) — active appointment with
+fully populated key dates across all four Ch13 Standing accordion cards; Gregory Nokeydates
+(`seed-trustee-keydates-ch13-standing-empty`) — inactive appointment with no key dates
 
 ### Historical Trustee Changes
 
@@ -67,7 +112,11 @@ Ethan Nostaff, Ava Nostaff
 
 **Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates, Priya Keydates
 (Chapter 11 Subchapter V Pool, Last Monthly Report Received populated), Priya Nokeydates (Chapter 11
-Subchapter V Pool, no key dates)
+Subchapter V Pool, no key dates), Felicia Keydates (Chapter 13 Standing, active, all four accordion
+cards populated including Audit and TPR completion-status tags), Gregory Nokeydates (Chapter 13
+Standing, inactive appointment, no key dates — tests "No date added" defaults and default-closed
+accordion state), Catherine Keydates (Chapter 12 Standing; audit/TPR completion status and Last TPR
+Submitted populated for the accordion's Audit and Trustee Performance Report cards)
 
 ### 341 Meeting Info
 

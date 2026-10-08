@@ -1,6 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AbstractTrusteeHistory } from './trustee-history-base';
+import { DEFAULT_MIN_DATE } from '../date-helper';
 import {
   VALID,
   ValidatorFunction,
@@ -81,6 +82,17 @@ function validateFullDate(value: string | null | undefined): ValidatorResult {
 // Internal validation functions for top-level form validation
 // ============================================================================
 
+// Returns true when exactly one of first/second is set -- i.e. the pair is
+// incomplete. '' counts as unset alongside null/undefined so this also covers
+// the form-layer representation used by validateCompletionPairPresence below;
+// the spec-layer fields requirePair checks are typed `T | null` and never
+// hold '', so the extra check is a no-op for that caller.
+function isPairIncomplete(first: unknown, second: unknown): boolean {
+  const firstSet = first !== null && first !== undefined && first !== '';
+  const secondSet = second !== null && second !== undefined && second !== '';
+  return firstSet !== secondSet;
+}
+
 function requirePair(
   startField: keyof TrusteeUpcomingKeyDatesInput,
   endField: keyof TrusteeUpcomingKeyDatesInput,
@@ -89,15 +101,22 @@ function requirePair(
 ): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
-    const reasonMap: ValidatorReasonMap = {};
-    if (input[startField] !== null && input[endField] === null) {
-      reasonMap[endField as string] = { reasons: [`${endLabel} is required.`] };
-    }
-    if (input[endField] !== null && input[startField] === null) {
-      reasonMap[startField as string] = { reasons: [`${startLabel} is required.`] };
-    }
-    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+    if (!isPairIncomplete(input[startField], input[endField])) return VALID;
+    const reasonMap: ValidatorReasonMap =
+      input[startField] === null
+        ? { [startField as string]: { reasons: [`${startLabel} is required.`] } }
+        : { [endField as string]: { reasons: [`${endLabel} is required.`] } };
+    return { reasonMap };
   };
+}
+
+// Returns true when start and end are both present, non-sentinel, and out of order.
+function isPeriodOutOfOrder(start: string | null, end: string | null): boolean {
+  if (!start || !end) return false;
+  // Sentinel dates (1900-MM-DD) represent month/day only and may intentionally cross
+  // a year boundary (e.g. Apr 1 – Mar 31), so skip chronological check for them.
+  if (start.startsWith('1900-') || end.startsWith('1900-')) return false;
+  return start > end;
 }
 
 function requireChronologicalOrder(
@@ -110,15 +129,61 @@ function requireChronologicalOrder(
     const input = obj as TrusteeUpcomingKeyDatesInput;
     const start = input[startField] as string | null;
     const end = input[endField] as string | null;
-    if (!start || !end) return VALID;
-    // Sentinel dates (1900-MM-DD) represent month/day only and may intentionally cross
-    // a year boundary (e.g. Apr 1 – Mar 31), so skip chronological check for them.
-    if (start.startsWith('1900-') || end.startsWith('1900-')) return VALID;
-    if (start > end) {
+    if (!isPeriodOutOfOrder(start, end)) return VALID;
+    return {
+      reasonMap: {
+        [startField as string]: { reasons: [`${startLabel} must be before ${endLabel}.`] },
+        [endField as string]: { reasons: [`${endLabel} must be after ${startLabel}.`] },
+      },
+    };
+  };
+}
+
+// DEFAULT_MIN_DATE is October 1, 1979 -- the inception of the USTP trustee
+// program pilot -- so no completion year this document stores can predate it.
+const MIN_COMPLETION_YEAR = Number(DEFAULT_MIN_DATE.slice(0, 4));
+
+// Applies to every completion-year field below: auditCompletionYear,
+// tprCompletionYear, tirCompletionYear, annualReportCompletionYear, and
+// ch13AuditCompletionYear are structurally identical (a year paired with a
+// completion-status enum), so they share one range/integer check rather than
+// each form's save path risking drift the way ch13AuditCompletionYear's
+// one-off version did.
+function requireValidCompletionYear(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  label: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const value = input[field];
+    if (value === null || value === undefined) return VALID;
+    const isValidYear =
+      typeof value === 'number' && Number.isInteger(value) && value >= MIN_COMPLETION_YEAR;
+    if (!isValidYear) {
       return {
         reasonMap: {
-          [startField as string]: { reasons: [`${startLabel} must be before ${endLabel}.`] },
-          [endField as string]: { reasons: [`${endLabel} must be after ${startLabel}.`] },
+          [field as string]: {
+            reasons: [`${label} must be a whole number no earlier than ${MIN_COMPLETION_YEAR}.`],
+          },
+        },
+      };
+    }
+    return VALID;
+  };
+}
+
+function requireValidEnum(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  validValues: readonly string[],
+  label: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const value = input[field];
+    if (value !== null && !validValues.includes(value as string)) {
+      return {
+        reasonMap: {
+          [field as string]: { reasons: [`${label} must be one of: ${validValues.join(', ')}.`] },
         },
       };
     }
@@ -157,6 +222,7 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
@@ -178,34 +244,109 @@ function validateDateFields(): ValidatorFunction {
   };
 }
 
+const PAIR_DEFS = [
+  [
+    'tprReviewPeriodStart',
+    'tprReviewPeriodEnd',
+    'TPR Review Period Start',
+    'TPR Review Period End',
+  ],
+  [
+    'tirReviewPeriodStart',
+    'tirReviewPeriodEnd',
+    'TIR Review Period Start',
+    'TIR Review Period End',
+  ],
+  [
+    'tirSemiAnnualReviewPeriodStart',
+    'tirSemiAnnualReviewPeriodEnd',
+    'TIR Review Period 2 Start',
+    'TIR Review Period 2 End',
+  ],
+  ['tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'],
+  [
+    'auditCompletionYear',
+    'auditCompletionStatus',
+    'Field Exam/Audit Completion Status Year',
+    'Field Exam/Audit Completion Status',
+  ],
+  [
+    'tprCompletionYear',
+    'tprCompletionStatus',
+    'Trustee Performance Review Completion Status Year',
+    'Trustee Performance Review Completion Status',
+  ],
+  [
+    'tirCompletionYear',
+    'tirCompletionStatus',
+    'Trustee Interim Report Completion Status Year',
+    'Trustee Interim Report Completion Status',
+  ],
+  [
+    'ch13AuditCompletionYear',
+    'ch13AuditCompletionStatus',
+    'Audit Completion Year',
+    'Audit Completion Status',
+  ],
+  [
+    'annualReportCompletionYear',
+    'annualReportCompletionStatus',
+    'Annual Report Completion Status Year',
+    'Annual Report Completion Status',
+  ],
+] as const satisfies Array<
+  [keyof TrusteeUpcomingKeyDatesInput, keyof TrusteeUpcomingKeyDatesInput, string, string]
+>;
+
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
-    requirePair(
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
-      'TPR Review Period Start',
-      'TPR Review Period End',
-    ),
+    ...PAIR_DEFS.map(([f, s, fl, sl]) => requirePair(f, s, fl, sl)),
     requireChronologicalOrder(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'TPR Review Period Start',
       'TPR Review Period End',
     ),
-    requirePair(
-      'tirReviewPeriodStart',
-      'tirReviewPeriodEnd',
-      'TIR Review Period Start',
-      'TIR Review Period End',
+    requireValidCompletionYear('auditCompletionYear', 'Field Exam/Audit Completion Status Year'),
+    requireValidCompletionYear(
+      'tprCompletionYear',
+      'Trustee Performance Review Completion Status Year',
     ),
-    requirePair(
-      'tirSemiAnnualReviewPeriodStart',
-      'tirSemiAnnualReviewPeriodEnd',
-      'TIR Review Period 2 Start',
-      'TIR Review Period 2 End',
+    requireValidCompletionYear(
+      'tirCompletionYear',
+      'Trustee Interim Report Completion Status Year',
     ),
-    requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
+    requireValidCompletionYear('ch13AuditCompletionYear', 'Audit Completion Year'),
+    requireValidEnum(
+      'auditCompletionStatus',
+      ['CLOSED', 'NOT_CLOSED'],
+      'Field Exam/Audit Completion Status',
+    ),
+    requireValidEnum(
+      'tprCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Performance Review Completion Status',
+    ),
+    requireValidEnum(
+      'tirCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Interim Report Completion Status',
+    ),
+    requireValidCompletionYear(
+      'annualReportCompletionYear',
+      'Annual Report Completion Status Year',
+    ),
+    requireValidEnum(
+      'annualReportCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Annual Report Completion Status',
+    ),
+    requireValidEnum(
+      'ch13AuditCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Audit Completion Status',
+    ),
   ],
 };
 
@@ -213,6 +354,45 @@ export function validateTrusteeUpcomingKeyDates(
   input: TrusteeUpcomingKeyDatesInput,
 ): ValidatorResult {
   return validateObject(trusteeUpcomingKeyDatesSpec, input);
+}
+
+// Derived from PAIR_DEFS -- used only to forgive a pre-existing stale mismatch
+// on a pair a save isn't touching (see validateTrusteeUpcomingKeyDatesForSave).
+const SAVE_PAIR_FIELDS = PAIR_DEFS.map(([f, s]) => [f, s] as const);
+
+/**
+ * Validates a save against the whole document, then forgives any error whose
+ * field belongs entirely to a pair the save isn't touching (both fields
+ * unchanged from the stored document). Without this, a stored half-set pair
+ * on a field no card renders for a given appointment type -- unreachable
+ * through normal app usage, but possible via migration/seed/direct write --
+ * would permanently block every save from every form (see cams-lw0kd).
+ */
+export function validateTrusteeUpcomingKeyDatesForSave(
+  input: TrusteeUpcomingKeyDatesInput,
+  existing: TrusteeUpcomingKeyDates | null,
+): ValidatorResult {
+  const result = validateTrusteeUpcomingKeyDates(input);
+  if (result.valid || !existing) {
+    return result;
+  }
+
+  // validateObject() (see validation.ts) flattens every per-field error to a
+  // top-level key AND leaves a redundant raw '$' entry duplicating the same
+  // errors; drop '$' since its content is already represented by the
+  // flattened per-field keys below.
+  const { $: _root, ...reasonMap } = result.reasonMap ?? {};
+  for (const [first, second] of SAVE_PAIR_FIELDS) {
+    const existingFirst = (existing[first] as string | number | undefined) ?? null;
+    const existingSecond = (existing[second] as string | number | undefined) ?? null;
+    const touched = input[first] !== existingFirst || input[second] !== existingSecond;
+    if (!touched) {
+      delete reasonMap[first as string];
+      delete reasonMap[second as string];
+    }
+  }
+
+  return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
 }
 
 /**
@@ -230,8 +410,64 @@ export function validateTprDuePair(
   // Priority 2: complete date but no year type
   if (tprDue && !tprDueYearType) return 'TPR Due Year Type is required.';
   // Priority 3: year type set but no date
-  if (!tprDue && tprDueYearType) return validateMonthDay('1900--').reasons?.[0] ?? '';
+  if (!tprDue && tprDueYearType) return 'Must be a valid date mm/dd.';
   return '';
+}
+
+/**
+ * Validates that a two-field pair is either both set or both blank, for direct
+ * per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
+ * blur-time-feedback role, but for any Year+Status-shaped pair -- completion
+ * status, exam/audit year+type, or frequency+period).
+ */
+export function validateCompletionPairPresence(
+  first: number | string | '' | null | undefined,
+  second: number | string | '' | null | undefined,
+  label: string,
+  fieldNames: { first: string; second: string } = { first: 'Year', second: 'Status' },
+): string {
+  if (!isPairIncomplete(first, second)) return '';
+  return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
+}
+
+/**
+ * Completion status for a report in a given year, stored alongside its paired
+ * completion year.
+ */
+export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+
+/**
+ * Validates chronological order for the TPR review period start/end pair,
+ * for blur-time and per-render use (mirrors validateTprDuePair's role).
+ * Returns per-field errors when start comes after end, null when valid.
+ */
+export function validateTprReviewPeriodOrder(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): { startError: string; endError: string } | null {
+  if (!isPeriodOutOfOrder(start ?? null, end ?? null)) return null;
+  return {
+    startError: 'TPR Review Period Start must be before TPR Review Period End.',
+    endError: 'TPR Review Period End must be after TPR Review Period Start.',
+  };
+}
+
+/**
+ * Validates that the TPR review period start/end pair is either both set or
+ * both blank, for blur-time and per-render use (mirrors
+ * validateTprReviewPeriodOrder's role, but for presence rather than order).
+ */
+export function validateTprReviewPeriodPresence(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): { startError: string; endError: string } | null {
+  const startSet = !!start;
+  const endSet = !!end;
+  if (startSet === endSet) return null;
+  return {
+    startError: startSet ? '' : 'TPR Review Period Start is required.',
+    endError: endSet ? '' : 'TPR Review Period End is required.',
+  };
 }
 
 export type TrusteeUpcomingKeyDates = Auditable &
@@ -243,6 +479,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    lastTprSubmitted?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -260,12 +497,22 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    auditCompletionYear?: number;
+    auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
+    tprCompletionYear?: number;
+    tprCompletionStatus?: CompletionStatus;
+    tirCompletionYear?: number;
+    tirCompletionStatus?: CompletionStatus;
+    annualReportCompletionYear?: number;
+    annualReportCompletionStatus?: CompletionStatus;
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
+    ch13AuditCompletionYear?: number;
+    ch13AuditCompletionStatus?: CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -275,6 +522,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  lastTprSubmitted: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -292,12 +540,22 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: CompletionStatus | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: CompletionStatus | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: CompletionStatus | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
+  ch13AuditCompletionYear: number | null;
+  ch13AuditCompletionStatus: CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -313,6 +571,7 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
+  | 'lastTprSubmitted'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -336,6 +595,7 @@ export const DATE_FIELDS: DateField[] = [
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
+  'lastTprSubmitted',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
@@ -355,9 +615,101 @@ export const DATE_FIELDS: DateField[] = [
   'bondRenewalDate',
 ];
 
-type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';
+type TextField =
+  | 'tprDueYearType'
+  | 'tprFrequency'
+  | 'tirFrequency'
+  | 'auditCompletionStatus'
+  | 'tprCompletionStatus'
+  | 'tirCompletionStatus'
+  | 'annualReportCompletionStatus'
+  | 'ch13AuditCompletionStatus';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tprFrequency', 'tirFrequency'];
+export const TEXT_FIELDS: TextField[] = [
+  'tprDueYearType',
+  'tprFrequency',
+  'tirFrequency',
+  'auditCompletionStatus',
+  'tprCompletionStatus',
+  'tirCompletionStatus',
+  'annualReportCompletionStatus',
+  'ch13AuditCompletionStatus',
+];
+
+/**
+ * Fields whose values are neither ISO date strings (DATE_FIELDS) nor short enum
+ * strings (TEXT_FIELDS), but still only need `!== null` truthiness to copy/diff --
+ * a mix of numbers and the one non-enum-named string field, upcomingExamOrAuditType.
+ */
+type ScalarField =
+  | 'lastAuditFiscalYear'
+  | 'upcomingExamOrAuditYear'
+  | 'upcomingExamOrAuditType'
+  | 'auditCompletionYear'
+  | 'tprCompletionYear'
+  | 'tirCompletionYear'
+  | 'annualReportCompletionYear'
+  | 'ch13AuditCompletionYear';
+
+export const SCALAR_FIELDS: ScalarField[] = [
+  'lastAuditFiscalYear',
+  'upcomingExamOrAuditYear',
+  'upcomingExamOrAuditType',
+  'auditCompletionYear',
+  'tprCompletionYear',
+  'tirCompletionYear',
+  'annualReportCompletionYear',
+  'ch13AuditCompletionYear',
+];
+
+/**
+ * The four fields typed as CompletionStatus ('COMPLETE' | 'INCOMPLETE').
+ * auditCompletionStatus is deliberately excluded -- it's a different enum
+ * ('CLOSED' | 'NOT_CLOSED').
+ */
+const COMPLETION_STATUS_FIELDS = [
+  'tprCompletionStatus',
+  'tirCompletionStatus',
+  'annualReportCompletionStatus',
+  'ch13AuditCompletionStatus',
+] as const;
+
+/**
+ * TrusteeUpcomingKeyDates declares its generic fields optional (absence =
+ * undefined), but some stored documents -- written before the current
+ * write path's null-skipping guarantee existed, or via migration/seed --
+ * can still carry an explicit null. Consumers that check `!== undefined`
+ * mishandle that null (see cams-2upxm). Normalizing at the fetch boundary
+ * (Api2.getUpcomingKeyDates) means every consumer downstream of the fetch
+ * can trust the documented optional shape without checking `== null`
+ * everywhere individually.
+ *
+ * Also upper-cases any CompletionStatus field stored in a legacy casing
+ * (e.g. 'Complete'/'Incomplete', written before commit 296b5fd5e unified
+ * ch13AuditCompletionStatus on the 'COMPLETE'/'INCOMPLETE' casing everywhere
+ * else already used). Normalizing here means callers never need to worry
+ * about casing, and a pre-existing document with a stale-cased value
+ * self-heals into the canonical casing the moment it's fetched, without a
+ * one-time migration (see cams-og9ys.10).
+ */
+export function normalizeTrusteeUpcomingKeyDates(
+  doc: TrusteeUpcomingKeyDates | null,
+): TrusteeUpcomingKeyDates | null {
+  if (!doc) return doc;
+  const normalized = { ...doc } as Record<string, unknown>;
+  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS, ...SCALAR_FIELDS]) {
+    if (normalized[field] === null) {
+      delete normalized[field];
+    }
+  }
+  for (const field of COMPLETION_STATUS_FIELDS) {
+    const value = normalized[field];
+    if (typeof value === 'string' && value.toUpperCase() !== value) {
+      normalized[field] = value.toUpperCase();
+    }
+  }
+  return normalized as TrusteeUpcomingKeyDates;
+}
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

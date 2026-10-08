@@ -74,7 +74,7 @@ export function ConsolidationOrderAccordionView(
       id={`order-list-${viewModel.order.id}`}
       expandedId={viewModel.expandedAccordionId}
       onExpand={viewModel.handleOnExpand}
-      onCollapse={viewModel.handleClearInputs}
+      onCollapse={viewModel.handleOnCollapse}
       hidden={viewModel.hidden}
     >
       <section

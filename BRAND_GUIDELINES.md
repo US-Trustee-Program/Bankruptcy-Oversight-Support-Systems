@@ -758,9 +758,9 @@ Applies to both USWDS `<table>` and `CamsTable`, except where noted.
 CamsTable uses two mixins from `_cams-table-mixins.scss` to handle responsive layout:
 
 - **`cams-table-stacked`**: Switches to vertical block layout on small screens
-  - Hides header row (visually hidden, not removed for accessibility)
+  - Header row is `display: none`, which removes it from the accessibility tree (not visually hidden, which would leave it in the tree and cause screen readers to read all column headers up front, then pair each cell redundantly)
   - Each cell becomes full-width block
-  - Shows column labels via `data-cell` attribute using `::before` pseudo-element
+  - Shows column labels as a real DOM element (`<span className="cams-table__cell-label">`) — not CSS generated content, which is not reliably exposed to screen readers (same principle applied to required-field indicators elsewhere in CAMS: use a visually-hidden span instead of CSS `::after` pseudo-content)
   - Row borders come from USWDS defaults (`1px solid #1b1b1b`)
 
 - **`cams-table-flex-row`**: Enables horizontal flex-row column layout on larger screens

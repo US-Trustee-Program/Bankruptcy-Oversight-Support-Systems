@@ -13,6 +13,8 @@ export const EXTENSION_REGEX = /^\d{1,6}$/;
 
 export const ZOOM_MEETING_ID_REGEX = /^\d{9,11}$/;
 
+export const ZOOM_PASSCODE_REGEX = /^\d{10}$/;
+
 export const ZIP_REGEX = /^(\d{5}|\d{5}-\d{4})$/;
 
 export const WEBSITE_REGEX =

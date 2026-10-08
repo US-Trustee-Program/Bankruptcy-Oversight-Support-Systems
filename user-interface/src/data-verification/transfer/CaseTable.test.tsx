@@ -32,6 +32,19 @@ describe('CaseTable component', () => {
       expect(taxIdColumn).toBeInTheDocument();
       expect(taxIdColumn).toHaveTextContent('');
     });
+
+    test('should render the case title for each case row', () => {
+      render(
+        <BrowserRouter>
+          <CaseTable id="test-case-table" cases={cases}></CaseTable>
+        </BrowserRouter>,
+      );
+
+      cases.forEach((bCase, idx) => {
+        const row = screen.getByTestId(`test-case-table-row-${idx}`);
+        expect(row).toHaveTextContent(bCase.caseTitle);
+      });
+    });
   });
 
   describe('for empty row', () => {

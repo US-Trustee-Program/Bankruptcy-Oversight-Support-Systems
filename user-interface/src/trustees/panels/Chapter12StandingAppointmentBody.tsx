@@ -1,0 +1,58 @@
+import AppointmentBasicFields from './AppointmentBasicFields';
+import Chapter12StandingAuditCard from './Chapter12StandingAuditCard';
+import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
+import StandingBudgetCard from './StandingBudgetCard';
+import Chapter12StandingOtherKeyDatesCard from './Chapter12StandingOtherKeyDatesCard';
+import KeyDatesGate from './KeyDatesGate';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
+
+export interface Chapter12StandingAppointmentBodyProps {
+  appointment: TrusteeAppointment;
+}
+
+export default function Chapter12StandingAppointmentBody(
+  props: Readonly<Chapter12StandingAppointmentBodyProps>,
+) {
+  const { appointment } = props;
+  const featureFlags = useFeatureFlags();
+  const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
+
+  return (
+    <>
+      <AppointmentBasicFields appointment={appointment} />
+      <KeyDatesGate
+        trusteeId={appointment.trusteeId}
+        appointmentId={appointment.id}
+        shouldFetch={displayKeyDates}
+        errorId={`chapter12-standing-key-dates-error-${appointment.id}`}
+        errorMessage="Failed to load Chapter 12 Standing key dates. Please refresh and try again."
+      >
+        {(data, isLoading) => (
+          <>
+            <Chapter12StandingAuditCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+            />
+            <TrusteePerformanceReportCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+              variant="chapter12-standing"
+            />
+            <StandingBudgetCard appointmentId={appointment.id} variant="chapter12-standing" />
+            <Chapter12StandingOtherKeyDatesCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+            />
+          </>
+        )}
+      </KeyDatesGate>
+    </>
+  );
+}
