@@ -1,3 +1,4 @@
+import MockData from '@common/cams/test-utilities/mock-data';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ApiToDataflowsGatewayImpl,
@@ -7,13 +8,10 @@ import { StorageQueueHumbleObject } from '../../../humble-objects/storage-queue-
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
   TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
-  CaseAssignmentDownstreamEvent,
-  TrusteeAppointmentDownstreamEvent,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
@@ -102,43 +100,13 @@ describe('ApiToDataflowsGatewayImpl', () => {
   describe('queueCaseAssignmentEvent', () => {
     test('sends the case assignment event as-is to the case-assignment queue', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const eventData: any = {
-        caseId: '081-12-34567',
-        userId: 'user123',
-        name: 'Test User',
-        role: 'TrialAttorney',
-        assignedOn: '2024-01-01',
-      };
-      const event: CaseAssignmentDownstreamEvent = { ...eventData, acmsProfessionalId: null };
+      const event = MockData.getAttorneyAssignment();
 
       await gateway.queueCaseAssignmentEvent(event);
 
       expect(fromConnectionStringSpy).toHaveBeenCalledWith(
         'UseDevelopmentStorage=true',
         CASE_ASSIGNMENT_EVENT_QUEUE.queueName,
-      );
-      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
-    });
-  });
-
-  describe('queueTrusteeAppointmentEvent', () => {
-    test('sends the trustee appointment event as-is to the trustee-appointment-event queue', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl();
-      const event: TrusteeAppointmentDownstreamEvent = {
-        caseId: '081-12-34567',
-        trusteeId: 'trustee-123',
-        acmsProfessionalId: 'NY-00063',
-        assignedOn: '2024-01-01T00:00:00.000Z',
-        appointedDate: '2024-01-01',
-        chapter: '7',
-      };
-
-      await gateway.queueTrusteeAppointmentEvent(event);
-
-      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
-        'UseDevelopmentStorage=true',
-        TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName,
       );
       expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
     });
@@ -179,33 +147,14 @@ describe('ApiToDataflowsGatewayImpl', () => {
     });
   });
 
-  // Shared behavior across all five queue methods: each delegates to the private enqueue(),
+  // Shared behavior across all four queue methods: each delegates to the private enqueue(),
   // so a send failure must propagate the same way regardless of which public method was called.
   describe('when the underlying send fails', () => {
     test.each([
       [
         'queueCaseAssignmentEvent',
         (gateway: ApiToDataflowsGatewayImpl) =>
-          gateway.queueCaseAssignmentEvent({
-            caseId: '081-12-34567',
-            userId: 'user123',
-            name: 'Test User',
-            role: 'TrialAttorney',
-            assignedOn: '2024-01-01',
-            acmsProfessionalId: null,
-          } as CaseAssignmentDownstreamEvent),
-      ],
-      [
-        'queueTrusteeAppointmentEvent',
-        (gateway: ApiToDataflowsGatewayImpl) =>
-          gateway.queueTrusteeAppointmentEvent({
-            caseId: '081-12-34567',
-            trusteeId: 'trustee-123',
-            acmsProfessionalId: 'NY-00063',
-            assignedOn: '2024-01-01T00:00:00.000Z',
-            appointedDate: '2024-01-01',
-            chapter: '7',
-          } as TrusteeAppointmentDownstreamEvent),
+          gateway.queueCaseAssignmentEvent(MockData.getAttorneyAssignment()),
       ],
       [
         'queueTrusteeVerificationRemap',

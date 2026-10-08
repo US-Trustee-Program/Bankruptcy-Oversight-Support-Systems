@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, Mock } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import TrusteeVerificationRemapUseCase from './trustee-verification-remap';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
@@ -7,10 +7,7 @@ import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import {
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -45,9 +42,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
-  let mockQueueTrusteeAppointmentEvent: Mock<
-    (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
-  >;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -58,7 +52,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
-    mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -69,13 +62,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
         delete: mockDelete,
       }),
     );
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
-      queueCaseAssignmentEvent: vi.fn(),
-      queueCaseReload: vi.fn(),
-      queueTrusteeVerificationRemap: vi.fn(),
-      queueTrusteeChangeNotification: vi.fn(),
-    });
 
     useCase = new TrusteeVerificationRemapUseCase(context);
   });
@@ -105,7 +91,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 1,
       documentsFailed: 0,
-      downstreamNotificationFailedCount: 0,
       totalCandidates: 1,
       pageSize: 1,
       remainingCount: 0,
@@ -197,65 +182,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  test('queues a downstream event per remapped case when the feature flag is on', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
-    );
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    await useCase.remapPage(makeMessage(), 25);
-
-    expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
-    );
-  });
-
-  test('does not queue a downstream event when the feature flag is off', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = false;
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    await useCase.remapPage(makeMessage(), 25);
-
-    expect(mockQueueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-
-  test('counts a failed downstream notification separately without treating the remap as failed', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
-    );
-    mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    const result = await useCase.remapPage(makeMessage(), 25);
-
-    // The Cosmos remap (upsert + delete) still happened -- only the downstream notification failed.
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(result.documentsWritten).toBe(1);
-    expect(result.documentsFailed).toBe(0);
-    expect(result.downstreamNotificationFailedCount).toBe(1);
-  });
-
   test('reports a positive remainingCount when surrogates exceed the requested page size', async () => {
     const surrogates = Array.from({ length: 30 }, (_, i) =>
       makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
@@ -283,7 +209,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 0,
       documentsFailed: 0,
-      downstreamNotificationFailedCount: 0,
       totalCandidates: 0,
       pageSize: 0,
       remainingCount: 0,

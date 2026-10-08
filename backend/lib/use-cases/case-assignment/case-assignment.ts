@@ -197,18 +197,15 @@ export class CaseAssignmentUseCase {
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
 
-    if (context.featureFlags['downstream-staff-assignments-enabled']) {
-      for (const assignment of [...addedAssignments, ...removedAssignments]) {
-        const downstreamEvent = { ...assignment, acmsProfessionalId: null };
-        try {
-          await this.apiToDataflowsGateway.queueCaseAssignmentEvent(downstreamEvent);
-        } catch (queueError) {
-          context.logger.error(
-            MODULE_NAME,
-            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId}.`,
-            queueError,
-          );
-        }
+    for (const assignment of [...addedAssignments, ...removedAssignments]) {
+      try {
+        await this.apiToDataflowsGateway.queueCaseAssignmentEvent(assignment);
+      } catch (queueError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId}.`,
+          queueError,
+        );
       }
     }
 

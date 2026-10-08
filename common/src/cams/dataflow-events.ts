@@ -12,30 +12,6 @@ import { TrusteeChangeSet } from './notifications';
 export type CaseAssignmentEvent = CaseAssignment;
 
 /**
- * CaseAssignmentEvent extended with ACMS integration fields for downstream consumers.
- * acmsProfessionalId carries the compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}")
- * so the downstream handler needs no external lookups. null when unresolvable.
- */
-export type CaseAssignmentDownstreamEvent = CaseAssignmentEvent & {
-  acmsProfessionalId: string | null;
-};
-
-/**
- * Downstream event for trustee case appointments. Carries ACMS-native field values
- * so the downstream SQL handler requires no external lookups or translation.
- * APPT_TYPE is always 'TR' for trustee appointments and is hardcoded by the handler.
- */
-export type TrusteeAppointmentDownstreamEvent = {
-  caseId: string;
-  trusteeId: string;
-  acmsProfessionalId: string | null;
-  assignedOn: string;
-  appointedDate?: string;
-  unassignedOn?: string;
-  chapter: string;
-};
-
-/**
  * Enqueued by TrusteeMatchVerificationUseCase.approveVerification (one message per approval,
  * regardless of how many surrogate cases share the fingerprint). Processed asynchronously by
  * the trustee-verification-remap dataflow, which remaps every surrogate CaseAppointment

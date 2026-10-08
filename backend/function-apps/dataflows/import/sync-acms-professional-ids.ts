@@ -318,8 +318,7 @@ function setup() {
   });
 
   app.timer(TIMER_TRIGGER, {
-    // Daily, after the ACMS replica refresh completes — acms-cams-transition's daily sync runs
-    // at 02:00 UTC for the same reason; this follows 30 minutes after it.
+    // Daily, after the ACMS replica refresh completes (02:00 UTC); this runs 30 minutes later.
     schedule: '0 30 2 * * *',
     extraOutputs: [START],
     handler: timerTrigger,

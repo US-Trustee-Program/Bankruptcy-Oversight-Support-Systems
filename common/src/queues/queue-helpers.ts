@@ -1,6 +1,5 @@
 /**
  * Shared queue helper functions for Azure Storage Queues
- * Used by both backend dataflows and downstream integration functions
  */
 
 /**
