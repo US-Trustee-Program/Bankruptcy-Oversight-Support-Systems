@@ -24,6 +24,7 @@ type FlatOfficeDetail = {
   courtId: string;
   courtName: string;
   courtDivisionCode: string;
+  ustDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;

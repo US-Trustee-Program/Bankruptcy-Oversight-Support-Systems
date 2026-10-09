@@ -1787,6 +1787,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         context,
         makeEvent('case-001', 'Common Name'),
         ['t-1', 't-2'],
+        undefined,
       );
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({

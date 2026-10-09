@@ -6,6 +6,7 @@ import CaseClosedEvent from './events/case-closed-event';
 import TrusteeChangeNotificationEvent from './events/trustee-change-notification-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
+import BackfillUstDivisionCode from './migrations/backfill-ust-division-code';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
@@ -108,6 +109,7 @@ dataflows.register(
   BackfillPhoneticTokens,
   BackfillCaseAppointmentDates,
   BackfillTrusteePhoneticTokens,
+  BackfillUstDivisionCode,
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,

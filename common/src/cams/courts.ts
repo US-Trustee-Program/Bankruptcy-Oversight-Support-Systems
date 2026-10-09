@@ -20,6 +20,7 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         courtId: division.court.courtId,
         courtName: division.court.courtName,
         courtDivisionCode: division.divisionCode,
+        ustDivisionCode: division.ustDivisionCode,
         courtDivisionName: division.courtOffice.courtOfficeName,
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
@@ -38,6 +39,7 @@ export type CourtDivisionDetails = {
   courtId: string;
   courtName: string;
   courtDivisionCode: string;
+  ustDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;

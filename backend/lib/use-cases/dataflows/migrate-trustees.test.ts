@@ -1512,6 +1512,49 @@ describe('Migrate Trustees Use Case', () => {
 
       expect(districtMap.size).toBe(0);
     });
+
+    test('should prefer ustDivisionCode over divisionCode so Winchester and Chattanooga stay distinct', () => {
+      const easternTnOffices: UstpOfficeDetails[] = [
+        {
+          officeCode: 'USTP_REGION_04_NASHVILLE',
+          officeName: 'Nashville',
+          idpGroupName: 'USTP REGION 04 NASHVILLE',
+          regionId: '4',
+          regionName: 'Atlanta',
+          groups: [
+            {
+              groupDesignator: 'TN',
+              divisions: [
+                {
+                  divisionCode: '491',
+                  ustDivisionCode: '491',
+                  court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                  courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Chattanooga' },
+                },
+                {
+                  divisionCode: '491',
+                  ustDivisionCode: '494',
+                  court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                  courtOffice: { courtOfficeCode: '4', courtOfficeName: 'Winchester' },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const districtMap = buildDistrictToDivisionsMap(easternTnOffices);
+      const divisionCodes = districtMap.get('0649')!.map((d) => d.divisionCode);
+
+      expect(divisionCodes).toEqual(['491', '494']);
+    });
+
+    test('should fall back to divisionCode when ustDivisionCode is absent', () => {
+      const districtMap = buildDistrictToDivisionsMap(mockOffices);
+
+      const divisions = districtMap.get('081');
+      expect(divisions!.map((d) => d.divisionCode)).toEqual(['MAH', 'MAN', 'MAW']);
+    });
   });
 
   describe('detectAmbiguousFlagTrustees', () => {

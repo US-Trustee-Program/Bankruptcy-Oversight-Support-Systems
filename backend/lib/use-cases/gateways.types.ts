@@ -791,7 +791,8 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE'
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
-  | 'ACS_BOUNCE_POLL_STATE';
+  | 'ACS_BOUNCE_POLL_STATE'
+  | 'UST_DIVISION_CODE_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -834,6 +835,15 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type CaseAppointmentDateBackfillState = RuntimeState & {
   documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type UstDivisionCodeBackfillState = RuntimeState & {
+  documentType: 'UST_DIVISION_CODE_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
   startedAt: string;

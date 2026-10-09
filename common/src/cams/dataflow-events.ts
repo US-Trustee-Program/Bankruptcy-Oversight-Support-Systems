@@ -126,6 +126,7 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
   chapter?: string;
   courtDivisionCode?: string;
+  ustDivisionCode?: string;
   profCode?: string;
   /**
    * Raw DXTR group designator (AO_CS.GRP_DES) for this record - one half of ACMS's compound

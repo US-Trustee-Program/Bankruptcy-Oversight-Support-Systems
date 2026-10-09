@@ -247,6 +247,8 @@ describe('Test DXTR Gateway', () => {
         debtorTypeLabel: expectedDebtorTypeLabel,
         petitionCode: 'VP',
         petitionLabel: 'Voluntary',
+        courtDivisionCode: '491',
+        ustDivisionCode: '494',
       },
     });
 
@@ -295,6 +297,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.courtName).toEqual(testCase.courtName);
     expect(actualResult.courtDivisionCode).toEqual(testCase.courtDivisionCode);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
+    expect(actualResult.ustDivisionCode).toEqual('494');
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
 
@@ -1808,6 +1811,49 @@ describe('getTrusteeAppointments', () => {
     expect(result.events[0].courtDivisionCode).toBe('081');
   });
 
+  test('maps ustDivisionCode (bare CS_DIV) separately from courtDivisionCode (CS_DIV_ACMS)', async () => {
+    // Winchester: CS_DIV_ACMS=491 (Chattanooga's ACMS code) but bare CS_DIV=494.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '491-24-12345',
+            courtId: '0649',
+            chapter: '7',
+            courtDivisionCode: '491',
+            ustDivisionCode: '494',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].courtDivisionCode).toBe('491');
+    expect(result.events[0].ustDivisionCode).toBe('494');
+  });
+
   test('maps groupDesignator into the result alongside profCode', async () => {
     // groupDesignator (AO_CS.GRP_DES) is a raw DXTR/ACMS fact crossed as-is - it is NOT combined
     // into a formatted acmsProfessionalId here. That CAMS-specific construction (and its
@@ -2265,6 +2311,59 @@ describe('getAppointmentDatesByCaseIds', () => {
     } as QueryResults);
 
     const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.size).toBe(0);
+  });
+});
+
+describe('getUstDivisionCodesByCaseIds', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  test('returns empty map when caseIds is empty', async () => {
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, []);
+    expect(result).toEqual(new Map());
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  test('returns map of caseId to bare ustDivisionCode, distinct from the ACMS-coded caseId', async () => {
+    // Winchester's caseId is still ACMS-coded (491-...) but its bare CS_DIV is 494.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '491-25-00001', ustDivisionCode: '494' },
+          { caseId: '491-25-00002', ustDivisionCode: '491' },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, [
+      '491-25-00001',
+      '491-25-00002',
+    ]);
+
+    expect(result.get('491-25-00001')).toBe('494');
+    expect(result.get('491-25-00002')).toBe('491');
+  });
+
+  test('returns empty map when no records returned from DXTR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, ['491-25-00001']);
 
     expect(result.size).toBe(0);
   });

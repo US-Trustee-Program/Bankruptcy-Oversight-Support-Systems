@@ -82,6 +82,7 @@ type TrusteeAppointmentEventRecord = {
   courtId: string;
   chapter?: string;
   courtDivisionCode?: string;
+  ustDivisionCode?: string;
   groupDesignator?: string;
   firstName?: string;
   middleName?: string;
@@ -194,6 +195,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
+        cs_div.CS_DIV as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -407,6 +409,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const CASE_SEARCH_SELECT = `
       SELECT
       cs_div.CS_DIV_ACMS as courtDivisionCode,
+      cs_div.CS_DIV as ustDivisionCode,
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
@@ -746,6 +749,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
+        cs_div.CS_DIV as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -1359,6 +1363,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
+        CS_DIV.CS_DIV AS ustDivisionCode,
         C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
@@ -1436,6 +1441,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
+        ustDivisionCode: record.ustDivisionCode,
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
@@ -1500,6 +1506,48 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     );
 
     return this.getMostRecentAppointmentDates(records);
+  }
+
+  async getUstDivisionCodesByCaseIds(
+    context: ApplicationContext,
+    caseIds: string[],
+  ): Promise<Map<string, string>> {
+    if (caseIds.length === 0) return new Map();
+
+    const params: DbTableFieldSpec[] = caseIds.map((caseId, idx) => ({
+      name: `caseId${idx}`,
+      type: mssql.VarChar,
+      value: caseId,
+    }));
+
+    const caseIdVars = caseIds.map((_, idx) => `@caseId${idx}`).join(', ');
+
+    const query = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
+        CS_DIV.CS_DIV AS ustDivisionCode
+      FROM AO_CS C
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) IN (${caseIdVars})
+    `;
+
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
+
+    type UstDivisionCodeRecord = {
+      caseId: string;
+      ustDivisionCode: string;
+    };
+
+    const records = this.trusteeAppointmentsQueryCallback<UstDivisionCodeRecord>(
+      context,
+      queryResult,
+    );
+
+    const result = new Map<string, string>();
+    for (const record of records) {
+      result.set(record.caseId, record.ustDivisionCode);
+    }
+    return result;
   }
 
   // REC's embedded date can be blank/'000000'/malformed; TX.TX_DATE is a

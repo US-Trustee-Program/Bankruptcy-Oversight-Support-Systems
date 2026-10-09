@@ -121,6 +121,44 @@ describe('common court library tests', () => {
     const courtOffices = ustpOfficeToCourtDivision(ustpOffice);
     expect(courtOffices).toEqual(expectedCourtOffices);
   });
+
+  test('should carry ustDivisionCode through separately from courtDivisionCode', () => {
+    const easternTnOffice: UstpOfficeDetails = {
+      officeCode: 'USTP_CAMS_Region_04_Office_Nashville',
+      idpGroupName: 'USTP CAMS Region 04 Office Nashville',
+      officeName: 'Nashville',
+      regionId: '4',
+      regionName: 'Atlanta',
+      groups: [
+        {
+          groupDesignator: 'TN',
+          divisions: [
+            {
+              divisionCode: '491',
+              ustDivisionCode: '491',
+              court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+              courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Chattanooga' },
+            },
+            {
+              divisionCode: '491',
+              ustDivisionCode: '494',
+              court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+              courtOffice: { courtOfficeCode: '4', courtOfficeName: 'Winchester' },
+            },
+          ],
+        },
+      ],
+    };
+
+    const courtOffices = ustpOfficeToCourtDivision(easternTnOffice);
+
+    expect(
+      courtOffices.map((c) => ({ code: c.courtDivisionCode, ust: c.ustDivisionCode })),
+    ).toEqual([
+      { code: '491', ust: '491' },
+      { code: '491', ust: '494' },
+    ]);
+  });
 });
 
 const seattleOffice = {

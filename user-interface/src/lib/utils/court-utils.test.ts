@@ -683,6 +683,43 @@ describe('court-utils', () => {
         courtDivisionName: 'Manhattan',
       });
     });
+
+    test('should prefer ustDivisionCode so Winchester and Chattanooga stay distinct', () => {
+      // Chattanooga and Winchester share courtDivisionCode '491' (CS_DIV_ACMS) but have
+      // distinct ustDivisionCode (bare CS_DIV) values — see CAMS-936.
+      const easternTnCourts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Chattanooga',
+          officeCode: '1',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '4',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+      ];
+
+      const divisions = getDivisionsForDistrict(easternTnCourts, '0649');
+
+      expect(divisions.map((d) => d.courtDivisionCode)).toEqual(
+        expect.arrayContaining(['491', '494']),
+      );
+    });
   });
 
   describe('groupDivisionsByDistrict', () => {
