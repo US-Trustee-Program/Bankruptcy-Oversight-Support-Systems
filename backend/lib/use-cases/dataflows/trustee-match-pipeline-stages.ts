@@ -100,6 +100,15 @@ function isBareInitial(namePart: string): boolean {
  */
 type NamePartQuality = 'exact' | 'strong' | 'none';
 
+/** Whether a first name passes only on spelling distance, the weakest given-name evidence. */
+function isSpellingOnlyMatch(memo: NormalizedMemo, source: string, cams: string): boolean {
+  if (!source || !cams || source === cams) return false;
+  if (isInitialOf(source, cams) || isInitialOf(cams, source)) return false;
+  if (isBareInitial(source) || isBareInitial(cams) || isKnownNicknamePair(source, cams))
+    return false;
+  return memoizedIsPlausibleNicknameByDistance(memo, source, cams);
+}
+
 function matchNamePart(memo: NormalizedMemo, source: string, cams: string): NamePartQuality {
   if (!source || !cams) return 'none';
   if (source === cams) return 'exact';
@@ -116,7 +125,10 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  */
 type NameMatchQuality = 'exact' | 'strong' | 'weak';
 
-type NameMatchVerdict = { pass: true; quality: NameMatchQuality } | { pass: false };
+/** firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
+ * or a known nickname), which resolveByStateOnly does not accept without a contact signal. */
+type NameMatchVerdict =
+  { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
 
 const NO_MATCH: NameMatchVerdict = { pass: false };
 
@@ -221,6 +233,9 @@ function matchName(
   // An exact first name outweighs a conflicting middle name, the least reliable name part; the
   // verdict drops to 'strong' so resolvers requiring an exact name still decline.
   const exact = firstQuality === 'exact' && middleQuality !== 'strong' && !middleConflicts;
+  if (isSpellingOnlyMatch(memo, sourceFirst, camsFirst)) {
+    return { pass: true, quality: 'strong', firstNameBySpellingOnly: true };
+  }
   return { pass: true, quality: exact ? 'exact' : 'strong' };
 }
 
@@ -654,7 +669,9 @@ function normalizeCandidateNameFields(
 
 /** matchName's verdict as it is stored on a candidate - quality is present only on a pass, so a
  * reader cannot mistake a failed match's quality for a real one. */
-type NameMatchScore = (ScoreRecord & { pass: true; quality: NameMatchQuality }) | { pass: false };
+type NameMatchScore =
+  | (ScoreRecord & { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true })
+  | { pass: false };
 
 /**
  * A candidate's name verdict, always present by RESOLVE: a candidate whose scoring threw sets
@@ -662,6 +679,11 @@ type NameMatchScore = (ScoreRecord & { pass: true; quality: NameMatchQuality }) 
  */
 function nameMatch(candidate: PipelineCandidate): NameMatchScore {
   return candidate.scores.doesNameMatch as NameMatchScore;
+}
+
+function isSpellingOnlyFirstName(candidate: PipelineCandidate): boolean {
+  const score = nameMatch(candidate);
+  return score.pass && score.firstNameBySpellingOnly === true;
 }
 
 /** Every compared name part matched literally. */
@@ -1224,11 +1246,16 @@ export function resolveByEmailAddress(): Stage {
   };
 }
 
-/** A likely-typo phone match, trusted only with an exact name. */
+/**
+ * A likely-typo phone match, trusted only with an exact name. Exact-phone candidates stay in the
+ * running, so candidates that tied at resolveByPhone still tie here instead of a typo winning.
+ */
 export function resolveByPhoneWithTypo(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => isExactNameMatch(c) && c.scores.doesPhoneMatch?.quality === 'strong',
+      (c) =>
+        isExactNameMatch(c) &&
+        (isExactPhoneMatch(c) || c.scores.doesPhoneMatch?.quality === 'strong'),
     );
     return resolveOnCandidate(
       state,
@@ -1252,11 +1279,15 @@ export function resolveByAddress(): Stage {
   };
 }
 
-/** State agreement is the only signal, so a weak name never survives. */
+/** State agreement is the only signal, so neither a weak name nor a first name that matched only
+ * by spelling survives. */
 export function resolveByStateOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => hasExactSurnameMatch(c) && c.scores.doesStateMatch?.pass === true,
+      (c) =>
+        hasExactSurnameMatch(c) &&
+        !isSpellingOnlyFirstName(c) &&
+        c.scores.doesStateMatch?.pass === true,
     );
     return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByStateOnly');
   };

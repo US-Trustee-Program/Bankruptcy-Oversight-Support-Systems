@@ -336,6 +336,13 @@ async function run() {
   const trusteeById = new Map(trustees.map((t) => [t.trusteeId, t]));
   const trusteeNameById = new Map(trustees.map((t) => [t.trusteeId, t.name]));
   const errored = records.filter((r) => r.evidence?.sourceRaw);
+  // A divergence count is only evidence if every exported record was replayed.
+  if (errored.length === 0 || errored.length !== records.length) {
+    throw new Error(
+      `Only ${errored.length} of ${records.length} exported records carry evidence.sourceRaw; ` +
+        'refusing to report divergences for a partial replay.',
+    );
+  }
   console.log(`${errored.length} records to replay (all dispositions, including linked).\n`);
 
   await seedTrustees(uri, dbName, trustees);

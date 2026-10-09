@@ -271,7 +271,8 @@ The stages run strongest signal first: phone, email, phone within a likely typo,
 Two stages run last and resolve on evidence weaker than a contact signal:
 
 - **State only** — the candidate's state agrees and its name is exact or strong, ranked like any
-  other stage. A weak name never survives.
+  other stage. A weak name never survives, and neither does a first name that matched only by
+  spelling distance (not an initial or a known nickname); those need a contact signal.
 - **Name only** — the candidate is the only exact name match in the pool, its state does not
   contradict, and the CAMS trustee holds contact data. Weaker name matches are not rivals. This is
   the one stage that requires a single candidate, because being the only exact name is its signal.

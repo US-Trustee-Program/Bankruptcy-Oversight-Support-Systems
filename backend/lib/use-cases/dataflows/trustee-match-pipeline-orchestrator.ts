@@ -41,9 +41,11 @@ function resolveStages(): Stage[] {
 }
 
 /**
- * Runs one discovery stage and the shared resolve stages in their own nested state, then promotes
- * every surviving candidate into the outer state. Promotion is unconditional because discovery
- * already evicted irrelevant candidates (see shouldEvictFromDiscovery).
+ * Runs one discovery stage and the shared resolve stages in a nested state seeded with every
+ * candidate earlier tiers promoted, so a tier resolves against everything recalled so far and a
+ * narrower search cannot hide a rival an earlier tier found. Then promotes every surviving
+ * candidate into the outer state. Promotion is unconditional because discovery already evicted
+ * irrelevant candidates (see shouldEvictFromDiscovery).
  */
 async function runNestedTier(
   acmsRaw: DxtrTrusteeParty,
@@ -51,6 +53,9 @@ async function runNestedTier(
   discoveryStage: Stage,
 ): Promise<PipelineState> {
   const nestedState = createInitialState(acmsRaw);
+  for (const candidate of outerState.candidates.values()) {
+    promoteCandidate(nestedState, candidate);
+  }
   // A fresh state starts unnormalized, so the source name is normalized again here (pure and
   // idempotent). The skip gate is not repeated: it reads only sourceRaw, which the caller checked.
   const nestedResult = await runPipeline(nestedState, [

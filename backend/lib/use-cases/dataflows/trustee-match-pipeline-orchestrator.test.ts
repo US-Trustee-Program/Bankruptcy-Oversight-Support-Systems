@@ -146,6 +146,59 @@ describe('runTrusteeMatchPipeline', () => {
     });
   });
 
+  // A later tier resolves against everything recalled so far, so a narrower search cannot hide a
+  // rival an earlier tier already found.
+  test('does not link by name alone in a later tier when an earlier tier found an exact-name rival', async () => {
+    const floridaContact = {
+      address: {
+        address1: '1 Elm St',
+        city: 'Fictionburg',
+        state: 'FL',
+        zipCode: '33000',
+        countryCode: 'US' as const,
+      },
+      phone: { number: '305-555-1000' },
+    };
+    const exactRival = makeTrustee({
+      trusteeId: 'a',
+      firstName: 'Aldric',
+      lastName: 'Vexmore',
+      name: 'Aldric Vexmore',
+      public: floridaContact,
+    });
+    const middleRival = makeTrustee({
+      trusteeId: 'b',
+      firstName: 'Aldric',
+      middleName: 'Q',
+      lastName: 'Vexmore',
+      name: 'Aldric Q Vexmore',
+      public: floridaContact,
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => (token === 'vexmore' ? [exactRival, middleRival] : []),
+    );
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 'a',
+      nameScore: 100,
+      nameMatchQuality: 'exact',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([exactRival]);
+
+    const result = await runTrusteeMatchPipeline(
+      context,
+      makeDxtrTrustee({
+        fullName: 'Aldric Vexmore',
+        firstName: 'Aldric',
+        lastName: 'Vexmore',
+        legacy: { cityStateZipCountry: 'FICTIONBURG FL 33000' } as never,
+      }),
+    );
+
+    expect(result.match).toBeNull();
+    expect([...result.candidates.keys()].sort()).toEqual(['a', 'b']);
+  });
+
   test('resolves in the recallByName tier via resolveByPhone and never reaches the later tiers', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
