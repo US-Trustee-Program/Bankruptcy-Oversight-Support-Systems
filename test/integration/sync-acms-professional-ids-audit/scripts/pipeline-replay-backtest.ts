@@ -426,18 +426,12 @@ async function run() {
     // record BOTH sides call linked, which trusteeId it resolved to. Every other combination
     // (disposition unchanged, or an intentional improvement/regression already visible in
     // outcomeCounts) is normal drift, not flagged here - this is specifically for "staging trusts
-    // this link and current code contradicts it," or vice versa. A staging export written before
-    // ambiguous-duplication was folded back into a plain 'ambiguous' disposition (plus a separate
-    // suspectDuplicateCamsTrustee flag) still carries the old string value, so it's normalized
-    // here for comparison only - it was never a different disposition from current code's
-    // perspective, just an older persisted shape.
-    const normalizedStagingDisposition =
-      record.disposition === 'ambiguous-duplication' ? 'ambiguous' : record.disposition;
+    // this link and current code contradicts it," or vice versa.
     const currentTrusteeId = disposition === 'linked' ? (state.match?.trusteeId ?? null) : null;
-    const dispositionsDiffer = disposition !== normalizedStagingDisposition;
+    const dispositionsDiffer = disposition !== record.disposition;
     const sameDispositionDifferentTrustee =
       disposition === 'linked' &&
-      normalizedStagingDisposition === 'linked' &&
+      record.disposition === 'linked' &&
       currentTrusteeId !== stagingTrusteeId;
     if (dispositionsDiffer || sameDispositionDifferentTrustee) {
       const resolvedBy = state.match?.resolvedBy;
@@ -488,8 +482,7 @@ async function run() {
 
   const stagingCounts = new Map<string, number>();
   for (const record of errored) {
-    const d = record.disposition === 'ambiguous-duplication' ? 'ambiguous' : record.disposition;
-    stagingCounts.set(d, (stagingCounts.get(d) ?? 0) + 1);
+    stagingCounts.set(record.disposition, (stagingCounts.get(record.disposition) ?? 0) + 1);
   }
   const dispositions = [
     ...new Set([...Object.keys(outcomeCounts), ...stagingCounts.keys()]),

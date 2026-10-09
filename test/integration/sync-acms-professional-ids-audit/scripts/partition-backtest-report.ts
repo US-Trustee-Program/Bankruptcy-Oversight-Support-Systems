@@ -125,7 +125,7 @@ function csvRowFromSourceRaw(
 /** Shared cartesian-product columns across all four output files (no-match, ambiguous,
  * ambiguous-duplication, skipped): every ACMS source field, the staging before-picture, this row's
  * currentDisposition, and - for a row with a real candidate - that candidate's own fields and the
- * same scores ai-candidate-review.ts displays (nameScore/addressMatch/phoneMatch/stateMatch/
+ * same scores ai-candidate-review.ts displays (nameQuality/addressMatch/phoneMatch/stateMatch/
  * introductionStage). A record with zero candidates (skipped, or a no-match/ambiguous record with
  * an empty pool) still produces exactly one row, with every candidate-specific column (camsTrusteeId
  * onward) blank - see candidateCsvRows's own doc comment.
@@ -154,7 +154,7 @@ const CANDIDATE_CSV_COLUMNS = [
   'camsAddress',
   'camsPhone',
   'introductionStage',
-  'nameScore',
+  'nameQuality',
   'addressMatch',
   'phoneMatch',
   'stateMatch',
@@ -231,7 +231,7 @@ function candidateCsvRows(
         camsAddress: '',
         camsPhone: '',
         introductionStage: '',
-        nameScore: '',
+        nameQuality: '',
         addressMatch: '',
         phoneMatch: '',
         stateMatch: '',

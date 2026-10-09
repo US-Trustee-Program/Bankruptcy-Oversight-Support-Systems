@@ -614,29 +614,63 @@ const LAST_NAME_PREFIX_PARTICLES = new Set([
 ]);
 
 /**
+ * Particles that only ever follow a leading particle ("van der", "van den"). Kept out of
+ * LAST_NAME_PREFIX_PARTICLES so particleSplitVariant never splits a word like "dennis".
+ */
+const LAST_NAME_CONTINUATION_PARTICLES = new Set(['der', 'den']);
+
+/**
  * Reduces a raw lastName field to its surname-identifying token(s): drops apostrophes (so
  * "O'Brien" stays one word), replaces remaining punctuation with spaces, collapses whitespace,
  * then returns the first token - or, when that first token is a known surname prefix particle
- * (see LAST_NAME_PREFIX_PARTICLES) and a second token follows, both tokens joined by a single
- * space. Used both for candidate discovery (the first-token-lastName search tier in
- * matchTrusteeByName) and for calculateNameScore's own lastName comparison - taking only the
- * first token (or particle pair) sidesteps needing to enumerate every shape of trailing noise (a
+ * (see LAST_NAME_PREFIX_PARTICLES), the particle, any particles that follow it, and the next
+ * word, joined by single spaces ("de la quillan"). Used both for candidate discovery (the
+ * first-token-lastName search tier in matchTrusteeByName) and for calculateNameScore's own
+ * lastName comparison - taking only the first token (or particle run) sidesteps needing to
+ * enumerate every shape of trailing noise (a
  * role marker, a comma, a generational suffix), since by definition anything after it isn't the
  * real surname. Trade-off: a hyphenated compound surname ("Garcia-Miranda") still reduces to just
  * "garcia" - the downstream scoring/appointment-match gate is responsible for confirming that was
  * enough to identify the right person.
  * Example: "Marshack (TR)" -> "marshack", "Wallo, Trustee" -> "wallo", "Malloy, III" -> "malloy",
- * "O'Brien" -> "obrien", "Van Meter" -> "van meter", "Mc Kay, Sr." -> "mc kay".
+ * "O'Brien" -> "obrien", "Van Meter" -> "van meter", "Mc Kay, Sr." -> "mc kay",
+ * "Van Der Vexmore" -> "van der vexmore".
  */
 export function firstLastNameToken(namePart?: string): string {
   const withoutApostrophes = (namePart ?? '').toLowerCase().replaceAll("'", '');
   const spaced = withoutApostrophes.replace(/[^a-z0-9]+/g, ' ');
   const tokens = spaced.trim().split(' ').filter(Boolean);
   if (tokens.length === 0) return '';
-  if (tokens.length > 1 && LAST_NAME_PREFIX_PARTICLES.has(tokens[0])) {
-    return `${tokens[0]} ${tokens[1]}`;
+  if (tokens.length === 1 || !LAST_NAME_PREFIX_PARTICLES.has(tokens[0])) return tokens[0];
+
+  // Consume consecutive particles ("de la", "van der"), then the surname word they lead into.
+  let end = 1;
+  while (
+    end < tokens.length - 1 &&
+    (LAST_NAME_PREFIX_PARTICLES.has(tokens[end]) ||
+      LAST_NAME_CONTINUATION_PARTICLES.has(tokens[end]))
+  ) {
+    end++;
   }
-  return tokens[0];
+  return tokens.slice(0, end + 1).join(' ');
+}
+
+/**
+ * The surname word of a firstLastNameToken result, without its leading particle run
+ * ("van der vexmore" -> "vexmore"). A shared particle run says nothing about whether two surnames
+ * match, so fuzzy comparison sees only this word.
+ */
+export function surnameCore(token: string): string {
+  const words = token.split(' ');
+  let start = 0;
+  while (
+    start < words.length - 1 &&
+    (LAST_NAME_PREFIX_PARTICLES.has(words[start]) ||
+      LAST_NAME_CONTINUATION_PARTICLES.has(words[start]))
+  ) {
+    start++;
+  }
+  return words.slice(start).join(' ');
 }
 
 /**

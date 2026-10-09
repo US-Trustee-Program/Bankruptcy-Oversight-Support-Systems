@@ -593,6 +593,71 @@ describe('recallByAnchoredLevenshtein', () => {
 });
 
 describe('scoreCandidate - name-match facet', () => {
+  const gradeNames = async (acmsLastName: string, camsLastName: string) => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({
+          fullName: `Aldric ${acmsLastName}`,
+          firstName: 'Aldric',
+          lastName: acmsLastName,
+        }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Aldric', lastName: camsLastName })),
+      'test',
+    );
+    scoreCandidate(state.sourceNormalized, candidate);
+    return candidate.scores.doesNameMatch;
+  };
+
+  // A shared particle run ("De La", "Van Der") is not evidence the surnames match.
+  test.each([
+    ['De La Quillan', 'De La Tessarin'],
+    ['Van Der Vexmore', 'Van Der Orsino'],
+  ])('does not match "%s" against "%s"', async (acmsLastName, camsLastName) => {
+    expect(await gradeNames(acmsLastName, camsLastName)).toEqual({ pass: false });
+  });
+
+  // A middle name present on only one side is missing data, not a conflict.
+  test.each([
+    { acmsMiddle: 'P', camsMiddle: undefined },
+    { acmsMiddle: '', camsMiddle: 'P' },
+  ])(
+    'grades an exact match when only one side has a middle name (ACMS "$acmsMiddle", CAMS "$camsMiddle")',
+    async ({ acmsMiddle, camsMiddle }) => {
+      const state = await normalizeAcmsSourceName()(
+        createInitialState(
+          makeDxtrTrustee({ firstName: 'Aldric', middleName: acmsMiddle, lastName: 'Vexmore' }),
+        ),
+      );
+      const candidate = addCandidate(
+        state,
+        projectTrustee(
+          makeTrustee({
+            trusteeId: 't1',
+            firstName: 'Aldric',
+            middleName: camsMiddle,
+            lastName: 'Vexmore',
+          }),
+        ),
+        'test',
+      );
+
+      scoreCandidate(state.sourceNormalized, candidate);
+
+      expect(candidate.scores.doesNameMatch).toEqual({ pass: true, quality: 'exact' });
+    },
+  );
+
+  test('grades a misspelled surname after a particle run as weak', async () => {
+    expect(await gradeNames('Van Der Vexmore', 'Van Der Vexmoore')).toEqual({
+      pass: true,
+      quality: 'weak',
+    });
+  });
+
   test('grades an exact doesNameMatch for the same name and a failing one for a different name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1095,6 +1160,34 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
       doesCityMatch: { pass: true },
       doesStateMatch: { pass: true },
     });
+  });
+
+  // Every word of the shorter city must match, so a shared leading word is not a city match.
+  test('does not match cities that share only a leading word', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Aldric T Moon',
+        firstName: 'Aldric',
+        lastName: 'Moon',
+        legacy: { cityStateZipCountry: 'SAN FICTIONBURG CA 90001' },
+      }),
+    );
+    const candidate = addSomeoneMoon(state, {
+      trusteeId: 'trustee-sh',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'San Hallowmere',
+          state: 'CA',
+          zipCode: '90002',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.scores).toMatchObject({ doesCityMatch: { pass: false } });
   });
 
   test('records no city/state scores when a zip-less ACMS address has no real state code', async () => {
