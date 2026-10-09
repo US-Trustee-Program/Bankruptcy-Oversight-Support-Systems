@@ -1,0 +1,21 @@
+name: LaunchDarkly Code References
+
+on:
+  push:
+
+jobs:
+  find-code-references:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required so the scanner can detect references properly
+
+      - name: Run LaunchDarkly code references
+        uses: launchdarkly/find-code-references@5d95481114aab85ab56671002d11218cfc7f9b23 #2.18.3
+        with:
+          accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
+          projKey: "cams"
+          baseUri: "https://app.launchdarkly.us" # gov endpoint instead of default
