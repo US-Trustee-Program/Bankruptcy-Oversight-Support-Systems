@@ -378,13 +378,17 @@ export class TrusteeAppointmentsUseCase {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
       const courtNameResolver = (courtId: string) => this.findCourtDistrict(params.courts, courtId);
-      // Matches by courtDivisionCode alone (not scoped by courtId): DXTR division codes are
-      // nationally unique 3-digit identifiers, so a code maps to exactly one division. Do not
+      // Matches by ustDivisionCode alone (not scoped by courtId): bare CS_DIV is confirmed
+      // globally unique (see CAMS-936), so a code maps to exactly one division. Falls back to
+      // courtDivisionCode (CS_DIV_ACMS) for courts data that predates ustDivisionCode. Do not
       // "fix" this into a courtId-scoped lookup unless that invariant changes.
       const divisionNameResolver = (divisionCode: string): string | undefined =>
-        params.courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
+        params.courts.find((c) => (c.ustDivisionCode ?? c.courtDivisionCode) === divisionCode)
+          ?.courtDivisionName;
       const allDivisionsResolver = (courtId: string): string[] =>
-        params.courts.filter((c) => c.courtId === courtId).map((c) => c.courtDivisionCode);
+        params.courts
+          .filter((c) => c.courtId === courtId)
+          .map((c) => c.ustDivisionCode ?? c.courtDivisionCode);
       const changeSet = buildAppointmentChangeSet({
         trusteeId: params.trusteeId,
         trusteeName,

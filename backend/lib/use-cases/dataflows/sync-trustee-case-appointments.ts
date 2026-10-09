@@ -1175,6 +1175,7 @@ async function resolveByScoring(
     deps.context,
     event,
     candidateTrusteeIds,
+    syncedCase.ustDivisionCode,
   );
 
   switch (scoringOutcome.kind) {
@@ -1273,9 +1274,18 @@ async function applyMatchOutcome(
   const { deps, event, fingerprint, variant, audit } = ctx;
   const { context } = deps;
   const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
+  // The case's ustDivisionCode (bare CS_DIV), not event.courtDivisionCode (CS_DIV_ACMS) — see
+  // CaseMatchContext's doc comment in trustee-match.helpers.ts. Falls back to courtDivisionCode
+  // for cases outside Eastern District of TN or not yet backfilled.
+  const caseDivisionCodeForMatching = syncedCase.ustDivisionCode ?? event.courtDivisionCode;
 
   if (
-    isAppointmentMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
+    isAppointmentMatch(
+      trusteeAppointments,
+      event.courtId,
+      caseDivisionCodeForMatching,
+      event.chapter,
+    )
   ) {
     const dlqFailure = await autoLinkTrustee(
       ctx,
@@ -1290,7 +1300,7 @@ async function applyMatchOutcome(
   const inactiveMatch = findInactivePerfectMatch(
     trusteeAppointments,
     event.courtId,
-    event.courtDivisionCode,
+    caseDivisionCodeForMatching,
     event.chapter,
   );
 
@@ -1304,7 +1314,12 @@ async function applyMatchOutcome(
   const candidateScore = calculateCandidateScore(
     context,
     event.dxtrTrustee,
-    { courtId: event.courtId, courtDivisionCode: event.courtDivisionCode, chapter: event.chapter },
+    {
+      courtId: event.courtId,
+      courtDivisionCode: event.courtDivisionCode,
+      ustDivisionCode: syncedCase.ustDivisionCode,
+      chapter: event.chapter,
+    },
     trustee,
     trusteeAppointments,
     nameScore,

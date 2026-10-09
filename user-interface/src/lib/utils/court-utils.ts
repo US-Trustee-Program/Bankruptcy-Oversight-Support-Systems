@@ -409,7 +409,9 @@ export function getDivisionsForDistrict(
   const divisions = courts
     .filter((court) => court.courtId === courtId)
     .map((court) => ({
-      courtDivisionCode: court.courtDivisionCode,
+      // ustDivisionCode (bare CS_DIV) distinguishes divisions like Winchester/Chattanooga
+      // that share a courtDivisionCode (CS_DIV_ACMS) — see CAMS-936.
+      courtDivisionCode: court.ustDivisionCode ?? court.courtDivisionCode,
       courtDivisionName: court.courtDivisionName,
     }));
 

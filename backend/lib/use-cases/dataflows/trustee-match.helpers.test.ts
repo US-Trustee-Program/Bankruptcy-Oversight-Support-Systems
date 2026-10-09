@@ -36,6 +36,7 @@ import {
   isOneSidedMiddleNameMatch,
   calculateNumericTokenScore,
   padSingleDigitNumericToken,
+  isBlankAcmsValue,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -1325,6 +1326,17 @@ describe('normalizeAddressLine', () => {
   });
 });
 
+describe('isBlankAcmsValue', () => {
+  test.each([
+    { value: undefined, expected: true, label: 'undefined' },
+    { value: '', expected: true, label: 'empty string' },
+    { value: '0', expected: true, label: 'the "0" ACMS sentinel' },
+    { value: '555-123-4567', expected: false, label: 'a real phone value' },
+  ])('returns $expected for $label', ({ value, expected }) => {
+    expect(isBlankAcmsValue(value)).toBe(expected);
+  });
+});
+
 describe('normalizeChapter', () => {
   test('should remove leading zeros from single-digit chapters', () => {
     expect(normalizeChapter('07')).toBe('7');
@@ -1540,6 +1552,55 @@ describe('calculateCandidateScore', () => {
     // weightedSum = 100*0.08 + 100*0.26 + 100*0.25 + 100*0.25 = 8 + 26 + 25 + 25 = 84
     // 84 / 0.84 = 100 (toBeCloseTo guards against floating-point division noise)
     expect(score.totalScore).toBeCloseTo(100, 10);
+  });
+
+  test('CAMS-936: a Winchester-appointed trustee scores a district match on a Winchester case, not a Chattanooga case', () => {
+    // Winchester and Chattanooga share courtDivisionCode '491' (CS_DIV_ACMS) but have distinct
+    // ustDivisionCode ('494' vs '491', bare CS_DIV). A trustee appointed to Winchester
+    // (divisionCode: '494', ustDivisionCode-valued per migrate-trustees.ts) must match a
+    // Winchester case (ustDivisionCode: '494') and must NOT match a Chattanooga case
+    // (ustDivisionCode: '491') even though both cases share courtDivisionCode '491'.
+    const dxtrTrustee = makeDxtrTrustee();
+    const camsTrustee = makeTrustee();
+    const winchesterAppointment = makeAppointment({
+      chapter: '7',
+      courtId: '0649',
+      divisionCode: '494',
+      status: 'active',
+    });
+
+    const winchesterCaseScore = calculateCandidateScore(
+      context,
+      dxtrTrustee,
+      {
+        courtId: '0649',
+        courtDivisionCode: '491',
+        ustDivisionCode: '494',
+        chapter: '7',
+      },
+      camsTrustee,
+      [winchesterAppointment],
+      calculateNameScore(dxtrTrustee, camsTrustee),
+    );
+    expect(winchesterCaseScore.districtDivisionScore).toBe(100);
+    expect(winchesterCaseScore.chapterScore).toBe(100);
+
+    const chattanoogaCaseScore = calculateCandidateScore(
+      context,
+      dxtrTrustee,
+      {
+        courtId: '0649',
+        courtDivisionCode: '491',
+        ustDivisionCode: '491',
+        chapter: '7',
+      },
+      camsTrustee,
+      [winchesterAppointment],
+      calculateNameScore(dxtrTrustee, camsTrustee),
+    );
+    // Same court, but the Winchester appointment does not cover Chattanooga's division.
+    expect(chattanoogaCaseScore.districtDivisionScore).toBe(50);
+    expect(chattanoogaCaseScore.chapterScore).toBe(0);
   });
 
   test('should apply weighted scoring correctly (address 8% / name 26% / district 25% / chapter 25%, phone/email null)', () => {
@@ -3104,6 +3165,50 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(2);
   });
 
+  test('CAMS-936: uses caseUstDivisionCode, not event.courtDivisionCode, for the isAppointmentMatch gate', async () => {
+    // event.courtDivisionCode is Chattanooga's ACMS-coded '491' (case identity is unchanged),
+    // but the case is actually Winchester (ustDivisionCode '494'). The sole candidate's
+    // appointment is Winchester-scoped (divisionCode '494'). Passing caseUstDivisionCode through
+    // must let this resolve; falling back to event.courtDivisionCode ('491') would not match.
+    const event = makeEvent({
+      courtId: '0649',
+      courtDivisionCode: '491',
+      chapter: '7',
+      dxtrTrustee: { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
+    });
+    const candidate = makeTrustee({ trusteeId: 'trustee-1' });
+    const otherCandidate = makeTrustee({ trusteeId: 'trustee-2', name: 'Jane Roe' });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '0649',
+        divisionCode: '494',
+        appointedDate: '2024-01-01',
+        effectiveDate: '2024-01-01',
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(candidate)
+      .mockResolvedValueOnce(otherCandidate);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(appointments)
+      .mockResolvedValueOnce([]);
+
+    const result = await resolveNameCollisionByScoring(
+      context,
+      event,
+      ['trustee-1', 'trustee-2'],
+      '494',
+    );
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
   test('does not resolve a single candidate at exactly the 74-point threshold (boundary: > not >=)', async () => {
     // address=100 (8%), name=0/genuine mismatch (26%), phone=100/email=100 (8%/8%),
     // district=100/chapter=100 (25%/25%) => weighted total = exactly 74. meetsThreshold requires
@@ -3502,7 +3607,7 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.kind).toBe('unresolved');
   });
 
-  test('should lazy-load trustee and appointment data', async () => {
+  test('should call trustee and appointment repositories with the candidate trusteeId', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',

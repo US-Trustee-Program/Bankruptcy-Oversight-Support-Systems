@@ -72,7 +72,9 @@ export function buildDistrictToDivisionsMap(
       for (const division of group.divisions) {
         const courtId = division.court.courtId;
         const divisionInfo: DivisionInfo = {
-          divisionCode: division.divisionCode,
+          // ustDivisionCode (bare CS_DIV) distinguishes Winchester/Johnson City from
+          // Chattanooga/Greeneville, which divisionCode (CS_DIV_ACMS) cannot — see CAMS-936.
+          divisionCode: division.ustDivisionCode ?? division.divisionCode,
           courtId,
           courtName: division.court.courtName,
           courtDivisionName: division.courtOffice.courtOfficeName,
@@ -1127,11 +1129,18 @@ export type BackfillProfessionalIdsPageResult = {
   recommendedVisibilitySeconds: number;
 };
 
-function computeHealBackoffMs(attempt: number, baseDelayMs: number): number {
+// Exported for direct unit testing of the backoff/escape-hatch math — processAcmsRecord is
+// currently a hard-coded no-op stub that never returns 'rateLimited', so this logic is otherwise
+// unreachable through backfillProfessionalIdsPage until that stub is replaced.
+export function computeHealBackoffMs(attempt: number, baseDelayMs: number): number {
   return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, HEAL_MAX_BACKOFF_MS);
 }
 
-function healShouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number) {
+export function healShouldEscape(
+  startedAt: number,
+  safeThresholdMs: number,
+  nextBackoffMs: number,
+) {
   return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
 }
 

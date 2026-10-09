@@ -1,8 +1,11 @@
 import { vi } from 'vitest';
-import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
+import CasesDxtrGateway, {
+  parseDxtrDate,
+  parseTrusteeAppointmentsRequestTimeoutMs,
+  DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+} from './cases.dxtr.gateway';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
-import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
@@ -119,11 +122,6 @@ describe('Test DXTR Gateway', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-
-    const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
-    featureFlagSpy.mockImplementation(async () => {
-      return {};
-    });
 
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
@@ -247,6 +245,8 @@ describe('Test DXTR Gateway', () => {
         debtorTypeLabel: expectedDebtorTypeLabel,
         petitionCode: 'VP',
         petitionLabel: 'Voluntary',
+        courtDivisionCode: '491',
+        ustDivisionCode: '494',
       },
     });
 
@@ -295,6 +295,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.courtName).toEqual(testCase.courtName);
     expect(actualResult.courtDivisionCode).toEqual(testCase.courtDivisionCode);
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
+    expect(actualResult.ustDivisionCode).toEqual('494');
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
 
@@ -983,22 +984,14 @@ describe('Test DXTR Gateway', () => {
 
   describe('searchCases tests', () => {
     const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-    const testParty = MockData.getParty();
     const caseSummaryQueryResult = {
       success: true,
       results: { recordset: [testCase] },
       message: '',
     };
-    const partyQueryResult = {
-      success: true,
-      results: { recordset: [testParty] },
-      message: '',
-    };
 
     beforeEach(() => {
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
+      querySpy.mockResolvedValueOnce(caseSummaryQueryResult);
     });
 
     test('should return empty array', async () => {
@@ -1808,6 +1801,49 @@ describe('getTrusteeAppointments', () => {
     expect(result.events[0].courtDivisionCode).toBe('081');
   });
 
+  test('maps ustDivisionCode (bare CS_DIV) separately from courtDivisionCode (CS_DIV_ACMS)', async () => {
+    // Winchester: CS_DIV_ACMS=491 (Chattanooga's ACMS code) but bare CS_DIV=494.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '491-24-12345',
+            courtId: '0649',
+            chapter: '7',
+            courtDivisionCode: '491',
+            ustDivisionCode: '494',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].courtDivisionCode).toBe('491');
+    expect(result.events[0].ustDivisionCode).toBe('494');
+  });
+
   test('maps groupDesignator into the result alongside profCode', async () => {
     // groupDesignator (AO_CS.GRP_DES) is a raw DXTR/ACMS fact crossed as-is - it is NOT combined
     // into a formatted acmsProfessionalId here. That CAMS-specific construction (and its
@@ -2270,6 +2306,59 @@ describe('getAppointmentDatesByCaseIds', () => {
   });
 });
 
+describe('getUstDivisionCodesByCaseIds', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  test('returns empty map when caseIds is empty', async () => {
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, []);
+    expect(result).toEqual(new Map());
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  test('returns map of caseId to bare ustDivisionCode, distinct from the ACMS-coded caseId', async () => {
+    // Winchester's caseId is still ACMS-coded (491-...) but its bare CS_DIV is 494.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '491-25-00001', ustDivisionCode: '494' },
+          { caseId: '491-25-00002', ustDivisionCode: '491' },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, [
+      '491-25-00001',
+      '491-25-00002',
+    ]);
+
+    expect(result.get('491-25-00001')).toBe('494');
+    expect(result.get('491-25-00002')).toBe('491');
+  });
+
+  test('returns empty map when no records returned from DXTR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, ['491-25-00001']);
+
+    expect(result.size).toBe(0);
+  });
+});
+
 describe('parseDxtrDate', () => {
   test('converts YYMMDD string to ISO date', () => {
     expect(parseDxtrDate('260407')).toBe('2026-04-07');
@@ -2321,5 +2410,53 @@ describe('parseDxtrDate', () => {
 
   test('returns undefined for invalid day (00)', () => {
     expect(parseDxtrDate('260400')).toBeUndefined();
+  });
+});
+
+describe('parseTrusteeAppointmentsRequestTimeoutMs', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  test('returns the default when raw is undefined', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs(undefined)).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns the default when raw is empty', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns the parsed value for a valid positive integer string', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('120000')).toBe(120000);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('falls back to the default and warns for a non-numeric value', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('abc')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid'));
+  });
+
+  test('falls back to the default and warns for zero', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('0')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  test('falls back to the default and warns for a negative value', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('-5')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalled();
   });
 });

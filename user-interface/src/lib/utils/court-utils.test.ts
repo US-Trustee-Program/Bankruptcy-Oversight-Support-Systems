@@ -683,6 +683,43 @@ describe('court-utils', () => {
         courtDivisionName: 'Manhattan',
       });
     });
+
+    test('should prefer ustDivisionCode so Winchester and Chattanooga stay distinct', () => {
+      // Chattanooga and Winchester share courtDivisionCode '491' (CS_DIV_ACMS) but have
+      // distinct ustDivisionCode (bare CS_DIV) values — see CAMS-936.
+      const easternTnCourts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Chattanooga',
+          officeCode: '1',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '4',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+      ];
+
+      const divisions = getDivisionsForDistrict(easternTnCourts, '0649');
+
+      expect(divisions.map((d) => d.courtDivisionCode)).toEqual(
+        expect.arrayContaining(['491', '494']),
+      );
+    });
   });
 
   describe('groupDivisionsByDistrict', () => {
@@ -879,6 +916,21 @@ describe('court-utils', () => {
       sortTrusteeAppointments(appointments);
 
       expect(appointments).toEqual(originalOrder);
+    });
+
+    test('uses the full courtName as state when it does not match the "District of X" pattern', () => {
+      // parseDistrictName's fallback branch — a court name with no "District of" substring.
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'Guam District Court', chapter: '7' }),
+        MockData.getTrusteeAppointment({ courtName: 'District of Nevada', chapter: '7' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      // 'District of Nevada' parses state='Nevada'; 'Guam District Court' has no match so its
+      // whole name is used as state — 'Guam...' sorts before 'Nevada' alphabetically.
+      expect(sorted[0].courtName).toBe('Guam District Court');
+      expect(sorted[1].courtName).toBe('District of Nevada');
     });
   });
 
