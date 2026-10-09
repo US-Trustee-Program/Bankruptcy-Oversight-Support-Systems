@@ -140,7 +140,9 @@ function run() {
     }
   }
 
-  console.log(`no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`);
+  console.log(
+    `no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`,
+  );
 
   type Result = {
     acmsFullName: string;

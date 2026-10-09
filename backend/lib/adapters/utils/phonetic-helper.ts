@@ -228,3 +228,33 @@ export function generateStructuredQueryTokens(searchQuery: string): StructuredQu
     nicknameTokens,
   };
 }
+
+/** Jaro-Winkler similarity of two strings, from 0 (unrelated) to 1 (identical). */
+export function nameSimilarity(a: string, b: string): number {
+  return natural.JaroWinklerDistance(a, b);
+}
+
+/** Whether two words share a SoundEx or a Metaphone code. */
+export function soundsAlike(a: string, b: string): boolean {
+  return soundex.compare(a, b) || metaphone.compare(a, b);
+}
+
+/**
+ * Whether a and b are a known nickname/formal-name pair ("jim"/"james"), per name-match's bundled
+ * dictionary. Queried in both directions because the dictionary is directional; a name it has no
+ * entry for throws, which counts as no match.
+ */
+export function isKnownNicknamePair(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  try {
+    if ((getNameVariations(a) as string[]).includes(b)) return true;
+  } catch {
+    // No variations available for a.
+  }
+  try {
+    if ((getNameVariations(b) as string[]).includes(a)) return true;
+  } catch {
+    // No variations available for b.
+  }
+  return false;
+}

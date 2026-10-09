@@ -19,21 +19,20 @@ const COLLECTION_NAME = 'trustee-professional-ids';
 
 const { and, using, omit } = QueryBuilder;
 
+/** Stored shape of a TrusteeProfessionalId in the trustee-professional-ids collection. */
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
   documentType: 'TRUSTEE_PROFESSIONAL_ID';
 };
 
-// Excludes the heavy evidence graph at the Mongo query level (not merely in the TypeScript
-// return type) for every ordinary read - see TrusteeProfessionalIdsRepository's own doc comment.
+// Excludes evidence at the Mongo query level for every ordinary read.
 const SUMMARY_PROJECTION = omit<TrusteeProfessionalIdDocument>('evidence');
 
-// Only an auto-linked, non-conflicting disposition is a real trustee<->ACMS link - everything
-// else is a placeholder record keyed by fingerprint, and must stay invisible to callers
-// resolving real links. See TrusteeProfessionalIdsRepository's JSDoc.
+// Only disposition 'linked' is a real link; other dispositions are hidden from these finders.
 function isRealLink<T extends { disposition?: unknown }>(doc: ReturnType<typeof using<T>>) {
-  return doc('disposition').equals('auto-linked');
+  return doc('disposition').equals('linked');
 }
 
+/** Mongo-backed TrusteeProfessionalIdsRepository. */
 export class TrusteeProfessionalIdsMongoRepository
   extends BaseMongoRepository
   implements TrusteeProfessionalIdsRepository
@@ -70,16 +69,8 @@ export class TrusteeProfessionalIdsMongoRepository
   }
 
   /**
-   * Writes a TrusteeProfessionalId for any pipeline outcome, keyed by (camsTrusteeId,
-   * acmsProfessionalId, documentType) - a caller that retries the same record after a partial-page
-   * failure (see handlePage's retry-from-original-bookmark comment) reprocesses records already
-   * written within a page. Uses upsertOne (not insertOne) so a retry's newly-evaluated disposition
-   * and evidence graph actually overwrite what an earlier attempt wrote for the same key, rather
-   * than being silently discarded - the earlier insert-then-catch-E11000-and-return-existing
-   * approach preserved the FIRST attempt's outcome forever, even when a later attempt produced a
-   * richer evidence graph or escalated to 'conflict'. createdOn/createdBy are insert-only (a
-   * retry never resets when the document was first created); everything else, including a fresh
-   * updatedOn/updatedBy, is set on every write.
+   * Upserts on (documentType, camsTrusteeId, acmsProfessionalId); a retry overwrites the prior
+   * outcome; createdOn/createdBy/id are insert-only.
    */
   async upsertProfessionalId(
     document: Omit<TrusteeProfessionalId, keyof Auditable | keyof Identifiable>,
@@ -171,13 +162,7 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  /**
-   * Whether this ACMS professional ID has a 'conflict'-disposition record - deliberately separate
-   * from findByAcmsProfessionalId, which excludes conflict records entirely (see isRealLink). A
-   * caller that only needs "should I treat this as unresolvable-forever rather than
-   * not-yet-linked" (see heal-sentinel-case-appointments.ts) reads this instead of reaching into
-   * the excluded-by-design population.
-   */
+  /** Whether this ACMS professional ID has a 'conflict' record (excluded by isRealLink). */
   async hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();

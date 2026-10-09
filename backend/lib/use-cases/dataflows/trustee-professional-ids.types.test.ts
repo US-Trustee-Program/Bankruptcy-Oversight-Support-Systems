@@ -1,5 +1,6 @@
 import {
   deriveDisposition,
+  deriveNameMatchCount,
   deriveSuspectDuplicateCamsTrustee,
 } from './trustee-professional-ids.types';
 import { TrusteeSerializedState, ProjectedTrustee } from './trustee-match-pipeline';
@@ -16,12 +17,13 @@ function makeCandidate(
     camsNormalized: {},
     memo: {},
     scores,
-    disqualifiers: [],
     origin: 'test',
   };
 }
 
-const passingNameMatch = { doesNameMatch: { value: 100, threshold: 85, pass: true } };
+const passingNameMatch = {
+  doesNameMatch: { pass: true, quality: 'exact' },
+};
 
 function makeState(
   overrides: Partial<Pick<TrusteeSerializedState, 'match' | 'skip' | 'error' | 'candidates'>>,
@@ -46,9 +48,11 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('skipped');
   });
 
-  test('returns auto-linked when state.match is set', () => {
-    const state = makeState({ match: { trusteeId: 't1', score: {} } });
-    expect(deriveDisposition(state)).toBe('auto-linked');
+  test('returns linked when state.match is set', () => {
+    const state = makeState({
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
+    });
+    expect(deriveDisposition(state)).toBe('linked');
   });
 
   test('returns no-match when there are no candidates', () => {
@@ -59,8 +63,10 @@ describe('deriveDisposition', () => {
   test('returns no-match when every candidate failed doesNameMatch', () => {
     const state = makeState({
       candidates: [
-        makeCandidate({ doesNameMatch: { value: 0, threshold: 85, pass: false } }),
-        makeCandidate({ doesNameMatch: { value: 42, threshold: 85, pass: false } }),
+        makeCandidate({
+          doesNameMatch: { pass: false },
+        }),
+        makeCandidate({ doesNameMatch: { pass: false } }),
       ],
     });
     expect(deriveDisposition(state)).toBe('no-match');
@@ -71,49 +77,32 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns ambiguous when at least one candidate cleared doesNameMatch', () => {
+  test('returns no-match when only one candidate cleared doesNameMatch, even with a second candidate present', () => {
     const state = makeState({
       candidates: [
-        makeCandidate({ doesNameMatch: { value: 0, threshold: 85, pass: false } }),
-        makeCandidate({ doesNameMatch: { value: 100, threshold: 85, pass: true } }),
+        makeCandidate({
+          doesNameMatch: { pass: false },
+        }),
+        makeCandidate({
+          doesNameMatch: { pass: true, quality: 'exact' },
+        }),
       ],
+    });
+    expect(deriveDisposition(state)).toBe('no-match');
+  });
+
+  test('returns ambiguous when two candidates are exact name matches', () => {
+    const state = makeState({
+      candidates: [makeCandidate(passingNameMatch), makeCandidate(passingNameMatch)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
-  test('returns plain ambiguous when qualifying candidates share neither phone nor email', () => {
-    const state = makeState({
-      candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '212-555-0100' } }),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('ambiguous');
-  });
-
-  test('does not treat a shared phone/email on a NON-qualifying candidate as a duplication signal', () => {
-    const state = makeState({
-      candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(
-          { doesNameMatch: { value: 0, threshold: 85, pass: false } },
-          { phone: { number: '702-262-9322' } },
-        ),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('ambiguous');
-  });
-
-  // cams-yzqkt follow-up (SP-02360): an 85-scored name match (an initial, a crossed middle name,
-  // a nickname - never an exact 100) is name-shape coincidence, not real evidence, when the ACMS
-  // source has no address/phone at all for corroboration to ever run against. A whole surname
-  // pool worth of unrelated real trustees can each qualify this way - "ambiguous" should mean
-  // genuinely competing evidence, not "the ACMS record happened to share initials with several
-  // people in a big pool."
-  test('returns no-match when every 85-scored candidate has no ACMS contact data to corroborate against', () => {
+  // A strong, non-exact name is not evidence without ACMS contact data to compare against.
+  test('returns no-match when every candidate is only a strong name match with no ACMS contact data to corroborate against', () => {
     const weakMatch = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+      doesNameMatch: { pass: true, quality: 'strong' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatch), makeCandidate(weakMatch), makeCandidate(weakMatch)],
@@ -121,26 +110,26 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns ambiguous when an 85-scored candidate has ACMS contact data to corroborate against, even if it disagreed', () => {
-    const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
-      contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
-    };
+  // A missing ACMS contact-data score is not a failed one, so it does not disqualify a rival.
+  test('returns ambiguous when two strong-name candidates have no ACMS contact-data score at all', () => {
+    const strongMatch = { doesNameMatch: { pass: true, quality: 'strong' } };
     const state = makeState({
-      candidates: [makeCandidate(weakMatchWithComparableAcmsData)],
+      candidates: [makeCandidate(strongMatch), makeCandidate(strongMatch)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
-  test('returns ambiguous when a candidate has an exact (100) name match even with no ACMS contact data', () => {
+  test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
+    const exactMatch = {
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
+    };
+    const weakMatchWithComparableAcmsData = {
+      doesNameMatch: { pass: true, quality: 'strong' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
+    };
     const state = makeState({
-      candidates: [
-        makeCandidate({
-          doesNameMatch: { value: 100, threshold: 85, pass: true },
-          doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
-        }),
-      ],
+      candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
@@ -149,7 +138,7 @@ describe('deriveDisposition', () => {
     const state = makeState({
       error: new CamsError('TEST', { message: 'boom' }),
       skip: true,
-      match: { trusteeId: 't1', score: {} },
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
     expect(deriveDisposition(state)).toBe('error');
   });
@@ -157,9 +146,27 @@ describe('deriveDisposition', () => {
   test('precedence: skip takes priority over match/candidates', () => {
     const state = makeState({
       skip: true,
-      match: { trusteeId: 't1', score: {} },
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
     expect(deriveDisposition(state)).toBe('skipped');
+  });
+});
+
+describe('deriveNameMatchCount', () => {
+  test('counts the candidates whose name matches, at any grade', () => {
+    const state = makeState({
+      candidates: [
+        makeCandidate(passingNameMatch),
+        makeCandidate({ doesNameMatch: { pass: true, quality: 'weak' } }),
+        makeCandidate({ doesNameMatch: { pass: false } }),
+      ],
+    });
+
+    expect(deriveNameMatchCount(state)).toBe(2);
+  });
+
+  test('returns 0 when there are no candidates', () => {
+    expect(deriveNameMatchCount(makeState({}))).toBe(0);
   });
 });
 
@@ -167,8 +174,8 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('returns true when 2+ qualifying candidates share a phone number', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '7022629322' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '2065550100' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(true);
@@ -189,19 +196,19 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
       candidates: [
         makeCandidate(passingNameMatch, {
           address: {
-            address1: '4095 Huffman Mill Road',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            address1: '1 Fictional Avenue',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
         makeCandidate(passingNameMatch, {
           address: {
-            address1: '4095 Huffman Mill Rd.',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            address1: '1 Fictional Ave.',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
@@ -216,18 +223,18 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
         makeCandidate(passingNameMatch, {
           address: {
             address1: '',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
         makeCandidate(passingNameMatch, {
           address: {
             address1: '',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
@@ -239,8 +246,8 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('returns false when qualifying candidates share neither phone, email, nor address', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '212-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0199' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
@@ -249,11 +256,8 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('does not treat a shared phone on a NON-qualifying candidate as a duplication signal', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(
-          { doesNameMatch: { value: 0, threshold: 85, pass: false } },
-          { phone: { number: '702-262-9322' } },
-        ),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
+        makeCandidate({ doesNameMatch: { pass: false } }, { phone: { number: '206-555-0100' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);

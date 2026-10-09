@@ -11,7 +11,7 @@ describe('CollectionHumble', () => {
     const humble = new CollectionHumble(database, 'test-collection');
 
     const query = { id: { $eq: 'abc-123' } };
-    const setFields = { disposition: 'auto-linked' };
+    const setFields = { disposition: 'linked' };
     const insertOnlyFields = { createdOn: '2026-01-01' };
 
     await humble.upsertOne(query, setFields, insertOnlyFields);

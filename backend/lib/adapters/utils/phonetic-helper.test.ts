@@ -4,6 +4,9 @@ import {
   generateBigrams,
   generateSearchTokens,
   generateStructuredQueryTokens,
+  isKnownNicknamePair,
+  nameSimilarity,
+  soundsAlike,
 } from './phonetic-helper';
 import MongoAggregateRenderer from '../gateways/mongo/utils/mongo-aggregate-renderer';
 
@@ -253,5 +256,47 @@ describe('Phonetic Utilities', () => {
       expect(result.searchWords).toContain('bill');
       expect(result.nicknameWords).toContain('william');
     });
+  });
+});
+
+describe('nameSimilarity', () => {
+  test('scores identical names 1', () => {
+    expect(nameSimilarity('vexmore', 'vexmore')).toBe(1);
+  });
+
+  test('scores a transposition close to 1 and an unrelated name low', () => {
+    expect(nameSimilarity('martha', 'marhta')).toBeCloseTo(0.961, 3);
+    expect(nameSimilarity('vexmore', 'quillan')).toBeLessThan(0.5);
+  });
+});
+
+describe('soundsAlike', () => {
+  test.each([
+    { a: 'smith', b: 'smyth', expected: true },
+    { a: 'vexmore', b: 'quillan', expected: false },
+  ])('returns $expected for "$a" and "$b"', ({ a, b, expected }) => {
+    expect(soundsAlike(a, b)).toBe(expected);
+  });
+});
+
+describe('isKnownNicknamePair', () => {
+  test.each([
+    {
+      description: 'a known nickname-to-formal-name pair',
+      a: 'jim',
+      b: 'james',
+      expected: true,
+    },
+    {
+      description: 'a known formal-to-nickname pair (order reversed)',
+      a: 'elizabeth',
+      b: 'liz',
+      expected: true,
+    },
+    { description: 'an unrelated pair', a: 'jim', b: 'robert', expected: false },
+    { description: 'the first side is empty', a: '', b: 'james', expected: false },
+    { description: 'the second side is empty', a: 'jim', b: '', expected: false },
+  ])('should return $expected for $description', ({ a, b, expected }) => {
+    expect(isKnownNicknamePair(a, b)).toBe(expected);
   });
 });
