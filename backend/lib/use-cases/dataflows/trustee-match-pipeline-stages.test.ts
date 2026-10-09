@@ -651,6 +651,45 @@ describe('scoreCandidate - name-match facet', () => {
     },
   );
 
+  // CAMS keeps no nickname list of its own: a pair outside name-match's dictionary and below the
+  // spelling threshold does not match.
+  test('does not match a nickname pair outside the dictionary and the spelling threshold', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'Nikki', lastName: 'Vexmore' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Nichole', lastName: 'Vexmore' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: false });
+  });
+
+  test('marks a first name that matched only by spelling, but not a known nickname', async () => {
+    const grade = async (acmsFirst: string, camsFirst: string) => {
+      const state = await normalizeAcmsSourceName()(
+        createInitialState(makeDxtrTrustee({ firstName: acmsFirst, lastName: 'Vexmore' })),
+      );
+      const candidate = addCandidate(
+        state,
+        projectTrustee(makeTrustee({ trusteeId: 't1', firstName: camsFirst, lastName: 'Vexmore' })),
+        'test',
+      );
+      scoreCandidate(state.sourceNormalized, candidate);
+      return candidate.scores.doesNameMatch;
+    };
+
+    expect(await grade('Aldric', 'Aldrick')).toEqual({
+      pass: true,
+      quality: 'strong',
+      firstNameBySpellingOnly: true,
+    });
+    expect(await grade('Jim', 'James')).toEqual({ pass: true, quality: 'strong' });
+  });
+
   test('grades a misspelled surname after a particle run as weak', async () => {
     expect(await gradeNames('Van Der Vexmore', 'Van Der Vexmoore')).toEqual({
       pass: true,
@@ -2081,6 +2120,22 @@ describe('resolvers', () => {
       expect(result.match).toBeNull();
     });
 
+    // Candidates that tied on an exact phone keep competing, so a typo phone cannot slip past them.
+    test('does not resolve a typo phone when exact-phone candidates already tied', async () => {
+      const exactPhone = {
+        doesPhoneMatch: { pass: true, quality: 'exact', phoneDigitDistance: 0 },
+      };
+      const result = await resolveByPhoneWithTypo()(
+        poolOf(
+          { ...EXACT_NAME, ...exactPhone },
+          { ...EXACT_NAME, ...exactPhone },
+          { ...EXACT_NAME, ...strongPhone },
+        ),
+      );
+
+      expect(result.match).toBeNull();
+    });
+
     test('does not resolve when two exact-name candidates have a typo phone', async () => {
       const result = await resolveByPhoneWithTypo()(
         poolOf({ ...EXACT_NAME, ...strongPhone }, { ...EXACT_NAME, ...strongPhone }),
@@ -2094,6 +2149,18 @@ describe('resolvers', () => {
     test('never resolves a weak name', async () => {
       const result = await resolveByStateOnly()(
         poolOf({ ...WEAK_NAME, doesStateMatch: { pass: true } }),
+      );
+
+      expect(result.match).toBeNull();
+    });
+
+    // A first name that matches only by spelling needs a contact signal, not just a state.
+    test('does not resolve a first name that matched only by spelling', async () => {
+      const result = await resolveByStateOnly()(
+        poolOf({
+          doesNameMatch: { pass: true, quality: 'strong', firstNameBySpellingOnly: true },
+          doesStateMatch: { pass: true },
+        }),
       );
 
       expect(result.match).toBeNull();
