@@ -1,8 +1,11 @@
 import { vi } from 'vitest';
-import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
+import CasesDxtrGateway, {
+  parseDxtrDate,
+  parseTrusteeAppointmentsRequestTimeoutMs,
+  DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+} from './cases.dxtr.gateway';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
-import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
@@ -119,11 +122,6 @@ describe('Test DXTR Gateway', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-
-    const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
-    featureFlagSpy.mockImplementation(async () => {
-      return {};
-    });
 
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
@@ -986,22 +984,14 @@ describe('Test DXTR Gateway', () => {
 
   describe('searchCases tests', () => {
     const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-    const testParty = MockData.getParty();
     const caseSummaryQueryResult = {
       success: true,
       results: { recordset: [testCase] },
       message: '',
     };
-    const partyQueryResult = {
-      success: true,
-      results: { recordset: [testParty] },
-      message: '',
-    };
 
     beforeEach(() => {
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
+      querySpy.mockResolvedValueOnce(caseSummaryQueryResult);
     });
 
     test('should return empty array', async () => {
@@ -2420,5 +2410,53 @@ describe('parseDxtrDate', () => {
 
   test('returns undefined for invalid day (00)', () => {
     expect(parseDxtrDate('260400')).toBeUndefined();
+  });
+});
+
+describe('parseTrusteeAppointmentsRequestTimeoutMs', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  test('returns the default when raw is undefined', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs(undefined)).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns the default when raw is empty', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns the parsed value for a valid positive integer string', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('120000')).toBe(120000);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('falls back to the default and warns for a non-numeric value', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('abc')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid'));
+  });
+
+  test('falls back to the default and warns for zero', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('0')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  test('falls back to the default and warns for a negative value', () => {
+    expect(parseTrusteeAppointmentsRequestTimeoutMs('-5')).toBe(
+      DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
+    );
+    expect(warnSpy).toHaveBeenCalled();
   });
 });

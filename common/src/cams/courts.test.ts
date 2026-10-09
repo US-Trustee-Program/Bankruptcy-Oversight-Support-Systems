@@ -2,30 +2,108 @@ import { CourtDivisionDetails, filterCourtByDivision, ustpOfficeToCourtDivision 
 import { COURT_DIVISIONS } from './test-utilities/courts.mock';
 import { UstpOfficeDetails } from './offices';
 
-describe('common court library tests', () => {
-  test('should filter court offices list by court division', async () => {
-    const expectedOffices = [
-      {
-        officeName: 'Baton Rouge',
-        officeCode: '3',
-        courtId: '053N',
-        courtName: 'Middle District of Louisiana',
-        courtDivisionCode: '313',
-        courtDivisionName: 'Baton Rouge',
-        groupDesignator: 'NR',
-        regionId: '5',
-        regionName: 'NEW ORLEANS',
-        state: 'LA',
-      },
-    ];
-    const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS)!;
+const seattleOffice = {
+  officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
+  officeName: 'Seattle',
+  groups: [
+    {
+      groupDesignator: 'SE',
+      divisions: [
+        {
+          divisionCode: '812',
+          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
+          courtOffice: {
+            courtOfficeCode: '2',
+            courtOfficeName: 'Seattle',
+          },
+        },
+        {
+          divisionCode: '813',
+          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
+          courtOffice: {
+            courtOfficeCode: '3',
+            courtOfficeName: 'Tacoma',
+          },
+        },
+      ],
+    },
+    {
+      groupDesignator: 'AK',
+      divisions: [
+        {
+          divisionCode: '710',
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
+          courtOffice: {
+            courtOfficeCode: '1',
+            courtOfficeName: 'Juneau',
+          },
+        },
+        {
+          divisionCode: '720',
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
+          courtOffice: {
+            courtOfficeCode: '2',
+            courtOfficeName: 'Nome',
+          },
+        },
+        {
+          divisionCode: '730',
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
+          courtOffice: {
+            courtOfficeCode: '3',
+            courtOfficeName: 'Anchorage',
+          },
+        },
+        {
+          divisionCode: '740',
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
+          courtOffice: {
+            courtOfficeCode: '4',
+            courtOfficeName: 'Fairbanks',
+          },
+        },
+        {
+          divisionCode: '750',
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
+          courtOffice: {
+            courtOfficeCode: '5',
+            courtOfficeName: 'Ketchikan',
+          },
+        },
+      ],
+    },
+  ],
+  regionId: '18',
+  regionName: 'Seattle',
+};
 
-    expect(newOfficeList).toBeDefined();
-    expect(newOfficeList.length).toEqual(1);
-    expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
+describe('common court library tests', () => {
+  test.each([
+    {
+      label: 'returns all divisions sharing the matched division’s courtId',
+      divisionCode: '710', // Juneau — District of Alaska has 5 divisions under courtId '097-'
+      expectedCourtDivisionCodes: ['710', '720', '730', '740', '750'],
+    },
+    {
+      label: 'returns a single division when only one shares the courtId',
+      divisionCode: '313', // Baton Rouge — Middle District of Louisiana has only 1 division
+      expectedCourtDivisionCodes: ['313'],
+    },
+  ])('$label', ({ divisionCode, expectedCourtDivisionCodes }) => {
+    const result = filterCourtByDivision(divisionCode, COURT_DIVISIONS)!;
+
+    expect(result).toBeDefined();
+    expect(result.map((o) => o.courtDivisionCode).sort()).toEqual(
+      [...expectedCourtDivisionCodes].sort(),
+    );
+    // Every returned office must share the matched division's courtId — the function's
+    // actual value beyond a simple find().
+    const courtId = result[0].courtId;
+    expect(result.every((o) => o.courtId === courtId)).toBe(true);
   });
 
-  test('should filter court offices list by court division #2', async () => {
+  test('should filter court offices list by court division #2', () => {
     const newOfficeList = filterCourtByDivision('555', COURT_DIVISIONS);
     expect(newOfficeList).toBeNull();
   });
@@ -160,79 +238,3 @@ describe('common court library tests', () => {
     ]);
   });
 });
-
-const seattleOffice = {
-  officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
-  officeName: 'Seattle',
-  groups: [
-    {
-      groupDesignator: 'SE',
-      divisions: [
-        {
-          divisionCode: '812',
-          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
-          courtOffice: {
-            courtOfficeCode: '2',
-            courtOfficeName: 'Seattle',
-          },
-        },
-        {
-          divisionCode: '813',
-          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
-          courtOffice: {
-            courtOfficeCode: '3',
-            courtOfficeName: 'Tacoma',
-          },
-        },
-      ],
-    },
-    {
-      groupDesignator: 'AK',
-      divisions: [
-        {
-          divisionCode: '710',
-          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
-          courtOffice: {
-            courtOfficeCode: '1',
-            courtOfficeName: 'Juneau',
-          },
-        },
-        {
-          divisionCode: '720',
-          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
-          courtOffice: {
-            courtOfficeCode: '2',
-            courtOfficeName: 'Nome',
-          },
-        },
-        {
-          divisionCode: '730',
-          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
-          courtOffice: {
-            courtOfficeCode: '3',
-            courtOfficeName: 'Anchorage',
-          },
-        },
-        {
-          divisionCode: '740',
-          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
-          courtOffice: {
-            courtOfficeCode: '4',
-            courtOfficeName: 'Fairbanks',
-          },
-        },
-        {
-          divisionCode: '750',
-          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
-          courtOffice: {
-            courtOfficeCode: '5',
-            courtOfficeName: 'Ketchikan',
-          },
-        },
-      ],
-    },
-  ],
-  regionId: '18',
-  regionName: 'Seattle',
-};

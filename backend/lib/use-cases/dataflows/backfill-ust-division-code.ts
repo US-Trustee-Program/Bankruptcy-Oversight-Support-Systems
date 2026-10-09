@@ -183,6 +183,10 @@ async function processBackfillPage(
 
   const pageResult = await getPageOfCasesNeedingBackfillByCursor(context, cursorLastId, pageSize);
   if (pageResult.error || !pageResult.data) {
+    // MaybeData's data/error fields are both optional (not a strict discriminated union), so
+    // this fallback guards a state getPageOfCasesNeedingBackfillByCursor's own contract should
+    // never produce (one of the two always set) — same defensive convention used by sibling
+    // backfill use-cases (e.g. backfill-case-appointment-dates.ts).
     return {
       status: 'error',
       error:
@@ -281,14 +285,9 @@ async function updateBackfillState(
 
     let stateBase = existingState;
     if (stateBase === undefined) {
-      try {
-        stateBase = await repo.read('UST_DIVISION_CODE_BACKFILL_STATE');
-      } catch (originalError) {
-        if (!isNotFoundError(originalError)) {
-          throw originalError;
-        }
-        stateBase = null;
-      }
+      const readResult = await readBackfillState(context);
+      if (readResult.error) throw readResult.error;
+      stateBase = readResult.data;
     }
 
     const state: UstDivisionCodeBackfillState = {

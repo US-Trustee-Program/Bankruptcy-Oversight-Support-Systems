@@ -1129,11 +1129,18 @@ export type BackfillProfessionalIdsPageResult = {
   recommendedVisibilitySeconds: number;
 };
 
-function computeHealBackoffMs(attempt: number, baseDelayMs: number): number {
+// Exported for direct unit testing of the backoff/escape-hatch math — processAcmsRecord is
+// currently a hard-coded no-op stub that never returns 'rateLimited', so this logic is otherwise
+// unreachable through backfillProfessionalIdsPage until that stub is replaced.
+export function computeHealBackoffMs(attempt: number, baseDelayMs: number): number {
   return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, HEAL_MAX_BACKOFF_MS);
 }
 
-function healShouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number) {
+export function healShouldEscape(
+  startedAt: number,
+  safeThresholdMs: number,
+  nextBackoffMs: number,
+) {
   return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
 }
 

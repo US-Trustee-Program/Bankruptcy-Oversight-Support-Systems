@@ -10,11 +10,8 @@ describe('offices gateway tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
     vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
   });
 
   describe('getOffice tests', () => {
@@ -61,6 +58,85 @@ describe('offices gateway tests', () => {
         expect(office.regionId).toBeTruthy();
         expect(office.groups.length).toBeGreaterThan(0);
       });
+
+      // Exact-value check for a known division (Boston, District of Massachusetts) — the
+      // truthy/membership checks above would pass even if toUstpOfficeDetails scrambled names
+      // or mis-grouped divisions, as long as fields were non-empty.
+      const bostonDivision = allDivisions.find((d) => d.divisionCode === '011');
+      expect(bostonDivision).toEqual({
+        divisionCode: '011',
+        ustDivisionCode: undefined,
+        court: { courtId: '0101', courtName: 'District of Massachusetts', state: 'MD' },
+        courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Boston' },
+      });
+      const bostonOffice = offices.find((office) =>
+        office.groups.some((group) => group.divisions.includes(bostonDivision!)),
+      );
+      expect(bostonOffice?.regionId).toEqual('1');
+      expect(bostonOffice?.regionName).toEqual('BOSTON');
+    });
+
+    test('groups divisions sharing an office under one office, splitting into separate groups by groupDesignator', async () => {
+      // Explicit, hand-built fixture (not relying on COURT_DIVISIONS' incidental shape) so
+      // coverage of toUstpOfficeDetails' "office already exists" / "group already exists" merge
+      // branches doesn't silently disappear if the shared fixture's row shape ever changes.
+      // All three rows share the same office key (regionId + courtDivisionCode).
+      const rows = [
+        {
+          courtDivisionCode: '491',
+          groupDesignator: 'CN',
+          courtId: '0649',
+          officeCode: '1',
+          courtDivisionName: 'Chattanooga',
+        },
+        {
+          // Same office key and groupDesignator as above — hits the "group already exists"
+          // branch; division should be appended to the same group, not a new one.
+          courtDivisionCode: '491',
+          groupDesignator: 'CN',
+          courtId: '0649',
+          officeCode: '4',
+          courtDivisionName: 'Winchester',
+        },
+        {
+          // Same office key, different groupDesignator — hits the "office already exists but
+          // group does not" branch; a new group should be added to the existing office.
+          courtDivisionCode: '491',
+          groupDesignator: 'XX',
+          courtId: '0649',
+          officeCode: '9',
+          courtDivisionName: 'OtherGroupDivision',
+        },
+      ].map((row) => ({
+        ...row,
+        courtName: 'Eastern District of Tennessee',
+        regionId: '08',
+        regionName: 'ATLANTA',
+        state: 'TN',
+      }));
+      const mockResults: QueryResults = {
+        success: true,
+        results: { recordset: rows },
+        message: '',
+      };
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue(mockResults);
+
+      const gateway = new OfficesDxtrGateway(applicationContext);
+      const offices = await gateway.getOffices(applicationContext);
+
+      expect(offices).toHaveLength(1);
+      expect(offices[0].groups).toHaveLength(2);
+
+      const cnGroup = offices[0].groups.find((g) => g.groupDesignator === 'CN');
+      expect(cnGroup?.divisions).toHaveLength(2);
+      expect(cnGroup?.divisions.map((d) => d.courtOffice.courtOfficeName).sort()).toEqual([
+        'Chattanooga',
+        'Winchester',
+      ]);
+
+      const xxGroup = offices[0].groups.find((g) => g.groupDesignator === 'XX');
+      expect(xxGroup?.divisions).toHaveLength(1);
+      expect(xxGroup?.divisions[0].courtOffice.courtOfficeName).toEqual('OtherGroupDivision');
     });
 
     test('maps ustDivisionCode separately from courtDivisionCode for Eastern District of TN', async () => {

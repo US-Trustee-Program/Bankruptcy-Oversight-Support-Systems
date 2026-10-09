@@ -917,6 +917,21 @@ describe('court-utils', () => {
 
       expect(appointments).toEqual(originalOrder);
     });
+
+    test('uses the full courtName as state when it does not match the "District of X" pattern', () => {
+      // parseDistrictName's fallback branch — a court name with no "District of" substring.
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'Guam District Court', chapter: '7' }),
+        MockData.getTrusteeAppointment({ courtName: 'District of Nevada', chapter: '7' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      // 'District of Nevada' parses state='Nevada'; 'Guam District Court' has no match so its
+      // whole name is used as state — 'Guam...' sorts before 'Nevada' alphabetically.
+      expect(sorted[0].courtName).toBe('Guam District Court');
+      expect(sorted[1].courtName).toBe('District of Nevada');
+    });
   });
 
   describe('encodeDivisionCodes', () => {

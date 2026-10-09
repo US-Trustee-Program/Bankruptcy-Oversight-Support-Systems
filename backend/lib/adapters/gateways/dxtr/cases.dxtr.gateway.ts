@@ -25,10 +25,9 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
-const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
+export const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
 
-const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
-  const raw = process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS;
+export function parseTrusteeAppointmentsRequestTimeoutMs(raw: string | undefined): number {
   if (!raw) return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -38,7 +37,11 @@ const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
     return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   }
   return parsed;
-})();
+}
+
+const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = parseTrusteeAppointmentsRequestTimeoutMs(
+  process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+);
 
 export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;

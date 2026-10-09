@@ -36,6 +36,7 @@ import {
   isOneSidedMiddleNameMatch,
   calculateNumericTokenScore,
   padSingleDigitNumericToken,
+  isBlankAcmsValue,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -1322,6 +1323,17 @@ describe('normalizeAddressLine', () => {
 
   test('should return an empty string for blank input', () => {
     expect(normalizeAddressLine('   ')).toBe('');
+  });
+});
+
+describe('isBlankAcmsValue', () => {
+  test.each([
+    { value: undefined, expected: true, label: 'undefined' },
+    { value: '', expected: true, label: 'empty string' },
+    { value: '0', expected: true, label: 'the "0" ACMS sentinel' },
+    { value: '555-123-4567', expected: false, label: 'a real phone value' },
+  ])('returns $expected for $label', ({ value, expected }) => {
+    expect(isBlankAcmsValue(value)).toBe(expected);
   });
 });
 
@@ -3595,7 +3607,7 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.kind).toBe('unresolved');
   });
 
-  test('should lazy-load trustee and appointment data', async () => {
+  test('should call trustee and appointment repositories with the candidate trusteeId', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',

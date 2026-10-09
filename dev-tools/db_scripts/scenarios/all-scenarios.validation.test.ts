@@ -86,6 +86,7 @@ const SCENARIOS = [
 let mockContext: SeedContext;
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   mockContext = {
     generateCaseId: vi.fn().mockResolvedValue({
       caseId: '081-99-99999',

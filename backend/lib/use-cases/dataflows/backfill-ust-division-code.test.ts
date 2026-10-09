@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeAll, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import BackfillUstDivisionCodeUseCase from './backfill-ust-division-code';
@@ -10,12 +10,9 @@ import { UstDivisionCodeBackfillState } from '../gateways.types';
 describe('BackfillUstDivisionCodeUseCase', () => {
   let context: ApplicationContext;
 
-  beforeAll(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   describe('getPageOfCasesNeedingBackfillByCursor', () => {
@@ -66,6 +63,53 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.data?.cases.length).toBe(0);
       expect(result.data?.hasMore).toBe(false);
       expect(result.data?.lastId).toBeNull();
+    });
+
+    test('scopes the query to SYNCED_CASE docs in court 0649 missing ustDivisionCode', async () => {
+      const findByCursorSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByCursor')
+        .mockResolvedValue([]);
+
+      await BackfillUstDivisionCodeUseCase.getPageOfCasesNeedingBackfillByCursor(
+        context,
+        null,
+        100,
+      );
+
+      expect(findByCursorSpy).toHaveBeenCalledTimes(1);
+      const [query, options] = findByCursorSpy.mock.calls[0];
+      expect(query).toEqual({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'SYNCED_CASE',
+          },
+          { condition: 'EQUALS', leftOperand: { name: 'courtId' }, rightOperand: '0649' },
+          { condition: 'EXISTS', leftOperand: { name: 'ustDivisionCode' }, rightOperand: false },
+        ],
+      });
+      expect(options).toEqual({ limit: 101, sortField: '_id', sortDirection: 'ASCENDING' });
+    });
+
+    test('adds a cursor condition only when lastId is provided', async () => {
+      const findByCursorSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByCursor')
+        .mockResolvedValue([]);
+
+      await BackfillUstDivisionCodeUseCase.getPageOfCasesNeedingBackfillByCursor(
+        context,
+        'cursor-abc',
+        100,
+      );
+
+      const [query] = findByCursorSpy.mock.calls[0];
+      expect(query).toMatchObject({
+        values: expect.arrayContaining([
+          { condition: 'GREATER_THAN', leftOperand: { name: '_id' }, rightOperand: 'cursor-abc' },
+        ]),
+      });
     });
 
     test('should return error when repo call fails', async () => {
@@ -280,6 +324,43 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.failedResults[0].caseId).toBe(bCase.caseId);
       expect(result.successCount).toBe(0);
     });
+
+    test('should return error and persist FAILED status when the whole batch errors', async () => {
+      const bCase = { _id: 'eeee', caseId: '491-25-00005' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockRejectedValue(
+        new Error('DXTR connection lost'),
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('error');
+      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED' }));
+    });
+
+    test('should still return error when the FAILED-status update itself fails', async () => {
+      const bCase = { _id: 'ffff', caseId: '491-25-00006' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockRejectedValue(
+        new Error('DXTR connection lost'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new Error('Cosmos write failed'),
+      );
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('error');
+      if (result.status !== 'error') return;
+      expect(result.error.message).toBe('Failed to backfill ustDivisionCode for batch.');
+    });
   });
 
   describe('updateBackfillState', () => {
@@ -352,6 +433,22 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       });
 
       expect(result.error).toBeDefined();
+    });
+
+    test('should return error when the internal state read fails with a non-NotFoundError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new Error('Connection lost'),
+      );
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+
+      const result = await BackfillUstDivisionCodeUseCase.updateBackfillState(context, {
+        lastId: null,
+        processedCount: 0,
+        status: 'IN_PROGRESS',
+      });
+
+      expect(result.error).toBeDefined();
+      expect(upsertSpy).not.toHaveBeenCalled();
     });
   });
 });

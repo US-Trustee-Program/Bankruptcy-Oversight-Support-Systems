@@ -7,10 +7,14 @@ import {
   getTotalTrusteeCount,
   deleteAllTrusteesAndAppointments,
   mergeTrusteeRecords,
+  selectPrimaryAddress,
+  getTrusteeDedupeKey,
+  deduplicateTrusteesInPage,
+  computeHealBackoffMs,
+  healShouldEscape,
   buildDistrictToDivisionsMap,
   readAllTrusteeProfessionalRecords,
 } from './migrate-trustees';
-import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
   getOrCreateMigrationState,
   completeMigration,
@@ -853,45 +857,63 @@ describe('Migrate Trustees Use Case', () => {
     });
 
     test('should fail after exhausting all retry attempts', async () => {
-      const atsTrustee: AtsTrusteeRecord = {
-        ID: 1,
-        FIRST_NAME: 'John',
-        LAST_NAME: 'Doe',
-        STATE: 'NY',
-      };
+      vi.useFakeTimers();
+      try {
+        const atsTrustee: AtsTrusteeRecord = {
+          ID: 1,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STATE: 'NY',
+        };
 
-      // Fail on all attempts
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
-        new Error('Persistent database error'),
-      );
+        // Fail on all attempts
+        vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+          new Error('Persistent database error'),
+        );
 
-      const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+        const trustees = [atsTrustee];
+        const resultPromise = processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+        // Exponential backoff: 1s, then 2s — advance past both retry delays.
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.advanceTimersByTimeAsync(2000);
+        const result = await resultPromise;
 
-      expect(result.data?.processed).toBe(0); // Failed after all retries
-      expect(result.data?.errors).toBe(1);
-    }, 10000); // 10 second timeout for retry delays (1s + 2s)
+        expect(result.data?.processed).toBe(0); // Failed after all retries
+        expect(result.data?.errors).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
 
     test('should retry each failed trustee independently', async () => {
-      const trustees: AtsTrusteeRecord[] = [
-        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will fail then succeed
-        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will succeed immediately
-        { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will fail permanently
-      ];
+      vi.useFakeTimers();
+      try {
+        const trustees: AtsTrusteeRecord[] = [
+          { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will fail then succeed
+          { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will succeed immediately
+          { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will fail permanently
+        ];
 
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
-        .mockRejectedValueOnce(new Error('John fails first'))
-        .mockResolvedValueOnce(null) // John succeeds on retry
-        .mockResolvedValueOnce(null) // Jane succeeds immediately
-        .mockRejectedValue(new Error('Bob fails permanently')); // Bob fails all attempts
+        vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+          .mockRejectedValueOnce(new Error('John fails first'))
+          .mockResolvedValueOnce(null) // John succeeds on retry
+          .mockResolvedValueOnce(null) // Jane succeeds immediately
+          .mockRejectedValue(new Error('Bob fails permanently')); // Bob fails all attempts
 
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
 
-      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+        const resultPromise = processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+        // Trustees are processed sequentially, each with its own 1s/2s backoff — advance well
+        // past the worst case (John: 1s, Bob: 1s + 2s) in one go so all nested timers fire.
+        await vi.advanceTimersByTimeAsync(10_000);
+        const result = await resultPromise;
 
-      expect(result.data?.processed).toBe(2); // John and Jane succeeded
-      expect(result.data?.errors).toBe(1); // Only Bob failed permanently
-    }, 15000); // 15 second timeout for retry delays
+        expect(result.data?.processed).toBe(2); // John and Jane succeeded
+        expect(result.data?.errors).toBe(1); // Only Bob failed permanently
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('processPageOfTrustees', () => {
@@ -1557,82 +1579,6 @@ describe('Migrate Trustees Use Case', () => {
     });
   });
 
-  describe('detectAmbiguousFlagTrustees', () => {
-    const makeTrustee = (
-      id: number,
-      dispOnWeb?: string,
-      dispOnWebA2?: string,
-    ): AtsTrusteeRecord => ({
-      ID: id,
-      FIRST_NAME: `First${id}`,
-      LAST_NAME: `Last${id}`,
-      STREET: `${id} Main St`,
-      CITY: 'City',
-      STATE: 'TX',
-      ZIP: '77001',
-      STREET_A2: `${id} Alt Ave`,
-      CITY_A2: 'AltCity',
-      STATE_A2: 'TX',
-      ZIP_A2: '77002',
-      DISP_ON_WEB: dispOnWeb,
-      DISP_ON_WEB_A2: dispOnWebA2,
-    });
-
-    test('should detect trustees where both flags are y', () => {
-      const trustees = [makeTrustee(1, 'y', 'y'), makeTrustee(2, 'y', 'N')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(1);
-      expect(result[0].trusteeId).toBe(1);
-      expect(result[0].dispOnWeb).toBe('y');
-      expect(result[0].dispOnWebA2).toBe('y');
-    });
-
-    test('should detect trustees where both flags are N', () => {
-      const trustees = [makeTrustee(1, 'N', 'N'), makeTrustee(2, 'y', 'N')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(1);
-      expect(result[0].trusteeId).toBe(1);
-      expect(result[0].dispOnWeb).toBe('N');
-      expect(result[0].dispOnWebA2).toBe('N');
-    });
-
-    test('should treat flag comparison as case-insensitive', () => {
-      const trustees = [makeTrustee(1, 'Y', 'Y'), makeTrustee(2, 'n', 'n')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(2);
-      expect(result[0].dispOnWeb).toBe('Y');
-      expect(result[1].dispOnWeb).toBe('n');
-    });
-
-    test('should include trustee name and both address sets in result', () => {
-      const trustees = [makeTrustee(5, 'y', 'y')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result[0].name).toBe('First5 Last5');
-      expect(result[0].address).toMatchObject({ street: '5 Main St', city: 'City' });
-      expect(result[0].addressA2).toMatchObject({ street: '5 Alt Ave', city: 'AltCity' });
-    });
-
-    test('should return empty array when no ambiguous trustees exist', () => {
-      const trustees = [makeTrustee(1, 'y', 'N'), makeTrustee(2, 'N', 'y')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(0);
-    });
-
-    test('should return empty array when flags are absent', () => {
-      const trustees = [makeTrustee(1, undefined, undefined)];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(0);
-    });
-
-    test('should detect trustees with unexpected non-y/n flag values', () => {
-      const trustees = [makeTrustee(1, 'yes', 'N'), makeTrustee(2, 'y', 'N')];
-      const result = detectAmbiguousFlagTrustees(trustees);
-      expect(result).toHaveLength(1);
-      expect(result[0].trusteeId).toBe(1);
-      expect(result[0].dispOnWeb).toBe('yes');
-    });
-  });
-
   describe('processPageOfTrustees - ambiguous flag JSONL write', () => {
     let objectStorageGateway: ObjectStorageGateway;
     let writeObjectSpy: ReturnType<typeof vi.spyOn>;
@@ -1863,6 +1809,135 @@ describe('Migrate Trustees Use Case', () => {
       await createAppointments(context, MOCK_TRUSTEE, cleanAppointments);
 
       expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+  });
+
+  describe('selectPrimaryAddress / mergeTrusteeRecords (multi-record dedup/merge)', () => {
+    test('selects the record with the more complete address as primary', () => {
+      const sparse: AtsTrusteeRecord = { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' };
+      const complete: AtsTrusteeRecord = {
+        ID: 2,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+        CITY: 'Springfield',
+        STATE: 'IL',
+        ZIP: '62701',
+      };
+
+      const { primary } = selectPrimaryAddress([sparse, complete]);
+
+      expect(primary.ID).toBe(2);
+    });
+
+    test('breaks a tied address-completeness score by lowest ID', () => {
+      const recordA: AtsTrusteeRecord = { ID: 5, FIRST_NAME: 'John', LAST_NAME: 'Doe' };
+      const recordB: AtsTrusteeRecord = { ID: 2, FIRST_NAME: 'John', LAST_NAME: 'Doe' };
+
+      const { primary } = selectPrimaryAddress([recordA, recordB]);
+
+      expect(primary.ID).toBe(2);
+    });
+
+    test('includes non-primary records with meaningful address data as additional addresses', () => {
+      const primaryRecord: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+        CITY: 'Springfield',
+        STATE: 'IL',
+        ZIP: '62701',
+        TELEPHONE: '555-1234',
+      };
+      const secondaryRecord: AtsTrusteeRecord = {
+        ID: 2,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '456 Oak Ave',
+        CITY: 'Chicago',
+        STATE: 'IL',
+        ZIP: '60601',
+      };
+      const emptyAddressRecord: AtsTrusteeRecord = { ID: 3, FIRST_NAME: 'John', LAST_NAME: 'Doe' };
+
+      const { primary, additional } = selectPrimaryAddress([
+        primaryRecord,
+        secondaryRecord,
+        emptyAddressRecord,
+      ]);
+
+      expect(primary.ID).toBe(1);
+      expect(additional).toHaveLength(1);
+      expect(additional[0]).toEqual({
+        address1: '456 Oak Ave',
+        cityStateZipCountry: 'Chicago, IL, 60601',
+      });
+    });
+
+    test('mergeTrusteeRecords collects every ID into todIds regardless of which is primary', () => {
+      const recordA: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+      };
+      const recordB: AtsTrusteeRecord = { ID: 2, FIRST_NAME: 'John', LAST_NAME: 'Doe' };
+
+      const merged = mergeTrusteeRecords([recordA, recordB]);
+
+      expect(merged.primary.ID).toBe(1);
+      expect(merged.todIds).toEqual(['1', '2']);
+      expect(merged.allAppointments).toEqual([]);
+    });
+  });
+
+  describe('getTrusteeDedupeKey / deduplicateTrusteesInPage', () => {
+    test('normalizes state case (but not name case) when building the key', () => {
+      const a: AtsTrusteeRecord = { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'il' };
+      const b: AtsTrusteeRecord = { ID: 2, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'IL' };
+
+      expect(getTrusteeDedupeKey(a)).toBe(getTrusteeDedupeKey(b));
+      expect(getTrusteeDedupeKey(a)).toBe('John|Doe|IL');
+    });
+
+    test('groups records sharing a dedupe key and keeps distinct people separate', () => {
+      const johnA: AtsTrusteeRecord = { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'IL' };
+      const johnB: AtsTrusteeRecord = { ID: 2, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'IL' };
+      const jane: AtsTrusteeRecord = { ID: 3, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' };
+
+      const grouped = deduplicateTrusteesInPage([johnA, johnB, jane]);
+
+      expect(grouped.size).toBe(2);
+      expect(grouped.get(getTrusteeDedupeKey(johnA))).toEqual([johnA, johnB]);
+      expect(grouped.get(getTrusteeDedupeKey(jane))).toEqual([jane]);
+    });
+  });
+
+  describe('computeHealBackoffMs / healShouldEscape', () => {
+    test('doubles the backoff with each attempt', () => {
+      expect(computeHealBackoffMs(0, 1000)).toBe(2000);
+      expect(computeHealBackoffMs(1, 1000)).toBe(4000);
+      expect(computeHealBackoffMs(2, 1000)).toBe(8000);
+    });
+
+    test('caps the backoff at HEAL_MAX_BACKOFF_MS (10 minutes)', () => {
+      expect(computeHealBackoffMs(10, 1000)).toBe(10 * 60 * 1000);
+    });
+
+    test('does not escape when the next backoff fits within budget', () => {
+      const startedAt = Date.now();
+      expect(healShouldEscape(startedAt, 60_000, 1000)).toBe(false);
+    });
+
+    test('escapes when the next backoff would exceed the wall-clock budget', () => {
+      const startedAt = Date.now() - 55_000;
+      expect(healShouldEscape(startedAt, 60_000, 10_000)).toBe(true);
+    });
+
+    test('escapes exactly at the threshold boundary (>= not >)', () => {
+      const startedAt = Date.now() - 50_000;
+      expect(healShouldEscape(startedAt, 60_000, 10_000)).toBe(true);
     });
   });
 });
