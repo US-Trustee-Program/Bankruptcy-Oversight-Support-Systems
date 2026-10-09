@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@azure/storage-blob": "12.33.0",
-    "@azure/storage-queue": "12.31.0"
+    "@azure/storage-blob": "12.34.0",
+    "@azure/storage-queue": "12.32.0"
   },
   "scripts": {
     "api-to-dataflows-bridge": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
