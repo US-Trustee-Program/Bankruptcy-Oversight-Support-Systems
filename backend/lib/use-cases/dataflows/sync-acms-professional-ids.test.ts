@@ -529,23 +529,48 @@ describe('SyncAcmsProfessionalIds', () => {
         }),
         expect.objectContaining({ id: 'ACMS' }),
       );
+      expect(upsertSpy.mock.calls[0][0].linkMethod).toBeUndefined();
       expect(outcome).toEqual({ kind: 'conflict', via: 'fingerprint' });
     });
 
-    test('should not record a TrusteeVariation for a name-matched auto-link', async () => {
+    test('should write a name match as linked by auto, without recording a TrusteeVariation', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const matchedPipelineState = {
         ...noMatchPipelineState,
+        candidates: new Map([
+          [
+            'trustee-1',
+            {
+              camsRaw: { trusteeId: 'trustee-1' },
+              camsNormalized: {},
+              memo: new Map(),
+              scores: { doesNameMatch: { pass: true, quality: 'exact' } },
+              origin: 'test',
+            },
+          ],
+        ]),
         match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByNameOnly' },
       };
       vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         matchedPipelineState as never,
       );
       const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
+      const upsertSpy = vi
+        .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
+        .mockResolvedValue(linkedProfessionalId());
 
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(createVariationSpy).not.toHaveBeenCalled();
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          camsTrusteeId: 'trustee-1',
+          disposition: 'linked',
+          linkMethod: 'auto',
+          nameMatchCount: 1,
+        }),
+        expect.objectContaining({ id: 'ACMS' }),
+      );
       expect(outcome).toEqual({ kind: 'auto-linked', via: 'name' });
     });
 
@@ -716,6 +741,7 @@ describe('SyncAcmsProfessionalIds', () => {
         }),
         expect.objectContaining({ id: 'ACMS' }),
       );
+      expect(upsertSpy.mock.calls[0][0].linkMethod).toBeUndefined();
       expect(outcome).toEqual({ kind: 'conflict', via: 'name' });
     });
 

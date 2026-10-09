@@ -110,6 +110,15 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
+  // A missing ACMS contact-data score is not a failed one, so it does not disqualify a rival.
+  test('returns ambiguous when two strong-name candidates have no ACMS contact-data score at all', () => {
+    const strongMatch = { doesNameMatch: { pass: true, quality: 'strong' } };
+    const state = makeState({
+      candidates: [makeCandidate(strongMatch), makeCandidate(strongMatch)],
+    });
+    expect(deriveDisposition(state)).toBe('ambiguous');
+  });
+
   test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
     const exactMatch = {
       doesNameMatch: { pass: true, quality: 'exact' },

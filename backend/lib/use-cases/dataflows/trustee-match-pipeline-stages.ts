@@ -10,6 +10,7 @@ import {
   isPlausibleNicknameByDistance,
   lastNameSurnameCandidates,
   lastNameTokensMatch,
+  surnameCore,
   matchTrusteeByName,
   normalizeAddressLine,
   parseCityStateZip,
@@ -189,7 +190,7 @@ function matchName(
     if (
       sourceFirst &&
       sourceFirst === camsFirst &&
-      memoizedIsFuzzyNamePartMatch(memo, sourceLast, camsLast)
+      memoizedIsFuzzyNamePartMatch(memo, surnameCore(sourceLast), surnameCore(camsLast))
     ) {
       return { pass: true, quality: 'weak' };
     }

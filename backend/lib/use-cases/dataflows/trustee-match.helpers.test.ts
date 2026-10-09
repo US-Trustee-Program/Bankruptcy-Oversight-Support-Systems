@@ -1777,6 +1777,24 @@ describe('firstLastNameToken', () => {
     },
   );
 
+  // Two particles in a row ("De La", "Van Der") would otherwise reduce every such surname to the
+  // particles alone, grading different surnames as the same.
+  test.each([
+    ['De La Quillan', 'de la quillan'],
+    ['VAN DER VEXMORE', 'van der vexmore'],
+    ['Van Den Orsino, Jr.', 'van den orsino'],
+  ])(
+    'should keep consecutive particles joined to the surname that follows: %s',
+    (input, expected) => {
+      expect(firstLastNameToken(input)).toBe(expected);
+    },
+  );
+
+  test('should treat two surnames sharing the same two particles as different', () => {
+    expect(firstLastNameToken('De La Quillan')).not.toBe(firstLastNameToken('De La Tessarin'));
+    expect(firstLastNameToken('Van Der Vexmore')).not.toBe(firstLastNameToken('Van Der Orsino'));
+  });
+
   test('should NOT join a prefix particle when it is not followed by another token', () => {
     // A bare "Van" with nothing after it isn't a compound surname — nothing to join to.
     expect(firstLastNameToken('Van')).toBe('van');

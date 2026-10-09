@@ -1,9 +1,11 @@
 import { describe, test, expect } from 'vitest';
 import {
+  isRecordDisavowed,
   recoverCorruptedFirstName,
   recoverLastFirstRoleSwap,
   recoverSoloPracticeName,
   shouldSkipAsNotAPerson,
+  shouldSkipAsUstStaff,
   stripAdministrativeMarkers,
 } from './acms-name-normalization.helpers';
 
@@ -43,6 +45,19 @@ describe('stripAdministrativeMarkers', () => {
     ['DOYLECHAPTER13', 'DOYLE'],
   ])('strips a chapter marker glued onto the end of a word: "%s" -> "%s"', (input, expected) => {
     expect(stripAdministrativeMarkers(input)).toBe(expected);
+  });
+
+  test.each([
+    ['ALDRIC VEXMORE (DO NOT USE)', 'ALDRIC VEXMORE'],
+    ['DECEASED - ALDRIC VEXMORE', 'ALDRIC VEXMORE'],
+    ['ALDRIC VEXMORE (NP)', 'ALDRIC VEXMORE'],
+    ['ALDRIC VEXMORE LIQ TR', 'ALDRIC VEXMORE'],
+  ])('strips a status or role marker: "%s" -> "%s"', (input, expected) => {
+    expect(stripAdministrativeMarkers(input)).toBe(expected);
+  });
+
+  test('leaves a short marker inside a word untouched', () => {
+    expect(stripAdministrativeMarkers('QUINPORE')).toBe('QUINPORE');
   });
 
   test('strips a spaced chapter marker', () => {
@@ -111,5 +126,37 @@ describe('recoverSoloPracticeName', () => {
     ['TESSARIN', 'ORSINO INC', { firstName: 'TESSARIN', lastName: 'ORSINO INC' }],
   ])('recovers firstName "%s" with lastName "%s"', (firstName, lastName, expected) => {
     expect(recoverSoloPracticeName(firstName, lastName)).toEqual(expected);
+  });
+});
+
+describe('isRecordDisavowed', () => {
+  test.each([
+    { description: 'a disavowal in the name', fullName: 'ALDRIC VEXMORE DO NOT USE', legacy: {} },
+    {
+      description: 'a disavowal in the address',
+      fullName: 'ALDRIC VEXMORE',
+      legacy: { address1: 'DO NOT USE' },
+    },
+  ])('disavows $description', ({ fullName, legacy }) => {
+    expect(isRecordDisavowed({ fullName, legacy } as never)).toBe(true);
+  });
+
+  test('does not disavow a record with no disavowal phrase', () => {
+    expect(
+      isRecordDisavowed({ fullName: 'ALDRIC VEXMORE', legacy: { address1: '1 Elm St' } } as never),
+    ).toBe(false);
+  });
+});
+
+describe('shouldSkipAsUstStaff', () => {
+  test.each(['ALDRIC VEXMORE (UST)', 'ALDRIC VEXMORE U.S. TRUSTEE', 'US TRUSTEE'])(
+    'skips a U.S. Trustee annotation: "%s"',
+    (fullName) => {
+      expect(shouldSkipAsUstStaff(fullName)).toBe(true);
+    },
+  );
+
+  test.each(['ALDRIC VEXMORE', 'ALDRIC USTRAND'])('does not skip "%s"', (fullName) => {
+    expect(shouldSkipAsUstStaff(fullName)).toBe(false);
   });
 });
