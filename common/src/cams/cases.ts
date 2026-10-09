@@ -59,6 +59,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
     courtId,
     courtName,
     courtDivisionCode,
+    ustDivisionCode,
     courtDivisionName,
     groupDesignator,
     regionId,
@@ -94,6 +95,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
     dateFiled,
   };
   if (state !== undefined) result.state = state;
+  if (ustDivisionCode !== undefined) result.ustDivisionCode = ustDivisionCode;
   if (caseNumber !== undefined) result.caseNumber = caseNumber;
   if (petitionCode !== undefined) result.petitionCode = petitionCode;
   if (petitionLabel !== undefined) result.petitionLabel = petitionLabel;
