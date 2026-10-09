@@ -9,7 +9,7 @@ import {
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeAppointment, getDivisionCodes } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -444,7 +444,7 @@ export function normalizeChapter(chapter: string): string {
 function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
   return (
     appointment.divisionCode === divisionCode ||
-    (appointment.divisionCodes?.includes(divisionCode) ?? false)
+    getDivisionCodes(appointment).includes(divisionCode)
   );
 }
 
@@ -468,6 +468,24 @@ export function isAppointmentMatch(
       a.courtId === courtId &&
       appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
+  );
+}
+
+/**
+ * Determines whether a trustee has any active appointment covering a court + division,
+ * independent of chapter. Enforces CAMS-905's "configured divisions" business rule, which
+ * (per the originating user story/AC) is a division-only check -- deliberately narrower than
+ * isAppointmentMatch's court+chapter+division rule, which exists for a different purpose
+ * (auto-link's appointment-identity gate) and is not part of this rule.
+ */
+export function isDivisionMatch(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+): boolean {
+  return appointments.some(
+    (a) =>
+      a.status === 'active' && a.courtId === courtId && appointmentCoversDivision(a, divisionCode),
   );
 }
 

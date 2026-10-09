@@ -534,9 +534,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
-    } catch {
+    } catch (error) {
       onOrderUpdate(
-        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        {
+          message: error instanceof Error ? error.message : 'Failed to confirm trustee match.',
+          type: UswdsAlertStyle.Error,
+          timeOut: 8,
+        },
         order,
       );
     } finally {
@@ -560,9 +564,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
-    } catch {
+    } catch (error) {
       onOrderUpdate(
-        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        {
+          message: error instanceof Error ? error.message : 'Failed to confirm trustee match.',
+          type: UswdsAlertStyle.Error,
+          timeOut: 8,
+        },
         order,
       );
     } finally {
@@ -870,7 +878,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <p className="resolved-statement" data-testid="resolved-statement">
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
+                {affectedCaseCount > 1 ? '' : 'case: '}
               </span>
               {caseLink}
             </p>
@@ -964,6 +972,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         dxtrTrusteePhone={legacy?.phone}
         dxtrTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
+        divisionCode={divisionCode}
         onConfirm={handleManualMatch}
         isProcessing={isProcessing}
       />

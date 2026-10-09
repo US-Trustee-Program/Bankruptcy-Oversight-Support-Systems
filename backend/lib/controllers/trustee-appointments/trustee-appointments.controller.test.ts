@@ -242,6 +242,59 @@ describe('TrusteeAppointmentsController', () => {
       );
     });
 
+    test('reflects the merge target in self when the update is redirected to a different appointment', async () => {
+      // Matt Stankey's PR #3090 finding: when updateAppointment redirects a duplicate-collision
+      // update into a DIFFERENT existing appointment (CAMS-905's merge-enforcement), the
+      // resolved resource is no longer the one named in the request URL. A client trusting
+      // meta.self and re-fetching it would see the original, unchanged appointment with no
+      // indication the edit actually landed on mergeTarget.id instead.
+      const trusteeId = 'trustee-123';
+      const appointmentId = 'appointment-456';
+      const mergeTargetId = 'appointment-789';
+      const mergedAppointment = MockData.getTrusteeAppointment({
+        ...appointmentUpdate,
+        id: mergeTargetId,
+        trusteeId,
+      });
+
+      context.request.url = `http://localhost:3000/api/trustees/${trusteeId}/appointments/${appointmentId}`;
+      context.request.params = { trusteeId, appointmentId };
+      context.request.body = appointmentUpdate;
+      mockUseCase.updateAppointment.mockResolvedValue(mergedAppointment);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.meta?.self).toBe(
+        `http://localhost:3000/api/trustees/${trusteeId}/appointments/${mergeTargetId}`,
+      );
+    });
+
+    test('falls back to the unmodified request URL when it does not end with the requested appointment ID', async () => {
+      // The merge-target redirect above rewrites self by slicing off a trailing
+      // `/${appointmentId}` -- this pins the defensive fallback for when that assumption
+      // doesn't hold (e.g. a client-appended trailing slash or query string), so self stays
+      // the plain request URL instead of silently computing a wrong/malformed location.
+      const trusteeId = 'trustee-123';
+      const appointmentId = 'appointment-456';
+      const mergeTargetId = 'appointment-789';
+      const mergedAppointment = MockData.getTrusteeAppointment({
+        ...appointmentUpdate,
+        id: mergeTargetId,
+        trusteeId,
+      });
+
+      context.request.url = `http://localhost:3000/api/trustees/${trusteeId}/appointments/${appointmentId}/`;
+      context.request.params = { trusteeId, appointmentId };
+      context.request.body = appointmentUpdate;
+      mockUseCase.updateAppointment.mockResolvedValue(mergedAppointment);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.meta?.self).toBe(context.request.url);
+    });
+
     test('should require trustee ID', async () => {
       context.request.params = { appointmentId: 'appointment-456' };
       context.request.body = appointmentUpdate;

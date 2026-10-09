@@ -11,6 +11,9 @@ import {
   TrusteeAppointmentDownstreamEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
+import CaseManagement from '../cases/case-management';
+import { CaseSummary } from '@common/cams/cases';
+import * as syncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -48,6 +51,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockQueueTrusteeAppointmentEvent: Mock<
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
+  let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -59,6 +63,14 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    // Matches makeSurrogate's defaults (courtDivisionCode/chapter '081'/'7') so every
+    // pre-existing test -- which doesn't care about the division re-validation guard --
+    // continues to pass it by default. Tests exercising the guard itself override this.
+    mockGetTrusteeAppointments = vi
+      .fn()
+      .mockResolvedValue([
+        { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+      ]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -68,6 +80,15 @@ describe('TrusteeVerificationRemapUseCase', () => {
         upsert: mockUpsert,
         delete: mockDelete,
       }),
+    );
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getTrusteeAppointments: mockGetTrusteeAppointments,
+      }),
+    );
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+      async (_context, caseId) =>
+        ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
     );
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
@@ -201,21 +222,24 @@ describe('TrusteeVerificationRemapUseCase', () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
+    // Spying directly on resolveGroupMatchedProfessionalId (rather than mocking its two
+    // gateway dependencies) keeps this file focused on what TrusteeVerificationRemapUseCase
+    // does with the result, not how that helper computes it -- its own group-designator
+    // matching/sentinel-fallback logic is exhaustively tested in
+    // sync-trustee-case-appointments.test.ts.
+    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
+      'PROF-123',
     );
     useCase = new TrusteeVerificationRemapUseCase(context);
 
     await useCase.remapPage(makeMessage(), 25);
 
     expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
+      expect.objectContaining({
+        caseId: surrogate.caseId,
+        trusteeId: 'trustee-new',
+        acmsProfessionalId: 'PROF-123',
+      }),
     );
   });
 
@@ -234,14 +258,8 @@ describe('TrusteeVerificationRemapUseCase', () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
+    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
+      'PROF-123',
     );
     mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
     useCase = new TrusteeVerificationRemapUseCase(context);
@@ -288,5 +306,83 @@ describe('TrusteeVerificationRemapUseCase', () => {
       pageSize: 0,
       remainingCount: 0,
     });
+  });
+
+  test('skips remapping a surrogate whose fresh case summary no longer matches the resolved trustee division -- defense in depth against the approval race window', async () => {
+    // A surrogate could be admitted into this fingerprint's bucket after
+    // approveVerification's own division-check snapshot but before its TRUSTEE_VARIATION
+    // write closes the window (see that use case's step 2-4 comments) -- such a surrogate
+    // would never have passed any division check at all. This re-validates against a fresh
+    // case summary rather than trusting the surrogate's own stale courtDivisionCode/chapter.
+    const surrogate = makeSurrogate({ courtDivisionCode: '099', chapter: '13' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue({
+      caseId: surrogate.caseId,
+      courtId: '099',
+      courtDivisionCode: '099',
+      chapter: '13',
+    } as CaseSummary);
+    // Resolved trustee is only assigned to '081'/'7' (the default appointment), not '099'/'13'.
+
+    const result = await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(result.documentsWritten).toBe(0);
+    expect(result.documentsFailed).toBe(1);
+  });
+
+  test('persists the freshly-fetched division/chapter, not the stale surrogate ones, when the case was transferred before remap', async () => {
+    // Matt Stankey's PR #3090 finding: the guard above re-fetches and validates against a
+    // FRESH case summary, but then persisted the SURROGATE's stale courtDivisionCode/chapter
+    // anyway -- so a case transferred to a still-covered division between surrogate creation
+    // and remap would pass the fresh-data check and then write the pre-transfer division right
+    // back to storage, the exact staleness the check exists to catch.
+    const surrogate = makeSurrogate({ courtDivisionCode: '081', chapter: '7' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    // Case transferred to division '082' since the surrogate was created; trustee covers both.
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue({
+      caseId: surrogate.caseId,
+      courtId: '081',
+      courtDivisionCode: '082',
+      chapter: '7',
+    } as CaseSummary);
+    mockGetTrusteeAppointments.mockResolvedValue([
+      { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
+    ]);
+
+    const result = await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ courtDivisionCode: '082', chapter: '7' }),
+    );
+    expect(result.documentsWritten).toBe(1);
+  });
+
+  test('counts a documentsFailed when the fresh case summary carries a malformed chapter, even though it passed the division/chapter match', async () => {
+    // isAppointmentMatch's normalizeChapter is deliberately LOOSE for matching purposes --
+    // it extracts leading digits, so a dirty DXTR value like '11X' normalizes to '11' and
+    // matches an active chapter-11 appointment -- but assertValidChapter's storage guard is
+    // STRICT (exact membership in VALID_CASE_CHAPTERS), so '11X' itself is rejected. A case
+    // can therefore pass the match check above and still fail validation here; this is a real,
+    // reachable failure mode, not dead defensive code.
+    const surrogate = makeSurrogate({ courtDivisionCode: '081', chapter: '7' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue({
+      caseId: surrogate.caseId,
+      courtId: '081',
+      courtDivisionCode: '081',
+      chapter: '11X',
+    } as CaseSummary);
+    mockGetTrusteeAppointments.mockResolvedValue([
+      { status: 'active', courtId: '081', chapter: '11', divisionCodes: ['081'] },
+    ]);
+
+    const result = await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(result.documentsWritten).toBe(0);
+    expect(result.documentsFailed).toBe(1);
   });
 });

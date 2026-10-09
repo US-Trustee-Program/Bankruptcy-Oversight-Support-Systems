@@ -2445,6 +2445,7 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
 async function searchTrustees(
   _name: string,
   _courtId?: string,
+  _divisionCode?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
   return { data: [] };
 }

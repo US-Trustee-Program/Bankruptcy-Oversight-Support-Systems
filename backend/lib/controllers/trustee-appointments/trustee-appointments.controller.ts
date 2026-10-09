@@ -143,13 +143,31 @@ export class TrusteeAppointmentsController implements CamsController {
     }
 
     const appointmentData = body as TrusteeAppointmentInput;
-    await this.useCase.updateAppointment(context, trusteeId, appointmentId, appointmentData);
+    const updatedAppointment = await this.useCase.updateAppointment(
+      context,
+      trusteeId,
+      appointmentId,
+      appointmentData,
+    );
+
+    // CAMS-905's merge enforcement can redirect this update into a DIFFERENT existing
+    // appointment (updatedAppointment.id !== appointmentId) rather than writing appointmentId's
+    // own record. Reflect the actual resource in self when that happens, rather than always
+    // naming the originally-requested appointmentId: a client trusting self and re-fetching it
+    // would otherwise see the unchanged original record with no indication the edit landed
+    // elsewhere. Falls back to the unmodified request URL if it doesn't end with appointmentId
+    // in the expected shape, rather than guessing at a URL that might not exist.
+    const requestedSuffix = `/${appointmentId}`;
+    const self =
+      updatedAppointment.id !== appointmentId && context.request.url.endsWith(requestedSuffix)
+        ? `${context.request.url.slice(0, -requestedSuffix.length)}/${updatedAppointment.id}`
+        : context.request.url;
 
     return httpSuccess({
       statusCode: 200,
       body: {
         meta: {
-          self: context.request.url,
+          self,
         },
         data: undefined,
       },
