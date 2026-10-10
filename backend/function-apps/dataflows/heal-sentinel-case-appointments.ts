@@ -1,145 +1,197 @@
-import { app, InvocationContext } from '@azure/functions';
+import { app, InvocationContext, output } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import ModuleNames from './module-names';
-import { buildFunctionName } from './dataflows-common';
-import {
-  HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE,
-  HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ,
-} from '../../lib/storage-queues';
+import { buildFunctionName, buildQueueName } from './dataflows-common';
+import { STORAGE_QUEUE_CONNECTION } from '../../lib/storage-queues';
 import { completeDataflowTrace } from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from './dataflows-rate-limit';
 import HealSentinelCaseAppointmentsUseCase from '../../lib/use-cases/dataflows/heal-sentinel-case-appointments';
-import { HealSentinelCaseAppointmentsMessage } from '@common/cams/dataflow-events';
+import {
+  HealSentinelCaseAppointmentsPageMessage,
+  HealSentinelCaseAppointmentsStartMessage,
+} from '@common/cams/dataflow-events';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
 
 const MODULE_NAME = ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS;
-const HANDLE_HEAL = buildFunctionName(MODULE_NAME, 'handleHeal');
 
-const HEAL = HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE;
-const DLQ = HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ;
+const START = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'start'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
 
-// Bounds how many sentinel appointments a single invocation heals serially, so one professional
-// ID with a large sentinel population spans several invocations instead of running past the
-// function timeout.
-const HEAL_PAGE_SIZE = 25;
+const PAGE = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'page'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
 
-/**
- * handleHeal
- *
- * Queue-trigger mechanics only (dequeue, paginate-and-requeue, rate-limit retry, telemetry) —
- * mirrors trustee-verification-remap.ts's split, which keeps this layer free of the actual
- * healing business rules (resolution lookup, upsert-then-delete ordering, idempotency
- * invariants). Those live in HealSentinelCaseAppointmentsUseCase.healNext.
- *
- * Started manually by sending an initial message to the HEAL queue (same on-demand convention as
- * trustee-verification-remap and migrate-case-appointments) — there is no timer trigger. Re-run
- * as needed as trustee-professional-ids mapping data improves.
- */
-async function handleHeal(
-  message: HealSentinelCaseAppointmentsMessage,
-  invocationContext: InvocationContext,
-): Promise<void> {
+const DLQ = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'dlq'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
+const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+
+const PAGE_SIZE = 1000;
+
+// host.json functionTimeout is 01:00:00. A page stops 30 seconds short so its requeue lands
+// before the host kills the invocation.
+const PAGE_BUDGET_MS = 60 * 60 * 1000 - 30 * 1000;
+
+// Spreads escaped pages out so a throttling storm does not wake them all at once.
+const MAX_ESCAPE_JITTER_SECONDS = 30;
+
+function requireConnectionString(): string {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
   if (!connectionString) {
     throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
   }
+  return connectionString;
+}
 
+/**
+ * Handles a 429 that escaped the use case's own retries by requeueing the message with backoff,
+ * or routing it to the DLQ once the retry limit is spent. Returns false for any other error.
+ */
+async function recordRateLimit<TMessage extends { retryCount?: number; firstAttemptAt?: string }>(
+  error: unknown,
+  message: TMessage,
+  queueName: string,
+  activityName: string,
+  context: ApplicationContext,
+  trace: ReturnType<ApplicationContext['observability']['startTrace']>,
+  connectionString: string,
+): Promise<boolean> {
+  const status = await handleRateLimitRetry({
+    error,
+    message,
+    checkQueueName: queueName,
+    dlqOutput: DLQ,
+    context,
+    moduleName: MODULE_NAME,
+    activityName,
+    connectionString,
+  });
+  if (status === 'not-rate-limited') return false;
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, activityName, context.logger, {
+    documentsWritten: 0,
+    documentsFailed: status === 'exhausted' ? 1 : 0,
+    success: false,
+    error: status === 'exhausted' ? 'rate-limit-retry-exhausted' : 'rate-limited-requeued',
+  });
+  return true;
+}
+
+/**
+ * Started manually by sending a message to the START queue; there is no timer. Queues one page per
+ * linked trustee-professional-ids record (see HealSentinelCaseAppointmentsStartMessage).
+ */
+async function handleStart(
+  message: HealSentinelCaseAppointmentsStartMessage,
+  invocationContext: InvocationContext,
+): Promise<void> {
+  const connectionString = requireConnectionString();
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   try {
     const useCase = new HealSentinelCaseAppointmentsUseCase(context);
-    const { documentsWritten, documentsFailed, pageSize, next } = await useCase.healNext(
-      {
-        lastProfessionalIdDocId: message.lastProfessionalIdDocId ?? null,
-        current: message.current ?? null,
-      },
-      HEAL_PAGE_SIZE,
-    );
+    const pages = await useCase.startPages(message.ignoreSentinelsHealedOn === true);
+    if (pages.length > 0) invocationContext.extraOutputs.set(PAGE, pages);
 
-    if (next !== null) {
-      const queueClient = StorageQueueHumbleObject.fromConnectionString(
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      MODULE_NAME,
+      'handleStart',
+      context.logger,
+      {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { pagesQueued: String(pages.length) },
+      },
+    );
+  } catch (error) {
+    const handled = await recordRateLimit(
+      error,
+      message as HealSentinelCaseAppointmentsStartMessage & { retryCount?: number },
+      START.queueName,
+      'handleStart',
+      context,
+      trace,
+      connectionString,
+    );
+    if (!handled) throw error;
+  }
+}
+
+/**
+ * Heals up to PAGE_SIZE sentinels for one linked record (see
+ * HealSentinelCaseAppointmentsUseCase.healPage), then requeues the next page. An escaped page is
+ * requeued with its backoff plus jitter as a visibility delay; a finished record is not requeued.
+ */
+async function handlePage(
+  message: HealSentinelCaseAppointmentsPageMessage,
+  invocationContext: InvocationContext,
+): Promise<void> {
+  const connectionString = requireConnectionString();
+  const deadline = Date.now() + PAGE_BUDGET_MS;
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  try {
+    const useCase = new HealSentinelCaseAppointmentsUseCase(context);
+    const result = await useCase.healPage(message, deadline, PAGE_SIZE);
+
+    if (result.next && result.outcome === 'escaped') {
+      const jitterSeconds = Math.floor(Math.random() * (MAX_ESCAPE_JITTER_SECONDS + 1));
+      await StorageQueueHumbleObject.fromConnectionString(
         connectionString,
-        HEAL.queueName,
-      );
-      // Only the cursor is carried forward: retryCount/firstAttemptAt describe this page's
-      // rate-limit retries, and carrying them would let 429s accumulate across the whole run.
-      await queueClient.sendMessage(JSON.stringify(next));
-      context.logger.info(
-        MODULE_NAME,
-        `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to continue.`,
-      );
+        PAGE.queueName,
+      ).sendMessage(JSON.stringify(result.next), result.delaySeconds + jitterSeconds);
+    } else if (result.next) {
+      invocationContext.extraOutputs.set(PAGE, result.next);
     }
 
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHeal', context.logger, {
-      documentsWritten,
-      documentsFailed,
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', context.logger, {
+      documentsWritten: result.documentsWritten,
+      documentsFailed: result.documentsFailed,
       success: true,
-      details: {
-        pageSize: String(pageSize),
-        continuationQueued: String(next !== null),
-      },
+      details: { pageSize: String(result.pageSize), outcome: result.outcome },
     });
   } catch (error) {
-    const rateLimitRetryStatus = await handleRateLimitRetry({
+    const handled = await recordRateLimit(
       error,
       message,
-      checkQueueName: HEAL.queueName,
-      dlqOutput: DLQ,
+      PAGE.queueName,
+      'handlePage',
       context,
-      moduleName: MODULE_NAME,
-      activityName: 'handleHeal',
+      trace,
       connectionString,
-    });
-
-    if (rateLimitRetryStatus === 'retried') {
-      completeDataflowTrace(
-        context.observability,
-        trace,
-        MODULE_NAME,
-        'handleHeal',
-        context.logger,
-        {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: false,
-          error: 'rate-limited-requeued',
-        },
-      );
-      return;
-    }
-
-    if (rateLimitRetryStatus === 'exhausted') {
-      completeDataflowTrace(
-        context.observability,
-        trace,
-        MODULE_NAME,
-        'handleHeal',
-        context.logger,
-        {
-          documentsWritten: 0,
-          documentsFailed: 1,
-          success: false,
-          error: 'rate-limit-retry-exhausted',
-        },
-      );
-      return;
-    }
-
-    throw error;
+    );
+    if (!handled) throw error;
   }
 }
 
 function setup() {
-  app.storageQueue(HANDLE_HEAL, {
-    connection: HEAL.connection,
-    queueName: HEAL.queueName,
-    extraOutputs: [DLQ],
-    handler: handleHeal,
+  app.storageQueue(HANDLE_START, {
+    connection: START.connection,
+    queueName: START.queueName,
+    extraOutputs: [PAGE, DLQ],
+    handler: handleStart,
+  });
+
+  app.storageQueue(HANDLE_PAGE, {
+    connection: PAGE.connection,
+    queueName: PAGE.queueName,
+    extraOutputs: [PAGE, DLQ],
+    handler: handlePage,
   });
 }
 
-export { handleHeal };
+export { handleStart, handlePage };
 export default {
   MODULE_NAME,
   setup,

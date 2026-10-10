@@ -162,18 +162,16 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  async findLinkedPendingSentinelHeal(
+  async findLinkedForSentinelHeal(
     lastId: string | null,
     limit: number,
+    includeHealed = false,
   ): Promise<Array<TrusteeProfessionalIdSummary & { _id: string }>> {
     type Queryable = TrusteeProfessionalIdDocument & { _id: string };
     try {
       const doc = using<Queryable>();
-      const conditions = [
-        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
-        isRealLink(doc),
-        doc('sentinelsHealedOn').notExists(),
-      ];
+      const conditions = [doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'), isRealLink(doc)];
+      if (!includeHealed) conditions.push(doc('sentinelsHealedOn').notExists());
       if (lastId) conditions.push(doc('_id').greaterThan(lastId));
       return await this.getAdapter<Queryable>().find(
         and(...conditions),
@@ -183,7 +181,7 @@ export class TrusteeProfessionalIdsMongoRepository
       );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to find linked professional IDs pending sentinel healing.',
+        message: 'Failed to find linked professional IDs for sentinel healing.',
       });
     }
   }

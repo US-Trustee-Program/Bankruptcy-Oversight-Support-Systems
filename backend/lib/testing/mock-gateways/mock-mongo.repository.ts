@@ -740,14 +740,15 @@ export class MockMongoRepository
     );
   }
 
-  findLinkedPendingSentinelHeal(
+  findLinkedForSentinelHeal(
     lastId: string | null,
     limit: number,
+    includeHealed = false,
   ): Promise<Array<TrusteeProfessionalId & { _id: string }>> {
     return Promise.resolve(
       Array.from(this.professionalIds.values())
         .map((m) => ({ ...m, _id: m.id }))
-        .filter((m) => m.disposition === 'linked' && !m.sentinelsHealedOn)
+        .filter((m) => m.disposition === 'linked' && (includeHealed || !m.sentinelsHealedOn))
         .filter((m) => !lastId || m._id > lastId)
         .sort((a, b) => a._id.localeCompare(b._id))
         .slice(0, limit),

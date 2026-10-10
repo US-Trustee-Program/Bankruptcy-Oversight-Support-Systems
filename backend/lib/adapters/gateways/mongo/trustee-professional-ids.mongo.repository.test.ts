@@ -453,7 +453,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
-  describe('findLinkedPendingSentinelHeal', () => {
+  describe('findLinkedForSentinelHeal', () => {
     const linkedPendingConditions = [
       {
         condition: 'EQUALS',
@@ -477,7 +477,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue([pending]);
 
-      const result = await repository.findLinkedPendingSentinelHeal(null, 1);
+      const result = await repository.findLinkedForSentinelHeal(null, 1);
 
       expect(findSpy).toHaveBeenCalledWith(
         { conjunction: 'AND', values: linkedPendingConditions },
@@ -491,7 +491,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     test('should resume after lastId when provided', async () => {
       const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
-      await repository.findLinkedPendingSentinelHeal('mongo-1', 1);
+      await repository.findLinkedForSentinelHeal('mongo-1', 1);
 
       expect(findSpy).toHaveBeenCalledWith(
         {
@@ -507,11 +507,24 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       );
     });
 
+    test('should include records already marked sentinelsHealedOn when includeHealed is set', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findLinkedForSentinelHeal(null, 1000, true);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        { conjunction: 'AND', values: linkedPendingConditions.slice(0, 2) },
+        ascendingById,
+        1000,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
+    });
+
     test('should handle database errors', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
 
-      await expect(repository.findLinkedPendingSentinelHeal(null, 1)).rejects.toThrow(
-        'Failed to find linked professional IDs pending sentinel healing.',
+      await expect(repository.findLinkedForSentinelHeal(null, 1)).rejects.toThrow(
+        'Failed to find linked professional IDs for sentinel healing.',
       );
     });
   });
