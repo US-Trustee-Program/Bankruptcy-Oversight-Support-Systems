@@ -1037,10 +1037,12 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findAll(): Promise<TrusteeProfessionalIdSummary[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
-  /** Linked records without sentinelsHealedOn, cursor-paginated on _id. */
-  findLinkedPendingSentinelHeal(
+  /** Linked records, cursor-paginated on _id; without includeHealed, only those lacking
+   * sentinelsHealedOn. */
+  findLinkedForSentinelHeal(
     lastId: string | null,
     limit: number,
+    includeHealed?: boolean,
   ): Promise<Array<TrusteeProfessionalIdSummary & { _id: string }>>;
   markSentinelsHealed(camsTrusteeId: string, acmsProfessionalId: string): Promise<void>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;

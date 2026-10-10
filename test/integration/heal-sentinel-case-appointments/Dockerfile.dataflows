@@ -1,0 +1,49 @@
+# Dataflows function app image for the heal-sentinel-case-appointments integration harness.
+#
+# Self-contained. MongoDB and Azurite run as pod siblings sharing localhost; no SQL Edge.
+#
+# Build from repo root with the sibling ignore file (start-services.sh does this):
+#   podman build -t localhost/integration_dataflows_heal_sentinels:latest \
+#     --ignorefile test/integration/heal-sentinel-case-appointments/Dockerfile.dataflows.dockerignore \
+#     -f test/integration/heal-sentinel-case-appointments/Dockerfile.dataflows .
+
+FROM node:24.20.0-bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y curl libicu72 netcat-openbsd && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
+# All workspace package.json files must be present for root npm ci to resolve.
+COPY package*.json ./
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+COPY user-interface/package*.json ./user-interface/
+COPY dev-tools/package*.json ./dev-tools/
+COPY test/bdd/package*.json ./test/bdd/
+COPY test/e2e/package*.json ./test/e2e/
+COPY test/uswds/package*.json ./test/uswds/
+
+RUN npm ci
+
+# Copies the working tree, so uncommitted dataflow changes are what runs.
+COPY common/ ./common/
+COPY backend/ ./backend/
+
+RUN npm run build:dataflows
+
+WORKDIR /app/backend/function-apps/dataflows
+RUN func bundles download
+
+COPY test/integration/heal-sentinel-case-appointments/local.settings.integration.json ./local.settings.json
+
+COPY test/integration/heal-sentinel-case-appointments/scripts/entrypoint-dataflows.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 7072
+
+CMD ["/app/entrypoint.sh"]

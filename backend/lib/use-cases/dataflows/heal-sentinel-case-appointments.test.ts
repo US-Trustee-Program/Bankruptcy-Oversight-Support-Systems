@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import HealSentinelCaseAppointmentsUseCase from './heal-sentinel-case-appointments';
+import HealSentinelCaseAppointmentsUseCase, { HealClock } from './heal-sentinel-case-appointments';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
@@ -7,7 +7,7 @@ import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { HealSentinelProfessionalId } from '@common/cams/dataflow-events';
+import { HealSentinelCaseAppointmentsPageMessage } from '@common/cams/dataflow-events';
 import { TrusteeProfessionalIdSummary } from './trustee-professional-ids.types';
 import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
@@ -17,13 +17,13 @@ type SentinelAppointment = CaseAppointment & {
   acmsProfessionalId?: string;
 };
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 1000;
 
-const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): SentinelAppointment =>
+const makeSentinel = (n: number, overrides: Partial<SentinelAppointment> = {}) =>
   ({
-    id: `sentinel-${overrides.caseId ?? '001'}`,
-    _id: 'appt-mongo-1',
-    caseId: '081-25-00001',
+    id: `sentinel-${n}`,
+    _id: `appt-mongo-${String(n).padStart(4, '0')}`,
+    caseId: `081-25-${String(n).padStart(5, '0')}`,
     trusteeId: SENTINEL_TRUSTEE_ID,
     assignedOn: '2025-01-01T00:00:00.000Z',
     appointedDate: '2025-01-01',
@@ -52,23 +52,37 @@ const makeLink = (
     ...overrides,
   }) as TrusteeProfessionalIdSummary & { _id: string };
 
-const inProgress = (
-  overrides: Partial<HealSentinelProfessionalId> = {},
-): HealSentinelProfessionalId => ({
-  professionalIdDocId: 'prof-mongo-1',
+const makePage = (
+  overrides: Partial<HealSentinelCaseAppointmentsPageMessage> = {},
+): HealSentinelCaseAppointmentsPageMessage => ({
+  trusteeProfessionalId: 'prof-id-1',
   camsTrusteeId: 'trustee-resolved',
   acmsProfessionalId: 'NY-00063',
-  lastAppointmentId: 'appt-mongo-0',
   ...overrides,
 });
 
+/** A clock whose time advances only by what the code under test sleeps, plus explicit ticks. */
+const makeClock = (start = 0) => {
+  let time = start;
+  const slept: number[] = [];
+  const clock: HealClock = {
+    now: () => time,
+    sleep: async (ms: number) => {
+      slept.push(ms);
+      time += ms;
+    },
+  };
+  return { clock, slept, advance: (ms: number) => (time += ms) };
+};
+
+const tooMany = () => new TooManyRequestsError('TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY');
+
 describe('HealSentinelCaseAppointmentsUseCase', () => {
   let context: ApplicationContext;
-  let useCase: HealSentinelCaseAppointmentsUseCase;
   let mockFindSentinels: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDeleteSentinel: ReturnType<typeof vi.fn>;
-  let mockFindLinkedPending: ReturnType<typeof vi.fn>;
+  let mockFindLinked: ReturnType<typeof vi.fn>;
   let mockFindByAcmsProfessionalId: ReturnType<typeof vi.fn>;
   let mockMarkSentinelsHealed: ReturnType<typeof vi.fn>;
 
@@ -79,7 +93,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     mockFindSentinels = vi.fn().mockResolvedValue([]);
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDeleteSentinel = vi.fn().mockResolvedValue(undefined);
-    mockFindLinkedPending = vi.fn().mockResolvedValue([makeLink()]);
+    mockFindLinked = vi.fn().mockResolvedValue([]);
     mockFindByAcmsProfessionalId = vi.fn().mockResolvedValue([makeLink()]);
     mockMarkSentinelsHealed = vi.fn().mockResolvedValue(undefined);
 
@@ -92,204 +106,305 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     );
     vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        findLinkedPendingSentinelHeal: mockFindLinkedPending,
+        findLinkedForSentinelHeal: mockFindLinked,
         findByAcmsProfessionalId: mockFindByAcmsProfessionalId,
         markSentinelsHealed: mockMarkSentinelsHealed,
       }),
     );
-
-    useCase = new HealSentinelCaseAppointmentsUseCase(context);
   });
 
-  test('heals a sentinel for the next pending linked ID: upserts under the linked trustee, then deletes the sentinel', async () => {
-    const sentinel = makeSentinel();
-    mockFindSentinels.mockResolvedValueOnce([sentinel]);
+  describe('startPages', () => {
+    test('queues one page per linked record, paging through every linked record', async () => {
+      const firstBatch = Array.from({ length: 1000 }, (_, i) =>
+        makeLink({ _id: `prof-mongo-${i}`, id: `prof-id-${i}`, acmsProfessionalId: `NY-${i}` }),
+      );
+      const lastBatch = [
+        makeLink({
+          _id: 'prof-mongo-z',
+          id: 'prof-id-z',
+          camsTrusteeId: 't-z',
+          acmsProfessionalId: 'NY-Z',
+        }),
+      ];
+      mockFindLinked.mockResolvedValueOnce(firstBatch).mockResolvedValueOnce(lastBatch);
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context);
 
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: null, current: null },
-      PAGE_SIZE,
-    );
+      const pages = await useCase.startPages(false);
 
-    expect(mockFindLinkedPending).toHaveBeenCalledWith(null, 1);
-    expect(mockFindSentinels).toHaveBeenNthCalledWith(1, 'NY-00063', null, PAGE_SIZE);
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        caseId: sentinel.caseId,
+      expect(mockFindLinked).toHaveBeenNthCalledWith(1, null, 1000, false);
+      expect(mockFindLinked).toHaveBeenNthCalledWith(2, 'prof-mongo-999', 1000, false);
+      expect(pages).toHaveLength(1001);
+      expect(pages[1000]).toEqual({
+        trusteeProfessionalId: 'prof-id-z',
+        camsTrusteeId: 't-z',
+        acmsProfessionalId: 'NY-Z',
+      });
+    });
+
+    test('includes records already marked healed when told to ignore the flag', async () => {
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context);
+
+      await useCase.startPages(true);
+
+      expect(mockFindLinked).toHaveBeenCalledWith(null, 1000, true);
+    });
+  });
+
+  describe('healPage', () => {
+    test('heals each sentinel under the linked trustee, then requeues with the cursor advanced', async () => {
+      const sentinels = [makeSentinel(1), makeSentinel(2)];
+      mockFindSentinels.mockResolvedValueOnce(sentinels);
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(makePage(), 60_000, PAGE_SIZE);
+
+      expect(mockFindSentinels).toHaveBeenCalledWith('NY-00063', null, PAGE_SIZE);
+      expect(mockUpsert).toHaveBeenCalledTimes(2);
+      const upserted = mockUpsert.mock.calls[0][0];
+      expect(upserted).toMatchObject({
+        caseId: sentinels[0].caseId,
         trusteeId: 'trustee-resolved',
-        assignedOn: sentinel.assignedOn,
-        appointedDate: sentinel.appointedDate,
-        dateFiled: sentinel.dateFiled,
-        chapter: sentinel.chapter,
-        courtDivisionCode: sentinel.courtDivisionCode,
-      }),
-    );
-    const upserted = mockUpsert.mock.calls[0][0];
-    expect(upserted).not.toHaveProperty('reason');
-    expect(upserted).not.toHaveProperty('acmsProfessionalId');
-    expect(upserted).not.toHaveProperty('_id');
-    expect(upserted).not.toHaveProperty('id');
-    expect(mockDeleteSentinel).toHaveBeenCalledWith(sentinel.caseId, sentinel.id, sentinel._id);
-    expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
-      mockDeleteSentinel.mock.invocationCallOrder[0],
-    );
-    expect(result).toMatchObject({ documentsWritten: 1, documentsFailed: 0, pageSize: 1 });
-  });
-
-  test('preserves unassignedOn, closedDate, and reopenedDate from a sentinel that represents an already-closed/reopened case', async () => {
-    // upsert() is a full replaceOne with no merge, so dropping these would discard the case's
-    // ACMS history and (since caseStatus derives from closedDate) misreport a closed case as OPEN.
-    mockFindSentinels.mockResolvedValueOnce([
-      makeSentinel({
-        unassignedOn: '2025-03-01T00:00:00.000Z',
-        closedDate: '2025-03-01',
-        reopenedDate: '2025-04-01',
-      }),
-    ]);
-
-    await useCase.healNext({ lastProfessionalIdDocId: null, current: null }, PAGE_SIZE);
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        unassignedOn: '2025-03-01T00:00:00.000Z',
-        closedDate: '2025-03-01',
-        reopenedDate: '2025-04-01',
-      }),
-    );
-  });
-
-  test('looks for the next pending linked ID after the last one finished', async () => {
-    await useCase.healNext({ lastProfessionalIdDocId: 'prof-mongo-0', current: null }, PAGE_SIZE);
-
-    expect(mockFindLinkedPending).toHaveBeenCalledWith('prof-mongo-0', 1);
-  });
-
-  test('ends the run when no linked ID is pending', async () => {
-    mockFindLinkedPending.mockResolvedValue([]);
-
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: 'prof-mongo-9', current: null },
-      PAGE_SIZE,
-    );
-
-    expect(mockFindSentinels).not.toHaveBeenCalled();
-    expect(result).toEqual({ documentsWritten: 0, documentsFailed: 0, pageSize: 0, next: null });
-  });
-
-  test('passes over an ACMS ID linked to more than one trustee without healing or flagging it', async () => {
-    mockFindByAcmsProfessionalId.mockResolvedValue([
-      makeLink({ camsTrusteeId: 'trustee-a' }),
-      makeLink({ camsTrusteeId: 'trustee-b' }),
-    ]);
-    const warnSpy = vi.spyOn(context.logger, 'warn');
-
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: null, current: null },
-      PAGE_SIZE,
-    );
-
-    expect(mockFindSentinels).not.toHaveBeenCalled();
-    expect(mockMarkSentinelsHealed).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('NY-00063'));
-    expect(result.next).toEqual({ lastProfessionalIdDocId: 'prof-mongo-1', current: null });
-  });
-
-  test('a full page stays on the same ID with the appointment cursor advanced', async () => {
-    const sentinels = Array.from({ length: PAGE_SIZE }, (_, i) =>
-      makeSentinel({
-        id: `sentinel-${i}`,
-        _id: `appt-mongo-${String(i).padStart(2, '0')}`,
-        caseId: `081-25-${String(i).padStart(5, '0')}`,
-      }),
-    );
-    mockFindSentinels.mockResolvedValueOnce(sentinels);
-
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: 'prof-mongo-0', current: inProgress() },
-      PAGE_SIZE,
-    );
-
-    expect(mockUpsert).toHaveBeenCalledTimes(PAGE_SIZE);
-    expect(mockMarkSentinelsHealed).not.toHaveBeenCalled();
-    expect(result.next).toEqual({
-      lastProfessionalIdDocId: 'prof-mongo-0',
-      current: inProgress({ lastAppointmentId: `appt-mongo-${PAGE_SIZE - 1}` }),
+      });
+      expect(upserted).not.toHaveProperty('reason');
+      expect(upserted).not.toHaveProperty('acmsProfessionalId');
+      expect(upserted).not.toHaveProperty('_id');
+      expect(upserted).not.toHaveProperty('id');
+      expect(mockDeleteSentinel).toHaveBeenNthCalledWith(
+        1,
+        sentinels[0].caseId,
+        sentinels[0].id,
+        sentinels[0]._id,
+      );
+      expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
+        mockDeleteSentinel.mock.invocationCallOrder[0],
+      );
+      expect(result).toEqual({
+        documentsWritten: 2,
+        documentsFailed: 0,
+        pageSize: 2,
+        outcome: 'requeued',
+        delaySeconds: 0,
+        next: makePage({ lastAppointmentId: sentinels[1]._id }),
+      });
     });
-  });
 
-  test('continues an in-progress ID from its appointment cursor without looking up the link again', async () => {
-    await useCase.healNext(
-      { lastProfessionalIdDocId: 'prof-mongo-0', current: inProgress() },
-      PAGE_SIZE,
-    );
+    test('preserves unassignedOn, closedDate, and reopenedDate from a sentinel that represents an already-closed/reopened case', async () => {
+      // upsert() is a full replaceOne with no merge, so dropping these would discard the case's
+      // ACMS history and (since caseStatus derives from closedDate) misreport a closed case as OPEN.
+      mockFindSentinels.mockResolvedValueOnce([
+        makeSentinel(1, {
+          unassignedOn: '2025-03-01T00:00:00.000Z',
+          closedDate: '2025-03-01',
+          reopenedDate: '2025-04-01',
+        }),
+      ]);
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
 
-    expect(mockFindLinkedPending).not.toHaveBeenCalled();
-    expect(mockFindByAcmsProfessionalId).not.toHaveBeenCalled();
-    expect(mockFindSentinels).toHaveBeenNthCalledWith(1, 'NY-00063', 'appt-mongo-0', PAGE_SIZE);
-  });
+      await useCase.healPage(makePage(), 60_000, PAGE_SIZE);
 
-  test('flags the ID healed and moves past it once no sentinels remain', async () => {
-    mockFindSentinels.mockResolvedValueOnce([makeSentinel()]).mockResolvedValueOnce([]);
-
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: 'prof-mongo-0', current: inProgress() },
-      PAGE_SIZE,
-    );
-
-    expect(mockMarkSentinelsHealed).toHaveBeenCalledWith('trustee-resolved', 'NY-00063');
-    expect(result.next).toEqual({ lastProfessionalIdDocId: 'prof-mongo-1', current: null });
-  });
-
-  test('a failed sentinel leaves the ID unflagged but still moves past it', async () => {
-    const failed = makeSentinel({ id: 'sentinel-a', _id: 'appt-mongo-a', caseId: '081-25-00001' });
-    const healed = makeSentinel({ id: 'sentinel-b', _id: 'appt-mongo-b', caseId: '081-25-00002' });
-    mockFindSentinels.mockResolvedValueOnce([failed, healed]).mockResolvedValueOnce([failed]);
-    mockUpsert.mockRejectedValueOnce(new Error('upsert failed')).mockResolvedValue({});
-    const warnSpy = vi.spyOn(context.logger, 'warn');
-
-    const result = await useCase.healNext(
-      { lastProfessionalIdDocId: null, current: null },
-      PAGE_SIZE,
-    );
-
-    expect(mockDeleteSentinel).toHaveBeenCalledTimes(1);
-    expect(mockDeleteSentinel).toHaveBeenCalledWith(healed.caseId, healed.id, healed._id);
-    expect(mockMarkSentinelsHealed).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('NY-00063'));
-    expect(result).toMatchObject({
-      documentsWritten: 1,
-      documentsFailed: 1,
-      next: { lastProfessionalIdDocId: 'prof-mongo-1', current: null },
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unassignedOn: '2025-03-01T00:00:00.000Z',
+          closedDate: '2025-03-01',
+          reopenedDate: '2025-04-01',
+        }),
+      );
     });
-  });
 
-  test('a rate-limit error mid-page rethrows instead of being counted as a per-record failure', async () => {
-    mockFindSentinels.mockResolvedValueOnce([
-      makeSentinel({ id: 'sentinel-a', caseId: '081-25-00001' }),
-      makeSentinel({ id: 'sentinel-b', caseId: '081-25-00002' }),
-    ]);
-    const tooManyError = new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS-USE-CASE');
-    mockUpsert.mockRejectedValueOnce(tooManyError);
+    test('reads the next page from the cursor in the message', async () => {
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
 
-    await expect(
-      useCase.healNext({ lastProfessionalIdDocId: null, current: null }, PAGE_SIZE),
-    ).rejects.toThrow(tooManyError);
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDeleteSentinel).not.toHaveBeenCalled();
-  });
+      await useCase.healPage(makePage({ lastAppointmentId: 'appt-mongo-0999' }), 60_000, PAGE_SIZE);
 
-  test('a gateway-timeout error mid-page rethrows instead of being counted as a per-record failure', async () => {
-    mockFindSentinels.mockResolvedValueOnce([
-      makeSentinel({ id: 'sentinel-a', caseId: '081-25-00001' }),
-      makeSentinel({ id: 'sentinel-b', caseId: '081-25-00002' }),
-    ]);
-    const timeoutError = new GatewayTimeoutError('TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY', {
-      message: 'Query failed. Search request timed out.',
+      expect(mockFindSentinels).toHaveBeenNthCalledWith(
+        1,
+        'NY-00063',
+        'appt-mongo-0999',
+        PAGE_SIZE,
+      );
     });
-    mockDeleteSentinel.mockRejectedValueOnce(timeoutError);
 
-    await expect(
-      useCase.healNext({ lastProfessionalIdDocId: null, current: null }, PAGE_SIZE),
-    ).rejects.toThrow(timeoutError);
-    expect(mockDeleteSentinel).toHaveBeenCalledTimes(1);
+    test('is done when no sentinels are left, and marks the record healed', async () => {
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(
+        makePage({ lastAppointmentId: 'appt-mongo-0999' }),
+        60_000,
+        PAGE_SIZE,
+      );
+
+      expect(mockMarkSentinelsHealed).toHaveBeenCalledWith('trustee-resolved', 'NY-00063');
+      expect(result).toMatchObject({ outcome: 'done', next: null, pageSize: 0 });
+    });
+
+    test('is done without marking the record healed when failed sentinels remain behind the cursor', async () => {
+      mockFindSentinels.mockResolvedValueOnce([]).mockResolvedValueOnce([makeSentinel(1)]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(
+        makePage({ lastAppointmentId: 'appt-mongo-0999' }),
+        60_000,
+        PAGE_SIZE,
+      );
+
+      expect(mockMarkSentinelsHealed).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('NY-00063'));
+      expect(result).toMatchObject({ outcome: 'done', next: null });
+    });
+
+    test.each([
+      { description: 'no longer linked', links: [] },
+      { description: 'linked to a different record', links: [makeLink({ id: 'prof-id-2' })] },
+      {
+        description: 'one of several links',
+        links: [makeLink(), makeLink({ id: 'prof-id-2' })],
+      },
+    ])('stops without healing when the record is $description', async ({ links }) => {
+      mockFindByAcmsProfessionalId.mockResolvedValue(links);
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(makePage(), 60_000, PAGE_SIZE);
+
+      expect(mockFindSentinels).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ outcome: 'link-changed', next: null });
+    });
+
+    test('counts a failed sentinel, leaves it in place, and moves on', async () => {
+      mockFindSentinels.mockResolvedValueOnce([makeSentinel(1), makeSentinel(2)]);
+      mockUpsert.mockRejectedValueOnce(new Error('upsert failed'));
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(makePage(), 60_000, PAGE_SIZE);
+
+      expect(mockDeleteSentinel).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        documentsWritten: 1,
+        documentsFailed: 1,
+        next: makePage({ lastAppointmentId: 'appt-mongo-0002' }),
+      });
+    });
+
+    test.each([
+      { description: '429s', throttle: tooMany },
+      {
+        description: 'gateway timeouts',
+        throttle: () => new GatewayTimeoutError('TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY'),
+      },
+    ])(
+      'backs off exponentially on consecutive $description and then heals the sentinel',
+      async ({ throttle }) => {
+        mockFindSentinels.mockResolvedValueOnce([makeSentinel(1)]);
+        mockUpsert
+          .mockRejectedValueOnce(throttle())
+          .mockRejectedValueOnce(throttle())
+          .mockRejectedValueOnce(throttle())
+          .mockResolvedValue({});
+        const { clock, slept } = makeClock();
+        const useCase = new HealSentinelCaseAppointmentsUseCase(context, clock);
+
+        const result = await useCase.healPage(makePage(), 60_000, PAGE_SIZE);
+
+        expect(slept).toEqual([1000, 2000, 4000]);
+        expect(result).toMatchObject({ documentsWritten: 1, outcome: 'requeued' });
+      },
+    );
+
+    test('caps a single backoff at 60 seconds', async () => {
+      mockFindSentinels.mockResolvedValueOnce([makeSentinel(1)]);
+      for (let i = 0; i < 7; i++) mockUpsert.mockRejectedValueOnce(tooMany());
+      const { clock, slept } = makeClock();
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, clock);
+
+      await useCase.healPage(makePage(), Number.MAX_SAFE_INTEGER, PAGE_SIZE);
+
+      expect(slept).toEqual([1000, 2000, 4000, 8000, 16000, 32000, 60000]);
+    });
+
+    test.each([
+      {
+        call: 'the link check',
+        throttle: () => mockFindByAcmsProfessionalId.mockRejectedValue(tooMany()),
+      },
+      {
+        call: 'the remaining-sentinel check',
+        throttle: () =>
+          mockFindSentinels.mockResolvedValueOnce([]).mockRejectedValueOnce(tooMany()),
+      },
+      {
+        call: 'marking the record healed',
+        throttle: () => mockMarkSentinelsHealed.mockRejectedValue(tooMany()),
+      },
+    ])(
+      'escapes with the incoming cursor when $call is throttled past the deadline',
+      async ({ throttle }) => {
+        throttle();
+        const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+        const page = makePage({ lastAppointmentId: 'appt-mongo-0999' });
+
+        const result = await useCase.healPage(page, 1_000, PAGE_SIZE);
+
+        expect(result).toMatchObject({ outcome: 'escaped', next: page });
+      },
+    );
+
+    test('escapes before deleting when the upsert is throttled past the deadline', async () => {
+      mockFindSentinels.mockResolvedValueOnce([makeSentinel(1)]);
+      mockUpsert.mockRejectedValue(tooMany());
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(makePage(), 1_000, PAGE_SIZE);
+
+      expect(mockDeleteSentinel).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ outcome: 'escaped', documentsWritten: 0, next: makePage() });
+    });
+
+    test('escapes and requeues from the last completed sentinel when the next backoff would pass the deadline', async () => {
+      mockFindSentinels.mockResolvedValueOnce([makeSentinel(1), makeSentinel(2), makeSentinel(3)]);
+      mockDeleteSentinel.mockResolvedValueOnce(undefined).mockRejectedValue(tooMany());
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+
+      const result = await useCase.healPage(makePage(), 5_000, PAGE_SIZE);
+
+      expect(mockUpsert).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        documentsWritten: 1,
+        documentsFailed: 0,
+        pageSize: 3,
+        outcome: 'escaped',
+        delaySeconds: 4,
+        next: makePage({ lastAppointmentId: 'appt-mongo-0001' }),
+      });
+    });
+
+    test('escapes with the incoming cursor when the sentinel query is throttled past the deadline', async () => {
+      mockFindSentinels.mockRejectedValue(tooMany());
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, makeClock().clock);
+      const page = makePage({ lastAppointmentId: 'appt-mongo-0999' });
+
+      const result = await useCase.healPage(page, 2_000, PAGE_SIZE);
+
+      expect(result).toMatchObject({ outcome: 'escaped', next: page, documentsWritten: 0 });
+    });
+
+    test('escapes before the next sentinel once the deadline has passed', async () => {
+      mockFindSentinels.mockResolvedValueOnce([makeSentinel(1), makeSentinel(2)]);
+      const { clock, advance } = makeClock();
+      mockUpsert.mockImplementation(async () => {
+        advance(10_000);
+        return {};
+      });
+      const useCase = new HealSentinelCaseAppointmentsUseCase(context, clock);
+
+      const result = await useCase.healPage(makePage(), 5_000, PAGE_SIZE);
+
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        documentsWritten: 1,
+        outcome: 'escaped',
+        delaySeconds: 0,
+        next: makePage({ lastAppointmentId: 'appt-mongo-0001' }),
+      });
+    });
   });
 });

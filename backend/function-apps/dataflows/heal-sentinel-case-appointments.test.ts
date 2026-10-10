@@ -1,43 +1,43 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as DataflowTelemetry from '../../lib/use-cases/dataflows/dataflow-telemetry';
-import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
+import * as RateLimit from './dataflows-rate-limit';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
 import ApplicationContextCreator from '../azure/application-context-creator';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import HealSentinelCaseAppointmentsUseCase from '../../lib/use-cases/dataflows/heal-sentinel-case-appointments';
-import {
-  HealSentinelCaseAppointmentsMessage,
-  HealSentinelProfessionalId,
-} from '@common/cams/dataflow-events';
+import { HealSentinelCaseAppointmentsPageMessage } from '@common/cams/dataflow-events';
 
-const makeInvocationContext = (): InvocationContext =>
-  ({
+const makeInvocationContext = () => {
+  const extraOutputs = new Map<unknown, unknown>();
+  const invocationContext = {
     invocationId: 'test-id',
     functionName: 'heal-sentinel-case-appointments',
-    extraOutputs: new Map(),
+    extraOutputs,
     log: vi.fn(),
-  }) as unknown as InvocationContext;
-
-const inProgress: HealSentinelProfessionalId = {
-  professionalIdDocId: 'prof-mongo-1',
-  camsTrusteeId: 'trustee-resolved',
-  acmsProfessionalId: 'NY-00063',
-  lastAppointmentId: 'appt-mongo-9',
+  } as unknown as InvocationContext;
+  const queued = (queueName: string) =>
+    [...extraOutputs.entries()].find(
+      ([output]) => (output as { queueName: string }).queueName === queueName,
+    )?.[1];
+  return { invocationContext, queued };
 };
 
-describe('heal-sentinel-case-appointments handleHeal', () => {
-  let mockHealNext: ReturnType<typeof vi.spyOn>;
-  let mockSendMessage: ReturnType<typeof vi.fn>;
+const page: HealSentinelCaseAppointmentsPageMessage = {
+  trusteeProfessionalId: 'prof-id-1',
+  camsTrusteeId: 'trustee-resolved',
+  acmsProfessionalId: 'NY-00063',
+};
+
+const PAGE_QUEUE = 'heal-sentinel-case-appointments-page';
+
+describe('heal-sentinel-case-appointments handlers', () => {
   let telemetrySpy: ReturnType<typeof vi.spyOn>;
+  let mockSendMessage: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-
-    mockHealNext = vi
-      .spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healNext')
-      .mockResolvedValue({ documentsWritten: 0, documentsFailed: 0, pageSize: 0, next: null });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -48,126 +48,214 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
     telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
   });
 
-  test('starts a run from an empty message', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
+  describe('handleStart', () => {
+    test('queues one page per linked record', async () => {
+      const { handleStart } = await import('./heal-sentinel-case-appointments');
+      const startSpy = vi
+        .spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'startPages')
+        .mockResolvedValue([page, { ...page, trusteeProfessionalId: 'prof-id-2' }]);
+      const { invocationContext, queued } = makeInvocationContext();
 
-    await handleHeal({}, makeInvocationContext());
+      await handleStart({}, invocationContext);
 
-    expect(mockHealNext).toHaveBeenCalledWith(
-      { lastProfessionalIdDocId: null, current: null },
-      expect.any(Number),
-    );
+      expect(startSpy).toHaveBeenCalledWith(false);
+      expect(queued(PAGE_QUEUE)).toEqual([page, { ...page, trusteeProfessionalId: 'prof-id-2' }]);
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HEAL-SENTINEL-CASE-APPOINTMENTS',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true, details: { pagesQueued: '2' } }),
+      );
+    });
+
+    test('includes already-healed records when the start message says to ignore the flag', async () => {
+      const { handleStart } = await import('./heal-sentinel-case-appointments');
+      const startSpy = vi
+        .spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'startPages')
+        .mockResolvedValue([]);
+      const { invocationContext, queued } = makeInvocationContext();
+
+      await handleStart({ ignoreSentinelsHealedOn: true }, invocationContext);
+
+      expect(startSpy).toHaveBeenCalledWith(true);
+      expect(queued(PAGE_QUEUE)).toBeUndefined();
+    });
+    test('records a rate limit that escapes the start', async () => {
+      const { handleStart } = await import('./heal-sentinel-case-appointments');
+      vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'startPages').mockRejectedValue(
+        new Error('throttled'),
+      );
+      vi.spyOn(RateLimit, 'handleRateLimitRetry').mockResolvedValue('retried');
+
+      await handleStart({}, makeInvocationContext().invocationContext);
+
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HEAL-SENTINEL-CASE-APPOINTMENTS',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
+      );
+    });
+
+    test('rethrows a start error that is not a rate limit', async () => {
+      const { handleStart } = await import('./heal-sentinel-case-appointments');
+      vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'startPages').mockRejectedValue(
+        new Error('boom'),
+      );
+
+      await expect(handleStart({}, makeInvocationContext().invocationContext)).rejects.toThrow(
+        'boom',
+      );
+    });
   });
 
-  test('requeues only the returned cursor, dropping rate-limit retry state from the incoming message', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const next = { lastProfessionalIdDocId: 'prof-mongo-0', current: inProgress };
-    mockHealNext.mockResolvedValue({ documentsWritten: 3, documentsFailed: 1, pageSize: 4, next });
-    const message: HealSentinelCaseAppointmentsMessage = {
-      lastProfessionalIdDocId: 'prof-mongo-0',
-      current: { ...inProgress, lastAppointmentId: 'appt-mongo-5' },
-      retryCount: 2,
-      firstAttemptAt: '2026-10-06T00:00:00.000Z',
-    };
+  describe('handlePage', () => {
+    test('heals a page of up to 1000 sentinels with a deadline 30 seconds short of the one-hour limit', async () => {
+      const { handlePage } = await import('./heal-sentinel-case-appointments');
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+      const healSpy = vi
+        .spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage')
+        .mockResolvedValue({
+          documentsWritten: 0,
+          documentsFailed: 0,
+          pageSize: 0,
+          outcome: 'done',
+          delaySeconds: 0,
+          next: null,
+        });
 
-    await handleHeal(message, makeInvocationContext());
+      await handlePage(page, makeInvocationContext().invocationContext);
 
-    expect(mockHealNext).toHaveBeenCalledWith(
-      { lastProfessionalIdDocId: 'prof-mongo-0', current: message.current },
-      expect.any(Number),
+      expect(healSpy).toHaveBeenCalledWith(page, 1_000_000 + 59.5 * 60 * 1000, 1000);
+    });
+
+    test('requeues the next page after a full pass', async () => {
+      const { handlePage } = await import('./heal-sentinel-case-appointments');
+      const next = { ...page, lastAppointmentId: 'appt-mongo-0999' };
+      vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage').mockResolvedValue({
+        documentsWritten: 998,
+        documentsFailed: 2,
+        pageSize: 1000,
+        outcome: 'requeued',
+        delaySeconds: 0,
+        next,
+      });
+      const { invocationContext, queued } = makeInvocationContext();
+
+      await handlePage(page, invocationContext);
+
+      expect(queued(PAGE_QUEUE)).toEqual(next);
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HEAL-SENTINEL-CASE-APPOINTMENTS',
+        'handlePage',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: 998,
+          documentsFailed: 2,
+          details: { pageSize: '1000', outcome: 'requeued' },
+        }),
+      );
+    });
+
+    test('does not requeue a finished record', async () => {
+      const { handlePage } = await import('./heal-sentinel-case-appointments');
+      vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage').mockResolvedValue({
+        documentsWritten: 0,
+        documentsFailed: 0,
+        pageSize: 0,
+        outcome: 'done',
+        delaySeconds: 0,
+        next: null,
+      });
+      const { invocationContext, queued } = makeInvocationContext();
+
+      await handlePage(page, invocationContext);
+
+      expect(queued(PAGE_QUEUE)).toBeUndefined();
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      { random: 0, visibility: 32 },
+      { random: 0.9999, visibility: 62 },
+    ])(
+      'requeues an escaped page on the page queue with its backoff plus jitter ($visibility s)',
+      async ({ random, visibility }) => {
+        const { handlePage } = await import('./heal-sentinel-case-appointments');
+        const next = { ...page, lastAppointmentId: 'appt-mongo-0412' };
+        vi.spyOn(Math, 'random').mockReturnValue(random);
+        vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage').mockResolvedValue({
+          documentsWritten: 412,
+          documentsFailed: 0,
+          pageSize: 1000,
+          outcome: 'escaped',
+          delaySeconds: 32,
+          next,
+        });
+        const { invocationContext, queued } = makeInvocationContext();
+
+        await handlePage(page, invocationContext);
+
+        expect(queued(PAGE_QUEUE)).toBeUndefined();
+        expect(StorageQueueHumbleObject.fromConnectionString).toHaveBeenCalledWith(
+          expect.any(String),
+          PAGE_QUEUE,
+        );
+        expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(next), visibility);
+      },
     );
-    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(next));
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'HEAL-SENTINEL-CASE-APPOINTMENTS',
-      'handleHeal',
-      expect.anything(),
-      expect.objectContaining({
-        success: true,
-        documentsWritten: 3,
-        documentsFailed: 1,
-        details: { pageSize: '4', continuationQueued: 'true' },
-      }),
+
+    test.each([
+      { status: 'retried' as const, error: 'rate-limited-requeued', documentsFailed: 0 },
+      { status: 'exhausted' as const, error: 'rate-limit-retry-exhausted', documentsFailed: 1 },
+    ])(
+      'records $error when a rate limit escapes the page',
+      async ({ status, error, documentsFailed }) => {
+        const { handlePage } = await import('./heal-sentinel-case-appointments');
+        vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage').mockRejectedValue(
+          new Error('throttled'),
+        );
+        vi.spyOn(RateLimit, 'handleRateLimitRetry').mockResolvedValue(status);
+
+        await handlePage(page, makeInvocationContext().invocationContext);
+
+        expect(telemetrySpy).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'HEAL-SENTINEL-CASE-APPOINTMENTS',
+          'handlePage',
+          expect.anything(),
+          expect.objectContaining({ success: false, error, documentsFailed }),
+        );
+      },
     );
-  });
 
-  test('does not requeue when the run is finished', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
+    test('rethrows non-rate-limit errors', async () => {
+      const { handlePage } = await import('./heal-sentinel-case-appointments');
+      vi.spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healPage').mockRejectedValue(
+        new Error('boom'),
+      );
 
-    await handleHeal({}, makeInvocationContext());
+      await expect(handlePage(page, makeInvocationContext().invocationContext)).rejects.toThrow(
+        'boom',
+      );
+    });
 
-    expect(mockSendMessage).not.toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'HEAL-SENTINEL-CASE-APPOINTMENTS',
-      'handleHeal',
-      expect.anything(),
-      expect.objectContaining({
-        success: true,
-        details: { pageSize: '0', continuationQueued: 'false' },
-      }),
-    );
-  });
+    test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
+      delete process.env.AzureWebJobsDataflowsStorage;
+      const { handlePage } = await import('./heal-sentinel-case-appointments');
 
-  test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    mockHealNext.mockRejectedValue(new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS'));
-
-    await handleHeal({ retryCount: 0 }, makeInvocationContext());
-
-    expect(mockSendMessage).toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'HEAL-SENTINEL-CASE-APPOINTMENTS',
-      'handleHeal',
-      expect.anything(),
-      expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
-    );
-  });
-
-  test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    mockHealNext.mockRejectedValue(new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS'));
-    const mockContext = await createMockApplicationContext();
-    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await handleHeal({ retryCount: 10 }, makeInvocationContext());
-
-    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.anything(),
-    );
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'HEAL-SENTINEL-CASE-APPOINTMENTS',
-      'handleHeal',
-      expect.anything(),
-      expect.objectContaining({
-        success: false,
-        documentsFailed: 1,
-        error: 'rate-limit-retry-exhausted',
-      }),
-    );
-  });
-
-  test('rethrows non-rate-limit errors', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    mockHealNext.mockRejectedValue(new Error('boom'));
-
-    await expect(handleHeal({}, makeInvocationContext())).rejects.toThrow('boom');
-  });
-
-  test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
-    delete process.env.AzureWebJobsDataflowsStorage;
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-
-    await expect(handleHeal({}, makeInvocationContext())).rejects.toThrow(
-      'Missing required environment variable: AzureWebJobsDataflowsStorage',
-    );
+      await expect(handlePage(page, makeInvocationContext().invocationContext)).rejects.toThrow(
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
+      );
+    });
   });
 });

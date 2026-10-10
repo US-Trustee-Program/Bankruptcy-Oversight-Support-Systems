@@ -285,28 +285,24 @@ export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
 };
 
 /**
- * The trustee-professional-ids record whose sentinel appointments a heal-sentinel-case-appointments
- * invocation is working through. lastAppointmentId is the greatest sentinel _id already processed
- * for this record; null means none yet.
+ * Starts heal-sentinel-case-appointments: one page message is queued per linked
+ * trustee-professional-ids record. Records already marked sentinelsHealedOn are skipped unless
+ * ignoreSentinelsHealedOn is true, which searches their sentinel appointments again.
  */
-export type HealSentinelProfessionalId = {
-  professionalIdDocId: string;
-  camsTrusteeId: string;
-  acmsProfessionalId: string;
-  lastAppointmentId: string | null;
+export type HealSentinelCaseAppointmentsStartMessage = {
+  ignoreSentinelsHealedOn?: boolean;
 };
 
 /**
- * Enqueued manually to start (or continue) heal-sentinel-case-appointments. A run walks linked
- * trustee-professional-ids records without sentinelsHealedOn in _id order. lastProfessionalIdDocId
- * is the _id of the last record finished, so a record left unflagged (a sentinel that failed to
- * heal, or an ACMS ID linked to more than one trustee) is passed over until the next run. current
- * is the record in progress when its sentinels span more than one invocation. An empty message
- * starts a run.
+ * Heals the sentinel appointments of one linked trustee-professional-ids record, identified by its
+ * id. lastAppointmentId is the greatest trustee-partition sentinel _id already processed; absent
+ * on the first page.
  */
-export type HealSentinelCaseAppointmentsMessage = {
-  lastProfessionalIdDocId?: string | null;
-  current?: HealSentinelProfessionalId | null;
+export type HealSentinelCaseAppointmentsPageMessage = {
+  trusteeProfessionalId: string;
+  camsTrusteeId: string;
+  acmsProfessionalId: string;
+  lastAppointmentId?: string;
   retryCount?: number;
   firstAttemptAt?: string;
 };
