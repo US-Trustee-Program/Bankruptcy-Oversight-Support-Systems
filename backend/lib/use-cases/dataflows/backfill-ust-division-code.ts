@@ -83,6 +83,7 @@ type BackfillResult = {
   caseId: string;
   success: boolean;
   error?: string;
+  skipped?: boolean;
 };
 
 type ProcessBackfillPageResult =
@@ -92,6 +93,7 @@ type ProcessBackfillPageResult =
       status: 'ok';
       processedCount: number;
       successCount: number;
+      skippedCount: number;
       failedResults: BackfillResult[];
       cases: BackfillCase[];
       nextCursor: { lastId: string | null } | null;
@@ -116,19 +118,15 @@ async function backfillUstDivisionCodes(
     const caseIds = cases.map((c) => c.caseId);
     const ustDivisionCodeMap = await dxtrGateway.getUstDivisionCodesByCaseIds(context, caseIds);
 
-    let skippedNotInDxtr = 0;
+    const skippedCaseIds: string[] = [];
 
     for (const bCase of cases) {
       try {
         const ustDivisionCode = ustDivisionCodeMap.get(bCase.caseId);
 
         if (!ustDivisionCode) {
-          skippedNotInDxtr++;
-          context.logger.debug(
-            MODULE_NAME,
-            `No DXTR CS_DIV found for case ${bCase.caseId} — skipping.`,
-          );
-          results.push({ caseId: bCase.caseId, success: true });
+          skippedCaseIds.push(bCase.caseId);
+          results.push({ caseId: bCase.caseId, success: true, skipped: true });
           continue;
         }
 
@@ -148,10 +146,10 @@ async function backfillUstDivisionCodes(
       }
     }
 
-    if (skippedNotInDxtr > 0) {
-      context.logger.info(
+    if (skippedCaseIds.length > 0) {
+      context.logger.warn(
         MODULE_NAME,
-        `Skipped ${skippedNotInDxtr} cases with no DXTR CS_DIV match.`,
+        `Skipped ${skippedCaseIds.length} case(s) with no DXTR CS_DIV match: ${skippedCaseIds.join(', ')}.`,
       );
     }
     return { data: results };
@@ -180,6 +178,7 @@ async function processBackfillPage(
 
   const existingState = stateResult.data;
   const currentProcessedCount = existingState?.processedCount ?? 0;
+  const currentSkippedCount = existingState?.skippedCount ?? 0;
 
   const pageResult = await getPageOfCasesNeedingBackfillByCursor(context, cursorLastId, pageSize);
   if (pageResult.error || !pageResult.data) {
@@ -200,7 +199,12 @@ async function processBackfillPage(
   if (cases.length === 0) {
     const updateResult = await updateBackfillState(
       context,
-      { lastId: cursorLastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
+      {
+        lastId: cursorLastId,
+        processedCount: currentProcessedCount,
+        skippedCount: currentSkippedCount,
+        status: currentSkippedCount > 0 ? 'COMPLETED_WITH_SKIPS' : 'COMPLETED',
+      },
       existingState,
     );
     if (updateResult.error) return { status: 'error', error: updateResult.error as CamsError };
@@ -211,7 +215,12 @@ async function processBackfillPage(
   if (backfillResult.error) {
     const updateResult = await updateBackfillState(
       context,
-      { lastId: cursorLastId, processedCount: currentProcessedCount, status: 'FAILED' },
+      {
+        lastId: cursorLastId,
+        processedCount: currentProcessedCount,
+        skippedCount: currentSkippedCount,
+        status: 'FAILED',
+      },
       existingState,
     );
     if (updateResult.error) {
@@ -221,16 +230,19 @@ async function processBackfillPage(
   }
 
   const results = backfillResult.data ?? [];
-  const successCount = results.filter((r) => r.success).length;
+  const successCount = results.filter((r) => r.success && !r.skipped).length;
+  const skippedCount = results.filter((r) => r.skipped).length;
   const failedResults = results.filter((r) => !r.success);
-  const newProcessedCount = currentProcessedCount + successCount;
+  const newProcessedCount = currentProcessedCount + successCount + skippedCount;
+  const newSkippedCount = currentSkippedCount + skippedCount;
 
   const updateResult = await updateBackfillState(
     context,
     {
       lastId: newLastId,
       processedCount: newProcessedCount,
-      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
+      skippedCount: newSkippedCount,
+      status: hasMore ? 'IN_PROGRESS' : newSkippedCount > 0 ? 'COMPLETED_WITH_SKIPS' : 'COMPLETED',
     },
     existingState,
   );
@@ -240,6 +252,7 @@ async function processBackfillPage(
     status: 'ok',
     processedCount: newProcessedCount,
     successCount,
+    skippedCount,
     failedResults,
     cases,
     nextCursor: hasMore ? { lastId: newLastId } : null,
@@ -275,6 +288,7 @@ async function updateBackfillState(
   updates: {
     lastId: string | null;
     processedCount: number;
+    skippedCount?: number;
     status: UstDivisionCodeBackfillState['status'];
   },
   existingState?: UstDivisionCodeBackfillState | null,
@@ -295,6 +309,7 @@ async function updateBackfillState(
       documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
       lastId: updates.lastId,
       processedCount: updates.processedCount,
+      skippedCount: updates.skippedCount ?? stateBase?.skippedCount ?? 0,
       startedAt: stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,

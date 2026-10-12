@@ -77,10 +77,14 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 
   const existingState = stateResult.data;
 
-  if (existingState?.status === 'COMPLETED') {
+  if (existingState?.status === 'COMPLETED' || existingState?.status === 'COMPLETED_WITH_SKIPS') {
     logger.info(
       MODULE_NAME,
-      `Backfill already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} cases. Skipping.`,
+      `Backfill already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} cases` +
+        (existingState.skippedCount > 0
+          ? ` (${existingState.skippedCount} skipped — no DXTR CS_DIV match).`
+          : '.') +
+        ' Skipping.',
     );
     return;
   }
@@ -141,7 +145,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const { cases, failedResults, successCount, processedCount, nextCursor } = result;
+  const { cases, failedResults, successCount, skippedCount, processedCount, nextCursor } = result;
 
   logger.debug(
     MODULE_NAME,
@@ -159,7 +163,9 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 
   logger.debug(
     MODULE_NAME,
-    `Successfully backfilled ${successCount} cases. Total processed: ${processedCount}.`,
+    `Successfully backfilled ${successCount} cases` +
+      (skippedCount > 0 ? ` (${skippedCount} skipped — no DXTR CS_DIV match)` : '') +
+      `. Total processed: ${processedCount}.`,
   );
 
   if (nextCursor) {

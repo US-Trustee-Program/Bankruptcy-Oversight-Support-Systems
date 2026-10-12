@@ -846,9 +846,10 @@ export type UstDivisionCodeBackfillState = RuntimeState & {
   documentType: 'UST_DIVISION_CODE_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
+  skippedCount: number;
   startedAt: string;
   lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_SKIPS' | 'FAILED';
 };
 
 export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {

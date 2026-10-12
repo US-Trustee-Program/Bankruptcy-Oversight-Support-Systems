@@ -167,6 +167,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.data?.[0].success).toBe(true);
+      expect(result.data?.[0].skipped).toBe(true);
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
@@ -196,6 +197,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
         documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
         lastId: 'cursor-abc',
         processedCount: 42,
+        skippedCount: 0,
         startedAt: '2026-01-01T00:00:00.000Z',
         lastUpdatedAt: '2026-01-01T01:00:00.000Z',
         status: 'IN_PROGRESS',
@@ -301,6 +303,61 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.status).toBe('error');
     });
 
+    test('should track DXTR-miss skips separately from successes and mark COMPLETED_WITH_SKIPS', async () => {
+      const bCase = { _id: 'gggg', caseId: '491-25-00007' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
+        new Map(),
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.successCount).toBe(0);
+      expect(result.skippedCount).toBe(1);
+      expect(result.processedCount).toBe(1);
+      expect(result.failedResults).toHaveLength(0);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'COMPLETED_WITH_SKIPS', skippedCount: 1 }),
+      );
+    });
+
+    test('should accumulate skippedCount across pages and preserve COMPLETED_WITH_SKIPS on the empty final page', async () => {
+      const existingState: UstDivisionCodeBackfillState = {
+        id: 'state-id-skips',
+        documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
+        lastId: 'cursor-xyz',
+        processedCount: 3,
+        skippedCount: 2,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        lastUpdatedAt: '2026-01-01T00:30:00.000Z',
+        status: 'IN_PROGRESS',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingState);
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([]);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(
+        context,
+        'cursor-xyz',
+        100,
+      );
+
+      expect(result.status).toBe('empty');
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'COMPLETED_WITH_SKIPS', skippedCount: 2 }),
+      );
+    });
+
     test('should return ok with failedResults when some cases fail to update', async () => {
       const bCase = { _id: 'dddd', caseId: '491-25-00004' };
 
@@ -394,6 +451,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
         documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
         lastId: 'old-cursor',
         processedCount: 5,
+        skippedCount: 0,
         startedAt: '2026-01-01T00:00:00.000Z',
         lastUpdatedAt: '2026-01-01T00:30:00.000Z',
         status: 'IN_PROGRESS',
