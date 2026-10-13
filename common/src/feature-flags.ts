@@ -29,7 +29,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-verification-enabled': true,
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
-  'software-vendor-typed-phones': true,
 };
 
 export type LaunchDarklyContext = {

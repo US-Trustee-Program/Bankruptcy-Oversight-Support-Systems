@@ -2,11 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
-import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
-
-vi.mock('@/lib/hooks/UseFeatureFlags');
-
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const softwareNoContact: BankruptcySoftwareProfile = {
   id: 'sw-1',
@@ -47,10 +42,6 @@ function renderOverview(
 }
 
 describe('BankruptcySoftwareDetailOverview', () => {
-  beforeEach(() => {
-    mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: true });
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -144,7 +135,7 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('https://axos.com')).toBeInTheDocument();
   });
 
-  describe('SOFTWARE_VENDOR_TYPED_PHONES flag on', () => {
+  describe('typed phones', () => {
     test('should show all typed phones with type labels', () => {
       const softwareMultiPhone: BankruptcySoftwareProfile = {
         ...softwareNoContact,
@@ -176,39 +167,6 @@ describe('BankruptcySoftwareDetailOverview', () => {
       const phoneEls = container.querySelectorAll('.phone');
       expect(phoneEls[0].textContent).toContain('212-555-0100');
       expect(phoneEls[1].textContent).toContain('212-555-0200');
-    });
-  });
-
-  describe('SOFTWARE_VENDOR_TYPED_PHONES flag off', () => {
-    beforeEach(() => {
-      mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: false });
-    });
-
-    test('should show only the first direct phone without type label', () => {
-      const softwareMultiPhone: BankruptcySoftwareProfile = {
-        ...softwareNoContact,
-        contact: {
-          phones: [
-            { number: '212-555-0100', type: 'direct' },
-            { number: '212-555-0200', type: 'fax' },
-          ],
-        },
-      };
-      renderOverview(softwareMultiPhone);
-      expect(screen.getByText('212-555-0100')).toBeInTheDocument();
-      expect(screen.queryByText('212-555-0200')).not.toBeInTheDocument();
-      expect(screen.queryByText('(Direct)')).not.toBeInTheDocument();
-    });
-
-    test('should show nothing when there is no direct phone', () => {
-      const softwareFaxOnly: BankruptcySoftwareProfile = {
-        ...softwareNoContact,
-        contact: {
-          phones: [{ number: '212-555-0200', type: 'fax' }],
-        },
-      };
-      renderOverview(softwareFaxOnly);
-      expect(screen.getByTestId('no-contact-info')).toBeInTheDocument();
     });
   });
 });
