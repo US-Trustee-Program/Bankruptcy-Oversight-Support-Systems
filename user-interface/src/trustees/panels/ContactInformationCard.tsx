@@ -4,7 +4,6 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 interface ContactInformationCardProps {
   internalContact?: TrusteeContact;
@@ -15,9 +14,6 @@ export default function ContactInformationCard({
   internalContact,
   onEdit,
 }: Readonly<ContactInformationCardProps>) {
-  const flags = useFeatureFlags();
-  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
-
   return (
     <div className="contact-information-card-container">
       <div className="contact-information-card usa-card">
@@ -51,8 +47,8 @@ export default function ContactInformationCard({
             {!!internalContact && (
               <FormattedContact
                 contact={internalContact}
-                typedPhonesEnabled={typedPhonesEnabled}
-                showPhoneTypeLabel={typedPhonesEnabled}
+                typedPhonesEnabled={true}
+                showPhoneTypeLabel={true}
                 testIdPrefix="trustee-internal"
               />
             )}
