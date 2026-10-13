@@ -1458,7 +1458,7 @@ describe('getUserDivisionCodes', () => {
     expect(getUserDivisionCodes(session).size).toBe(0);
   });
 
-  test('prefers ustDivisionCode over divisionCode when they diverge', () => {
+  test('returns the ACMS divisionCode, not ustDivisionCode, to match the combobox option values', () => {
     const session: CamsSession = {
       ...MockData.getCamsSession(),
       user: {
@@ -1487,6 +1487,6 @@ describe('getUserDivisionCodes', () => {
         ],
       },
     };
-    expect(getUserDivisionCodes(session)).toEqual(new Set(['494']));
+    expect(getUserDivisionCodes(session)).toEqual(new Set(['491']));
   });
 });
