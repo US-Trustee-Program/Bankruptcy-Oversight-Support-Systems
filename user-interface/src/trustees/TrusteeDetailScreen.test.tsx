@@ -351,6 +351,12 @@ describe('TrusteeDetailScreen', () => {
       description: 'should render subheader "Trustee" for default route',
       needsLocationState: false,
     },
+    {
+      route: '/trustees/123/other/edit',
+      expectedSubheader: 'Edit Other Trustee Information',
+      description: 'should render subheader "Edit Other Trustee Information" for /other/edit route',
+      needsLocationState: false,
+    },
   ])(
     '$description',
     async ({ route, expectedSubheader, needsHistoryMock, needsAppointmentsMock }) => {
@@ -375,18 +381,29 @@ describe('TrusteeDetailScreen', () => {
     },
   );
 
-  test('should fetch software options from API on component mount', async () => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+  test('should show the fetched software name on the trustee profile', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({
+      data: { ...mockTrustee, softwareId: 'sw-bestcase' },
+    });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList');
+    vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({
+      data: [
+        {
+          id: 'sw-bestcase',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'BestCase Trustee Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: MockData.getCamsUserReference(),
+        },
+      ],
+    });
 
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+      expect(screen.getByTestId('trustee-software')).toHaveTextContent('BestCase Trustee Software');
     });
-
-    expect(getSoftwareListSpy).toHaveBeenCalled();
   });
 
   test('should handle software options API error and log error message', async () => {
@@ -707,32 +724,6 @@ describe('TrusteeDetailScreen', () => {
           expect(mockNavigate).toHaveBeenCalledWith('/search');
         });
       }
-    });
-  });
-
-  describe('software and bank information', () => {
-    beforeEach(() => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    });
-
-    test('should render OtherInformationCard', async () => {
-      renderWithRouter(['/trustees/123']);
-
-      await waitFor(() => {
-        expect(screen.getByText('Software and Bank')).toBeInTheDocument();
-      });
-      expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
-    });
-
-    test('should render other/edit route', async () => {
-      renderWithRouter(['/trustees/123/other/edit']);
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
-        ).toBeInTheDocument();
-      });
     });
   });
 
