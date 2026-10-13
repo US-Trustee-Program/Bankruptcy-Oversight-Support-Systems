@@ -29,7 +29,6 @@ export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
 export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
-export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
 
 export function isFlagEnabled(flags: FeatureFlagSet, flag: string): boolean {
   return flags[flag] === true;

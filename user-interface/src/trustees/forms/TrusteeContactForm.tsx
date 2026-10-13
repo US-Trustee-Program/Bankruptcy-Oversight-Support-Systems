@@ -3,10 +3,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, {
-  TRUSTEE_MANAGEMENT,
-  TRUSTEE_TYPED_PHONES,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -16,36 +13,22 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TypedPhoneNumber, PHONE_TYPES } from '@common/cams/contact';
+import { TypedPhoneNumber } from '@common/cams/contact';
 import { TrusteeInput, TrusteeContact } from '@common/cams/trustees';
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import {
-  normalizeFormData,
-  validateDirectPhoneFields,
-  validateTypedPhones,
-} from './trusteeForms.utils';
+import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
-import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 
-const getInitialFormData = (
-  info: TrusteeContact | undefined,
-  typedPhonesEnabled: boolean,
-): TrusteeInternalFormData => {
+const getInitialFormData = (info: TrusteeContact | undefined): TrusteeInternalFormData => {
   return {
     address1: info?.address?.address1,
     address2: info?.address?.address2,
     city: info?.address?.city,
     state: info?.address?.state,
     zipCode: info?.address?.zipCode,
-    phones: typedPhonesEnabled
-      ? info?.phones?.length
-        ? info.phones
-        : [{ type: 'direct', number: '' }]
-      : PHONE_TYPES.map(
-          (type) => info?.phones?.find((p) => p.type === type) ?? { number: '', type },
-        ),
+    phones: info?.phones?.length ? info.phones : [{ type: 'direct', number: '' }],
     email: info?.email,
   };
 };
@@ -76,7 +59,6 @@ export type TrusteeContactFormProps = {
 // TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
 function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
   const flags = useFeatureFlags();
-  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
 
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
@@ -84,14 +66,12 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const { cancelTo } = props;
 
-  type FieldErrors = Partial<
-    Record<keyof TrusteeInternalFormData | '$' | 'phone' | 'extension', string[] | undefined>
-  >;
+  type FieldErrors = Partial<Record<keyof TrusteeInternalFormData | '$', string[] | undefined>>;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
-    getInitialFormData(props.trustee?.internal, typedPhonesEnabled),
+    getInitialFormData(props.trustee?.internal),
   );
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
@@ -149,12 +129,6 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const handlePhonesChange = (phones: TypedPhoneNumber[]) => {
     updateField('phones', phones);
-    if (!typedPhonesEnabled) {
-      debounce(() => {
-        const { phone, extension } = validateDirectPhoneFields(phones);
-        setFieldErrors((prev) => ({ ...prev, phone, extension }));
-      }, 300);
-    }
   };
 
   const handleCancel = useCallback(() => {
@@ -182,17 +156,14 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(trusteeInternalSpec, formData);
-    const directPhoneErrors = typedPhonesEnabled ? {} : validateDirectPhoneFields(formData.phones);
-    const hasDirectPhoneErrors = !!(directPhoneErrors.phone || directPhoneErrors.extension);
-    const hasTypedPhoneRowErrors =
-      typedPhonesEnabled && Object.keys(validateTypedPhones(formData.phones)).length > 0;
-    const isValid = !!results.valid && !hasDirectPhoneErrors && !hasTypedPhoneRowErrors;
+    const hasTypedPhoneRowErrors = Object.keys(validateTypedPhones(formData.phones)).length > 0;
+    const isValid = !!results.valid && !hasTypedPhoneRowErrors;
 
     if (!isValid) {
       const reasonMapErrors = results.reasonMap
         ? Object.fromEntries(Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]))
         : {};
-      setFieldErrors({ ...reasonMapErrors, ...directPhoneErrors } as FieldErrors);
+      setFieldErrors(reasonMapErrors as FieldErrors);
 
       if (results.reasonMap?.$?.reasons) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
@@ -306,22 +277,11 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
           <div className="form-column">
             <div className="field-group">
-              {typedPhonesEnabled ? (
-                <PhoneEntryList
-                  phones={formData.phones}
-                  onChange={handlePhonesChange}
-                  errors={phoneRowErrors}
-                />
-              ) : (
-                <DirectPhoneFields
-                  phones={formData.phones}
-                  onChange={handlePhonesChange}
-                  errors={{
-                    phone: fieldErrors['phone'],
-                    extension: fieldErrors['extension'],
-                  }}
-                />
-              )}
+              <PhoneEntryList
+                phones={formData.phones}
+                onChange={handlePhonesChange}
+                errors={phoneRowErrors}
+              />
             </div>
 
             <div className="field-group">

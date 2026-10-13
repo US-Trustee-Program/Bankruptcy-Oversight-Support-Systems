@@ -3,7 +3,6 @@ import { TrusteeStaff } from '@common/cams/trustee-staff';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
-import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeStaffCardProps {
   staffMember?: TrusteeStaff;
@@ -18,9 +17,6 @@ export default function TrusteeStaffCard({
   onEdit,
   onAdd,
 }: Readonly<TrusteeStaffCardProps>) {
-  const flags = useFeatureFlags();
-  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
-
   const isEmpty = !staffMember;
   const isNameOnly = staffMember && !staffMember.title && !staffMember.contact;
   const buttonId = isEmpty ? 'edit-staff-empty' : `edit-staff-${index}`;
@@ -62,8 +58,8 @@ export default function TrusteeStaffCard({
                 {staffMember.contact && (
                   <FormattedContact
                     contact={staffMember.contact}
-                    typedPhonesEnabled={typedPhonesEnabled}
-                    showPhoneTypeLabel={typedPhonesEnabled}
+                    typedPhonesEnabled={true}
+                    showPhoneTypeLabel={true}
                     testIdPrefix={`staff-${index}`}
                   />
                 )}

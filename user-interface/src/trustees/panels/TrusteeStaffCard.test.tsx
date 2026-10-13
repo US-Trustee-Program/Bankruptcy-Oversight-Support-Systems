@@ -3,8 +3,6 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import TrusteeStaffCard from './TrusteeStaffCard';
 import * as FormattedContactModule from '@/lib/components/cams/FormattedContact';
 import { TrusteeStaff } from '@common/cams/trustee-staff';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 const baseStaffMember: TrusteeStaff = {
   id: 'staff-1',
@@ -37,7 +35,6 @@ describe('TrusteeStaffCard', () => {
     vi.restoreAllMocks();
     mockOnEdit.mockClear();
     mockOnAdd.mockClear();
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
   });
 
   test('should show "no information added" when staffMember is undefined', () => {
@@ -151,29 +148,8 @@ describe('TrusteeStaffCard', () => {
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
     expect(props.contact).toEqual(baseStaffMember.contact);
-    expect(props.typedPhonesEnabled).toBe(false);
-    expect(props.showPhoneTypeLabel).toBe(false);
-    expect(props.testIdPrefix).toBe('staff-0');
-  });
-
-  test('should pass typedPhonesEnabled and showPhoneTypeLabel as true when flag is enabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
-
-    const mockFormattedContact = vi
-      .spyOn(FormattedContactModule, 'default')
-      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
-
-    render(
-      <TrusteeStaffCard
-        staffMember={baseStaffMember}
-        index={0}
-        onEdit={mockOnEdit}
-        onAdd={mockOnAdd}
-      />,
-    );
-
-    const props = mockFormattedContact.mock.calls.at(-1)![0];
     expect(props.typedPhonesEnabled).toBe(true);
     expect(props.showPhoneTypeLabel).toBe(true);
+    expect(props.testIdPrefix).toBe('staff-0');
   });
 });
