@@ -395,7 +395,9 @@ describe('BackfillUstDivisionCodeUseCase', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([case1, case2]);
-      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockResolvedValue();
+      const setSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+        .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
         {} as UstDivisionCodeBackfillState,
       );
@@ -406,6 +408,49 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       if (result.status !== 'ok') return;
       expect(result.nextCursor).toEqual({ lastId: 'aaaa' });
       expect(result.successCount).toBe(1);
+      expect(setSpy).toHaveBeenCalledWith(case1._id, case1.caseId, '494');
+    });
+
+    test('should accumulate processedCount from prior state and keep IN_PROGRESS while more pages remain', async () => {
+      const existingState: UstDivisionCodeBackfillState = {
+        id: 'state-id-1',
+        documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
+        lastId: 'cursor-prev',
+        processedCount: 5,
+        skippedCount: 0,
+        failedCount: 0,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        lastUpdatedAt: '2026-01-01T00:30:00.000Z',
+        status: 'IN_PROGRESS',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingState);
+      // Return 2 cases with limit 1 so hasMore is true.
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([
+        winchesterCase,
+        chattanoogaCase,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockResolvedValue();
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(
+        context,
+        'cursor-prev',
+        1,
+      );
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      // 5 (prior) + 1 (winchester written this page) = 6
+      expect(result.processedCount).toBe(6);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          processedCount: 6,
+          status: 'IN_PROGRESS',
+        }),
+      );
     });
 
     test('should return ok with null nextCursor on last page', async () => {
@@ -413,7 +458,9 @@ describe('BackfillUstDivisionCodeUseCase', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockResolvedValue();
+      const setSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+        .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
         {} as UstDivisionCodeBackfillState,
       );
@@ -423,6 +470,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.status).toBe('ok');
       if (result.status !== 'ok') return;
       expect(result.nextCursor).toBeNull();
+      expect(setSpy).toHaveBeenCalledWith(bCase._id, bCase.caseId, '494');
     });
 
     test('should return error when state read fails', async () => {
