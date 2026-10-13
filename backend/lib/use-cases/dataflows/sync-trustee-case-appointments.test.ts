@@ -1796,6 +1796,138 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    describe('division-code selection for appointment matching (CAMS-936)', () => {
+      // Mutation guard: changing line 1281 to `event.courtDivisionCode` would survive all
+      // prior tests because isAppointmentMatch is always mocked to true. These tests use
+      // the synced case's ustDivisionCode to drive real isAppointmentMatch calls.
+
+      const makeWinchesterEvent = (caseId: string): TrusteeAppointmentSyncEvent => ({
+        caseId,
+        courtId: '0649',
+        courtDivisionCode: '491',
+        chapter: '7',
+        appointedDate: '2024-01-15',
+        dxtrTrustee: { fullName: 'Jane Trustee', firstName: 'Jane', lastName: 'Trustee' },
+      });
+
+      test('passes syncedCase.ustDivisionCode as the division argument to isAppointmentMatch when present', async () => {
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(vi.mocked(trusteeMatchHelpers.isAppointmentMatch)).toHaveBeenCalledWith(
+          expect.any(Array),
+          '0649',
+          '494',
+          expect.any(String),
+        );
+      });
+
+      test('falls back to event.courtDivisionCode when syncedCase has no ustDivisionCode', async () => {
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          dateFiled: '2026-01-07',
+        });
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(vi.mocked(trusteeMatchHelpers.isAppointmentMatch)).toHaveBeenCalledWith(
+          expect.any(Array),
+          '0649',
+          '491',
+          expect.any(String),
+        );
+      });
+
+      test('auto-links when appointment carries the bare ustDivisionCode', async () => {
+        (trusteeMatchHelpers.isAppointmentMatch as ReturnType<typeof vi.fn>).mockRestore();
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+        (
+          mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce([
+          {
+            id: 'appt-1',
+            trusteeId: 'trustee-123',
+            chapter: '7' as const,
+            appointmentType: 'panel' as const,
+            courtId: '0649',
+            divisionCodes: ['494'],
+            appointedDate: '2024-01-01',
+            status: 'active' as const,
+            effectiveDate: '2024-01-01',
+          } as TrusteeAppointment,
+        ]);
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(scenarioDistribution.autoMatchCount).toBe(1);
+      });
+
+      test('does not auto-link when appointment carries only the ACMS code but case has bare ustDivisionCode', async () => {
+        (trusteeMatchHelpers.isAppointmentMatch as ReturnType<typeof vi.fn>).mockRestore();
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+        (
+          mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce([
+          {
+            id: 'appt-1',
+            trusteeId: 'trustee-123',
+            chapter: '7' as const,
+            appointmentType: 'panel' as const,
+            courtId: '0649',
+            divisionCodes: ['491'],
+            appointedDate: '2024-01-01',
+            status: 'active' as const,
+            effectiveDate: '2024-01-01',
+          } as TrusteeAppointment,
+        ]);
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(scenarioDistribution.autoMatchCount).toBe(0);
+      });
+    });
+
     test('should auto-link a fuzzy-scoring clear winner whose appointment matches court/division/chapter', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
