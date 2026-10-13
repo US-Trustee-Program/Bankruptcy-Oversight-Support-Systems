@@ -793,7 +793,8 @@ export type RuntimeStateDocumentType =
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
-  | 'UST_DIVISION_CODE_BACKFILL_STATE';
+  | 'UST_DIVISION_CODE_BACKFILL_STATE'
+  | 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -853,6 +854,23 @@ export type UstDivisionCodeBackfillState = RuntimeState & {
   lastUpdatedAt: string;
   status:
     'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_SKIPS' | 'COMPLETED_WITH_FAILURES' | 'FAILED';
+};
+
+export type AppointmentUstDivisionCodeBackfillState = RuntimeState & {
+  documentType: 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
+  lastId: string | null;
+  // Only appointments last updated before this ISO timestamp are remapped; later ones were
+  // saved with ustDivisionCode-valued picker options and must not be reinterpreted.
+  cutoff: string;
+  dryRun: boolean;
+  processedCount: number;
+  // In a dry run, the number that would have been updated.
+  updatedCount: number;
+  ambiguousCount: number;
+  failedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_FAILURES';
 };
 
 export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {

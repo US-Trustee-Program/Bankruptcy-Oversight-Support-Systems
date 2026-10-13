@@ -24,6 +24,7 @@ import {
   PhoneticBackfillState,
   CaseAppointmentDateBackfillState,
   UstDivisionCodeBackfillState,
+  AppointmentUstDivisionCodeBackfillState,
   TrusteeAppointmentsDownstreamBackfillState,
   RuntimeState,
   RuntimeStateRepository,
@@ -138,6 +139,7 @@ let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
 let ustDivisionCodeBackfillStateRepo: RuntimeStateRepository<UstDivisionCodeBackfillState>;
+let appointmentUstDivisionCodeBackfillStateRepo: RuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>;
 let trusteeAppointmentsDownstreamBackfillStateRepo: RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
@@ -365,6 +367,16 @@ const getUstDivisionCodeBackfillStateRepo = (
       getRuntimeStateRepository<UstDivisionCodeBackfillState>(context);
   }
   return ustDivisionCodeBackfillStateRepo;
+};
+
+const getAppointmentUstDivisionCodeBackfillStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<AppointmentUstDivisionCodeBackfillState> => {
+  if (!appointmentUstDivisionCodeBackfillStateRepo) {
+    appointmentUstDivisionCodeBackfillStateRepo =
+      getRuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>(context);
+  }
+  return appointmentUstDivisionCodeBackfillStateRepo;
 };
 
 const getTrusteeAppointmentsDownstreamBackfillStateRepo = (
@@ -723,6 +735,7 @@ const factory = {
   getPhoneticBackfillStateRepo,
   getCaseAppointmentDateBackfillStateRepo,
   getUstDivisionCodeBackfillStateRepo,
+  getAppointmentUstDivisionCodeBackfillStateRepo,
   getTrusteeAppointmentsDownstreamBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
   getTrusteePetitionSyncStateRepo,

@@ -7,6 +7,7 @@ import TrusteeChangeNotificationEvent from './events/trustee-change-notification
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import BackfillUstDivisionCode from './migrations/backfill-ust-division-code';
+import BackfillAppointmentUstDivisionCodes from './migrations/backfill-appointment-ust-division-codes';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
@@ -106,6 +107,7 @@ const dataflows = new DataflowSetupMap();
 dotenv.config();
 
 dataflows.register(
+  BackfillAppointmentUstDivisionCodes,
   BackfillPhoneticTokens,
   BackfillCaseAppointmentDates,
   BackfillTrusteePhoneticTokens,
