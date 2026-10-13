@@ -148,8 +148,11 @@ function run() {
   const placeholderPattern = /\bno trustee\b/i;
   const errored = records.filter((r) => r.error && r.variant);
 
-  const noNameCandidateRecords: { acmsFullName: string; acmsProfessionalId: string; decoded: DecodedVariant }[] =
-    [];
+  const noNameCandidateRecords: {
+    acmsFullName: string;
+    acmsProfessionalId: string;
+    decoded: DecodedVariant;
+  }[] = [];
   for (const record of errored) {
     const decoded: DecodedVariant = JSON.parse(record.variant!);
     const acmsTrustee = toAcmsTrusteeParty(decoded);
@@ -163,11 +166,17 @@ function run() {
       }
     }
     if (!qualifies) {
-      noNameCandidateRecords.push({ acmsFullName: acmsTrustee.fullName, acmsProfessionalId: record.acmsProfessionalId, decoded });
+      noNameCandidateRecords.push({
+        acmsFullName: acmsTrustee.fullName,
+        acmsProfessionalId: record.acmsProfessionalId,
+        decoded,
+      });
     }
   }
 
-  console.log(`no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`);
+  console.log(
+    `no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`,
+  );
 
   type Result = {
     acmsFullName: string;
@@ -183,8 +192,20 @@ function run() {
     const acmsLast = firstToken(decoded.lastName);
     if (!acmsFirst || !acmsLast) continue;
 
-    const viaLastAnchor = anchoredFuzzyMatch(acmsLast, acmsFirst, trustees, 'lastName', 'firstName');
-    const viaFirstAnchor = anchoredFuzzyMatch(acmsFirst, acmsLast, trustees, 'firstName', 'lastName');
+    const viaLastAnchor = anchoredFuzzyMatch(
+      acmsLast,
+      acmsFirst,
+      trustees,
+      'lastName',
+      'firstName',
+    );
+    const viaFirstAnchor = anchoredFuzzyMatch(
+      acmsFirst,
+      acmsLast,
+      trustees,
+      'firstName',
+      'lastName',
+    );
 
     const byId = new Map<string, { trustee: Trustee; via: string[] }>();
     for (const t of viaLastAnchor) {
@@ -212,7 +233,8 @@ function run() {
   console.log(`Records with at least one anchored-Levenshtein candidate: ${results.length}\n`);
 
   const bySize = new Map<number, number>();
-  for (const r of results) bySize.set(r.candidates.length, (bySize.get(r.candidates.length) ?? 0) + 1);
+  for (const r of results)
+    bySize.set(r.candidates.length, (bySize.get(r.candidates.length) ?? 0) + 1);
   console.log('Candidate-count distribution:');
   for (const [size, count] of [...bySize.entries()].sort((a, b) => a[0] - b[0])) {
     console.log(`  ${size} candidate(s): ${count} records`);
@@ -220,8 +242,11 @@ function run() {
   console.log();
 
   const ADDRESS_THRESHOLD = 80;
-  const corroborated = (addressScore: number, phoneScore: number | null, emailScore: number | null) =>
-    addressScore >= ADDRESS_THRESHOLD || phoneScore === 100 || emailScore === 100;
+  const corroborated = (
+    addressScore: number,
+    phoneScore: number | null,
+    emailScore: number | null,
+  ) => addressScore >= ADDRESS_THRESHOLD || phoneScore === 100 || emailScore === 100;
 
   const exactlyOne = results.filter((r) => r.candidates.length === 1);
   console.log(`=== Exactly one candidate: ${exactlyOne.length} ===\n`);
@@ -235,11 +260,19 @@ function run() {
     return { r, t, addressScore, phoneScore, emailScore };
   });
 
-  const wouldAutoLink = exactlyOneScored.filter((x) => corroborated(x.addressScore, x.phoneScore, x.emailScore));
-  const needsReview = exactlyOneScored.filter((x) => !corroborated(x.addressScore, x.phoneScore, x.emailScore));
+  const wouldAutoLink = exactlyOneScored.filter((x) =>
+    corroborated(x.addressScore, x.phoneScore, x.emailScore),
+  );
+  const needsReview = exactlyOneScored.filter(
+    (x) => !corroborated(x.addressScore, x.phoneScore, x.emailScore),
+  );
 
-  console.log(`Of those, WOULD AUTO-LINK (corroborated by address>=80/phone==100/email==100): ${wouldAutoLink.length}`);
-  console.log(`Of those, candidate found but NOT corroborated (still needs human review): ${needsReview.length}\n`);
+  console.log(
+    `Of those, WOULD AUTO-LINK (corroborated by address>=80/phone==100/email==100): ${wouldAutoLink.length}`,
+  );
+  console.log(
+    `Of those, candidate found but NOT corroborated (still needs human review): ${needsReview.length}\n`,
+  );
 
   console.log('--- WOULD AUTO-LINK (all) ---');
   for (const x of wouldAutoLink) {
@@ -267,9 +300,13 @@ function run() {
       const emailScore = calculateEmailScore(acmsTrustee.legacy?.email, t.public.email);
       return { t, addressScore, phoneScore, emailScore };
     });
-    const corroboratedOnes = scored.filter((s) => corroborated(s.addressScore, s.phoneScore, s.emailScore));
+    const corroboratedOnes = scored.filter((s) =>
+      corroborated(s.addressScore, s.phoneScore, s.emailScore),
+    );
     const names = scored
-      .map((s) => `${s.t.name} [addr=${s.addressScore} phone=${s.phoneScore} email=${s.emailScore}]`)
+      .map(
+        (s) => `${s.t.name} [addr=${s.addressScore} phone=${s.phoneScore} email=${s.emailScore}]`,
+      )
       .join(' | ');
     const flag = corroboratedOnes.length === 1 ? ' <<< exactly one corroborated' : '';
     console.log(`  "${r.acmsFullName}" (${r.acmsProfessionalId})${flag} -> ${names}`);

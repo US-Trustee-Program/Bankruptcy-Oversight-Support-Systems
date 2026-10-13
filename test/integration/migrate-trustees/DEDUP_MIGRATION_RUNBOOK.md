@@ -27,12 +27,7 @@ via `backend/.env`), then verifies Cosmos with a read-only Node script.
   - `ATS_MSSQL_*` — ATS connection. **The ATS database on this server is named `ATS_SUB`** (verified
     2026-07-07 by listing `sys.databases`; there is no `ATS_REP_SUB`). Set
     `ATS_MSSQL_DATABASE="ATS_SUB"`.
-  - `ACMS_MSSQL_*` — `ACMS_MSSQL_DATABASE="ACMS_REP_SUB"`. **Caveat:** this environment's
-    `dbo.CMMPR` does NOT match the gateway query — it has `PROF_CODE` (numeric) and no
-    `UST_PROF_CODE`/`PROF_TYPE`, so `getTrusteeProfessionalIds` fails here (caught non-fatally;
-    professional-ids will be 0). USTP's real schema has those columns; this is a known dev-replica
-    mismatch, out of scope for the dedup test. Seed `03` is therefore moot in this environment and
-    can be skipped.
+  - `ACMS_MSSQL_*` — `ACMS_MSSQL_DATABASE="ACMS_REP_SUB"`.
   - Storage: the queue triggers use connection `DataflowsStorage` (→ `AzureWebJobsDataflowsStorage`)
     and the output bindings use `AzureWebJobsStorage`. Both are set in `local.settings.json`; in
     this environment they resolve to the SAME Gov storage account, so the queue flow is consistent.
@@ -44,8 +39,8 @@ via `backend/.env`), then verifies Cosmos with a read-only Node script.
   offices.
 - SQL client access to the shared server for the two seed databases (ATS and ACMS are **different
   databases on the same server**).
-- Node.js (v22, matching `.nvmrc`) with the repo's hoisted `mongodb` driver (already present at
-  repo-root `node_modules` after `npm ci`).
+- Node.js matching `.nvmrc` with the repo's hoisted `mongodb` driver (already present at repo-root
+  `node_modules` after `npm ci`).
 
 ## 2. Seed SQL
 
@@ -53,10 +48,9 @@ via `backend/.env`), then verifies Cosmos with a read-only Node script.
    TRUSTEES rows 1004-1008 plus one active `CHAPTER_DETAILS` row each. Idempotent
    (DELETE-then-INSERT by id 1004-1008). Note: `TRUSTEES.ID` is an IDENTITY column, so the file
    wraps its inserts in `SET IDENTITY_INSERT dbo.TRUSTEES ON/OFF` within a single batch.
-2. **ACMS** — `seed/03-seed-acms-cmmpr.sql` targets `ACMS_REP_SUB`. **Skip it in this environment**
-   — `dbo.CMMPR` here lacks `UST_PROF_CODE`/`PROF_TYPE`, so the gateway's professional-id query
-   fails regardless of seeded rows (see the ACMS caveat in Prerequisites). It is retained for an
-   environment whose `CMMPR` matches USTP's real schema.
+2. **ACMS** — no seed. `MIGRATE-TRUSTEES` writes no professional IDs (`upsertProfessionalIds` in
+   `migrate-trustees.ts` is a no-op; only `sync-acms-professional-ids` writes them), so
+   `seed/03-seed-acms-cmmpr.sql` has no effect on this test.
 
 No `sqlcmd` is required. A minimal Node runner using the repo's `mssql` package (parse the dataflows
 `.env`, connect per-database, split on `GO`, run each batch) is sufficient. IDENTITY_INSERT and all
@@ -149,16 +143,15 @@ It scopes every query to `legacy.truIds` in `1004`-`1008` and asserts:
     doc). This is the dedup result.
   - 1006: `public.address.state === 'DE'` and `internal.address.state === 'MD'` (M2).
   - 1007: `public.address.state === 'MD'` and the doc exists (fallback).
-- **INFO (never fails the run):** `>= 1` `trustee-professional-ids` (by `camsTrusteeId`) and `>= 1`
-  `trustee-appointments` (by `trusteeId`) per fixture. A zero count only means the CMMPR /
-  CHAPTER_DETAILS path wasn't exercised — it does not indicate a dedup regression.
+- **INFO (never fails the run):** `>= 1` `trustee-appointments` (by `trusteeId`) per fixture. A zero
+  count only means the CHAPTER_DETAILS path wasn't exercised — it does not indicate a dedup
+  regression.
 
 A non-zero exit code means a HARD check failed (duplicate or wrong state).
 
 ## 6. Cleanup
 
-Per operator instruction, **DO NOT delete the created trustees** (or their appointments /
-professional-ids) in Cosmos.
+Per operator instruction, **DO NOT delete the created trustees** (or their appointments) in Cosmos.
 
 Optionally remove the seeded SQL rows (both are safe, idempotent deletes):
 

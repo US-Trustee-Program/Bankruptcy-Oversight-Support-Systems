@@ -24,13 +24,15 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     camsTrusteeId: 'trustee-1',
     acmsProfessionalId: 'NY-00063',
     documentType: 'TRUSTEE_PROFESSIONAL_ID',
-    disposition: 'auto-linked',
+    disposition: 'linked',
+    linkMethod: 'auto',
+    nameMatchCount: 0,
     evidence: {
       sourceRaw: { fullName: 'John Doe' },
       sourceNormalized: {},
       memo: {},
       candidates: [],
-      match: { trusteeId: 'trustee-1', score: {} },
+      match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'test' },
       skip: false,
       error: null,
     },
@@ -43,7 +45,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   const isRealLinkCondition = {
     condition: 'EQUALS',
     leftOperand: { name: 'disposition' },
-    rightOperand: 'auto-linked',
+    rightOperand: 'linked',
   };
 
   function withoutAuditOrId(
@@ -115,7 +117,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     const camsTrusteeId = 'trustee-123';
     const acmsProfessionalId = 'NY-00063';
 
-    test('should write an auto-linked professional ID mapping successfully', async () => {
+    test('should write a linked professional ID mapping successfully', async () => {
       const written: TrusteeProfessionalIdDocument = {
         ...sampleProfessionalId,
         id: 'new-prof-id',
@@ -614,7 +616,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   });
 
   describe('findAll', () => {
-    test('should return all auto-linked professional ID mappings', async () => {
+    test('should return all linked professional ID mappings', async () => {
       const allMappings: TrusteeProfessionalId[] = [
         { ...sampleProfessionalId, id: 'p1', camsTrusteeId: 't1', acmsProfessionalId: 'NY-00063' },
         { ...sampleProfessionalId, id: 'p2', camsTrusteeId: 't2', acmsProfessionalId: 'UT-05321' },

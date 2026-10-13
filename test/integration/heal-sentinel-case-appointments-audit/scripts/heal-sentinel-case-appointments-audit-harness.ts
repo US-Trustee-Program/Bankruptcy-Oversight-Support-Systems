@@ -12,11 +12,12 @@
  *      that couldn't be resolved at migration time.
  *   2. trustee-professional-ids.json — the current trustee-professional-ids collection, which
  *      sync-acms-professional-ids keeps populating/improving after that migration ran. A sentinel
- *      heals once this collection has exactly one non-error record for its acmsProfessionalId.
+ *      heals once this collection has exactly one disposition 'linked' record for its
+ *      acmsProfessionalId.
  *
- * findByAcmsProfessionalId's real query is `acmsProfessionalId == X AND error is absent` (see
- * notErrored() in trustee-professional-ids.mongo.repository.ts) — this harness reimplements that
- * exact filter in memory rather than a new, separately-tuned comparison.
+ * findByAcmsProfessionalId's real query is `acmsProfessionalId == X AND disposition == 'linked'`
+ * (see isRealLink() in trustee-professional-ids.mongo.repository.ts) — this harness reimplements
+ * that exact filter in memory rather than a new, separately-tuned comparison.
  *
  * This is a one-shot script - NOT a Vitest test. No database is used; both fixture files are read
  * directly and compared in memory.
@@ -94,15 +95,21 @@ function loadProfessionalIds(): TrusteeProfessionalId[] {
 // Replayed resolution logic
 // ---------------------------------------------------------------------------
 
-// Mirrors findByAcmsProfessionalId's real query: acmsProfessionalId match AND error is absent
-// (notErrored() in trustee-professional-ids.mongo.repository.ts). A sentinel only heals when
-// exactly one such record exists — zero means no mapping yet, more than one is an ambiguous
-// mapping the use case intentionally refuses to guess between.
-function findLinkedMatches(
+// Mirrors isRealLink() in trustee-professional-ids.mongo.repository.ts.
+function isRealLink(professionalId: TrusteeProfessionalId): boolean {
+  return professionalId.disposition === 'linked';
+}
+
+// Mirrors findByAcmsProfessionalId's real query: acmsProfessionalId match AND isRealLink. A
+// sentinel only heals when exactly one such record exists — zero means no mapping yet, more than
+// one is an ambiguous mapping the use case intentionally refuses to guess between.
+function findRealLinks(
   acmsProfessionalId: string,
   professionalIds: TrusteeProfessionalId[],
 ): TrusteeProfessionalId[] {
-  return professionalIds.filter((p) => p.acmsProfessionalId === acmsProfessionalId && !p.error);
+  return professionalIds.filter(
+    (p) => p.acmsProfessionalId === acmsProfessionalId && isRealLink(p),
+  );
 }
 
 type Outcome = 'healed' | 'no-mapping' | 'ambiguous-mapping' | 'missing-acms-id';
@@ -123,7 +130,7 @@ function replaySentinel(
     return { caseId: sentinel.caseId, outcome: 'missing-acms-id', matchCount: 0 };
   }
 
-  const matches = findLinkedMatches(sentinel.acmsProfessionalId, professionalIds);
+  const matches = findRealLinks(sentinel.acmsProfessionalId, professionalIds);
 
   if (matches.length === 0) {
     return {
@@ -173,8 +180,8 @@ function run() {
 
   console.log(
     `Loaded ${sentinels.length} sampled appointments, ${professionalIds.length} ` +
-      `trustee-professional-ids records (${professionalIds.filter((p) => !p.error).length} linked, ` +
-      `${professionalIds.filter((p) => p.error).length} errored).\n`,
+      `trustee-professional-ids records (${professionalIds.filter(isRealLink).length} linked, ` +
+      `${professionalIds.filter((p) => !isRealLink(p)).length} not linked).\n`,
   );
 
   const results = sentinels.map((s) => replaySentinel(s, professionalIds));
@@ -199,7 +206,9 @@ function run() {
   // Distinct acmsProfessionalId view: how many *distinct* unresolved professional IDs remain,
   // versus how many appointment rows they represent — a handful of professional IDs can account
   // for a disproportionate share of unhealed rows.
-  const unhealed = results.filter((r) => r.outcome === 'no-mapping' || r.outcome === 'ambiguous-mapping');
+  const unhealed = results.filter(
+    (r) => r.outcome === 'no-mapping' || r.outcome === 'ambiguous-mapping',
+  );
   const byAcmsId = new Map<string, number>();
   for (const r of unhealed) {
     if (!r.acmsProfessionalId) continue;

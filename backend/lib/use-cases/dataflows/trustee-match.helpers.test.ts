@@ -31,7 +31,6 @@ import {
   normalizeAddressLine,
   scoreFirstNamePart,
   scoreMiddleNamePart,
-  isKnownNicknamePair,
   isFirstMiddleSwap,
   isOneSidedMiddleNameMatch,
   calculateNumericTokenScore,
@@ -831,8 +830,16 @@ describe('parseCityStateZip', () => {
     });
   });
 
+  // The ACMS pipeline recovers a city+state address carrying no zip at all (see
+  // parseAcmsCityStateZip in trustee-match-pipeline-stages.ts); the shared parser the DXTR paths
+  // use returns null for that shape.
   test('returns null when no zip-like token exists at all', () => {
     expect(parseCityStateZip('Corinth MS')).toBeNull();
+    expect(parseCityStateZip('San Diego CA')).toBeNull();
+  });
+
+  test('returns null when the string is only a bare state code with no city and no zip', () => {
+    expect(parseCityStateZip('CA')).toBeNull();
   });
 
   test('returns null when the string is only a zip with no city', () => {
@@ -1770,6 +1777,24 @@ describe('firstLastNameToken', () => {
     },
   );
 
+  // Two particles in a row ("De La", "Van Der") would otherwise reduce every such surname to the
+  // particles alone, grading different surnames as the same.
+  test.each([
+    ['De La Quillan', 'de la quillan'],
+    ['VAN DER VEXMORE', 'van der vexmore'],
+    ['Van Den Orsino, Jr.', 'van den orsino'],
+  ])(
+    'should keep consecutive particles joined to the surname that follows: %s',
+    (input, expected) => {
+      expect(firstLastNameToken(input)).toBe(expected);
+    },
+  );
+
+  test('should treat two surnames sharing the same two particles as different', () => {
+    expect(firstLastNameToken('De La Quillan')).not.toBe(firstLastNameToken('De La Tessarin'));
+    expect(firstLastNameToken('Van Der Vexmore')).not.toBe(firstLastNameToken('Van Der Orsino'));
+  });
+
   test('should NOT join a prefix particle when it is not followed by another token', () => {
     // A bare "Van" with nothing after it isn't a compound surname — nothing to join to.
     expect(firstLastNameToken('Van')).toBe('van');
@@ -1843,9 +1868,9 @@ describe('lastNameTokensMatch', () => {
   // Real-world false negatives from a staging backtest: firstLastNameToken always treats the
   // FIRST token as the surname, which is wrong for a prepended maiden/second surname (real
   // surname last, not first) and for a hyphenated compound surname carried inconsistently across
-  // systems. Only activates when the caller supplies the raw (pre-firstLastNameToken) lastName
-  // fields.
-  describe('raw-field fallback', () => {
+  // systems. Only activates when the caller supplies each side's lastNameSurnameCandidates result
+  // (primary token plus alternates - see NormalizedTrustee.lastNameAlternates).
+  describe('candidate-list fallback', () => {
     test.each([
       ['DE DUNWOODY HALLSTROM', 'Hallstrom'],
       ['Anderson Oakley', 'Oakley'],
@@ -1858,8 +1883,8 @@ describe('lastNameTokensMatch', () => {
           lastNameTokensMatch(
             firstLastNameToken(compound),
             firstLastNameToken(real),
-            compound,
-            real,
+            lastNameSurnameCandidates(compound),
+            lastNameSurnameCandidates(real),
           ),
         ).toBe(true);
       },
@@ -1877,8 +1902,8 @@ describe('lastNameTokensMatch', () => {
           lastNameTokensMatch(
             firstLastNameToken(compound),
             firstLastNameToken(real),
-            compound,
-            real,
+            lastNameSurnameCandidates(compound),
+            lastNameSurnameCandidates(real),
           ),
         ).toBe(true);
       },
@@ -1891,16 +1916,16 @@ describe('lastNameTokensMatch', () => {
         lastNameTokensMatch(
           firstLastNameToken('Smith Jones'),
           firstLastNameToken('Jones Wilson'),
-          'Smith Jones',
-          'Jones Wilson',
+          lastNameSurnameCandidates('Smith Jones'),
+          lastNameSurnameCandidates('Jones Wilson'),
         ),
       ).toBe(false);
     });
 
-    test('should NOT apply the fallback when neither raw field is supplied', () => {
+    test('should NOT apply the fallback when neither candidate list is supplied', () => {
       // Same firstLastNameToken inputs as the first parameterized case above, but without the
-      // raw fields - existing callers that never pass them must see unchanged behavior, not a
-      // silent new match.
+      // candidate lists - existing callers that never pass them must see unchanged behavior, not
+      // a silent new match.
       expect(
         lastNameTokensMatch(
           firstLastNameToken('DE DUNWOODY HALLSTROM'),
@@ -2594,28 +2619,6 @@ describe('scoreMiddleNamePart', () => {
   });
 });
 
-describe('isKnownNicknamePair', () => {
-  test.each([
-    {
-      description: 'a known nickname-to-formal-name pair',
-      a: 'jim',
-      b: 'james',
-      expected: true,
-    },
-    {
-      description: 'a known formal-to-nickname pair (order reversed)',
-      a: 'elizabeth',
-      b: 'liz',
-      expected: true,
-    },
-    { description: 'an unrelated pair', a: 'jim', b: 'robert', expected: false },
-    { description: 'the first side is empty', a: '', b: 'james', expected: false },
-    { description: 'the second side is empty', a: 'jim', b: '', expected: false },
-  ])('should return $expected for $description', ({ a, b, expected }) => {
-    expect(isKnownNicknamePair(a, b)).toBe(expected);
-  });
-});
-
 describe('isFirstMiddleSwap', () => {
   // Real-world pattern: a trustee who goes by their middle name has it recorded first on one
   // side (CAMS "M. Douglas Renfield") while the other side keeps the legal first/middle order
@@ -2672,6 +2675,24 @@ describe('isFirstMiddleSwap', () => {
       camsMiddle: 'douglas',
       expected: false,
     },
+    // Two different first names that each coincidentally cross-match via bare initials only.
+    {
+      description: 'two different first names that merely cross-match via bare initials',
+      dxtrFirst: 'michael',
+      dxtrMiddle: 'p',
+      camsFirst: 'philip',
+      camsMiddle: 'm',
+      expected: false,
+    },
+    // A genuine swap: one crossed pair is an exact match ("francis" vs "francis").
+    {
+      description: 'a genuine swap where one crossed pair is an exact match',
+      dxtrFirst: 'francis',
+      dxtrMiddle: 'j',
+      camsFirst: 'j',
+      camsMiddle: 'francis',
+      expected: true,
+    },
   ])(
     'should return $expected when $description',
     ({ dxtrFirst, dxtrMiddle, camsFirst, camsMiddle, expected }) => {
@@ -2711,8 +2732,8 @@ describe('isOneSidedMiddleNameMatch', () => {
     // The confirmed real-world false positive: "michael" (no middle name) must not match against
     // a bare middle initial "m" just because "m" is an initial of "michael" - a bare-initial
     // relationship is still refused even after the nickname/distance relaxation below (see
-    // isOneSidedCrossedNamePartMatch's own doc comment on why it deliberately never calls
-    // isInitialOf, unlike scoreFirstNamePart's other two callers).
+    // isCrossedNamePartMatch's own doc comment on why it deliberately never calls isInitialOf,
+    // unlike scoreFirstNamePart's other two callers).
     {
       description:
         'a merely initial-vs-full relationship (still refused, unlike scoreFirstNamePart)',
@@ -2720,6 +2741,18 @@ describe('isOneSidedMiddleNameMatch', () => {
       dxtrMiddle: '',
       camsFirst: 'kathy',
       camsMiddle: 'm',
+      expected: false,
+    },
+    // A short first name against a bare initial matching its own leading letter must still be
+    // refused - JaroWinklerDistance rates a short string highly similar to its own leading
+    // character ("al" vs "a" scores 0.85), which would otherwise readmit a bare-initial match.
+    {
+      description:
+        'a short first name against a bare initial matching its own leading letter (still refused)',
+      dxtrFirst: 'al',
+      dxtrMiddle: '',
+      camsFirst: 'walter',
+      camsMiddle: 'a',
       expected: false,
     },
     // Real backtest finding: a genuine nickname pair crossed into the wrong field must still be
