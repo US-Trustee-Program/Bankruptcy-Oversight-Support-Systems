@@ -4,11 +4,10 @@ import { Trustee } from '@common/cams/trustees';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../common-errors/cams-error';
 import {
+  foldKleene,
   addCandidate,
-  addDisqualifier,
   addScore,
   createTrusteeInitialState as createInitialState,
-  mergedScore,
   normalize,
   NormalizedMemo,
   TrusteePipelineState as PipelineState,
@@ -67,7 +66,7 @@ describe('createInitialState', () => {
     expect(state.error).toBeNull();
   });
 
-  test("starts as a clone of sourceRaw's scalar name fields, excluding address/name (reshaped, not passthrough, fields)", () => {
+  test("seeds sourceNormalized with sourceRaw's passthrough fields, leaving address and name to be computed later", () => {
     const sourceRaw = makeDxtrTrustee({ middleName: 'Q' });
     const state = createInitialState(sourceRaw);
 
@@ -78,7 +77,6 @@ describe('createInitialState', () => {
       phone: undefined,
       email: undefined,
       legacy: sourceRaw.legacy,
-      legacyLastName: 'Doe',
       fullName: sourceRaw.fullName,
     });
   });
@@ -114,7 +112,6 @@ describe('addCandidate', () => {
       phone: projected.phone,
       email: projected.email,
       legacy: undefined,
-      legacyLastName: 'Smith',
       fullName: undefined,
     });
   });
@@ -124,12 +121,12 @@ describe('addCandidate', () => {
     const trustee = makeTrustee({ trusteeId: 't1' });
 
     const first = addCandidate(state, projectTrustee(trustee), 'test');
-    addScore(first, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
     const second = addCandidate(state, projectTrustee(trustee), 'test');
 
     expect(second).toBe(first);
     expect(second.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
     expect(state.candidates.size).toBe(1);
   });
@@ -146,10 +143,8 @@ describe('addCandidate', () => {
 });
 
 describe('promoteCandidate', () => {
-  // Models the nested-pipeline pattern (see
-  // docs/architecture/decision-records/TrusteeMatchingPipeline.md): a stage runs its own scoped
-  // discovery-then-filter pipeline internally, then promotes only the survivors into the outer
-  // state - carrying the inner pipeline's own score history forward rather than discarding it.
+  // Models a stage that runs its own nested pipeline, then promotes only the survivors into the
+  // outer state.
   test('merges a candidate built by a nested pipeline run into the outer state, preserving its score history', () => {
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
@@ -157,14 +152,14 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(innerCandidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    addScore(innerCandidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const outerState = createInitialState(makeDxtrTrustee());
     const promoted = promoteCandidate(outerState, innerCandidate);
 
     expect(outerState.candidates.get('t1')).toBe(promoted);
     expect(promoted.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
@@ -175,7 +170,7 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(outerCandidate, 'doesNameMatch', { value: 50, threshold: 85, pass: false });
+    addScore(outerCandidate, 'doesNameMatch', { pass: false });
 
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
@@ -183,13 +178,13 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(innerCandidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    addScore(innerCandidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const result = promoteCandidate(outerState, innerCandidate);
 
     expect(result).toBe(outerCandidate);
     expect(result.scores).toEqual({
-      doesNameMatch: { value: 50, threshold: 85, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -212,117 +207,30 @@ describe('promoteCandidate', () => {
   });
 });
 
-describe('mergedScore', () => {
-  test('returns an empty object for a candidate with no scores yet', () => {
+describe('addScore', () => {
+  test('overwrites an earlier result recorded under the same scorer name', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
-    expect(mergedScore(candidate)).toEqual({});
-  });
-
-  test('a later write to the SAME scorer overwrites its prior slot', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-
-    expect(mergedScore(candidate)).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
-    });
-  });
-
-  test('a key set by one scorer survives when a different scorer contributes a different key', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'isStateNotConflicting', { value: 0, threshold: 100, pass: false });
-
-    expect(mergedScore(candidate)).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
-      isStateNotConflicting: { value: 0, threshold: 100, pass: false },
-    });
-  });
-
-  test('does not mutate the underlying scores map', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-
-    mergedScore(candidate);
+    addScore(candidate, 'doesNameMatch', { pass: false, quality: 'strong' });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     expect(candidate.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
-});
 
-describe('addDisqualifier', () => {
-  test('a new candidate starts with no disqualifiers', () => {
+  test('keeps results recorded under different scorer names side by side', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
-    expect(candidate.disqualifiers).toEqual([]);
-  });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesStateMatch', { pass: false });
 
-  test('records a scorer, reason, and the specific evidence compared', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addDisqualifier(candidate, 'doesCityMatch', 'city actively disagrees', {
-      acmsCity: 'Sonoma',
-      camsCity: 'San Francisco',
+    expect(candidate.scores).toEqual({
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesStateMatch: { pass: false },
     });
-
-    expect(candidate.disqualifiers).toEqual([
-      {
-        scorer: 'doesCityMatch',
-        reason: 'city actively disagrees',
-        evidence: { acmsCity: 'Sonoma', camsCity: 'San Francisco' },
-      },
-    ]);
-  });
-
-  test('appends rather than overwrites - more than one scorer can disqualify the same candidate', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addDisqualifier(candidate, 'doesCityMatch', 'city actively disagrees', {
-      acmsCity: 'Sonoma',
-      camsCity: 'San Francisco',
-    });
-    addDisqualifier(candidate, 'doesZipCodeMatch', 'zip actively disagrees', {
-      acmsZip: '95476',
-      camsZip: '94111',
-    });
-
-    expect(candidate.disqualifiers).toEqual([
-      {
-        scorer: 'doesCityMatch',
-        reason: 'city actively disagrees',
-        evidence: { acmsCity: 'Sonoma', camsCity: 'San Francisco' },
-      },
-      {
-        scorer: 'doesZipCodeMatch',
-        reason: 'zip actively disagrees',
-        evidence: { acmsZip: '95476', camsZip: '94111' },
-      },
-    ]);
-  });
-
-  test('does not affect a different candidate in the same state', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const disqualified = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1' })),
-      'test',
-    );
-    const untouched = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })), 'test');
-
-    addDisqualifier(disqualified, 'doesCityMatch', 'city actively disagrees', {});
-
-    expect(untouched.disqualifiers).toEqual([]);
   });
 });
 
@@ -401,14 +309,16 @@ describe('runPipeline', () => {
     expect(result).toBe(state);
   });
 
-  // runPipeline is the SOLE place that checks for a terminal outcome (see its own doc comment) -
-  // no individual stage performs this check itself, so a stage can be written as a plain, pure
-  // state -> state function with zero control-flow responsibility of its own.
+  // runPipeline is the only place that checks for a terminal outcome; stages never do.
   test('stops iterating and returns immediately once a stage sets match, never calling any later stage', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const matchingStage: Stage = async (s) => ({
       ...s,
-      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
+      match: {
+        trusteeId: 't1',
+        score: { doesNameMatch: { pass: true, quality: 'exact' } },
+        resolvedBy: 'matchingStage',
+      },
     });
     const laterStage = vi.fn(async (s) => ({
       ...s,
@@ -420,7 +330,8 @@ describe('runPipeline', () => {
     expect(laterStage).not.toHaveBeenCalled();
     expect(result.match).toEqual({
       trusteeId: 't1',
-      score: { nameScore: 100, nameMatchQuality: 'exact' },
+      score: { doesNameMatch: { pass: true, quality: 'exact' } },
+      resolvedBy: 'matchingStage',
     });
     expect(result.error).toBeNull();
   });
@@ -479,7 +390,7 @@ describe('serializeState', () => {
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
     candidate.camsNormalized.name = 'john doe';
     normalize(candidate.memo, 'lastNameToken', 'John Doe', () => 'doe');
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const serialized = serializeState(state);
     const roundTripped = JSON.parse(JSON.stringify(serialized));
@@ -489,7 +400,6 @@ describe('serializeState', () => {
       sourceNormalized: {
         firstName: 'John',
         lastName: 'Doe',
-        legacyLastName: 'Doe',
         fullName: 'John Doe',
         name: 'john doe',
       },
@@ -500,14 +410,12 @@ describe('serializeState', () => {
           camsNormalized: {
             firstName: 'John',
             lastName: 'Doe',
-            legacyLastName: 'Doe',
             email: candidate.camsRaw.email,
             phone: candidate.camsRaw.phone,
             name: 'john doe',
           },
           memo: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
-          scores: { doesNameMatch: { value: 100, threshold: 85, pass: true } },
-          disqualifiers: [],
+          scores: { doesNameMatch: { pass: true, quality: 'exact' } },
           origin: 'test',
         },
       ],
@@ -520,14 +428,19 @@ describe('serializeState', () => {
   test('serializes a resolved match and its score', () => {
     const state: PipelineState = {
       ...createInitialState(makeDxtrTrustee()),
-      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
+      match: {
+        trusteeId: 't1',
+        score: { doesNameMatch: { pass: true, quality: 'exact' } },
+        resolvedBy: 'resolveByNameOnly',
+      },
     };
 
     const serialized = serializeState(state);
 
     expect(serialized.match).toEqual({
       trusteeId: 't1',
-      score: { nameScore: 100, nameMatchQuality: 'exact' },
+      score: { doesNameMatch: { pass: true, quality: 'exact' } },
+      resolvedBy: 'resolveByNameOnly',
     });
   });
 
@@ -537,5 +450,22 @@ describe('serializeState', () => {
     const serialized = serializeState(state);
 
     expect(serialized.candidates).toEqual([]);
+  });
+});
+
+describe('foldKleene', () => {
+  test.each([
+    { value: null, expected: 'neutral' },
+    { value: true, expected: 'agreement' },
+    { value: false, expected: 'conflict' },
+  ])('runs only the $expected branch for $value', ({ value, expected }) => {
+    expect(
+      foldKleene(
+        value,
+        () => 'neutral',
+        () => 'agreement',
+        () => 'conflict',
+      ),
+    ).toBe(expected);
   });
 });
