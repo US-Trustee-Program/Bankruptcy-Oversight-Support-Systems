@@ -16,7 +16,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
   'trustee-appointment-accordions': true,
-  'phonetic-search-enabled': true,
   'privileged-identity-management': true,
   'restrict-adding-trustees': true,
   'show-debtor-name-column': true,

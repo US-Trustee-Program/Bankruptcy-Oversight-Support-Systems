@@ -16,7 +16,7 @@ import '../../helpers/driver-mocks';
  * I want to search for cases by debtor name
  * So that I can find cases quickly
  *
- * This test suite validates UI behavior when the debtor name search feature is toggled.
+ * This test suite validates UI behavior for debtor name search.
  * The search implementation details (phonetic, fuzzy, exact, etc.) are tested in backend unit tests.
  */
 describe('Feature: Debtor Name Search (UI)', () => {
@@ -48,7 +48,7 @@ describe('Feature: Debtor Name Search (UI)', () => {
   /**
    * Scenario: Search returns results
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I search by debtor name
    * AND the backend returns matching cases
    * THEN I should see the search results displayed
@@ -59,7 +59,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
     const case2 = createMockCase('24-00002', 'Mike Johnson');
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
       .withSearchResults([case1, case2])
       .renderAt('/');
 
@@ -96,7 +95,7 @@ describe('Feature: Debtor Name Search (UI)', () => {
   /**
    * Scenario: No results found
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I search by debtor name
    * AND the backend returns no matching cases
    * THEN I should see "No cases found" message
@@ -104,7 +103,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
   test('should display "No cases found" when no matches exist', async () => {
     // GIVEN: Empty results
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
       .withSearchResults([])
       .renderAt('/');
 
@@ -138,7 +136,7 @@ describe('Feature: Debtor Name Search (UI)', () => {
   /**
    * Scenario: API error
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I search by debtor name
    * AND the backend API returns an error
    * THEN I should see an error message
@@ -146,7 +144,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
   test('should display error message when API fails', async () => {
     // GIVEN: API will error
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
       .withCustomSpy('CasesMongoRepository', {
         searchCases: async () => {
           throw new Error('Database connection failed');
@@ -187,37 +184,9 @@ describe('Feature: Debtor Name Search (UI)', () => {
   }, 30000);
 
   /**
-   * Scenario: Feature disabled
-   *
-   * GIVEN debtor name search feature is disabled
-   * WHEN I navigate to the Case Search page
-   * THEN the debtor name field should NOT be visible
-   */
-  test('should hide debtor name field when feature is disabled', async () => {
-    // GIVEN: Feature disabled
-    await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', false)
-      .renderAt('/');
-
-    await waitForAppLoad();
-
-    // WHEN: Navigate to Case Search
-    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-    await userEvent.click(caseSearchLink);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Case Search');
-    });
-
-    // THEN: Debtor name field should not be present
-    const debtorNameInput = screen.queryByLabelText(/debtor name/i);
-    expect(debtorNameInput).toBeNull();
-  }, 30000);
-
-  /**
    * Scenario: Validation - Debtor name too short (1 character)
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I enter only 1 character in the debtor name field
    * THEN the input should be accepted (no client-side validation error)
    *
@@ -225,7 +194,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
    */
   test('should accept single character in debtor name field without error', async () => {
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
       .withSearchResults([])
       .renderAt('/');
 
@@ -253,7 +221,7 @@ describe('Feature: Debtor Name Search (UI)', () => {
   /**
    * Scenario: Validation - Debtor name with only whitespace
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I enter only whitespace characters
    * THEN the input should be accepted (no client-side validation error)
    *
@@ -261,7 +229,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
    */
   test('should accept whitespace in debtor name field without error', async () => {
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
       .withSearchResults([])
       .renderAt('/');
 
@@ -289,7 +256,7 @@ describe('Feature: Debtor Name Search (UI)', () => {
   /**
    * Scenario: Validation - debtor name edge cases that should still search successfully
    *
-   * GIVEN debtor name search is enabled
+   * GIVEN I am signed in as a case assignment manager
    * WHEN I enter a debtor name matching one of the edge cases below
    *   - minimum valid length (2 non-whitespace characters)
    *   - leading/trailing whitespace with a valid trimmed length
@@ -307,7 +274,6 @@ describe('Feature: Debtor Name Search (UI)', () => {
       const case1 = createMockCase('24-00001', debtorName);
 
       await TestSetup.forUser(TestSessions.caseAssignmentManager())
-        .withFeatureFlag('phonetic-search-enabled', true)
         .withSearchResults([case1])
         .renderAt('/');
 

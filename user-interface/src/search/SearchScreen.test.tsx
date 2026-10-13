@@ -963,9 +963,8 @@ describe('debtor name search', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  function renderWithFeatureFlag(enabled: boolean) {
+  function renderScreen() {
     vi.spyOn(UseFeatureFlagsModule, 'default').mockReturnValue({
-      'phonetic-search-enabled': enabled,
       'chapter-twelve-enabled': true,
       'chapter-eleven-enabled': true,
       'transfer-orders-enabled': true,
@@ -978,8 +977,8 @@ describe('debtor name search', () => {
     );
   }
 
-  test('should show debtor name field when phonetic search feature is enabled', async () => {
-    renderWithFeatureFlag(true);
+  test('should show debtor name field', async () => {
+    renderScreen();
 
     await waitFor(() => {
       const debtorNameInput = screen.queryByLabelText(/debtor name/i);
@@ -987,17 +986,8 @@ describe('debtor name search', () => {
     });
   });
 
-  test('should hide debtor name field when phonetic search feature is disabled', async () => {
-    renderWithFeatureFlag(false);
-
-    await waitFor(() => {
-      const debtorNameInput = screen.queryByLabelText(/debtor name/i);
-      expect(debtorNameInput).not.toBeInTheDocument();
-    });
-  });
-
-  test('should search by debtor name when feature is enabled', async () => {
-    renderWithFeatureFlag(true);
+  test('should search by debtor name', async () => {
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1029,7 +1019,7 @@ describe('debtor name search', () => {
   });
 
   test('should allow searching with both debtor name and case number', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1064,7 +1054,7 @@ describe('debtor name search', () => {
   });
 
   test('should allow searching by debtor name and chapter', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1096,7 +1086,7 @@ describe('debtor name search', () => {
   });
 
   test('should trigger search when Enter key is pressed in debtor name field', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1124,7 +1114,7 @@ describe('debtor name search', () => {
   });
 
   test('should clear debtor name when search is cleared', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
     await userEvent.type(debtorNameInput, 'Test Name');
@@ -1141,7 +1131,7 @@ describe('debtor name search', () => {
   });
 
   test('should preserve single character input while typing', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
 

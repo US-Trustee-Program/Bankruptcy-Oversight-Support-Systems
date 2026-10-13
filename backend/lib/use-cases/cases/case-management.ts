@@ -62,14 +62,7 @@ export default class CaseManagement {
     }
   }
 
-  private shouldUsePhoneticSearch(
-    predicate: CasesSearchPredicate,
-    phoneticSearchEnabled: boolean,
-  ): boolean {
-    if (!phoneticSearchEnabled) {
-      return false;
-    }
-
+  private shouldUsePhoneticSearch(predicate: CasesSearchPredicate): boolean {
     const normalizedDebtorName = predicate.debtorName?.trim();
 
     if (!normalizedDebtorName || normalizedDebtorName.length < 2) {
@@ -143,8 +136,7 @@ export default class CaseManagement {
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     const trace = context.observability.startTrace(context.invocationId);
-    const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
-    const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
+    const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate);
     const searchType = usePhoneticSearch ? 'phonetic' : 'standard';
 
     try {

@@ -23,26 +23,16 @@ import { ObservabilityGateway } from '../gateways.types';
 
 async function createCaseManagementTestContext(options: {
   user: CamsUser;
-  phoneticSearchEnabled?: boolean;
-  phoneticSimilarityThreshold?: string;
   env?: Record<string, string>;
 }) {
-  const { user, phoneticSearchEnabled = false, phoneticSimilarityThreshold, env = {} } = options;
+  const { user, env = {} } = options;
 
   const baseEnv: Record<string, string> = {
     STARTING_MONTH: '-6',
     ...env,
   };
 
-  if (phoneticSearchEnabled) {
-    baseEnv.PHONETIC_SEARCH_ENABLED = 'true';
-    if (phoneticSimilarityThreshold) {
-      baseEnv.PHONETIC_SIMILARITY_THRESHOLD = phoneticSimilarityThreshold;
-    }
-  }
-
   const context = await createMockApplicationContext({ env: baseEnv });
-  context.featureFlags['phonetic-search-enabled'] = phoneticSearchEnabled;
   context.session = await createMockApplicationContextSession({ user });
 
   const useCase = new CaseManagement(context);
@@ -700,10 +690,7 @@ describe('Case management tests', () => {
 
       test('should call completeTrace with phonetic search type when phonetic is used', async () => {
         const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
-        const { useCase: uc } = await createCaseManagementTestContext({
-          user,
-          phoneticSearchEnabled: true,
-        });
+        const { useCase: uc } = await createCaseManagementTestContext({ user });
         const mockGateway = getMockObservabilityGateway();
 
         vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
@@ -712,7 +699,6 @@ describe('Case management tests', () => {
         });
 
         const ctx = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
-        ctx.featureFlags['phonetic-search-enabled'] = true;
         ctx.session = await createMockApplicationContextSession({ user });
         ctx.observability = mockGateway;
 
@@ -784,7 +770,7 @@ describe('Case management tests', () => {
         const { useCase: uc } = await createCaseManagementTestContext({ user });
         const mockGateway = getMockObservabilityGateway();
 
-        vi.spyOn(uc.casesRepository, 'searchCases').mockResolvedValue({
+        vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
           metadata: { total: 0 },
           data: [],
         });
@@ -822,7 +808,7 @@ describe('Case management tests', () => {
     });
 
     describe('phonetic filtering', () => {
-      test('should apply hybrid search when enabled and debtorName is present', async () => {
+      test('should apply hybrid search when debtorName is present', async () => {
         const mockCases = [
           MockData.getSyncedCase({
             override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
@@ -833,10 +819,7 @@ describe('Case management tests', () => {
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({
-            user,
-            phoneticSearchEnabled: true,
-          });
+          await createCaseManagementTestContext({ user });
 
         const hybridSearchSpy = vi
           .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
@@ -857,42 +840,6 @@ describe('Case management tests', () => {
         expect(result.metadata.total).toBe(mockCases.length);
       });
 
-      test('should NOT apply phonetic filtering when disabled', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({
-            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
-          }),
-          MockData.getSyncedCase({
-            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
-          }),
-        ];
-
-        const { context: contextWithoutPhonetic, useCase: useCaseWithoutPhonetic } =
-          await createCaseManagementTestContext({
-            user,
-            phoneticSearchEnabled: false,
-          });
-
-        vi.spyOn(useCaseWithoutPhonetic.casesRepository, 'searchCases').mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          debtorName: 'Mike Johnson',
-        };
-
-        const result = await useCaseWithoutPhonetic.searchCases(
-          contextWithoutPhonetic,
-          predicate,
-          false,
-        );
-
-        expect(result.data.length).toBe(mockCases.length);
-        expect(result.metadata.total).toBe(mockCases.length);
-      });
-
       test('should NOT apply phonetic filtering when debtorName is not in predicate', async () => {
         const mockCases = [
           MockData.getSyncedCase({ override: { caseId: '001' } }),
@@ -900,10 +847,7 @@ describe('Case management tests', () => {
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({
-            user,
-            phoneticSearchEnabled: true,
-          });
+          await createCaseManagementTestContext({ user });
 
         vi.spyOn(useCaseWithPhonetic.casesRepository, 'searchCases').mockResolvedValue({
           metadata: { total: mockCases.length },
@@ -932,10 +876,7 @@ describe('Case management tests', () => {
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({
-            user,
-            phoneticSearchEnabled: true,
-          });
+          await createCaseManagementTestContext({ user });
 
         const hybridSearchSpy = vi
           .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
@@ -966,10 +907,7 @@ describe('Case management tests', () => {
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({
-            user,
-            phoneticSearchEnabled: true,
-          });
+          await createCaseManagementTestContext({ user });
 
         vi.spyOn(
           useCaseWithPhonetic.casesRepository,

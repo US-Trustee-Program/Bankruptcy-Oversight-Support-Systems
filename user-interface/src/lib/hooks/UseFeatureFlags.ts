@@ -13,7 +13,6 @@ export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 // DISPLAY_CHPT*_KEY_DATES flags and TPR_DISPLAY_UPDATES, which all ship together
 // in one release.
 export const TRUSTEE_APPOINTMENT_ACCORDIONS = 'trustee-appointment-accordions';
-export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
