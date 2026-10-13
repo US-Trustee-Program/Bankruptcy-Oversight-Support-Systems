@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import useFeatureFlags, {
   isFlagEnabled,
-  TRUSTEE_CHANGE_NOTIFICATIONS,
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -106,21 +105,19 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             Reload Case
           </NavLink>
         </li>
-        {!!flags[TRUSTEE_CHANGE_NOTIFICATIONS] && (
-          <li className="usa-sidenav__item">
-            <NavLink
-              to="/admin/notification-routing"
-              data-testid="notification-routing-nav-link"
-              className={
-                'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.NOTIFICATION_ROUTING)
-              }
-              onClick={handleNavNotificationRouting}
-              title="Manage notification routing"
-            >
-              Notification Routing
-            </NavLink>
-          </li>
-        )}
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/notification-routing"
+            data-testid="notification-routing-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.NOTIFICATION_ROUTING)
+            }
+            onClick={handleNavNotificationRouting}
+            title="Manage notification routing"
+          >
+            Notification Routing
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
