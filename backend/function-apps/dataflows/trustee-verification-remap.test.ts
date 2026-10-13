@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, Mock } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as DataflowTelemetry from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
@@ -7,10 +7,7 @@ import ApplicationContextCreator from '../azure/application-context-creator';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import factory from '../../lib/factory';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import {
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
 
 const makeInvocationContext = (): InvocationContext =>
@@ -52,9 +49,6 @@ describe('trustee-verification-remap handleRemap', () => {
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
-  let mockQueueTrusteeAppointmentEvent: Mock<
-    (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
-  >;
   let mockUpdateVerification: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -66,7 +60,6 @@ describe('trustee-verification-remap handleRemap', () => {
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
-    mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
     mockUpdateVerification = vi.fn().mockResolvedValue({});
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
@@ -83,13 +76,6 @@ describe('trustee-verification-remap handleRemap', () => {
         update: mockUpdateVerification,
       }),
     );
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
-      queueCaseAssignmentEvent: vi.fn(),
-      queueCaseReload: vi.fn(),
-      queueTrusteeVerificationRemap: vi.fn(),
-      queueTrusteeChangeNotification: vi.fn(),
-    });
   });
 
   test('remaps a single surrogate case (N=1): upserts canonical appointment then deletes surrogate', async () => {
@@ -303,85 +289,6 @@ describe('trustee-verification-remap handleRemap', () => {
       'handleRemap',
       expect.anything(),
       expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
-    );
-  });
-
-  test('queues a downstream event per remapped case when the feature flag is on', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
-    );
-  });
-
-  test('does not queue a downstream event when the feature flag is off', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = false;
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockQueueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-
-  test('counts a failed downstream notification separately without treating the remap as failed', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
-    );
-    mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    // The Cosmos remap (upsert + delete) still happened -- only the downstream notification failed.
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'TRUSTEE-MATCH-VERIFICATION-REMAP',
-      'handleRemap',
-      expect.anything(),
-      expect.objectContaining({
-        success: true,
-        documentsWritten: 1,
-        documentsFailed: 0,
-        details: expect.objectContaining({ downstreamNotificationFailedCount: '1' }),
-        additionalMetrics: [
-          { name: 'TrusteeVerificationRemapDownstreamNotificationFailedCount', value: 1 },
-        ],
-      }),
     );
   });
 

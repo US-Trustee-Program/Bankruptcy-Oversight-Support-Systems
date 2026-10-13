@@ -152,7 +152,11 @@ function tokenIntersectionCandidates(fullName: string, trustees: Trustee[]): Tru
   return candidateSet ? [...candidateSet.values()] : [];
 }
 
-function corroborated(addressScore: number, phoneScore: number | null, emailScore: number | null): boolean {
+function corroborated(
+  addressScore: number,
+  phoneScore: number | null,
+  emailScore: number | null,
+): boolean {
   return addressScore >= ADDRESS_THRESHOLD || phoneScore === 100 || emailScore === 100;
 }
 
@@ -163,8 +167,11 @@ function run() {
   const placeholderPattern = /\bno trustee\b/i;
   const errored = records.filter((r) => r.error && r.variant);
 
-  const noNameCandidateRecords: { acmsFullName: string; acmsProfessionalId: string; decoded: DecodedVariant }[] =
-    [];
+  const noNameCandidateRecords: {
+    acmsFullName: string;
+    acmsProfessionalId: string;
+    decoded: DecodedVariant;
+  }[] = [];
   for (const record of errored) {
     const decoded: DecodedVariant = JSON.parse(record.variant!);
     const acmsTrustee = toAcmsTrusteeParty(decoded);
@@ -178,7 +185,11 @@ function run() {
       }
     }
     if (!qualifies) {
-      noNameCandidateRecords.push({ acmsFullName: acmsTrustee.fullName, acmsProfessionalId: record.acmsProfessionalId, decoded });
+      noNameCandidateRecords.push({
+        acmsFullName: acmsTrustee.fullName,
+        acmsProfessionalId: record.acmsProfessionalId,
+        decoded,
+      });
     }
   }
 
@@ -203,8 +214,20 @@ function run() {
     const acmsLast = firstToken(decoded.lastName);
     let levCandidates: Trustee[] = [];
     if (acmsFirst && acmsLast) {
-      const viaLastAnchor = anchoredFuzzyMatch(acmsLast, acmsFirst, trustees, 'lastName', 'firstName');
-      const viaFirstAnchor = anchoredFuzzyMatch(acmsFirst, acmsLast, trustees, 'firstName', 'lastName');
+      const viaLastAnchor = anchoredFuzzyMatch(
+        acmsLast,
+        acmsFirst,
+        trustees,
+        'lastName',
+        'firstName',
+      );
+      const viaFirstAnchor = anchoredFuzzyMatch(
+        acmsFirst,
+        acmsLast,
+        trustees,
+        'firstName',
+        'lastName',
+      );
       const byId = new Map<string, Trustee>();
       for (const t of [...viaLastAnchor, ...viaFirstAnchor]) byId.set(t.trusteeId, t);
       levCandidates = [...byId.values()];
@@ -230,8 +253,12 @@ function run() {
   }
 
   console.log(`no-name-candidate population: ${noNameCandidateRecords.length}\n`);
-  console.log(`Token-intersection resolves (corroborated, exactly one): ${tokenIntersectionCorroboratedCount}`);
-  console.log(`Anchored-Levenshtein resolves ADDITIONALLY (token-intersection did not): ${levenshteinOnlyCorroboratedCount}`);
+  console.log(
+    `Token-intersection resolves (corroborated, exactly one): ${tokenIntersectionCorroboratedCount}`,
+  );
+  console.log(
+    `Anchored-Levenshtein resolves ADDITIONALLY (token-intersection did not): ${levenshteinOnlyCorroboratedCount}`,
+  );
   console.log(`Both approaches independently resolve the same record: ${bothCorroboratedCount}\n`);
 
   console.log('--- Marginal anchored-Levenshtein hits (up to 40) ---');

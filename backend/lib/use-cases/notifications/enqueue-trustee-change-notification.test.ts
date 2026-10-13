@@ -24,7 +24,6 @@ function buildGateway(): ApiToDataflowsGateway {
   return {
     queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
     queueCaseAssignmentEvent: vi.fn(),
-    queueTrusteeAppointmentEvent: vi.fn(),
     queueCaseReload: vi.fn(),
     queueTrusteeVerificationRemap: vi.fn(),
   };

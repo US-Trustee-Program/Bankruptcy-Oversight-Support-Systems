@@ -2,17 +2,15 @@ import { StorageQueueOutput } from '@azure/functions';
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
   TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
-  CaseAssignmentDownstreamEvent,
   CaseSyncEvent,
-  TrusteeAppointmentDownstreamEvent,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
+import { CaseAssignment } from '@common/cams/assignments';
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
 import { StorageQueueHumbleObject } from '../../../humble-objects/storage-queue-humble';
 
@@ -41,12 +39,8 @@ export function __clearQueueClientCacheForTests(): void {
 }
 
 export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
-  async queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void> {
+  async queueCaseAssignmentEvent(event: CaseAssignment): Promise<void> {
     await this.enqueue(CASE_ASSIGNMENT_EVENT_QUEUE, event);
-  }
-
-  async queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void> {
-    await this.enqueue(TRUSTEE_APPOINTMENT_EVENT_QUEUE, event);
   }
 
   async queueCaseReload(caseId: string): Promise<void> {

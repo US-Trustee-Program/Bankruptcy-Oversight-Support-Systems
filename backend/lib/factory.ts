@@ -25,7 +25,6 @@ import {
   CaseAppointmentDateBackfillState,
   UstDivisionCodeBackfillState,
   AppointmentUstDivisionCodeBackfillState,
-  TrusteeAppointmentsDownstreamBackfillState,
   RuntimeState,
   RuntimeStateRepository,
   TrusteeCaseAppointmentsRepository,
@@ -140,7 +139,6 @@ let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
 let ustDivisionCodeBackfillStateRepo: RuntimeStateRepository<UstDivisionCodeBackfillState>;
 let appointmentUstDivisionCodeBackfillStateRepo: RuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>;
-let trusteeAppointmentsDownstreamBackfillStateRepo: RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
@@ -377,16 +375,6 @@ const getAppointmentUstDivisionCodeBackfillStateRepo = (
       getRuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>(context);
   }
   return appointmentUstDivisionCodeBackfillStateRepo;
-};
-
-const getTrusteeAppointmentsDownstreamBackfillStateRepo = (
-  context: ApplicationContext,
-): RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState> => {
-  if (!trusteeAppointmentsDownstreamBackfillStateRepo) {
-    trusteeAppointmentsDownstreamBackfillStateRepo =
-      getRuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>(context);
-  }
-  return trusteeAppointmentsDownstreamBackfillStateRepo;
 };
 
 const getTrusteeAppointmentsSyncStateRepo = (
@@ -736,7 +724,6 @@ const factory = {
   getCaseAppointmentDateBackfillStateRepo,
   getUstDivisionCodeBackfillStateRepo,
   getAppointmentUstDivisionCodeBackfillStateRepo,
-  getTrusteeAppointmentsDownstreamBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
   getTrusteePetitionSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,

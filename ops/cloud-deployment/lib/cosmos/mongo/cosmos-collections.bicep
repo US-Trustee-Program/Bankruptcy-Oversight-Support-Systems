@@ -706,6 +706,15 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
             ]
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'disposition'
+              'nameMatchCount'
+            ]
+          }
+        }
       ]
     }
   }

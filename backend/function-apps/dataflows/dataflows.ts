@@ -33,11 +33,7 @@ import SyncAcmsProfessionalIds from './import/sync-acms-professional-ids';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import PollNotificationBounces from './metrics/poll-notification-bounces';
-import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
-import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import TrusteeVerificationRemap from './trustee-verification-remap';
-import AcmsDailySync from './downstream/acms-daily-sync';
-import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
@@ -137,12 +133,8 @@ dataflows.register(
   SyncAcmsProfessionalIds,
   SyncTrusteeNotesMetrics,
   SyncTrusteeDueDateMetrics,
-  StaffAssignmentDownstream,
-  TrusteeAppointmentDownstream,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
-  AcmsDailySync,
-  BackfillTrusteeAppointmentsDownstreamDataflow,
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
@@ -154,7 +146,6 @@ const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 const DEFAULT_DATAFLOWS = listDataflowNames(
-  AcmsDailySync,
   CaseAssignmentEvent,
   CaseClosedEvent,
   PollNotificationBounces,
@@ -162,7 +153,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
-  SyncTrusteeCaseAppointments,
+  // SyncTrusteeCaseAppointments, // TODO Re-enable after division 1 enhancement is complete.
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
