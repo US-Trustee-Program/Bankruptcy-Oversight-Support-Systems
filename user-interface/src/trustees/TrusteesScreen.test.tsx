@@ -6,6 +6,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { vi } from 'vitest';
 import { CamsUser } from '@common/cams/users';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 // Mock the dependencies
 vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
@@ -160,24 +162,37 @@ describe('TrusteesScreen', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test('should render the outlet directly, bypassing the role gate, when a nested route is active', () => {
-    // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: even with no
-    // session, the nested route's content must still render.
-    mockLocalStorage.getSession.mockReturnValue(null);
+  test.each([
+    { description: 'no session', session: null, flags: {} as FeatureFlagSet },
+    {
+      description: 'a TrusteeAdmin who can add trustees',
+      session: MockData.getCamsSession({
+        user: MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] }),
+      }),
+      flags: { [RESTRICT_ADDING_TRUSTEES]: true } as FeatureFlagSet,
+    },
+  ])(
+    'should render only the nested route content when a nested route is active for $description',
+    ({ session, flags }) => {
+      // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: the nested route
+      // renders on its own, without the trustees list or add link, whoever the user is.
+      mockUseFeatureFlags.mockReturnValue(flags);
+      mockLocalStorage.getSession.mockReturnValue(session);
 
-    render(
-      <MemoryRouter initialEntries={['/trustees/create']}>
-        <Routes>
-          <Route path="/trustees" element={<TrusteesScreen />}>
-            <Route path="create" element={<div data-testid="nested-route-content">Nested</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+      render(
+        <MemoryRouter initialEntries={['/trustees/create']}>
+          <Routes>
+            <Route path="/trustees" element={<TrusteesScreen />}>
+              <Route path="create" element={<div data-testid="nested-route-content">Nested</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
 
-    expect(screen.getByTestId('trustees')).toBeInTheDocument();
-    expect(screen.getByTestId('nested-route-content')).toBeInTheDocument();
-    expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustees-list')).not.toBeInTheDocument();
-  });
+      expect(screen.getByTestId('trustees')).toBeInTheDocument();
+      expect(screen.getByTestId('nested-route-content')).toBeInTheDocument();
+      expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trustees-list')).not.toBeInTheDocument();
+    },
+  );
 });
