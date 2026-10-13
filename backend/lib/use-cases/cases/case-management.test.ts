@@ -21,18 +21,10 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { ObservabilityGateway } from '../gateways.types';
 
-async function createCaseManagementTestContext(options: {
-  user: CamsUser;
-  env?: Record<string, string>;
-}) {
-  const { user, env = {} } = options;
+async function createCaseManagementTestContext(options: { user: CamsUser }) {
+  const { user } = options;
 
-  const baseEnv: Record<string, string> = {
-    STARTING_MONTH: '-6',
-    ...env,
-  };
-
-  const context = await createMockApplicationContext({ env: baseEnv });
+  const context = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
   context.session = await createMockApplicationContextSession({ user });
 
   const useCase = new CaseManagement(context);
@@ -690,19 +682,18 @@ describe('Case management tests', () => {
 
       test('should call completeTrace with phonetic search type when phonetic is used', async () => {
         const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
-        const { useCase: uc } = await createCaseManagementTestContext({ user });
         const mockGateway = getMockObservabilityGateway();
-
-        vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
+        applicationContext.observability = mockGateway;
+        vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
           metadata: { total: 1 },
           data: mockCases,
         });
 
-        const ctx = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
-        ctx.session = await createMockApplicationContextSession({ user });
-        ctx.observability = mockGateway;
-
-        await uc.searchCases(ctx, { debtorName: 'John Smith', chapters: ['15'] }, false);
+        await useCase.searchCases(
+          applicationContext,
+          { debtorName: 'John Smith', chapters: ['15'] },
+          false,
+        );
 
         expect(mockGateway.completeTrace).toHaveBeenCalledWith(
           mockTrace,
@@ -715,7 +706,7 @@ describe('Case management tests', () => {
             }),
           }),
           expect.anything(),
-          ctx.logger,
+          applicationContext.logger,
         );
       });
 
@@ -767,20 +758,15 @@ describe('Case management tests', () => {
       });
 
       test('should derive boolean flags correctly from predicate', async () => {
-        const { useCase: uc } = await createCaseManagementTestContext({ user });
         const mockGateway = getMockObservabilityGateway();
-
-        vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
+        applicationContext.observability = mockGateway;
+        vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
           metadata: { total: 0 },
           data: [],
         });
 
-        const ctx = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
-        ctx.session = await createMockApplicationContextSession({ user });
-        ctx.observability = mockGateway;
-
-        await uc.searchCases(
-          ctx,
+        await useCase.searchCases(
+          applicationContext,
           {
             debtorName: 'Smith',
             chapters: ['7', '13'],
@@ -802,25 +788,39 @@ describe('Case management tests', () => {
             }),
           }),
           expect.anything(),
-          ctx.logger,
+          applicationContext.logger,
         );
       });
     });
 
-    describe('phonetic filtering', () => {
-      test('should use phonetic search for a debtorName of exactly 2 characters', async () => {
-        const { context, useCase: uc } = await createCaseManagementTestContext({ user });
-        const phoneticSpy = vi
-          .spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens')
-          .mockResolvedValue({ metadata: { total: 0 }, data: [] });
-        const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+    describe('search routing', () => {
+      const mockCases = MockData.buildArray(MockData.getSyncedCase, 2);
 
-        const predicate: CasesSearchPredicate = { ...basePredicate, debtorName: 'Al' };
-        await uc.searchCases(context, predicate, false);
+      test.each([
+        ['a full debtor name', 'phonetic', { debtorName: 'Mike Johnson' }],
+        ['a 2-character debtor name', 'phonetic', { debtorName: 'Al' }],
+        ['no debtor name', 'standard', { caseNumber: '00-00001' }],
+      ])(
+        'should route a search with %s to %s search',
+        async (_description, expectedSearch, criteria: Partial<CasesSearchPredicate>) => {
+          const phoneticSpy = vi
+            .spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens')
+            .mockResolvedValue({ metadata: { total: mockCases.length }, data: mockCases });
+          const standardSpy = vi
+            .spyOn(useCase.casesRepository, 'searchCases')
+            .mockResolvedValue({ metadata: { total: mockCases.length }, data: mockCases });
+          const [usedSpy, unusedSpy] =
+            expectedSearch === 'phonetic' ? [phoneticSpy, standardSpy] : [standardSpy, phoneticSpy];
 
-        expect(phoneticSpy).toHaveBeenCalledWith(predicate);
-        expect(standardSpy).not.toHaveBeenCalled();
-      });
+          const predicate: CasesSearchPredicate = { ...basePredicate, ...criteria };
+          const result = await useCase.searchCases(applicationContext, predicate, false);
+
+          expect(usedSpy).toHaveBeenCalledWith(predicate);
+          expect(unusedSpy).not.toHaveBeenCalled();
+          expect(result.metadata.total).toBe(mockCases.length);
+          expect(result.data).toHaveLength(mockCases.length);
+        },
+      );
 
       test.each([
         ['a single character', 'a'],
@@ -831,12 +831,11 @@ describe('Case management tests', () => {
       ])(
         'should reject a debtorName of %s with a 400 before searching',
         async (_description, debtorName) => {
-          const { context, useCase: uc } = await createCaseManagementTestContext({ user });
-          const phoneticSpy = vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens');
-          const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+          const phoneticSpy = vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens');
+          const standardSpy = vi.spyOn(useCase.casesRepository, 'searchCases');
 
           await expect(
-            uc.searchCases(context, { ...basePredicate, debtorName }, false),
+            useCase.searchCases(applicationContext, { ...basePredicate, debtorName }, false),
           ).rejects.toThrow(expect.objectContaining({ status: 400 }));
 
           expect(phoneticSpy).not.toHaveBeenCalled();
@@ -845,134 +844,14 @@ describe('Case management tests', () => {
       );
 
       test('should reject a non-string caseNumber with a 400 before searching', async () => {
-        const { context, useCase: uc } = await createCaseManagementTestContext({ user });
-        const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+        const standardSpy = vi.spyOn(useCase.casesRepository, 'searchCases');
+        const predicate = { ...basePredicate, caseNumber: 42 as unknown as string };
 
-        await expect(
-          uc.searchCases(context, { ...basePredicate, caseNumber: 42 as unknown as string }, false),
-        ).rejects.toThrow(expect.objectContaining({ status: 400 }));
+        await expect(useCase.searchCases(applicationContext, predicate, false)).rejects.toThrow(
+          expect.objectContaining({ status: 400 }),
+        );
 
         expect(standardSpy).not.toHaveBeenCalled();
-      });
-
-      test('should apply hybrid search when debtorName is present', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({
-            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
-          }),
-          MockData.getSyncedCase({
-            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
-          }),
-        ];
-
-        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({ user });
-
-        const hybridSearchSpy = vi
-          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
-          .mockResolvedValue({
-            metadata: { total: mockCases.length },
-            data: mockCases,
-          });
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          debtorName: 'Mike Johnson',
-        };
-
-        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
-
-        expect(hybridSearchSpy).toHaveBeenCalledWith(predicate);
-        expect(result.data.length).toBe(mockCases.length);
-        expect(result.metadata.total).toBe(mockCases.length);
-      });
-
-      test('should NOT apply phonetic filtering when debtorName is not in predicate', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({ override: { caseId: '001' } }),
-          MockData.getSyncedCase({ override: { caseId: '002' } }),
-        ];
-
-        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({ user });
-
-        vi.spyOn(useCaseWithPhonetic.casesRepository, 'searchCases').mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          caseNumber: '00-00001',
-        };
-
-        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
-
-        expect(result.data.length).toBe(mockCases.length);
-        expect(result.metadata.total).toBe(mockCases.length);
-      });
-
-      test('should use hybrid search for phonetic variant matching', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({
-            override: { caseId: '001', debtor: { name: 'John Smith' } },
-          }),
-          MockData.getSyncedCase({
-            override: { caseId: '002', debtor: { name: 'Jon Smith' } },
-          }),
-        ];
-
-        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({ user });
-
-        const hybridSearchSpy = vi
-          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
-          .mockResolvedValue({
-            metadata: { total: mockCases.length },
-            data: mockCases,
-          });
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          debtorName: 'John Smith',
-        };
-
-        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
-
-        expect(hybridSearchSpy).toHaveBeenCalledWith(predicate);
-        expect(result.metadata.total).toBe(mockCases.length);
-      });
-
-      test('should return database-scored results with correct metadata', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({
-            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
-          }),
-          MockData.getSyncedCase({
-            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
-          }),
-        ];
-
-        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
-          await createCaseManagementTestContext({ user });
-
-        vi.spyOn(
-          useCaseWithPhonetic.casesRepository,
-          'searchCasesWithPhoneticTokens',
-        ).mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          debtorName: 'Mike Johnson',
-        };
-
-        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
-
-        expect(result.metadata.total).toBe(mockCases.length);
-        expect(result.data.length).toBe(mockCases.length);
       });
     });
   });
