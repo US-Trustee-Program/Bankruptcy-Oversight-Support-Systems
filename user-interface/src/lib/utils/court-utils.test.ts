@@ -1457,4 +1457,36 @@ describe('getUserDivisionCodes', () => {
     };
     expect(getUserDivisionCodes(session).size).toBe(0);
   });
+
+  test('prefers ustDivisionCode over divisionCode when they diverge', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '0649',
+            officeName: 'Winchester',
+            idpGroupName: 'Winchester',
+            regionId: '04',
+            regionName: 'Nashville',
+            groups: [
+              {
+                groupDesignator: 'TN',
+                divisions: [
+                  {
+                    divisionCode: '491',
+                    ustDivisionCode: '494',
+                    court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                    courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(getUserDivisionCodes(session)).toEqual(new Set(['494']));
+  });
 });

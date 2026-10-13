@@ -169,6 +169,18 @@ describe('TrusteesUseCase tests', () => {
         regionId: '02',
         regionName: 'Region 2',
       },
+      {
+        officeName: 'Winchester',
+        officeCode: '0649',
+        courtId: 'court-tn',
+        courtName: 'Eastern District of Tennessee',
+        courtDivisionCode: '491',
+        ustDivisionCode: '494',
+        courtDivisionName: 'Winchester',
+        groupDesignator: 'TN',
+        regionId: '04',
+        regionName: 'Region 4',
+      },
     ];
 
     beforeEach(async () => {
@@ -220,6 +232,25 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result[0].appointments[0].courtName).toBe('Southern District of New York');
       expect(result[0].appointments[0].courtDivisionName).toBe('Manhattan');
+    });
+
+    test('should resolve courtDivisionName by ustDivisionCode when it diverges from the ACMS code', async () => {
+      const trusteeId = 'trustee-winchester';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({
+        trusteeId,
+        courtId: 'court-tn',
+        divisionCode: '494',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtDivisionName).toBe('Winchester');
     });
 
     test('should set courtName to undefined when courtId has no matching court', async () => {

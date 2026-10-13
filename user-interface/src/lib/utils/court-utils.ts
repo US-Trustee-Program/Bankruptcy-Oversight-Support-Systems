@@ -484,7 +484,12 @@ export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
   session?.user?.offices?.forEach((office) => {
     office.groups?.forEach((group) => {
       group.divisions?.forEach((division) => {
-        if (division.divisionCode) codes.add(division.divisionCode);
+        // Use the same identity as getDivisionsForDistrict's picker options (ustDivisionCode
+        // when it diverges from the ACMS divisionCode, e.g. Winchester/Chattanooga) so a user's
+        // default division matches their own office's picker entry rather than a sibling
+        // division sharing the same ACMS code — see CAMS-936.
+        const code = division.ustDivisionCode ?? division.divisionCode;
+        if (code) codes.add(code);
       });
     });
   });

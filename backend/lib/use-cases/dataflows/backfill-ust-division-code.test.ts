@@ -198,6 +198,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
         lastId: 'cursor-abc',
         processedCount: 42,
         skippedCount: 0,
+        failedCount: 0,
         startedAt: '2026-01-01T00:00:00.000Z',
         lastUpdatedAt: '2026-01-01T01:00:00.000Z',
         status: 'IN_PROGRESS',
@@ -335,6 +336,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
         lastId: 'cursor-xyz',
         processedCount: 3,
         skippedCount: 2,
+        failedCount: 0,
         startedAt: '2026-01-01T00:00:00.000Z',
         lastUpdatedAt: '2026-01-01T00:30:00.000Z',
         status: 'IN_PROGRESS',
@@ -380,6 +382,29 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.failedResults).toHaveLength(1);
       expect(result.failedResults[0].caseId).toBe(bCase.caseId);
       expect(result.successCount).toBe(0);
+    });
+
+    test('should mark the final page COMPLETED_WITH_FAILURES rather than COMPLETED when a write fails', async () => {
+      const bCase = { _id: 'hhhh', caseId: '491-25-00008' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
+        new Map([[bCase.caseId, '494']]),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
+        new Error('Write failed'),
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('ok');
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'COMPLETED_WITH_FAILURES', failedCount: 1 }),
+      );
     });
 
     test('should return error and persist FAILED status when the whole batch errors', async () => {
@@ -452,6 +477,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
         lastId: 'old-cursor',
         processedCount: 5,
         skippedCount: 0,
+        failedCount: 0,
         startedAt: '2026-01-01T00:00:00.000Z',
         lastUpdatedAt: '2026-01-01T00:30:00.000Z',
         status: 'IN_PROGRESS',

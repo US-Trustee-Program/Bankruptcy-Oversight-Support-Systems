@@ -1742,6 +1742,34 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('should persist the event ustDivisionCode on the verification doc', async () => {
+      // Winchester's bare CS_DIV (494) diverges from its ACMS-coded caseId prefix (491) — the
+      // verification doc needs this to resolve the correct division later (see CAMS-936).
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            ustDivisionCode: '494',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ ustDivisionCode: '494' }),
+      );
+    });
+
     test('should omit acmsProfessionalId from the persisted verification doc when groupDesignator is missing', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         kind: 'no-match',

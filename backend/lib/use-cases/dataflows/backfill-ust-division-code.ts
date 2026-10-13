@@ -165,6 +165,22 @@ async function backfillUstDivisionCodes(
 }
 
 /**
+ * A case that failed to update (not a DXTR miss) can still exhaust its retries and land in
+ * HARD_STOP, after which nothing will revisit it: the cursor has already advanced past its _id,
+ * so a resumed run's `_id > lastId` filter permanently excludes it even though it still matches
+ * `ustDivisionCode.notExists()`. Surface that in the terminal status rather than reporting a
+ * clean COMPLETED whenever this page had unresolved write failures.
+ */
+function determineTerminalStatus(
+  skippedCount: number,
+  failedCount: number,
+): UstDivisionCodeBackfillState['status'] {
+  if (failedCount > 0) return 'COMPLETED_WITH_FAILURES';
+  if (skippedCount > 0) return 'COMPLETED_WITH_SKIPS';
+  return 'COMPLETED';
+}
+
+/**
  * Coordinates a single backfill page: reads state, fetches the page, backfills codes,
  * and updates state. Returns a discriminated result the handler uses for queue I/O.
  */
@@ -179,6 +195,7 @@ async function processBackfillPage(
   const existingState = stateResult.data;
   const currentProcessedCount = existingState?.processedCount ?? 0;
   const currentSkippedCount = existingState?.skippedCount ?? 0;
+  const currentFailedCount = existingState?.failedCount ?? 0;
 
   const pageResult = await getPageOfCasesNeedingBackfillByCursor(context, cursorLastId, pageSize);
   if (pageResult.error || !pageResult.data) {
@@ -203,7 +220,8 @@ async function processBackfillPage(
         lastId: cursorLastId,
         processedCount: currentProcessedCount,
         skippedCount: currentSkippedCount,
-        status: currentSkippedCount > 0 ? 'COMPLETED_WITH_SKIPS' : 'COMPLETED',
+        failedCount: currentFailedCount,
+        status: determineTerminalStatus(currentSkippedCount, currentFailedCount),
       },
       existingState,
     );
@@ -219,6 +237,7 @@ async function processBackfillPage(
         lastId: cursorLastId,
         processedCount: currentProcessedCount,
         skippedCount: currentSkippedCount,
+        failedCount: currentFailedCount,
         status: 'FAILED',
       },
       existingState,
@@ -235,6 +254,7 @@ async function processBackfillPage(
   const failedResults = results.filter((r) => !r.success);
   const newProcessedCount = currentProcessedCount + successCount + skippedCount;
   const newSkippedCount = currentSkippedCount + skippedCount;
+  const newFailedCount = currentFailedCount + failedResults.length;
 
   const updateResult = await updateBackfillState(
     context,
@@ -242,7 +262,8 @@ async function processBackfillPage(
       lastId: newLastId,
       processedCount: newProcessedCount,
       skippedCount: newSkippedCount,
-      status: hasMore ? 'IN_PROGRESS' : newSkippedCount > 0 ? 'COMPLETED_WITH_SKIPS' : 'COMPLETED',
+      failedCount: newFailedCount,
+      status: hasMore ? 'IN_PROGRESS' : determineTerminalStatus(newSkippedCount, newFailedCount),
     },
     existingState,
   );
@@ -289,6 +310,7 @@ async function updateBackfillState(
     lastId: string | null;
     processedCount: number;
     skippedCount?: number;
+    failedCount?: number;
     status: UstDivisionCodeBackfillState['status'];
   },
   existingState?: UstDivisionCodeBackfillState | null,
@@ -310,6 +332,7 @@ async function updateBackfillState(
       lastId: updates.lastId,
       processedCount: updates.processedCount,
       skippedCount: updates.skippedCount ?? stateBase?.skippedCount ?? 0,
+      failedCount: updates.failedCount ?? stateBase?.failedCount ?? 0,
       startedAt: stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,

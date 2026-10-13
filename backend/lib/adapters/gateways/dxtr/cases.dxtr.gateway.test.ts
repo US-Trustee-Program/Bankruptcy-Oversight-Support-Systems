@@ -297,6 +297,10 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
     expect(actualResult.ustDivisionCode).toEqual('494');
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
+
+    const [, sql] = querySpy.mock.calls[0];
+    expect(sql).toMatch(/cs_div\.CS_DIV\s+as\s+ustDivisionCode/i);
+    expect(sql).not.toMatch(/cs_div\.CS_DIV_ACMS\s+as\s+ustDivisionCode/i);
   });
 
   test('should throw an error if a case summary is not found', async () => {
@@ -2356,6 +2360,20 @@ describe('getUstDivisionCodesByCaseIds', () => {
     const result = await gateway.getUstDivisionCodesByCaseIds(applicationContext, ['491-25-00001']);
 
     expect(result.size).toBe(0);
+  });
+
+  test('selects the bare CS_DIV column aliased as ustDivisionCode', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getUstDivisionCodesByCaseIds(applicationContext, ['491-25-00001']);
+
+    const [, sql] = querySpy.mock.calls[0];
+    expect(sql).toMatch(/CS_DIV\.CS_DIV\s+AS\s+ustDivisionCode/i);
+    expect(sql).not.toMatch(/CS_DIV_ACMS\s+AS\s+ustDivisionCode/i);
   });
 });
 

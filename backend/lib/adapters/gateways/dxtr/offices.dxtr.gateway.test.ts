@@ -76,6 +76,24 @@ describe('offices gateway tests', () => {
       expect(bostonOffice?.regionName).toEqual('BOSTON');
     });
 
+    test('selects the bare CS_DIV column aliased as ustDivisionCode', async () => {
+      const mockResults: QueryResults = {
+        success: true,
+        results: { recordset: COURT_DIVISIONS },
+        message: '',
+      };
+      const querySpy = vi
+        .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
+        .mockResolvedValue(mockResults);
+
+      const gateway = new OfficesDxtrGateway(applicationContext);
+      await gateway.getOffices(applicationContext);
+
+      const [, sql] = querySpy.mock.calls[0];
+      expect(sql).toMatch(/a\.\[CS_DIV\]\s+AS\s+ustDivisionCode/i);
+      expect(sql).not.toMatch(/a\.\[CS_DIV_ACMS\]\s+AS\s+ustDivisionCode/i);
+    });
+
     test('groups divisions sharing an office under one office, splitting into separate groups by groupDesignator', async () => {
       // Explicit, hand-built fixture (not relying on COURT_DIVISIONS' incidental shape) so
       // coverage of toUstpOfficeDetails' "office already exists" / "group already exists" merge

@@ -148,6 +148,24 @@ export class TrusteeMatchVerificationUseCase {
     verification: TrusteeMatchVerificationSearchResult,
     courts: CourtDivisionDetails[],
   ): string | undefined {
+    // Prefer the case's persisted bare CS_DIV when available: the ACMS prefix embedded in
+    // caseId is shared across divisions that diverge from their bare CS_DIV (e.g.
+    // Winchester/Chattanooga, see CAMS-936), so deriving the division from caseId alone can
+    // resolve to the wrong sibling division. Documents created before this field existed fall
+    // back to the ACMS case-ID prefix below.
+    if (verification.ustDivisionCode) {
+      const court = courts.find(
+        (c) =>
+          c.ustDivisionCode === verification.ustDivisionCode ||
+          c.courtDivisionCode === verification.ustDivisionCode,
+      );
+      if (court) {
+        return court.courtDivisionName
+          ? `${court.courtName} - ${court.courtDivisionName}`
+          : court.courtName;
+      }
+    }
+
     try {
       const { divisionCode } = getCaseIdParts(verification.caseId);
       const court = courts.find(

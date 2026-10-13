@@ -715,6 +715,7 @@ async function upsertMatchVerification(
         documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
         caseId: event.caseId,
         courtId: event.courtId,
+        ustDivisionCode: event.ustDivisionCode,
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,

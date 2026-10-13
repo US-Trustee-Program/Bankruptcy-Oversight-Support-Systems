@@ -10,7 +10,7 @@ import {
 import BackfillUstDivisionCodeUseCase, {
   BackfillCase,
 } from '../../../lib/use-cases/dataflows/backfill-ust-division-code';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 
@@ -77,13 +77,20 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 
   const existingState = stateResult.data;
 
-  if (existingState?.status === 'COMPLETED' || existingState?.status === 'COMPLETED_WITH_SKIPS') {
+  const TERMINAL_STATUSES = ['COMPLETED', 'COMPLETED_WITH_SKIPS', 'COMPLETED_WITH_FAILURES'];
+  if (existingState && TERMINAL_STATUSES.includes(existingState.status)) {
+    const caveats = [
+      existingState.skippedCount > 0
+        ? `${existingState.skippedCount} skipped (no DXTR CS_DIV match)`
+        : null,
+      existingState.failedCount > 0
+        ? `${existingState.failedCount} failed and exhausted retries (see hard-stop queue)`
+        : null,
+    ].filter(Boolean);
     logger.info(
       MODULE_NAME,
       `Backfill already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} cases` +
-        (existingState.skippedCount > 0
-          ? ` (${existingState.skippedCount} skipped — no DXTR CS_DIV match).`
-          : '.') +
+        (caveats.length > 0 ? ` (${caveats.join('; ')}).` : '.') +
         ' Skipping.',
     );
     return;
@@ -181,10 +188,31 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 /**
  * handleError
  *
- * Route failed events to retry queue.
+ * Route failed events to the appropriate recovery path. The DLQ carries two distinct message
+ * shapes: per-case BackfillRetryMessages (from handlePage's write failures) and page-level
+ * QueueErrors (from handleStart/handlePage's own state-read/page-fetch failures, which have no
+ * caseId and nothing a per-case retry could act on). Routing a QueueError through the case-retry
+ * path would produce a malformed retry message (undefined caseId) — send it straight to
+ * hard-stop for manual investigation instead.
  */
-async function handleError(event: BackfillRetryMessage, invocationContext: InvocationContext) {
+function isPageLevelQueueError(event: BackfillRetryMessage | QueueError): event is QueueError {
+  return (event as QueueError).type === 'QUEUE_ERROR';
+}
+
+async function handleError(
+  event: BackfillRetryMessage | QueueError,
+  invocationContext: InvocationContext,
+) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
+
+  if (isPageLevelQueueError(event)) {
+    logger.error(
+      MODULE_NAME,
+      `Page-level error in ${event.activityName}: ${event.error.message}. Routing to hard-stop for manual investigation.`,
+    );
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    return;
+  }
 
   logger.error(
     MODULE_NAME,
@@ -244,7 +272,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {
