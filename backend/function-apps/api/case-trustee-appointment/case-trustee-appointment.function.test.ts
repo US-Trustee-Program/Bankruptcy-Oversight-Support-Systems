@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { NotFoundError } from '../../../lib/common-errors/not-found-error';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { CaseAppointment, CaseTrusteeAppointmentHistory } from '@common/cams/trustee-appointments';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -41,14 +41,15 @@ describe('CaseTrusteeAppointmentFunction', () => {
     vi.restoreAllMocks();
   });
 
-  test('returns 200 with CaseAppointment on success', async () => {
+  test('returns 200 with appointment history on success', async () => {
     const req = createMockAzureFunctionRequest({
       method: 'GET',
       params: { caseId: '111-24-00001' },
     });
-    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseAppointment>({
-      data: mockAppointment,
-    });
+    const { azureHttpResponse, camsHttpResponse } =
+      buildTestResponseSuccess<CaseTrusteeAppointmentHistory>({
+        data: { current: mockAppointment, history: [] },
+      });
     vi.spyOn(CaseTrusteeAppointmentController.prototype, 'handleRequest').mockResolvedValue(
       camsHttpResponse,
     );

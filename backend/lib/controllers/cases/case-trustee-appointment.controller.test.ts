@@ -4,7 +4,6 @@ import { CaseTrusteeAppointmentUseCase } from '../../use-cases/cases/case-truste
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { NotFoundError } from '../../common-errors/not-found-error';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 
@@ -27,56 +26,7 @@ describe('CaseTrusteeAppointmentController', () => {
     vi.restoreAllMocks();
   });
 
-  describe('flag off — original behavior', () => {
-    beforeEach(async () => {
-      context = await createMockApplicationContext();
-      context.featureFlags['trustee-appointment-history-enabled'] = false;
-      context.request = mockCamsHttpRequest({ params: { caseId: '111-24-00001' } });
-    });
-
-    test('returns response body with appointment when found', async () => {
-      vi.spyOn(
-        CaseTrusteeAppointmentUseCase.prototype,
-        'getActiveCaseAppointment',
-      ).mockResolvedValue(mockAppointment);
-      const controller = new CaseTrusteeAppointmentController();
-
-      const response = await controller.handleRequest(context);
-
-      expect(response.body?.data).toEqual(mockAppointment);
-    });
-
-    test('throws NotFoundError when use case returns null', async () => {
-      vi.spyOn(
-        CaseTrusteeAppointmentUseCase.prototype,
-        'getActiveCaseAppointment',
-      ).mockResolvedValue(null);
-      context.request = mockCamsHttpRequest({ params: { caseId: '111-24-99999' } });
-      const controller = new CaseTrusteeAppointmentController();
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(NotFoundError);
-    });
-
-    test('throws BadRequestError for invalid caseId format', async () => {
-      context.request = mockCamsHttpRequest({ params: { caseId: '<script>alert(1)</script>' } });
-      const controller = new CaseTrusteeAppointmentController();
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
-    });
-
-    test('passes context and caseId to use case', async () => {
-      const spy = vi
-        .spyOn(CaseTrusteeAppointmentUseCase.prototype, 'getActiveCaseAppointment')
-        .mockResolvedValue(mockAppointment);
-      const controller = new CaseTrusteeAppointmentController();
-
-      await controller.handleRequest(context);
-
-      expect(spy).toHaveBeenCalledWith(context, '111-24-00001');
-    });
-  });
-
-  describe('flag on — history enabled', () => {
+  describe('appointment history', () => {
     const pastAppointment: CaseAppointment = {
       id: 'ca-old',
       caseId: '111-24-00001',
@@ -92,7 +42,6 @@ describe('CaseTrusteeAppointmentController', () => {
 
     beforeEach(async () => {
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-appointment-history-enabled'] = true;
       context.request = mockCamsHttpRequest({ params: { caseId: '111-24-00001' } });
     });
 
@@ -136,7 +85,7 @@ describe('CaseTrusteeAppointmentController', () => {
       expect(response.body?.data).toEqual({ current: mockAppointment, history: [] });
     });
 
-    test('throws BadRequestError for invalid caseId format even when flag is on', async () => {
+    test('throws BadRequestError for invalid caseId format', async () => {
       context.request = mockCamsHttpRequest({ params: { caseId: '<script>alert(1)</script>' } });
       const controller = new CaseTrusteeAppointmentController();
 

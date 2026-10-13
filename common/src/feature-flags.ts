@@ -21,7 +21,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'restrict-adding-trustees': true,
   'show-debtor-name-column': true,
   'transfer-orders-enabled': true,
-  'trustee-appointment-history-enabled': true,
   'trustee-assigned-staff-enabled': true,
   'trustee-case-list': true,
   'trustee-management': true,
