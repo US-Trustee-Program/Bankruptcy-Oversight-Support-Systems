@@ -2362,6 +2362,90 @@ describe('TrusteesList Component', () => {
         expect(manhattanIndex).toBeLessThan(vermontIndex);
       }
     });
+
+    test('distinguishes divisions sharing a courtDivisionCode via ustDivisionCode (Winchester vs Chattanooga)', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: '0649',
+            courtName: 'Eastern District of Tennessee',
+            officeCode: '491',
+            officeName: 'Chattanooga',
+            courtDivisionCode: '491',
+            ustDivisionCode: '491',
+            courtDivisionName: 'Chattanooga',
+            groupDesignator: 'CN',
+            regionId: '04',
+            regionName: 'Region 4',
+          },
+          {
+            courtId: '0649',
+            courtName: 'Eastern District of Tennessee',
+            officeCode: '494',
+            officeName: 'Winchester',
+            courtDivisionCode: '491',
+            ustDivisionCode: '494',
+            courtDivisionName: 'Winchester',
+            groupDesignator: 'CN',
+            regionId: '04',
+            regionName: 'Region 4',
+          },
+        ],
+      });
+
+      const apptChattanooga = makeAppointment({ courtId: '0649', divisionCodes: ['491'] });
+      const apptWinchester = makeAppointment({ courtId: '0649', divisionCodes: ['494'] });
+      const trusteeChattanooga = makeListItem({
+        trusteeId: 'chattanooga',
+        firstName: 'Carla',
+        lastName: 'Chattanooga',
+        appointments: [apptChattanooga],
+      });
+      const trusteeWinchester = makeListItem({
+        trusteeId: 'winchester',
+        firstName: 'Wendy',
+        lastName: 'Winchester',
+        appointments: [apptWinchester],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeChattanooga, trusteeWinchester],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      });
+
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await user.click(combinedCombobox);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', { name: /Eastern District of Tennessee \(Winchester\)/i }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole('option', { name: /Eastern District of Tennessee \(Winchester\)/i }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Winchester, Wendy')).toBeInTheDocument();
+        expect(screen.queryByText('Chattanooga, Carla')).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('Filter Expansion Screen Reader Announcements', () => {

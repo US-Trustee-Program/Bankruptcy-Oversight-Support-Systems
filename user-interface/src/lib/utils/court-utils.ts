@@ -315,6 +315,7 @@ interface DivisionOption {
  */
 export function getDistrictDivisionComboOptions(
   courts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): { value: string; label: string; selectedLabel?: string }[] {
   const districtMap = groupDivisionsByDistrict(courts);
   const uniqueDistricts = sortByCourtLocation(
@@ -337,8 +338,14 @@ export function getDistrictDivisionComboOptions(
     }
 
     for (const div of divisions) {
+      // Trustee-appointment divisionCodes are stored in ustDivisionCode (bare CS_DIV) for
+      // divisions like Winchester/Chattanooga that share a courtDivisionCode (CS_DIV_ACMS) —
+      // see CAMS-936. Case identity/search still key on courtDivisionCode, so this is opt-in.
+      const code = useUstDivisionCode
+        ? (div.ustDivisionCode ?? div.courtDivisionCode)
+        : div.courtDivisionCode;
       options.push({
-        value: `${district.courtId}|${div.courtDivisionCode}`,
+        value: `${district.courtId}|${code}`,
         label: `${district.courtName} (${div.courtDivisionName})`,
         selectedLabel: `${district.courtName} (${div.courtDivisionName})`,
       });
@@ -521,6 +528,7 @@ export function resolveCombinedSelections(
 export function autoUpgradeToAll(
   selections: ComboOption[],
   districts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): ComboOption[] {
   const allDivisionsByDistrict = new Map<string, Set<string>>();
   const courtNameById = new Map<string, string>();
@@ -529,7 +537,10 @@ export function autoUpgradeToAll(
       allDivisionsByDistrict.set(court.courtId, new Set());
       courtNameById.set(court.courtId, court.courtName);
     }
-    allDivisionsByDistrict.get(court.courtId)!.add(court.courtDivisionCode);
+    const code = useUstDivisionCode
+      ? (court.ustDivisionCode ?? court.courtDivisionCode)
+      : court.courtDivisionCode;
+    allDivisionsByDistrict.get(court.courtId)!.add(code);
   }
 
   const selectedSpecificByDistrict = new Map<string, Set<string>>();
@@ -570,13 +581,20 @@ export function autoUpgradeToAll(
 export function encodeDivisionCodes(
   selectedDivisions: ComboOption[],
   courts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): string[] | undefined {
   if (selectedDivisions.length === 0) return undefined;
   const codes: string[] = [];
   for (const opt of selectedDivisions) {
     const [courtId, code] = opt.value.split('|');
     if (code === 'ALL') {
-      courts.filter((c) => c.courtId === courtId).forEach((c) => codes.push(c.courtDivisionCode));
+      courts
+        .filter((c) => c.courtId === courtId)
+        .forEach((c) =>
+          codes.push(
+            useUstDivisionCode ? (c.ustDivisionCode ?? c.courtDivisionCode) : c.courtDivisionCode,
+          ),
+        );
     } else {
       codes.push(code);
     }

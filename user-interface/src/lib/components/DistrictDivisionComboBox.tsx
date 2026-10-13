@@ -34,6 +34,11 @@ type DistrictDivisionComboBoxProps = {
   // selection to the full allow list rather than the user's own office divisions.
   divisionCodeAllowList?: string[];
   disableDefaultDivisionCodes?: boolean;
+  // Opt-in: use ustDivisionCode (bare CS_DIV) instead of courtDivisionCode (CS_DIV_ACMS) for
+  // option values and encoded codes. Trustee-appointment divisionCodes are ust-coded for
+  // divisions like Winchester/Chattanooga that share a courtDivisionCode — see CAMS-936. Case
+  // search/identity stays courtDivisionCode-keyed, so this defaults to false.
+  useUstDivisionCodeForOptions?: boolean;
 };
 
 type DivisionOptionMeta = {
@@ -126,6 +131,7 @@ const DistrictDivisionComboBox_ = (
     wrapPills,
     divisionCodeAllowList,
     disableDefaultDivisionCodes,
+    useUstDivisionCodeForOptions = false,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -151,7 +157,10 @@ const DistrictDivisionComboBox_ = (
         const allCourts = r.data;
         setCourts(allCourts);
         onCourtsLoaded?.(allCourts);
-        const nationalOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+        const nationalOptions = getDistrictDivisionComboOptions(
+          allCourts,
+          useUstDivisionCodeForOptions,
+        ) as ComboOption[];
         const allOptions = divisionCodeAllowList
           ? (filterOptionsToAllowList(
               nationalOptions,
@@ -162,7 +171,7 @@ const DistrictDivisionComboBox_ = (
 
         const applyDefaults = (defaults: ComboOption[]) => {
           if (defaults.length > 0) {
-            const codes = encodeDivisionCodes(defaults, allCourts);
+            const codes = encodeDivisionCodes(defaults, allCourts, useUstDivisionCodeForOptions);
             setSelectedDivisions(defaults);
             previousSelectionsRef.current = defaults;
             onDivisionCodesChange?.(codes);
@@ -198,7 +207,7 @@ const DistrictDivisionComboBox_ = (
 
   const handleDivisionChange = (selections: ComboOption[]) => {
     const resolved = resolveCombinedSelections(previousSelectionsRef.current, selections);
-    const upgraded = autoUpgradeToAll(resolved, courts);
+    const upgraded = autoUpgradeToAll(resolved, courts, useUstDivisionCodeForOptions);
     // Announce auto-upgrades before updating the ref so we can diff against the previous set.
     // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
     const previousValues = new Set(previousSelectionsRef.current.map((d) => d.value));
@@ -214,7 +223,7 @@ const DistrictDivisionComboBox_ = (
     }
     previousSelectionsRef.current = upgraded;
     setSelectedDivisions(upgraded);
-    const codes = encodeDivisionCodes(upgraded, courts);
+    const codes = encodeDivisionCodes(upgraded, courts, useUstDivisionCodeForOptions);
     onDivisionCodesChange?.(codes);
     onSelectionsChange?.(upgraded);
   };
