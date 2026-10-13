@@ -1511,48 +1511,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.getMostRecentAppointmentDates(records);
   }
 
-  async getUstDivisionCodesByCaseIds(
-    context: ApplicationContext,
-    caseIds: string[],
-  ): Promise<Map<string, string>> {
-    if (caseIds.length === 0) return new Map();
-
-    const params: DbTableFieldSpec[] = caseIds.map((caseId, idx) => ({
-      name: `caseId${idx}`,
-      type: mssql.VarChar,
-      value: caseId,
-    }));
-
-    const caseIdVars = caseIds.map((_, idx) => `@caseId${idx}`).join(', ');
-
-    const query = `
-      SELECT
-        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
-        CS_DIV.CS_DIV AS ustDivisionCode
-      FROM AO_CS C
-      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) IN (${caseIdVars})
-    `;
-
-    const queryResult: QueryResults = await this.executeQuery(context, query, params);
-
-    type UstDivisionCodeRecord = {
-      caseId: string;
-      ustDivisionCode: string;
-    };
-
-    const records = this.trusteeAppointmentsQueryCallback<UstDivisionCodeRecord>(
-      context,
-      queryResult,
-    );
-
-    const result = new Map<string, string>();
-    for (const record of records) {
-      result.set(record.caseId, record.ustDivisionCode);
-    }
-    return result;
-  }
-
   // REC's embedded date can be blank/'000000'/malformed; TX.TX_DATE is a
   // datetime2 NOT NULL column on the same 'Trustee Appointed' transaction row and can never be
   // missing, so it's used whenever REC's date fails to parse (same fallback as

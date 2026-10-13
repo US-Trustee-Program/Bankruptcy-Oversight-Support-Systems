@@ -130,6 +130,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  * Delegates all business logic to processBackfillPage; handles queue I/O only.
  */
 async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
+  const startedAt = Date.now();
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
@@ -137,6 +138,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     context,
     cursor.lastId,
     PAGE_SIZE,
+    { startedAt },
   );
 
   if (result.status === 'error') {
@@ -171,7 +173,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   logger.debug(
     MODULE_NAME,
     `Successfully backfilled ${successCount} cases` +
-      (skippedCount > 0 ? ` (${skippedCount} skipped — no DXTR CS_DIV match)` : '') +
+      (skippedCount > 0 ? ` (${skippedCount} skipped — division name did not resolve)` : '') +
       `. Total processed: ${processedCount}.`,
   );
 
@@ -243,10 +245,15 @@ async function handleRetry(event: BackfillRetryMessage, invocationContext: Invoc
   const { retryCount: _r, lastErrorMessage: _e, ...bCase } = event;
   const updatedEvent: BackfillRetryMessage = { ...bCase, retryCount };
 
-  const result = await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(context, [bCase]);
+  const { results, escaped } = await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(
+    context,
+    [bCase],
+  );
 
-  if (result.error || result.data?.[0]?.success === false) {
-    const lastErrorMessage = result.error?.message ?? result.data?.[0]?.error ?? 'Unknown error';
+  if (escaped || results[0]?.success === false) {
+    const lastErrorMessage = escaped
+      ? 'Write throttled past the safe time threshold.'
+      : (results[0]?.error ?? 'Unknown error');
     invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
   } else {
     logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);

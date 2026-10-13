@@ -365,6 +365,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  setUstDivisionCode(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   findByCursor(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

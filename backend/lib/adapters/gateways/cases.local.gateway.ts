@@ -179,11 +179,4 @@ export class CasesLocalGateway implements CasesInterface {
   ): Promise<Map<string, string>> {
     return new Map();
   }
-
-  public async getUstDivisionCodesByCaseIds(
-    _context: ApplicationContext,
-    _caseIds: string[],
-  ): Promise<Map<string, string>> {
-    return new Map();
-  }
 }

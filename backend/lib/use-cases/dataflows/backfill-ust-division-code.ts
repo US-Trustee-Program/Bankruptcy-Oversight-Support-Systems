@@ -3,6 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
 import QueryBuilder from '../../query/query-builder';
 import { MaybeData } from './queue-types';
@@ -12,15 +13,63 @@ const MODULE_NAME = 'BACKFILL-UST-DIVISION-CODE-USE-CASE';
 
 const { and, using } = QueryBuilder;
 
+const BASE_DELAY_MS = 30_000;
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
+  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
+}
+
+// Stays under the 01:00:00 functionTimeout in host.json, matching the sibling dataflows.
+const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
+
+type BackfillWriteOptions = {
+  startedAt: number;
+  safeThresholdMs: number;
+  baseDelayMs: number;
+};
+
+type BackfillBatchResult = {
+  results: BackfillResult[];
+  // True when a throttled write's next backoff would cross safeThresholdMs; the cases after the
+  // last result were not attempted.
+  escaped: boolean;
+};
+
 // Scoped to Eastern District of TN (court 0649) only — this is the only district where bare
 // CS_DIV and CS_DIV_ACMS diverge that CAMS-936 addresses; see bead for the nationwide follow-up.
 const EASTERN_DISTRICT_TN_COURT_ID = '0649';
+
+// E.D. Tenn ACMS codes shared by two bare CS_DIVs (DXTR AO_CS_DIV), keyed by the division name
+// synced onto the case (AO_OFFICE.OFFICE_NAME_DISPLAY via the bare division's OFFICE_CODE).
+// Any other 0649 ACMS code has CS_DIV === CS_DIV_ACMS.
+const SHARED_ACMS_DIVISIONS: Record<string, Record<string, string>> = {
+  '491': { Chattanooga: '491', Winchester: '494' },
+  '492': { Knoxville: '492', 'Johnson City': '495' },
+};
+
+/**
+ * Returns undefined when a shared ACMS code carries a name we can't place, so the case is
+ * skipped rather than silently assigned the ACMS code's own division.
+ */
+function resolveUstDivisionCode(
+  courtDivisionCode: string,
+  courtDivisionName: string | undefined,
+): string | undefined {
+  const byName = SHARED_ACMS_DIVISIONS[courtDivisionCode];
+  if (!byName) return courtDivisionCode;
+  return byName[courtDivisionName?.trim() ?? ''];
+}
 
 type SyncedCaseQueryable = SyncedCase & { _id: string };
 
 export type BackfillCase = {
   _id: string;
   caseId: string;
+  courtDivisionCode: string;
+  courtDivisionName?: string;
 };
 
 type CursorPageResult = {
@@ -47,6 +96,8 @@ async function getPageOfCasesNeedingBackfillByCursor(
       doc('documentType').equals('SYNCED_CASE'),
       doc('courtId').equals(EASTERN_DISTRICT_TN_COURT_ID),
       doc('ustDivisionCode').notExists(),
+      // Moved cases keep their old caseId and are re-synced under the new one.
+      doc('movedToCaseId').notExists(),
     ];
     if (lastId) conditions.push(doc('_id').greaterThan(lastId));
     const query = and(...conditions);
@@ -63,7 +114,12 @@ async function getPageOfCasesNeedingBackfillByCursor(
 
     return {
       data: {
-        cases: cases.map((c) => ({ _id: c._id, caseId: c.caseId })),
+        cases: cases.map((c) => ({
+          _id: c._id,
+          caseId: c.caseId,
+          courtDivisionCode: c.courtDivisionCode,
+          courtDivisionName: c.courtDivisionName,
+        })),
         lastId: newLastId,
         hasMore,
       },
@@ -100,68 +156,71 @@ type ProcessBackfillPageResult =
     };
 
 /**
- * Backfills ustDivisionCode for a batch of cases. Re-fetches bare CS_DIV from DXTR in a
- * single batch query (case identity/caseId does not change) and writes it to CosmosDB.
- * Skips cases DXTR no longer reports — does not fail the batch.
+ * Backfills ustDivisionCode for a batch of cases, resolving it from the division fields already
+ * synced onto each case (no DXTR call). Skips cases whose shared ACMS code carries an
+ * unrecognized division name — does not fail the batch.
  */
 async function backfillUstDivisionCodes(
   context: ApplicationContext,
   cases: BackfillCase[],
-): Promise<MaybeData<BackfillResult[]>> {
+  options: Partial<BackfillWriteOptions> = {},
+): Promise<BackfillBatchResult> {
+  const startedAt = options.startedAt ?? Date.now();
+  const safeThresholdMs = options.safeThresholdMs ?? SAFE_THRESHOLD_MS;
+  const baseDelayMs = options.baseDelayMs ?? BASE_DELAY_MS;
   const results: BackfillResult[] = [];
+  const casesRepo = factory.getCasesRepository(context);
+  const skippedCaseIds: string[] = [];
 
-  try {
-    const dxtrGateway = factory.getCasesGateway(context);
-    const casesRepo = factory.getCasesRepository(context);
-    const doc = using<SyncedCase>();
+  for (const bCase of cases) {
+    const ustDivisionCode = resolveUstDivisionCode(
+      bCase.courtDivisionCode,
+      bCase.courtDivisionName,
+    );
 
-    const caseIds = cases.map((c) => c.caseId);
-    const ustDivisionCodeMap = await dxtrGateway.getUstDivisionCodesByCaseIds(context, caseIds);
+    if (!ustDivisionCode) {
+      skippedCaseIds.push(bCase.caseId);
+      results.push({ caseId: bCase.caseId, success: true, skipped: true });
+      continue;
+    }
 
-    const skippedCaseIds: string[] = [];
-
-    for (const bCase of cases) {
+    let attempt = 0;
+    while (true) {
       try {
-        const ustDivisionCode = ustDivisionCodeMap.get(bCase.caseId);
-
-        if (!ustDivisionCode) {
-          skippedCaseIds.push(bCase.caseId);
-          results.push({ caseId: bCase.caseId, success: true, skipped: true });
+        await casesRepo.setUstDivisionCode(bCase._id, bCase.caseId, ustDivisionCode);
+        results.push({ caseId: bCase.caseId, success: true });
+        break;
+      } catch (originalError) {
+        if (isTooManyRequestsError(originalError)) {
+          const nextBackoffMs = computeNextBackoffMs(attempt, baseDelayMs);
+          if (Date.now() - startedAt + nextBackoffMs >= safeThresholdMs) {
+            logSkipped(context, skippedCaseIds);
+            return { results, escaped: true };
+          }
+          await sleep(nextBackoffMs);
+          attempt++;
           continue;
         }
-
-        const query = and(
-          doc('caseId').equals(bCase.caseId),
-          doc('documentType').equals('SYNCED_CASE'),
-        );
-        await casesRepo.updateManyByQuery(query, { $set: { ustDivisionCode } });
-
-        results.push({ caseId: bCase.caseId, success: true });
-      } catch (originalError) {
         results.push({
           caseId: bCase.caseId,
           success: false,
           error: originalError instanceof Error ? originalError.message : String(originalError),
         });
+        break;
       }
     }
-
-    if (skippedCaseIds.length > 0) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Skipped ${skippedCaseIds.length} case(s) with no DXTR CS_DIV match: ${skippedCaseIds.join(', ')}.`,
-      );
-    }
-    return { data: results };
-  } catch (originalError) {
-    return {
-      error: getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to backfill ustDivisionCode for batch.',
-      ),
-    };
   }
+
+  logSkipped(context, skippedCaseIds);
+  return { results, escaped: false };
+}
+
+function logSkipped(context: ApplicationContext, skippedCaseIds: string[]) {
+  if (skippedCaseIds.length === 0) return;
+  context.logger.warn(
+    MODULE_NAME,
+    `Skipped ${skippedCaseIds.length} case(s) whose division name did not resolve: ${skippedCaseIds.join(', ')}.`,
+  );
 }
 
 /**
@@ -181,6 +240,19 @@ function determineTerminalStatus(
 }
 
 /**
+ * On escape, resume after the last case actually processed: cases already written drop out of
+ * the page query (ustDivisionCode now exists), and unattempted ones are re-read next page.
+ * Each processed case yields exactly one result, in page order.
+ */
+function lastProcessedId(
+  cases: BackfillCase[],
+  results: BackfillResult[],
+  cursorLastId: string | null,
+): string | null {
+  return results.length > 0 ? cases[results.length - 1]._id : cursorLastId;
+}
+
+/**
  * Coordinates a single backfill page: reads state, fetches the page, backfills codes,
  * and updates state. Returns a discriminated result the handler uses for queue I/O.
  */
@@ -188,6 +260,7 @@ async function processBackfillPage(
   context: ApplicationContext,
   cursorLastId: string | null,
   pageSize: number,
+  options: Partial<BackfillWriteOptions> = {},
 ): Promise<ProcessBackfillPageResult> {
   const stateResult = await readBackfillState(context);
   if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
@@ -229,26 +302,10 @@ async function processBackfillPage(
     return { status: 'empty' };
   }
 
-  const backfillResult = await backfillUstDivisionCodes(context, cases);
-  if (backfillResult.error) {
-    const updateResult = await updateBackfillState(
-      context,
-      {
-        lastId: cursorLastId,
-        processedCount: currentProcessedCount,
-        skippedCount: currentSkippedCount,
-        failedCount: currentFailedCount,
-        status: 'FAILED',
-      },
-      existingState,
-    );
-    if (updateResult.error) {
-      context.logger.error(MODULE_NAME, 'Failed to update backfill state after batch failure.');
-    }
-    return { status: 'error', error: backfillResult.error as CamsError };
-  }
+  const { results, escaped } = await backfillUstDivisionCodes(context, cases, options);
+  const pageLastId = escaped ? lastProcessedId(cases, results, cursorLastId) : newLastId;
+  const pageHasMore = escaped || hasMore;
 
-  const results = backfillResult.data ?? [];
   const successCount = results.filter((r) => r.success && !r.skipped).length;
   const skippedCount = results.filter((r) => r.skipped).length;
   const failedResults = results.filter((r) => !r.success);
@@ -259,11 +316,13 @@ async function processBackfillPage(
   const updateResult = await updateBackfillState(
     context,
     {
-      lastId: newLastId,
+      lastId: pageLastId,
       processedCount: newProcessedCount,
       skippedCount: newSkippedCount,
       failedCount: newFailedCount,
-      status: hasMore ? 'IN_PROGRESS' : determineTerminalStatus(newSkippedCount, newFailedCount),
+      status: pageHasMore
+        ? 'IN_PROGRESS'
+        : determineTerminalStatus(newSkippedCount, newFailedCount),
     },
     existingState,
   );
@@ -276,7 +335,7 @@ async function processBackfillPage(
     skippedCount,
     failedResults,
     cases,
-    nextCursor: hasMore ? { lastId: newLastId } : null,
+    nextCursor: pageHasMore ? { lastId: pageLastId } : null,
   };
 }
 
@@ -348,6 +407,7 @@ async function updateBackfillState(
 }
 
 const BackfillUstDivisionCodeUseCase = {
+  resolveUstDivisionCode,
   processBackfillPage,
   getPageOfCasesNeedingBackfillByCursor,
   backfillUstDivisionCodes,

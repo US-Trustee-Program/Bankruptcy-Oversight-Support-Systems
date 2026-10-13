@@ -457,6 +457,7 @@ export interface CasesRepository extends Releasable {
   getCaseOrMovedCase(caseId: string): Promise<SyncedCase | null>;
   markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
   updateManyByQuery: <T>(query: Query<T>, update: object) => Promise<UpdateResult>;
+  setUstDivisionCode(_id: string, caseId: string, ustDivisionCode: string): Promise<void>;
   findByCursor: <T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },

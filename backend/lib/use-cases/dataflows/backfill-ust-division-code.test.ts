@@ -1,11 +1,30 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import BackfillUstDivisionCodeUseCase from './backfill-ust-division-code';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { UstDivisionCodeBackfillState } from '../gateways.types';
+
+const winchesterCase = {
+  _id: 'aaaa',
+  caseId: '491-25-00001',
+  courtDivisionCode: '491',
+  courtDivisionName: 'Winchester',
+};
+const chattanoogaCase = {
+  _id: 'bbbb',
+  caseId: '491-25-00002',
+  courtDivisionCode: '491',
+  courtDivisionName: 'Chattanooga',
+};
+const unresolvedCase = {
+  _id: 'cccc',
+  caseId: '491-25-00003',
+  courtDivisionCode: '491',
+  courtDivisionName: 'Cleveland',
+};
 
 describe('BackfillUstDivisionCodeUseCase', () => {
   let context: ApplicationContext;
@@ -65,7 +84,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.data?.lastId).toBeNull();
     });
 
-    test('scopes the query to SYNCED_CASE docs in court 0649 missing ustDivisionCode', async () => {
+    test('scopes the query to unmoved SYNCED_CASE docs in court 0649 missing ustDivisionCode', async () => {
       const findByCursorSpy = vi
         .spyOn(MockMongoRepository.prototype, 'findByCursor')
         .mockResolvedValue([]);
@@ -88,6 +107,7 @@ describe('BackfillUstDivisionCodeUseCase', () => {
           },
           { condition: 'EQUALS', leftOperand: { name: 'courtId' }, rightOperand: '0649' },
           { condition: 'EXISTS', leftOperand: { name: 'ustDivisionCode' }, rightOperand: false },
+          { condition: 'EXISTS', leftOperand: { name: 'movedToCaseId' }, rightOperand: false },
         ],
       });
       expect(options).toEqual({ limit: 101, sortField: '_id', sortDirection: 'ASCENDING' });
@@ -128,65 +148,146 @@ describe('BackfillUstDivisionCodeUseCase', () => {
     });
   });
 
+  describe('resolveUstDivisionCode', () => {
+    test.each([
+      { courtDivisionCode: '491', courtDivisionName: 'Winchester', expected: '494' },
+      { courtDivisionCode: '492', courtDivisionName: 'Johnson City', expected: '495' },
+      { courtDivisionCode: '491', courtDivisionName: 'Chattanooga', expected: '491' },
+      { courtDivisionCode: '492', courtDivisionName: 'Knoxville', expected: '492' },
+      { courtDivisionCode: '493', courtDivisionName: 'Greeneville', expected: '493' },
+      { courtDivisionCode: '491', courtDivisionName: ' Winchester ', expected: '494' },
+    ])(
+      'should resolve $courtDivisionCode/$courtDivisionName to $expected',
+      ({ courtDivisionCode, courtDivisionName, expected }) => {
+        expect(
+          BackfillUstDivisionCodeUseCase.resolveUstDivisionCode(
+            courtDivisionCode,
+            courtDivisionName,
+          ),
+        ).toBe(expected);
+      },
+    );
+
+    test.each([
+      { courtDivisionCode: '491', courtDivisionName: 'Cleveland' },
+      { courtDivisionCode: '492', courtDivisionName: undefined },
+    ])(
+      'should not resolve a shared ACMS code $courtDivisionCode with unrecognized name $courtDivisionName',
+      ({ courtDivisionCode, courtDivisionName }) => {
+        expect(
+          BackfillUstDivisionCodeUseCase.resolveUstDivisionCode(
+            courtDivisionCode,
+            courtDivisionName,
+          ),
+        ).toBeUndefined();
+      },
+    );
+  });
+
   describe('backfillUstDivisionCodes', () => {
-    test('should write ustDivisionCode for a Winchester case found in DXTR', async () => {
-      const bCase = { _id: 'case-id-1', caseId: '491-25-12345' };
-      const dxtrMap = new Map([[bCase.caseId, '494']]);
-
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        dxtrMap,
-      );
-      const updateSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
-        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+    test('should write the resolved ustDivisionCode to exactly the paged document', async () => {
+      const setSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+        .mockResolvedValue();
 
       const result = await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(context, [
-        bCase,
+        winchesterCase,
       ]);
 
-      expect(result.error).toBeUndefined();
-      expect(result.data?.length).toBe(1);
-      expect(result.data?.[0].success).toBe(true);
-      expect(updateSpy).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ $set: { ustDivisionCode: '494' } }),
-      );
+      expect(result.escaped).toBe(false);
+      expect(result.results).toEqual([{ caseId: winchesterCase.caseId, success: true }]);
+      expect(setSpy).toHaveBeenCalledWith(winchesterCase._id, winchesterCase.caseId, '494');
     });
 
-    test('should skip and log when DXTR has no CS_DIV match for a case', async () => {
-      const bCase = { _id: 'case-id-1', caseId: '491-25-12345' };
+    test('should write courtDivisionCode when the division is not shared', async () => {
+      const setSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+        .mockResolvedValue();
 
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map(),
-      );
-      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery');
+      await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(context, [chattanoogaCase]);
+
+      expect(setSpy).toHaveBeenCalledWith(chattanoogaCase._id, chattanoogaCase.caseId, '491');
+    });
+
+    test('should skip without writing when the division name does not resolve', async () => {
+      const setSpy = vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode');
 
       const result = await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(context, [
-        bCase,
+        unresolvedCase,
       ]);
 
-      expect(result.error).toBeUndefined();
-      expect(result.data?.[0].success).toBe(true);
-      expect(result.data?.[0].skipped).toBe(true);
-      expect(updateSpy).not.toHaveBeenCalled();
+      expect(result.results).toEqual([
+        { caseId: unresolvedCase.caseId, success: true, skipped: true },
+      ]);
+      expect(setSpy).not.toHaveBeenCalled();
     });
 
-    test('should record failure when updateManyByQuery throws', async () => {
-      const bCase = { _id: 'case-id-1', caseId: '491-25-12345' };
+    describe('per-document throttling backoff', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
 
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map([[bCase.caseId, '494']]),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      test('should back off and retry the same document when the write is throttled', async () => {
+        const setSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+          .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+          .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+          .mockResolvedValue();
+
+        const resultPromise = BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(
+          context,
+          [winchesterCase],
+          { safeThresholdMs: 58 * 60 * 1000, baseDelayMs: 100 },
+        );
+        await vi.advanceTimersByTimeAsync(199);
+        expect(setSpy).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(setSpy).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(400);
+        const result = await resultPromise;
+
+        expect(setSpy).toHaveBeenCalledTimes(3);
+        expect(setSpy).toHaveBeenNthCalledWith(3, winchesterCase._id, winchesterCase.caseId, '494');
+        expect(result.results).toEqual([{ caseId: winchesterCase.caseId, success: true }]);
+      });
+
+      test('should stop before the safe threshold and leave the rest of the page unprocessed', async () => {
+        const setSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+          .mockResolvedValueOnce()
+          .mockRejectedValue(new TooManyRequestsError('TEST'));
+
+        // elapsed (100ms) + first backoff (2^1 * 100 = 200ms) exceeds safeThresholdMs (150ms)
+        const resultPromise = BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(
+          context,
+          [winchesterCase, chattanoogaCase, unresolvedCase],
+          { startedAt: Date.now() - 100, safeThresholdMs: 150, baseDelayMs: 100 },
+        );
+        await vi.runAllTimersAsync();
+        const result = await resultPromise;
+
+        expect(result.escaped).toBe(true);
+        expect(result.results).toEqual([{ caseId: winchesterCase.caseId, success: true }]);
+        expect(setSpy).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    test('should record failure when the write throws a non-throttling error', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockRejectedValue(
         new Error('Write failed'),
       );
 
       const result = await BackfillUstDivisionCodeUseCase.backfillUstDivisionCodes(context, [
-        bCase,
+        winchesterCase,
       ]);
 
-      expect(result.data?.[0].success).toBe(false);
-      expect(result.data?.[0].error).toBe('Write failed');
+      expect(result.results).toEqual([
+        { caseId: winchesterCase.caseId, success: false, error: 'Write failed' },
+      ]);
     });
   });
 
@@ -236,6 +337,46 @@ describe('BackfillUstDivisionCodeUseCase', () => {
   });
 
   describe('processBackfillPage', () => {
+    test('should resume after the last processed case when the batch escapes on throttling', async () => {
+      vi.useFakeTimers();
+      try {
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+        vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([
+          winchesterCase,
+          chattanoogaCase,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode')
+          .mockResolvedValueOnce()
+          .mockRejectedValue(new TooManyRequestsError('TEST'));
+        const upsertSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'upsert')
+          .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+        const resultPromise = BackfillUstDivisionCodeUseCase.processBackfillPage(
+          context,
+          'cursor-start',
+          100,
+          { startedAt: Date.now() - 100, safeThresholdMs: 150, baseDelayMs: 100 },
+        );
+        await vi.runAllTimersAsync();
+        const result = await resultPromise;
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+        expect(result.nextCursor).toEqual({ lastId: winchesterCase._id });
+        expect(result.successCount).toBe(1);
+        expect(upsertSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lastId: winchesterCase._id,
+            processedCount: 1,
+            status: 'IN_PROGRESS',
+          }),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     test('should return empty when no cases need backfill', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([]);
@@ -249,18 +390,12 @@ describe('BackfillUstDivisionCodeUseCase', () => {
     });
 
     test('should return ok with nextCursor when hasMore', async () => {
-      const case1 = { _id: 'aaaa', caseId: '491-25-00001' };
-      const case2 = { _id: 'bbbb', caseId: '491-25-00002' };
+      const case1 = winchesterCase;
+      const case2 = chattanoogaCase;
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([case1, case2]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map([[case1.caseId, '494']]),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockResolvedValue({
-        modifiedCount: 1,
-        matchedCount: 1,
-      });
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
         {} as UstDivisionCodeBackfillState,
       );
@@ -274,17 +409,11 @@ describe('BackfillUstDivisionCodeUseCase', () => {
     });
 
     test('should return ok with null nextCursor on last page', async () => {
-      const bCase = { _id: 'cccc', caseId: '491-25-00003' };
+      const bCase = winchesterCase;
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map([[bCase.caseId, '494']]),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockResolvedValue({
-        modifiedCount: 1,
-        matchedCount: 1,
-      });
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
         {} as UstDivisionCodeBackfillState,
       );
@@ -304,14 +433,11 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.status).toBe('error');
     });
 
-    test('should track DXTR-miss skips separately from successes and mark COMPLETED_WITH_SKIPS', async () => {
-      const bCase = { _id: 'gggg', caseId: '491-25-00007' };
+    test('should track unresolved-division skips separately from successes and mark COMPLETED_WITH_SKIPS', async () => {
+      const bCase = unresolvedCase;
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map(),
-      );
       const upsertSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as UstDivisionCodeBackfillState);
@@ -361,14 +487,11 @@ describe('BackfillUstDivisionCodeUseCase', () => {
     });
 
     test('should return ok with failedResults when some cases fail to update', async () => {
-      const bCase = { _id: 'dddd', caseId: '491-25-00004' };
+      const bCase = winchesterCase;
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map([[bCase.caseId, '494']]),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockRejectedValue(
         new Error('Write failed'),
       );
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
@@ -385,14 +508,11 @@ describe('BackfillUstDivisionCodeUseCase', () => {
     });
 
     test('should mark the final page COMPLETED_WITH_FAILURES rather than COMPLETED when a write fails', async () => {
-      const bCase = { _id: 'hhhh', caseId: '491-25-00008' };
+      const bCase = winchesterCase;
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockResolvedValue(
-        new Map([[bCase.caseId, '494']]),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockRejectedValue(
         new Error('Write failed'),
       );
       const upsertSpy = vi
@@ -405,43 +525,6 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'COMPLETED_WITH_FAILURES', failedCount: 1 }),
       );
-    });
-
-    test('should return error and persist FAILED status when the whole batch errors', async () => {
-      const bCase = { _id: 'eeee', caseId: '491-25-00005' };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockRejectedValue(
-        new Error('DXTR connection lost'),
-      );
-      const upsertSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'upsert')
-        .mockResolvedValue({} as UstDivisionCodeBackfillState);
-
-      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
-
-      expect(result.status).toBe('error');
-      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED' }));
-    });
-
-    test('should still return error when the FAILED-status update itself fails', async () => {
-      const bCase = { _id: 'ffff', caseId: '491-25-00006' };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([bCase]);
-      vi.spyOn(CasesLocalGateway.prototype, 'getUstDivisionCodesByCaseIds').mockRejectedValue(
-        new Error('DXTR connection lost'),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
-        new Error('Cosmos write failed'),
-      );
-
-      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(context, null, 100);
-
-      expect(result.status).toBe('error');
-      if (result.status !== 'error') return;
-      expect(result.error.message).toBe('Failed to backfill ustDivisionCode for batch.');
     });
   });
 

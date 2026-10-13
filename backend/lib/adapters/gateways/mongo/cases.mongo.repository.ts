@@ -579,6 +579,24 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  // Filters on caseId (the shard key) alongside _id so the write stays single-partition and
+  // targets exactly one document even when duplicate SYNCED_CASE docs share a caseId.
+  public async setUstDivisionCode(
+    _id: string,
+    caseId: string,
+    ustDivisionCode: string,
+  ): Promise<void> {
+    const doc = using<SyncedCase & { _id: string }>();
+    try {
+      await this.getAdapter<SyncedCase & { _id: string }>().updateOne(
+        and(doc('_id').equals(_id), doc('caseId').equals(caseId)),
+        { ustDivisionCode },
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: object) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);

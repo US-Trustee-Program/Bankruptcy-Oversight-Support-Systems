@@ -65,9 +65,4 @@ export interface CasesInterface {
     context: ApplicationContext,
     caseIds: string[],
   ): Promise<Map<string, string>>;
-
-  getUstDivisionCodesByCaseIds(
-    context: ApplicationContext,
-    caseIds: string[],
-  ): Promise<Map<string, string>>;
 }
