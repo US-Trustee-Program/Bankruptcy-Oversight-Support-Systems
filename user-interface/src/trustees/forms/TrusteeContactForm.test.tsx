@@ -3,8 +3,6 @@ import { MemoryRouter } from 'react-router-dom';
 import TrusteeContactForm, { TrusteeContactFormProps, validateField } from './TrusteeContactForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import { Trustee } from '@common/cams/trustees';
 
@@ -26,10 +24,6 @@ function getNumberInput(index: number): HTMLInputElement {
 function getExtensionInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
 }
-
-const FLAGS: FeatureFlagSet = {
-  'trustee-management': true,
-};
 
 const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
 const CITY_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.CITY_REQUIRED;
@@ -75,25 +69,7 @@ describe('TrusteeContactForm Tests', () => {
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS);
     vi.spyOn(NavigatorModule, 'default').mockReturnValue(navigatorMock);
-  });
-
-  test('should show disabled message when feature flag is disabled', async () => {
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': false,
-    } as FeatureFlagSet);
-
-    renderWithProps();
-
-    let disabledMessage;
-
-    await waitFor(() => {
-      disabledMessage = screen.getByTestId('trustee-create-disabled');
-    });
-
-    expect(disabledMessage).toBeInTheDocument();
-    expect(disabledMessage).toHaveTextContent('Trustee management is not enabled.');
   });
 
   test('should show forbidden message when user lacks TrusteeAdmin role', async () => {

@@ -28,7 +28,6 @@ vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: vi.fn(() => ({ 'transfer-orders-enabled': true })),
   TRANSFER_ORDERS_ENABLED: 'transfer-orders-enabled',
   SYSTEM_MAINTENANCE_BANNER: 'system-maintenance-banner',
-  TRUSTEE_MANAGEMENT: 'trustee-management',
 }));
 
 function renderWithRouter(component: React.ReactElement) {

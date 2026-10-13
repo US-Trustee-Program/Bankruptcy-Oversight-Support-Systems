@@ -13,7 +13,6 @@ describe('TrusteeCaseDivisionsController', () => {
     context = await createMockApplicationContext();
     context.session.user = { id: 'user1', name: 'Test User', roles: [CamsRole.TrusteeAdmin] };
     context.featureFlags = {
-      'trustee-management': true,
       'trustee-case-list': true,
     };
     context.request.method = 'GET';
@@ -24,12 +23,6 @@ describe('TrusteeCaseDivisionsController', () => {
   });
 
   describe('Feature flag protection', () => {
-    test('returns 404 when trustee-management flag is off', async () => {
-      context.featureFlags['trustee-management'] = false;
-      const result = await controller.handleRequest(context);
-      expect(result.statusCode).toBe(404);
-    });
-
     test('returns 404 when trustee-case-list flag is off', async () => {
       context.featureFlags['trustee-case-list'] = false;
       const result = await controller.handleRequest(context);

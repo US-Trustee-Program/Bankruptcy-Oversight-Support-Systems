@@ -3,7 +3,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -58,8 +57,6 @@ export type TrusteeContactFormProps = {
 
 // TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
 function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
-  const flags = useFeatureFlags();
-
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -185,10 +182,6 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
   const updateField = (field: keyof TrusteeInternalFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  if (!flags[TRUSTEE_MANAGEMENT]) {
-    return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
-  }
 
   if (!canManage) {
     return (

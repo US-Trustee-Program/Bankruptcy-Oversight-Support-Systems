@@ -8,7 +8,6 @@ import { CamsRole } from '@common/cams/roles';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '@common/cams/users';
-import { NotFoundError } from '../../common-errors/not-found-error';
 
 vi.mock('../../use-cases/trustee-assignments/trustee-assignments');
 
@@ -63,20 +62,6 @@ describe('TrusteeAssignmentsController', () => {
     );
 
     controller = new TrusteeAssignmentsController(context);
-
-    // Mock feature flag to be enabled by default
-    context.featureFlags['trustee-management'] = true;
-  });
-
-  describe('Feature flag protection', () => {
-    test('should return 404 when trustee-management feature is disabled', async () => {
-      context.featureFlags['trustee-management'] = false;
-      context.request.method = 'GET';
-      context.request.params = { trusteeId: 'trustee-456' };
-      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(NotFoundError);
-    });
   });
 
   describe('Authorization', () => {
