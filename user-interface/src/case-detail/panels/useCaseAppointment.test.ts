@@ -67,16 +67,17 @@ describe('useCaseAppointment', () => {
     expect(result.current.appointedDate).toBeNull();
   });
 
-  test('sets trusteeId to null and history to [] when current is null', async () => {
+  test('keeps history when there is no current appointment', async () => {
     vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockResolvedValue({
-      data: { current: null, history: [] },
+      data: { current: null, history: mockHistory.history },
     });
 
     const { result } = renderHook(() => useCaseAppointment('111-24-00001'));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.trusteeId).toBeNull();
-    expect(result.current.history).toEqual([]);
+    expect(result.current.appointedDate).toBeNull();
+    expect(result.current.history).toEqual(mockHistory.history);
   });
 
   test('cancels in-flight request when component unmounts', async () => {
