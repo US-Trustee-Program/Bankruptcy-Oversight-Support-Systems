@@ -27,7 +27,6 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
 export type SearchResultsHeaderProps = {
   id: string;
   labels: string[];
-  phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
 };
@@ -45,7 +44,6 @@ export type SearchResultsRowProps = {
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
-  phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
   trackResultClicks?: boolean;
@@ -61,7 +59,6 @@ function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,
-    phoneticSearchEnabled = false,
     showDebtorNameColumn = false,
     showOpenClosedColumn = false,
     trackResultClicks = false,
@@ -233,7 +230,6 @@ function SearchResults(props: SearchResultsProps) {
             <Header
               id={id}
               labels={searchResultsHeaderLabels}
-              phoneticSearchEnabled={phoneticSearchEnabled}
               showDebtorNameColumn={showDebtorNameColumn}
               showOpenClosedColumn={showOpenClosedColumn}
             />
