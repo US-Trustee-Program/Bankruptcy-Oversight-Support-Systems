@@ -22,7 +22,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'transfer-orders-enabled': true,
   'trustee-assigned-staff-enabled': true,
   'trustee-case-list': true,
-  'trustee-management': true,
   'trustee-verification-enabled': true,
 };
 

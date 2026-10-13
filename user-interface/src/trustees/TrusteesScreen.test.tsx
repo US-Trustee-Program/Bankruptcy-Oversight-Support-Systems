@@ -1,10 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import TrusteesScreen from './TrusteesScreen';
-import useFeatureFlags, {
-  RESTRICT_ADDING_TRUSTEES,
-  TRUSTEE_MANAGEMENT,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { RESTRICT_ADDING_TRUSTEES } from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { vi } from 'vitest';
@@ -33,12 +30,11 @@ function renderWithRouter(component: React.ReactElement) {
 describe('TrusteesScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlags.mockReturnValue({});
   });
 
-  test('should render trustees interface when feature flag is enabled and user has TrusteeAdmin role', () => {
-    // Mock feature flag enabled
+  test('should render trustees interface when user has TrusteeAdmin role', () => {
     mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
       [RESTRICT_ADDING_TRUSTEES]: true,
     });
 
@@ -70,9 +66,7 @@ describe('TrusteesScreen', () => {
   });
 
   test('should not render Add New Trustee link when restrict-adding-trustees flag is false', () => {
-    // Mock trustee management enabled, but restrict-adding-trustees disabled
     mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
       [RESTRICT_ADDING_TRUSTEES]: false,
     });
 
@@ -100,37 +94,7 @@ describe('TrusteesScreen', () => {
     expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
   });
 
-  test('should not render when feature flag is disabled', () => {
-    // Mock feature flag disabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: false,
-    });
-
-    // Mock user session with TrusteeAdmin role
-    mockLocalStorage.getSession.mockReturnValue({
-      accessToken: 'fake-token',
-      provider: 'test',
-      issuer: 'test-issuer',
-      expires: 5,
-      user: {
-        id: 'user-1',
-        name: 'Test User',
-        roles: [CamsRole.TrusteeAdmin],
-      },
-    });
-
-    const { container } = renderWithRouter(<TrusteesScreen />);
-
-    // Component should return null and render nothing
-    expect(container.firstChild).toBeNull();
-  });
-
   test('should not render when user does not have TrusteeAdmin role', () => {
-    // Mock feature flag enabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     // Mock user session without TrusteeAdmin role
     mockLocalStorage.getSession.mockReturnValue({
       accessToken: 'fake-token',
@@ -151,11 +115,6 @@ describe('TrusteesScreen', () => {
   });
 
   test('should not render when user has no roles', () => {
-    // Mock feature flag enabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     // Mock user session with no roles
     mockLocalStorage.getSession.mockReturnValue({
       accessToken: 'fake-token',
@@ -176,11 +135,6 @@ describe('TrusteesScreen', () => {
   });
 
   test('should not render when user session is null', () => {
-    // Mock feature flag enabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     // Mock no user session
     mockLocalStorage.getSession.mockReturnValue(null);
 
@@ -191,11 +145,6 @@ describe('TrusteesScreen', () => {
   });
 
   test('should not render when user is undefined', () => {
-    // Mock feature flag enabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     // Mock session with undefined user
     mockLocalStorage.getSession.mockReturnValue({
       accessToken: 'fake-token',
@@ -211,12 +160,9 @@ describe('TrusteesScreen', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test('should render the outlet directly, bypassing the trustee-management/role gate, when a nested route is active', () => {
-    // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: even with the
-    // top-level flag disabled and no session, the nested route's content must still render.
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: false,
-    });
+  test('should render the outlet directly, bypassing the role gate, when a nested route is active', () => {
+    // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: even with no
+    // session, the nested route's content must still render.
     mockLocalStorage.getSession.mockReturnValue(null);
 
     render(
@@ -233,30 +179,5 @@ describe('TrusteesScreen', () => {
     expect(screen.getByTestId('nested-route-content')).toBeInTheDocument();
     expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
     expect(screen.queryByTestId('trustees-list')).not.toBeInTheDocument();
-  });
-
-  test('should not render when both feature flag is disabled and user lacks permission', () => {
-    // Mock feature flag disabled
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: false,
-    });
-
-    // Mock user session without TrusteeAdmin role
-    mockLocalStorage.getSession.mockReturnValue({
-      accessToken: 'fake-token',
-      provider: 'test',
-      issuer: 'test-issuer',
-      expires: 5,
-      user: {
-        id: 'user-1',
-        name: 'Test User',
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    });
-
-    const { container } = renderWithRouter(<TrusteesScreen />);
-
-    // Component should return null and render nothing
-    expect(container.firstChild).toBeNull();
   });
 });

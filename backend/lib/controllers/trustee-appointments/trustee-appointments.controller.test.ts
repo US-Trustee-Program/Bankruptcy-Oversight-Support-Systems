@@ -45,18 +45,6 @@ describe('TrusteeAppointmentsController', () => {
     });
 
     controller = new TrusteeAppointmentsController(context);
-    context.featureFlags['trustee-management'] = true;
-  });
-
-  describe('Feature flag protection', () => {
-    test('should return 404 when trustee-management feature is disabled', async () => {
-      context.featureFlags['trustee-management'] = false;
-      context.request.method = 'GET';
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(404);
-    });
   });
 
   describe('Role-based authorization', () => {
