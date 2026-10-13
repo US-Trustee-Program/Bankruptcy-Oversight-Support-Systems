@@ -899,12 +899,14 @@ async function hasPendingVerificationForVariation(
   return findByVariant(bucket, variant)?.status === 'pending';
 }
 
-// Guards against malformed CS_CHAPTER values reaching a CASE_APPOINTMENT write on this hot
-// path (invoked for every mismatched/imperfect/no-match event), the same class of dirty
-// upstream data this slice hardens against elsewhere (see the address-parsing rewrite).
-// Thrown BadRequestErrors are caught by processAppointments' per-event try/catch and routed
-// to the DLQ rather than corrupting a CASE_APPOINTMENT document with an unvalidated string.
-function assertValidChapter(caseId: string, chapter: string): CaseChapter {
+// Guards against malformed CS_CHAPTER values reaching a CASE_APPOINTMENT write (this is the
+// same class of dirty upstream data this slice hardens against elsewhere -- see the
+// address-parsing rewrite). Shared by processAppointments' per-event hot path (invoked for
+// every mismatched/imperfect/no-match event, routing a thrown BadRequestError to the DLQ) and
+// TrusteeVerificationRemapUseCase's per-surrogate remap (whose own per-surrogate try/catch
+// leaves a failing surrogate in place for the next attempt instead); either way, an invalid
+// chapter never reaches a CASE_APPOINTMENT write as an unvalidated string.
+export function assertValidChapter(caseId: string, chapter: string): CaseChapter {
   if (!VALID_CASE_CHAPTERS.includes(chapter as CaseChapter)) {
     throw new BadRequestError(MODULE_NAME, {
       message: `Invalid chapter value "${chapter}" for case ${caseId}.`,

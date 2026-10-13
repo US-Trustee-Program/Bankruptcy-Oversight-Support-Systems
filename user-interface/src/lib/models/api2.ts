@@ -472,9 +472,10 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
-async function searchTrustees(name: string, courtId?: string) {
+async function searchTrustees(name: string, courtId?: string, divisionCode?: string) {
   const params: Record<string, string> = { name };
   if (courtId) params.courtId = courtId;
+  if (divisionCode) params.divisionCode = divisionCode;
   return api().get<TrusteeSearchResult[]>(`/trustee-search`, params);
 }
 

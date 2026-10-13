@@ -22,6 +22,12 @@ interface TrusteeSearchModalProps {
   dxtrTrusteePhone?: string;
   dxtrTrusteeEmail?: string;
   courtId?: string;
+  // When provided (alongside courtId), search results are filtered server-side to trustees
+  // with an active appointment covering this court+division (isDivisionMatch's rule) -- so a
+  // user can't pick a trustee the backend would reject on approval anyway. Omitting it
+  // preserves the original district-only filtering, for any other caller of this same modal
+  // that doesn't have case context to provide.
+  divisionCode?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
@@ -47,6 +53,7 @@ function TrusteeSearchModal_(
     dxtrTrusteePhone,
     dxtrTrusteeEmail,
     courtId,
+    divisionCode,
     onConfirm,
     onCancel,
     isProcessing,
@@ -101,9 +108,21 @@ function TrusteeSearchModal_(
       setSearchResults([]);
       return;
     }
+    // divisionCode describes the case that opened this modal, which is only a valid filter
+    // while the search is still scoped to that case's own court. If the user has switched the
+    // "Trustee District" dropdown away from the court this modal was opened with, divisionCode
+    // belongs to a different court than the one now being searched -- applying it would filter
+    // search results against the wrong court's divisions. Falling back to district-only
+    // filtering here is safe: it can only ever show MORE candidates, never admit one the
+    // backend's own approval check would reject.
+    const isOriginatingCourt = selectedCourtId === courtId;
     debounce(async () => {
       try {
-        const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
+        const response = await Api2.searchTrustees(
+          value,
+          selectedCourtEntry?.courtId,
+          isOriginatingCourt ? divisionCode : undefined,
+        );
         setSearchResults(response.data);
       } catch {
         setSearchResults([]);
@@ -118,6 +137,11 @@ function TrusteeSearchModal_(
 
   function handleSelection(options: ComboOption[]) {
     if (options.length > 0) {
+      // ComboBox only ever emits a value drawn from the options list this component itself
+      // gave it (comboOptions, built from searchResults), so `selected` should never
+      // actually be undefined here in practice. The `?? null` is a defensive fallback for
+      // that "shouldn't happen" case (e.g. searchResults changing between render and this
+      // callback firing) rather than a reachable behavior to drive from a test.
       const selected = searchResults.find((r) => r.trusteeId === options[0].value);
       setSelectedTrustee(selected ?? null);
     } else {

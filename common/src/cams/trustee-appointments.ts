@@ -136,6 +136,7 @@ export function getStatusOptions(
   appointmentType: AppointmentType,
 ): readonly AppointmentStatus[] {
   const defaultStatusOptions: AppointmentStatus[] = ['active', 'inactive'];
+  if (!statusOptionsConfig[chapter]) return defaultStatusOptions;
   return statusOptionsConfig[chapter][appointmentType] || defaultStatusOptions;
 }
 
@@ -175,7 +176,12 @@ const validateAppointmentTypeForChapter: ValidatorFunction = (obj: unknown): Val
     return VALID;
   }
 
-  const validAppointmentTypes = chapterAppointmentTypeMap[chapter];
+  // chapter is typed as the closed AppointmentChapterType union, but this validator runs
+  // against untrusted input cast from an HTTP request body -- an unrecognized string value
+  // would make this an undefined lookup. Defaults to an empty list (matching
+  // getStatusOptions' existing guard below) so an out-of-range chapter fails validation
+  // cleanly instead of throwing a TypeError.
+  const validAppointmentTypes = chapterAppointmentTypeMap[chapter] ?? [];
   if (!validAppointmentTypes.includes(appointmentType)) {
     return {
       reasonMap: {
@@ -247,6 +253,124 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
       validateDivisionCodes,
     ],
   };
+
+/**
+ * Resolves an appointment's division codes, falling back from the current `divisionCodes`
+ * array to the deprecated singular `divisionCode` only when `divisionCodes` itself is absent
+ * -- not merely empty, so an explicit empty array is never silently replaced by the legacy
+ * field. Centralizes a fallback that was previously reimplemented inline at each call site.
+ */
+export function getDivisionCodes(appointment: {
+  divisionCode?: string;
+  divisionCodes?: string[];
+}): string[] {
+  return (appointment.divisionCodes ?? [appointment.divisionCode]).filter(Boolean) as string[];
+}
+
+/**
+ * Find a merge target among a trustee's existing appointments. A merge target is an active
+ * appointment with the same courtId, chapter, and appointmentType -- "duplicate" here means
+ * same court+chapter+type, not requiring division overlap; merging is what reconciles
+ * divisions (by union), not a check that they already overlap.
+ *
+ * Only applies when the incoming appointment itself is active: merging a non-active
+ * create/update into an existing active appointment would silently overwrite that active
+ * record's data with the incoming (non-active) values instead of leaving it alone, which is
+ * never the intent of a status-changing create/update.
+ *
+ * Shared between the frontend form (pre-merge UX feedback before ever calling the API) and
+ * the backend (the authoritative enforcement point for direct API callers and for update,
+ * which the frontend does not check at all). Keeping this in one place means both can never
+ * drift into disagreeing about what counts as a duplicate.
+ */
+export function findMergeTarget(
+  courtId: string,
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+  incomingStatus: AppointmentStatus,
+  existingAppointments: TrusteeAppointment[],
+): TrusteeAppointment | undefined {
+  if (incomingStatus !== 'active') {
+    return undefined;
+  }
+  return existingAppointments.find(
+    (appt) =>
+      appt.courtId === courtId &&
+      appt.chapter === chapter &&
+      appt.appointmentType === appointmentType &&
+      appt.status === 'active',
+  );
+}
+
+export type MergedPayloadResult = {
+  type: 'merged';
+  targetId: string;
+  payload: TrusteeAppointmentInput;
+  addedDivisionCodes: string[];
+};
+
+export type MergePayloadResult = MergedPayloadResult | { type: 'created' };
+
+/**
+ * Computes the merged payload for a duplicate appointment (union of division codes), or
+ * signals that no merge applies. Only the division fields are computed from `payload`;
+ * every other field in the returned payload is mergeTarget's own, so the redirected
+ * submission's appointedDate/status/effectiveDate/courtName/courtDivisionName can never
+ * overwrite the pre-existing target record. Deliberately returns division *codes* only, not
+ * human-readable division *names* -- name resolution needs a district's full division list
+ * (getDivisionsForDistrict), which is a frontend-only concern with no equivalent need on the
+ * backend. Frontend callers wrap this to add display names on top; see
+ * user-interface/src/trustees/forms/appointmentMergeHelpers.ts.
+ */
+// Overloaded so a caller that already knows it has a defined mergeTarget (e.g. inside its own
+// `if (mergeTarget)` check) gets the narrowed MergedPayloadResult type directly, rather than
+// needing a second, structurally-unreachable `if (result.type === 'merged')` check purely to
+// satisfy the discriminated union -- see backend/lib/use-cases/trustee-appointments.ts's
+// createAppointment/updateAppointment for that call pattern.
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment,
+  payload: TrusteeAppointmentInput,
+): MergedPayloadResult;
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment | undefined,
+  payload: TrusteeAppointmentInput,
+): MergePayloadResult;
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment | undefined,
+  payload: TrusteeAppointmentInput,
+): MergePayloadResult {
+  if (!mergeTarget) {
+    return { type: 'created' };
+  }
+
+  const existingDivisions = getDivisionCodes(mergeTarget);
+  const mergedDivisions = [...new Set([...existingDivisions, ...(payload.divisionCodes ?? [])])];
+  const addedDivisionCodes = (payload.divisionCodes ?? []).filter(
+    (code) => !existingDivisions.includes(code),
+  );
+
+  return {
+    type: 'merged',
+    targetId: mergeTarget.id,
+    // Only the division fields are computed from the incoming payload (that's the whole
+    // point of a merge); every other field comes from mergeTarget itself, not `payload`,
+    // so a duplicate-merge can never clobber the target's own appointedDate/status/
+    // effectiveDate/courtName/courtDivisionName with the redirected submission's values.
+    payload: {
+      chapter: mergeTarget.chapter,
+      appointmentType: mergeTarget.appointmentType,
+      courtId: mergeTarget.courtId,
+      courtName: mergeTarget.courtName,
+      courtDivisionName: mergeTarget.courtDivisionName,
+      appointedDate: mergeTarget.appointedDate,
+      status: mergeTarget.status,
+      effectiveDate: mergeTarget.effectiveDate,
+      divisionCodes: mergedDivisions,
+      divisionCode: mergedDivisions[0],
+    },
+    addedDivisionCodes,
+  };
+}
 
 export type CaseAppointmentInput = {
   caseId: string;
