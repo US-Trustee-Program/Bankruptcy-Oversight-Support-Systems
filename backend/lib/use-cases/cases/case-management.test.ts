@@ -808,6 +808,53 @@ describe('Case management tests', () => {
     });
 
     describe('phonetic filtering', () => {
+      test('should use phonetic search for a debtorName of exactly 2 characters', async () => {
+        const { context, useCase: uc } = await createCaseManagementTestContext({ user });
+        const phoneticSpy = vi
+          .spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens')
+          .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+        const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+
+        const predicate: CasesSearchPredicate = { ...basePredicate, debtorName: 'Al' };
+        await uc.searchCases(context, predicate, false);
+
+        expect(phoneticSpy).toHaveBeenCalledWith(predicate);
+        expect(standardSpy).not.toHaveBeenCalled();
+      });
+
+      test.each([
+        ['a single character', 'a'],
+        ['a single character padded with whitespace', ' a '],
+        ['only whitespace', '   '],
+        ['an empty string', ''],
+        ['a non-string value', 42 as unknown as string],
+      ])(
+        'should reject a debtorName of %s with a 400 before searching',
+        async (_description, debtorName) => {
+          const { context, useCase: uc } = await createCaseManagementTestContext({ user });
+          const phoneticSpy = vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens');
+          const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+
+          await expect(
+            uc.searchCases(context, { ...basePredicate, debtorName }, false),
+          ).rejects.toThrow(expect.objectContaining({ status: 400 }));
+
+          expect(phoneticSpy).not.toHaveBeenCalled();
+          expect(standardSpy).not.toHaveBeenCalled();
+        },
+      );
+
+      test('should reject a non-string caseNumber with a 400 before searching', async () => {
+        const { context, useCase: uc } = await createCaseManagementTestContext({ user });
+        const standardSpy = vi.spyOn(uc.casesRepository, 'searchCases');
+
+        await expect(
+          uc.searchCases(context, { ...basePredicate, caseNumber: 42 as unknown as string }, false),
+        ).rejects.toThrow(expect.objectContaining({ status: 400 }));
+
+        expect(standardSpy).not.toHaveBeenCalled();
+      });
+
       test('should apply hybrid search when debtorName is present', async () => {
         const mockCases = [
           MockData.getSyncedCase({
