@@ -17,7 +17,6 @@ export interface TrusteeDetailProfileProps {
   onEditStaff: (staffId: string) => void;
   onEditOtherInformation: () => void;
   onEditZoomInfo: () => void;
-  showSoftwareBankInfo?: boolean;
   softwareProfiles: BankruptcySoftwareProfile[];
 }
 
@@ -29,7 +28,6 @@ export default function TrusteeDetailProfile({
   onEditStaff,
   onEditOtherInformation,
   onEditZoomInfo,
-  showSoftwareBankInfo = true,
   softwareProfiles,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
@@ -80,19 +78,15 @@ export default function TrusteeDetailProfile({
         </section>
 
         <section className="trustee-profile-section">
-          <h2 className="trustee-profile-section-heading">
-            {showSoftwareBankInfo ? '341 Meeting and Other Information' : '341 Meeting Information'}
-          </h2>
+          <h2 className="trustee-profile-section-heading">341 Meeting and Other Information</h2>
           <div className="trustee-profile-cards-row">
             <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} onEdit={onEditZoomInfo} />
-            {showSoftwareBankInfo && (
-              <OtherInformationCard
-                banks={trustee.banks}
-                softwareId={trustee.softwareId}
-                softwareProfiles={softwareProfiles}
-                onEdit={onEditOtherInformation}
-              />
-            )}
+            <OtherInformationCard
+              banks={trustee.banks}
+              softwareId={trustee.softwareId}
+              softwareProfiles={softwareProfiles}
+              onEdit={onEditOtherInformation}
+            />
           </div>
         </section>
       </div>

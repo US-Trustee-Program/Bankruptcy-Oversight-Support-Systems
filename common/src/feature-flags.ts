@@ -24,7 +24,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-assigned-staff-enabled': true,
   'trustee-case-list': true,
   'trustee-management': true,
-  'trustee-software-bank-display': true,
   'trustee-verification-enabled': true,
 };
 

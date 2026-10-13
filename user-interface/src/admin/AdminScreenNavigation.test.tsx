@@ -3,10 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import {
-  PRIVILEGED_IDENTITY_MANAGEMENT,
-  TRUSTEE_SOFTWARE_BANK_DISPLAY,
-} from '@/lib/hooks/UseFeatureFlags';
+import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 
 describe('Admin screen navigation tests', () => {
@@ -82,12 +79,8 @@ describe('Admin screen navigation tests', () => {
     expect(screen.getByTestId('case-reload-nav-link')).toHaveClass('usa-current');
   });
 
-  describe('Feature flag tests for Bankruptcy Software nav link', () => {
-    test('should display Bankruptcy Software nav link when TRUSTEE_SOFTWARE_BANK_DISPLAY flag is true', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
-      });
-
+  describe('Bankruptcy Software nav link', () => {
+    test('should display Bankruptcy Software nav link', () => {
       renderWithoutProps();
 
       const navLink = screen.queryByTestId('bankruptcy-software-nav-link');
@@ -96,45 +89,10 @@ describe('Admin screen navigation tests', () => {
       expect(navLink).toHaveAttribute('href', '/admin/bankruptcy-software');
     });
 
-    test('should not display Bankruptcy Software nav link when TRUSTEE_SOFTWARE_BANK_DISPLAY flag is false', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
-      });
-
-      renderWithoutProps();
-
-      expect(screen.queryByTestId('bankruptcy-software-nav-link')).not.toBeInTheDocument();
-    });
-
     test('should update active nav when Bankruptcy Software link is clicked', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
-      });
-
       renderNav(AdminNavState.BANKS);
       await userEvent.click(screen.getByTestId('bankruptcy-software-nav-link'));
       expect(screen.getByTestId('bankruptcy-software-nav-link')).toHaveClass('usa-current');
-    });
-  });
-
-  describe('Feature flag tests for Banks nav link', () => {
-    test('should display Banks nav link when TRUSTEE_SOFTWARE_BANK_DISPLAY flag is true', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
-      });
-      renderWithoutProps();
-      const navLink = screen.queryByTestId('banks-nav-link');
-      expect(navLink).toBeInTheDocument();
-      expect(navLink).toHaveTextContent('Banks');
-      expect(navLink).toHaveAttribute('href', '/admin/banks');
-    });
-
-    test('should not display Banks nav link when TRUSTEE_SOFTWARE_BANK_DISPLAY flag is false', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
-      });
-      renderWithoutProps();
-      expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
     });
   });
 
@@ -154,7 +112,6 @@ describe('Admin screen navigation tests', () => {
     test('should update active nav when Privileged Identity link is clicked', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
       });
 
       renderNav(AdminNavState.BANKS);
@@ -186,10 +143,6 @@ describe('Admin screen navigation tests', () => {
     });
 
     test('should update active nav when Notification Routing link is clicked', async () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
-      });
-
       renderNav(AdminNavState.BANKS);
       await userEvent.click(screen.getByTestId('notification-routing-nav-link'));
       expect(screen.getByTestId('notification-routing-nav-link')).toHaveClass('usa-current');

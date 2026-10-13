@@ -17,7 +17,6 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, {
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
-  TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '../lib/hooks/UseFeatureFlags';
 
 export function AdminScreen() {
@@ -62,9 +61,7 @@ export function AdminScreen() {
         </div>
       ) : (
         <Routes>
-          {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
-            <Route path="banks/:bankId/*" element={<BankDetail />} />
-          )}
+          <Route path="banks/:bankId/*" element={<BankDetail />} />
           <Route path="bankruptcy-software/:softwareId/*" element={<BankruptcySoftwareDetail />} />
           <Route
             path="*"
@@ -80,9 +77,7 @@ export function AdminScreen() {
                       {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
                         <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                       )}
-                      {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
-                        <Route path="banks" element={<Banks />} />
-                      )}
+                      <Route path="banks" element={<Banks />} />
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
                       <Route path="notification-routing" element={<NotificationRouting />} />
