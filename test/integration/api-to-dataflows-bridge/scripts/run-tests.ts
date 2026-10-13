@@ -38,14 +38,10 @@ import { ApiToDataflowsGatewayImpl } from '../../../../backend/lib/adapters/gate
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../../backend/lib/storage-queues';
-import {
-  CaseAssignmentDownstreamEvent,
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '../../../../common/src/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '../../../../common/src/cams/dataflow-events';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');
 
@@ -72,7 +68,6 @@ function loadEnv() {
 const ALL_QUEUE_NAMES = [
   CASE_ASSIGNMENT_EVENT_QUEUE.queueName,
   SYNC_CASES_PAGE_QUEUE.queueName,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE.queueName,
 ];
 
@@ -162,7 +157,7 @@ async function run() {
     // -------------------------------------------------------------------------
     console.log('Test 1: queueCaseAssignmentEvent sends a retrievable, unwrapped message');
     {
-      const event: CaseAssignmentDownstreamEvent = {
+      const event: CaseAssignment = {
         documentType: 'ASSIGNMENT',
         caseId: '081-24-11111',
         userId: 'user-integration-test',
@@ -171,7 +166,6 @@ async function run() {
         assignedOn: '2024-01-01T00:00:00.000Z',
         updatedOn: '2024-01-01T00:00:00.000Z',
         updatedBy: { id: 'user-integration-test', name: 'Integration Test User' },
-        acmsProfessionalId: null,
       };
       await gateway.queueCaseAssignmentEvent(event);
       const received = await receiveAndDecode(CASE_ASSIGNMENT_EVENT_QUEUE.queueName);
@@ -185,35 +179,11 @@ async function run() {
     }
 
     // -------------------------------------------------------------------------
-    // Test 2: queueTrusteeAppointmentEvent — message lands on TRUSTEE_APPOINTMENT_EVENT_QUEUE.
-    // -------------------------------------------------------------------------
-    console.log('\nTest 2: queueTrusteeAppointmentEvent sends a retrievable message');
-    {
-      const event: TrusteeAppointmentDownstreamEvent = {
-        caseId: '081-24-22222',
-        trusteeId: 'trustee-integration-test',
-        acmsProfessionalId: 'NY-00123',
-        assignedOn: '2024-01-01T00:00:00.000Z',
-        appointedDate: '2024-01-01',
-        chapter: '7',
-      };
-      await gateway.queueTrusteeAppointmentEvent(event);
-      const received = await receiveAndDecode(TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName);
-      if (JSON.stringify(received) === JSON.stringify(event)) {
-        pass('trustee appointment event round-tripped through the real queue unmodified');
-      } else {
-        fail(
-          `trustee appointment event mismatch: expected ${JSON.stringify(event)}, got ${JSON.stringify(received)}`,
-        );
-      }
-    }
-
-    // -------------------------------------------------------------------------
-    // Test 3: queueCaseReload — the one method that wraps its payload in an array
+    // Test 2: queueCaseReload — the one method that wraps its payload in an array
     // (mirroring the array-nesting the old extraOutputs path required); confirms
     // that wrapping survived the migration off extraOutputs unchanged.
     // -------------------------------------------------------------------------
-    console.log('\nTest 3: queueCaseReload sends the case-changed event wrapped in an array');
+    console.log('\nTest 2: queueCaseReload sends the case-changed event wrapped in an array');
     {
       const caseId = '081-24-33333';
       await gateway.queueCaseReload(caseId);
@@ -229,12 +199,12 @@ async function run() {
     }
 
     // -------------------------------------------------------------------------
-    // Test 4: queueTrusteeVerificationRemap — the queue CAMS-886/cams-w220l's fix
+    // Test 3: queueTrusteeVerificationRemap — the queue CAMS-886/cams-w220l's fix
     // directly protects (TrusteeMatchVerificationUseCase.approveVerification's remap
     // message, previously at risk of being silently dropped by extraOutputs on a
     // post-DB-write crash).
     // -------------------------------------------------------------------------
-    console.log('\nTest 4: queueTrusteeVerificationRemap sends a retrievable message');
+    console.log('\nTest 3: queueTrusteeVerificationRemap sends a retrievable message');
     {
       const message: TrusteeVerificationRemapMessage = {
         fingerprint: 'fp-integration-test',
@@ -254,11 +224,11 @@ async function run() {
     }
 
     // -------------------------------------------------------------------------
-    // Test 5: a send failure (bad connection string) throws instead of silently
+    // Test 4: a send failure (bad connection string) throws instead of silently
     // dropping the message — the entire premise of moving off extraOutputs, which
     // could never signal delivery failure to the caller.
     // -------------------------------------------------------------------------
-    console.log('\nTest 5: a send failure propagates instead of silently dropping the message');
+    console.log('\nTest 4: a send failure propagates instead of silently dropping the message');
     {
       const originalConnectionString = getConnectionString();
       // Reuse the already-configured connection string but point it at an unused port,

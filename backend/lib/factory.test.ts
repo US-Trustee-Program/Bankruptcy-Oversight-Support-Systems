@@ -217,7 +217,6 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
     ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
     ['getBanksRepository', () => BanksMongoRepository],
     ['getBankruptcySoftwareRepository', () => BankruptcySoftwareMongoRepository],
-    ['getTrusteeAppointmentsDownstreamBackfillStateRepo', () => RuntimeStateMongoRepository],
     ['getTrusteeCaseAppointmentsRepository', () => TrusteeCaseAppointmentsMongoRepository],
     ['getNotificationRoutingRepository', () => NotificationRoutingMongoRepository],
     ['getAssignmentRepository', () => CaseAssignmentMongoRepository],
@@ -366,7 +365,6 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
     ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
     ['getBanksRepository', () => MockMongoRepository],
     ['getBankruptcySoftwareRepository', () => MockMongoRepository],
-    ['getTrusteeAppointmentsDownstreamBackfillStateRepo', () => MockMongoRepository],
     ['getTrusteeCaseAppointmentsRepository', () => MockMongoRepository],
     ['getNotificationRoutingRepository', () => MockMongoRepository],
   ] as const)('%s', (method, getExpectedType) => {
