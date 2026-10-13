@@ -20,9 +20,10 @@ export function useCaseAppointment(caseId: string | undefined) {
     Api2.getCaseTrusteeAppointment(caseId)
       .then((response) => {
         if (!isCurrent) return;
-        setTrusteeId(response.data?.current?.trusteeId ?? null);
-        setAppointedDate(response.data?.current?.appointedDate ?? null);
-        setHistory(response.data?.history ?? []);
+        const { current, history } = response.data;
+        setTrusteeId(current?.trusteeId ?? null);
+        setAppointedDate(current?.appointedDate ?? null);
+        setHistory(history);
       })
       .catch((error: unknown) => {
         if (!isCurrent) return;
