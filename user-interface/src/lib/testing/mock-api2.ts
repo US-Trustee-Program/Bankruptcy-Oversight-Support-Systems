@@ -42,7 +42,6 @@ import {
   TrusteePatchBody,
 } from '@common/cams/trustees';
 import {
-  CaseAppointment,
   CaseTrusteeAppointmentHistory,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
@@ -3060,7 +3059,7 @@ async function postCaseReload(_caseId: string) {
 
 async function getCaseTrusteeAppointment(
   _caseId: string,
-): Promise<ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>> {
+): Promise<ResponseBody<CaseTrusteeAppointmentHistory>> {
   const data: CaseTrusteeAppointmentHistory = {
     current: {
       id: 'case-appt-003',

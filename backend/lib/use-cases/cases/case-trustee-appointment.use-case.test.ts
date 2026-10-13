@@ -7,51 +7,9 @@ import { TrusteesRepository } from '../gateways.types';
 import factory from '../../factory';
 import { SENTINEL_TRUSTEE_ID } from '../dataflows/migrate-case-appointments-constants';
 
-const mockAppointment: CaseAppointment = {
-  id: 'ca-001',
-  caseId: '111-24-00001',
-  trusteeId: 'trustee-abc',
-  assignedOn: '2026-01-01T00:00:00Z',
-  appointedDate: '2026-01-01',
-  createdOn: '2026-01-01T00:00:00Z',
-  createdBy: { id: 'system', name: 'System' },
-  updatedOn: '2026-01-01T00:00:00Z',
-  updatedBy: { id: 'system', name: 'System' },
-};
-
 describe('CaseTrusteeAppointmentUseCase', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  test('returns CaseAppointment when repo returns one', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(mockAppointment);
-    const context = await createMockApplicationContext();
-    const useCase = new CaseTrusteeAppointmentUseCase();
-
-    const result = await useCase.getActiveCaseAppointment(context, mockAppointment.caseId);
-
-    expect(result).toEqual(mockAppointment);
-  });
-
-  test('returns null when repo returns null', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(null);
-    const context = await createMockApplicationContext();
-    const useCase = new CaseTrusteeAppointmentUseCase();
-
-    const result = await useCase.getActiveCaseAppointment(context, '111-00-00001');
-
-    expect(result).toBeNull();
-  });
-
-  test('wraps repository error with getCamsError for getActiveCaseAppointment', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockRejectedValue(
-      new Error('DB failure'),
-    );
-    const context = await createMockApplicationContext();
-    const useCase = new CaseTrusteeAppointmentUseCase();
-
-    await expect(useCase.getActiveCaseAppointment(context, '111-24-00001')).rejects.toThrow();
   });
 
   describe('getCaseTrusteeAppointmentHistory', () => {

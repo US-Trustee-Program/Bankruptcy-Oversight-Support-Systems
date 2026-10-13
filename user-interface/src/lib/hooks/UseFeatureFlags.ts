@@ -25,7 +25,6 @@ export const TRUSTEE_MANAGEMENT = 'trustee-management';
 export const RESTRICT_ADDING_TRUSTEES = 'restrict-adding-trustees';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
-export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-enabled';
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
 export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
