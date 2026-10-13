@@ -12,7 +12,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
-import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
 
 const getResultsTable = () => document.querySelector('.search-results .cams-table');
@@ -936,6 +935,24 @@ describe('validateFormData function', () => {
     expect(result.isValid).toBe(false);
     expect(result.formValidationError).toBe('Please enter at least one search criterion');
   });
+
+  test('should return error for a debtor name shorter than 2 characters', () => {
+    const result = validateFormData({ debtorName: 'J' });
+    expect(result.isValid).toBe(false);
+    expect(result.fieldErrors.debtorName).toBeDefined();
+  });
+
+  test('should return valid for a debtor name of 2 characters', () => {
+    const result = validateFormData({ debtorName: 'Jo' });
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.debtorName).toBeUndefined();
+  });
+
+  test('should treat a whitespace-only debtor name as no search criteria', () => {
+    const result = validateFormData({ debtorName: '   ' });
+    expect(result.isValid).toBe(false);
+    expect(result.formValidationError).toBe('Please enter at least one search criterion');
+  });
 });
 
 describe('debtor name search', () => {
@@ -964,12 +981,6 @@ describe('debtor name search', () => {
   });
 
   function renderScreen() {
-    vi.spyOn(UseFeatureFlagsModule, 'default').mockReturnValue({
-      'chapter-twelve-enabled': true,
-      'chapter-eleven-enabled': true,
-      'transfer-orders-enabled': true,
-      'consolidations-enabled': true,
-    });
     render(
       <BrowserRouter>
         <SearchScreen></SearchScreen>
@@ -1152,28 +1163,6 @@ describe('debtor name search', () => {
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('John');
     });
-  });
-
-  test('should validate debtor name has at least 2 characters', () => {
-    const formData = { debtorName: 'J' };
-    const validation = validateFormData(formData);
-    expect(validation.isValid).toBe(false);
-    expect(validation.fieldErrors.debtorName).toBeDefined();
-  });
-
-  test('should accept debtor name with 2+ characters', () => {
-    const formData = { debtorName: 'Jo' };
-    const validation = validateFormData(formData);
-    expect(validation.isValid).toBe(true);
-    expect(validation.fieldErrors.debtorName).toBeUndefined();
-  });
-
-  test('should reject empty string after whitespace trim', async () => {
-    const formData = { debtorName: '   ' };
-    const validation = validateFormData(formData);
-
-    expect(validation.isValid).toBe(false);
-    expect(validation.formValidationError).toBe('Please enter at least one search criterion');
   });
 });
 
