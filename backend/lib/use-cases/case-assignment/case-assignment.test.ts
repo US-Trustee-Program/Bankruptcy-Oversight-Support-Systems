@@ -409,9 +409,11 @@ describe('Case assignment tests', () => {
         role.toString(),
       );
 
-      expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
-      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.objectContaining(assignmentOne));
+      const persistedRemoval = updateAssignment.mock.calls[0][0];
+      expect(persistedRemoval).toEqual({ ...assignmentOne, unassignedOn: expect.any(String) });
+      expect(assignmentEventSpy).toHaveBeenCalledTimes(1);
+      expect(assignmentEventSpy).toHaveBeenCalledWith(persistedRemoval);
     });
 
     test('should log error and not propagate when queue call throws', async () => {

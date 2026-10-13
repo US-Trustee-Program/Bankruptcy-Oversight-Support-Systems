@@ -1,5 +1,8 @@
 # ACMS-CAMS Transition: Appointment Sync Architecture
 
+> **Rejected.** This design never ran in production and its code was removed under CAMS-874.
+> CAMS-616 continues on a different solution path; the sections below describe the abandoned design.
+
 ## Context
 
 During the ACMS→CAMS transition period, both ACMS and CAMS are actively managing case
@@ -53,13 +56,16 @@ when the professional ID is later corrected.
 
 ## Status
 
-Superseded (rejected before shipping) — CAMS-874.
+Rejected before shipping. Removed under CAMS-874.
 
-The downstream sync described here (the `CMMAP_ALL` table, the dual-write event handler, and the
-daily ACMS sync timer trigger) never shipped to production. It was removed under CAMS-874, so this
-decision was not carried out. The record is kept for history only; do not build on it.
+Originally: Accepted. Superseded the CMMAP_ALL view approach introduced in CAMS-616.
 
-Originally: Accepted — supersedes the CMMAP_ALL view approach introduced in CAMS-616.
+## Rationale for Rejection
+
+CAMS-616 changed direction and now delivers CAMS assignment and appointment data to downstream
+consumers through a different path. The `CMMAP_ALL` table, the dual-write event handler, and the
+daily ACMS sync timer trigger never ran in production, and the ACMS replica tables they wrote to
+have been dropped. Do not build on this record; see CAMS-616 for the current approach.
 
 ## Consequences
 
