@@ -26,7 +26,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-management': true,
   'trustee-software-bank-display': true,
   'trustee-verification-enabled': true,
-  'trustee-change-notification-enabled': true,
 };
 
 export type LaunchDarklyContext = {

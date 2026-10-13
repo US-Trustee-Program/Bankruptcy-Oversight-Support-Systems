@@ -271,15 +271,13 @@ export class TrusteeAppointmentsUseCase {
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-      if (context.featureFlags['trustee-change-notification-enabled']) {
-        await this.dispatchAppointmentNotification(context, {
-          trusteeId,
-          trusteeName,
-          before: undefined,
-          after: createdSnapshot,
-          courts,
-        });
-      }
+      await this.dispatchAppointmentNotification(context, {
+        trusteeId,
+        trusteeName,
+        before: undefined,
+        after: createdSnapshot,
+        courts,
+      });
 
       context.logger.info(
         MODULE_NAME,
@@ -341,14 +339,12 @@ export class TrusteeAppointmentsUseCase {
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-        if (context.featureFlags['trustee-change-notification-enabled']) {
-          await this.dispatchAppointmentNotification(context, {
-            trusteeId,
-            before: beforeSnapshot,
-            after: afterSnapshot,
-            courts,
-          });
-        }
+        await this.dispatchAppointmentNotification(context, {
+          trusteeId,
+          before: beforeSnapshot,
+          after: afterSnapshot,
+          courts,
+        });
       }
 
       context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
