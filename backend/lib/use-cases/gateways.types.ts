@@ -1021,6 +1021,11 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
     limit: number,
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  findVerificationsMissingUstDivisionCode(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
+  updateVerificationUstDivisionCode(mongoId: string, ustDivisionCode: string): Promise<void>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 

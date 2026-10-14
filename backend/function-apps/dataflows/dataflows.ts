@@ -37,6 +37,7 @@ import TrusteeVerificationRemap from './trustee-verification-remap';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
+import BackfillVerificationUstDivisionCode from './migrations/backfill-verification-ust-division-code';
 import BackfillUnassignedOn from './migrations/backfill-unassigned-on';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
@@ -138,6 +139,7 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  BackfillVerificationUstDivisionCode,
   BackfillUnassignedOn,
   PollNotificationBounces,
 );

@@ -409,6 +409,14 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findVerificationsMissingUstDivisionCode(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateVerificationUstDivisionCode(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   getAllCaseAppointments(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
