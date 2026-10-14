@@ -49,7 +49,7 @@ const EASTERN_DISTRICT_TN_COURT_ID = '0649';
 // Any other 0649 ACMS code has CS_DIV === CS_DIV_ACMS.
 const SHARED_ACMS_DIVISIONS: Record<string, Record<string, string>> = {
   '491': { Chattanooga: '491', Winchester: '494' },
-  '492': { Knoxville: '492', 'Johnson City': '495' },
+  '492': { Greeneville: '492', 'Johnson City': '495' },
 };
 
 /**

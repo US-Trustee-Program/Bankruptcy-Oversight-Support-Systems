@@ -153,8 +153,9 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       { courtDivisionCode: '491', courtDivisionName: 'Winchester', expected: '494' },
       { courtDivisionCode: '492', courtDivisionName: 'Johnson City', expected: '495' },
       { courtDivisionCode: '491', courtDivisionName: 'Chattanooga', expected: '491' },
-      { courtDivisionCode: '492', courtDivisionName: 'Knoxville', expected: '492' },
-      { courtDivisionCode: '493', courtDivisionName: 'Greeneville', expected: '493' },
+      { courtDivisionCode: '492', courtDivisionName: 'Greeneville', expected: '492' },
+      // Knoxville's ACMS code is unshared, so it falls through the map untouched.
+      { courtDivisionCode: '493', courtDivisionName: 'Knoxville', expected: '493' },
       { courtDivisionCode: '491', courtDivisionName: ' Winchester ', expected: '494' },
     ])(
       'should resolve $courtDivisionCode/$courtDivisionName to $expected',
@@ -572,6 +573,58 @@ describe('BackfillUstDivisionCodeUseCase', () => {
       expect(result.status).toBe('ok');
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'COMPLETED_WITH_FAILURES', failedCount: 1 }),
+      );
+    });
+
+    // The empty-page branch reads the prior counts straight off existing state, so the
+    // COMPLETED_WITH_SKIPS test above never exercises the accumulation on a page that actually
+    // did work. Without this, dropping either `currentSkippedCount +` or `currentFailedCount +`
+    // leaves the suite green: a resumed run whose earlier pages skipped or failed, followed by a
+    // clean final page, would lose those counts and report COMPLETED.
+    test('should carry processed, skipped and failed counts from prior state onto a non-empty final page', async () => {
+      const existingState: UstDivisionCodeBackfillState = {
+        id: 'state-id-carryover',
+        documentType: 'UST_DIVISION_CODE_BACKFILL_STATE',
+        lastId: 'cursor-prior',
+        processedCount: 10,
+        skippedCount: 4,
+        failedCount: 2,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        lastUpdatedAt: '2026-01-01T00:30:00.000Z',
+        status: 'IN_PROGRESS',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingState);
+      // One of each outcome on the last page: winchester writes, chattanooga fails,
+      // unresolvedCase ('Cleveland') has no entry under shared ACMS 491 so it skips.
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([
+        winchesterCase,
+        chattanoogaCase,
+        unresolvedCase,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'setUstDivisionCode').mockImplementation(
+        async (_id: string, caseId: string) => {
+          if (caseId === chattanoogaCase.caseId) throw new Error('Write failed');
+        },
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as UstDivisionCodeBackfillState);
+
+      const result = await BackfillUstDivisionCodeUseCase.processBackfillPage(
+        context,
+        'cursor-prior',
+        100,
+      );
+
+      expect(result.status).toBe('ok');
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          processedCount: 12, // 10 prior + 1 written + 1 skipped
+          skippedCount: 5, // 4 prior + 1
+          failedCount: 3, // 2 prior + 1
+          status: 'COMPLETED_WITH_FAILURES',
+        }),
       );
     });
   });

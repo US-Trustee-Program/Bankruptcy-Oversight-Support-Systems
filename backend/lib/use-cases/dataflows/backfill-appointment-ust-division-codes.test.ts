@@ -38,9 +38,9 @@ const offices: UstpOfficeDetails[] = [
         divisions: [
           division('0649', '491', '491', 'Chattanooga'),
           division('0649', '491', '494', 'Winchester'),
-          division('0649', '492', '492', 'Knoxville'),
+          division('0649', '492', '492', 'Greeneville'),
           division('0649', '492', '495', 'Johnson City'),
-          division('0649', '493', '493', 'Greeneville'),
+          division('0649', '493', '493', 'Knoxville'),
         ],
       },
     ],
