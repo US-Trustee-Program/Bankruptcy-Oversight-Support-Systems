@@ -8,6 +8,7 @@ import {
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
+import { UST_DIVISION_CODE_COURT_IDS } from '@common/cams/courts';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
@@ -249,7 +250,8 @@ export class TrusteeMatchVerificationMongoRepository
   /**
    * Pending verifications written before ustDivisionCode existed. Resolved ones are left alone:
    * the field only drives how a pending verification's division is displayed in the review
-   * queue, so there is nothing to correct once it has left that queue.
+   * queue, so there is nothing to correct once it has left that queue. Limited to the courts that
+   * emit a bare ustDivisionCode; everywhere else it equals the ACMS caseId prefix already used.
    */
   async findVerificationsMissingUstDivisionCode(
     lastId: string | null,
@@ -260,6 +262,7 @@ export class TrusteeMatchVerificationMongoRepository
       const doc = using<VerificationQueryable>();
       const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
         doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('courtId').contains(UST_DIVISION_CODE_COURT_IDS),
         doc('status').equals('pending'),
         doc('ustDivisionCode').notExists(),
       ];

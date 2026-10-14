@@ -2,10 +2,10 @@ import {
   parseDebtorType,
   parsePetitionType,
   parseTransactionDate,
-  UST_DIVISION_CODE_COURT_IDS,
   ustDivisionCodeSelect,
 } from './dxtr.gateway.helper';
 import { DxtrTransactionRecord } from '../../types/cases';
+import { UST_DIVISION_CODE_COURT_IDS } from '@common/cams/courts';
 
 describe('DXTR Gateway Helper Tests', () => {
   describe('parseTransactionDate tests', () => {

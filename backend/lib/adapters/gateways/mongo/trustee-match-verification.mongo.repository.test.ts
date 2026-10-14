@@ -564,6 +564,20 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       expect(queryStr).toContain('"status"');
     });
 
+    // Only courts whose ustDivisionCode diverges from courtDivisionCode have anything to correct;
+    // scanning every court's pending verifications would read every synced case for nothing.
+    test('should only select verifications in courts that emit a bare ustDivisionCode', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsMissingUstDivisionCode(null, 10);
+
+      const query = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
+        .calls[0][0];
+      expect(query.values).toContainEqual(
+        QueryBuilder.using<TrusteeMatchVerification>()('courtId').contains(['0649']),
+      );
+    });
+
     test('should include _id greaterThan condition when lastId is provided', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 

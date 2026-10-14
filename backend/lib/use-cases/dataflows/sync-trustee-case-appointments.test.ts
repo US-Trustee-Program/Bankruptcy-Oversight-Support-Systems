@@ -1975,9 +1975,11 @@ describe('SyncTrusteeCaseAppointments', () => {
             courtId: '0649',
             divisionCodes: ['494'],
             appointedDate: '2024-01-01',
-            status: 'suspended' as const,
+            status: 'voluntarily-suspended' as const,
             effectiveDate: '2024-01-01',
             createdOn: '2024-01-01T00:00:00.000Z',
+            updatedOn: '2024-01-01T00:00:00.000Z',
+            updatedBy: { id: 'system', name: 'System' },
           } as TrusteeAppointment,
         ]);
 

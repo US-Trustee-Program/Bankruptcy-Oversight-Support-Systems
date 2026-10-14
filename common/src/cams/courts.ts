@@ -33,6 +33,20 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
   return courtDivisions;
 }
 
+// CAMS-936. `ustDivisionCode` is the division identity used to match a case to a trustee
+// appointment, so it has to be unique within its court. DXTR's CS_DIV_ACMS — what CAMS stores as
+// courtDivisionCode — is not: in the Eastern District of Tennessee (0649) Winchester and
+// Chattanooga both carry ACMS 491, and Johnson City and Greeneville both carry 492. The bare
+// CS_DIV does tell them apart, so that is the code we emit there.
+//
+// Everywhere else ustDivisionCode stays equal to courtDivisionCode. Emitting the bare code
+// nationwide would give newly synced cases a code nothing else in CAMS speaks — caseId prefixes,
+// stored TRUSTEE_APPOINTMENT documents and the office picker are all ACMS — and neither backfill
+// migrates courts outside 0649, so those cases would silently stop matching. Eight other courts
+// also collapse two or more divisions into one ACMS code; widening this list means migrating them
+// in the same release — tracked as cams-06edp.
+export const UST_DIVISION_CODE_COURT_IDS = ['0649'];
+
 /**
  * The two division code spaces a division can be identified by.
  *
