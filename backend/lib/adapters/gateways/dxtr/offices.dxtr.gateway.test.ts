@@ -76,7 +76,7 @@ describe('offices gateway tests', () => {
       expect(bostonOffice?.regionName).toEqual('BOSTON');
     });
 
-    test('selects the bare CS_DIV column aliased as ustDivisionCode', async () => {
+    test('scopes the bare CS_DIV aliased as ustDivisionCode to court 0649', async () => {
       const mockResults: QueryResults = {
         success: true,
         results: { recordset: COURT_DIVISIONS },
@@ -89,9 +89,14 @@ describe('offices gateway tests', () => {
       const gateway = new OfficesDxtrGateway(applicationContext);
       await gateway.getOffices(applicationContext);
 
+      // Picker options outside 0649 must stay on CS_DIV_ACMS. The office picker is how a user's
+      // default division is chosen, and session offices feed trustee-list filtering — handing it
+      // bare codes for a court like 113E would mismatch every appointment stored for that court.
       const [, sql] = querySpy.mock.calls[0];
-      expect(sql).toMatch(/a\.\[CS_DIV\]\s+AS\s+ustDivisionCode/i);
-      expect(sql).not.toMatch(/a\.\[CS_DIV_ACMS\]\s+AS\s+ustDivisionCode/i);
+      expect(sql).toMatch(
+        /CASE WHEN a\.COURT_ID IN \('0649'\) THEN a\.CS_DIV ELSE a\.CS_DIV_ACMS END\s+AS\s+ustDivisionCode/i,
+      );
+      expect(sql).not.toMatch(/a\.\[CS_DIV\]\s+AS\s+ustDivisionCode/i);
     });
 
     test('groups divisions sharing an office under one office, splitting into separate groups by groupDesignator', async () => {

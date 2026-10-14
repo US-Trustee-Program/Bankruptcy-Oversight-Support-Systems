@@ -12,7 +12,11 @@ import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
-import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
+import {
+  decomposeCaseId,
+  parseTransactionDate,
+  ustDivisionCodeSelect,
+} from './dxtr.gateway.helper';
 import { formatCityStateZipCountry, removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
@@ -198,7 +202,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
-        cs_div.CS_DIV as ustDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -412,7 +416,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const CASE_SEARCH_SELECT = `
       SELECT
       cs_div.CS_DIV_ACMS as courtDivisionCode,
-      cs_div.CS_DIV as ustDivisionCode,
+      ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
@@ -752,7 +756,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
-        cs_div.CS_DIV as ustDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -1366,7 +1370,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
-        CS_DIV.CS_DIV AS ustDivisionCode,
+        ${ustDivisionCodeSelect('CS_DIV')} AS ustDivisionCode,
         C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,

@@ -39,7 +39,9 @@ type BackfillBatchResult = {
 };
 
 // Scoped to Eastern District of TN (court 0649) only — this is the only district where bare
-// CS_DIV and CS_DIV_ACMS diverge that CAMS-936 addresses; see bead for the nationwide follow-up.
+// CS_DIV and CS_DIV_ACMS diverge that CAMS-936 addresses. The DXTR gateways scope ustDivisionCode
+// to the same court (ustDivisionCodeSelect), so the two stay in step. Nationwide follow-up for the
+// eight other courts with shared ACMS codes: cams-06edp.
 const EASTERN_DISTRICT_TN_COURT_ID = '0649';
 
 // E.D. Tenn ACMS codes shared by two bare CS_DIVs (DXTR AO_CS_DIV), keyed by the division name

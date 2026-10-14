@@ -298,8 +298,12 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.ustDivisionCode).toEqual('494');
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
 
+    // The bare CS_DIV only for court 0649, where Winchester (494) and Chattanooga (491) share an
+    // ACMS code; every other court keeps CS_DIV_ACMS. See ustDivisionCodeSelect.
     const [, sql] = querySpy.mock.calls[0];
-    expect(sql).toMatch(/cs_div\.CS_DIV\s+as\s+ustDivisionCode/i);
+    expect(sql).toMatch(
+      /CASE WHEN cs_div\.COURT_ID IN \('0649'\) THEN cs_div\.CS_DIV ELSE cs_div\.CS_DIV_ACMS END\s+as\s+ustDivisionCode/i,
+    );
     expect(sql).not.toMatch(/cs_div\.CS_DIV_ACMS\s+as\s+ustDivisionCode/i);
   });
 
@@ -2409,5 +2413,65 @@ describe('parseTrusteeAppointmentsRequestTimeoutMs', () => {
       DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS,
     );
     expect(warnSpy).toHaveBeenCalled();
+  });
+});
+
+describe('ustDivisionCode court scoping', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+  });
+
+  // CAMS-936. Every mocked recordset in this file already carries whatever ustDivisionCode the
+  // test wants, so a query that selected the bare CS_DIV unconditionally would still pass. That
+  // regression is invisible until deploy: a court like 113E, whose bare codes are 3E1-3E4 and
+  // whose ACMS codes are 321-324, would sync cases as '3E1' while every stored appointment in
+  // that court still holds '321' — and neither backfill touches courts outside 0649. So assert
+  // the SQL itself, not the mapped result.
+  const expectScopedUstDivisionCode = () => {
+    const queries = querySpy.mock.calls
+      .map((call) => call[1] as string)
+      .filter((query) => query?.includes('ustDivisionCode'));
+
+    expect(queries.length).toBeGreaterThan(0);
+    queries.forEach((query) => {
+      expect(query).toMatch(
+        /CASE WHEN \w+\.COURT_ID IN \('0649'\) THEN \w+\.CS_DIV ELSE \w+\.CS_DIV_ACMS END\s+as\s+ustDivisionCode/i,
+      );
+      expect(query).not.toMatch(/(?<!ELSE )\w*\.?\[?CS_DIV\]?\s+as\s+ustDivisionCode/i);
+    });
+  };
+
+  test('getCaseDetail scopes ustDivisionCode to court 0649', async () => {
+    await expect(gateway.getCaseDetail(applicationContext, '081-11-11111')).rejects.toThrow();
+    expectScopedUstDivisionCode();
+  });
+
+  test('getSuggestedCases scopes ustDivisionCode to court 0649', async () => {
+    await expect(gateway.getSuggestedCases(applicationContext, '081-11-11111')).rejects.toThrow();
+    expectScopedUstDivisionCode();
+  });
+
+  test('searchCases scopes ustDivisionCode to court 0649', async () => {
+    await gateway.searchCases(applicationContext, {});
+    expect(querySpy).toHaveBeenCalled();
+    expectScopedUstDivisionCode();
+  });
+
+  test('getTrusteeAppointments scopes ustDivisionCode to court 0649', async () => {
+    await gateway.getTrusteeAppointments(applicationContext, '2025-01-01T00:00:00Z');
+    expect(querySpy).toHaveBeenCalled();
+    expectScopedUstDivisionCode();
   });
 });
