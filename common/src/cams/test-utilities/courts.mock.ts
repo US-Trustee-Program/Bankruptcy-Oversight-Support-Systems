@@ -606,11 +606,16 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     state: 'OH',
   },
   {
+    // Court 0649 is the one district where the bare CS_DIV diverges from CS_DIV_ACMS: Chattanooga
+    // and Winchester share ACMS 491, Greeneville and Johnson City share 492. Without
+    // ustDivisionCode here, mock-backed environments (dbMock, mock auth, BDD, mocked E2E) can't
+    // tell those pairs apart and silently fall back to the ACMS code. See CAMS-936.
     officeName: 'Chattanooga',
     officeCode: '1',
     courtId: '0649',
     courtName: 'Eastern District of Tennessee',
     courtDivisionCode: '491',
+    ustDivisionCode: '491',
     courtDivisionName: 'Chattanooga',
     groupDesignator: 'CN',
     regionId: '8',
@@ -623,6 +628,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     courtId: '0649',
     courtName: 'Eastern District of Tennessee',
     courtDivisionCode: '492',
+    ustDivisionCode: '492',
     courtDivisionName: 'Greeneville',
     groupDesignator: 'CN',
     regionId: '8',
@@ -635,6 +641,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     courtId: '0649',
     courtName: 'Eastern District of Tennessee',
     courtDivisionCode: '491',
+    ustDivisionCode: '494',
     courtDivisionName: 'Winchester',
     groupDesignator: 'CN',
     regionId: '8',
@@ -647,6 +654,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     courtId: '0649',
     courtName: 'Eastern District of Tennessee',
     courtDivisionCode: '492',
+    ustDivisionCode: '495',
     courtDivisionName: 'Johnson City',
     groupDesignator: 'CN',
     regionId: '8',
@@ -659,6 +667,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     courtId: '0649',
     courtName: 'Eastern District of Tennessee',
     courtDivisionCode: '493',
+    ustDivisionCode: '493',
     courtDivisionName: 'Knoxville',
     groupDesignator: 'CN',
     regionId: '8',

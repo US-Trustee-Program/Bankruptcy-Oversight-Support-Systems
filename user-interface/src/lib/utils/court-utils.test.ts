@@ -1564,7 +1564,7 @@ describe('getUserDivisionCodes', () => {
       },
     };
     const codes = getUserDivisionCodes(session);
-    expect(codes).toEqual(new Set(['081', '087', '088']));
+    expect(codes).toEqual(new Set(['NYSB|081', 'NYSB|087', 'VTB|088']));
   });
 
   test('skips a division with an empty divisionCode', () => {
@@ -1627,6 +1627,110 @@ describe('getUserDivisionCodes', () => {
         ],
       },
     };
-    expect(getUserDivisionCodes(session)).toEqual(new Set(['491']));
+    expect(getUserDivisionCodes(session)).toEqual(new Set(['0649|491']));
+  });
+
+  // The flag must match the one the options were built with. Trustee-list options are
+  // ustDivisionCode-keyed, so a Winchester user's default has to resolve to 494 — matching 491
+  // there would select Chattanooga, its sibling under the shared ACMS code. See CAMS-936.
+  test('returns the ustDivisionCode when the caller built its options with it', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '0649',
+            officeName: 'Winchester',
+            idpGroupName: 'Winchester',
+            regionId: '04',
+            regionName: 'Nashville',
+            groups: [
+              {
+                groupDesignator: 'TN',
+                divisions: [
+                  {
+                    divisionCode: '491',
+                    ustDivisionCode: '494',
+                    court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                    courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(getUserDivisionCodes(session, true)).toEqual(new Set(['0649|494']));
+  });
+
+  // Most divisions have no ustDivisionCode at all (and none do under mock gateways), so the
+  // ust-keyed caller has to fall back to the ACMS code rather than dropping the division.
+  test('falls back to the ACMS divisionCode when a division has no ustDivisionCode', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(getUserDivisionCodes(session, true)).toEqual(new Set(['NYSB|081']));
+  });
+
+  // Codes are only unique within a court: 321 is a bare CS_DIV in court 113C and an ACMS code in
+  // 113E. Keying defaults on the bare code alone would let one court's office select another
+  // court's option.
+  test('scopes each code to its own court', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '113C',
+            officeName: 'Tampa',
+            idpGroupName: 'Tampa',
+            regionId: '21',
+            regionName: 'Tampa',
+            groups: [
+              {
+                groupDesignator: 'MM',
+                divisions: [
+                  {
+                    divisionCode: '321',
+                    court: { courtId: '113C', courtName: 'Middle District of Florida' },
+                    courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Tampa' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const codes = getUserDivisionCodes(session);
+    expect(codes).toEqual(new Set(['113C|321']));
+    expect(codes.has('113E|321')).toBe(false);
   });
 });

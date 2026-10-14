@@ -1,5 +1,5 @@
 import { usStates } from '@common/cams/us-states';
-import { CourtDivisionDetails } from '@common/cams/courts';
+import { CourtDivisionDetails, toCourtDivisionCode, toDivisionCode } from '@common/cams/courts';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { caseInsensitiveCompare } from '@common/string-helper';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -341,9 +341,7 @@ export function getDistrictDivisionComboOptions(
       // Trustee-appointment divisionCodes are stored in ustDivisionCode (bare CS_DIV) for
       // divisions like Winchester/Chattanooga that share a courtDivisionCode (CS_DIV_ACMS) —
       // see CAMS-936. Case identity/search still key on courtDivisionCode, so this is opt-in.
-      const code = useUstDivisionCode
-        ? (div.ustDivisionCode ?? div.courtDivisionCode)
-        : div.courtDivisionCode;
+      const code = toCourtDivisionCode(div, useUstDivisionCode);
       options.push({
         value: `${district.courtId}|${code}`,
         label: `${district.courtName} (${div.courtDivisionName})`,
@@ -486,12 +484,25 @@ export function buildDivisionsDisplay(
   return 'Not specified';
 }
 
-export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
+/**
+ * Collects the divisions of the user's own offices, keyed the way combobox option values are
+ * (`${courtId}|${code}`) so a default can only ever match an option in the user's own court.
+ *
+ * `useUstDivisionCode` must match the flag the options were built with. A screen whose options are
+ * ACMS-keyed and whose defaults are ust-keyed (or the reverse) silently selects a sibling division
+ * that shares the ACMS code — a Winchester user getting Chattanooga. See CAMS-936 and cams-x54pm.1.
+ */
+export function getUserDivisionCodes(
+  session: CamsSession | null,
+  useUstDivisionCode = false,
+): Set<string> {
   const codes = new Set<string>();
   session?.user?.offices?.forEach((office) => {
     office.groups?.forEach((group) => {
       group.divisions?.forEach((division) => {
-        if (division.divisionCode) codes.add(division.divisionCode);
+        const code = toDivisionCode(division, useUstDivisionCode);
+        const courtId = division.court?.courtId;
+        if (code && courtId) codes.add(`${courtId}|${code}`);
       });
     });
   });
@@ -537,9 +548,7 @@ export function autoUpgradeToAll(
       allDivisionsByDistrict.set(court.courtId, new Set());
       courtNameById.set(court.courtId, court.courtName);
     }
-    const code = useUstDivisionCode
-      ? (court.ustDivisionCode ?? court.courtDivisionCode)
-      : court.courtDivisionCode;
+    const code = toCourtDivisionCode(court, useUstDivisionCode);
     allDivisionsByDistrict.get(court.courtId)!.add(code);
   }
 
@@ -590,11 +599,7 @@ export function encodeDivisionCodes(
     if (code === 'ALL') {
       courts
         .filter((c) => c.courtId === courtId)
-        .forEach((c) =>
-          codes.push(
-            useUstDivisionCode ? (c.ustDivisionCode ?? c.courtDivisionCode) : c.courtDivisionCode,
-          ),
-        );
+        .forEach((c) => codes.push(toCourtDivisionCode(c, useUstDivisionCode)));
     } else {
       codes.push(code);
     }

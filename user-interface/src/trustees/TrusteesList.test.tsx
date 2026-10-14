@@ -2446,6 +2446,94 @@ describe('TrusteesList Component', () => {
         expect(screen.queryByText('Chattanooga, Carla')).not.toBeInTheDocument();
       });
     });
+
+    // The test above mocks getSession to null, so computeUserOfficeDefaults returns early and the
+    // default-selection path is never entered — it can only prove the options are distinct. With a
+    // real Winchester session, the default has to land on Winchester: it also filters the list on
+    // load, so getting it wrong shows a Winchester AUST Chattanooga's trustees. See CAMS-936.
+    test('preselects the signed-in Winchester user own division, not Chattanooga', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '494',
+              officeName: 'Winchester',
+              idpGroupName: 'Winchester',
+              regionId: '04',
+              regionName: 'Region 4',
+              groups: [
+                {
+                  groupDesignator: 'CN',
+                  divisions: [
+                    {
+                      divisionCode: '491',
+                      ustDivisionCode: '494',
+                      court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                      courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: '0649',
+            courtName: 'Eastern District of Tennessee',
+            officeCode: '491',
+            officeName: 'Chattanooga',
+            courtDivisionCode: '491',
+            ustDivisionCode: '491',
+            courtDivisionName: 'Chattanooga',
+            groupDesignator: 'CN',
+            regionId: '04',
+            regionName: 'Region 4',
+          },
+          {
+            courtId: '0649',
+            courtName: 'Eastern District of Tennessee',
+            officeCode: '494',
+            officeName: 'Winchester',
+            courtDivisionCode: '491',
+            ustDivisionCode: '494',
+            courtDivisionName: 'Winchester',
+            groupDesignator: 'CN',
+            regionId: '04',
+            regionName: 'Region 4',
+          },
+        ],
+      });
+
+      const trusteeChattanooga = makeListItem({
+        trusteeId: 'chattanooga',
+        firstName: 'Carla',
+        lastName: 'Chattanooga',
+        appointments: [makeAppointment({ courtId: '0649', divisionCodes: ['491'] })],
+      });
+      const trusteeWinchester = makeListItem({
+        trusteeId: 'winchester',
+        firstName: 'Wendy',
+        lastName: 'Winchester',
+        appointments: [makeAppointment({ courtId: '0649', divisionCodes: ['494'] })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeChattanooga, trusteeWinchester],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+      expect(screen.getByText('Winchester, Wendy')).toBeInTheDocument();
+      expect(screen.queryByText('Chattanooga, Carla')).not.toBeInTheDocument();
+    });
   });
 
   describe('Filter Expansion Screen Reader Announcements', () => {

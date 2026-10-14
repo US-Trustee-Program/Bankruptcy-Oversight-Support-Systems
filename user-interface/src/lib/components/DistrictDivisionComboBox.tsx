@@ -99,12 +99,19 @@ function computeAllowListDefaults(
   return allOptions.filter((opt) => !parseDivisionOptionValue(opt.value).isAll);
 }
 
-function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
-  const userCodes = getUserDivisionCodes(LocalStorage.getSession());
+// The user's codes must be derived with the same flag that built allOptions. Options are keyed on
+// ustDivisionCode when useUstDivisionCodeForOptions is set, and a user's office carries both
+// codes, so deriving the default from the wrong one picks the sibling division sharing the ACMS
+// code — a Winchester user defaulting to Chattanooga. See CAMS-936 and cams-x54pm.1.
+function computeUserOfficeDefaults(
+  allOptions: ComboOption[],
+  useUstDivisionCode: boolean,
+): ComboOption[] {
+  const userCodes = getUserDivisionCodes(LocalStorage.getSession(), useUstDivisionCode);
   if (userCodes.size === 0) return [];
   return allOptions.filter((opt) => {
-    const { code, isAll } = parseDivisionOptionValue(opt.value);
-    return !isAll && userCodes.has(code);
+    const { isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && userCodes.has(opt.value);
   });
 }
 
@@ -112,11 +119,12 @@ function computeDefaultOptions(
   allOptions: ComboOption[],
   initialDivisionCodes: string[] | undefined,
   divisionCodeAllowList: string[] | undefined,
+  useUstDivisionCode: boolean,
 ): ComboOption[] {
   if (initialDivisionCodes?.length)
     return computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
   if (divisionCodeAllowList) return computeAllowListDefaults(allOptions, divisionCodeAllowList);
-  return computeUserOfficeDefaults(allOptions);
+  return computeUserOfficeDefaults(allOptions, useUstDivisionCode);
 }
 
 const DistrictDivisionComboBox_ = (
@@ -189,6 +197,7 @@ const DistrictDivisionComboBox_ = (
           allOptions,
           initialDivisionCodes,
           divisionCodeAllowList,
+          useUstDivisionCodeForOptions,
         );
         applyDefaults(defaults);
         const defaultOptionValues = new Set(defaults.map((d) => d.value));

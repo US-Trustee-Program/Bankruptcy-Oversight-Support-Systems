@@ -33,6 +33,47 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
   return courtDivisions;
 }
 
+/**
+ * The two division code spaces a division can be identified by.
+ *
+ * `divisionCode` is DXTR's CS_DIV_ACMS — the code CAMS has always stored on cases and embedded in
+ * caseId prefixes. `ustDivisionCode` is the bare CS_DIV, which is unique within a court where the
+ * ACMS code is not: in court 0649, Chattanooga and Winchester both carry ACMS 491, and Greeneville
+ * and Johnson City both carry 492. See CAMS-936.
+ */
+export type DivisionCodes = {
+  divisionCode?: string;
+  ustDivisionCode?: string;
+};
+
+/**
+ * Picks which of a division's two codes identifies it, for callers that must agree on one.
+ *
+ * A screen keys on `ustDivisionCode` when the data it filters stores that code — trustee
+ * appointments do. It keys on `divisionCode` when the data stores ACMS, as cases and case search
+ * do. The rule lives here because every place that builds an identity has to make the same choice:
+ * combobox option values, "All" expansion, encoded selections and the user's default selection all
+ * have to produce the same code for the same division, or a user's office silently matches a
+ * sibling division sharing its ACMS code.
+ */
+export function toDivisionCode(
+  codes: DivisionCodes,
+  useUstDivisionCode: boolean,
+): string | undefined {
+  return useUstDivisionCode ? (codes.ustDivisionCode ?? codes.divisionCode) : codes.divisionCode;
+}
+
+/** `toDivisionCode` for the flattened shape, where the ACMS code is named courtDivisionCode. */
+export function toCourtDivisionCode(
+  court: Pick<CourtDivisionDetails, 'courtDivisionCode' | 'ustDivisionCode'>,
+  useUstDivisionCode: boolean,
+): string {
+  return toDivisionCode(
+    { divisionCode: court.courtDivisionCode, ustDivisionCode: court.ustDivisionCode },
+    useUstDivisionCode,
+  )!;
+}
+
 export type CourtDivisionDetails = {
   officeName: string;
   officeCode: string;
