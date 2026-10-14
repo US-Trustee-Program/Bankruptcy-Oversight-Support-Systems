@@ -602,6 +602,11 @@ async function upsertMatchVerification(
       inactiveAppointmentStatus,
       appointedDate: event.appointedDate,
       acmsProfessionalId,
+      // Verifications created before ustDivisionCode existed have no value to spread. Without
+      // this, resolveCourtName falls back to the ACMS prefix in caseId, which is shared by the
+      // divisions this field exists to tell apart — a pending Winchester verification displays
+      // as Chattanooga. Only backfills the field; never overwrites an existing one. See CAMS-936.
+      ustDivisionCode: existing.ustDivisionCode ?? event.ustDivisionCode,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });

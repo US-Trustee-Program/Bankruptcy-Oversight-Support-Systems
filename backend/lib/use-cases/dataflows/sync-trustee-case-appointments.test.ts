@@ -1921,6 +1921,143 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(scenarioDistribution.autoMatchCount).toBe(0);
       });
+
+      // caseDivisionCodeForMatching feeds two call sites, and the four tests above only drive
+      // the first (isAppointmentMatch). Changing the findInactivePerfectMatch argument to
+      // event.courtDivisionCode left all 544 tests in this file and trustee-match.helpers.test.ts
+      // passing, so the inactive path had no guard at all.
+      test('passes syncedCase.ustDivisionCode as the division argument to findInactivePerfectMatch', async () => {
+        // A perfect match auto-links and returns before the inactive check, so the active match
+        // has to miss for execution to reach findInactivePerfectMatch at all.
+        (trusteeMatchHelpers.isAppointmentMatch as ReturnType<typeof vi.fn>).mockReturnValue(false);
+        const inactiveSpy = vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch');
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(inactiveSpy).toHaveBeenCalledWith(expect.any(Array), '0649', '494', '7');
+      });
+
+      // The Winchester case must reach the inactive-perfect-match path on the strength of the
+      // appointment's bare 494. Matching on the event's ACMS 491 finds nothing and the case falls
+      // through to ImperfectMatch, putting a verification in the review queue that should not
+      // be there.
+      test('takes the inactive-perfect-match path when only the bare ustDivisionCode matches', async () => {
+        (trusteeMatchHelpers.isAppointmentMatch as ReturnType<typeof vi.fn>).mockRestore();
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+        (
+          mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce([
+          {
+            id: 'appt-1',
+            trusteeId: 'trustee-123',
+            chapter: '7' as const,
+            appointmentType: 'panel' as const,
+            courtId: '0649',
+            divisionCodes: ['494'],
+            appointedDate: '2024-01-01',
+            status: 'suspended' as const,
+            effectiveDate: '2024-01-01',
+            createdOn: '2024-01-01T00:00:00.000Z',
+          } as TrusteeAppointment,
+        ]);
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
+        expect(scenarioDistribution.imperfectMatchCount).toBe(0);
+      });
+
+      // Only the new-document branch of upsertMatchVerification set ustDivisionCode; the
+      // existing-document branch spread ...existing and never added it. A verification already
+      // pending from before the field existed therefore kept resolving its court name from the
+      // ACMS prefix in caseId, which Chattanooga and Winchester share — so a Winchester case
+      // showed up in the review queue labelled Chattanooga, and re-syncing never corrected it.
+      // Reaching the existing-document branch takes more than re-syncing the case:
+      // handleVerificationBucketHit short-circuits a pending bucket entry into a surrogate write
+      // and returns before any verification upsert. The branch is only reached when a
+      // TRUSTEE_VARIATION already maps the variant to a trustee, which bypasses that check.
+      const resyncWithExistingVerification = async (
+        existingVerification: Record<string, unknown>,
+        variant: string,
+      ) => {
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { variant, trusteeId: 'trustee-123' },
+        ]);
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          existingVerification,
+        ]);
+        (trusteeMatchHelpers.isAppointmentMatch as ReturnType<typeof vi.fn>).mockReturnValue(false);
+        (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mockClear();
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeWinchesterEvent('0649-24-12345'), ustDivisionCode: '494' }],
+        );
+      };
+
+      // First pass creates the document, so these tests use the real fingerprint and variant
+      // rather than guessing at them.
+      const createVerification = async () => {
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValue({
+          kind: 'no-match',
+        });
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeWinchesterEvent('0649-24-12345'), ustDivisionCode: '494' }],
+        );
+        return (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
+          .calls[0][0];
+      };
+
+      test('backfills ustDivisionCode onto a verification created before the field existed', async () => {
+        const created = await createVerification();
+        expect(created.ustDivisionCode).toBe('494');
+
+        const { ustDivisionCode: _dropped, ...preMigration } = created;
+        await resyncWithExistingVerification(preMigration, created.variant);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: '0649-24-12345', ustDivisionCode: '494' }),
+        );
+      });
+
+      // The field identifies the case's division, so a later event must not be able to rewrite
+      // it — the spread only fills the gap when there is nothing to preserve.
+      test('does not overwrite a ustDivisionCode already on the verification', async () => {
+        const created = await createVerification();
+
+        await resyncWithExistingVerification(
+          { ...created, ustDivisionCode: '495' },
+          created.variant,
+        );
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ ustDivisionCode: '495' }),
+        );
+      });
     });
 
     test('should auto-link a fuzzy-scoring clear winner whose appointment matches court/division/chapter', async () => {
