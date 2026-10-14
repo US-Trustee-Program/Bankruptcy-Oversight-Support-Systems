@@ -163,9 +163,16 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 
   if (failedResults.length > 0) {
     logger.warn(MODULE_NAME, `${failedResults.length} cases failed to backfill.`);
-    const failedEvents: BackfillRetryMessage[] = failedResults.map((r) => {
-      const original = cases.find((c) => c.caseId === r.caseId)!;
-      return { ...original, lastErrorMessage: r.error ?? 'Unknown error' };
+    const failedEvents: BackfillRetryMessage[] = failedResults.flatMap((r) => {
+      const original = cases.find((c) => c.caseId === r.caseId);
+      if (!original) {
+        logger.error(
+          MODULE_NAME,
+          `Could not find original case data for failed case ${r.caseId}; dropping from retry queue.`,
+        );
+        return [];
+      }
+      return [{ ...original, lastErrorMessage: r.error ?? 'Unknown error' }];
     });
     invocationContext.extraOutputs.set(DLQ, failedEvents);
   }

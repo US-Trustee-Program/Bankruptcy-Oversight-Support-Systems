@@ -9,30 +9,19 @@ import { isTooManyRequestsError } from '../../common-errors/too-many-requests-er
 import factory from '../../factory';
 import QueryBuilder from '../../query/query-builder';
 import { AppointmentUstDivisionCodeBackfillState } from '../gateways.types';
-import { MaybeData } from './queue-types';
+import {
+  BackfillWriteOptions,
+  BASE_DELAY_MS,
+  computeNextBackoffMs,
+  MaybeData,
+  SAFE_THRESHOLD_MS,
+  sleep,
+} from './queue-types';
 
 const MODULE_NAME = 'BACKFILL-APPOINTMENT-UST-DIVISION-CODES-USE-CASE';
 const STATE_DOCUMENT_TYPE = 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
 
 const { and, using } = QueryBuilder;
-
-const BASE_DELAY_MS = 30_000;
-const MAX_BACKOFF_MS = 10 * 60 * 1000;
-
-// Stays under the 01:00:00 functionTimeout in host.json, matching the sibling dataflows.
-const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
-  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
-}
-
-type BackfillWriteOptions = {
-  startedAt: number;
-  safeThresholdMs: number;
-  baseDelayMs: number;
-};
 
 type CourtDivisionMap = {
   acmsToUst: Map<string, string[]>;

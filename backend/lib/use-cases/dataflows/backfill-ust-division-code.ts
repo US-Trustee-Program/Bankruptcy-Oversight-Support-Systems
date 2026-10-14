@@ -6,30 +6,19 @@ import { isNotFoundError } from '../../common-errors/not-found-error';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
 import QueryBuilder from '../../query/query-builder';
-import { MaybeData } from './queue-types';
+import {
+  BackfillWriteOptions,
+  BASE_DELAY_MS,
+  computeNextBackoffMs,
+  MaybeData,
+  SAFE_THRESHOLD_MS,
+  sleep,
+} from './queue-types';
 import { UstDivisionCodeBackfillState } from '../gateways.types';
 
 const MODULE_NAME = 'BACKFILL-UST-DIVISION-CODE-USE-CASE';
 
 const { and, using } = QueryBuilder;
-
-const BASE_DELAY_MS = 30_000;
-const MAX_BACKOFF_MS = 10 * 60 * 1000;
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
-  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
-}
-
-// Stays under the 01:00:00 functionTimeout in host.json, matching the sibling dataflows.
-const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
-
-type BackfillWriteOptions = {
-  startedAt: number;
-  safeThresholdMs: number;
-  baseDelayMs: number;
-};
 
 type BackfillBatchResult = {
   results: BackfillResult[];
