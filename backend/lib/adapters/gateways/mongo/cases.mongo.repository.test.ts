@@ -25,6 +25,7 @@ import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
@@ -1277,6 +1278,35 @@ describe('Cases repository', () => {
       const result = await repo.markAsMoved(caseId1, '222-22-22222', '2024-01-15');
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('setUstDivisionCode', () => {
+    test('should update only the document matching _id and caseId', async () => {
+      const updateOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+      const doc = using<SyncedCase & { _id: string }>();
+
+      await repo.setUstDivisionCode('65f1c0ffee0000000000abcd', '491-25-12345', '494');
+
+      expect(updateOneSpy).toHaveBeenCalledWith(
+        QueryBuilder.and(
+          doc('_id').equals('65f1c0ffee0000000000abcd'),
+          doc('caseId').equals('491-25-12345'),
+        ),
+        { ustDivisionCode: '494' },
+      );
+    });
+
+    test('should preserve a TooManyRequestsError from the adapter', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new TooManyRequestsError('TEST'),
+      );
+
+      await expect(
+        repo.setUstDivisionCode('65f1c0ffee0000000000abcd', '491-25-12345', '494'),
+      ).rejects.toBeInstanceOf(TooManyRequestsError);
     });
   });
 

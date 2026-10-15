@@ -537,6 +537,94 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('findVerificationsMissingUstDivisionCode', () => {
+    test('should query pending documents with ustDivisionCode absent, no lastId', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.findVerificationsMissingUstDivisionCode(null, 10);
+
+      expect(result).toEqual([sampleVerification]);
+      const queryStr = JSON.stringify(
+        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
+      );
+      expect(queryStr).toContain('ustDivisionCode');
+      expect(queryStr).toContain('pending');
+    });
+
+    // The field only drives how a pending verification's division reads in the review queue, so
+    // a resolved or dismissed one has nothing left to correct and must not be rewritten.
+    test('should not select verifications that are no longer pending', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsMissingUstDivisionCode(null, 10);
+
+      const queryStr = JSON.stringify(
+        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
+      );
+      expect(queryStr).toContain('"status"');
+    });
+
+    // Only courts whose ustDivisionCode diverges from courtDivisionCode have anything to correct;
+    // scanning every court's pending verifications would read every synced case for nothing.
+    test('should only select verifications in courts that emit a bare ustDivisionCode', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsMissingUstDivisionCode(null, 10);
+
+      const query = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
+        .calls[0][0];
+      expect(query.values).toContainEqual(
+        QueryBuilder.using<TrusteeMatchVerification>()('courtId').contains(['0649']),
+      );
+    });
+
+    test('should include _id greaterThan condition when lastId is provided', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsMissingUstDivisionCode('last-mongo-id', 5);
+
+      const queryStr = JSON.stringify(
+        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
+      );
+      expect(queryStr).toContain('last-mongo-id');
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.findVerificationsMissingUstDivisionCode(null, 10)).rejects.toThrow(
+        'Failed to find trustee match verifications missing ustDivisionCode.',
+      );
+    });
+  });
+
+  describe('updateVerificationUstDivisionCode', () => {
+    test('should call updateOne with _id query and ustDivisionCode update', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue(undefined);
+
+      await repository.updateVerificationUstDivisionCode('mongo-id-123', '494');
+
+      expect(MongoCollectionAdapter.prototype.updateOne).toHaveBeenCalledWith(
+        expect.objectContaining({ condition: 'EQUALS' }),
+        expect.objectContaining({ ustDivisionCode: '494' }),
+      );
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new Error('Update failed'),
+      );
+
+      await expect(
+        repository.updateVerificationUstDivisionCode('mongo-id-123', '494'),
+      ).rejects.toThrow(
+        'Failed to update ustDivisionCode on trustee match verification mongo-id-123.',
+      );
+    });
+  });
+
   describe('updateManyByQuery', () => {
     test('should call updateMany and return the result', async () => {
       const updateResult = { modifiedCount: 3, upsertedCount: 0, matchedCount: 3 };

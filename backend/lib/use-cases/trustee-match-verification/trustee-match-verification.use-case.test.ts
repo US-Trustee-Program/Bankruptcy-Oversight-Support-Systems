@@ -226,6 +226,71 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBe('Test Court - Other Division');
     });
 
+    test('resolves courtName by persisted ustDivisionCode, not the ACMS caseId prefix shared with a sibling division', async () => {
+      // Winchester's caseId uses the shared ACMS prefix 491, same as Chattanooga's — only the
+      // persisted ustDivisionCode (494) distinguishes them.
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          caseId: '491-24-12345',
+          courtId: '0649',
+          ustDivisionCode: '494',
+        },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Chattanooga',
+          officeCode: '491',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'CN',
+          regionId: '4',
+          regionName: 'Region 4',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '494',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'WI',
+          regionId: '4',
+          regionName: 'Region 4',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Eastern District of Tennessee - Winchester');
+    });
+
+    test('falls back to the ACMS caseId prefix when ustDivisionCode is absent (pre-CAMS-936 documents)', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: '491-24-12345', courtId: '0649' },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Chattanooga',
+          officeCode: '491',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'CN',
+          regionId: '4',
+          regionName: 'Region 4',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Eastern District of Tennessee - Chattanooga');
+    });
+
     test('selects the highest-scoring candidate as preselectedCandidate for AmbiguousMatchUnresolved', async () => {
       mockSearch.mockResolvedValue([
         { ...sampleVerification, mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED' },

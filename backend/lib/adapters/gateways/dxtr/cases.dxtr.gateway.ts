@@ -12,7 +12,11 @@ import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
-import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
+import {
+  decomposeCaseId,
+  parseTransactionDate,
+  ustDivisionCodeSelect,
+} from './dxtr.gateway.helper';
 import { formatCityStateZipCountry, removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
@@ -25,10 +29,9 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
-const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
+export const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
 
-const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
-  const raw = process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS;
+export function parseTrusteeAppointmentsRequestTimeoutMs(raw: string | undefined): number {
   if (!raw) return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -38,7 +41,11 @@ const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
     return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   }
   return parsed;
-})();
+}
+
+const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = parseTrusteeAppointmentsRequestTimeoutMs(
+  process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+);
 
 export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;
@@ -82,6 +89,7 @@ type TrusteeAppointmentEventRecord = {
   courtId: string;
   chapter?: string;
   courtDivisionCode?: string;
+  ustDivisionCode?: string;
   groupDesignator?: string;
   firstName?: string;
   middleName?: string;
@@ -194,6 +202,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -407,6 +416,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const CASE_SEARCH_SELECT = `
       SELECT
       cs_div.CS_DIV_ACMS as courtDivisionCode,
+      ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
@@ -746,6 +756,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -1359,6 +1370,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
+        ${ustDivisionCodeSelect('CS_DIV')} AS ustDivisionCode,
         C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
@@ -1436,6 +1448,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
+        ustDivisionCode: record.ustDivisionCode,
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,

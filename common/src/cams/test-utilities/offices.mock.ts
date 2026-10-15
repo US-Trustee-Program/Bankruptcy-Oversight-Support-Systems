@@ -36,6 +36,7 @@ function buildMockOfficesFromCourtDivisions(
     }
     region.groups.get(div.groupDesignator)!.divisions.push({
       divisionCode: div.courtDivisionCode,
+      ustDivisionCode: div.ustDivisionCode,
       court: { courtId: div.courtId, courtName: div.courtName, state: div.state },
       courtOffice: { courtOfficeCode: div.officeCode, courtOfficeName: div.officeName },
     });

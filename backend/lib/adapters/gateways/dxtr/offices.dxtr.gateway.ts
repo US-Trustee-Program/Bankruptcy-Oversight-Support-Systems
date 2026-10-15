@@ -7,6 +7,7 @@ import { OfficesGateway } from '../../../use-cases/offices/offices.types';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpDivision, UstpGroup, UstpOfficeDetails } from '@common/cams/offices';
 import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offices';
+import { ustDivisionCodeSelect } from './dxtr.gateway.helper';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
@@ -16,6 +17,7 @@ type DxtrFlatOfficeDetails = {
   courtId: string;
   courtName: string;
   courtDivisionCode: string;
+  ustDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;
@@ -57,6 +59,7 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
 
     const division: UstpDivision = {
       divisionCode: flatOffice.courtDivisionCode,
+      ustDivisionCode: flatOffice.ustDivisionCode,
       court: {
         courtId: flatOffice.courtId,
         courtName: flatOffice.courtName,
@@ -85,6 +88,7 @@ export default class OfficesDxtrGateway extends AbstractMssqlClient implements O
   async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const query = `
     SELECT a.[CS_DIV_ACMS] AS courtDivisionCode
+      ,${ustDivisionCodeSelect('a')} AS ustDivisionCode
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode

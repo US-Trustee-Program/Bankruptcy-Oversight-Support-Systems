@@ -19,6 +19,7 @@ export type UstpGroup = {
 
 export type UstpDivision = {
   divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
+  ustDivisionCode?: string; // DXTR AO_CS_DIV.CS_DIV (bare), diverges from divisionCode for a handful of divisions
   court: Court;
   courtOffice: CourtOffice;
 };

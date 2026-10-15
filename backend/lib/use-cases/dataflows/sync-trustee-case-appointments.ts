@@ -602,6 +602,11 @@ async function upsertMatchVerification(
       inactiveAppointmentStatus,
       appointedDate: event.appointedDate,
       acmsProfessionalId,
+      // Verifications created before ustDivisionCode existed have no value to spread. Without
+      // this, resolveCourtName falls back to the ACMS prefix in caseId, which is shared by the
+      // divisions this field exists to tell apart — a pending Winchester verification displays
+      // as Chattanooga. Only backfills the field; never overwrites an existing one. See CAMS-936.
+      ustDivisionCode: existing.ustDivisionCode ?? event.ustDivisionCode,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -611,6 +616,7 @@ async function upsertMatchVerification(
         documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
         caseId: event.caseId,
         courtId: event.courtId,
+        ustDivisionCode: event.ustDivisionCode,
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,
@@ -1071,6 +1077,7 @@ async function resolveByScoring(
     deps.context,
     event,
     candidateTrusteeIds,
+    syncedCase.ustDivisionCode,
   );
 
   switch (scoringOutcome.kind) {
@@ -1169,9 +1176,18 @@ async function applyMatchOutcome(
   const { deps, event, fingerprint, variant, audit } = ctx;
   const { context } = deps;
   const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
+  // The case's ustDivisionCode (bare CS_DIV), not event.courtDivisionCode (CS_DIV_ACMS) — see
+  // CaseMatchContext's doc comment in trustee-match.helpers.ts. Falls back to courtDivisionCode
+  // for cases outside Eastern District of TN or not yet backfilled.
+  const caseDivisionCodeForMatching = syncedCase.ustDivisionCode ?? event.courtDivisionCode;
 
   if (
-    isAppointmentMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
+    isAppointmentMatch(
+      trusteeAppointments,
+      event.courtId,
+      caseDivisionCodeForMatching,
+      event.chapter,
+    )
   ) {
     const dlqFailure = await autoLinkTrustee(
       ctx,
@@ -1185,7 +1201,7 @@ async function applyMatchOutcome(
   const inactiveMatch = findInactivePerfectMatch(
     trusteeAppointments,
     event.courtId,
-    event.courtDivisionCode,
+    caseDivisionCodeForMatching,
     event.chapter,
   );
 
@@ -1199,7 +1215,12 @@ async function applyMatchOutcome(
   const candidateScore = calculateCandidateScore(
     context,
     event.dxtrTrustee,
-    { courtId: event.courtId, courtDivisionCode: event.courtDivisionCode, chapter: event.chapter },
+    {
+      courtId: event.courtId,
+      courtDivisionCode: event.courtDivisionCode,
+      ustDivisionCode: syncedCase.ustDivisionCode,
+      chapter: event.chapter,
+    },
     trustee,
     trusteeAppointments,
     nameScore,

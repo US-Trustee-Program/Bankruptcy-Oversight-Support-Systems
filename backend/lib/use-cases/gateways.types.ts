@@ -445,6 +445,7 @@ export interface CasesRepository extends Releasable {
   getCaseOrMovedCase(caseId: string): Promise<SyncedCase | null>;
   markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
   updateManyByQuery: <T>(query: Query<T>, update: object) => Promise<UpdateResult>;
+  setUstDivisionCode(_id: string, caseId: string, ustDivisionCode: string): Promise<void>;
   findByCursor: <T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
@@ -778,7 +779,9 @@ export type RuntimeStateDocumentType =
   | 'ZOOM_CSV_IMPORT_STATE'
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
-  | 'ACS_BOUNCE_POLL_STATE';
+  | 'ACS_BOUNCE_POLL_STATE'
+  | 'UST_DIVISION_CODE_BACKFILL_STATE'
+  | 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -826,6 +829,35 @@ export type CaseAppointmentDateBackfillState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type UstDivisionCodeBackfillState = RuntimeState & {
+  documentType: 'UST_DIVISION_CODE_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status:
+    'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_SKIPS' | 'COMPLETED_WITH_FAILURES' | 'FAILED';
+};
+
+export type AppointmentUstDivisionCodeBackfillState = RuntimeState & {
+  documentType: 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
+  lastId: string | null;
+  // Only appointments last updated before this ISO timestamp are remapped; later ones were
+  // saved with ustDivisionCode-valued picker options and must not be reinterpreted.
+  cutoff: string;
+  dryRun: boolean;
+  processedCount: number;
+  // In a dry run, the number that would have been updated.
+  updatedCount: number;
+  ambiguousCount: number;
+  failedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_FAILURES';
 };
 
 export type MigrateCaseAppointmentsState = RuntimeState & {
@@ -989,6 +1021,11 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
     limit: number,
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  findVerificationsMissingUstDivisionCode(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
+  updateVerificationUstDivisionCode(mongoId: string, ustDivisionCode: string): Promise<void>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 

@@ -8,6 +8,7 @@ import {
   transformTrusteeRecord,
   transformAppointmentRecord,
   applyAppointmentOverrides,
+  detectAmbiguousFlagTrustees,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { AppointmentStatus, AppointmentType } from '@common/cams/trustees';
@@ -1048,6 +1049,82 @@ describe('ATS Mappings', () => {
       expect(result.chapter).toBe('12');
       expect(result.appointmentType).toBe('case-by-case');
       expect(result.status).toBe('inactive');
+    });
+  });
+
+  describe('detectAmbiguousFlagTrustees', () => {
+    const makeTrustee = (
+      id: number,
+      dispOnWeb?: string,
+      dispOnWebA2?: string,
+    ): AtsTrusteeRecord => ({
+      ID: id,
+      FIRST_NAME: `First${id}`,
+      LAST_NAME: `Last${id}`,
+      STREET: `${id} Main St`,
+      CITY: 'City',
+      STATE: 'TX',
+      ZIP: '77001',
+      STREET_A2: `${id} Alt Ave`,
+      CITY_A2: 'AltCity',
+      STATE_A2: 'TX',
+      ZIP_A2: '77002',
+      DISP_ON_WEB: dispOnWeb,
+      DISP_ON_WEB_A2: dispOnWebA2,
+    });
+
+    test('should detect trustees where both flags are y', () => {
+      const trustees = [makeTrustee(1, 'y', 'y'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('y');
+      expect(result[0].dispOnWebA2).toBe('y');
+    });
+
+    test('should detect trustees where both flags are N', () => {
+      const trustees = [makeTrustee(1, 'N', 'N'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('N');
+      expect(result[0].dispOnWebA2).toBe('N');
+    });
+
+    test('should treat flag comparison as case-insensitive', () => {
+      const trustees = [makeTrustee(1, 'Y', 'Y'), makeTrustee(2, 'n', 'n')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(2);
+      expect(result[0].dispOnWeb).toBe('Y');
+      expect(result[1].dispOnWeb).toBe('n');
+    });
+
+    test('should include trustee name and both address sets in result', () => {
+      const trustees = [makeTrustee(5, 'y', 'y')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result[0].name).toBe('First5 Last5');
+      expect(result[0].address).toMatchObject({ street: '5 Main St', city: 'City' });
+      expect(result[0].addressA2).toMatchObject({ street: '5 Alt Ave', city: 'AltCity' });
+    });
+
+    test('should return empty array when no ambiguous trustees exist', () => {
+      const trustees = [makeTrustee(1, 'y', 'N'), makeTrustee(2, 'N', 'y')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should return empty array when flags are absent', () => {
+      const trustees = [makeTrustee(1, undefined, undefined)];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should detect trustees with unexpected non-y/n flag values', () => {
+      const trustees = [makeTrustee(1, 'yes', 'N'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('yes');
     });
   });
 });

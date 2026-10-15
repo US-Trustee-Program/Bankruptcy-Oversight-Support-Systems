@@ -460,6 +460,14 @@ type TrusteeAppointmentLike = {
   status?: string;
 };
 
+type CaseAppointmentLike = {
+  id?: string;
+  documentType?: string;
+  caseId?: string;
+  trusteeId?: string;
+  assignedOn?: string;
+};
+
 type CandidateScoreLike = {
   trusteeId?: string;
   trusteeName?: string;
@@ -485,6 +493,7 @@ type SeedOperationLike = {
   data?: Array<
     | CaseLike
     | TrusteeAppointmentLike
+    | CaseAppointmentLike
     | TrusteeMatchVerificationLike
     | { trusteeId?: string; id?: string }
   >;
@@ -671,6 +680,32 @@ export const validators = {
       throw new Error(
         `${context}: appointment "${id}" missing divisionCode/divisionCodes — at least one division must be specified`,
       );
+    }
+  },
+
+  /**
+   * Validates that a CASE_APPOINTMENT document (case-trustee-appointments /
+   * trustee-case-appointments collections) has the minimum fields needed to link a case to a
+   * trustee.
+   * @param appt - The case appointment document to validate
+   * @param context - Context string for error messages
+   * @throws Error if validation fails with specific issue description
+   */
+  assertCaseAppointmentValid(appt: CaseAppointmentLike | null | undefined, context: string): void {
+    if (!appt) return;
+
+    const id = appt.id || 'unknown';
+
+    if (!appt.caseId) {
+      throw new Error(`${context}: case appointment "${id}" missing caseId`);
+    }
+
+    if (!appt.trusteeId) {
+      throw new Error(`${context}: case appointment "${id}" missing trusteeId`);
+    }
+
+    if (!appt.assignedOn) {
+      throw new Error(`${context}: case appointment "${id}" missing assignedOn`);
     }
   },
 
@@ -899,6 +934,26 @@ export const validators = {
           const apptId = apptDoc.id || 'unknown';
           try {
             validators.assertTrusteeAppointmentValid(apptDoc, `TrusteeAppointment ${apptId}`);
+          } catch (e) {
+            errors.push((e as Error).message);
+          }
+        }
+      }
+
+      // Validate case-trustee-appointments / trustee-case-appointments collections
+      // (CASE_APPOINTMENT documents — both are the same logical doc written to two partitions)
+      if (
+        op.collectionOrTable === 'case-trustee-appointments' ||
+        op.collectionOrTable === 'trustee-case-appointments'
+      ) {
+        for (const doc of op.data) {
+          const apptDoc = doc as CaseAppointmentLike;
+
+          if (apptDoc.documentType !== 'CASE_APPOINTMENT') continue;
+
+          const apptId = apptDoc.id || 'unknown';
+          try {
+            validators.assertCaseAppointmentValid(apptDoc, `CaseAppointment ${apptId}`);
           } catch (e) {
             errors.push((e as Error).message);
           }

@@ -1,5 +1,5 @@
 import { usStates } from '@common/cams/us-states';
-import { CourtDivisionDetails } from '@common/cams/courts';
+import { CourtDivisionDetails, toCourtDivisionCode, toDivisionCode } from '@common/cams/courts';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { caseInsensitiveCompare } from '@common/string-helper';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -315,6 +315,7 @@ interface DivisionOption {
  */
 export function getDistrictDivisionComboOptions(
   courts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): { value: string; label: string; selectedLabel?: string }[] {
   const districtMap = groupDivisionsByDistrict(courts);
   const uniqueDistricts = sortByCourtLocation(
@@ -337,8 +338,12 @@ export function getDistrictDivisionComboOptions(
     }
 
     for (const div of divisions) {
+      // Trustee-appointment divisionCodes are stored in ustDivisionCode (bare CS_DIV) for
+      // divisions like Winchester/Chattanooga that share a courtDivisionCode (CS_DIV_ACMS) —
+      // see CAMS-936. Case identity/search still key on courtDivisionCode, so this is opt-in.
+      const code = toCourtDivisionCode(div, useUstDivisionCode);
       options.push({
-        value: `${district.courtId}|${div.courtDivisionCode}`,
+        value: `${district.courtId}|${code}`,
         label: `${district.courtName} (${div.courtDivisionName})`,
         selectedLabel: `${district.courtName} (${div.courtDivisionName})`,
       });
@@ -409,7 +414,9 @@ export function getDivisionsForDistrict(
   const divisions = courts
     .filter((court) => court.courtId === courtId)
     .map((court) => ({
-      courtDivisionCode: court.courtDivisionCode,
+      // ustDivisionCode (bare CS_DIV) distinguishes divisions like Winchester/Chattanooga
+      // that share a courtDivisionCode (CS_DIV_ACMS) — see CAMS-936.
+      courtDivisionCode: court.ustDivisionCode ?? court.courtDivisionCode,
       courtDivisionName: court.courtDivisionName,
     }));
 
@@ -477,12 +484,25 @@ export function buildDivisionsDisplay(
   return 'Not specified';
 }
 
-export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
+/**
+ * Collects the divisions of the user's own offices, keyed the way combobox option values are
+ * (`${courtId}|${code}`) so a default can only ever match an option in the user's own court.
+ *
+ * `useUstDivisionCode` must match the flag the options were built with. A screen whose options are
+ * ACMS-keyed and whose defaults are ust-keyed (or the reverse) silently selects a sibling division
+ * that shares the ACMS code — a Winchester user getting Chattanooga. See CAMS-936 and cams-x54pm.1.
+ */
+export function getUserDivisionCodes(
+  session: CamsSession | null,
+  useUstDivisionCode = false,
+): Set<string> {
   const codes = new Set<string>();
   session?.user?.offices?.forEach((office) => {
     office.groups?.forEach((group) => {
       group.divisions?.forEach((division) => {
-        if (division.divisionCode) codes.add(division.divisionCode);
+        const code = toDivisionCode(division, useUstDivisionCode);
+        const courtId = division.court?.courtId;
+        if (code && courtId) codes.add(`${courtId}|${code}`);
       });
     });
   });
@@ -519,6 +539,7 @@ export function resolveCombinedSelections(
 export function autoUpgradeToAll(
   selections: ComboOption[],
   districts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): ComboOption[] {
   const allDivisionsByDistrict = new Map<string, Set<string>>();
   const courtNameById = new Map<string, string>();
@@ -527,7 +548,8 @@ export function autoUpgradeToAll(
       allDivisionsByDistrict.set(court.courtId, new Set());
       courtNameById.set(court.courtId, court.courtName);
     }
-    allDivisionsByDistrict.get(court.courtId)!.add(court.courtDivisionCode);
+    const code = toCourtDivisionCode(court, useUstDivisionCode);
+    allDivisionsByDistrict.get(court.courtId)!.add(code);
   }
 
   const selectedSpecificByDistrict = new Map<string, Set<string>>();
@@ -568,13 +590,16 @@ export function autoUpgradeToAll(
 export function encodeDivisionCodes(
   selectedDivisions: ComboOption[],
   courts: CourtDivisionDetails[],
+  useUstDivisionCode = false,
 ): string[] | undefined {
   if (selectedDivisions.length === 0) return undefined;
   const codes: string[] = [];
   for (const opt of selectedDivisions) {
     const [courtId, code] = opt.value.split('|');
     if (code === 'ALL') {
-      courts.filter((c) => c.courtId === courtId).forEach((c) => codes.push(c.courtDivisionCode));
+      courts
+        .filter((c) => c.courtId === courtId)
+        .forEach((c) => codes.push(toCourtDivisionCode(c, useUstDivisionCode)));
     } else {
       codes.push(code);
     }

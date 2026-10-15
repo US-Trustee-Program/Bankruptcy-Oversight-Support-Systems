@@ -304,7 +304,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const conflictingDivisionCode =
       conflictingAppointment.divisionCodes?.[0] || conflictingAppointment.divisionCode;
     const division = allCourts.find(
-      (c) => c.courtId === courtId && c.courtDivisionCode === conflictingDivisionCode,
+      (c) =>
+        c.courtId === courtId &&
+        (c.ustDivisionCode ?? c.courtDivisionCode) === conflictingDivisionCode,
     );
     const districtLabel =
       court && division ? `${court.courtName} (${division.courtDivisionName})` : '';

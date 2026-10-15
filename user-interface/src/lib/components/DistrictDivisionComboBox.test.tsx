@@ -204,6 +204,95 @@ describe('DistrictDivisionComboBox', () => {
       });
     });
 
+    // CAMS-936 / cams-x54pm.1. Winchester and Chattanooga share courtDivisionCode 491 and are
+    // told apart only by ustDivisionCode. The user's default has to be derived with the same flag
+    // that built the options, or the two disagree and the user's own office silently resolves to
+    // its sibling division — which also filters the screen's results to the wrong division.
+    describe('divisions sharing a courtDivisionCode', () => {
+      const easternTnCourts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Chattanooga',
+          officeCode: '491',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'CN',
+          regionId: '04',
+          regionName: 'Region 4',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '494',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'CN',
+          regionId: '04',
+          regionName: 'Region 4',
+        },
+      ];
+
+      function winchesterSession() {
+        const base = MockData.getCamsSession();
+        return {
+          ...base,
+          user: {
+            ...base.user,
+            offices: [
+              {
+                officeCode: '494',
+                officeName: 'Winchester',
+                idpGroupName: 'Winchester',
+                regionId: '04',
+                regionName: 'Region 4',
+                groups: [
+                  {
+                    groupDesignator: 'CN',
+                    divisions: [
+                      {
+                        divisionCode: '491',
+                        ustDivisionCode: '494',
+                        court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+                        courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        };
+      }
+
+      beforeEach(() => {
+        vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+          data: easternTnCourts,
+          meta: { self: '' },
+        });
+        vi.spyOn(LocalStorage, 'getSession').mockReturnValue(winchesterSession());
+      });
+
+      test('defaults a Winchester user to Winchester when options are ustDivisionCode-keyed', async () => {
+        const onDivisionCodesChange = vi.fn();
+        renderComboBoxWithProps({ onDivisionCodesChange, useUstDivisionCodeForOptions: true });
+        await waitFor(() => {
+          expect(onDivisionCodesChange).toHaveBeenCalledWith(['494']);
+        });
+      });
+
+      test('defaults a Winchester user to the ACMS code when options are courtDivisionCode-keyed', async () => {
+        const onDivisionCodesChange = vi.fn();
+        renderComboBoxWithProps({ onDivisionCodesChange });
+        await waitFor(() => {
+          expect(onDivisionCodesChange).toHaveBeenCalledWith(['491']);
+        });
+      });
+    });
+
     test('does not apply user defaults when initialDivisionCodes already provided', async () => {
       const session = {
         ...MockData.getCamsSession(),

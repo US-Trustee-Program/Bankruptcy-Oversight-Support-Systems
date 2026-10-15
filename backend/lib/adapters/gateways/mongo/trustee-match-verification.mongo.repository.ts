@@ -8,6 +8,7 @@ import {
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
+import { UST_DIVISION_CODE_COURT_IDS } from '@common/cams/courts';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
@@ -157,6 +158,7 @@ export class TrusteeMatchVerificationMongoRepository
         'documentType',
         'caseId',
         'courtId',
+        'ustDivisionCode',
         'courtName',
         'dxtrTrustee',
         'mismatchReason',
@@ -241,6 +243,52 @@ export class TrusteeMatchVerificationMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verifications missing taskDate.',
+      });
+    }
+  }
+
+  /**
+   * Pending verifications written before ustDivisionCode existed. Resolved ones are left alone:
+   * the field only drives how a pending verification's division is displayed in the review
+   * queue, so there is nothing to correct once it has left that queue. Limited to the courts that
+   * emit a bare ustDivisionCode; everywhere else it equals the ACMS caseId prefix already used.
+   */
+  async findVerificationsMissingUstDivisionCode(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const doc = using<VerificationQueryable>();
+      const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('courtId').contains(UST_DIVISION_CODE_COURT_IDS),
+        doc('status').equals('pending'),
+        doc('ustDivisionCode').notExists(),
+      ];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<VerificationQueryable>(['_id', 'ASCENDING']);
+      return await this.getAdapter<VerificationQueryable>().find(query, sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee match verifications missing ustDivisionCode.',
+      });
+    }
+  }
+
+  async updateVerificationUstDivisionCode(mongoId: string, ustDivisionCode: string): Promise<void> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const query = using<VerificationQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<VerificationQueryable>().updateOne(query, {
+        ustDivisionCode,
+      } as Partial<VerificationQueryable>);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update ustDivisionCode on trustee match verification ${mongoId}.`,
       });
     }
   }

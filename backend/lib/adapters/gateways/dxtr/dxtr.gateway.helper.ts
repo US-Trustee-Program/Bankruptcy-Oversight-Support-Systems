@@ -1,6 +1,7 @@
 import { DxtrTransactionRecord } from '../../types/cases';
 import { getDate } from '../../utils/date-helper';
 import { CamsError } from '../../../common-errors/cams-error';
+import { UST_DIVISION_CODE_COURT_IDS } from '@common/cams/courts';
 
 const MODULE_NAME = 'DXTR-GATEWAY-HELPER';
 
@@ -51,4 +52,17 @@ export function decomposeCaseId(caseId: string) {
   const courtDiv = caseId.slice(0, 3);
   const dxtrCaseId = caseId.slice(4);
   return { courtDiv, dxtrCaseId };
+}
+
+/**
+ * Builds the SELECT expression for `ustDivisionCode`, given the alias a query uses for
+ * AO_CS_DIV. Every DXTR query that emits ustDivisionCode must use this so the court scoping
+ * lives in exactly one place.
+ */
+export function ustDivisionCodeSelect(divisionAlias: string): string {
+  const courtIds = UST_DIVISION_CODE_COURT_IDS.map((courtId) => `'${courtId}'`).join(', ');
+  return (
+    `CASE WHEN ${divisionAlias}.COURT_ID IN (${courtIds}) ` +
+    `THEN ${divisionAlias}.CS_DIV ELSE ${divisionAlias}.CS_DIV_ACMS END`
+  );
 }

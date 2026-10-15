@@ -1,5 +1,6 @@
 import {
   CaseDetail,
+  getCaseBasics,
   getCaseConsolidationType,
   getCaseIdParts,
   getCaseNumber,
@@ -264,5 +265,55 @@ describe('SearchMetadata types', () => {
     };
     const syncedCaseWithMeta: SyncedCase = { ...syncedCase, searchMetadata: metadata };
     expect(syncedCaseWithMeta.searchMetadata?.matchScore).toBe(10000);
+  });
+
+  describe('getCaseBasics', () => {
+    // Sourcery finding on PR #3136: getCaseBasics reconstructs its return value field-by-field
+    // and omitted ustDivisionCode, so any case projected through it (CaseSummary/CaseDetail ->
+    // CaseBasics) silently lost the UST division identity CAMS-936 added, leaving callers with
+    // only the ambiguous courtDivisionCode. The manual field-by-field reconstruction pattern can
+    // drop any of its ~9 conditionally-copied optional fields the same way, so this covers all
+    // of them, not just the one that was already caught.
+    const optionalFieldOverrides = {
+      ustDivisionCode: '494',
+      state: 'TN',
+      caseNumber: '23-00001',
+      petitionCode: 'VP',
+      petitionLabel: 'Voluntary Petition',
+      debtorTypeCode: 'IC',
+      debtorTypeLabel: 'Individual Consumer',
+      assignments: [
+        {
+          documentType: 'ASSIGNMENT' as const,
+          caseId: '091-23-00001',
+          userId: 'user-1',
+          name: 'Jane Attorney',
+          role: 'TrialAttorney',
+          assignedOn: '2023-01-01T00:00:00.000Z',
+          updatedOn: '2023-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Jane Attorney' },
+        },
+      ],
+      leadTrialAttorney: { id: 'user-1', name: 'Jane Attorney' },
+    };
+
+    test('preserves every optional field when present', () => {
+      const caseSummary = MockData.getCaseSummary({ override: optionalFieldOverrides });
+      const result = getCaseBasics(caseSummary);
+      for (const [key, value] of Object.entries(optionalFieldOverrides)) {
+        expect(result[key as keyof typeof result]).toEqual(value);
+      }
+    });
+
+    test('omits every optional field when absent', () => {
+      const allUndefined = Object.fromEntries(
+        Object.keys(optionalFieldOverrides).map((key) => [key, undefined]),
+      );
+      const caseSummary = MockData.getCaseSummary({ override: allUndefined });
+      const result = getCaseBasics(caseSummary);
+      for (const key of Object.keys(optionalFieldOverrides)) {
+        expect(result).not.toHaveProperty(key);
+      }
+    });
   });
 });

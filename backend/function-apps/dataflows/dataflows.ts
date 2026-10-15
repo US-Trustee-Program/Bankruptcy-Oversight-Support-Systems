@@ -6,6 +6,8 @@ import CaseClosedEvent from './events/case-closed-event';
 import TrusteeChangeNotificationEvent from './events/trustee-change-notification-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
+import BackfillUstDivisionCode from './migrations/backfill-ust-division-code';
+import BackfillAppointmentUstDivisionCodes from './migrations/backfill-appointment-ust-division-codes';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
@@ -35,6 +37,7 @@ import TrusteeVerificationRemap from './trustee-verification-remap';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
+import BackfillVerificationUstDivisionCode from './migrations/backfill-verification-ust-division-code';
 import BackfillUnassignedOn from './migrations/backfill-unassigned-on';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
@@ -101,9 +104,11 @@ const dataflows = new DataflowSetupMap();
 dotenv.config();
 
 dataflows.register(
+  BackfillAppointmentUstDivisionCodes,
   BackfillPhoneticTokens,
   BackfillCaseAppointmentDates,
   BackfillTrusteePhoneticTokens,
+  BackfillUstDivisionCode,
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,
@@ -134,6 +139,7 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  BackfillVerificationUstDivisionCode,
   BackfillUnassignedOn,
   PollNotificationBounces,
 );
