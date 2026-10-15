@@ -118,12 +118,9 @@ export default function TrusteeDetailScreen() {
   useEffect(() => {
     const fetchSoftwareOptions = async () => {
       try {
-        const response = await Api2.getSoftwareList();
-        if (response?.data) {
-          const profiles = response.data as BankruptcySoftwareProfile[];
-          setSoftwareProfiles(profiles);
-          setSoftwareOptions(transformSoftwareList(profiles));
-        }
+        const { data: profiles } = await Api2.getSoftwareList();
+        setSoftwareProfiles(profiles);
+        setSoftwareOptions(transformSoftwareList(profiles));
       } catch (e) {
         console.log('Failed to fetch software options', (e as Error).message);
       }
