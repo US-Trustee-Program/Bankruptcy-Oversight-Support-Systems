@@ -50,8 +50,8 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
   return (
     <nav className={`admin-screen-navigation`} aria-label="Admin Side navigation" role="navigation">
       <ul className="usa-sidenav">
-        <li className="usa-sidenav__item">
-          {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
+        {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
+          <li className="usa-sidenav__item">
             <NavLink
               to={`/admin/privileged-identity`}
               data-testid="privileged-identity-nav-link"
@@ -63,8 +63,8 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             >
               Privileged Identity
             </NavLink>
-          )}
-        </li>
+          </li>
+        )}
         <li className="usa-sidenav__item">
           <NavLink
             to={`/admin/bankruptcy-software`}

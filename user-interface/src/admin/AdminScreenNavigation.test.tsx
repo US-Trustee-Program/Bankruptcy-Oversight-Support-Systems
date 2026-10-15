@@ -110,5 +110,6 @@ describe('Admin screen navigation tests', () => {
     renderNav();
 
     expect(screen.queryByTestId('privileged-identity-nav-link')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(NAV_LINKS.length - 1);
   });
 });
