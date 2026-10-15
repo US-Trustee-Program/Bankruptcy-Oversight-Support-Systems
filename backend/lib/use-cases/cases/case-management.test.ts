@@ -625,9 +625,20 @@ describe('Case management tests', () => {
         };
       }
 
-      test('should call startTrace at entry', async () => {
-        const mockGateway = getMockObservabilityGateway();
+      let mockGateway: ObservabilityGateway;
+      let originalGateway: ObservabilityGateway;
+
+      beforeEach(() => {
+        originalGateway = applicationContext.observability;
+        mockGateway = getMockObservabilityGateway();
         applicationContext.observability = mockGateway;
+      });
+
+      afterEach(() => {
+        applicationContext.observability = originalGateway;
+      });
+
+      test('should call startTrace at entry', async () => {
         vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
           metadata: { total: 0 },
           data: [],
@@ -639,8 +650,6 @@ describe('Case management tests', () => {
       });
 
       test('should call completeTrace with correct result on standard search success', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
         const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
         vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
           metadata: { total: 1 },
@@ -682,8 +691,6 @@ describe('Case management tests', () => {
 
       test('should call completeTrace with phonetic search type when phonetic is used', async () => {
         const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
         vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
           metadata: { total: 1 },
           data: mockCases,
@@ -711,8 +718,6 @@ describe('Case management tests', () => {
       });
 
       test('should call completeTrace with success false on error', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
         const error = new Error('test error');
         vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
 
@@ -733,8 +738,6 @@ describe('Case management tests', () => {
       });
 
       test('should report a failed phonetic search as phonetic in the trace', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
         vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockRejectedValue(
           new Error('phonetic failure'),
         );
@@ -759,9 +762,6 @@ describe('Case management tests', () => {
       });
 
       test('should report a search that fails validation as standard in the trace', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
-
         await expect(
           useCase.searchCases(applicationContext, { debtorName: '   ', chapters: ['15'] }, false),
         ).rejects.toThrow(expect.objectContaining({ status: 400 }));
@@ -781,34 +781,41 @@ describe('Case management tests', () => {
         );
       });
 
-      test('should call completeTrace on early return when no assignment caseIds found', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
-        const assignmentUser = MockData.getCamsUser({
-          offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU],
-        });
-        vi.spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee').mockResolvedValue([]);
+      test.each([
+        { searchType: 'standard', debtorName: undefined },
+        { searchType: 'phonetic', debtorName: 'John Smith' },
+      ])(
+        'should call completeTrace with $searchType search type on early return when no assignment caseIds found',
+        async ({ searchType, debtorName }) => {
+          const assignmentUser = MockData.getCamsUser({
+            offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU],
+          });
+          vi.spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee').mockResolvedValue([]);
 
-        await useCase.searchCases(applicationContext, { assignments: [assignmentUser] }, false);
+          await useCase.searchCases(
+            applicationContext,
+            { assignments: [assignmentUser], debtorName },
+            false,
+          );
 
-        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
-          mockTrace,
-          'SearchComplete',
-          expect.objectContaining({
-            success: true,
-            measurements: expect.objectContaining({
-              resultCount: 0,
-              totalCount: 0,
+          expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+            mockTrace,
+            'SearchComplete',
+            expect.objectContaining({
+              success: true,
+              properties: expect.objectContaining({ searchType }),
+              measurements: expect.objectContaining({
+                resultCount: 0,
+                totalCount: 0,
+              }),
             }),
-          }),
-          expect.anything(),
-          applicationContext.logger,
-        );
-      });
+            expect.anything(),
+            applicationContext.logger,
+          );
+        },
+      );
 
       test('should derive boolean flags correctly from predicate', async () => {
-        const mockGateway = getMockObservabilityGateway();
-        applicationContext.observability = mockGateway;
         vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
           metadata: { total: 0 },
           data: [],
