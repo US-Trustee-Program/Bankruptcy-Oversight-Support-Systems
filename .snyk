@@ -93,3 +93,27 @@ ignore:
           nor server actions, so exploitability remains low in the
           interim.
         expires: 2026-10-14T00:00:00.000Z
+  SNYK-JS-QS-20943482:
+    - '*':
+        reason: >-
+          Uncaught Exception in qs@6.16.0, bundled by express@5.2.1 and
+          body-parser@2.3.0 (node_modules/express/node_modules/qs,
+          node_modules/body-parser/node_modules/qs). The fix (qs 6.16.1
+          changelog: "stringify: arrayFormat: 'comma': do not throw on
+          elements with no callable toString") is scoped to
+          qs.stringify() called with arrayFormat: 'comma'. Not
+          reachable here: express and body-parser only call qs.parse()
+          to read incoming query strings/bodies, never qs.stringify().
+          No CAMS source calls qs directly or passes arrayFormat
+          anywhere (verified by grep across backend, common,
+          user-interface, dev-tools, dora-metrics, test). The only other
+          qs consumer in the lockfile is typed-rest-client (pulled in
+          transitively by @stryker-mutator/core, dev-only), which
+          defaults arrayFormat to 'repeat', not 'comma', and is never
+          invoked by CAMS code. Fixed version 6.16.1 was published
+          2026-10-14 and is blocked by CAMS's 14-day minimum npm
+          release-age policy (.npmrc min-release-age=14) until
+          2026-10-28. Bump the root package.json qs override from
+          6.16.0 to 6.16.1 and remove this ignore once the embargo
+          lifts.
+        expires: 2026-10-29T00:00:00.000Z
