@@ -28,9 +28,6 @@ export function useCaseAppointment(caseId: string | undefined) {
       .catch((error: unknown) => {
         if (!isCurrent) return;
         console.error('Unexpected error fetching case trustee appointment', error);
-        setAppointedDate(null);
-        setTrusteeId(null);
-        setHistory([]);
       })
       .finally(() => {
         if (!isCurrent) return;
