@@ -902,6 +902,249 @@ describe('search screen', () => {
     const validationAlert = screen.queryByTestId('search-validation-alert');
     expect(validationAlert).not.toBeInTheDocument();
   });
+
+  describe('debtor name search', () => {
+    test('should show debtor name field', async () => {
+      renderWithoutProps();
+
+      await waitFor(() => {
+        const debtorNameInput = screen.queryByLabelText(/debtor name/i);
+        expect(debtorNameInput).toBeInTheDocument();
+      });
+    });
+
+    test('should search by debtor name', async () => {
+      renderWithoutProps();
+
+      searchCasesSpy.mockClear();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      expect(debtorNameInput).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(debtorNameInput).toBeEnabled();
+      });
+
+      const debtorName = 'John Smith';
+      await userEvent.type(debtorNameInput, debtorName);
+
+      const searchButton = getSearchButton();
+      await userEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(getResultsTable()).toBeVisible();
+      });
+
+      expect(searchCasesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debtorName,
+          excludeMemberConsolidations: false,
+          excludeClosedCases: true,
+        }),
+        includeAssignments,
+      );
+    });
+
+    test('should show an error and not search when the debtor name is too short', async () => {
+      renderWithoutProps();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      await waitFor(() => {
+        expect(debtorNameInput).toBeEnabled();
+      });
+      searchCasesSpy.mockClear();
+
+      await userEvent.type(debtorNameInput, 'J');
+      await userEvent.click(getSearchButton());
+
+      expect(await screen.findByText('Must be at least 2 characters')).toBeInTheDocument();
+      expect(searchCasesSpy).not.toHaveBeenCalled();
+    });
+
+    test('should allow searching with both debtor name and case number', async () => {
+      renderWithoutProps();
+
+      searchCasesSpy.mockClear();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      const caseNumberInput = getCaseNumberInput();
+
+      await waitFor(() => {
+        expect(debtorNameInput).toBeEnabled();
+        expect(caseNumberInput).toBeEnabled();
+      });
+
+      const debtorName = 'Jane Doe';
+      const caseNumber = '00-12345';
+
+      await userEvent.type(debtorNameInput, debtorName);
+      await userEvent.type(caseNumberInput, caseNumber);
+
+      const searchButton = getSearchButton();
+      await userEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(getResultsTable()).toBeVisible();
+      });
+
+      expect(searchCasesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debtorName,
+          caseNumber,
+        }),
+        includeAssignments,
+      );
+    });
+
+    test('should allow searching by debtor name and chapter', async () => {
+      renderWithoutProps();
+
+      searchCasesSpy.mockClear();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      await waitFor(() => {
+        expect(debtorNameInput).toBeEnabled();
+      });
+
+      await userEvent.type(debtorNameInput, 'Michael Johnson');
+
+      await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+      const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+      await userEvent.click(expandButton);
+
+      const searchButton = getSearchButton();
+      await userEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(getResultsTable()).toBeVisible();
+      });
+
+      expect(searchCasesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debtorName: 'Michael Johnson',
+          chapters: expect.any(Array<string>),
+        }),
+        includeAssignments,
+      );
+    });
+
+    test('should trigger search when Enter key is pressed in debtor name field', async () => {
+      renderWithoutProps();
+
+      searchCasesSpy.mockClear();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      await waitFor(() => {
+        expect(debtorNameInput).toBeEnabled();
+      });
+
+      const debtorName = 'Sarah Connor';
+      await userEvent.type(debtorNameInput, debtorName);
+
+      const form = screen.getByTestId('filter-and-search-panel');
+      fireEvent.submit(form);
+
+      await waitFor(() => {
+        expect(getResultsTable()).toBeVisible();
+      });
+
+      expect(searchCasesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debtorName,
+        }),
+        includeAssignments,
+      );
+    });
+
+    test('should clear debtor name when search is cleared', async () => {
+      renderWithoutProps();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+      await userEvent.type(debtorNameInput, 'Test Name');
+
+      await waitFor(() => {
+        expect((debtorNameInput as HTMLInputElement).value).toBe('Test Name');
+      });
+
+      await userEvent.clear(debtorNameInput);
+
+      await waitFor(() => {
+        expect((debtorNameInput as HTMLInputElement).value).toBe('');
+      });
+    });
+
+    test('should preserve single character input while typing', async () => {
+      renderWithoutProps();
+
+      const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+      await userEvent.type(debtorNameInput, 'J');
+
+      await waitFor(() => {
+        expect((debtorNameInput as HTMLInputElement).value).toBe('J');
+      });
+
+      await userEvent.type(debtorNameInput, 'o');
+
+      await waitFor(() => {
+        expect((debtorNameInput as HTMLInputElement).value).toBe('Jo');
+      });
+
+      await userEvent.type(debtorNameInput, 'hn');
+
+      await waitFor(() => {
+        expect((debtorNameInput as HTMLInputElement).value).toBe('John');
+      });
+    });
+  });
+
+  describe('SearchScreen analytics integration', () => {
+    let trackNavigationMock: ReturnType<typeof vi.fn>;
+    let trackFirstSearchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      trackNavigationMock = vi.fn();
+      trackFirstSearchMock = vi.fn();
+
+      vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
+        trackNavigation: trackNavigationMock as (toPage: string) => void,
+        trackFirstSearch: trackFirstSearchMock as (
+          searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other',
+        ) => void,
+      });
+    });
+
+    test('should call analytics hook with correct landing page parameter', async () => {
+      renderWithoutProps();
+
+      await waitFor(() => {
+        expect(UseLandingPageAnalyticsModule.useLandingPageAnalytics).toHaveBeenCalledWith(
+          'case-search',
+        );
+      });
+    });
+
+    test('should track first search action regardless of navigation method', async () => {
+      // After removing LandingPageContext, SearchScreen now tracks first search for any user on /search
+      renderWithoutProps();
+
+      const caseNumberInput = getCaseNumberInput();
+      await waitFor(() => {
+        expect(caseNumberInput).toBeEnabled();
+      });
+
+      await userEvent.type(caseNumberInput, '00-11111');
+      const searchButton = getSearchButton();
+      await userEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(getResultsTable()).toBeVisible();
+      });
+
+      // Should track first search action
+      expect(trackFirstSearchMock).toHaveBeenCalledWith('case-number');
+    });
+  });
 });
 
 describe('validateFormData function', () => {
@@ -952,307 +1195,5 @@ describe('validateFormData function', () => {
     const result = validateFormData({ debtorName: '   ' });
     expect(result.isValid).toBe(false);
     expect(result.formValidationError).toBe('Please enter at least one search criterion');
-  });
-});
-
-describe('debtor name search', () => {
-  const userOffices = [REGION_02_GROUP_NY];
-  const user = MockData.getCamsUser({ offices: userOffices });
-  const session = MockData.getCamsSession({ user });
-  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
-  const searchResponseBody: ResponseBody<SyncedCase[]> = {
-    meta: { self: 'self-url' },
-    pagination: {
-      count: caseList.length,
-      currentPage: 1,
-      limit: DEFAULT_SEARCH_LIMIT,
-    },
-    data: caseList,
-  };
-  const includeAssignments = { includeAssignments: true };
-  let searchCasesSpy: MockInstance;
-  let userEvent: CamsUserEvent;
-
-  beforeEach(async () => {
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    userEvent = TestingUtilities.setupUserEvent();
-  });
-
-  function renderScreen() {
-    render(
-      <BrowserRouter>
-        <SearchScreen></SearchScreen>
-      </BrowserRouter>,
-    );
-  }
-
-  test('should show debtor name field', async () => {
-    renderScreen();
-
-    await waitFor(() => {
-      const debtorNameInput = screen.queryByLabelText(/debtor name/i);
-      expect(debtorNameInput).toBeInTheDocument();
-    });
-  });
-
-  test('should search by debtor name', async () => {
-    renderScreen();
-
-    searchCasesSpy.mockClear();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    expect(debtorNameInput).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(debtorNameInput).toBeEnabled();
-    });
-
-    const debtorName = 'John Smith';
-    await userEvent.type(debtorNameInput, debtorName);
-
-    const searchButton = getSearchButton();
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(getResultsTable()).toBeVisible();
-    });
-
-    expect(searchCasesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        debtorName,
-        excludeMemberConsolidations: false,
-        excludeClosedCases: true,
-      }),
-      includeAssignments,
-    );
-  });
-
-  test('should show an error and not search when the debtor name is too short', async () => {
-    renderScreen();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    await waitFor(() => {
-      expect(debtorNameInput).toBeEnabled();
-    });
-    searchCasesSpy.mockClear();
-
-    await userEvent.type(debtorNameInput, 'J');
-    await userEvent.click(getSearchButton());
-
-    expect(await screen.findByText('Must be at least 2 characters')).toBeInTheDocument();
-    expect(searchCasesSpy).not.toHaveBeenCalled();
-  });
-
-  test('should allow searching with both debtor name and case number', async () => {
-    renderScreen();
-
-    searchCasesSpy.mockClear();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    const caseNumberInput = getCaseNumberInput();
-
-    await waitFor(() => {
-      expect(debtorNameInput).toBeEnabled();
-      expect(caseNumberInput).toBeEnabled();
-    });
-
-    const debtorName = 'Jane Doe';
-    const caseNumber = '00-12345';
-
-    await userEvent.type(debtorNameInput, debtorName);
-    await userEvent.type(caseNumberInput, caseNumber);
-
-    const searchButton = getSearchButton();
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(getResultsTable()).toBeVisible();
-    });
-
-    expect(searchCasesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        debtorName,
-        caseNumber,
-      }),
-      includeAssignments,
-    );
-  });
-
-  test('should allow searching by debtor name and chapter', async () => {
-    renderScreen();
-
-    searchCasesSpy.mockClear();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    await waitFor(() => {
-      expect(debtorNameInput).toBeEnabled();
-    });
-
-    await userEvent.type(debtorNameInput, 'Michael Johnson');
-
-    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
-    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
-    await userEvent.click(expandButton);
-
-    const searchButton = getSearchButton();
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(getResultsTable()).toBeVisible();
-    });
-
-    expect(searchCasesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        debtorName: 'Michael Johnson',
-        chapters: expect.any(Array<string>),
-      }),
-      includeAssignments,
-    );
-  });
-
-  test('should trigger search when Enter key is pressed in debtor name field', async () => {
-    renderScreen();
-
-    searchCasesSpy.mockClear();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    await waitFor(() => {
-      expect(debtorNameInput).toBeEnabled();
-    });
-
-    const debtorName = 'Sarah Connor';
-    await userEvent.type(debtorNameInput, debtorName);
-
-    const form = screen.getByTestId('filter-and-search-panel');
-    fireEvent.submit(form);
-
-    await waitFor(() => {
-      expect(getResultsTable()).toBeVisible();
-    });
-
-    expect(searchCasesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        debtorName,
-      }),
-      includeAssignments,
-    );
-  });
-
-  test('should clear debtor name when search is cleared', async () => {
-    renderScreen();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(debtorNameInput, 'Test Name');
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('Test Name');
-    });
-
-    await userEvent.clear(debtorNameInput);
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('');
-    });
-  });
-
-  test('should preserve single character input while typing', async () => {
-    renderScreen();
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-
-    await userEvent.type(debtorNameInput, 'J');
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('J');
-    });
-
-    await userEvent.type(debtorNameInput, 'o');
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('Jo');
-    });
-
-    await userEvent.type(debtorNameInput, 'hn');
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('John');
-    });
-  });
-});
-
-describe('SearchScreen analytics integration', () => {
-  const userOffices = [REGION_02_GROUP_NY];
-  const user = MockData.getCamsUser({ offices: userOffices });
-  const session = MockData.getCamsSession({ user });
-  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
-  const searchResponseBody: ResponseBody<SyncedCase[]> = {
-    meta: { self: 'self-url' },
-    pagination: {
-      count: caseList.length,
-      currentPage: 1,
-      limit: DEFAULT_SEARCH_LIMIT,
-    },
-    data: caseList,
-  };
-  let userEvent: CamsUserEvent;
-  let trackNavigationMock: ReturnType<typeof vi.fn>;
-  let trackFirstSearchMock: ReturnType<typeof vi.fn>;
-
-  function renderWithoutProps() {
-    render(
-      <BrowserRouter>
-        <SearchScreen></SearchScreen>
-      </BrowserRouter>,
-    );
-  }
-
-  beforeEach(async () => {
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    userEvent = TestingUtilities.setupUserEvent();
-
-    trackNavigationMock = vi.fn();
-    trackFirstSearchMock = vi.fn();
-
-    vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
-      trackNavigation: trackNavigationMock as (toPage: string) => void,
-      trackFirstSearch: trackFirstSearchMock as (
-        searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other',
-      ) => void,
-    });
-  });
-
-  test('should call analytics hook with correct landing page parameter', async () => {
-    renderWithoutProps();
-
-    await waitFor(() => {
-      expect(UseLandingPageAnalyticsModule.useLandingPageAnalytics).toHaveBeenCalledWith(
-        'case-search',
-      );
-    });
-  });
-
-  test('should track first search action regardless of navigation method', async () => {
-    // After removing LandingPageContext, SearchScreen now tracks first search for any user on /search
-    renderWithoutProps();
-
-    const caseNumberInput = getCaseNumberInput();
-    await waitFor(() => {
-      expect(caseNumberInput).toBeEnabled();
-    });
-
-    await userEvent.type(caseNumberInput, '00-11111');
-    const searchButton = getSearchButton();
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(getResultsTable()).toBeVisible();
-    });
-
-    // Should track first search action
-    expect(trackFirstSearchMock).toHaveBeenCalledWith('case-number');
   });
 });
