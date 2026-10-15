@@ -1234,7 +1234,7 @@ async function processRecordWithRetry(
  * of the heal redesign.
  *
  * Idempotent: records that already have a `trustee-professional-ids` entry are
- * skipped, and `repo.createProfessionalId` de-dupes the `(camsTrusteeId,
+ * skipped, and `repo.upsertProfessionalId` de-dupes the `(camsTrusteeId,
  * acmsProfessionalId)` pair, so re-runs converge to the same state.
  *
  * 429 resilience: on Cosmos TooManyRequestsError the same record is retried in
