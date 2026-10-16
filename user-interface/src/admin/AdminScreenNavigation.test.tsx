@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
-  TRUSTEE_CHANGE_NOTIFICATIONS,
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -176,12 +175,8 @@ describe('Admin screen navigation tests', () => {
     });
   });
 
-  describe('Feature flag tests for Notification Routing nav link', () => {
-    test('should display Notification Routing nav link when TRUSTEE_CHANGE_NOTIFICATIONS flag is true', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_CHANGE_NOTIFICATIONS]: true,
-      });
-
+  describe('Notification Routing nav link', () => {
+    test('should display Notification Routing nav link', () => {
       renderWithoutProps();
 
       const navLink = screen.queryByTestId('notification-routing-nav-link');
@@ -190,19 +185,8 @@ describe('Admin screen navigation tests', () => {
       expect(navLink).toHaveAttribute('href', '/admin/notification-routing');
     });
 
-    test('should not display Notification Routing nav link when TRUSTEE_CHANGE_NOTIFICATIONS flag is false', () => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_CHANGE_NOTIFICATIONS]: false,
-      });
-
-      renderWithoutProps();
-
-      expect(screen.queryByTestId('notification-routing-nav-link')).not.toBeInTheDocument();
-    });
-
     test('should update active nav when Notification Routing link is clicked', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [TRUSTEE_CHANGE_NOTIFICATIONS]: true,
         [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
       });
 

@@ -20,7 +20,6 @@ export const FIELD_VALIDATION_MESSAGES = {
   PASSCODE_REQUIRED: 'Passcode is required',
   PARTIAL_ADDRESS:
     'You have entered a partial address. Please complete or clear the address fields.',
-  PHONE_REQUIRED_WITH_EXTENSION: 'Phone number is required when extension is provided',
   ADDRESS_REQUIRED: 'Address is required',
   CITY_REQUIRED: 'City is required',
   STATE_REQUIRED: 'State is required',

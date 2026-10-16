@@ -3,8 +3,6 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import ContactInformationCard from './ContactInformationCard';
 import * as FormattedContactModule from '@/lib/components/cams/FormattedContact';
 import { TrusteeContact } from '@common/cams/trustees';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 const baseContact: TrusteeContact = {
   address: {
@@ -27,7 +25,6 @@ describe('ContactInformationCard', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockOnEdit.mockClear();
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
   });
 
   test('always shows the "Internal use only." notice', () => {
@@ -44,7 +41,7 @@ describe('ContactInformationCard', () => {
     );
   });
 
-  test('passes typedPhonesEnabled and showPhoneTypeLabel derived from the feature flag to FormattedContact', () => {
+  test('passes typedPhonesEnabled and showPhoneTypeLabel as true to FormattedContact', () => {
     const mockFormattedContact = vi
       .spyOn(FormattedContactModule, 'default')
       .mockReturnValue(<div data-testid="mock-formatted-contact" />);
@@ -54,8 +51,8 @@ describe('ContactInformationCard', () => {
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
     expect(props.contact).toEqual(baseContact);
-    expect(props.typedPhonesEnabled).toBe(false);
-    expect(props.showPhoneTypeLabel).toBe(false);
+    expect(props.typedPhonesEnabled).toBe(true);
+    expect(props.showPhoneTypeLabel).toBe(true);
     expect(props.testIdPrefix).toBe('trustee-internal');
   });
 
@@ -73,18 +70,5 @@ describe('ContactInformationCard', () => {
     screen.getByRole('button', { name: 'Edit trustee internal contact information' }).click();
 
     expect(mockOnEdit).toHaveBeenCalledTimes(1);
-  });
-
-  test('passes typedPhonesEnabled and showPhoneTypeLabel as true when the flag is enabled', () => {
-    const mockFormattedContact = vi
-      .spyOn(FormattedContactModule, 'default')
-      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
-
-    render(<ContactInformationCard internalContact={baseContact} />);
-
-    const props = mockFormattedContact.mock.calls.at(-1)![0];
-    expect(props.typedPhonesEnabled).toBe(true);
-    expect(props.showPhoneTypeLabel).toBe(true);
   });
 });

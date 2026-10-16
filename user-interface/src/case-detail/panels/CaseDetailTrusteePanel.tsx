@@ -7,7 +7,6 @@ import { useCaseAppointment } from './useCaseAppointment';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
-import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
 import { TrusteeName } from './TrusteeName';
 import { CamsTable } from '@/lib/components/cams/CamsTable/CamsTable';
@@ -91,8 +90,6 @@ interface CaseDetailTrusteePanelProps {
 export default function CaseDetailTrusteePanel({
   caseDetail,
 }: Readonly<CaseDetailTrusteePanelProps>) {
-  const featureFlags = useFeatureFlags();
-  const historyEnabled = featureFlags[TRUSTEE_APPOINTMENT_HISTORY_ENABLED];
   const {
     appointedDate,
     trusteeId,
@@ -151,7 +148,7 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && <PastTrusteesSection history={history} />}
+      <PastTrusteesSection history={history} />
     </div>
   );
 }

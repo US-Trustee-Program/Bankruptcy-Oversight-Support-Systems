@@ -155,12 +155,10 @@ async function getAcmsSqlPool(): Promise<mssql.ConnectionPool> {
 
 async function getAppContext() {
   const invocationContext = new InvocationContext();
-  const appContext = await ApplicationContextCreator.getApplicationContext({
+  return ApplicationContextCreator.getApplicationContext({
     invocationContext,
     logger: ApplicationContextCreator.getLogger(invocationContext),
   });
-  appContext.featureFlags['trustee-appointment-history-enabled'] = true;
-  return appContext;
 }
 
 // ---------------------------------------------------------------------------

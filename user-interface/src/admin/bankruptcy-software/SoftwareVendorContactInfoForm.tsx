@@ -17,10 +17,7 @@ import {
   softwareContactSpec,
   DEFAULT_PHONE_ENTRY,
 } from './softwareVendorContactInfoForm.types';
-import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
-import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
-import { validateDirectPhoneFields } from '@/trustees/forms/trusteeForms.utils';
 import { validateTypedPhones } from '@/lib/components/cams/PhoneEntryList/phoneEntryList.utils';
 import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
@@ -44,8 +41,6 @@ export function SoftwareVendorContactInfoForm({
   const { softwareId } = useParams();
   const navigate = useNavigate();
   const alert = useGlobalAlert();
-  const flags = useFeatureFlags();
-  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
 
   const existingContact = software.contact;
 
@@ -237,19 +232,11 @@ export function SoftwareVendorContactInfoForm({
           />
         </div>
         <div className="form-col">
-          {typedPhonesEnabled ? (
-            <PhoneEntryList
-              phones={phones}
-              onChange={setPhones}
-              errors={validateTypedPhones(phones)}
-            />
-          ) : (
-            <DirectPhoneFields
-              phones={phones}
-              onChange={setPhones}
-              errors={validateDirectPhoneFields(phones)}
-            />
-          )}
+          <PhoneEntryList
+            phones={phones}
+            onChange={setPhones}
+            errors={validateTypedPhones(phones)}
+          />
           {emails.map((emailValue, i) => (
             <Input
               key={i}
@@ -287,9 +274,7 @@ export function SoftwareVendorContactInfoForm({
             disabled={
               Object.values(emailErrors).some(Boolean) ||
               Object.keys(fieldErrors).length > 0 ||
-              (typedPhonesEnabled
-                ? Object.keys(validateTypedPhones(phones)).length > 0
-                : Object.keys(validateDirectPhoneFields(phones)).length > 0)
+              Object.keys(validateTypedPhones(phones)).length > 0
             }
           >
             Save

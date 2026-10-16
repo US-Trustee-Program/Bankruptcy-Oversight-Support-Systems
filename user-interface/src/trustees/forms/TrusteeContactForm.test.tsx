@@ -6,7 +6,7 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import { Trustee, TypedPhoneNumber } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
@@ -14,14 +14,6 @@ import * as Validation from '@common/cams/validation';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
-
-function getLegacyPhoneInput(): HTMLInputElement {
-  return document.querySelector('[data-testid$="-legacy-phone"]') as HTMLInputElement;
-}
-
-function getLegacyExtensionInput(): HTMLInputElement {
-  return document.querySelector('[data-testid$="-legacy-extension"]') as HTMLInputElement;
-}
 
 function getTypeSelect(index: number): HTMLSelectElement {
   return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
@@ -31,13 +23,12 @@ function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
 }
 
-const FLAGS_TYPED_PHONES_OFF: FeatureFlagSet = {
+function getExtensionInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
+}
+
+const FLAGS: FeatureFlagSet = {
   'trustee-management': true,
-  'trustee-typed-phones': false,
-};
-const FLAGS_TYPED_PHONES_ON: FeatureFlagSet = {
-  'trustee-management': true,
-  'trustee-typed-phones': true,
 };
 
 const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
@@ -84,7 +75,7 @@ describe('TrusteeContactForm Tests', () => {
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS);
     vi.spyOn(NavigatorModule, 'default').mockReturnValue(navigatorMock);
   });
 
@@ -263,130 +254,8 @@ describe('TrusteeContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
-  describe('phone UI — flag off (trustee-typed-phones: false)', () => {
-    beforeEach(() => {
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
-    });
-
-    test('shows a single Phone input bound to the direct number', async () => {
-      const trustee = MockData.getTrustee();
-      trustee.internal = { email: 'internal@example.com' };
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await waitFor(() => {
-        expect(getLegacyPhoneInput()).toBeInTheDocument();
-      });
-      expect(getLegacyExtensionInput()).toBeInTheDocument();
-      expect(screen.queryByTestId('phone-entry-0')).not.toBeInTheDocument();
-    });
-
-    test('pre-populates phone input with the saved direct number', async () => {
-      const trustee = MockData.getTrustee();
-      trustee.internal = {
-        phones: [{ type: 'direct', number: '555-000-1234', extension: '99' }],
-      };
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await waitFor(() => {
-        expect(getLegacyPhoneInput()).toHaveValue('555-000-1234');
-      });
-      expect(getLegacyExtensionInput()).toHaveValue('99');
-    });
-
-    test('submits an updated extension for the direct number', async () => {
-      const trustee = MockData.getTrustee();
-      trustee.internal = { phones: [{ type: 'direct', number: '555-000-1234' }] };
-
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await waitFor(() => expect(getLegacyExtensionInput()).toBeInTheDocument());
-      await userEvent.type(getLegacyExtensionInput(), '42');
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
-
-      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: TypedPhoneNumber[] } };
-      expect(payload.internal.phones).toEqual([
-        { type: 'direct', number: '555-000-1234', extension: '42' },
-      ]);
-    });
-
-    test('preserves all non-empty phones from state (user can only edit direct, but others are not wiped)', async () => {
-      const trustee = MockData.getTrustee();
-      trustee.internal = {
-        phones: [
-          { type: 'direct', number: '555-111-0000' },
-          { type: 'personalMobile', number: '555-222-0000' },
-        ],
-      };
-
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
-
-      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
-      expect(payload.internal.phones).toEqual([
-        { type: 'direct', number: '555-111-0000' },
-        { type: 'personalMobile', number: '555-222-0000' },
-      ]);
-    });
-
-    test('submits phones as undefined when the direct number is cleared', async () => {
-      const trustee = MockData.getTrustee();
-      trustee.internal = { phones: [{ type: 'direct', number: '555-000-0000' }] };
-
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await waitFor(() => expect(getLegacyPhoneInput()).toHaveValue('555-000-0000'));
-      await userEvent.clear(getLegacyPhoneInput());
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
-
-      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
-      expect(payload.internal.phones).toBeUndefined();
-    });
-
-    test('blocks submit and shows an error when an extension is entered without a phone number', async () => {
-      vi.spyOn(DebounceModule, 'default').mockReturnValue(immediateDebounce);
-
-      const trustee = MockData.getTrustee();
-      trustee.internal = { phones: [{ type: 'direct', number: '' }] };
-
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-
-      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-      await waitFor(() => expect(getLegacyExtensionInput()).toBeInTheDocument());
-      await userEvent.type(getLegacyExtensionInput(), '123');
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('Phone number is required when extension is provided'),
-        ).toBeInTheDocument();
-      });
-
-      expect(patchSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('phone UI — flag on (trustee-typed-phones: true)', () => {
-    beforeEach(() => {
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_ON);
-    });
-
-    test('renders phone entry rows instead of the single legacy inputs', async () => {
+  describe('phone UI', () => {
+    test('renders phone entry rows', async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = { email: 'internal@example.com' };
 
@@ -395,7 +264,6 @@ describe('TrusteeContactForm Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
       });
-      expect(getLegacyPhoneInput()).toBeNull();
     });
 
     test("renders the trustee's saved phones in their given rows", async () => {
@@ -448,6 +316,45 @@ describe('TrusteeContactForm Tests', () => {
 
       const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
       expect(payload.internal.phones).toBeUndefined();
+    });
+
+    test('blocks submission when a phone row has an invalid number', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(getNumberInput(0), '123');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('phone-entry-0')).toHaveTextContent(
+          'Must be a valid phone number',
+        );
+      });
+      expect(patchSpy).not.toHaveBeenCalled();
+    });
+
+    test('submits a typed phone number and extension', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(getNumberInput(0), '5555550100');
+      await userEvent.type(getExtensionInput(0), '42');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
+      expect(payload.internal.phones).toEqual([
+        { type: 'direct', number: '555-555-0100', extension: '42' },
+      ]);
     });
   });
 
