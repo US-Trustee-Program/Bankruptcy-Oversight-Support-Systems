@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from './cams/offices';
-import { getRegionIds } from './cams/users';
+import { getRegionIds, normalizeRegionId } from './cams/users';
 import MockData from './cams/test-utilities/mock-data';
 import { buildLaunchDarklyContext, resolveEnabledRegions, testFeatureFlags } from './feature-flags';
 
@@ -70,6 +70,30 @@ describe('getRegionIds', () => {
   test('returns an empty list when the user has no offices', () => {
     expect(getRegionIds(MockData.getCamsUser({ offices: undefined }))).toEqual([]);
   });
+
+  test('normalizes padded office region ids and removes duplicates', () => {
+    const office = MockData.getOffices()[0];
+    const user = MockData.getCamsUser({
+      offices: [
+        { ...office, regionId: '02' },
+        { ...office, regionId: '2' },
+        { ...office, regionId: '11' },
+      ],
+    });
+    expect(getRegionIds(user)).toEqual(['2', '11']);
+  });
+});
+
+describe('normalizeRegionId', () => {
+  test.each([
+    ['1', '1'],
+    ['04', '4'],
+    ['004', '4'],
+    ['21', '21'],
+    ['x', 'x'],
+  ])('%s becomes %s', (input, expected) => {
+    expect(normalizeRegionId(input)).toEqual(expected);
+  });
 });
 
 describe('resolveEnabledRegions', () => {
@@ -88,6 +112,11 @@ describe('resolveEnabledRegions', () => {
     ['stripped garbage', ' 1 ; abc,2\n', ['1', '2']],
     ['leading zeros normalized', '01,+02', ['1', '2']],
     ['leading zeros normalized in exclusion', '*,-01', ['2', '3', '4']],
+    [
+      'digits left after stripping garbage merge into one id (pinned until ruled on)',
+      '1 2',
+      ['12'],
+    ],
     ['empty tokens dropped', ',,1,,', ['1']],
     ['bad tokens contribute nothing', '+,-,1+2,x', []],
     ['empty string', '', []],
@@ -98,6 +127,10 @@ describe('resolveEnabledRegions', () => {
 
   test.each([[undefined], [null], [true], [5]])('non-string flag %s resolves to empty', (flag) => {
     expect(resolve(flag)).toEqual([]);
+  });
+
+  test('star normalizes padded ids in the list passed in', () => {
+    expect([...resolveEnabledRegions('*,-4', ['01', '04'])].sort()).toEqual(['1']);
   });
 
   test('star expands to whatever list is passed in at call time', () => {

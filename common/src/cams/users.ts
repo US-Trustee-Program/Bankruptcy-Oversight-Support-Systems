@@ -64,7 +64,14 @@ export function getGroupDesignators(user: CamsUser): string[] {
   return user.offices.reduce(reducer, []);
 }
 
+// Region ids are unpadded ('1'..'21') to match the offices use case. Case-level DXTR data and some
+// office records carry padded ids ('04'), so normalize before comparing or sending to LaunchDarkly.
+export function normalizeRegionId(regionId: string): string {
+  const parsed = parseInt(regionId, 10);
+  return Number.isNaN(parsed) ? regionId : parsed.toString();
+}
+
 export function getRegionIds(user: CamsUser): string[] {
   if (!user.offices) return [];
-  return [...new Set(user.offices.map((office) => office.regionId))];
+  return [...new Set(user.offices.map((office) => normalizeRegionId(office.regionId)))];
 }

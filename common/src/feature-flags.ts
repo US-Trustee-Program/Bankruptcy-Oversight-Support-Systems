@@ -1,4 +1,4 @@
-import { CamsUser, getGroupDesignators, getRegionIds } from './cams/users';
+import { CamsUser, getGroupDesignators, getRegionIds, normalizeRegionId } from './cams/users';
 import { CamsRoleType } from './cams/roles';
 
 // This internal interface aligns with the LaunchDarkly LDFlagSet interface that
@@ -60,12 +60,6 @@ export const ANONYMOUS_FEATURE_FLAG_CONTEXT = {
   anonymous: true,
 } as const;
 
-// Region ids are unpadded ('1'..'21') to match the offices use case; strip leading zeros so a
-// human typing '01' into a flag still matches.
-function normalizeRegionId(token: string): string {
-  return parseInt(token, 10).toString();
-}
-
 /**
  * Resolves a LaunchDarkly string flag into the set of enabled region ids.
  *
@@ -86,7 +80,7 @@ export function resolveEnabledRegions(flagValue: unknown, allRegionIds: string[]
 
   for (const token of tokens) {
     if (token === '*') {
-      allRegionIds.forEach((id) => enabled.add(id));
+      allRegionIds.forEach((id) => enabled.add(normalizeRegionId(id)));
     } else if (/^-\d+$/.test(token)) {
       excluded.add(normalizeRegionId(token.slice(1)));
     } else if (/^\+?\d+$/.test(token)) {
