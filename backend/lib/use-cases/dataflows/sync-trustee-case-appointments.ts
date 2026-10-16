@@ -425,6 +425,22 @@ async function applyResolvedTrustee(
     return null; // Same trustee already active — nothing further to do
   }
 
+  if (
+    existingAppointment &&
+    existingAppointment.trusteeId !== trusteeId &&
+    Date.parse(assignedOn) < Date.parse(existingAppointment.assignedOn)
+  ) {
+    // Replayed/out-of-order event older than the active appointment: applying it would
+    // soft-close the newer trustee and reinstate a superseded one.
+    context.logger.warn(
+      MODULE_NAME,
+      `Skipping stale appointment event: case ${event.caseId}, trustee ${trusteeId} appointed ` +
+        `${assignedOn} is older than active trustee ${existingAppointment.trusteeId} ` +
+        `(assignedOn ${existingAppointment.assignedOn}).`,
+    );
+    return null;
+  }
+
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
     const { closed, dlqFailure } = await softCloseExistingAppointment(
       context,
@@ -1804,6 +1820,27 @@ async function processOneEvent(
 }
 
 /**
+ * The DXTR queries return events newest-first and the TR and petition lists are separate, so a
+ * merged batch is not in chronological order. Applying a case's events newest-first would let an
+ * older event soft-close the newer trustee. Sorted ascending by appointedDate (stable, so ties
+ * keep their incoming order); events with no parseable date sort last and are handled by
+ * assertAppointedDate downstream.
+ */
+function sortEventsOldestFirst(
+  events: TrusteeAppointmentSyncEvent[],
+): TrusteeAppointmentSyncEvent[] {
+  const time = (e: TrusteeAppointmentSyncEvent) => {
+    const t = Date.parse(e.appointedDate ?? '');
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+  };
+  return [...events].sort((a, b) => {
+    const ta = time(a);
+    const tb = time(b);
+    return ta === tb ? 0 : ta < tb ? -1 : 1;
+  });
+}
+
+/**
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
  * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
@@ -1880,7 +1917,7 @@ async function processAppointments(
     unattributableBogusNameSkippedCount: 0,
   };
 
-  for (const event of events) {
+  for (const event of sortEventsOldestFirst(events)) {
     const outcome = await processOneEvent(deps, event, scenarioDistribution);
     switch (outcome.kind) {
       case 'success':

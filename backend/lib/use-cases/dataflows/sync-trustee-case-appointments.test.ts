@@ -1444,6 +1444,76 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('skips a stale event older than the active appointment instead of soft-closing the newer trustee', async () => {
+      const existingAppointment: CaseAppointment = {
+        id: 'ca-newer',
+        caseId: 'case-001',
+        trusteeId: 'newer-trustee',
+        assignedOn: '2024-06-01T00:00:00Z',
+        createdOn: '2024-06-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-06-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      // makeEvent's appointedDate ('2024-01-15') predates the active appointment.
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('Skipping stale appointment event'),
+      );
+    });
+
+    test('applies two events for one case oldest-first even when they arrive newest-first, leaving the newer trustee active', async () => {
+      // DXTR returns events ORDER BY TX_DATE DESC, so the batch arrives newest-first.
+      let active: CaseAppointment | null = null;
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockImplementation(async () => active);
+      (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mockImplementation(
+        async (a: CaseAppointment) => {
+          active = a;
+          return a;
+        },
+      );
+      (
+        mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+      ).mockImplementation(async (a: CaseAppointment) => {
+        if (active?.id === a.id) active = null;
+        return a;
+      });
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockImplementation(
+        async (_ctx, dxtr) => ({
+          kind: 'resolved',
+          trusteeId: dxtr.fullName === 'Old Trustee' ? 'old-trustee' : 'new-trustee',
+          nameScore: 100,
+          nameMatchQuality: 'exact',
+        }),
+      );
+      const older = { ...makeEvent('case-001', 'Old Trustee'), appointedDate: '2018-03-01' };
+      const newer = { ...makeEvent('case-001', 'New Trustee'), appointedDate: '2020-05-01' };
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [newer, older],
+      );
+
+      const upserts = (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(upserts.map((c) => c[0].trusteeId)).toEqual(['old-trustee', 'new-trustee']);
+      expect(active).toEqual(expect.objectContaining({ trusteeId: 'new-trustee' }));
+    });
+
     test('should push SoftCloseWriteFailed to dlqMessages but still create the new appointment on a single non-transient soft-close failure', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-old',
