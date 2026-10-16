@@ -32,8 +32,8 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   // Regions still to process, this message's region first. Absent on the timer's initial start
   // message, which resolves the enabled regions from the region flag once for the whole run.
   regions?: string[];
-  // Newest watermarks seen so far in this run's region chain; stored once after the last region.
-  latestSyncDate?: string;
+  // Newest petition watermark seen so far in this run's region chain; stored once after the last
+  // region (the petition cursor stays global). Appointment cursors are stored per region.
   petitionLatestSyncDate?: string;
   lastSyncDate?: string;
   reset?: boolean;
@@ -213,11 +213,10 @@ async function handleStart(
       ? await queueEventPages(events, connectionString)
       : { pagesQueued: 0, rejectedCount: 0 };
 
-    // The watermark is not yet kept per region, so it advances only once every region has been
-    // read; each region in the chain starts from the same stored date.
-    const newestLatestSyncDate = events.length
-      ? maxDate(startMessage.latestSyncDate, latestSyncDate)
-      : startMessage.latestSyncDate;
+    // Each region advances its own appointment cursor as soon as its events are queued.
+    if (latestSyncDate) {
+      await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, region, latestSyncDate);
+    }
     const newestPetitionLatestSyncDate = events.length
       ? maxDate(startMessage.petitionLatestSyncDate, petitionLatestSyncDate)
       : startMessage.petitionLatestSyncDate;
@@ -225,7 +224,6 @@ async function handleStart(
     if (remainingRegions.length) {
       const nextStart: SyncTrusteeCaseAppointmentsStartMessage = {
         regions: remainingRegions,
-        latestSyncDate: newestLatestSyncDate,
         petitionLatestSyncDate: newestPetitionLatestSyncDate,
         lastSyncDate: startMessage.lastSyncDate,
         reset,
@@ -233,9 +231,6 @@ async function handleStart(
       };
       invocationContext.extraOutputs.set(START, nextStart);
     } else {
-      if (newestLatestSyncDate) {
-        await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, newestLatestSyncDate);
-      }
       if (newestPetitionLatestSyncDate) {
         await SyncTrusteeCaseAppointmentsUseCase.storePetitionRuntimeState(
           deps,

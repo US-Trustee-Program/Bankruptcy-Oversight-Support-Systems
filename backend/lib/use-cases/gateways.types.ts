@@ -886,9 +886,15 @@ export type HealCaseAppointmentsState = RuntimeState & {
   checkedCount: number;
 };
 
+/**
+ * Sync cursor for sync-trustee-case-appointments.ts, one per USTP region so a region can be
+ * enabled, disabled, or re-seeded without disturbing the others. Each region's cursor is written
+ * with RuntimeStateRepository.setField('lastSyncDateByRegion.<regionId>', value), never with
+ * upsert, which would replace the whole document and clobber every other region's cursor.
+ */
 export type TrusteeAppointmentsSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
-  lastSyncDate: string;
+  lastSyncDateByRegion: Record<string, string>;
 };
 
 export type TrusteePetitionSyncState = RuntimeState & {

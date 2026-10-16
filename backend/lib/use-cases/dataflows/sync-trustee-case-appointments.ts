@@ -44,10 +44,12 @@ import { AppointmentStatus } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { randomUUID } from 'node:crypto';
 import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
+const DEFAULT_SYNC_DATE = '2018-01-01';
 
 type ScenarioDistribution = {
   autoMatchCount: number;
@@ -885,12 +887,33 @@ async function resolveSyncState<D extends RuntimeStateDocumentType>(
     return { id: randomUUID(), documentType, lastSyncDate };
   }
   if (reset) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
+    return { id: randomUUID(), documentType, lastSyncDate: DEFAULT_SYNC_DATE };
   }
   try {
     return await repo.read(documentType);
   } catch (_error) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
+    return { id: randomUUID(), documentType, lastSyncDate: DEFAULT_SYNC_DATE };
+  }
+}
+
+/**
+ * Resolves a region's own cursor. A region with no entry (never seeded, or no document at all)
+ * resolves to undefined rather than a default date: a region enabled without its cutover cursor
+ * having been seeded must be skipped, not replayed from some arbitrary old date. Any other read
+ * failure propagates so a transient outage is never mistaken for an unseeded region.
+ */
+export async function resolveRegionCursor(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  regionId: string,
+): Promise<string | undefined> {
+  try {
+    const persisted = await deps.runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+    return persisted.lastSyncDateByRegion?.[regionId];
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 
@@ -923,20 +946,25 @@ async function getAppointmentEvents(
 ) {
   const { context } = deps;
   try {
-    let syncState: TrusteeAppointmentsSyncState;
+    let trusteeSyncDate: string | undefined;
     if (overrideRuntimeState !== undefined) {
       context.logger.info(MODULE_NAME, 'Using overrideRuntimeState from start message.');
-      syncState = overrideRuntimeState;
+      trusteeSyncDate = overrideRuntimeState.lastSyncDateByRegion[regionId];
+    } else if (lastSyncDate) {
+      trusteeSyncDate = lastSyncDate;
+    } else if (reset) {
+      context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
+      trusteeSyncDate = DEFAULT_SYNC_DATE;
     } else {
-      if (!lastSyncDate && reset) {
-        context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
-      }
-      syncState = await resolveSyncState(
-        'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-        deps.runtimeStateRepo,
-        lastSyncDate,
-        reset,
+      trusteeSyncDate = await resolveRegionCursor(deps, regionId);
+    }
+
+    if (!trusteeSyncDate) {
+      context.logger.info(
+        MODULE_NAME,
+        `Skipping region ${regionId}: no sync cursor for region ${regionId}. Seed its cursor at cutover before enabling it.`,
       );
+      return { events: [], latestSyncDate: undefined, petitionLatestSyncDate: undefined };
     }
 
     const petitionSyncState = await resolveSyncState(
@@ -947,7 +975,7 @@ async function getAppointmentEvents(
     );
 
     const [trusteeResult, petitionResult] = await Promise.allSettled([
-      deps.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate, regionId),
+      deps.casesGateway.getTrusteeAppointments(context, trusteeSyncDate, regionId),
       deps.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate, regionId),
     ]);
 
@@ -1882,20 +1910,24 @@ async function processAppointments(
   };
 }
 
-async function storeRuntimeState(deps: SyncTrusteeCaseAppointmentsDeps, lastSyncDate: string) {
+async function storeRuntimeState(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  regionId: string,
+  lastSyncDate: string,
+) {
   const { context } = deps;
   try {
-    const newSyncState: TrusteeAppointmentsSyncState = {
-      documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+    await deps.runtimeStateRepo.setField(
+      'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+      `lastSyncDateByRegion.${regionId}`,
       lastSyncDate,
-    };
-    await deps.runtimeStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);
+    );
+    context.logger.info(MODULE_NAME, `Wrote runtime state for region ${regionId}: ${lastSyncDate}`);
   } catch (originalError) {
     const error = getCamsError(
       originalError,
       MODULE_NAME,
-      'Failed while storing the trustee appointments sync runtime state.',
+      `Failed while storing the trustee appointments sync runtime state for region ${regionId}.`,
     );
     context.logger.camsError(error);
   }

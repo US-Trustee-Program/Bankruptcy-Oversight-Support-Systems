@@ -3777,7 +3777,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         read: vi.fn().mockResolvedValue({
           id: 'state-1',
           documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-          lastSyncDate: '2025-01-01T00:00:00Z',
+          lastSyncDateByRegion: { '1': '2025-01-01T00:00:00Z', '2': '2025-03-01T00:00:00Z' },
         }),
       };
 
@@ -3841,26 +3841,54 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(latestSyncDate).toBe(mockLatestSyncDate);
     });
 
-    test('should default to 2018-01-01 when no runtime state exists in Cosmos', async () => {
+    test('should skip the region and log when it has no cursor entry', async () => {
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      const result = await SyncTrusteeCaseAppointments.getAppointmentEvents(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        '9',
+      );
+
+      expect(result).toEqual({
+        events: [],
+        latestSyncDate: undefined,
+        petitionLatestSyncDate: undefined,
+      });
+      expect(mockCasesGateway.getTrusteeAppointments).not.toHaveBeenCalled();
+      expect(mockCasesGateway.getTrusteePetitionEvents).not.toHaveBeenCalled();
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('no sync cursor for region 9'),
+      );
+    });
+
+    test('should skip the region when no runtime state document exists', async () => {
       (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new NotFoundError('RUNTIME-STATE-MONGO-REPOSITORY_ADAPTER', {
           message: 'No matching item found.',
         }),
       );
 
-      const { events, latestSyncDate } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
+      const { events } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
         '1',
       );
 
-      expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
-      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
-        context,
-        '2018-01-01',
-        '1',
+      expect(events).toEqual([]);
+      expect(mockCasesGateway.getTrusteeAppointments).not.toHaveBeenCalled();
+    });
+
+    test('should propagate a non-NotFound read failure rather than skipping the region', async () => {
+      (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Cosmos unavailable'),
       );
-      expect(events).toEqual(mockEvents);
-      expect(latestSyncDate).toBe(mockLatestSyncDate);
+
+      await expect(
+        SyncTrusteeCaseAppointments.getAppointmentEvents(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          '1',
+        ),
+      ).rejects.toThrow();
     });
 
     test('should use the default sync date for both watermarks when reset is true', async () => {
@@ -3890,7 +3918,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       const overrideRuntimeState: TrusteeAppointmentsSyncState = {
         id: 'override-state',
         documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-        lastSyncDate: '2024-12-01T00:00:00Z',
+        lastSyncDateByRegion: { '1': '2024-12-01T00:00:00Z' },
       };
 
       await SyncTrusteeCaseAppointments.getAppointmentEvents(
@@ -3937,7 +3965,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'state-1',
         documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-        lastSyncDate: '2025-01-01T00:00:00Z',
+        lastSyncDateByRegion: { '1': '2025-01-01T00:00:00Z' },
       });
       (mockPetitionSyncStateRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'petition-state-1',
@@ -4031,7 +4059,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       context = await createMockApplicationContext();
 
       mockRuntimeStateRepo = {
-        upsert: vi.fn().mockResolvedValue(undefined),
+        setField: vi.fn().mockResolvedValue(undefined),
+        upsert: vi.fn(),
       };
 
       vi.spyOn(factory, 'getTrusteeAppointmentsSyncStateRepo').mockReturnValue(
@@ -4039,22 +4068,23 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('should upsert the runtime state with the given lastSyncDate', async () => {
+    test("should set only the region's own cursor field, never replace the whole document", async () => {
       await SyncTrusteeCaseAppointments.storeRuntimeState(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
         '2025-02-01T00:00:00Z',
       );
 
-      expect(mockRuntimeStateRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-          lastSyncDate: '2025-02-01T00:00:00Z',
-        }),
+      expect(mockRuntimeStateRepo.setField).toHaveBeenCalledWith(
+        'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        'lastSyncDateByRegion.1',
+        '2025-02-01T00:00:00Z',
       );
+      expect(mockRuntimeStateRepo.upsert).not.toHaveBeenCalled();
     });
 
-    test('should log error and not throw when upsert fails', async () => {
-      (mockRuntimeStateRepo.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+    test('should log error and not throw when setField fails', async () => {
+      (mockRuntimeStateRepo.setField as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new Error('Cosmos write failed'),
       );
       const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
@@ -4062,6 +4092,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       await expect(
         SyncTrusteeCaseAppointments.storeRuntimeState(
           SyncTrusteeCaseAppointments.createDeps(context),
+          '1',
           '2025-02-01T00:00:00Z',
         ),
       ).resolves.toBeUndefined();
