@@ -3937,6 +3937,25 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('should skip the region when the override has no per-region map (old shape)', async () => {
+      const oldShaped = {
+        id: 'override-state',
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2024-12-01T00:00:00Z',
+      } as unknown as TrusteeAppointmentsSyncState;
+
+      const result = await SyncTrusteeCaseAppointments.getAppointmentEvents(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
+        undefined,
+        undefined,
+        oldShaped,
+      );
+
+      expect(result.events).toEqual([]);
+      expect(mockCasesGateway.getTrusteeAppointments).not.toHaveBeenCalled();
+    });
+
     test('should merge TR and petition-time events from independent watermarks into one result', async () => {
       const petitionEvent: TrusteeAppointmentSyncEvent = {
         caseId: 'case-002',

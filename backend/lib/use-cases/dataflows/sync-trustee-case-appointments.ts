@@ -949,7 +949,7 @@ async function getAppointmentEvents(
     let trusteeSyncDate: string | undefined;
     if (overrideRuntimeState !== undefined) {
       context.logger.info(MODULE_NAME, 'Using overrideRuntimeState from start message.');
-      trusteeSyncDate = overrideRuntimeState.lastSyncDateByRegion[regionId];
+      trusteeSyncDate = overrideRuntimeState.lastSyncDateByRegion?.[regionId];
     } else if (lastSyncDate) {
       trusteeSyncDate = lastSyncDate;
     } else if (reset) {
@@ -969,6 +969,10 @@ async function getAppointmentEvents(
       return { events: [], latestSyncDate: undefined, petitionLatestSyncDate: undefined };
     }
 
+    // The petition cursor is deliberately global (one TRUSTEE_PETITION_SYNC_STATE for all regions).
+    // A newly enabled region's appointment cursor must therefore be seeded at or after the current
+    // petition cursor, or its petition events between the two dates are never read. At cutover seed
+    // from the legacy top-level lastSyncDate, which the global petition cursor tracked.
     const petitionSyncState = await resolveSyncState(
       'TRUSTEE_PETITION_SYNC_STATE',
       deps.petitionSyncStateRepo,
