@@ -1791,6 +1791,7 @@ describe('getTrusteeAppointments', () => {
     const result = await gateway.getTrusteeAppointments(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(querySpy).toHaveBeenCalledWith(
@@ -1846,6 +1847,7 @@ describe('getTrusteeAppointments', () => {
     const result = await gateway.getTrusteeAppointments(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events[0].courtDivisionCode).toBe('491');
@@ -1893,11 +1895,35 @@ describe('getTrusteeAppointments', () => {
     const result = await gateway.getTrusteeAppointments(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events[0].groupDesignator).toBe('NY');
     expect(result.events[0].profCode).toBe('00123');
   });
+
+  test.each([
+    ['getTrusteeAppointments', '1', '01'],
+    ['getTrusteePetitionEvents', '12', '12'],
+  ] as const)(
+    '%s filters to the region, padding the id to the DXTR form',
+    async (method, regionId, paddedRegionId) => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      } as QueryResults);
+
+      await gateway[method](applicationContext, '2026-01-01T00:00:00.000Z', regionId);
+
+      const [, query, params] = querySpy.mock.calls[0];
+      expect(query).toContain('JOIN AO_GRP_DES G ON C.GRP_DES = G.GRP_DES');
+      expect(query).toContain('G.REGION_ID = @regionId');
+      expect(params).toContainEqual(
+        expect.objectContaining({ name: 'regionId', value: paddedRegionId }),
+      );
+    },
+  );
 
   test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
     querySpy.mockResolvedValue({
@@ -1906,7 +1932,7 @@ describe('getTrusteeAppointments', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -1923,7 +1949,7 @@ describe('getTrusteeAppointments', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
+    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -1940,7 +1966,7 @@ describe('getTrusteeAppointments', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -1990,6 +2016,7 @@ describe('getTrusteeAppointments', () => {
     const result = await gateway.getTrusteeAppointments(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events[0].profCode).toBe(testCase.expected);
@@ -2015,7 +2042,7 @@ describe('getTrusteePetitionEvents', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -2045,7 +2072,7 @@ describe('getTrusteePetitionEvents', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -2090,6 +2117,7 @@ describe('getTrusteePetitionEvents', () => {
     const result = await gateway.getTrusteePetitionEvents(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events).toHaveLength(1);
@@ -2114,6 +2142,7 @@ describe('getTrusteePetitionEvents', () => {
     const result = await gateway.getTrusteePetitionEvents(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events).toEqual([]);
@@ -2126,7 +2155,7 @@ describe('getTrusteePetitionEvents', () => {
       message: '',
     } as QueryResults);
 
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z', '1');
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
@@ -2172,6 +2201,7 @@ describe('getTrusteePetitionEvents', () => {
     const result = await gateway.getTrusteePetitionEvents(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events[0].profCode).toBe('00000');
@@ -2221,6 +2251,7 @@ describe('getTrusteePetitionEvents', () => {
     const result = await gateway.getTrusteePetitionEvents(
       applicationContext,
       '2026-01-01T00:00:00.000Z',
+      '1',
     );
 
     expect(result.events[0].appointedDate).toBe(testCase.expected);
@@ -2470,7 +2501,7 @@ describe('ustDivisionCode court scoping', () => {
   });
 
   test('getTrusteeAppointments scopes ustDivisionCode to court 0649', async () => {
-    await gateway.getTrusteeAppointments(applicationContext, '2025-01-01T00:00:00Z');
+    await gateway.getTrusteeAppointments(applicationContext, '2025-01-01T00:00:00Z', '1');
     expect(querySpy).toHaveBeenCalled();
     expectScopedUstDivisionCode();
   });

@@ -29,6 +29,12 @@ const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
+  // Regions still to process, this message's region first. Absent on the timer's initial start
+  // message, which resolves the enabled regions from the region flag once for the whole run.
+  regions?: string[];
+  // Newest watermarks seen so far in this run's region chain; stored once after the last region.
+  latestSyncDate?: string;
+  petitionLatestSyncDate?: string;
   lastSyncDate?: string;
   reset?: boolean;
   deleteAll?: boolean;
@@ -119,6 +125,11 @@ async function queueEventPages(
   return { pagesQueued: pages.length, rejectedCount: rejected.length };
 }
 
+function maxDate(a: string | undefined, b: string | undefined): string | undefined {
+  if (!a || !b) return a ?? b;
+  return a > b ? a : b;
+}
+
 async function handleStart(
   startMessage: SyncTrusteeCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
@@ -151,8 +162,9 @@ async function handleStart(
     }
 
     const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
+    const isFirstRegion = startMessage.regions === undefined;
 
-    if (startMessage.deleteAll) {
+    if (isFirstRegion && startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
       const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAll(deps);
       if (deleteResult.error) {
@@ -170,39 +182,76 @@ async function handleStart(
       }
     }
 
-    const { events, latestSyncDate, petitionLatestSyncDate } =
-      await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
-        deps,
-        startMessage.lastSyncDate,
-        startMessage.reset || startMessage.deleteAll,
-        startMessage.overrideRuntimeState,
-      );
-
-    if (!events.length) {
+    const regions =
+      startMessage.regions ?? (await SyncTrusteeCaseAppointmentsUseCase.getEnabledRegions(deps));
+    const [region, ...remainingRegions] = regions;
+    if (!region) {
       completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
         success: true,
+        details: { regionsEnabled: '0' },
       });
       return;
     }
 
-    const { pagesQueued, rejectedCount } = await queueEventPages(events, connectionString);
-
-    if (latestSyncDate) {
-      await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, latestSyncDate);
-    }
-    if (petitionLatestSyncDate) {
-      await SyncTrusteeCaseAppointmentsUseCase.storePetitionRuntimeState(
+    // Regions run one after another: this invocation queries DXTR for one region only, then hands
+    // the rest of the list on in a new start message, so a single DXTR query is ever in flight.
+    // Reset (including the reset implied by deleteAll), lastSyncDate and overrideRuntimeState
+    // apply to every region in the chain.
+    const reset = startMessage.reset || startMessage.deleteAll;
+    const { events, latestSyncDate, petitionLatestSyncDate } =
+      await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
         deps,
-        petitionLatestSyncDate,
+        region,
+        startMessage.lastSyncDate,
+        reset,
+        startMessage.overrideRuntimeState,
       );
+
+    const { pagesQueued, rejectedCount } = events.length
+      ? await queueEventPages(events, connectionString)
+      : { pagesQueued: 0, rejectedCount: 0 };
+
+    // The watermark is not yet kept per region, so it advances only once every region has been
+    // read; each region in the chain starts from the same stored date.
+    const newestLatestSyncDate = events.length
+      ? maxDate(startMessage.latestSyncDate, latestSyncDate)
+      : startMessage.latestSyncDate;
+    const newestPetitionLatestSyncDate = events.length
+      ? maxDate(startMessage.petitionLatestSyncDate, petitionLatestSyncDate)
+      : startMessage.petitionLatestSyncDate;
+
+    if (remainingRegions.length) {
+      const nextStart: SyncTrusteeCaseAppointmentsStartMessage = {
+        regions: remainingRegions,
+        latestSyncDate: newestLatestSyncDate,
+        petitionLatestSyncDate: newestPetitionLatestSyncDate,
+        lastSyncDate: startMessage.lastSyncDate,
+        reset,
+        overrideRuntimeState: startMessage.overrideRuntimeState,
+      };
+      invocationContext.extraOutputs.set(START, nextStart);
+    } else {
+      if (newestLatestSyncDate) {
+        await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, newestLatestSyncDate);
+      }
+      if (newestPetitionLatestSyncDate) {
+        await SyncTrusteeCaseAppointmentsUseCase.storePetitionRuntimeState(
+          deps,
+          newestPetitionLatestSyncDate,
+        );
+      }
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: rejectedCount,
       success: true,
-      details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
+      details: {
+        region,
+        pagesQueued: String(pagesQueued),
+        totalEvents: String(events.length),
+      },
     });
   } catch (originalError) {
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -437,7 +486,7 @@ function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
     queueName: START.queueName,
-    extraOutputs: [DLQ],
+    extraOutputs: [START, DLQ],
     handler: handleStart,
   });
 

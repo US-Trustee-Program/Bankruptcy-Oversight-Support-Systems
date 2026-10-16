@@ -590,9 +590,13 @@ describe('sync-trustee-case-appointments handleStart', () => {
       petitionLatestSyncDate: string | undefined;
     };
     deleteAllResult?: { data: { deleted: number }; error?: Error };
+    enabledRegions?: string[];
   }) {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getEnabledRegions').mockResolvedValue(
+      overrides?.enabledRegions ?? ['1'],
+    );
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockResolvedValue(
       overrides?.getAppointmentEventsResult ?? {
         events: [],
@@ -648,6 +652,194 @@ describe('sync-trustee-case-appointments handleStart', () => {
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
     );
+  });
+
+  describe('region partitioning', () => {
+    const startQueueMessages = (invocationContext: InvocationContext) =>
+      Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      )
+        .filter(([key]) => key.queueName?.includes('start'))
+        .map(([, value]) => value);
+
+    test('should query only the first enabled region and chain the rest through a start message', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupMocks({
+        enabledRegions: ['1', '2', '10'],
+        getAppointmentEventsResult: {
+          events: [makeEvent('001-25-00001')],
+          latestSyncDate: '2025-06-01T00:00:00Z',
+          petitionLatestSyncDate: '2025-05-01T00:00:00Z',
+        },
+      });
+
+      await handleStart({}, invocationContext);
+
+      const getEvents = SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents;
+      expect(getEvents).toHaveBeenCalledTimes(1);
+      expect(getEvents).toHaveBeenCalledWith(
+        expect.anything(),
+        '1',
+        undefined,
+        undefined,
+        undefined,
+      );
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(startQueueMessages(invocationContext)).toEqual([
+        {
+          regions: ['2', '10'],
+          latestSyncDate: '2025-06-01T00:00:00Z',
+          petitionLatestSyncDate: '2025-05-01T00:00:00Z',
+        },
+      ]);
+    });
+
+    test('should hold the watermarks until the last region so later regions read the same starting date', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      await setupMocks({
+        enabledRegions: ['1', '2'],
+        getAppointmentEventsResult: {
+          events: [makeEvent('001-25-00001')],
+          latestSyncDate: '2025-06-01T00:00:00Z',
+          petitionLatestSyncDate: '2025-05-01T00:00:00Z',
+        },
+      });
+
+      await handleStart({}, invocationContext);
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).not.toHaveBeenCalled();
+      expect(
+        SyncTrusteeCaseAppointmentsModule.default.storePetitionRuntimeState,
+      ).not.toHaveBeenCalled();
+    });
+
+    test('should continue the chain when a region has no events', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupMocks({
+        enabledRegions: ['1', '2'],
+        getAppointmentEventsResult: {
+          events: [],
+          latestSyncDate: undefined,
+          petitionLatestSyncDate: undefined,
+        },
+      });
+
+      await handleStart({}, invocationContext);
+
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(startQueueMessages(invocationContext)).toEqual([{ regions: ['2'] }]);
+    });
+
+    test('should resume from the carried region list without re-reading the flag', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      await setupMocks({
+        getAppointmentEventsResult: {
+          events: [makeEvent('001-25-00001')],
+          latestSyncDate: '2025-07-01T00:00:00Z',
+          petitionLatestSyncDate: undefined,
+        },
+      });
+
+      await handleStart(
+        { regions: ['2'], latestSyncDate: '2025-06-01T00:00:00Z', lastSyncDate: '2024-01-01' },
+        invocationContext,
+      );
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.getEnabledRegions).not.toHaveBeenCalled();
+      expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
+        expect.anything(),
+        '2',
+        '2024-01-01',
+        undefined,
+        undefined,
+      );
+    });
+
+    test('should store the latest watermark across all regions after the last region', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      await setupMocks({
+        getAppointmentEventsResult: {
+          events: [makeEvent('001-25-00001')],
+          latestSyncDate: '2025-07-01T00:00:00Z',
+          petitionLatestSyncDate: '2025-04-01T00:00:00Z',
+        },
+      });
+
+      await handleStart(
+        {
+          regions: ['2'],
+          latestSyncDate: '2025-08-01T00:00:00Z',
+          petitionLatestSyncDate: '2025-03-01T00:00:00Z',
+        },
+        invocationContext,
+      );
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).toHaveBeenCalledWith(
+        expect.anything(),
+        '2025-08-01T00:00:00Z',
+      );
+      expect(
+        SyncTrusteeCaseAppointmentsModule.default.storePetitionRuntimeState,
+      ).toHaveBeenCalledWith(expect.anything(), '2025-04-01T00:00:00Z');
+      expect(startQueueMessages(invocationContext)).toEqual([]);
+    });
+
+    test('should do nothing when no region is enabled', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupMocks({ enabledRegions: [] });
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({}, invocationContext);
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).not.toHaveBeenCalled();
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(startQueueMessages(invocationContext)).toEqual([]);
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true }),
+      );
+    });
+
+    test('should carry reset, lastSyncDate and overrideRuntimeState to the next region, and delete only once', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const override: TrusteeAppointmentsSyncState = {
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2024-01-01T00:00:00Z',
+      };
+      await setupMocks({ enabledRegions: ['1', '2'] });
+
+      await handleStart(
+        { deleteAll: true, lastSyncDate: '2024-02-01', overrideRuntimeState: override },
+        invocationContext,
+      );
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.deleteAll).toHaveBeenCalledTimes(1);
+      expect(startQueueMessages(invocationContext)).toEqual([
+        { regions: ['2'], reset: true, lastSyncDate: '2024-02-01', overrideRuntimeState: override },
+      ]);
+    });
+
+    test('should not delete again when resuming a chain', async () => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      await setupMocks();
+
+      await handleStart({ regions: ['2'], reset: true }, makeInvocationContext());
+
+      expect(SyncTrusteeCaseAppointmentsModule.default.deleteAll).not.toHaveBeenCalled();
+    });
   });
 
   test('should store petition runtime state when petitionLatestSyncDate is returned', async () => {
@@ -901,6 +1093,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
       expect.anything(),
+      '1',
       undefined,
       true,
       undefined,
@@ -921,6 +1114,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
       expect.anything(),
+      '1',
       undefined,
       undefined,
       override,
@@ -945,6 +1139,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(SyncTrusteeCaseAppointmentsModule.default.deleteAll).toHaveBeenCalled();
     expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
       expect.anything(),
+      '1',
       undefined,
       true,
       undefined,
@@ -1009,6 +1204,9 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getEnabledRegions').mockResolvedValue([
+      '1',
+    ]);
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockRejectedValue(
       new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'DXTR unavailable' }),
     );

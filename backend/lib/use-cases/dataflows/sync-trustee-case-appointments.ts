@@ -12,6 +12,7 @@ import {
 } from '@common/cams/trustee-match-verification';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
+import { resolveEnabledRegions } from '@common/feature-flags';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -766,6 +767,7 @@ function createDeps(context: ApplicationContext) {
     runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
     petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
+    officesGateway: factory.getOfficesGateway(context),
   };
 }
 
@@ -892,8 +894,29 @@ async function resolveSyncState<D extends RuntimeStateDocumentType>(
   }
 }
 
+// LaunchDarkly string flag naming the regions where appointment matching runs (resolver grammar:
+// see resolveEnabledRegions). Empty or absent means no region runs.
+export const TRUSTEE_APPOINTMENT_MATCHING_REGIONS_FLAG = 'trustee-appointment-matching-regions';
+
+/**
+ * Regions this run should process, in ascending numeric order. The flag is read from the
+ * already-evaluated anonymous context flags, so it is read once per run; '*' expands to every
+ * region in the live offices data.
+ */
+async function getEnabledRegions(deps: SyncTrusteeCaseAppointmentsDeps): Promise<string[]> {
+  const { context, officesGateway } = deps;
+  const offices = await officesGateway.getOffices(context);
+  const allRegionIds = [...new Set(offices.map((office) => office.regionId))];
+  const enabled = resolveEnabledRegions(
+    context.featureFlags[TRUSTEE_APPOINTMENT_MATCHING_REGIONS_FLAG],
+    allRegionIds,
+  );
+  return [...enabled].sort((a, b) => Number(a) - Number(b));
+}
+
 async function getAppointmentEvents(
   deps: SyncTrusteeCaseAppointmentsDeps,
+  regionId: string,
   lastSyncDate?: string,
   reset?: boolean,
   overrideRuntimeState?: TrusteeAppointmentsSyncState,
@@ -924,8 +947,8 @@ async function getAppointmentEvents(
     );
 
     const [trusteeResult, petitionResult] = await Promise.allSettled([
-      deps.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
-      deps.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate),
+      deps.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate, regionId),
+      deps.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate, regionId),
     ]);
 
     // The petition-time query is newer and less proven than the long-running TR-appointment
@@ -1921,6 +1944,7 @@ async function deleteAll(
 
 const SyncTrusteeCaseAppointments = {
   createDeps,
+  getEnabledRegions,
   getAppointmentEvents,
   processAppointments,
   storeRuntimeState,

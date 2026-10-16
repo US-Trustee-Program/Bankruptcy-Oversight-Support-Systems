@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import SyncTrusteeCaseAppointments, {
@@ -8,7 +8,9 @@ import SyncTrusteeCaseAppointments, {
   closeExistingAppointment,
   softCloseExistingAppointment,
   handleClassifiedMismatch,
+  TRUSTEE_APPOINTMENT_MATCHING_REGIONS_FLAG,
 } from './sync-trustee-case-appointments';
+import { OfficesGateway } from '../offices/offices.types';
 import factory from '../../factory';
 import {
   TrusteeAppointmentSyncEvent,
@@ -3809,6 +3811,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     test('should use provided lastSyncDate without reading from repo', async () => {
       const { events, latestSyncDate } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
         '2025-01-10T00:00:00Z',
       );
 
@@ -3816,6 +3819,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
         context,
         '2025-01-10T00:00:00Z',
+        '1',
       );
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
@@ -3824,12 +3828,14 @@ describe('SyncTrusteeCaseAppointments', () => {
     test('should read lastSyncDate from runtime state repo when not provided', async () => {
       const { events, latestSyncDate } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
       );
 
       expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
       expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
         context,
         '2025-01-01T00:00:00Z',
+        '1',
       );
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
@@ -3844,10 +3850,15 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       const { events, latestSyncDate } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
       );
 
       expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
-      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+        context,
+        '2018-01-01',
+        '1',
+      );
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
     });
@@ -3855,14 +3866,23 @@ describe('SyncTrusteeCaseAppointments', () => {
     test('should use the default sync date for both watermarks when reset is true', async () => {
       const { events } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
         undefined,
         true,
       );
 
       expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
       expect(mockPetitionSyncStateRepo.read).not.toHaveBeenCalled();
-      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
-      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+        context,
+        '2018-01-01',
+        '1',
+      );
+      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(
+        context,
+        '2018-01-01',
+        '1',
+      );
       expect(events).toEqual(mockEvents);
     });
 
@@ -3875,6 +3895,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
         undefined,
         undefined,
         overrideRuntimeState,
@@ -3884,6 +3905,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
         context,
         '2024-12-01T00:00:00Z',
+        '1',
       );
     });
 
@@ -3900,11 +3922,13 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       const { events } = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
       );
 
       expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(
         context,
         '2024-06-01T00:00:00Z',
+        '1',
       );
       expect(events).toEqual([...mockEvents, petitionEvent]);
     });
@@ -3923,15 +3947,18 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
+        '1',
       );
 
       expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
         context,
         '2025-01-01T00:00:00Z',
+        '1',
       );
       expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(
         context,
         '2024-06-01T00:00:00Z',
+        '1',
       );
     });
 
@@ -3945,6 +3972,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       await expect(
         SyncTrusteeCaseAppointments.getAppointmentEvents(
           SyncTrusteeCaseAppointments.createDeps(context),
+          '1',
           '2025-01-01T00:00:00Z',
         ),
       ).rejects.toMatchObject({
@@ -3964,6 +3992,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       const { events, latestSyncDate, petitionLatestSyncDate } =
         await SyncTrusteeCaseAppointments.getAppointmentEvents(
           SyncTrusteeCaseAppointments.createDeps(context),
+          '1',
         );
 
       expect(events).toEqual(mockEvents);
@@ -3981,6 +4010,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       await expect(
         SyncTrusteeCaseAppointments.getAppointmentEvents(
           SyncTrusteeCaseAppointments.createDeps(context),
+          '1',
         ),
       ).rejects.toMatchObject({
         isCamsError: true,
@@ -4727,5 +4757,61 @@ describe('handleClassifiedMismatch', () => {
       expect.any(String),
       expect.stringContaining('TRUSTEE APPOINTMENT DATA INTEGRITY ERROR'),
     );
+  });
+});
+
+describe('getEnabledRegions', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+      getOffices: vi.fn().mockResolvedValue([
+        { regionId: '1', groups: [] },
+        { regionId: '1', groups: [] },
+        { regionId: '2', groups: [] },
+        { regionId: '10', groups: [] },
+      ]),
+    } as unknown as OfficesGateway);
+  });
+
+  afterEach(async () => {
+    await closeDeferred(context);
+  });
+
+  test.each([
+    ['a bare list', '1,10', ['1', '10']],
+    ['star expanded from the offices data', '*', ['1', '2', '10']],
+    ['star with a subtraction', '*,-1', ['2', '10']],
+    ['an empty flag', '', []],
+  ])('resolves %s from the flag value', async (_name, flagValue, expected) => {
+    context.featureFlags = { [TRUSTEE_APPOINTMENT_MATCHING_REGIONS_FLAG]: flagValue };
+
+    const regions = await SyncTrusteeCaseAppointments.getEnabledRegions(
+      SyncTrusteeCaseAppointments.createDeps(context),
+    );
+
+    expect(regions).toEqual(expected);
+  });
+
+  test('resolves to no regions when the flag is absent', async () => {
+    context.featureFlags = {};
+
+    const regions = await SyncTrusteeCaseAppointments.getEnabledRegions(
+      SyncTrusteeCaseAppointments.createDeps(context),
+    );
+
+    expect(regions).toEqual([]);
+  });
+
+  test('lists regions in ascending numeric order', async () => {
+    context.featureFlags = { [TRUSTEE_APPOINTMENT_MATCHING_REGIONS_FLAG]: '10,2,1' };
+
+    const regions = await SyncTrusteeCaseAppointments.getEnabledRegions(
+      SyncTrusteeCaseAppointments.createDeps(context),
+    );
+
+    expect(regions).toEqual(['1', '2', '10']);
   });
 });

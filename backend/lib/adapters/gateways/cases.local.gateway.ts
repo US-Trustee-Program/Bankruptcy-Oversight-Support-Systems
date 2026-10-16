@@ -159,6 +159,7 @@ export class CasesLocalGateway implements CasesInterface {
   public async getTrusteeAppointments(
     _context: ApplicationContext,
     transactionsStart: string,
+    _regionId: string,
   ): Promise<TrusteeAppointmentsResult> {
     return {
       events: [],
@@ -169,8 +170,9 @@ export class CasesLocalGateway implements CasesInterface {
   public async getTrusteePetitionEvents(
     context: ApplicationContext,
     transactionsStart: string,
+    regionId: string,
   ): Promise<TrusteeAppointmentsResult> {
-    return this.getTrusteeAppointments(context, transactionsStart);
+    return this.getTrusteeAppointments(context, transactionsStart, regionId);
   }
 
   public async getAppointmentDatesByCaseIds(

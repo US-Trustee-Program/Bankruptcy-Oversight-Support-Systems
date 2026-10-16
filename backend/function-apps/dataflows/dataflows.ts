@@ -155,7 +155,6 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
-  // SyncTrusteeCaseAppointments, // TODO Re-enable after division 1 enhancement is complete.
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,

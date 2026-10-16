@@ -671,6 +671,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
         AND TX.TX_DATE > @transactionsStart
+        AND G.REGION_ID = @regionId
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
@@ -1274,17 +1275,24 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
    *
    * @param context Application context
    * @param transactionsStart Start date for transaction query
+   * @param regionId Region to pull events for (unpadded, e.g. '1'; padded to DXTR's '01' here)
    * @returns TrusteeAppointmentSyncEvent[] and latest sync date
    */
   async getTrusteeAppointments(
     context: ApplicationContext,
     transactionsStart: string,
+    regionId: string,
   ): Promise<TrusteeAppointmentsResult> {
     const params: DbTableFieldSpec[] = [
       {
         name: 'transactionsStart',
         type: mssql.DateTime,
         value: transactionsStart,
+      },
+      {
+        name: 'regionId',
+        type: mssql.VarChar,
+        value: regionId.padStart(2, '0'),
       },
     ];
 
@@ -1319,17 +1327,24 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
    *
    * @param context Application context
    * @param transactionsStart Start date for transaction query
+   * @param regionId Region to pull events for (unpadded, e.g. '1'; padded to DXTR's '01' here)
    * @returns TrusteeAppointmentSyncEvent[] and latest sync date
    */
   async getTrusteePetitionEvents(
     context: ApplicationContext,
     transactionsStart: string,
+    regionId: string,
   ): Promise<TrusteeAppointmentsResult> {
     const params: DbTableFieldSpec[] = [
       {
         name: 'transactionsStart',
         type: mssql.DateTime,
         value: transactionsStart,
+      },
+      {
+        name: 'regionId',
+        type: mssql.VarChar,
+        value: regionId.padStart(2, '0'),
       },
     ];
 
@@ -1393,10 +1408,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      JOIN AO_GRP_DES G ON C.GRP_DES = G.GRP_DES
       JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'
       WHERE ${txTypeCondition}
         AND ${txCodeCondition}
         AND TX.TX_DATE > @transactionsStart
+        AND G.REGION_ID = @regionId
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
   }
