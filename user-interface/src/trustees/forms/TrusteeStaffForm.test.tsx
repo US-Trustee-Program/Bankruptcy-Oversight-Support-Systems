@@ -51,7 +51,7 @@ function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
 }
 
-function getTypedExtensionInput(index: number): HTMLInputElement {
+function getExtensionInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
 }
 
@@ -203,7 +203,7 @@ describe('TrusteeStaffForm', () => {
     });
   });
 
-  describe('Typed phones', () => {
+  describe('phones', () => {
     test('renders phone entry rows', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
@@ -267,7 +267,7 @@ describe('TrusteeStaffForm', () => {
       expect(getNumberInput(0)).toHaveValue('555-111-2222');
       expect(getTypeSelect(1)).toHaveValue('personalMobile');
       expect(getNumberInput(1)).toHaveValue('555-333-4444');
-      expect(getTypedExtensionInput(1)).toHaveValue('42');
+      expect(getExtensionInput(1)).toHaveValue('42');
     });
 
     test('should block submission when a typed phone row has an invalid number', async () => {
@@ -301,7 +301,7 @@ describe('TrusteeStaffForm', () => {
       expect(document.querySelector('#staff-state')).toBeInTheDocument();
       expect(screen.getByTestId('staff-zip')).toBeInTheDocument();
       expect(getNumberInput(0)).toBeInTheDocument();
-      expect(getTypedExtensionInput(0)).toBeInTheDocument();
+      expect(getExtensionInput(0)).toBeInTheDocument();
       expect(screen.getByTestId('staff-email')).toBeInTheDocument();
     });
 
@@ -421,7 +421,7 @@ describe('TrusteeStaffForm', () => {
     test('extension input enforces numeric-only entry', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const ext = getTypedExtensionInput(0);
+      const ext = getExtensionInput(0);
       expect(ext).toHaveAttribute('inputMode', 'numeric');
     });
 
@@ -472,7 +472,7 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-address1'), '123 Main St');
 
       // Add phone extension without phone number (will cause new error)
-      await userEvent.type(getTypedExtensionInput(0), '123');
+      await userEvent.type(getExtensionInput(0), '123');
 
       // Submit again
       await userEvent.click(saveButton);
@@ -610,8 +610,8 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-zip'), '12345');
       await userEvent.clear(getNumberInput(0));
       await userEvent.type(getNumberInput(0), '(555)555-5555');
-      await userEvent.clear(getTypedExtensionInput(0));
-      await userEvent.type(getTypedExtensionInput(0), '999');
+      await userEvent.clear(getExtensionInput(0));
+      await userEvent.type(getExtensionInput(0), '999');
       await userEvent.clear(screen.getByTestId('staff-email'));
       await userEvent.type(screen.getByTestId('staff-email'), 'test@example.com');
 
@@ -746,7 +746,7 @@ describe('TrusteeStaffForm', () => {
       const staffMember = await submitFormAndGetStaffMember(async () => {
         await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
         await userEvent.type(getNumberInput(0), '(555)555-5555');
-        await userEvent.type(getTypedExtensionInput(0), '123');
+        await userEvent.type(getExtensionInput(0), '123');
       });
 
       expect(staffMember.name).toBe('Test Staff');

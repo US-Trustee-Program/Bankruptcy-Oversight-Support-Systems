@@ -9,7 +9,7 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { NotFoundError } from '../../../lib/common-errors/not-found-error';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { CaseAppointment, CaseTrusteeAppointmentHistory } from '@common/cams/trustee-appointments';
 
 const mockAppointment: CaseAppointment = {
@@ -59,13 +59,13 @@ describe('CaseTrusteeAppointmentFunction', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test('returns 404 when controller throws NotFoundError', async () => {
+  test('returns error response when controller throws', async () => {
     const req = createMockAzureFunctionRequest({
       method: 'GET',
       params: { caseId: '111-24-99999' },
     });
-    const error = new NotFoundError('CASE-TRUSTEE-APPOINTMENT-CONTROLLER', {
-      message: 'No active trustee appointment for case 111-24-99999',
+    const error = new CamsError('CASE-TRUSTEE-APPOINTMENT-CONTROLLER', {
+      message: 'Something went wrong.',
     });
     const { azureHttpResponse } = buildTestResponseError(error);
     vi.spyOn(CaseTrusteeAppointmentController.prototype, 'handleRequest').mockRejectedValue(error);
