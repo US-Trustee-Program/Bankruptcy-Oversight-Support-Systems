@@ -3842,7 +3842,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should skip the region and log when it has no cursor entry', async () => {
-      const infoSpy = vi.spyOn(context.logger, 'info');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
 
       const result = await SyncTrusteeCaseAppointments.getAppointmentEvents(
         SyncTrusteeCaseAppointments.createDeps(context),
@@ -3856,7 +3856,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
       expect(mockCasesGateway.getTrusteeAppointments).not.toHaveBeenCalled();
       expect(mockCasesGateway.getTrusteePetitionEvents).not.toHaveBeenCalled();
-      expect(infoSpy).toHaveBeenCalledWith(
+      expect(warnSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.stringContaining('no sync cursor for region 9'),
       );

@@ -953,6 +953,8 @@ async function getAppointmentEvents(
     } else if (lastSyncDate) {
       trusteeSyncDate = lastSyncDate;
     } else if (reset) {
+      // Intentional seeding path: with no cursor for the region this starts at the default date,
+      // and the region's cursor is written once its events are queued.
       context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
       trusteeSyncDate = DEFAULT_SYNC_DATE;
     } else {
@@ -960,7 +962,7 @@ async function getAppointmentEvents(
     }
 
     if (!trusteeSyncDate) {
-      context.logger.info(
+      context.logger.warn(
         MODULE_NAME,
         `Skipping region ${regionId}: no sync cursor for region ${regionId}. Seed its cursor at cutover before enabling it.`,
       );
