@@ -10,6 +10,7 @@ const DEBTOR_NAME_MAX_LENGTH = 200; // Security recommendation: cap at reasonabl
 
 // Error messages - following the pattern of validation-messages.ts
 const SEARCH_VALIDATION_MESSAGES = {
+  DEBTOR_NAME_NOT_A_STRING: 'Debtor name must be a string',
   DEBTOR_NAME_TOO_SHORT: `Debtor name must be at least ${DEBTOR_NAME_MIN_LENGTH} characters`,
   DEBTOR_NAME_TOO_LONG: `Debtor name must not exceed ${DEBTOR_NAME_MAX_LENGTH} characters`,
   CASE_NUMBER_INVALID: 'Case number must be in format: YY-NNNNN',
@@ -31,10 +32,18 @@ export const caseNumber = V.optional(
 );
 
 export const debtorName = V.optional(
-  V.trimmed(
-    V.checkFirst(
-      V.minLength(DEBTOR_NAME_MIN_LENGTH, SEARCH_VALIDATION_MESSAGES.DEBTOR_NAME_TOO_SHORT),
-    ).then(V.maxLength(DEBTOR_NAME_MAX_LENGTH, SEARCH_VALIDATION_MESSAGES.DEBTOR_NAME_TOO_LONG)),
+  V.checkFirst(
+    V.useValidators((value: unknown) =>
+      typeof value === 'string'
+        ? { valid: true }
+        : { reasons: [SEARCH_VALIDATION_MESSAGES.DEBTOR_NAME_NOT_A_STRING] },
+    ),
+  ).then(
+    V.trimmed(
+      V.checkFirst(
+        V.minLength(DEBTOR_NAME_MIN_LENGTH, SEARCH_VALIDATION_MESSAGES.DEBTOR_NAME_TOO_SHORT),
+      ).then(V.maxLength(DEBTOR_NAME_MAX_LENGTH, SEARCH_VALIDATION_MESSAGES.DEBTOR_NAME_TOO_LONG)),
+    ),
   ),
 );
 

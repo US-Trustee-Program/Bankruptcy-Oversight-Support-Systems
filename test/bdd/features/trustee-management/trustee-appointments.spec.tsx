@@ -166,7 +166,6 @@ describe('Feature: View Trustee Appointments with Grouping and Sorting (Full Sta
 
     // Setup test with trustee and appointments
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .withCustomSpy('TrusteeAppointmentsMongoRepository', {
@@ -306,7 +305,6 @@ describe('Feature: View Trustee Appointments with Grouping and Sorting (Full Sta
 
     // Setup test with trustee and appointments
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .withCustomSpy('TrusteeAppointmentsMongoRepository', {
@@ -409,7 +407,6 @@ describe('Feature: View Trustee Appointments with Grouping and Sorting (Full Sta
 
     // Setup test with trustee and appointments
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .withCustomSpy('TrusteeAppointmentsMongoRepository', {

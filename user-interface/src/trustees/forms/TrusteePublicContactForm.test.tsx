@@ -6,9 +6,7 @@ import TrusteePublicContactForm, {
 } from './TrusteePublicContactForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
-import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 
 import { TrusteeInput, TrusteePatchBody } from '@common/cams/trustees';
@@ -45,9 +43,6 @@ describe('TrusteePublicContactForm Tests', () => {
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': true,
-    } as FeatureFlagSet);
     // Mock useDebounce so debounced callbacks run immediately in tests
     vi.spyOn(DebounceModule, 'default').mockReturnValue(((cb: () => void) =>
       cb()) as unknown as ReturnType<typeof DebounceModule.default>);
@@ -56,23 +51,6 @@ describe('TrusteePublicContactForm Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  test('should show disabled message when feature flag is disabled', async () => {
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': false,
-    } as FeatureFlagSet);
-
-    renderWithProps();
-
-    let disabledMessage;
-
-    await waitFor(() => {
-      disabledMessage = screen.getByTestId('trustee-create-disabled');
-    });
-
-    expect(disabledMessage).toBeInTheDocument();
-    expect(disabledMessage).toHaveTextContent('Trustee management is not enabled.');
   });
 
   test('should show forbidden message when user lacks TrusteeAdmin role', async () => {

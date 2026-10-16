@@ -4,7 +4,6 @@ import React, { useState, useCallback, useRef } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -71,8 +70,6 @@ export type TrusteePublicContactFormProps = {
 };
 
 function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>) {
-  const flags = useFeatureFlags();
-
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -243,10 +240,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const updateField = (field: keyof TrusteePublicFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  if (!flags[TRUSTEE_MANAGEMENT]) {
-    return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
-  }
 
   if (!canManage) {
     return (

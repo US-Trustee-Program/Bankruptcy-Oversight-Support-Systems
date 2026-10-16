@@ -5,7 +5,6 @@ import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -63,7 +62,6 @@ type TrusteeStaffFormProps = {
 };
 
 function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
-  const flags = useFeatureFlags();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -237,10 +235,6 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
   const updateField = (field: keyof TrusteeStaffFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  if (!flags[TRUSTEE_MANAGEMENT]) {
-    return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
-  }
 
   if (!canManage) {
     return (

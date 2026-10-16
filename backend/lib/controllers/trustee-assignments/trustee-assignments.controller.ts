@@ -6,7 +6,6 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { NotFoundError } from '../../common-errors/not-found-error';
 import { OversightRoleType } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
@@ -26,10 +25,6 @@ export class TrusteeAssignmentsController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment[] | undefined>> {
-    if (!context.featureFlags['trustee-management']) {
-      throw new NotFoundError(MODULE_NAME);
-    }
-
     if (!context.session) {
       throw new UnauthorizedError(MODULE_NAME);
     }

@@ -44,7 +44,7 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
   test('should override backend LaunchDarkly flags via setupFeatureFlagSpies', async () => {
     // GIVEN: Custom feature flags specified
     const customFlags = {
-      'trustee-management': true,
+      'trustee-case-list': true,
       'case-consolidation': false,
       'experimental-feature': true,
     };
@@ -65,7 +65,7 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
 
     // Verify the client returns exactly the custom flags we specified
     expect(actualFlags).toEqual(customFlags);
-    expect(actualFlags['trustee-management']).toBe(true);
+    expect(actualFlags['trustee-case-list']).toBe(true);
     expect(actualFlags['case-consolidation']).toBe(false);
     expect(actualFlags['experimental-feature']).toBe(true);
 
@@ -83,9 +83,9 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
    * since useFlags() is a React hook and must be called within a component.
    */
   test('should override frontend useFlags via setupFeatureFlagSpies', async () => {
-    // GIVEN: Custom feature flags specified (trustee-management controls admin features)
+    // GIVEN: Custom feature flags specified
     const customFlags = {
-      'trustee-management': true,
+      'trustee-case-list': true,
       'new-ui-feature': true,
     };
 
@@ -139,9 +139,9 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
    * THEN that feature should be enabled in the UI
    */
   test('should handle single flag override via withFeatureFlag', async () => {
-    // GIVEN: Single feature flag enabled (trustee-management enables admin features)
+    // GIVEN: Single feature flag enabled
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
+      .withFeatureFlag('trustee-case-list', true)
       .renderAt('/');
 
     await waitForAppLoad();
@@ -188,7 +188,7 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
     // GIVEN: Multiple flags with mixed true/false values
     await TestSetup.forUser(TestSessions.trusteeAdmin())
       .withFeatureFlags({
-        'trustee-management': true,
+        'trustee-case-list': true,
         'case-consolidation': true,
         'legacy-feature': false,
         'beta-ui': false,
@@ -204,7 +204,7 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
     const flagState = await client.allFlagsState({});
     const flags = flagState.allValues();
 
-    expect(flags['trustee-management']).toBe(true);
+    expect(flags['trustee-case-list']).toBe(true);
     expect(flags['case-consolidation']).toBe(true);
     expect(flags['legacy-feature']).toBe(false);
     expect(flags['beta-ui']).toBe(false);

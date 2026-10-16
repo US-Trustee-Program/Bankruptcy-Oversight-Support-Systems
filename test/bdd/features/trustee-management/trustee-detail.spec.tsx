@@ -119,7 +119,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: User renders directly at trustee detail page
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .renderAt(`/trustees/${testTrustee.trusteeId}`);
@@ -179,7 +178,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: User renders trustee page
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .renderAt(`/trustees/${testTrustee.trusteeId}`);
@@ -210,7 +208,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: User renders default trustee route
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .renderAt(`/trustees/${testTrustee.trusteeId}`);
@@ -241,7 +238,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: User renders audit history tab directly
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCommonPostLoginMocks()
       .withTrustee(testTrustee)
       .withTrusteeHistory(testTrustee.trusteeId, []) // Empty history for this test
@@ -275,7 +271,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: User renders non-existent trustee page
     await TestSetup.forUser(TestSessions.trusteeAdmin())
-      .withFeatureFlag('trustee-management', true)
       .withCustomSpy('TrusteesMongoRepository', {
         read: vi.fn().mockRejectedValue(new Error('Trustee not found')),
       })
@@ -311,7 +306,6 @@ describe('Feature: View Trustee Details (Full Stack)', () => {
 
     // WHEN: Non-admin user renders trustee page
     await TestSetup.forUser(TestSessions.trialAttorney()) // Not a trustee admin
-      .withFeatureFlag('trustee-management', true)
       .withTrustee(testTrustee)
       .renderAt(`/trustees/${testTrustee.trusteeId}`);
 

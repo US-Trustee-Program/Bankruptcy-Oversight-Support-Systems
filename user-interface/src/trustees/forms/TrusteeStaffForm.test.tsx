@@ -8,14 +8,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { Trustee } from '@common/cams/trustees';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -31,7 +29,6 @@ vi.mock('@/lib/components/uswds/modal/OpenModalButton', () => ({
   )),
 }));
 
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 const mockOpenModalButton = vi.mocked(OpenModalButton);
 
 function getDeleteOnClick(): () => Promise<void> {
@@ -141,11 +138,6 @@ describe('TrusteeStaffForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
 
-    // Mock feature flag enabled by default
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     const user = MockData.getCamsUser({
       roles: [CamsRole.TrusteeAdmin],
     });
@@ -171,18 +163,7 @@ describe('TrusteeStaffForm', () => {
     });
   });
 
-  describe('Permissions and Feature Flags', () => {
-    test('should show message when trustee management feature is disabled', () => {
-      mockUseFeatureFlags.mockReturnValue({
-        [TRUSTEE_MANAGEMENT]: false,
-      });
-
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
-      expect(screen.getByText('Trustee management is not enabled.')).toBeInTheDocument();
-    });
-
+  describe('Permissions', () => {
     test('should show forbidden message when user lacks TrusteeAdmin role', () => {
       const user = MockData.getCamsUser({
         roles: [CamsRole.TrialAttorney],

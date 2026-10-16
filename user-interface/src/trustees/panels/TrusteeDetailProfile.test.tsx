@@ -191,49 +191,32 @@ describe('TrusteeDetailProfile', () => {
     );
   });
 
-  describe('showSoftwareBankInfo prop', () => {
-    test('renders OtherInformationCard with banks/software props when showSoftwareBankInfo is true', () => {
-      const softwareProfiles = [
-        {
-          id: 'sw-bestcase',
-          documentType: 'BANKRUPTCY_SOFTWARE' as const,
-          name: 'BestCase Trustee Software v2.1',
-          status: 'active' as const,
-          updatedOn: '2024-01-01T00:00:00.000Z',
-          updatedBy: SYSTEM_USER_REFERENCE,
-        },
-      ];
+  test('renders OtherInformationCard with banks/software props', () => {
+    const softwareProfiles = [
+      {
+        id: 'sw-bestcase',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'BestCase Trustee Software v2.1',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      },
+    ];
 
-      renderWithProps({
-        showSoftwareBankInfo: true,
-        trustee: { ...mockTrustee, banks: ['First National Bank'], softwareId: 'sw-bestcase' },
+    renderWithProps({
+      trustee: { ...mockTrustee, banks: ['First National Bank'], softwareId: 'sw-bestcase' },
+      softwareProfiles,
+    });
+
+    expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
+    expect(mockOtherInformationCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        banks: ['First National Bank'],
+        softwareId: 'sw-bestcase',
         softwareProfiles,
-      });
-
-      expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
-      expect(mockOtherInformationCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          banks: ['First National Bank'],
-          softwareId: 'sw-bestcase',
-          softwareProfiles,
-          onEdit: mockOnEditOtherInformation,
-        }),
-        undefined,
-      );
-    });
-
-    test('hides OtherInformationCard and adjusts heading when showSoftwareBankInfo is false', () => {
-      renderWithProps({ showSoftwareBankInfo: false });
-
-      expect(screen.queryByTestId('mock-other-information-card')).not.toBeInTheDocument();
-      expect(screen.getByText('341 Meeting Information')).toBeInTheDocument();
-      expect(screen.queryByText('341 Meeting and Other Information')).not.toBeInTheDocument();
-    });
-
-    test('still renders MeetingOfCreditorsInfoCard when showSoftwareBankInfo is false', () => {
-      renderWithProps({ showSoftwareBankInfo: false });
-
-      expect(screen.getByTestId('mock-meeting-of-creditors-info-card')).toBeInTheDocument();
-    });
+        onEdit: mockOnEditOtherInformation,
+      }),
+      undefined,
+    );
   });
 });

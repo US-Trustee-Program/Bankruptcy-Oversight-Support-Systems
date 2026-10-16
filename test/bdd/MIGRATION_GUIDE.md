@@ -1280,7 +1280,6 @@ test('should enable multiple features', async () => {
 - **Override**: Use `.withFeatureFlag()` to override defaults for specific tests
 
 **Common Feature Flags:**
-- `trustee-management` - Trustee CRUD operations
 - `privileged-identity-management` - Admin user elevation
 - `chapter-eleven-enabled` - Chapter 11 case support
 - `transfer-orders-enabled` - Case transfer functionality

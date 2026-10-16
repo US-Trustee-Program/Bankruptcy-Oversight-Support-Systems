@@ -12,7 +12,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
-import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
 
 const getResultsTable = () => document.querySelector('.search-results .cams-table');
@@ -936,6 +935,24 @@ describe('validateFormData function', () => {
     expect(result.isValid).toBe(false);
     expect(result.formValidationError).toBe('Please enter at least one search criterion');
   });
+
+  test('should return error for a debtor name shorter than 2 characters', () => {
+    const result = validateFormData({ debtorName: 'J' });
+    expect(result.isValid).toBe(false);
+    expect(result.fieldErrors.debtorName?.reasons).toEqual(['Must be at least 2 characters']);
+  });
+
+  test('should return valid for a debtor name of 2 characters', () => {
+    const result = validateFormData({ debtorName: 'Jo' });
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.debtorName).toBeUndefined();
+  });
+
+  test('should treat a whitespace-only debtor name as no search criteria', () => {
+    const result = validateFormData({ debtorName: '   ' });
+    expect(result.isValid).toBe(false);
+    expect(result.formValidationError).toBe('Please enter at least one search criterion');
+  });
 });
 
 describe('debtor name search', () => {
@@ -963,14 +980,7 @@ describe('debtor name search', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  function renderWithFeatureFlag(enabled: boolean) {
-    vi.spyOn(UseFeatureFlagsModule, 'default').mockReturnValue({
-      'phonetic-search-enabled': enabled,
-      'chapter-twelve-enabled': true,
-      'chapter-eleven-enabled': true,
-      'transfer-orders-enabled': true,
-      'consolidations-enabled': true,
-    });
+  function renderScreen() {
     render(
       <BrowserRouter>
         <SearchScreen></SearchScreen>
@@ -978,8 +988,8 @@ describe('debtor name search', () => {
     );
   }
 
-  test('should show debtor name field when phonetic search feature is enabled', async () => {
-    renderWithFeatureFlag(true);
+  test('should show debtor name field', async () => {
+    renderScreen();
 
     await waitFor(() => {
       const debtorNameInput = screen.queryByLabelText(/debtor name/i);
@@ -987,17 +997,8 @@ describe('debtor name search', () => {
     });
   });
 
-  test('should hide debtor name field when phonetic search feature is disabled', async () => {
-    renderWithFeatureFlag(false);
-
-    await waitFor(() => {
-      const debtorNameInput = screen.queryByLabelText(/debtor name/i);
-      expect(debtorNameInput).not.toBeInTheDocument();
-    });
-  });
-
-  test('should search by debtor name when feature is enabled', async () => {
-    renderWithFeatureFlag(true);
+  test('should search by debtor name', async () => {
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1028,8 +1029,24 @@ describe('debtor name search', () => {
     );
   });
 
+  test('should show an error and not search when the debtor name is too short', async () => {
+    renderScreen();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+    });
+    searchCasesSpy.mockClear();
+
+    await userEvent.type(debtorNameInput, 'J');
+    await userEvent.click(getSearchButton());
+
+    expect(await screen.findByText('Must be at least 2 characters')).toBeInTheDocument();
+    expect(searchCasesSpy).not.toHaveBeenCalled();
+  });
+
   test('should allow searching with both debtor name and case number', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1064,7 +1081,7 @@ describe('debtor name search', () => {
   });
 
   test('should allow searching by debtor name and chapter', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1096,7 +1113,7 @@ describe('debtor name search', () => {
   });
 
   test('should trigger search when Enter key is pressed in debtor name field', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     searchCasesSpy.mockClear();
 
@@ -1124,7 +1141,7 @@ describe('debtor name search', () => {
   });
 
   test('should clear debtor name when search is cleared', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
     await userEvent.type(debtorNameInput, 'Test Name');
@@ -1141,7 +1158,7 @@ describe('debtor name search', () => {
   });
 
   test('should preserve single character input while typing', async () => {
-    renderWithFeatureFlag(true);
+    renderScreen();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
 
@@ -1162,28 +1179,6 @@ describe('debtor name search', () => {
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('John');
     });
-  });
-
-  test('should validate debtor name has at least 2 characters', () => {
-    const formData = { debtorName: 'J' };
-    const validation = validateFormData(formData);
-    expect(validation.isValid).toBe(false);
-    expect(validation.fieldErrors.debtorName).toBeDefined();
-  });
-
-  test('should accept debtor name with 2+ characters', () => {
-    const formData = { debtorName: 'Jo' };
-    const validation = validateFormData(formData);
-    expect(validation.isValid).toBe(true);
-    expect(validation.fieldErrors.debtorName).toBeUndefined();
-  });
-
-  test('should reject empty string after whitespace trim', async () => {
-    const formData = { debtorName: '   ' };
-    const validation = validateFormData(formData);
-
-    expect(validation.isValid).toBe(false);
-    expect(validation.formValidationError).toBe('Please enter at least one search criterion');
   });
 });
 

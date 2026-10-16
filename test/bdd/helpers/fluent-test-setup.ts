@@ -399,13 +399,13 @@ export class TestSetup {
    * Enable a feature flag for the test.
    * Feature flags control access to features in the application.
    *
-   * @param flagName Name of the feature flag (e.g., 'trustee-management')
+   * @param flagName Name of the feature flag (e.g., 'trustee-case-list')
    * @param enabled Whether the flag is enabled (default: true)
    * @example
    * ```typescript
    * await TestSetup
    *   .forUser(TestSessions.trusteeAdmin())
-   *   .withFeatureFlag('trustee-management')
+   *   .withFeatureFlag('trustee-case-list')
    *   .withTrustee(testTrustee)
    *   .renderAt('/trustees/123');
    * ```
@@ -424,7 +424,7 @@ export class TestSetup {
    * await TestSetup
    *   .forUser(session)
    *   .withFeatureFlags({
-   *     'trustee-management': true,
+   *     'trustee-case-list': true,
    *     'case-consolidation': true,
    *   })
    *   .renderAt('/');

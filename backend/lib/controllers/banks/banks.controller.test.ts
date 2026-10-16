@@ -5,7 +5,6 @@ import { BanksController } from './banks.controller';
 import { BanksUseCase } from '../../use-cases/banks/banks';
 import { CamsRole } from '@common/cams/roles';
 import { BankProfile } from '@common/cams/banks';
-import HttpStatusCodes from '@common/api/http-status-codes';
 
 vi.mock('../../use-cases/banks/banks');
 
@@ -38,7 +37,6 @@ describe('BanksController', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
-    context.featureFlags['trustee-software-bank-display'] = true;
     controller = new BanksController(context);
   });
 
@@ -47,18 +45,6 @@ describe('BanksController', () => {
   });
 
   describe('handleRequest', () => {
-    test('should throw ForbiddenError when trustee-software-bank-display flag is off', async () => {
-      context.featureFlags['trustee-software-bank-display'] = false;
-      context.request.method = 'GET';
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({
-          status: HttpStatusCodes.FORBIDDEN,
-          message: 'Banks feature is not enabled.',
-        }),
-      );
-    });
-
     test('should route GET to handleGet', async () => {
       context.request.method = 'GET';
       vi.spyOn(BanksUseCase.prototype, 'getBanks').mockResolvedValue(mockBanks);

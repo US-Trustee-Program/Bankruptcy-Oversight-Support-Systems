@@ -6,16 +6,12 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import {
-  PRIVILEGED_IDENTITY_MANAGEMENT,
-  TRUSTEE_SOFTWARE_BANK_DISPLAY,
-} from '@/lib/hooks/UseFeatureFlags';
+import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
-  TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
 }));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
@@ -139,26 +135,6 @@ describe('Admin screen tests', () => {
     });
     renderWithoutProps();
     expect(screen.queryByTestId('privileged-identity-nav-link')).not.toBeInTheDocument();
-  });
-
-  test('should not render BankDetail when trustee-software-bank-display flag is off', () => {
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-      ...testFeatureFlags,
-      [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
-    });
-    renderAtPath('/admin/banks/bank-1');
-    expect(screen.queryByTestId('mocked-bank-detail')).not.toBeInTheDocument();
-    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
-  });
-
-  test('should not render Banks listing when trustee-software-bank-display flag is off', () => {
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-      ...testFeatureFlags,
-      [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
-    });
-    renderAtPath('/admin/banks');
-    expect(screen.queryByTestId('mocked-banks')).not.toBeInTheDocument();
-    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 
   test('should not render PrivilegedIdentity route when privileged-identity-management flag is off', () => {
