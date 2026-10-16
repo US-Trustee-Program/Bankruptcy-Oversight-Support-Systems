@@ -3,7 +3,7 @@ import * as ld from '@launchdarkly/node-server-sdk';
 import { getFeatureFlags } from './feature-flag';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ANONYMOUS_FEATURE_FLAG_CONTEXT, testFeatureFlags } from '@common/feature-flags';
-import { getGroupDesignators } from '@common/cams/users';
+import { getGroupDesignators, getRegionIds } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 
@@ -64,6 +64,7 @@ describe('Tests for feature flags', () => {
       email: user.email,
       roles: user.roles,
       officeGroupDesignators: getGroupDesignators(user),
+      regionIds: getRegionIds(user),
     });
   });
 
