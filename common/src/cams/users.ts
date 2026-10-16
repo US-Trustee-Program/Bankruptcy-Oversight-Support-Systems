@@ -63,3 +63,8 @@ export function getGroupDesignators(user: CamsUser): string[] {
   };
   return user.offices.reduce(reducer, []);
 }
+
+export function getRegionIds(user: CamsUser): string[] {
+  if (!user.offices) return [];
+  return [...new Set(user.offices.map((office) => office.regionId))];
+}
