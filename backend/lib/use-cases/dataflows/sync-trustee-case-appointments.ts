@@ -1922,6 +1922,11 @@ async function storeRuntimeState(
   lastSyncDate: string,
 ) {
   const { context } = deps;
+  // regionId becomes a segment of the Mongo dotted path below: '.' would nest a level and a
+  // leading '$' would be read as an operator. Region ids are fixed numeric codes today.
+  if (regionId.includes('.') || regionId.startsWith('$')) {
+    throw new Error(`Invalid regionId for runtime state path: ${regionId}`);
+  }
   try {
     await deps.runtimeStateRepo.setField(
       'TRUSTEE_APPOINTMENTS_SYNC_STATE',
