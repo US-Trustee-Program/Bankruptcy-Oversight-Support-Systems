@@ -19,17 +19,6 @@ vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
   }),
 }));
 
-vi.mock('launchdarkly-react-client-sdk', () => ({
-  useFlags: vi.fn(() => ({})),
-  withLDProvider: vi.fn(() => (component: unknown) => component),
-}));
-
-vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
-  default: vi.fn(() => ({ 'transfer-orders-enabled': true })),
-  TRANSFER_ORDERS_ENABLED: 'transfer-orders-enabled',
-  SYSTEM_MAINTENANCE_BANNER: 'system-maintenance-banner',
-}));
-
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 }

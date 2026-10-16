@@ -939,7 +939,7 @@ describe('validateFormData function', () => {
   test('should return error for a debtor name shorter than 2 characters', () => {
     const result = validateFormData({ debtorName: 'J' });
     expect(result.isValid).toBe(false);
-    expect(result.fieldErrors.debtorName).toBeDefined();
+    expect(result.fieldErrors.debtorName?.reasons).toEqual(['Must be at least 2 characters']);
   });
 
   test('should return valid for a debtor name of 2 characters', () => {
@@ -1027,6 +1027,22 @@ describe('debtor name search', () => {
       }),
       includeAssignments,
     );
+  });
+
+  test('should show an error and not search when the debtor name is too short', async () => {
+    renderScreen();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+    });
+    searchCasesSpy.mockClear();
+
+    await userEvent.type(debtorNameInput, 'J');
+    await userEvent.click(getSearchButton());
+
+    expect(await screen.findByText('Must be at least 2 characters')).toBeInTheDocument();
+    expect(searchCasesSpy).not.toHaveBeenCalled();
   });
 
   test('should allow searching with both debtor name and case number', async () => {

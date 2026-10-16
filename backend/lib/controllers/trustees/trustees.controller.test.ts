@@ -57,11 +57,6 @@ describe('TrusteesController', () => {
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrusteeAdmin] };
 
-    // Initialize featureFlags if it doesn't exist
-    if (!context.featureFlags) {
-      context.featureFlags = {};
-    }
-
     mockUseCase = {
       createTrustee: vi.fn(),
       listTrustees: vi.fn(),

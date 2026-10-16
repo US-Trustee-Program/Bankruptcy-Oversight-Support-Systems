@@ -21,6 +21,12 @@ describe('OtherInformationCard', () => {
     mockOnEdit.mockClear();
   });
 
+  test('renders the Software and Bank heading', () => {
+    render(<OtherInformationCard softwareProfiles={[]} onEdit={mockOnEdit} />);
+
+    expect(screen.getByRole('heading', { name: 'Software and Bank' })).toBeInTheDocument();
+  });
+
   test('shows "No information added." when there is no software or bank data', () => {
     render(<OtherInformationCard softwareProfiles={[]} onEdit={mockOnEdit} />);
 

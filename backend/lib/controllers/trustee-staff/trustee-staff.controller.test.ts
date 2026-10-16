@@ -46,10 +46,6 @@ describe('TrusteeStaffController', () => {
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrusteeAdmin] };
 
-    if (!context.featureFlags) {
-      context.featureFlags = {};
-    }
-
     controller = new TrusteeStaffController(context);
   });
 

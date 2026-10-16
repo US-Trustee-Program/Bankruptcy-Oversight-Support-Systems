@@ -127,8 +127,6 @@ describe('App Router Tests', () => {
         MockData.getCamsSession({ user: unauthorizedUser }),
       );
 
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({});
-
       render(
         <MemoryRouter initialEntries={['/trustees']}>
           <App />

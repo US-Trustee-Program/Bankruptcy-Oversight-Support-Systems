@@ -45,11 +45,6 @@ describe('TrusteeAssignmentsController', () => {
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrialAttorney, CamsRole.SuperUser] };
 
-    // Initialize featureFlags if it doesn't exist
-    if (!context.featureFlags) {
-      context.featureFlags = {};
-    }
-
     mockUseCase = {
       getTrusteeOversightAssignments: vi.fn(),
       assignOversightStaffToTrustee: vi.fn(),

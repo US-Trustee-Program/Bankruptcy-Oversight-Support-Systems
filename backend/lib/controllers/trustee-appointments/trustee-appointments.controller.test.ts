@@ -28,10 +28,6 @@ describe('TrusteeAppointmentsController', () => {
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrusteeAdmin] };
 
-    if (!context.featureFlags) {
-      context.featureFlags = {};
-    }
-
     mockUseCase = {
       getTrusteeAppointments: vi.fn(),
       createAppointment: vi.fn(),
