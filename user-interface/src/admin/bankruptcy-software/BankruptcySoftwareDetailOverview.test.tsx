@@ -135,7 +135,7 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('https://axos.com')).toBeInTheDocument();
   });
 
-  describe('typed phones', () => {
+  describe('phones', () => {
     test('should show all typed phones with type labels', () => {
       const softwareMultiPhone: BankruptcySoftwareProfile = {
         ...softwareNoContact,
@@ -167,6 +167,17 @@ describe('BankruptcySoftwareDetailOverview', () => {
       const phoneEls = container.querySelectorAll('.phone');
       expect(phoneEls[0].textContent).toContain('212-555-0100');
       expect(phoneEls[1].textContent).toContain('212-555-0200');
+    });
+
+    test('should show a fax-only contact as contact info', () => {
+      const softwareFaxOnly: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: { phones: [{ number: '212-555-0200', type: 'fax' }] },
+      };
+      renderOverview(softwareFaxOnly);
+      expect(screen.getByText('212-555-0200')).toBeInTheDocument();
+      expect(screen.getByText('(Fax)')).toBeInTheDocument();
+      expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
     });
   });
 });

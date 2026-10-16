@@ -69,7 +69,7 @@ describe('CaseTrusteeAppointmentController', () => {
 
       const response = await controller.handleRequest(context);
 
-      expect(response.statusCode).not.toBe(404);
+      expect(response.statusCode).toBe(200);
       expect(response.body?.data).toEqual({ current: null, history: [] });
     });
 

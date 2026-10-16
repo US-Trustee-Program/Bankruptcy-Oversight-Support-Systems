@@ -23,6 +23,10 @@ function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
 }
 
+function getExtensionInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
+}
+
 const FLAGS: FeatureFlagSet = {
   'trustee-management': true,
 };
@@ -312,6 +316,45 @@ describe('TrusteeContactForm Tests', () => {
 
       const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
       expect(payload.internal.phones).toBeUndefined();
+    });
+
+    test('blocks submission when a phone row has an invalid number', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(getNumberInput(0), '123');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('phone-entry-0')).toHaveTextContent(
+          'Must be a valid phone number',
+        );
+      });
+      expect(patchSpy).not.toHaveBeenCalled();
+    });
+
+    test('submits a typed phone number and extension', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(getNumberInput(0), '5555550100');
+      await userEvent.type(getExtensionInput(0), '42');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
+      expect(payload.internal.phones).toEqual([
+        { type: 'direct', number: '555-555-0100', extension: '42' },
+      ]);
     });
   });
 
