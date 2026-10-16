@@ -136,7 +136,7 @@ export default class CaseManagement {
     try {
       // RULE 3: Backend validation (security boundary)
       this.checkValidation(validateObject(casesSearchPredicateSpec, predicate));
-      // Validation guarantees any debtorName present has at least 2 non-whitespace characters.
+      // Validation guarantees any debtorName present is a string with at least 2 non-whitespace characters.
       const usePhoneticSearch = !!predicate.debtorName;
       searchType = usePhoneticSearch ? 'phonetic' : 'standard';
       if (predicate.assignments && predicate.assignments.length > 0) {

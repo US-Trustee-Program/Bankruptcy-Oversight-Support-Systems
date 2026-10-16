@@ -732,6 +732,55 @@ describe('Case management tests', () => {
         );
       });
 
+      test('should report a failed phonetic search as phonetic in the trace', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+        vi.spyOn(useCase.casesRepository, 'searchCasesWithPhoneticTokens').mockRejectedValue(
+          new Error('phonetic failure'),
+        );
+
+        await expect(
+          useCase.searchCases(applicationContext, { debtorName: 'John Smith' }, false),
+        ).rejects.toThrow();
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: false,
+            properties: expect.objectContaining({
+              searchType: 'phonetic',
+              debtorNameUsed: 'true',
+            }),
+          }),
+          expect.anything(),
+          applicationContext.logger,
+        );
+      });
+
+      test('should report a search that fails validation as standard in the trace', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+
+        await expect(
+          useCase.searchCases(applicationContext, { debtorName: '   ', chapters: ['15'] }, false),
+        ).rejects.toThrow(expect.objectContaining({ status: 400 }));
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: false,
+            properties: expect.objectContaining({
+              searchType: 'standard',
+              debtorNameUsed: 'false',
+            }),
+          }),
+          expect.anything(),
+          applicationContext.logger,
+        );
+      });
+
       test('should call completeTrace on early return when no assignment caseIds found', async () => {
         const mockGateway = getMockObservabilityGateway();
         applicationContext.observability = mockGateway;
@@ -828,6 +877,8 @@ describe('Case management tests', () => {
         ['only whitespace', '   '],
         ['an empty string', ''],
         ['a non-string value', 42 as unknown as string],
+        ['an array', ['a', 'b'] as unknown as string],
+        ['an object with a length', { length: 3 } as unknown as string],
       ])(
         'should reject a debtorName of %s with a 400 before searching',
         async (_description, debtorName) => {
