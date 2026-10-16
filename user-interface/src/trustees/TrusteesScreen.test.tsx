@@ -5,7 +5,6 @@ import useFeatureFlags, { RESTRICT_ADDING_TRUSTEES } from '@/lib/hooks/UseFeatur
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { vi } from 'vitest';
-import { CamsUser } from '@common/cams/users';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { FeatureFlagSet } from '@common/feature-flags';
 
@@ -96,69 +95,27 @@ describe('TrusteesScreen', () => {
     expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
   });
 
-  test('should not render when user does not have TrusteeAdmin role', () => {
-    // Mock user session without TrusteeAdmin role
-    mockLocalStorage.getSession.mockReturnValue({
-      accessToken: 'fake-token',
-      provider: 'test',
-      issuer: 'test-issuer',
-      expires: 5,
-      user: {
-        id: 'user-1',
-        name: 'Test User',
-        roles: [CamsRole.CaseAssignmentManager], // Different role
-      },
-    });
+  test.each([
+    {
+      caseName: 'user does not have TrusteeAdmin role',
+      session: MockData.getCamsSession({
+        user: MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] }),
+      }),
+    },
+    {
+      caseName: 'user has no roles',
+      session: MockData.getCamsSession({ user: MockData.getCamsUser({ roles: [] }) }),
+    },
+    {
+      caseName: 'user has no roles property',
+      session: MockData.getCamsSession({ user: { id: 'user-1', name: 'Test User' } }),
+    },
+    { caseName: 'user session is null', session: null },
+  ])('should render nothing when $caseName', ({ session }) => {
+    mockLocalStorage.getSession.mockReturnValue(session);
 
     const { container } = renderWithRouter(<TrusteesScreen />);
 
-    // Component should return null and render nothing
-    expect(container.firstChild).toBeNull();
-  });
-
-  test('should not render when user has no roles', () => {
-    // Mock user session with no roles
-    mockLocalStorage.getSession.mockReturnValue({
-      accessToken: 'fake-token',
-      provider: 'test',
-      issuer: 'test-issuer',
-      expires: 5,
-      user: {
-        id: 'user-1',
-        name: 'Test User',
-        roles: [], // No roles
-      },
-    });
-
-    const { container } = renderWithRouter(<TrusteesScreen />);
-
-    // Component should return null and render nothing
-    expect(container.firstChild).toBeNull();
-  });
-
-  test('should not render when user session is null', () => {
-    // Mock no user session
-    mockLocalStorage.getSession.mockReturnValue(null);
-
-    const { container } = renderWithRouter(<TrusteesScreen />);
-
-    // Component should return null and render nothing
-    expect(container.firstChild).toBeNull();
-  });
-
-  test('should not render when user is undefined', () => {
-    // Mock session with undefined user
-    mockLocalStorage.getSession.mockReturnValue({
-      accessToken: 'fake-token',
-      provider: 'test',
-      issuer: 'test-issuer',
-      expires: 5,
-      user: {} as CamsUser,
-    });
-
-    const { container } = renderWithRouter(<TrusteesScreen />);
-
-    // Component should return null and render nothing
     expect(container.firstChild).toBeNull();
   });
 

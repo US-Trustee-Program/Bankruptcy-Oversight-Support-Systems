@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
-import * as TrusteesModule from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -67,6 +66,25 @@ const mockInternal: ContactInformation = {
   },
   phone: { number: '111-123-4567', extension: '4578' },
   email: 'john.doe.private@example.com',
+};
+
+const mockStaffMember = {
+  id: 'staff-1',
+  trusteeId: '123',
+  name: 'Jane Smith',
+  contact: {
+    email: 'jane.smith@example.com',
+    phone: { number: '555-987-6543' },
+    address: {
+      address1: '456 Oak St',
+      city: 'Springfield',
+      state: 'IL',
+      zipCode: '62701',
+      countryCode: 'US' as const,
+    },
+  },
+  updatedBy: { id: 'user-1', name: 'Admin User' },
+  updatedOn: '2024-01-01T00:00:00Z',
 };
 
 const mockCourts = MockData.getCourts().filter(
@@ -191,8 +209,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should handle API errors gracefully', async () => {
-    const originalConsoleError = console.error;
-    console.error = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('API Error'));
@@ -211,8 +228,6 @@ describe('TrusteeDetailScreen', () => {
 
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1, name: 'John Doe' })).not.toBeInTheDocument();
-
-    console.error = originalConsoleError;
   });
 
   test('should render NotFound when no trusteeId is provided', () => {
@@ -499,26 +514,7 @@ describe('TrusteeDetailScreen', () => {
   test('should navigate to staff create route when add another staff button is clicked', async () => {
     const trusteeWithStaff = {
       ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: '123',
-          name: 'Jane Smith',
-          contact: {
-            email: 'jane.smith@example.com',
-            phone: { number: '555-987-6543' },
-            address: {
-              address1: '456 Oak St',
-              city: 'Springfield',
-              state: 'IL',
-              zipCode: '62701',
-              countryCode: 'US' as const,
-            },
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
+      staff: [mockStaffMember],
     };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -537,26 +533,7 @@ describe('TrusteeDetailScreen', () => {
   test('should navigate to staff edit route when an existing staff member edit button is clicked', async () => {
     const trusteeWithStaff = {
       ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: '123',
-          name: 'Jane Smith',
-          contact: {
-            email: 'jane.smith@example.com',
-            phone: { number: '555-987-6543' },
-            address: {
-              address1: '456 Oak St',
-              city: 'Springfield',
-              state: 'IL',
-              zipCode: '62701',
-              countryCode: 'US' as const,
-            },
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
+      staff: [mockStaffMember],
     };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -572,39 +549,29 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/edit/staff-1');
   });
 
-  test('runs the fetched trustee through sortTrusteePhoneNumbers before rendering', async () => {
-    // Sort-order correctness (type, then number, then extension, across every
-    // staff member) is sortTrusteePhoneNumbers's own contract, covered by
-    // common/src/cams/trustees.test.ts. This only confirms the screen actually
-    // wires the fetched trustee through it before storing it in state.
-    const sortSpy = vi.spyOn(TrusteesModule, 'sortTrusteePhoneNumbers');
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+  test('sorts the fetched trustee phone numbers before passing them to the edit form', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({
+      data: {
+        ...mockTrustee,
+        internal: {
+          phones: [
+            { type: 'fax', number: '555-000-0002' },
+            { type: 'direct', number: '555-000-0001' },
+          ],
+        },
+      },
+    });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
-    renderWithRouter();
+    renderWithRouter(['/trustees/123/contact/edit/internal']);
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(sortSpy).toHaveBeenCalledWith(mockTrustee);
+    const firstEntry = await screen.findByTestId('phone-entry-0');
+    expect(within(firstEntry).getByRole('combobox')).toHaveValue('direct');
+    expect(within(screen.getByTestId('phone-entry-1')).getByRole('combobox')).toHaveValue('fax');
   });
 
   describe('Trustee Notes Integration', () => {
-    test('should render TrusteeNotes component on notes route', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { level: 3, name: 'Trustee Notes' }),
-        ).toBeInTheDocument();
-      });
-    });
-
     test('should pass correct trusteeId to TrusteeNotes component', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });

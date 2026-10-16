@@ -153,7 +153,7 @@ export default class CaseManagement {
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length === 0) {
-          this.completeSearchTrace(context, trace, predicate, 'standard', 0, 0, true);
+          this.completeSearchTrace(context, trace, predicate, searchType, 0, 0, true);
           return { metadata: { total: 0 }, data: [] };
         }
       }
