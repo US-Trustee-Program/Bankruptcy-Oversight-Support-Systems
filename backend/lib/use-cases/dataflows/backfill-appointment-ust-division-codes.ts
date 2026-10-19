@@ -49,7 +49,9 @@ function buildCourtDivisionMaps(offices: UstpOfficeDetails[]): CourtDivisionMaps
       for (const division of group.divisions) {
         const courtId = division.court.courtId;
         if (courtId !== EASTERN_DISTRICT_TN_COURT_ID) continue;
-        const ustCode = division.ustDivisionCode ?? division.divisionCode;
+        // tempCourtDivisionCode is preferred when present (CAMS-936 Phase 1 — see plan.md).
+        const ustCode =
+          division.tempCourtDivisionCode ?? division.ustDivisionCode ?? division.divisionCode;
         if (!pairsByCourt.has(courtId)) pairsByCourt.set(courtId, new Map());
         pairsByCourt.get(courtId)!.set(ustCode, division.divisionCode);
       }

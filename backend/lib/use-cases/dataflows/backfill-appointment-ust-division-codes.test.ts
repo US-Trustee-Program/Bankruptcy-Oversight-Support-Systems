@@ -99,6 +99,62 @@ describe('BackfillAppointmentUstDivisionCodesUseCase', () => {
     test('includes only Eastern District of TN, even when other courts diverge', () => {
       expect([...maps.keys()]).toEqual(['0649']);
     });
+
+    test('CAMS-936 Phase 1: prefers tempCourtDivisionCode over ustDivisionCode when building maps (freshly synced offices)', () => {
+      const freshOffices: UstpOfficeDetails[] = [
+        {
+          officeCode: 'TN',
+          officeName: 'Tennessee',
+          idpGroupName: 'TN',
+          regionId: '08',
+          regionName: 'Memphis',
+          groups: [
+            {
+              groupDesignator: 'CH',
+              divisions: [
+                {
+                  divisionCode: '491',
+                  tempCourtDivisionCode: '491',
+                  court: { courtId: '0649', courtName: 'Eastern TN' },
+                  courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Chattanooga' },
+                },
+                {
+                  divisionCode: '491',
+                  tempCourtDivisionCode: '494',
+                  court: { courtId: '0649', courtName: 'Eastern TN' },
+                  courtOffice: { courtOfficeCode: '4', courtOfficeName: 'Winchester' },
+                },
+                {
+                  divisionCode: '492',
+                  tempCourtDivisionCode: '492',
+                  court: { courtId: '0649', courtName: 'Eastern TN' },
+                  courtOffice: { courtOfficeCode: '2', courtOfficeName: 'Greeneville' },
+                },
+                {
+                  divisionCode: '492',
+                  tempCourtDivisionCode: '495',
+                  court: { courtId: '0649', courtName: 'Eastern TN' },
+                  courtOffice: { courtOfficeCode: '5', courtOfficeName: 'Johnson City' },
+                },
+                {
+                  divisionCode: '493',
+                  tempCourtDivisionCode: '493',
+                  court: { courtId: '0649', courtName: 'Eastern TN' },
+                  courtOffice: { courtOfficeCode: '3', courtOfficeName: 'Knoxville' },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const freshMaps =
+        BackfillAppointmentUstDivisionCodesUseCase.buildCourtDivisionMaps(freshOffices);
+
+      expect([...freshMaps.keys()]).toEqual(['0649']);
+      const map = freshMaps.get('0649')!;
+      expect(map.allUstCodes).toEqual(['491', '492', '493', '494', '495']);
+    });
   });
 
   describe('remapDivisionCodes', () => {
