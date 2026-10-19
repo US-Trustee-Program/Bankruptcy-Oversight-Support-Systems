@@ -1,4 +1,10 @@
-import { CourtDivisionDetails, filterCourtByDivision, ustpOfficeToCourtDivision } from './courts';
+import {
+  CourtDivisionDetails,
+  filterCourtByDivision,
+  toCourtDivisionCode,
+  toDivisionCode,
+  ustpOfficeToCourtDivision,
+} from './courts';
 import { COURT_DIVISIONS } from './test-utilities/courts.mock';
 import { UstpOfficeDetails } from './offices';
 
@@ -236,5 +242,76 @@ describe('common court library tests', () => {
       { code: '491', ust: '491' },
       { code: '491', ust: '494' },
     ]);
+  });
+
+  test('should carry tempCourtDivisionCode through separately (CAMS-936 Phase 1)', () => {
+    const office: UstpOfficeDetails = {
+      officeCode: 'USTP_CAMS_Region_04_Office_Nashville',
+      idpGroupName: 'USTP CAMS Region 04 Office Nashville',
+      officeName: 'Nashville',
+      regionId: '4',
+      regionName: 'Atlanta',
+      groups: [
+        {
+          groupDesignator: 'TN',
+          divisions: [
+            {
+              divisionCode: '491',
+              tempCourtDivisionCode: '494',
+              court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
+              courtOffice: { courtOfficeCode: '4', courtOfficeName: 'Winchester' },
+            },
+          ],
+        },
+      ],
+    };
+
+    const courtOffices = ustpOfficeToCourtDivision(office);
+
+    expect(courtOffices[0].tempCourtDivisionCode).toBe('494');
+  });
+
+  describe('toDivisionCode', () => {
+    test('useUstDivisionCode false always returns divisionCode', () => {
+      expect(
+        toDivisionCode(
+          { divisionCode: '491', ustDivisionCode: '494', tempCourtDivisionCode: '494' },
+          false,
+        ),
+      ).toBe('491');
+    });
+
+    test('useUstDivisionCode true prefers tempCourtDivisionCode over ustDivisionCode', () => {
+      expect(
+        toDivisionCode(
+          { divisionCode: '491', ustDivisionCode: '494', tempCourtDivisionCode: '494' },
+          true,
+        ),
+      ).toBe('494');
+    });
+
+    test('useUstDivisionCode true falls back to ustDivisionCode when tempCourtDivisionCode is absent (pre-existing, not yet migrated)', () => {
+      expect(toDivisionCode({ divisionCode: '491', ustDivisionCode: '494' }, true)).toBe('494');
+    });
+
+    test('useUstDivisionCode true falls back to divisionCode when neither is present', () => {
+      expect(toDivisionCode({ divisionCode: '491' }, true)).toBe('491');
+    });
+  });
+
+  describe('toCourtDivisionCode', () => {
+    test('prefers tempCourtDivisionCode when present', () => {
+      const court = {
+        courtDivisionCode: '491',
+        ustDivisionCode: '494',
+        tempCourtDivisionCode: '494',
+      };
+      expect(toCourtDivisionCode(court, true)).toBe('494');
+    });
+
+    test('falls back to ustDivisionCode when tempCourtDivisionCode is absent', () => {
+      const court = { courtDivisionCode: '491', ustDivisionCode: '494' };
+      expect(toCourtDivisionCode(court, true)).toBe('494');
+    });
   });
 });

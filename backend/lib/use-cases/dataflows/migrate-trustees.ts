@@ -74,7 +74,9 @@ export function buildDistrictToDivisionsMap(
         const divisionInfo: DivisionInfo = {
           // ustDivisionCode (bare CS_DIV) distinguishes Winchester/Johnson City from
           // Chattanooga/Greeneville, which divisionCode (CS_DIV_ACMS) cannot — see CAMS-936.
-          divisionCode: division.ustDivisionCode ?? division.divisionCode,
+          // tempCourtDivisionCode is preferred when present (CAMS-936 Phase 1 — see plan.md).
+          divisionCode:
+            division.tempCourtDivisionCode ?? division.ustDivisionCode ?? division.divisionCode,
           courtId,
           courtName: division.court.courtName,
           courtDivisionName: division.courtOffice.courtOfficeName,

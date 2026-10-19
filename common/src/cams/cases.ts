@@ -25,6 +25,8 @@ type FlatOfficeDetail = {
   courtName: string;
   courtDivisionCode: string;
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;
@@ -60,6 +62,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
     courtName,
     courtDivisionCode,
     ustDivisionCode,
+    tempCourtDivisionCode,
     courtDivisionName,
     groupDesignator,
     regionId,
@@ -96,6 +99,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
   };
   if (state !== undefined) result.state = state;
   if (ustDivisionCode !== undefined) result.ustDivisionCode = ustDivisionCode;
+  if (tempCourtDivisionCode !== undefined) result.tempCourtDivisionCode = tempCourtDivisionCode;
   if (caseNumber !== undefined) result.caseNumber = caseNumber;
   if (petitionCode !== undefined) result.petitionCode = petitionCode;
   if (petitionLabel !== undefined) result.petitionLabel = petitionLabel;

@@ -253,6 +253,41 @@ describe('TrusteesUseCase tests', () => {
       expect(result[0].appointments[0].courtDivisionName).toBe('Winchester');
     });
 
+    test('CAMS-936 Phase 1: should resolve courtDivisionName by tempCourtDivisionCode when present (freshly synced)', async () => {
+      const trusteeId = 'trustee-winchester-temp';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({
+        trusteeId,
+        courtId: 'court-tn-temp',
+        divisionCode: '494',
+      });
+
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        ...mockCourts,
+        {
+          officeName: 'Winchester',
+          officeCode: '0649',
+          courtId: 'court-tn-temp',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491', // stale value — must be ignored
+          tempCourtDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'TN',
+          regionId: '04',
+          regionName: 'Region 4',
+        },
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtDivisionName).toBe('Winchester');
+    });
+
     test('should set courtName to undefined when courtId has no matching court', async () => {
       const trusteeId = 'trustee-unknown-court';
       const trustee = MockData.getTrustee({ trusteeId });

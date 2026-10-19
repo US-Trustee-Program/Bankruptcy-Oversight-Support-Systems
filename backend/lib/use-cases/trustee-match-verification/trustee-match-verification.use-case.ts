@@ -153,11 +153,13 @@ export class TrusteeMatchVerificationUseCase {
     // Winchester/Chattanooga, see CAMS-936), so deriving the division from caseId alone can
     // resolve to the wrong sibling division. Documents created before this field existed fall
     // back to the ACMS case-ID prefix below.
-    if (verification.ustDivisionCode) {
+    const verificationDivisionCode =
+      verification.tempCourtDivisionCode ?? verification.ustDivisionCode;
+    if (verificationDivisionCode) {
       const court = courts.find(
         (c) =>
-          c.ustDivisionCode === verification.ustDivisionCode ||
-          c.courtDivisionCode === verification.ustDivisionCode,
+          (c.tempCourtDivisionCode ?? c.ustDivisionCode) === verificationDivisionCode ||
+          c.courtDivisionCode === verificationDivisionCode,
       );
       if (court) {
         return court.courtDivisionName

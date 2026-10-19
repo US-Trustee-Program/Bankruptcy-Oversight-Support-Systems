@@ -606,7 +606,13 @@ async function upsertMatchVerification(
       // this, resolveCourtName falls back to the ACMS prefix in caseId, which is shared by the
       // divisions this field exists to tell apart — a pending Winchester verification displays
       // as Chattanooga. Only backfills the field; never overwrites an existing one. See CAMS-936.
-      ustDivisionCode: existing.ustDivisionCode ?? event.ustDivisionCode,
+      // tempCourtDivisionCode is preferred (CAMS-936 Phase 1); event.ustDivisionCode covers
+      // messages queued or dead-lettered before this field existed on the event.
+      tempCourtDivisionCode:
+        existing.tempCourtDivisionCode ??
+        existing.ustDivisionCode ??
+        event.tempCourtDivisionCode ??
+        event.ustDivisionCode,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -616,7 +622,7 @@ async function upsertMatchVerification(
         documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
         caseId: event.caseId,
         courtId: event.courtId,
-        ustDivisionCode: event.ustDivisionCode,
+        tempCourtDivisionCode: event.tempCourtDivisionCode ?? event.ustDivisionCode,
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,
@@ -1077,7 +1083,7 @@ async function resolveByScoring(
     deps.context,
     event,
     candidateTrusteeIds,
-    syncedCase.ustDivisionCode,
+    syncedCase.tempCourtDivisionCode ?? syncedCase.ustDivisionCode,
   );
 
   switch (scoringOutcome.kind) {
@@ -1178,8 +1184,10 @@ async function applyMatchOutcome(
   const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
   // The case's ustDivisionCode (bare CS_DIV), not event.courtDivisionCode (CS_DIV_ACMS) — see
   // CaseMatchContext's doc comment in trustee-match.helpers.ts. Falls back to courtDivisionCode
-  // for cases outside Eastern District of TN or not yet backfilled.
-  const caseDivisionCodeForMatching = syncedCase.ustDivisionCode ?? event.courtDivisionCode;
+  // for cases outside Eastern District of TN or not yet backfilled. tempCourtDivisionCode is
+  // preferred when present (CAMS-936 Phase 1 — see plan.md).
+  const caseDivisionCodeForMatching =
+    syncedCase.tempCourtDivisionCode ?? syncedCase.ustDivisionCode ?? event.courtDivisionCode;
 
   if (
     isAppointmentMatch(
@@ -1219,6 +1227,7 @@ async function applyMatchOutcome(
       courtId: event.courtId,
       courtDivisionCode: event.courtDivisionCode,
       ustDivisionCode: syncedCase.ustDivisionCode,
+      tempCourtDivisionCode: syncedCase.tempCourtDivisionCode,
       chapter: event.chapter,
     },
     trustee,

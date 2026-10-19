@@ -1199,6 +1199,8 @@ export type CaseMatchContext = {
   // appointments become indistinguishable. Falls back to courtDivisionCode when absent (every
   // division outside that pair, or a case not yet backfilled).
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   chapter: string;
 };
 
@@ -1225,8 +1227,8 @@ export function calculateCandidateScore(
   appointments: TrusteeAppointment[],
   nameScore: number,
 ): CandidateScore {
-  const { courtId, courtDivisionCode, ustDivisionCode, chapter } = caseMatch;
-  const divisionCodeForMatching = ustDivisionCode ?? courtDivisionCode;
+  const { courtId, courtDivisionCode, ustDivisionCode, tempCourtDivisionCode, chapter } = caseMatch;
+  const divisionCodeForMatching = tempCourtDivisionCode ?? ustDivisionCode ?? courtDivisionCode;
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
   const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
   const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);

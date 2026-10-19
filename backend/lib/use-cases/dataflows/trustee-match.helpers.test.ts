@@ -1610,6 +1610,34 @@ describe('calculateCandidateScore', () => {
     expect(chattanoogaCaseScore.chapterScore).toBe(0);
   });
 
+  test('CAMS-936 Phase 1: prefers tempCourtDivisionCode over ustDivisionCode for a freshly-synced Winchester case', () => {
+    const dxtrTrustee = makeDxtrTrustee();
+    const camsTrustee = makeTrustee();
+    const winchesterAppointment = makeAppointment({
+      chapter: '7',
+      courtId: '0649',
+      divisionCode: '494',
+      status: 'active',
+    });
+
+    const score = calculateCandidateScore(
+      context,
+      dxtrTrustee,
+      {
+        courtId: '0649',
+        courtDivisionCode: '491',
+        ustDivisionCode: '491', // stale/absent value — must be ignored in favor of tempCourtDivisionCode
+        tempCourtDivisionCode: '494',
+        chapter: '7',
+      },
+      camsTrustee,
+      [winchesterAppointment],
+      calculateNameScore(dxtrTrustee, camsTrustee),
+    );
+    expect(score.districtDivisionScore).toBe(100);
+    expect(score.chapterScore).toBe(100);
+  });
+
   test('should apply weighted scoring correctly (address 8% / name 26% / district 25% / chapter 25%, phone/email null)', () => {
     const dxtrTrustee = {
       ...makeDxtrTrustee('New York, NY 10001'),

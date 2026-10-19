@@ -21,9 +21,11 @@
  *   - DXTR: a SEED case (AO_CS + debtor AO_PY via ensureDxtrCase), a trustee party (AO_PY
  *     PY_ROLE='tr'), and a trustee-appointed transaction (AO_TX TX_TYPE='A', TX_CODE='TR')
  *     dated at seed time - the event sync-trustee-case-appointments reads.
- *   - Cosmos: the SYNCED_CASE (with ustDivisionCode), and a CAMS trustee with the same name and
- *     contact as the DXTR party, holding one active chapter 7 appointment in the sibling
- *     division only.
+ *   - Cosmos: the SYNCED_CASE, and a CAMS trustee with the same name and contact as the DXTR
+ *     party, holding one active chapter 7 appointment in the sibling division only. The
+ *     Winchester pair's SYNCED_CASE carries tempCourtDivisionCode ("freshly synced"); the
+ *     Johnson City pair's carries the legacy ustDivisionCode ("pre-existing, not yet migrated")
+ *     — see CAMS-936 plan.md Phase 1.
  *
  * To exercise it:
  *   1. npm run seed:local -- --scenario=trustee-match-tn-split-divisions
@@ -136,6 +138,10 @@ async function seedPair(
   ctx: SeedContext,
   pair: SplitPair,
   appointedOn: Date,
+  // Exercises both CAMS-936 Phase 1 states (see plan.md): one pair's SYNCED_CASE carries the
+  // legacy ustDivisionCode ("pre-existing, not yet migrated"), the other carries
+  // tempCourtDivisionCode ("freshly synced" after the Phase 1 deploy).
+  useTempCourtDivisionCode: boolean,
 ): Promise<{ operations: SeedOperation[]; documents: Record<string, Record<string, unknown>[]> }> {
   const { caseDivision, trusteeDivision, caseInfo, debtor, trustee } = pair;
 
@@ -209,7 +215,9 @@ async function seedPair(
     courtId: COURT_ID,
     courtName: COURT_NAME,
     courtDivisionCode: pair.acmsDivisionCode,
-    ustDivisionCode: caseDivision.code,
+    ...(useTempCourtDivisionCode
+      ? { tempCourtDivisionCode: caseDivision.code }
+      : { ustDivisionCode: caseDivision.code }),
     courtDivisionName: caseDivision.name,
     groupDesignator: GROUP_DESIGNATOR,
     regionId: REGION_ID,
@@ -282,8 +290,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     'trustee-appointments': [],
   };
 
-  for (const pair of PAIRS) {
-    const seeded = await seedPair(ctx, pair, appointedOn);
+  for (const [index, pair] of PAIRS.entries()) {
+    const seeded = await seedPair(ctx, pair, appointedOn, index === 0);
     operations.push(...seeded.operations);
     for (const [collection, docs] of Object.entries(seeded.documents)) {
       documents[collection].push(...docs);

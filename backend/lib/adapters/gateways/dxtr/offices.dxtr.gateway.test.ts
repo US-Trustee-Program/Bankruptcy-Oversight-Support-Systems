@@ -76,7 +76,7 @@ describe('offices gateway tests', () => {
       expect(bostonOffice?.regionName).toEqual('BOSTON');
     });
 
-    test('scopes the bare CS_DIV aliased as ustDivisionCode to court 0649', async () => {
+    test('scopes the bare CS_DIV aliased as tempCourtDivisionCode to court 0649', async () => {
       const mockResults: QueryResults = {
         success: true,
         results: { recordset: COURT_DIVISIONS },
@@ -94,9 +94,9 @@ describe('offices gateway tests', () => {
       // bare codes for a court like 113E would mismatch every appointment stored for that court.
       const [, sql] = querySpy.mock.calls[0];
       expect(sql).toMatch(
-        /CASE WHEN a\.COURT_ID IN \('0649'\) THEN a\.CS_DIV ELSE a\.CS_DIV_ACMS END\s+AS\s+ustDivisionCode/i,
+        /CASE WHEN a\.COURT_ID IN \('0649'\) THEN a\.CS_DIV ELSE a\.CS_DIV_ACMS END\s+AS\s+tempCourtDivisionCode/i,
       );
-      expect(sql).not.toMatch(/a\.\[CS_DIV\]\s+AS\s+ustDivisionCode/i);
+      expect(sql).not.toMatch(/a\.\[CS_DIV\]\s+AS\s+tempCourtDivisionCode/i);
     });
 
     test('groups divisions sharing an office under one office, splitting into separate groups by groupDesignator', async () => {
@@ -162,14 +162,39 @@ describe('offices gateway tests', () => {
       expect(xxGroup?.divisions[0].courtOffice.courtOfficeName).toEqual('OtherGroupDivision');
     });
 
-    test('maps ustDivisionCode separately from courtDivisionCode for Eastern District of TN', async () => {
+    test('maps tempCourtDivisionCode separately from courtDivisionCode for Eastern District of TN', async () => {
       // CS_DIV (bare) vs CS_DIV_ACMS diverges only for Winchester/Johnson City in court 0649.
       const easternTnRows = [
-        { courtDivisionCode: '491', ustDivisionCode: '491', courtId: '0649', officeCode: '1' },
-        { courtDivisionCode: '492', ustDivisionCode: '492', courtId: '0649', officeCode: '2' },
-        { courtDivisionCode: '493', ustDivisionCode: '493', courtId: '0649', officeCode: '3' },
-        { courtDivisionCode: '492', ustDivisionCode: '495', courtId: '0649', officeCode: '5' },
-        { courtDivisionCode: '491', ustDivisionCode: '494', courtId: '0649', officeCode: '4' },
+        {
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '491',
+          courtId: '0649',
+          officeCode: '1',
+        },
+        {
+          courtDivisionCode: '492',
+          tempCourtDivisionCode: '492',
+          courtId: '0649',
+          officeCode: '2',
+        },
+        {
+          courtDivisionCode: '493',
+          tempCourtDivisionCode: '493',
+          courtId: '0649',
+          officeCode: '3',
+        },
+        {
+          courtDivisionCode: '492',
+          tempCourtDivisionCode: '495',
+          courtId: '0649',
+          officeCode: '5',
+        },
+        {
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '494',
+          courtId: '0649',
+          officeCode: '4',
+        },
       ].map((row) => ({
         ...row,
         groupDesignator: 'TN',
@@ -197,7 +222,7 @@ describe('offices gateway tests', () => {
       easternTnRows.forEach((row) => {
         const match = allDivisions.find((d) => d.courtOffice.courtOfficeCode === row.officeCode);
         expect(match?.divisionCode).toEqual(row.courtDivisionCode);
-        expect(match?.ustDivisionCode).toEqual(row.ustDivisionCode);
+        expect(match?.tempCourtDivisionCode).toEqual(row.tempCourtDivisionCode);
       });
     });
 

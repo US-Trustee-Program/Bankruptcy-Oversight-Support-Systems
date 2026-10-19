@@ -19,15 +19,15 @@
  *   494    | 491         | Winchester    <- diverges
  *   495    | 492         | Johnson City  <- diverges
  *
- * Seeds:
+ * Seeds (CAMS-936 Phase 1 — see plan.md for the ustDivisionCode ->
+ * tempCourtDivisionCode rotation):
  *   - Chattanooga case (491-26-99601): CS_DIV=491, caseId prefix 491.
- *     SYNCED_CASE already has ustDivisionCode='491' (simulates a
- *     forward-synced, unaffected case).
+ *     SYNCED_CASE has ustDivisionCode='491' (simulates a case synced before
+ *     the Phase 1 deploy — "pre-existing, not yet migrated").
  *   - Winchester case (491-26-99602): CS_DIV=494, caseId prefix 491 (case
  *     identity/caseId is unchanged by this feature — see CAMS-936). Its
- *     SYNCED_CASE document deliberately OMITS ustDivisionCode, to exercise
- *     the TN-scoped backfill-ust-division-code dataflow — run it locally and
- *     confirm this case's SYNCED_CASE doc gets ustDivisionCode='494' added.
+ *     SYNCED_CASE document has tempCourtDivisionCode='494' (simulates a case
+ *     synced after the Phase 1 deploy — "freshly synced").
  *   - Knoxville case (493-26-99603): CS_DIV=493=CS_DIV_ACMS (control, no
  *     divergence). SYNCED_CASE already has ustDivisionCode='493'.
  *   - One trustee ("Eastern TN Test Trustee") with two TRUSTEE_APPOINTMENT
@@ -128,8 +128,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     courtId: COURT_ID,
     courtName: COURT_NAME,
     courtDivisionCode: '491',
-    // ustDivisionCode intentionally omitted — run backfill-ust-division-code locally
-    // and confirm this document gets ustDivisionCode: '494' added.
+    // Freshly synced after the Phase 1 deploy, so it carries tempCourtDivisionCode rather
+    // than ustDivisionCode — see CAMS-936 plan.md.
+    tempCourtDivisionCode: '494',
     courtDivisionName: 'Winchester',
     groupDesignator: GROUP_DESIGNATOR,
     regionId: REGION_ID,

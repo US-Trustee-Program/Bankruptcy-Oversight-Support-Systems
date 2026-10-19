@@ -34,6 +34,8 @@ export type TrusteeMatchVerification = Auditable & {
    * existed — callers fall back to the ACMS case-ID prefix for those.
    */
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   dxtrTrustee: DxtrTrusteeParty;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted

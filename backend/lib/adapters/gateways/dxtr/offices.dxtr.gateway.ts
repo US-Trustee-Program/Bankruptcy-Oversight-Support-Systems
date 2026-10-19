@@ -18,6 +18,8 @@ type DxtrFlatOfficeDetails = {
   courtName: string;
   courtDivisionCode: string;
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;
@@ -60,6 +62,7 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
     const division: UstpDivision = {
       divisionCode: flatOffice.courtDivisionCode,
       ustDivisionCode: flatOffice.ustDivisionCode,
+      tempCourtDivisionCode: flatOffice.tempCourtDivisionCode,
       court: {
         courtId: flatOffice.courtId,
         courtName: flatOffice.courtName,
@@ -88,7 +91,7 @@ export default class OfficesDxtrGateway extends AbstractMssqlClient implements O
   async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const query = `
     SELECT a.[CS_DIV_ACMS] AS courtDivisionCode
-      ,${ustDivisionCodeSelect('a')} AS ustDivisionCode
+      ,${ustDivisionCodeSelect('a')} AS tempCourtDivisionCode
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode

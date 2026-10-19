@@ -268,6 +268,47 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBe('Eastern District of Tennessee - Winchester');
     });
 
+    test('CAMS-936 Phase 1: resolves courtName by tempCourtDivisionCode when present (freshly synced)', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          caseId: '491-24-12345',
+          courtId: '0649',
+          ustDivisionCode: '491', // stale value — must be ignored
+          tempCourtDivisionCode: '494',
+        },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Chattanooga',
+          officeCode: '491',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'CN',
+          regionId: '4',
+          regionName: 'Region 4',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '494',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'WI',
+          regionId: '4',
+          regionName: 'Region 4',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Eastern District of Tennessee - Winchester');
+    });
+
     test('falls back to the ACMS caseId prefix when ustDivisionCode is absent (pre-CAMS-936 documents)', async () => {
       mockSearch.mockResolvedValue([
         { ...sampleVerification, caseId: '491-24-12345', courtId: '0649' },

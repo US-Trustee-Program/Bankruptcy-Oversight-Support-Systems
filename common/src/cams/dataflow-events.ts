@@ -103,6 +103,8 @@ export type TrusteeAppointmentSyncEvent = {
   chapter?: string;
   courtDivisionCode?: string;
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   profCode?: string;
   /**
    * Raw DXTR group designator (AO_CS.GRP_DES) for this record - one half of ACMS's compound

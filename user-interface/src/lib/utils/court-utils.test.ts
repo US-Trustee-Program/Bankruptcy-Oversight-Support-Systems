@@ -720,6 +720,42 @@ describe('court-utils', () => {
         expect.arrayContaining(['491', '494']),
       );
     });
+
+    test('CAMS-936 Phase 1: should prefer tempCourtDivisionCode over ustDivisionCode (freshly synced)', () => {
+      const easternTnCourts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Chattanooga',
+          officeCode: '1',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '4',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491', // stale value — must be ignored
+          tempCourtDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'TN',
+          regionId: '4',
+          regionName: 'Atlanta',
+        },
+      ];
+
+      const divisions = getDivisionsForDistrict(easternTnCourts, '0649');
+
+      expect(divisions.map((d) => d.courtDivisionCode)).toEqual(
+        expect.arrayContaining(['491', '494']),
+      );
+    });
   });
 
   describe('groupDivisionsByDistrict', () => {

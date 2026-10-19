@@ -32,6 +32,7 @@ type SyncedCaseDoc = Record<string, unknown> & {
   courtId: string;
   courtDivisionCode: string;
   ustDivisionCode?: string;
+  tempCourtDivisionCode?: string;
 };
 
 type TrusteeAppointmentDoc = Record<string, unknown> & {
@@ -63,7 +64,7 @@ describe('ust-division-tn-eastern scenario', () => {
     expect(knoxville.ustDivisionCode).toBe('493');
   });
 
-  test('Winchester case keeps its ACMS-coded caseId/courtDivisionCode but omits ustDivisionCode', async () => {
+  test('Winchester case keeps its ACMS-coded caseId/courtDivisionCode and is freshly synced with tempCourtDivisionCode', async () => {
     const ops = await generate(mockContext);
     const cases = findOps(ops, 'cases')[0].data as SyncedCaseDoc[];
 
@@ -72,7 +73,9 @@ describe('ust-division-tn-eastern scenario', () => {
     // Case identity is unchanged by CAMS-936 — Winchester's caseId/courtDivisionCode still use
     // Chattanooga's ACMS code (491), not its own bare CS_DIV (494).
     expect(winchester.courtDivisionCode).toBe('491');
-    // Intentionally absent — this is what the backfill-ust-division-code dataflow should fill in.
+    // Simulates a case synced after the Phase 1 deploy (CAMS-936) — carries the new transitional
+    // field, not the legacy one.
+    expect(winchester.tempCourtDivisionCode).toBe('494');
     expect(winchester.ustDivisionCode).toBeUndefined();
     expect('ustDivisionCode' in winchester).toBe(false);
   });

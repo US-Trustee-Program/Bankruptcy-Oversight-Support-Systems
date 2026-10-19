@@ -379,12 +379,14 @@ export class TrusteeAppointmentsUseCase {
       // courtDivisionCode (CS_DIV_ACMS) for courts data that predates ustDivisionCode. Do not
       // "fix" this into a courtId-scoped lookup unless that invariant changes.
       const divisionNameResolver = (divisionCode: string): string | undefined =>
-        params.courts.find((c) => (c.ustDivisionCode ?? c.courtDivisionCode) === divisionCode)
-          ?.courtDivisionName;
+        params.courts.find(
+          (c) =>
+            (c.tempCourtDivisionCode ?? c.ustDivisionCode ?? c.courtDivisionCode) === divisionCode,
+        )?.courtDivisionName;
       const allDivisionsResolver = (courtId: string): string[] =>
         params.courts
           .filter((c) => c.courtId === courtId)
-          .map((c) => c.ustDivisionCode ?? c.courtDivisionCode);
+          .map((c) => c.tempCourtDivisionCode ?? c.ustDivisionCode ?? c.courtDivisionCode);
       const changeSet = buildAppointmentChangeSet({
         trusteeId: params.trusteeId,
         trusteeName,

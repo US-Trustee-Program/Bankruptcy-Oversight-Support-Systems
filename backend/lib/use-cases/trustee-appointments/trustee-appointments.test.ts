@@ -1536,6 +1536,80 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
       expect(districtField.comparisons[0].after).toBe('Eastern District of Tennessee (Winchester)');
     });
+
+    test('CAMS-936 Phase 1: resolves Winchester via tempCourtDivisionCode when present (freshly synced)', async () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Chattanooga',
+          officeCode: '1',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '491',
+          courtDivisionName: 'Chattanooga',
+          groupDesignator: 'CN',
+          regionId: '08',
+          regionName: 'ATLANTA',
+        },
+        {
+          officeName: 'Winchester',
+          officeCode: '4',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          ustDivisionCode: '491', // stale value — must be ignored
+          tempCourtDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'CN',
+          regionId: '08',
+          regionName: 'ATLANTA',
+        },
+      ];
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(courts);
+
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0649',
+        divisionCodes: ['491'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        divisionCode: '494',
+        divisionCodes: ['494'],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0649',
+        divisionCodes: ['494'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      const districtField = changeSet.fields.find(
+        (field: { label: string }) => field.label === 'District (Division)',
+      );
+      expect(districtField.comparisons[0].before).toBe(
+        'Eastern District of Tennessee (Chattanooga)',
+      );
+      expect(districtField.comparisons[0].after).toBe('Eastern District of Tennessee (Winchester)');
+    });
   });
 
   describe('createAppointment notification dispatch', () => {

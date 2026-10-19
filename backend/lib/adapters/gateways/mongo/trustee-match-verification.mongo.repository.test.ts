@@ -307,6 +307,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             'documentType',
             'caseId',
             'courtId',
+            'ustDivisionCode',
+            'tempCourtDivisionCode',
             'courtName',
             'dxtrTrustee',
             'mismatchReason',

@@ -55,9 +55,10 @@ export function decomposeCaseId(caseId: string) {
 }
 
 /**
- * Builds the SELECT expression for `ustDivisionCode`, given the alias a query uses for
- * AO_CS_DIV. Every DXTR query that emits ustDivisionCode must use this so the court scoping
- * lives in exactly one place.
+ * Builds the SELECT expression for the bare/unique division code, given the alias a query uses
+ * for AO_CS_DIV. Every DXTR query that emits it must use this so the court scoping lives in
+ * exactly one place. Callers currently alias the result as `tempCourtDivisionCode` (CAMS-936
+ * Phase 1); this helper is renamed to match in Phase 3 (see plan.md).
  */
 export function ustDivisionCodeSelect(divisionAlias: string): string {
   const courtIds = UST_DIVISION_CODE_COURT_IDS.map((courtId) => `'${courtId}'`).join(', ');

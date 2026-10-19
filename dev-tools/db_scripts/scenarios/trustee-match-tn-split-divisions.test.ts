@@ -42,6 +42,8 @@ const PAIRS = [
     caseDivision: '494',
     trusteeId: 'seed-trustee-tn-split-chattanooga',
     trusteeDivision: '491',
+    // Freshly synced after the CAMS-936 Phase 1 deploy — see plan.md.
+    usesTempCourtDivisionCode: true,
   },
   {
     caseId: '492-26-99605',
@@ -49,20 +51,33 @@ const PAIRS = [
     caseDivision: '495',
     trusteeId: 'seed-trustee-tn-split-greeneville',
     trusteeDivision: '492',
+    // Pre-existing, not yet migrated — see plan.md.
+    usesTempCourtDivisionCode: false,
   },
 ];
 
 describe('trustee-match-tn-split-divisions scenario', () => {
   test.each(PAIRS)(
     '$caseId: case in $caseDivision, trustee appointed only in $trusteeDivision',
-    async ({ caseId, csCaseId, caseDivision, trusteeId, trusteeDivision }) => {
+    async ({
+      caseId,
+      csCaseId,
+      caseDivision,
+      trusteeId,
+      trusteeDivision,
+      usesTempCourtDivisionCode,
+    }) => {
       const ops = await generate(mockContext);
 
       const dxtrCase = rows(ops, 'AO_CS').find((r) => r.CS_CASEID === csCaseId);
       expect(dxtrCase?.CS_DIV).toBe(caseDivision);
 
       const syncedCase = rows(ops, 'cases').find((r) => r.caseId === caseId);
-      expect(syncedCase?.ustDivisionCode).toBe(caseDivision);
+      const [expectedTemp, expectedUst] = usesTempCourtDivisionCode
+        ? [caseDivision, undefined]
+        : [undefined, caseDivision];
+      expect(syncedCase?.tempCourtDivisionCode).toBe(expectedTemp);
+      expect(syncedCase?.ustDivisionCode).toBe(expectedUst);
       expect(syncedCase?.courtDivisionCode).toBe(trusteeDivision);
 
       const appointments = rows(ops, 'trustee-appointments').filter(

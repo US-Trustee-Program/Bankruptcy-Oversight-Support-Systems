@@ -140,7 +140,10 @@ export class TrusteesUseCase {
     // ACMS CS_DIV_ACMS courts carry as courtDivisionCode (e.g. Winchester/Chattanooga) — see
     // migrate-trustees.ts buildDistrictToDivisionsMap. Check both so divergent divisions resolve.
     return courts.find(
-      (c) => c.courtDivisionCode === divisionCode || c.ustDivisionCode === divisionCode,
+      (c) =>
+        c.courtDivisionCode === divisionCode ||
+        c.ustDivisionCode === divisionCode ||
+        c.tempCourtDivisionCode === divisionCode,
     )?.courtDivisionName;
   }
 

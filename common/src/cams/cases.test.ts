@@ -276,6 +276,7 @@ describe('SearchMetadata types', () => {
     // of them, not just the one that was already caught.
     const optionalFieldOverrides = {
       ustDivisionCode: '494',
+      tempCourtDivisionCode: '494',
       state: 'TN',
       caseNumber: '23-00001',
       petitionCode: 'VP',

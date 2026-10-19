@@ -21,6 +21,7 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         courtName: division.court.courtName,
         courtDivisionCode: division.divisionCode,
         ustDivisionCode: division.ustDivisionCode,
+        tempCourtDivisionCode: division.tempCourtDivisionCode,
         courtDivisionName: division.courtOffice.courtOfficeName,
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
@@ -58,6 +59,8 @@ export const UST_DIVISION_CODE_COURT_IDS = ['0649'];
 export type DivisionCodes = {
   divisionCode?: string;
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
 };
 
 /**
@@ -74,16 +77,25 @@ export function toDivisionCode(
   codes: DivisionCodes,
   useUstDivisionCode: boolean,
 ): string | undefined {
-  return useUstDivisionCode ? (codes.ustDivisionCode ?? codes.divisionCode) : codes.divisionCode;
+  return useUstDivisionCode
+    ? (codes.tempCourtDivisionCode ?? codes.ustDivisionCode ?? codes.divisionCode)
+    : codes.divisionCode;
 }
 
 /** `toDivisionCode` for the flattened shape, where the ACMS code is named courtDivisionCode. */
 export function toCourtDivisionCode(
-  court: Pick<CourtDivisionDetails, 'courtDivisionCode' | 'ustDivisionCode'>,
+  court: Pick<
+    CourtDivisionDetails,
+    'courtDivisionCode' | 'ustDivisionCode' | 'tempCourtDivisionCode'
+  >,
   useUstDivisionCode: boolean,
 ): string {
   return toDivisionCode(
-    { divisionCode: court.courtDivisionCode, ustDivisionCode: court.ustDivisionCode },
+    {
+      divisionCode: court.courtDivisionCode,
+      ustDivisionCode: court.ustDivisionCode,
+      tempCourtDivisionCode: court.tempCourtDivisionCode,
+    },
     useUstDivisionCode,
   )!;
 }
@@ -95,6 +107,8 @@ export type CourtDivisionDetails = {
   courtName: string;
   courtDivisionCode: string;
   ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): see plan.md.
+  tempCourtDivisionCode?: string;
   courtDivisionName: string;
   groupDesignator: string;
   regionId: string;

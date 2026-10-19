@@ -1737,9 +1737,11 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('should persist the event ustDivisionCode on the verification doc', async () => {
+    test('should persist a pre-existing event.ustDivisionCode as tempCourtDivisionCode on the verification doc (CAMS-936 Phase 1)', async () => {
       // Winchester's bare CS_DIV (494) diverges from its ACMS-coded caseId prefix (491) — the
-      // verification doc needs this to resolve the correct division later (see CAMS-936).
+      // verification doc needs this to resolve the correct division later (see CAMS-936). This
+      // event has only the legacy field — a message queued or dead-lettered before the Phase 1
+      // deploy (D6) — and must still land under the new field name.
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         kind: 'no-match',
       });
@@ -1761,7 +1763,34 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-        expect.objectContaining({ ustDivisionCode: '494' }),
+        expect.objectContaining({ tempCourtDivisionCode: '494' }),
+      );
+    });
+
+    test('should prefer event.tempCourtDivisionCode over event.ustDivisionCode on the verification doc (freshly synced)', async () => {
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            tempCourtDivisionCode: '494',
+            ustDivisionCode: '491',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ tempCourtDivisionCode: '494' }),
       );
     });
 
@@ -1813,6 +1842,31 @@ describe('SyncTrusteeCaseAppointments', () => {
           courtDivisionCode: '491',
           chapter: '7',
           ustDivisionCode: '494',
+          dateFiled: '2026-01-07',
+        });
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeWinchesterEvent('0649-24-12345')],
+        );
+
+        expect(vi.mocked(trusteeMatchHelpers.isAppointmentMatch)).toHaveBeenCalledWith(
+          expect.any(Array),
+          '0649',
+          '494',
+          expect.any(String),
+        );
+      });
+
+      test('prefers syncedCase.tempCourtDivisionCode over ustDivisionCode as the division argument to isAppointmentMatch (CAMS-936 Phase 1)', async () => {
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          caseId: '0649-24-12345',
+          trusteeId: undefined,
+          courtId: '0649',
+          courtDivisionCode: '491',
+          chapter: '7',
+          ustDivisionCode: '491', // stale value — must be ignored
+          tempCourtDivisionCode: '494',
           dateFiled: '2026-01-07',
         });
 
@@ -2016,7 +2070,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
-          [{ ...makeWinchesterEvent('0649-24-12345'), ustDivisionCode: '494' }],
+          [{ ...makeWinchesterEvent('0649-24-12345'), tempCourtDivisionCode: '494' }],
         );
       };
 
@@ -2028,36 +2082,36 @@ describe('SyncTrusteeCaseAppointments', () => {
         });
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
-          [{ ...makeWinchesterEvent('0649-24-12345'), ustDivisionCode: '494' }],
+          [{ ...makeWinchesterEvent('0649-24-12345'), tempCourtDivisionCode: '494' }],
         );
         return (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
           .calls[0][0];
       };
 
-      test('backfills ustDivisionCode onto a verification created before the field existed', async () => {
+      test('backfills tempCourtDivisionCode onto a verification created before the field existed', async () => {
         const created = await createVerification();
-        expect(created.ustDivisionCode).toBe('494');
+        expect(created.tempCourtDivisionCode).toBe('494');
 
-        const { ustDivisionCode: _dropped, ...preMigration } = created;
+        const { tempCourtDivisionCode: _dropped, ...preMigration } = created;
         await resyncWithExistingVerification(preMigration, created.variant);
 
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({ caseId: '0649-24-12345', ustDivisionCode: '494' }),
+          expect.objectContaining({ caseId: '0649-24-12345', tempCourtDivisionCode: '494' }),
         );
       });
 
       // The field identifies the case's division, so a later event must not be able to rewrite
       // it — the spread only fills the gap when there is nothing to preserve.
-      test('does not overwrite a ustDivisionCode already on the verification', async () => {
+      test('does not overwrite a tempCourtDivisionCode already on the verification', async () => {
         const created = await createVerification();
 
         await resyncWithExistingVerification(
-          { ...created, ustDivisionCode: '495' },
+          { ...created, tempCourtDivisionCode: '495' },
           created.variant,
         );
 
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({ ustDivisionCode: '495' }),
+          expect.objectContaining({ tempCourtDivisionCode: '495' }),
         );
       });
     });

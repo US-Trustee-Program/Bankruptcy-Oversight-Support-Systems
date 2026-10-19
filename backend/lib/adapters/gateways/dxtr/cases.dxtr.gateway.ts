@@ -89,7 +89,9 @@ type TrusteeAppointmentEventRecord = {
   courtId: string;
   chapter?: string;
   courtDivisionCode?: string;
-  ustDivisionCode?: string;
+  // Transitional (CAMS-936 Phase 1): the bare/unique DXTR division code now arrives under this
+  // name instead of ustDivisionCode. See plan.md.
+  tempCourtDivisionCode?: string;
   groupDesignator?: string;
   firstName?: string;
   middleName?: string;
@@ -202,7 +204,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
-        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as tempCourtDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -416,7 +418,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const CASE_SEARCH_SELECT = `
       SELECT
       cs_div.CS_DIV_ACMS as courtDivisionCode,
-      ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
+      ${ustDivisionCodeSelect('cs_div')} as tempCourtDivisionCode,
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
@@ -756,7 +758,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
-        ${ustDivisionCodeSelect('cs_div')} as ustDivisionCode,
+        ${ustDivisionCodeSelect('cs_div')} as tempCourtDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
@@ -1370,7 +1372,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
-        ${ustDivisionCodeSelect('CS_DIV')} AS ustDivisionCode,
+        ${ustDivisionCodeSelect('CS_DIV')} AS tempCourtDivisionCode,
         C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
@@ -1448,7 +1450,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
-        ustDivisionCode: record.ustDivisionCode,
+        tempCourtDivisionCode: record.tempCourtDivisionCode,
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,

@@ -159,6 +159,7 @@ export class TrusteeMatchVerificationMongoRepository
         'caseId',
         'courtId',
         'ustDivisionCode',
+        'tempCourtDivisionCode',
         'courtName',
         'dxtrTrustee',
         'mismatchReason',
