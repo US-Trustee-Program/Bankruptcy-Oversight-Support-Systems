@@ -6,6 +6,7 @@ import {
   ustpOfficeToCourtDivision,
 } from './courts';
 import { COURT_DIVISIONS } from './test-utilities/courts.mock';
+import { buildMockOfficesFromCourtDivisions } from './test-utilities/offices.mock';
 import { UstpOfficeDetails } from './offices';
 
 const seattleOffice = {
@@ -312,6 +313,31 @@ describe('common court library tests', () => {
     test('falls back to ustDivisionCode when tempCourtDivisionCode is absent', () => {
       const court = { courtDivisionCode: '491', ustDivisionCode: '494' };
       expect(toCourtDivisionCode(court, true)).toBe('494');
+    });
+  });
+
+  describe('buildMockOfficesFromCourtDivisions', () => {
+    test('CAMS-936 Phase 1: passes tempCourtDivisionCode through to UstpDivision (freshly synced)', () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Winchester',
+          officeCode: '4',
+          courtId: '0649',
+          courtName: 'Eastern District of Tennessee',
+          courtDivisionCode: '491',
+          tempCourtDivisionCode: '494',
+          courtDivisionName: 'Winchester',
+          groupDesignator: 'TN',
+          regionId: '04',
+          regionName: 'Region 4',
+        },
+      ];
+
+      const offices = buildMockOfficesFromCourtDivisions(courts);
+      const division = offices[0].groups[0].divisions[0];
+
+      expect(division.tempCourtDivisionCode).toBe('494');
+      expect(division.ustDivisionCode).toBeUndefined();
     });
   });
 });

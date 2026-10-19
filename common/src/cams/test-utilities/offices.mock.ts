@@ -6,7 +6,7 @@ import { COURT_DIVISIONS } from './courts.mock';
  * Generate UstpOfficeDetails from CourtDivisionDetails, grouped by region and
  * group designator. Produces one office per region with groups for each court.
  */
-function buildMockOfficesFromCourtDivisions(
+export function buildMockOfficesFromCourtDivisions(
   courtDivisions: CourtDivisionDetails[],
 ): UstpOfficeDetails[] {
   const regionMap = new Map<
@@ -37,6 +37,7 @@ function buildMockOfficesFromCourtDivisions(
     region.groups.get(div.groupDesignator)!.divisions.push({
       divisionCode: div.courtDivisionCode,
       ustDivisionCode: div.ustDivisionCode,
+      tempCourtDivisionCode: div.tempCourtDivisionCode,
       court: { courtId: div.courtId, courtName: div.courtName, state: div.state },
       courtOffice: { courtOfficeCode: div.officeCode, courtOfficeName: div.officeName },
     });
