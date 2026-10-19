@@ -41,3 +41,24 @@ export function extractCourtAndDivisions(
     divisionCodes,
   };
 }
+
+/**
+ * Builds the "{courtName} ({divisionName})" label used in the overlapping-appointment
+ * validation message. Division lookup prefers tempCourtDivisionCode (CAMS-936 Phase 1), then
+ * ustDivisionCode, falling back to the legacy courtDivisionCode, so divergent divisions like
+ * Winchester/Chattanooga resolve to their own name rather than a sibling's.
+ */
+export function resolveConflictDistrictLabel(
+  courtId: string,
+  conflictingDivisionCode: string | undefined,
+  allCourts: CourtDivisionDetails[],
+): string {
+  const court = allCourts.find((c) => c.courtId === courtId);
+  const division = allCourts.find(
+    (c) =>
+      c.courtId === courtId &&
+      (c.tempCourtDivisionCode ?? c.ustDivisionCode ?? c.courtDivisionCode) ===
+        conflictingDivisionCode,
+  );
+  return court && division ? `${court.courtName} (${division.courtDivisionName})` : '';
+}

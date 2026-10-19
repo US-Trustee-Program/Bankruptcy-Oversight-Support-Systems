@@ -33,7 +33,7 @@ import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsN
 import { useLocation } from 'react-router-dom';
 import { useDivisionSelection, ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 import { findMergeTarget, buildMergeResult } from './appointmentMergeHelpers';
-import { extractCourtAndDivisions } from './appointmentFormHelpers';
+import { extractCourtAndDivisions, resolveConflictDistrictLabel } from './appointmentFormHelpers';
 
 const CHAPTER_OPTIONS: ComboOption<AppointmentChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
@@ -298,17 +298,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === data.chapter);
     const appointmentTypeLabel = formatAppointmentType(data.appointmentType);
 
-    const court = allCourts.find((c) => c.courtId === courtId);
     const conflictingDivisionCode =
       conflictingAppointment.divisionCodes?.[0] || conflictingAppointment.divisionCode;
-    const division = allCourts.find(
-      (c) =>
-        c.courtId === courtId &&
-        (c.tempCourtDivisionCode ?? c.ustDivisionCode ?? c.courtDivisionCode) ===
-          conflictingDivisionCode,
-    );
-    const districtLabel =
-      court && division ? `${court.courtName} (${division.courtDivisionName})` : '';
+    const districtLabel = resolveConflictDistrictLabel(courtId, conflictingDivisionCode, allCourts);
 
     return `An active appointment already exists for ${chapter?.label} - ${appointmentTypeLabel} in ${districtLabel}. Please end the existing appointment before creating a new one.`;
   };
