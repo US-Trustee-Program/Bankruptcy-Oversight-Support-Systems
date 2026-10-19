@@ -65,6 +65,7 @@ import OfficesDxtrGateway from '../../../../backend/lib/adapters/gateways/dxtr/o
 import BackfillUstDivisionCodeUseCase from '../../../../backend/lib/use-cases/dataflows/backfill-ust-division-code';
 import BackfillAppointmentUstDivisionCodesUseCase from '../../../../backend/lib/use-cases/dataflows/backfill-appointment-ust-division-codes';
 import BackfillVerificationUstDivisionCodeUseCase from '../../../../backend/lib/use-cases/dataflows/backfill-verification-ust-division-code';
+import RotateDivisionCodePhase1UseCase from '../../../../backend/lib/use-cases/dataflows/rotate-division-code-phase-1';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');
 const SEED_DIR = path.join(HARNESS_DIR, 'seed');
@@ -454,6 +455,223 @@ function verificationDoc(v: { id: string; caseId: string; courtId: string; statu
 }
 
 // ---------------------------------------------------------------------------
+// Rotation fixtures (CAMS-936 Phase 1: ustDivisionCode -> tempCourtDivisionCode)
+// ---------------------------------------------------------------------------
+
+/**
+ * The three document states the rotation has to tell apart, seeded into both collections that
+ * carry a field named `ustDivisionCode`.
+ *
+ * The both-fields document deliberately holds DIFFERENT values in the two fields. In production
+ * they are equal, so an equal-value fixture could not distinguish "the $unset ran and preserved
+ * the fresh value" from "the $rename ran and clobbered it with the stale one" — which is the one
+ * way this migration could lose data.
+ */
+const ROTATION_OLD_CODE = '494';
+const ROTATION_FRESH_CODE = '495';
+const ROTATION_UNTOUCHED_CODE = '493';
+
+const ROTATION_STATES = [
+  {
+    key: 'old-only',
+    ustDivisionCode: ROTATION_OLD_CODE,
+    tempCourtDivisionCode: undefined,
+    expected: ROTATION_OLD_CODE,
+    note: 'historical — the value moves to tempCourtDivisionCode',
+  },
+  {
+    key: 'both-fields',
+    ustDivisionCode: ROTATION_OLD_CODE,
+    tempCourtDivisionCode: ROTATION_FRESH_CODE,
+    expected: ROTATION_FRESH_CODE,
+    note: 'both names — ustDivisionCode is dropped and the fresh value survives',
+  },
+  {
+    key: 'new-only',
+    ustDivisionCode: undefined,
+    tempCourtDivisionCode: ROTATION_UNTOUCHED_CODE,
+    expected: ROTATION_UNTOUCHED_CODE,
+    note: 'freshly synced — never selected, never touched',
+  },
+];
+
+function rotationCaseDoc(state: (typeof ROTATION_STATES)[number]) {
+  return {
+    documentType: 'SYNCED_CASE',
+    caseId: `491-26-9100${ROTATION_STATES.indexOf(state)}`,
+    courtId: '0649',
+    courtDivisionCode: '491',
+    courtDivisionName: 'Winchester',
+    courtName: 'Eastern District of Tennessee',
+    chapter: '7',
+    caseTitle: `${FIXTURE_TAG} rotation ${state.key}`,
+    dateFiled: '2026-01-07',
+    ...(state.ustDivisionCode ? { ustDivisionCode: state.ustDivisionCode } : {}),
+    ...(state.tempCourtDivisionCode ? { tempCourtDivisionCode: state.tempCourtDivisionCode } : {}),
+    harnessFixture: FIXTURE_TAG,
+    rotationState: state.key,
+  };
+}
+
+function rotationVerificationDoc(state: (typeof ROTATION_STATES)[number]) {
+  const now = '2026-01-01T00:00:00.000Z';
+  const id = `${FIXTURE_TAG}-rotation-${state.key}`;
+  return {
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    id,
+    caseId: `491-26-9100${ROTATION_STATES.indexOf(state)}`,
+    courtId: '0649',
+    dxtrTrustee: { fullName: `${FIXTURE_TAG} Trustee` },
+    matchCandidates: [],
+    mismatchReason: 'IMPERFECT_MATCH',
+    taskType: 'trustee-match',
+    status: 'pending',
+    taskDate: now,
+    fingerprint: `fp-${id}`,
+    variant: `{"harness":"${id}"}`,
+    createdOn: now,
+    updatedOn: now,
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    ...(state.ustDivisionCode ? { ustDivisionCode: state.ustDivisionCode } : {}),
+    ...(state.tempCourtDivisionCode ? { tempCourtDivisionCode: state.tempCourtDivisionCode } : {}),
+    harnessFixture: FIXTURE_TAG,
+    rotationState: state.key,
+  };
+}
+
+async function seedRotation() {
+  heading('Seeding the three rotation document states');
+  await clean({ quiet: true });
+
+  await withMongo(async (db) => {
+    await db.collection(CASES_COLLECTION).insertMany(ROTATION_STATES.map(rotationCaseDoc));
+    await db
+      .collection(VERIFICATIONS_COLLECTION)
+      .insertMany(ROTATION_STATES.map(rotationVerificationDoc));
+    pass(`${ROTATION_STATES.length} documents in each of 2 collections`);
+    for (const state of ROTATION_STATES) info(`${state.key} — ${state.note}`);
+  });
+}
+
+/** Reads back every seeded rotation document, keyed by collection and state. */
+async function readRotationDocs() {
+  return withMongo(async (db) => {
+    const out: Record<string, Record<string, Record<string, unknown> | null>> = {};
+    for (const collection of [CASES_COLLECTION, VERIFICATIONS_COLLECTION]) {
+      out[collection] = {};
+      for (const state of ROTATION_STATES) {
+        out[collection][state.key] = (await db
+          .collection(collection)
+          .findOne({ harnessFixture: FIXTURE_TAG, rotationState: state.key })) as Record<
+          string,
+          unknown
+        > | null;
+      }
+    }
+    return out;
+  });
+}
+
+async function driveRotation(dryRun: boolean) {
+  return withContext(async (context) => {
+    const useCase = RotateDivisionCodePhase1UseCase;
+
+    const started = await useCase.startRotation(context, { dryRun });
+    if (started.status === 'error') {
+      fail('startRotation returned an error', started.error.message);
+      return null;
+    }
+    if (started.status === 'completed') {
+      fail('startRotation refused to run — a completed real run state document is present');
+      return null;
+    }
+
+    let pages = 0;
+    let renamed = 0;
+    let unset = 0;
+    for (;;) {
+      const result = await useCase.processRotationPage(context, PAGE_SIZE);
+      pages++;
+      if (result.status === 'error') {
+        fail(`rotation page ${pages} returned an error`, result.error.message);
+        return null;
+      }
+      renamed += result.renamed;
+      unset += result.unset;
+      if (!result.hasMore) break;
+      if (pages >= MAX_PAGES) {
+        fail(`rotation did not terminate within ${MAX_PAGES} pages`);
+        return null;
+      }
+    }
+    info(
+      `${dryRun ? 'dry run' : 'real run'}: ${pages} page(s), ${renamed} renamed, ${unset} unset`,
+    );
+    return { pages, renamed, unset };
+  });
+}
+
+/** Deletes the rotation state document so a finished real run can be driven again. */
+async function resetRotationState() {
+  await withMongo(async (db) => {
+    await db
+      .collection(RUNTIME_STATE_COLLECTION)
+      .deleteMany({ documentType: 'DIVISION_CODE_ROTATION_PHASE_1_STATE' });
+  });
+}
+
+async function runRotation() {
+  await seedRotation();
+
+  heading('Dry run writes nothing');
+  const dry = await driveRotation(true);
+  if (!dry) return;
+  check(
+    dry.renamed === 2 && dry.unset === 2,
+    'Dry run reports 2 renames and 2 unsets (one of each per collection)',
+    dry,
+  );
+  const afterDry = await readRotationDocs();
+  check(
+    afterDry[CASES_COLLECTION]['old-only']?.ustDivisionCode === ROTATION_OLD_CODE,
+    'Dry run left the historical document untouched',
+    afterDry[CASES_COLLECTION]['old-only']?.ustDivisionCode,
+  );
+
+  heading('Real run moves the value and drops the old name');
+  await resetRotationState();
+  const real = await driveRotation(false);
+  if (!real) return;
+
+  const after = await readRotationDocs();
+  for (const collection of [CASES_COLLECTION, VERIFICATIONS_COLLECTION]) {
+    for (const state of ROTATION_STATES) {
+      const doc = after[collection][state.key];
+      check(
+        doc?.tempCourtDivisionCode === state.expected,
+        `${collection} / ${state.key}: tempCourtDivisionCode is ${state.expected} — ${state.note}`,
+        doc?.tempCourtDivisionCode,
+      );
+      check(
+        doc?.ustDivisionCode === undefined,
+        `${collection} / ${state.key}: ustDivisionCode is gone`,
+        doc?.ustDivisionCode,
+      );
+    }
+  }
+
+  heading('Second run is a no-op');
+  await resetRotationState();
+  const second = await driveRotation(false);
+  if (!second) return;
+  check(
+    second.renamed === 0 && second.unset === 0,
+    'A re-run finds nothing: migrated documents no longer match the page query',
+    second,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // seed-schema / seed-sql
 // ---------------------------------------------------------------------------
 
@@ -540,7 +758,11 @@ async function clean({ quiet = false }: { quiet?: boolean } = {}) {
     // to delete state before any re-run.
     const { deletedCount: stateCount } = await db.collection(RUNTIME_STATE_COLLECTION).deleteMany({
       documentType: {
-        $in: ['UST_DIVISION_CODE_BACKFILL_STATE', 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE'],
+        $in: [
+          'UST_DIVISION_CODE_BACKFILL_STATE',
+          'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE',
+          'DIVISION_CODE_ROTATION_PHASE_1_STATE',
+        ],
       },
     });
     if (!quiet)
@@ -788,6 +1010,8 @@ const COMMANDS: Record<string, () => Promise<void>> = {
   'run-appointments': runAppointments,
   'run-verifications': runVerifications,
   'run-ordering': runOrdering,
+  'seed-rotation': seedRotation,
+  'run-rotation': runRotation,
   'run-all': runAll,
   clean: () => clean(),
 };
@@ -806,6 +1030,8 @@ function usage() {
       '  run-appointments    BACKFILL-APPOINTMENT-UST-DIVISION-CODES',
       '  run-verifications   BACKFILL-VERIFICATION-UST-DIVISION-CODE',
       '  run-ordering        Prove verifications skip before the case backfill has run',
+      '  seed-rotation       Seed the three CAMS-936 Phase 1 rotation document states',
+      '  run-rotation        seed-rotation + dry run, real run and re-run of the rotation',
       '  run-all             seed + every run above, in rollout order',
       '  clean               Remove all fixture documents and backfill state',
       '  help                Show this help',
