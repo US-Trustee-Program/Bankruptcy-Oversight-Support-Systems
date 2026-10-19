@@ -2058,6 +2058,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       const resyncWithExistingVerification = async (
         existingVerification: Record<string, unknown>,
         variant: string,
+        eventDivisionCodeOverrides: Record<string, unknown> = { tempCourtDivisionCode: '494' },
       ) => {
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           { variant, trusteeId: 'trustee-123' },
@@ -2070,7 +2071,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
-          [{ ...makeWinchesterEvent('0649-24-12345'), tempCourtDivisionCode: '494' }],
+          [{ ...makeWinchesterEvent('0649-24-12345'), ...eventDivisionCodeOverrides }],
         );
       };
 
@@ -2112,6 +2113,47 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
           expect.objectContaining({ tempCourtDivisionCode: '495' }),
+        );
+      });
+
+      // existing.ustDivisionCode is the fallback for verifications pending from before the
+      // Phase 1 deploy, which never had a tempCourtDivisionCode to begin with -- the realistic
+      // case for every verification already in the review queue when this ships.
+      test('preserves an existing legacy ustDivisionCode over a re-synced event (pre-existing verification)', async () => {
+        const created = await createVerification();
+
+        const existingLegacyOnly = {
+          ...created,
+          tempCourtDivisionCode: undefined,
+          ustDivisionCode: '494',
+        };
+        await resyncWithExistingVerification(existingLegacyOnly, created.variant, {
+          tempCourtDivisionCode: '495',
+        });
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ tempCourtDivisionCode: '494' }),
+        );
+      });
+
+      // Covers the event.ustDivisionCode fallback (D6): a message queued or dead-lettered
+      // before tempCourtDivisionCode existed on the event, resyncing against a verification that
+      // predates both fields.
+      test('falls back to event.ustDivisionCode when neither the existing verification nor the event carries tempCourtDivisionCode', async () => {
+        const created = await createVerification();
+
+        const existingWithNoCode = {
+          ...created,
+          tempCourtDivisionCode: undefined,
+          ustDivisionCode: undefined,
+        };
+        await resyncWithExistingVerification(existingWithNoCode, created.variant, {
+          tempCourtDivisionCode: undefined,
+          ustDivisionCode: '494',
+        });
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ tempCourtDivisionCode: '494' }),
         );
       });
     });
