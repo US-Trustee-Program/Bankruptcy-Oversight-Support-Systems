@@ -4,6 +4,26 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import RotateDivisionCodePhase1UseCase from './rotate-division-code-phase-1';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { DivisionCodeRotationPhase1State } from '../gateways.types';
+import QueryBuilder from '../../query/query-builder';
+import { NotFoundError } from '../../common-errors/not-found-error';
+
+const { and, using } = QueryBuilder;
+
+type RotationDoc = { _id: string; ustDivisionCode?: string; tempCourtDivisionCode?: string };
+const doc = using<RotationDoc>();
+
+/**
+ * The expected write query, built from the same public QueryBuilder API the implementation uses.
+ * Asserted structurally rather than as a stringified substring: exists() and notExists() differ
+ * only by rightOperand, so a substring check for the field name plus "false" passes either way
+ * and cannot fail for the destination gate it is supposed to guard.
+ */
+const expectedWriteQuery = (ids: string[], isRename: boolean) =>
+  and(
+    doc('_id').contains(ids),
+    doc('ustDivisionCode').exists(),
+    isRename ? doc('tempCourtDivisionCode').notExists() : doc('tempCourtDivisionCode').exists(),
+  );
 
 // Distinct values on purpose. Task 1's review found tests that passed while reading the wrong
 // field because both fields held the same value (see name-swap.slice-1-implementation-notes.md).
@@ -62,7 +82,10 @@ describe('RotateDivisionCodePhase1UseCase', () => {
       expect(result.status).toBe('error');
     });
 
-    test('should rename documents that carry only the old field name', async () => {
+    // The destination condition is the data-loss guard: $rename overwrites an existing
+    // destination, so if a DXTR sync populates tempCourtDivisionCode between this page's read and
+    // its write, the rename would clobber that fresh value with the stale one.
+    test('should rename documents that carry only the old field name, gated on the destination', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(makeState());
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([oldOnlyDoc]);
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
@@ -78,32 +101,9 @@ describe('RotateDivisionCodePhase1UseCase', () => {
       if (result.status !== 'ok') return;
       expect(result.renamed).toBe(1);
       expect(result.unset).toBe(0);
-      expect(updateSpy).toHaveBeenCalledWith(expect.anything(), {
+      expect(updateSpy).toHaveBeenCalledWith(expectedWriteQuery([oldOnlyDoc._id], true), {
         $rename: { ustDivisionCode: 'tempCourtDivisionCode' },
       });
-    });
-
-    // $rename overwrites an existing destination. Between reading the page and writing it, a DXTR
-    // sync could have populated tempCourtDivisionCode on one of these documents — without this
-    // condition the rename would clobber that fresh value with the stale one.
-    test('should gate the rename on the destination field still being absent', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(makeState());
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([oldOnlyDoc]);
-      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
-        {} as DivisionCodeRotationPhase1State,
-      );
-      const updateSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
-        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
-
-      await RotateDivisionCodePhase1UseCase.processRotationPage(context, 100);
-
-      const renameCall = updateSpy.mock.calls.find((call) =>
-        JSON.stringify(call[1]).includes('$rename'),
-      );
-      const queryStr = JSON.stringify(renameCall![0]);
-      expect(queryStr).toContain('tempCourtDivisionCode');
-      expect(queryStr).toContain('false');
     });
 
     test('should unset the old field on documents carrying both names', async () => {
@@ -122,7 +122,7 @@ describe('RotateDivisionCodePhase1UseCase', () => {
       if (result.status !== 'ok') return;
       expect(result.unset).toBe(1);
       expect(result.renamed).toBe(0);
-      expect(updateSpy).toHaveBeenCalledWith(expect.anything(), {
+      expect(updateSpy).toHaveBeenCalledWith(expectedWriteQuery([bothFieldsDoc._id], false), {
         $unset: { ustDivisionCode: '' },
       });
     });
@@ -322,6 +322,62 @@ describe('RotateDivisionCodePhase1UseCase', () => {
       const result = await RotateDivisionCodePhase1UseCase.processRotationPage(context, 100);
 
       expect(result.status).toBe('error');
+    });
+  });
+
+  describe('coverage for operationally significant branches', () => {
+    // The real first run: no state document exists, so the repository throws NotFoundError rather
+    // than resolving null. Every other test mocks a resolved null, which is not what ships.
+    test('should treat a NotFoundError from the state read as no rotation started', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new NotFoundError('TEST', { message: 'not found' }),
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as DivisionCodeRotationPhase1State);
+
+      const result = await RotateDivisionCodePhase1UseCase.startRotation(context, {
+        dryRun: false,
+      });
+
+      expect(result.status).toBe('started');
+      expect(upsertSpy).toHaveBeenCalled();
+    });
+
+    // The documents were already mutated but the cursor was not persisted. The next page would
+    // re-read the same lastId, so the job has to report this rather than claim success.
+    test('should return an error when the progress write fails after a successful page', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(makeState());
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([oldOnlyDoc]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('state down'));
+
+      const result = await RotateDivisionCodePhase1UseCase.processRotationPage(context, 100);
+
+      expect(result.status).toBe('error');
+    });
+
+    // A matched-but-not-modified gap is the only observable evidence that the read/write race
+    // actually fired. It must warn without failing the page.
+    test('should warn but not fail when fewer documents were modified than matched', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(makeState());
+      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([oldOnlyDoc]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(
+        {} as DivisionCodeRotationPhase1State,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockResolvedValue({
+        matchedCount: 2,
+        modifiedCount: 1,
+      });
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await RotateDivisionCodePhase1UseCase.processRotationPage(context, 100);
+
+      expect(result.status).toBe('ok');
+      expect(warnSpy).toHaveBeenCalled();
     });
   });
 

@@ -603,50 +603,58 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   });
 
   describe('findVerificationsWithUstDivisionCode', () => {
+    type Queryable = TrusteeMatchVerification & { _id: string };
+    const doc = QueryBuilder.using<Queryable>();
+
+    const firstFindCall = () =>
+      (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0];
+
     // The CAMS-936 Phase 1 rotation pages these to move the value onto tempCourtDivisionCode.
     // Unlike findVerificationsMissingUstDivisionCode, this selects on the field being PRESENT and
     // deliberately does not filter by status or court: every document carrying the old name has to
     // move, or Phase 2 would reinterpret the leftovers as legacy ACMS values.
-    test('should select documents where ustDivisionCode exists, sorted by _id ascending', async () => {
+    //
+    // Asserted structurally rather than against a stringified query: exists() and notExists()
+    // differ only by rightOperand, so a substring check for the field name and "false" passes
+    // either way and cannot fail for the distinction this method exists to make.
+    test('should select exactly documentType and ustDivisionCode-exists, with no cursor', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
 
       const result = await repository.findVerificationsWithUstDivisionCode(null, 10);
 
       expect(result).toEqual([sampleVerification]);
-      const [query, sortSpec, limit] = (
-        MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>
-      ).mock.calls[0];
-      const queryStr = JSON.stringify(query);
-      expect(queryStr).toContain('ustDivisionCode');
-      expect(queryStr).toContain('"EXISTS"');
-      expect(queryStr).toContain('true');
-      expect(JSON.stringify(sortSpec)).toContain('ASCENDING');
+      const [query, , limit] = firstFindCall();
+      expect(query.values).toEqual([
+        doc('documentType').equals('TRUSTEE_MATCH_VERIFICATION'),
+        doc('ustDivisionCode').exists(),
+      ]);
       expect(limit).toBe(10);
     });
 
-    // A status or court filter here would leave documents behind that Phase 2 then misreads.
-    test('should not filter by status or court', async () => {
+    // The cursor condition is `_id > lastId`, which only paginates correctly when the result set
+    // is sorted by _id. A different sort field silently skips or re-processes documents — the
+    // exact failure mode that would leave ustDivisionCode behind for Phase 2 to misread.
+    test('should sort by _id ascending so the _id cursor paginates correctly', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       await repository.findVerificationsWithUstDivisionCode(null, 10);
 
-      const queryStr = JSON.stringify(
-        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
-      );
-      expect(queryStr).not.toContain('pending');
-      expect(queryStr).not.toContain('courtId');
+      const [, sortSpec] = firstFindCall();
+      expect(sortSpec).toEqual(QueryBuilder.orderBy<Queryable>(['_id', 'ASCENDING']));
     });
 
-    test('should add an _id cursor condition when lastId is provided', async () => {
+    test('should append the _id cursor without dropping the selection conditions', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       await repository.findVerificationsWithUstDivisionCode('last-mongo-id', 5);
 
-      const queryStr = JSON.stringify(
-        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
-      );
-      expect(queryStr).toContain('last-mongo-id');
-      expect(queryStr).toContain('GREATER_THAN');
+      const [query, , limit] = firstFindCall();
+      expect(query.values).toEqual([
+        doc('documentType').equals('TRUSTEE_MATCH_VERIFICATION'),
+        doc('ustDivisionCode').exists(),
+        doc('_id').greaterThan('last-mongo-id'),
+      ]);
+      expect(limit).toBe(5);
     });
 
     test('should wrap errors', async () => {
