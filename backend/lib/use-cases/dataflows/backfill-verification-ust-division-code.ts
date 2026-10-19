@@ -80,19 +80,21 @@ async function backfillUstDivisionCodes(
   for (const verification of verifications) {
     try {
       const syncedCase = await casesRepo.getCaseOrMovedCase(verification.caseId);
-      const ustDivisionCode = syncedCase?.ustDivisionCode;
+      // tempCourtDivisionCode is preferred when present (CAMS-936 Phase 1 — see plan.md).
+      const divisionCode = syncedCase?.tempCourtDivisionCode ?? syncedCase?.ustDivisionCode;
 
-      if (!ustDivisionCode) {
+      if (!divisionCode) {
         context.logger.info(
           MODULE_NAME,
-          `No ustDivisionCode on the synced case for ${verification.caseId} — skipping ` +
-            `verification ${verification._id}. Re-run after BACKFILL-UST-DIVISION-CODE completes.`,
+          `No division code (tempCourtDivisionCode or ustDivisionCode) on the synced case for ` +
+            `${verification.caseId} — skipping verification ${verification._id}. ` +
+            `Re-run after BACKFILL-UST-DIVISION-CODE completes.`,
         );
         results.push({ id: verification._id, success: true, skipped: true });
         continue;
       }
 
-      await repo.updateVerificationUstDivisionCode(verification._id, ustDivisionCode);
+      await repo.updateVerificationUstDivisionCode(verification._id, divisionCode);
       results.push({ id: verification._id, success: true });
     } catch (originalError) {
       results.push({

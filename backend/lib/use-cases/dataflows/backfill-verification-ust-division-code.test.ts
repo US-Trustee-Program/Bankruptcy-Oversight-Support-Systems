@@ -129,6 +129,24 @@ describe('BackfillVerificationUstDivisionCodeUseCase', () => {
       expect(result.data).toEqual([{ id: verification._id, success: true }]);
     });
 
+    test('should prefer tempCourtDivisionCode over ustDivisionCode for a freshly synced case (CAMS-936 Phase 1)', async () => {
+      const verification = makeVerification();
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue(
+        makeSyncedCase({ ustDivisionCode: undefined, tempCourtDivisionCode: '494' }),
+      );
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateVerificationUstDivisionCode')
+        .mockResolvedValue();
+
+      const result = await BackfillVerificationUstDivisionCodeUseCase.backfillUstDivisionCodes(
+        context,
+        [verification],
+      );
+
+      expect(updateSpy).toHaveBeenCalledWith(verification._id, '494');
+      expect(result.data).toEqual([{ id: verification._id, success: true }]);
+    });
+
     // Deriving the code from the caseId prefix is what cannot tell Winchester from Chattanooga in
     // the first place, so a case the case-level backfill has not reached yet must be left alone
     // rather than stamped with the ACMS code.
