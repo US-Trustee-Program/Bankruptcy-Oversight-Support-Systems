@@ -562,25 +562,26 @@ async function runOffices() {
 
   const byOffice = (name: string) => divisions.find((d) => d.courtOffice.courtOfficeName === name);
 
+  // After CAMS-936 Phase 1 the gateway returns the bare code as tempCourtDivisionCode.
   const winchester = byOffice('Winchester');
   check(
-    winchester?.ustDivisionCode === '494' && winchester?.divisionCode === '491',
+    winchester?.tempCourtDivisionCode === '494' && winchester?.divisionCode === '491',
     'Winchester: bare 494 alongside ACMS 491 — the split this feature exists for',
-    { ust: winchester?.ustDivisionCode, acms: winchester?.divisionCode },
+    { temp: winchester?.tempCourtDivisionCode, acms: winchester?.divisionCode },
   );
 
   const johnsonCity = byOffice('Johnson City');
   check(
-    johnsonCity?.ustDivisionCode === '495' && johnsonCity?.divisionCode === '492',
+    johnsonCity?.tempCourtDivisionCode === '495' && johnsonCity?.divisionCode === '492',
     'Johnson City: bare 495 alongside ACMS 492',
-    { ust: johnsonCity?.ustDivisionCode, acms: johnsonCity?.divisionCode },
+    { temp: johnsonCity?.tempCourtDivisionCode, acms: johnsonCity?.divisionCode },
   );
 
   const chattanooga = byOffice('Chattanooga');
   check(
-    chattanooga?.ustDivisionCode === '491',
+    chattanooga?.tempCourtDivisionCode === '491',
     'Chattanooga: 491, distinct from Winchester despite the shared ACMS code',
-    chattanooga?.ustDivisionCode,
+    chattanooga?.tempCourtDivisionCode,
   );
 
   // The regression the court scoping was added for. Court 113E's codes diverge too, but it sits
@@ -588,9 +589,9 @@ async function runOffices() {
   // stored appointment in that court, and no backfill covers it.
   const atlanta = byOffice('Atlanta');
   check(
-    atlanta?.ustDivisionCode === '321',
+    atlanta?.tempCourtDivisionCode === '321',
     'Court 113E: ACMS 321, NOT bare 3E1 — scoping holds outside court 0649',
-    atlanta?.ustDivisionCode,
+    atlanta?.tempCourtDivisionCode,
   );
 }
 
