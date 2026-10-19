@@ -285,7 +285,7 @@ describe('common court library tests', () => {
     test('useUstDivisionCode true prefers tempCourtDivisionCode over ustDivisionCode', () => {
       expect(
         toDivisionCode(
-          { divisionCode: '491', ustDivisionCode: '494', tempCourtDivisionCode: '494' },
+          { divisionCode: '491', ustDivisionCode: '491', tempCourtDivisionCode: '494' },
           true,
         ),
       ).toBe('494');
@@ -304,7 +304,7 @@ describe('common court library tests', () => {
     test('prefers tempCourtDivisionCode when present', () => {
       const court = {
         courtDivisionCode: '491',
-        ustDivisionCode: '494',
+        ustDivisionCode: '491',
         tempCourtDivisionCode: '494',
       };
       expect(toCourtDivisionCode(court, true)).toBe('494');
