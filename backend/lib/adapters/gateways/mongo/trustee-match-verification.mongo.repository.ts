@@ -280,6 +280,35 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
+  /**
+   * Pages documents that still carry `ustDivisionCode`, for the CAMS-936 Phase 1 rotation onto
+   * `tempCourtDivisionCode`. Deliberately unfiltered by status and court: every document holding
+   * the old name has to move, or Phase 2 reinterprets the leftovers as legacy ACMS values.
+   */
+  async findVerificationsWithUstDivisionCode(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const doc = using<VerificationQueryable>();
+      const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('ustDivisionCode').exists(),
+      ];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<VerificationQueryable>(['_id', 'ASCENDING']);
+      return await this.getAdapter<VerificationQueryable>().find(query, sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee match verifications carrying ustDivisionCode.',
+      });
+    }
+  }
+
   async updateVerificationUstDivisionCode(mongoId: string, ustDivisionCode: string): Promise<void> {
     try {
       type VerificationQueryable = TrusteeMatchVerification & { _id: string };

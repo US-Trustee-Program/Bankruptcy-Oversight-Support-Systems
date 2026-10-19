@@ -413,6 +413,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findVerificationsWithUstDivisionCode(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   updateVerificationUstDivisionCode(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }

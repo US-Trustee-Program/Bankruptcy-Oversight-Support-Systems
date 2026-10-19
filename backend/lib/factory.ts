@@ -25,6 +25,7 @@ import {
   CaseAppointmentDateBackfillState,
   UstDivisionCodeBackfillState,
   AppointmentUstDivisionCodeBackfillState,
+  DivisionCodeRotationPhase1State,
   RuntimeState,
   RuntimeStateRepository,
   TrusteeCaseAppointmentsRepository,
@@ -139,6 +140,7 @@ let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
 let ustDivisionCodeBackfillStateRepo: RuntimeStateRepository<UstDivisionCodeBackfillState>;
 let appointmentUstDivisionCodeBackfillStateRepo: RuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>;
+let divisionCodeRotationPhase1StateRepo: RuntimeStateRepository<DivisionCodeRotationPhase1State>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
@@ -375,6 +377,16 @@ const getAppointmentUstDivisionCodeBackfillStateRepo = (
       getRuntimeStateRepository<AppointmentUstDivisionCodeBackfillState>(context);
   }
   return appointmentUstDivisionCodeBackfillStateRepo;
+};
+
+const getDivisionCodeRotationPhase1StateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<DivisionCodeRotationPhase1State> => {
+  if (!divisionCodeRotationPhase1StateRepo) {
+    divisionCodeRotationPhase1StateRepo =
+      getRuntimeStateRepository<DivisionCodeRotationPhase1State>(context);
+  }
+  return divisionCodeRotationPhase1StateRepo;
 };
 
 const getTrusteeAppointmentsSyncStateRepo = (
@@ -724,6 +736,7 @@ const factory = {
   getCaseAppointmentDateBackfillStateRepo,
   getUstDivisionCodeBackfillStateRepo,
   getAppointmentUstDivisionCodeBackfillStateRepo,
+  getDivisionCodeRotationPhase1StateRepo,
   getTrusteeAppointmentsSyncStateRepo,
   getTrusteePetitionSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,

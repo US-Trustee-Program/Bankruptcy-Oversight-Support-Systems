@@ -781,7 +781,8 @@ export type RuntimeStateDocumentType =
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
   | 'UST_DIVISION_CODE_BACKFILL_STATE'
-  | 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE';
+  | 'APPOINTMENT_UST_DIVISION_CODE_BACKFILL_STATE'
+  | 'DIVISION_CODE_ROTATION_PHASE_1_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -858,6 +859,34 @@ export type AppointmentUstDivisionCodeBackfillState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_WITH_FAILURES';
+};
+
+/** The collections that hold a field named `ustDivisionCode`, in the order the rotation walks them. */
+export const DIVISION_CODE_ROTATION_COLLECTIONS = ['cases', 'trustee-match-verification'] as const;
+
+export type DivisionCodeRotationCollection = (typeof DIVISION_CODE_ROTATION_COLLECTIONS)[number];
+
+/**
+ * Progress for CAMS-936 Phase 1, which moves the per-court-unique division code off
+ * `ustDivisionCode` and onto `tempCourtDivisionCode` so Phase 2 can reuse the vacated name for the
+ * legacy ACMS value. Collections are walked in order; `lastId` is the cursor within
+ * `currentCollection` and resets when the rotation advances.
+ */
+export type DivisionCodeRotationPhase1State = RuntimeState & {
+  documentType: 'DIVISION_CODE_ROTATION_PHASE_1_STATE';
+  currentCollection: DivisionCodeRotationCollection;
+  lastId: string | null;
+  dryRun: boolean;
+  // Documents read across every collection so far, including ones already in the target state.
+  processedCount: number;
+  // In a dry run, the counts that would have been written.
+  renamedCount: number;
+  // Documents that carried both field names and had `ustDivisionCode` removed (see the name-swap
+  // classification doc, decision D7).
+  unsetCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED';
 };
 
 export type MigrateCaseAppointmentsState = RuntimeState & {
@@ -1022,6 +1051,10 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
   findVerificationsMissingUstDivisionCode(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
+  findVerificationsWithUstDivisionCode(
     lastId: string | null,
     limit: number,
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;

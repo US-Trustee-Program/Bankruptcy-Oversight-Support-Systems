@@ -38,6 +38,7 @@ import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
 import BackfillVerificationUstDivisionCode from './migrations/backfill-verification-ust-division-code';
+import RotateDivisionCodePhase1 from './migrations/rotate-division-code-phase-1';
 import BackfillUnassignedOn from './migrations/backfill-unassigned-on';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
@@ -140,6 +141,7 @@ dataflows.register(
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
   BackfillVerificationUstDivisionCode,
+  RotateDivisionCodePhase1,
   BackfillUnassignedOn,
   PollNotificationBounces,
 );

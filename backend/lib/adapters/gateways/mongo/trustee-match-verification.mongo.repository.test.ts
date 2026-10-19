@@ -602,6 +602,64 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('findVerificationsWithUstDivisionCode', () => {
+    // The CAMS-936 Phase 1 rotation pages these to move the value onto tempCourtDivisionCode.
+    // Unlike findVerificationsMissingUstDivisionCode, this selects on the field being PRESENT and
+    // deliberately does not filter by status or court: every document carrying the old name has to
+    // move, or Phase 2 would reinterpret the leftovers as legacy ACMS values.
+    test('should select documents where ustDivisionCode exists, sorted by _id ascending', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.findVerificationsWithUstDivisionCode(null, 10);
+
+      expect(result).toEqual([sampleVerification]);
+      const [query, sortSpec, limit] = (
+        MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>
+      ).mock.calls[0];
+      const queryStr = JSON.stringify(query);
+      expect(queryStr).toContain('ustDivisionCode');
+      expect(queryStr).toContain('"EXISTS"');
+      expect(queryStr).toContain('true');
+      expect(JSON.stringify(sortSpec)).toContain('ASCENDING');
+      expect(limit).toBe(10);
+    });
+
+    // A status or court filter here would leave documents behind that Phase 2 then misreads.
+    test('should not filter by status or court', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsWithUstDivisionCode(null, 10);
+
+      const queryStr = JSON.stringify(
+        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
+      );
+      expect(queryStr).not.toContain('pending');
+      expect(queryStr).not.toContain('courtId');
+    });
+
+    test('should add an _id cursor condition when lastId is provided', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsWithUstDivisionCode('last-mongo-id', 5);
+
+      const queryStr = JSON.stringify(
+        (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock.calls[0][0],
+      );
+      expect(queryStr).toContain('last-mongo-id');
+      expect(queryStr).toContain('GREATER_THAN');
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.findVerificationsWithUstDivisionCode(null, 10)).rejects.toThrow(
+        'Failed to find trustee match verifications carrying ustDivisionCode.',
+      );
+    });
+  });
+
   describe('updateVerificationUstDivisionCode', () => {
     test('should call updateOne with _id query and ustDivisionCode update', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue(undefined);
