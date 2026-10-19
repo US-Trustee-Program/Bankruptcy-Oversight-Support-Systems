@@ -2440,9 +2440,8 @@ describe('tempCourtDivisionCode court scoping', () => {
   // that court still holds '321' — and neither backfill touches courts outside 0649. So assert
   // the SQL itself, not the mapped result.
   const expectScopedTempCourtDivisionCode = () => {
-    const queries = querySpy.mock.calls
-      .map((call) => call[1] as string)
-      .filter((query) => query?.includes('tempCourtDivisionCode'));
+    const allQueries = querySpy.mock.calls.map((call) => call[1] as string).filter(Boolean);
+    const queries = allQueries.filter((query) => query.includes('tempCourtDivisionCode'));
 
     expect(queries.length).toBeGreaterThan(0);
     queries.forEach((query) => {
@@ -2450,6 +2449,12 @@ describe('tempCourtDivisionCode court scoping', () => {
         /CASE WHEN \w+\.COURT_ID IN \('0649'\) THEN \w+\.CS_DIV ELSE \w+\.CS_DIV_ACMS END\s+as\s+tempCourtDivisionCode/i,
       );
       expect(query).not.toMatch(/(?<!ELSE )\w*\.?\[?CS_DIV\]?\s+as\s+tempCourtDivisionCode/i);
+    });
+    // Catches a query that kept (or reverted to) the old alias outright — the filter above would
+    // otherwise silently exclude it rather than failing, as long as some other, unrelated query
+    // in the same call still said tempCourtDivisionCode.
+    allQueries.forEach((query) => {
+      expect(query).not.toMatch(/as\s+ustDivisionCode/i);
     });
   };
 
@@ -2459,7 +2464,22 @@ describe('tempCourtDivisionCode court scoping', () => {
   });
 
   test('getSuggestedCases scopes tempCourtDivisionCode to court 0649', async () => {
-    await expect(gateway.getSuggestedCases(applicationContext, '081-11-11111')).rejects.toThrow();
+    // getSuggestedCases calls getCaseSummary first, which issues its own (already-correct)
+    // CASE_DETAIL_QUERY — mocking only the final recordset to empty (as the other tests in this
+    // block do) makes getCaseSummary throw before CASE_SUGGESTION_QUERY, the query this test
+    // exists to check, is ever built or executed. Mock the full getCaseSummary chain so
+    // execution reaches it.
+    const testCase = MockData.getCaseSummary();
+    querySpy.mockResolvedValueOnce(makeQueryResults([testCase])); // queryCase (CASE_DETAIL_QUERY)
+    querySpy.mockResolvedValueOnce(makeQueryResults([DEBTORS.get('081-22-23587')])); // debtor
+    querySpy.mockResolvedValueOnce(makeQueryResults([{ partyName: 'Jane Q. Smith' }])); // joint debtor
+    querySpy.mockResolvedValueOnce(makeQueryResults([])); // debtor additionalIdentifiers
+    querySpy.mockResolvedValueOnce(makeQueryResults([])); // joint debtor additionalIdentifiers
+    // Next call is CASE_SUGGESTION_QUERY itself; falls through to the empty-recordset default.
+
+    await gateway.getSuggestedCases(applicationContext, testCase.caseId);
+
+    expect(querySpy).toHaveBeenCalled();
     expectScopedTempCourtDivisionCode();
   });
 
