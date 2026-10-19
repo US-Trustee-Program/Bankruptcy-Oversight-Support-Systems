@@ -72,6 +72,10 @@ type SplitPair = {
     email: string;
   };
   dateFiled: string;
+  // Exercises both CAMS-936 Phase 1 states (see plan.md): true seeds a SYNCED_CASE carrying the
+  // staged tempCourtDivisionCode ("freshly synced" after the Phase 1 deploy); false seeds one
+  // carrying the legacy ustDivisionCode ("pre-existing, not yet migrated").
+  usesTempCourtDivisionCode: boolean;
 };
 
 const PAIRS: SplitPair[] = [
@@ -79,6 +83,7 @@ const PAIRS: SplitPair[] = [
     caseDivision: { code: '494', name: 'Winchester', officeCode: '4' },
     trusteeDivision: { code: '491', name: 'Chattanooga' },
     acmsDivisionCode: '491',
+    usesTempCourtDivisionCode: true,
     caseInfo: { caseId: '491-26-99604', caseNumber: '26-99604', csCaseId: 'SEED99604' },
     debtor: {
       name: 'SEED Winchester Split Debtor',
@@ -103,6 +108,7 @@ const PAIRS: SplitPair[] = [
     caseDivision: { code: '495', name: 'Johnson City', officeCode: '5' },
     trusteeDivision: { code: '492', name: 'Greeneville' },
     acmsDivisionCode: '492',
+    usesTempCourtDivisionCode: false,
     caseInfo: { caseId: '492-26-99605', caseNumber: '26-99605', csCaseId: 'SEED99605' },
     debtor: {
       name: 'SEED Johnson City Split Debtor',
@@ -290,8 +296,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     'trustee-appointments': [],
   };
 
-  for (const [index, pair] of PAIRS.entries()) {
-    const seeded = await seedPair(ctx, pair, appointedOn, index === 0);
+  for (const pair of PAIRS) {
+    const seeded = await seedPair(ctx, pair, appointedOn, pair.usesTempCourtDivisionCode);
     operations.push(...seeded.operations);
     for (const [collection, docs] of Object.entries(seeded.documents)) {
       documents[collection].push(...docs);
