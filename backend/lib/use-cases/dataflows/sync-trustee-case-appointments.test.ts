@@ -2222,6 +2222,36 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.autoMatchCount).toBe(1);
     });
 
+    test('CAMS-936 Phase 1: passes syncedCase.tempCourtDivisionCode, not ustDivisionCode, as the division argument to resolveNameCollisionByScoring', async () => {
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        makeAmbiguousNameMatch(),
+      );
+      (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        caseId: 'case-001',
+        trusteeId: undefined,
+        courtId: '081',
+        courtDivisionCode: '081',
+        ustDivisionCode: '491', // stale value — must be ignored
+        tempCourtDivisionCode: '494',
+        chapter: '7',
+      });
+      const resolveNameCollisionByScoringSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveNameCollisionByScoring')
+        .mockResolvedValueOnce({ kind: 'no-match' });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'Common Name')],
+      );
+
+      expect(resolveNameCollisionByScoringSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        '494',
+      );
+    });
+
     test('should route a fuzzy-scoring clear winner to human review when their appointment does not match court/division/chapter', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
@@ -2459,6 +2489,46 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+    });
+
+    test('CAMS-936 Phase 1: passes both syncedCase division fields through to calculateCandidateScore', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
+      const calculateCandidateScoreSpy = vi
+        .spyOn(trusteeMatchHelpers, 'calculateCandidateScore')
+        .mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+      (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        caseId: 'case-001',
+        trusteeId: undefined,
+        courtId: '081',
+        courtDivisionCode: '081',
+        ustDivisionCode: '491', // stale value — must be ignored
+        tempCourtDivisionCode: '494',
+        chapter: '7',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(calculateCandidateScoreSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ ustDivisionCode: '491', tempCourtDivisionCode: '494' }),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     test('should surface a uniquely-name-matched candidate with no court appointment as IMPERFECT_MATCH, not NO_TRUSTEE_MATCH', async () => {
