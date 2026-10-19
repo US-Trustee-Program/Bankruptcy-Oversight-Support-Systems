@@ -16,10 +16,6 @@ export class TrusteeCaseDivisionsController implements CamsController {
   }
 
   public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<string[]>> {
-    if (!context.featureFlags['trustee-management']) {
-      return { statusCode: 404 };
-    }
-
     if (!context.featureFlags['trustee-case-list']) {
       return { statusCode: 404 };
     }

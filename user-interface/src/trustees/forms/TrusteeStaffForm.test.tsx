@@ -8,17 +8,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
-import useFeatureFlags, {
-  TRUSTEE_MANAGEMENT,
-  TRUSTEE_TYPED_PHONES,
-} from '@/lib/hooks/UseFeatureFlags';
 import { Trustee } from '@common/cams/trustees';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -34,7 +29,6 @@ vi.mock('@/lib/components/uswds/modal/OpenModalButton', () => ({
   )),
 }));
 
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 const mockOpenModalButton = vi.mocked(OpenModalButton);
 
 function getDeleteOnClick(): () => Promise<void> {
@@ -46,14 +40,6 @@ function getDeleteOnClick(): () => Promise<void> {
   return openProps.onDelete;
 }
 
-function getLegacyPhoneInput(): HTMLInputElement {
-  return document.querySelector('[data-testid$="-legacy-phone"]') as HTMLInputElement;
-}
-
-function getLegacyExtensionInput(): HTMLInputElement {
-  return document.querySelector('[data-testid$="-legacy-extension"]') as HTMLInputElement;
-}
-
 function getTypeSelect(index: number): HTMLSelectElement {
   return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
 }
@@ -62,7 +48,7 @@ function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
 }
 
-function getTypedExtensionInput(index: number): HTMLInputElement {
+function getExtensionInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
 }
 
@@ -152,11 +138,6 @@ describe('TrusteeStaffForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
 
-    // Mock feature flag enabled by default
-    mockUseFeatureFlags.mockReturnValue({
-      [TRUSTEE_MANAGEMENT]: true,
-    });
-
     const user = MockData.getCamsUser({
       roles: [CamsRole.TrusteeAdmin],
     });
@@ -182,18 +163,7 @@ describe('TrusteeStaffForm', () => {
     });
   });
 
-  describe('Permissions and Feature Flags', () => {
-    test('should show message when trustee management feature is disabled', () => {
-      mockUseFeatureFlags.mockReturnValue({
-        [TRUSTEE_MANAGEMENT]: false,
-      });
-
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
-      expect(screen.getByText('Trustee management is not enabled.')).toBeInTheDocument();
-    });
-
+  describe('Permissions', () => {
     test('should show forbidden message when user lacks TrusteeAdmin role', () => {
       const user = MockData.getCamsUser({
         roles: [CamsRole.TrialAttorney],
@@ -214,20 +184,11 @@ describe('TrusteeStaffForm', () => {
     });
   });
 
-  describe('TRUSTEE_TYPED_PHONES enabled', () => {
-    beforeEach(() => {
-      mockUseFeatureFlags.mockReturnValue({
-        [TRUSTEE_MANAGEMENT]: true,
-        [TRUSTEE_TYPED_PHONES]: true,
-      });
-    });
-
-    test('renders phone entry rows instead of the single legacy inputs', () => {
+  describe('phones', () => {
+    test('renders phone entry rows', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
-      expect(getLegacyPhoneInput()).toBeNull();
-      expect(getLegacyExtensionInput()).toBeNull();
     });
 
     test('should submit the typed phones entered across rows', async () => {
@@ -287,7 +248,7 @@ describe('TrusteeStaffForm', () => {
       expect(getNumberInput(0)).toHaveValue('555-111-2222');
       expect(getTypeSelect(1)).toHaveValue('personalMobile');
       expect(getNumberInput(1)).toHaveValue('555-333-4444');
-      expect(getTypedExtensionInput(1)).toHaveValue('42');
+      expect(getExtensionInput(1)).toHaveValue('42');
     });
 
     test('should block submission when a typed phone row has an invalid number', async () => {
@@ -320,8 +281,8 @@ describe('TrusteeStaffForm', () => {
       expect(screen.getByTestId('staff-city')).toBeInTheDocument();
       expect(document.querySelector('#staff-state')).toBeInTheDocument();
       expect(screen.getByTestId('staff-zip')).toBeInTheDocument();
-      expect(getLegacyPhoneInput()).toBeInTheDocument();
-      expect(getLegacyExtensionInput()).toBeInTheDocument();
+      expect(getNumberInput(0)).toBeInTheDocument();
+      expect(getExtensionInput(0)).toBeInTheDocument();
       expect(screen.getByTestId('staff-email')).toBeInTheDocument();
     });
 
@@ -385,7 +346,7 @@ describe('TrusteeStaffForm', () => {
       const nameInput = screen.getByTestId('staff-name') as HTMLInputElement;
       const titleInput = screen.getByTestId('staff-title') as HTMLInputElement;
       const emailInput = screen.getByTestId('staff-email') as HTMLInputElement;
-      const phoneInput = getLegacyPhoneInput();
+      const phoneInput = getNumberInput(0);
       const address1Input = screen.getByTestId('staff-address1') as HTMLInputElement;
 
       expect(nameInput.value).toBe('John Staff');
@@ -418,7 +379,7 @@ describe('TrusteeStaffForm', () => {
       },
       {
         field: 'phone',
-        getInput: () => getLegacyPhoneInput(),
+        getInput: () => getNumberInput(0),
         value: '123',
         message: 'Must be a valid phone number',
       },
@@ -441,7 +402,7 @@ describe('TrusteeStaffForm', () => {
     test('extension input enforces numeric-only entry', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const ext = getLegacyExtensionInput();
+      const ext = getExtensionInput(0);
       expect(ext).toHaveAttribute('inputMode', 'numeric');
     });
 
@@ -492,7 +453,7 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-address1'), '123 Main St');
 
       // Add phone extension without phone number (will cause new error)
-      await userEvent.type(getLegacyExtensionInput(), '123');
+      await userEvent.type(getExtensionInput(0), '123');
 
       // Submit again
       await userEvent.click(saveButton);
@@ -504,9 +465,9 @@ describe('TrusteeStaffForm', () => {
 
       // Verify phone error message is displayed
       await waitFor(() => {
-        expect(
-          screen.getByText('Phone number is required when extension is provided'),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('phone-entry-0')).toHaveTextContent(
+          'Must be a valid phone number',
+        );
       });
     });
   });
@@ -628,10 +589,10 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-city'), 'TestCity');
       await userEvent.clear(screen.getByTestId('staff-zip'));
       await userEvent.type(screen.getByTestId('staff-zip'), '12345');
-      await userEvent.clear(getLegacyPhoneInput());
-      await userEvent.type(getLegacyPhoneInput(), '(555)555-5555');
-      await userEvent.clear(getLegacyExtensionInput());
-      await userEvent.type(getLegacyExtensionInput(), '999');
+      await userEvent.clear(getNumberInput(0));
+      await userEvent.type(getNumberInput(0), '(555)555-5555');
+      await userEvent.clear(getExtensionInput(0));
+      await userEvent.type(getExtensionInput(0), '999');
       await userEvent.clear(screen.getByTestId('staff-email'));
       await userEvent.type(screen.getByTestId('staff-email'), 'test@example.com');
 
@@ -765,8 +726,8 @@ describe('TrusteeStaffForm', () => {
     test('should save phone independently without address or email', async () => {
       const staffMember = await submitFormAndGetStaffMember(async () => {
         await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
-        await userEvent.type(getLegacyPhoneInput(), '(555)555-5555');
-        await userEvent.type(getLegacyExtensionInput(), '123');
+        await userEvent.type(getNumberInput(0), '(555)555-5555');
+        await userEvent.type(getExtensionInput(0), '123');
       });
 
       expect(staffMember.name).toBe('Test Staff');

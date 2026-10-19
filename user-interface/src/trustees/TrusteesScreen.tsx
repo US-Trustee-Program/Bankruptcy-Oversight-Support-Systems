@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useOutlet } from 'react-router-dom';
-import useFeatureFlags, { canAddTrustee, TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { canAddTrustee } from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import TrusteesList from './TrusteesList';
@@ -17,7 +17,7 @@ export default function TrusteesScreen() {
   const hasNestedRoute = !!outlet;
 
   // If no nested route and unauthorized, return null (for component tests and main view)
-  if (!hasNestedRoute && (!flags[TRUSTEE_MANAGEMENT] || !canManage)) {
+  if (!hasNestedRoute && !canManage) {
     return null;
   }
 

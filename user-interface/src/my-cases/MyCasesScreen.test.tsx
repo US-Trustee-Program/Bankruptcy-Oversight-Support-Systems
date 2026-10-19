@@ -12,10 +12,7 @@ import { formatDate, formatDateTime } from '@/lib/utils/datetime';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { CaseNoteInput } from '@common/cams/cases';
-import useFeatureFlags, {
-  PHONETIC_SEARCH_ENABLED,
-  SHOW_DEBTOR_NAME_COLUMN,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { SHOW_DEBTOR_NAME_COLUMN } from '@/lib/hooks/UseFeatureFlags';
 import { CamsHttpError } from '@/lib/models/api';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
@@ -35,7 +32,6 @@ describe('MyCasesScreen', () => {
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
     mockUseFeatureFlags.mockReturnValue({
-      [PHONETIC_SEARCH_ENABLED]: true,
       [SHOW_DEBTOR_NAME_COLUMN]: true,
     });
   });
@@ -112,9 +108,8 @@ describe('MyCasesScreen', () => {
     expect(body?.childNodes[0]).toContainHTML(expectedDiv);
   });
 
-  test('should render a list of cases without debtor name column when phonetic search is disabled', async () => {
+  test('should render a list of cases without debtor name column when the debtor name column flag is off', async () => {
     mockUseFeatureFlags.mockReturnValue({
-      [PHONETIC_SEARCH_ENABLED]: false,
       [SHOW_DEBTOR_NAME_COLUMN]: false,
     });
 

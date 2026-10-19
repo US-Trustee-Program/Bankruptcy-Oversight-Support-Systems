@@ -616,10 +616,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getActiveCaseAppointment(..._ignore: any[]): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
   getActiveCaseAppointmentsByTrusteeId(_trusteeId: string): Promise<CaseAppointment[]> {
     return Promise.resolve([]);
   }

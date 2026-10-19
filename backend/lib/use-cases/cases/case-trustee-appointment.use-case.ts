@@ -16,20 +16,6 @@ function isPlaceholderAppointment(appointment: CaseAppointment): boolean {
 }
 
 export class CaseTrusteeAppointmentUseCase {
-  async getActiveCaseAppointment(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseAppointment | null> {
-    try {
-      const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-      // getActiveByCaseId already excludes surrogate and sentinel placeholder rows at the
-      // query level, so its result is always the case's real active appointment (or null).
-      return await repo.getActiveByCaseId(caseId);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
   async getCaseTrusteeAppointmentHistory(
     context: ApplicationContext,
     caseId: string,

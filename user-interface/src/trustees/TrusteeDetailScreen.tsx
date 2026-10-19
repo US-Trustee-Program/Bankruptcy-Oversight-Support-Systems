@@ -42,7 +42,6 @@ import useFeatureFlags, {
   TRUSTEE_APPOINTMENT_ACCORDIONS,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
   TRUSTEE_CASE_LIST,
-  TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
 import { TrusteeCaseListFilterValue } from '@/trustees/panels/filters/trusteeCaseListFilter.types';
@@ -85,7 +84,6 @@ export default function TrusteeDetailScreen() {
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
-  const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
   const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
     `cams:trustee-case-list-filter:${trusteeId}`,
     { caseStatus: 'OPEN', chapters: [] },
@@ -120,12 +118,9 @@ export default function TrusteeDetailScreen() {
   useEffect(() => {
     const fetchSoftwareOptions = async () => {
       try {
-        const response = await Api2.getSoftwareList();
-        if (response?.data) {
-          const profiles = response.data as BankruptcySoftwareProfile[];
-          setSoftwareProfiles(profiles);
-          setSoftwareOptions(transformSoftwareList(profiles));
-        }
+        const { data: profiles } = await Api2.getSoftwareList();
+        setSoftwareProfiles(profiles);
+        setSoftwareOptions(transformSoftwareList(profiles));
       } catch (e) {
         console.log('Failed to fetch software options', (e as Error).message);
       }
@@ -206,7 +201,6 @@ export default function TrusteeDetailScreen() {
               onEditStaff={openEditStaff}
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
-              showSoftwareBankInfo={showSoftwareBankInfo}
               softwareProfiles={softwareProfiles}
             />
           </div>
@@ -248,7 +242,6 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'other/edit',
-      disabled: !featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY],
       subHeading: 'Edit Other Trustee Information',
       content: (
         <TrusteeOtherInfoForm

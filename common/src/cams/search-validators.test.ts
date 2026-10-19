@@ -65,6 +65,16 @@ describe('Search Validators', () => {
       expect(result.reasons?.[0]).toContain('not exceed 200 characters');
     });
 
+    test.each([
+      ['a number', 42],
+      ['an array', ['a', 'b']],
+      ['an object with a length', { length: 3 }],
+    ])('should reject a debtor name that is %s', (_description, input) => {
+      const result = validateEach([debtorName], input);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons).toEqual(['Debtor name must be a string']);
+    });
+
     test('should allow undefined debtor name', () => {
       const result = validateEach([debtorName], undefined);
       expect(result.valid).toBe(true);

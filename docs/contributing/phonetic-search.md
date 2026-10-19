@@ -32,7 +32,7 @@ This guide explains the technical implementation for developers working with thi
 | Phonetic Helper | `backend/lib/adapters/utils/phonetic-helper.ts` | Generate tokens (Metaphone, bigrams, nicknames) |
 | Query Pipeline | `backend/lib/query/query-pipeline.ts` | Fluent API for SCORE stage construction |
 | Mongo Renderer | `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts` | Translate SCORE to MongoDB aggregation |
-| Case Management | `backend/lib/use-cases/cases/case-management.ts` | Orchestrate search with feature flag check |
+| Case Management | `backend/lib/use-cases/cases/case-management.ts` | Choose phonetic or standard search for each request |
 | Search Screen | `user-interface/src/search/SearchScreen.tsx` | UI component with debtor name field |
 
 ## The Scoring Algorithm
@@ -227,9 +227,10 @@ Removes temporary fields.
 
 ## Feature Flags
 
+Phonetic search and the debtor name search field are always on. A search uses phonetic scoring when its debtor name has at least 2 characters after trimming.
+
 | Flag | Purpose | Default |
 |------|---------|---------|
-| `phonetic-search-enabled` | Enables phonetic scoring and debtor name search field | false |
 | `show-debtor-name-column` | Shows debtor name column in search results | false |
 
 ## Code Examples
@@ -267,9 +268,8 @@ const scoreStage = QueryPipeline.score({
 
 ### Search Not Returning Expected Results
 
-1. **Check feature flag**: Ensure `phonetic-search-enabled` is enabled
-2. **Verify tokens exist**: Check that `phoneticTokens` array exists on the case document
-3. **Run backfill**: If tokens missing, run the `BACKFILL_PHONETIC_TOKENS` dataflow
+1. **Verify tokens exist**: Check that `phoneticTokens` array exists on the case document
+2. **Run backfill**: If tokens missing, run the `BACKFILL_PHONETIC_TOKENS` dataflow
 
 ### Understanding Why a Match Failed
 

@@ -7,8 +7,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { ZoomInfo } from '@common/cams/trustees';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import * as useTrusteeModule from './useTrustee';
 import * as useCaseAppointmentModule from './useCaseAppointment';
 import * as TrusteeOverviewCardModule from '@/trustees/panels/TrusteeOverviewCard';
@@ -52,9 +50,6 @@ describe('CaseDetailTrusteePanel', () => {
     vi.resetAllMocks();
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: false,
-    });
     vi.spyOn(AppInsightsModule, 'getAppInsights').mockReturnValue({
       reactPlugin: {} as ReturnType<typeof AppInsightsModule.getAppInsights>['reactPlugin'],
       appInsights: { trackEvent: mockTrackEvent } as unknown as ReturnType<
@@ -273,10 +268,7 @@ describe('CaseDetailTrusteePanel', () => {
       updatedBy: { id: 'system', name: 'System' },
     };
 
-    test('renders past trustees table when flag is on and history is non-empty', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
-      });
+    test('renders past trustees table when history is non-empty', () => {
       setupLoadedTrustee({ history: [historyItem] });
 
       renderPanel();
@@ -287,9 +279,6 @@ describe('CaseDetailTrusteePanel', () => {
     });
 
     test('renders trusteeId as plain text when a history row has no trusteeName', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
-      });
       setupLoadedTrustee({ history: [{ ...historyItem, trusteeName: undefined }] });
 
       renderPanel();
@@ -298,10 +287,7 @@ describe('CaseDetailTrusteePanel', () => {
       expect(screen.queryByRole('link', { name: /view trustee profile/i })).not.toBeInTheDocument();
     });
 
-    test('does not render past trustees section when flag is on and history is empty', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
-      });
+    test('does not render past trustees section when history is empty', () => {
       setupLoadedTrustee({ history: [] });
 
       renderPanel();
@@ -309,18 +295,7 @@ describe('CaseDetailTrusteePanel', () => {
       expect(screen.queryByTestId('past-trustees-section')).not.toBeInTheDocument();
     });
 
-    test('does not render section when flag is off', () => {
-      setupLoadedTrustee({ history: [historyItem] });
-
-      renderPanel();
-
-      expect(screen.queryByTestId('past-trustees-section')).not.toBeInTheDocument();
-    });
-
     test('renders past trustee name as link opening in new tab', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
-      });
       setupLoadedTrustee({ history: [historyItem] });
 
       renderPanel();
@@ -333,9 +308,6 @@ describe('CaseDetailTrusteePanel', () => {
     });
 
     test('fires telemetry event when past trustee link is clicked', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
-      });
       setupLoadedTrustee({ history: [historyItem] });
 
       renderPanel();

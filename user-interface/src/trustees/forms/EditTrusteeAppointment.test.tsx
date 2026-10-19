@@ -7,8 +7,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
 
 vi.mock('@/lib/models/api2');
 
@@ -23,9 +21,6 @@ describe('EditTrusteeAppointment', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': true,
-    } as FeatureFlagSet);
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       data: MockData.getCourts(),
     });

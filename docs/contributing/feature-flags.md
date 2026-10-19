@@ -79,7 +79,7 @@ set up a list-based segment and a targeting rule in the LaunchDarkly **GovCloud 
    - Type: **List** (a manually-maintained list of context keys, not a rule-based segment)
    - Add each pilot user's context `key` (their Okta `sub` claim — see the User Context table above)
      to the segment's list.
-2. **Add a targeting rule to the pilot flag** (e.g. `trustee-management`) — Flag > Targeting tab >
+2. **Add a targeting rule to the pilot flag** (e.g. `chapter-eleven-enabled`) — Flag > Targeting tab >
    Add rule.
    - Condition: "context is in segment" > `Detailees`
    - Serve: the `true` (or "on") variation

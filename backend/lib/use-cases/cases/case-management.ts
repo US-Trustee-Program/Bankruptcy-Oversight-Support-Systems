@@ -41,6 +41,11 @@ export function getAction<T extends CaseBasics>(
   return actions;
 }
 
+// Search predicates come from request bodies, so values may not be strings before validation.
+function isNonBlankString(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export default class CaseManagement {
   assignmentRepository: CaseAssignmentRepository; //Fix naming
   casesGateway: CasesInterface;
@@ -62,31 +67,14 @@ export default class CaseManagement {
     }
   }
 
-  private shouldUsePhoneticSearch(
-    predicate: CasesSearchPredicate,
-    phoneticSearchEnabled: boolean,
-  ): boolean {
-    if (!phoneticSearchEnabled) {
-      return false;
-    }
-
-    const normalizedDebtorName = predicate.debtorName?.trim();
-
-    if (!normalizedDebtorName || normalizedDebtorName.length < 2) {
-      return false;
-    }
-
-    return true;
-  }
-
   private buildSearchProperties(
     predicate: CasesSearchPredicate,
     searchType: string,
   ): Record<string, string> {
     return {
       searchType,
-      debtorNameUsed: String(!!predicate.debtorName?.trim()),
-      caseNumberUsed: String(!!predicate.caseNumber?.trim()),
+      debtorNameUsed: String(isNonBlankString(predicate.debtorName)),
+      caseNumberUsed: String(isNonBlankString(predicate.caseNumber)),
       divisionCodesUsed: String((predicate.divisionCodes?.length ?? 0) > 0),
       chaptersUsed: String((predicate.chapters?.length ?? 0) > 0),
       excludeClosedCases: String(predicate.excludeClosedCases === true),
@@ -143,13 +131,14 @@ export default class CaseManagement {
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     const trace = context.observability.startTrace(context.invocationId);
-    const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
-    const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
-    const searchType = usePhoneticSearch ? 'phonetic' : 'standard';
+    let searchType = 'standard';
 
     try {
       // RULE 3: Backend validation (security boundary)
       this.checkValidation(validateObject(casesSearchPredicateSpec, predicate));
+      // Validation guarantees any debtorName present is a string with at least 2 non-whitespace characters.
+      const usePhoneticSearch = !!predicate.debtorName;
+      searchType = usePhoneticSearch ? 'phonetic' : 'standard';
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
@@ -164,7 +153,7 @@ export default class CaseManagement {
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length === 0) {
-          this.completeSearchTrace(context, trace, predicate, 'standard', 0, 0, true);
+          this.completeSearchTrace(context, trace, predicate, searchType, 0, 0, true);
           return { metadata: { total: 0 }, data: [] };
         }
       }

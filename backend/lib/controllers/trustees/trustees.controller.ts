@@ -21,13 +21,6 @@ export class TrusteesController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<Trustee | Trustee[] | TrusteeListItem[]>> {
-    // Check feature flag
-    if (!context.featureFlags['trustee-management']) {
-      return {
-        statusCode: 404,
-      };
-    }
-
     // Check user authorization for trustee admin role
     if (!this.hasRequiredRole(context)) {
       throw getCamsError(
