@@ -274,11 +274,12 @@ Azure rejects address-space changes on in-use subnets.
 
 ## DORA Metrics Storage
 
-The weekly DORA Metrics workflow (`dora-metrics.yml`) keeps its CSV reports in a dedicated,
-Flexion-only storage account so that history outlives GitHub's artifact retention. The account is
-defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from `main.bicep`, so it is
-never deployed to USTP. Shared-key access is disabled; every reader and writer uses Entra ID
-(`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container.
+A dedicated, Flexion-only storage account holds the weekly DORA Metrics workflow's
+(`dora-metrics.yml`) CSV reports so that history outlives GitHub's artifact retention. Until the
+workflow's publish job is added, reports still exist only as expiring workflow artifacts. The
+account is defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from `main.bicep`,
+so it is never deployed to USTP. Shared-key access is disabled; every reader and writer uses Entra
+ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container.
 
 ### One-time setup
 
@@ -291,7 +292,9 @@ In this order:
 2. Run **Deploy DORA Metrics Storage** with `mode: what-if`, review, then re-run with
    `mode: deploy`.
 3. Add the account name to `kv-ustp-cams` as `AZ-DORA-METRICS-STORAGE-NAME`.
-4. Create the empty `dora-metrics` GitHub environment, then run
+4. Create the empty `dora-metrics` GitHub environment, then export `AZ_DORA_METRICS_STORAGE_NAME`
+   (the account name), `AZ_DORA_METRICS_RG` (its resource group), and `AZ_MAIN_KV_RG` (the resource
+   group containing `kv-ustp-cams`) and run
    `ops/scripts/utility/federated-credentials/setup-dora-metrics-federated-credential.sh`. It grants
    the publish identity Storage Blob Data Contributor on the container only, plus read access to
    that one Key Vault secret, and sets `AZ_CLIENT_ID` in the environment.

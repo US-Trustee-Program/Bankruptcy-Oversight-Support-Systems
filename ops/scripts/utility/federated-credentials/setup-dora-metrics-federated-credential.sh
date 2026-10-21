@@ -29,6 +29,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
+# Main-only identity: a TARGET=branch run of setup-all-federated-credentials.sh
+# has nothing to provision here.
+if [[ "${TARGET:-all}" == "branch" ]]; then
+  echo "==> TARGET=branch: skipping DORA metrics identity (main only)."
+  exit 0
+fi
+
 # ---------------------------------------------------------------------------
 # Configuration — update these before running
 # ---------------------------------------------------------------------------

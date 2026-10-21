@@ -51,6 +51,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Redeploying our own account is fine; pointing this template at any
+          # other existing account would rewrite its settings (e.g. disable
+          # shared-key access) and break whatever depends on it.
+          if az storage account show --name "${STORAGE_ACCOUNT_NAME}" \
+            --resource-group "${RESOURCE_GROUP}" --output none 2>/dev/null; then
+            component=$(az storage account show --name "${STORAGE_ACCOUNT_NAME}" \
+              --resource-group "${RESOURCE_GROUP}" --query "tags.component" -o tsv)
+            if [[ "${component}" != "dora-metrics" ]]; then
+              echo "Storage account ${STORAGE_ACCOUNT_NAME} already exists and is not tagged component=dora-metrics. Refusing to modify it." >&2
+              exit 1
+            fi
+          fi
+
           if [[ "${MODE}" == "what-if" ]]; then
             command=what-if
           else
