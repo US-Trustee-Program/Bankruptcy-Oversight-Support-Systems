@@ -8,7 +8,7 @@
 #   podman build -t localhost/integration_dataflows_trustee_verification_remap:latest \
 #     -f test/integration/trustee-verification-remap/Dockerfile.dataflows .
 
-FROM node:24.20.0-bookworm-slim
+FROM node:24.22.1-bookworm-slim
 
 WORKDIR /app
 
