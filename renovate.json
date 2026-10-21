@@ -10,6 +10,7 @@
   "separateMinorPatch": false,
   "rangeStrategy": "pin",
   "semanticCommits": "disabled",
+  "platformAutomerge": true,
   "ignorePaths": [
     "**/node_modules/**",
     "**/bower_components/**",
@@ -22,10 +23,11 @@
   ],
   "packageRules": [
     {
-      "description": "Default grouping by update type. Renovate applies packageRules in order and later rules win, so these two generic defaults are declared FIRST and every package-specific groupName below deliberately overrides them. Declaring them last would silently flatten every package group into these two buckets.",
+      "description": "Default grouping by update type. Renovate applies packageRules in order and later rules win, so these two generic defaults are declared FIRST and every package-specific groupName below deliberately overrides them. Declaring them last would silently flatten every package group into these two buckets. Automerge is enabled here since minor/patch/pin/digest updates are low-risk and already gated by minimumReleaseAge and required status checks; majors stay manual via the groupName: null rule below.",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch"
+      "groupSlug": "all-minor-patch",
+      "automerge": true
     },
     {
       "description": "Default for major updates: one PR per package, unless a package-specific rule below regroups it.",
