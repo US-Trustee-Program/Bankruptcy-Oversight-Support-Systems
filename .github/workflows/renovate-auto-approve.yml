@@ -1,0 +1,58 @@
+name: Approve Renovate Auto-merge PRs
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Approve eligible Renovate PRs
+        env:
+          GH_TOKEN: ${{ secrets.BOT_USTP_CODEOWNER_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Only one Renovate PR should be in flight (approved but not yet
+          # merged) at a time, so a stale PR can't slip past main's
+          # non-strict required status checks and merge alongside another.
+          in_flight=$(gh pr list --repo "$REPO" --author "renovate[bot]" --state open \
+            --json reviewDecision --jq '[.[] | select(.reviewDecision == "APPROVED")] | length')
+
+          if [ "$in_flight" -gt 0 ]; then
+            echo "A previously approved Renovate PR is still open — waiting for it to merge before approving another."
+            exit 0
+          fi
+
+          candidates=$(gh pr list --repo "$REPO" --author "renovate[bot]" --state open \
+            --json number,autoMergeRequest,reviewDecision \
+            --jq '[.[] | select(.autoMergeRequest != null and .reviewDecision != "APPROVED") | .number] | sort | .[]')
+
+          for pr in $candidates; do
+            head_sha=$(gh pr view "$pr" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+            behind_by=$(gh api "repos/${REPO}/compare/${head_sha}...main" --jq '.ahead_by')
+
+            if [ "$behind_by" -ne 0 ]; then
+              echo "PR #${pr} is ${behind_by} commit(s) behind main — skipping until Renovate rebases it."
+              continue
+            fi
+
+            checks_ok=$(gh pr view "$pr" --repo "$REPO" --json statusCheckRollup \
+              --jq '[.statusCheckRollup[] | select(.status != "COMPLETED" or (.conclusion != "SUCCESS" and .conclusion != "SKIPPED" and .conclusion != "NEUTRAL"))] | length == 0')
+
+            if [ "$checks_ok" != "true" ]; then
+              echo "PR #${pr} checks are not all passing yet — skipping."
+              continue
+            fi
+
+            echo "Approving PR #${pr}"
+            gh pr review "$pr" --repo "$REPO" --approve \
+              --body "Auto-approved: up to date with main, checks passing, and no other Renovate PR currently in flight."
+            break
+          done

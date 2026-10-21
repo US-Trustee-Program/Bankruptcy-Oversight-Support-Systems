@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 36
-- **Main Workflows**: 17
+- **Total Workflows**: 38
+- **Main Workflows**: 19
 - **Reusable Workflows**: 19
 
 ## Legend
@@ -112,6 +112,7 @@ flowchart LR
 Workflows triggered by `push`:
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
+- **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
 - **Continuous Deployment** (`continuous-deployment.yml`)
 
 ```mermaid
@@ -122,6 +123,8 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
+    launchdarkly_code_references_yml["LaunchDarkly Code References"]
+    launchdarkly_code_references_yml_find_code_references["find-code-references"]
     continuous_deployment_yml["Continuous Deployment"]
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
@@ -195,6 +198,8 @@ flowchart LR
     trigger_push --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
+    trigger_push --> launchdarkly_code_references_yml
+    launchdarkly_code_references_yml --> launchdarkly_code_references_yml_find_code_references
     trigger_push --> continuous_deployment_yml
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
@@ -279,6 +284,8 @@ flowchart LR
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
+    class launchdarkly_code_references_yml mainWorkflow
+    class launchdarkly_code_references_yml_find_code_references job
     class continuous_deployment_yml mainWorkflow
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
@@ -482,6 +489,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+- **Approve Renovate Auto-merge PRs** (`renovate-auto-approve.yml`)
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **DORA Metrics** (`dora-metrics.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
@@ -494,6 +502,8 @@ Workflows triggered by `schedule`:
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
+    renovate_auto_approve_yml["Approve Renovate Auto-merge PRs"]
+    renovate_auto_approve_yml_approve["approve"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     build_playwright_msedge_image_yml_build_and_push["build-and-push"]
     dora_metrics_yml["DORA Metrics"]
@@ -526,6 +536,8 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
+    trigger_schedule --> renovate_auto_approve_yml
+    renovate_auto_approve_yml --> renovate_auto_approve_yml_approve
     trigger_schedule --> build_playwright_msedge_image_yml
     build_playwright_msedge_image_yml --> build_playwright_msedge_image_yml_build_and_push
     trigger_schedule --> dora_metrics_yml
@@ -567,6 +579,8 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
+    class renovate_auto_approve_yml mainWorkflow
+    class renovate_auto_approve_yml_approve job
     class build_playwright_msedge_image_yml mainWorkflow
     class build_playwright_msedge_image_yml_build_and_push job
     class dora_metrics_yml mainWorkflow
@@ -1323,6 +1337,29 @@ flowchart LR
     class refresh_e2e_base_images_yml_refresh job
 ```
 
+#### Approve Renovate Auto-merge PRs
+
+Manual execution of `renovate-auto-approve.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    renovate_auto_approve_yml["Approve Renovate Auto-merge PRs"]
+    renovate_auto_approve_yml_approve["approve"]
+
+    trigger_workflow_dispatch --> renovate_auto_approve_yml
+    renovate_auto_approve_yml --> renovate_auto_approve_yml_approve
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class renovate_auto_approve_yml mainWorkflow
+    class renovate_auto_approve_yml_approve job
+```
+
 #### NPM Package Updates
 
 Manual execution of `update-dependencies.yml`
@@ -1376,6 +1413,7 @@ flowchart LR
 flowchart LR
     trigger_workflow_dispatch(["workflow_dispatch"])
     deploy_sql_hub_yml["Deploy SQL Private Link Hub"]
+    renovate_auto_approve_yml["Approve Renovate Auto-merge PRs"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     dora_metrics_yml["DORA Metrics"]
@@ -1391,6 +1429,7 @@ flowchart LR
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
     trigger_schedule(["schedule"])
+    renovate_auto_approve_yml["Approve Renovate Auto-merge PRs"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     dora_metrics_yml["DORA Metrics"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
@@ -1402,6 +1441,7 @@ flowchart LR
     trigger_push(["push"])
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_pages_yml["Deploy GitHub Pages"]
+    launchdarkly_code_references_yml["LaunchDarkly Code References"]
     continuous_deployment_yml["Continuous Deployment"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
@@ -1411,6 +1451,7 @@ flowchart LR
     slack_notification_yml["slack-notification"]
 
     trigger_workflow_dispatch --> deploy_sql_hub_yml
+    trigger_workflow_dispatch --> renovate_auto_approve_yml
     trigger_workflow_dispatch --> build_playwright_msedge_image_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> dora_metrics_yml
@@ -1425,6 +1466,7 @@ flowchart LR
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
+    trigger_schedule --> renovate_auto_approve_yml
     trigger_schedule --> build_playwright_msedge_image_yml
     trigger_schedule --> dora_metrics_yml
     trigger_schedule --> azure_remove_branch_yml
@@ -1435,6 +1477,7 @@ flowchart LR
     trigger_schedule --> dast_scan_yml
     trigger_push --> build_playwright_msedge_image_yml
     trigger_push --> deploy_pages_yml
+    trigger_push --> launchdarkly_code_references_yml
     trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
     trigger_pull_request --> pr_validation_yml
@@ -1450,6 +1493,7 @@ flowchart LR
     class trigger_pull_request trigger
     class trigger_workflow_run trigger
     class deploy_sql_hub_yml mainWorkflow
+    class renovate_auto_approve_yml mainWorkflow
     class build_playwright_msedge_image_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class dora_metrics_yml mainWorkflow
@@ -1460,6 +1504,7 @@ flowchart LR
     class prune_e2e_image_cache_yml mainWorkflow
     class refresh_e2e_base_images_yml mainWorkflow
     class pr_validation_yml mainWorkflow
+    class launchdarkly_code_references_yml mainWorkflow
     class constrained_test_report_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1473,6 +1518,9 @@ flowchart LR
 ### Main Workflows
 - **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
   - Triggers: workflow_dispatch
+  - Jobs: 1
+- **Approve Renovate Auto-merge PRs** (`renovate-auto-approve.yml`)
+  - Triggers: schedule, workflow_dispatch
   - Jobs: 1
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
   - Triggers: schedule, workflow_dispatch, push
@@ -1502,6 +1550,9 @@ flowchart LR
   - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request, workflow_dispatch
+  - Jobs: 1
+- **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
+  - Triggers: push
   - Jobs: 1
 - **Constrained Test Report** (`constrained-test-report.yml`)
   - Triggers: schedule, workflow_dispatch
