@@ -1,0 +1,67 @@
+name: Deploy DORA Metrics Storage
+
+# Deploys the storage account that holds DORA Metrics report history -- see
+# ops/cloud-deployment/dora-metrics-storage.bicep. Flexion-only; manual by
+# design, since it is a one-time setup rather than part of any deploy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Preview with what-if, or actually deploy'
+        required: true
+        default: what-if
+        type: choice
+        options:
+          - what-if
+          - deploy
+      resourceGroup:
+        description: 'Resource group to hold the storage account'
+        required: true
+        type: string
+      storageAccountName:
+        description: 'Globally unique storage account name (3-24 lower-case letters and numbers)'
+        required: true
+        type: string
+
+permissions: read-all
+
+jobs:
+  deploy-storage:
+    name: Deploy DORA Metrics Storage
+    runs-on: ubuntu-latest
+    # Needs its own federated credential naming THIS workflow: the OIDC subject
+    # template is repo+workflow+environment, so sharing the environment with
+    # Continuous Deployment is not enough. See docs/operations/deployment.md.
+    environment: infrastructure-deploy-main
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy DORA metrics storage account
+        run: |
+          set -euo pipefail
+
+          if [[ "${MODE}" == "what-if" ]]; then
+            command=what-if
+          else
+            command=create
+          fi
+
+          az deployment group "${command}" \
+            --resource-group "${RESOURCE_GROUP}" \
+            --template-file ops/cloud-deployment/dora-metrics-storage.bicep \
+            --parameters storageAccountName="${STORAGE_ACCOUNT_NAME}"
+        env:
+          MODE: ${{ inputs.mode }}
+          RESOURCE_GROUP: ${{ inputs.resourceGroup }}
+          STORAGE_ACCOUNT_NAME: ${{ inputs.storageAccountName }}

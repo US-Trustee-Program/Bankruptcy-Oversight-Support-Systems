@@ -272,6 +272,30 @@ existing path and simply get no hub peering. Re-addressing one is opt-in via
 `--allowLegacyVnetReaddress true`, and is only safe when nothing is deployed into its subnets, since
 Azure rejects address-space changes on in-use subnets.
 
+## DORA Metrics Storage
+
+The weekly DORA Metrics workflow (`dora-metrics.yml`) keeps its CSV reports in a dedicated,
+Flexion-only storage account so that history outlives GitHub's artifact retention. The account is
+defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from `main.bicep`, so it is
+never deployed to USTP. Shared-key access is disabled; every reader and writer uses Entra ID
+(`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container.
+
+### One-time setup
+
+In this order:
+
+1. Create the provisioning workflow's federated credential, `gha-deploy-dora-metrics-storage`, on
+   `cams-infrastructure-deploy-main-oidc` using the `az ad app federated-credential create` snippet
+   under [SQL Private Link Hub](#identity-and-permissions), with workflow name
+   `Deploy DORA Metrics Storage` and environment `infrastructure-deploy-main`.
+2. Run **Deploy DORA Metrics Storage** with `mode: what-if`, review, then re-run with
+   `mode: deploy`.
+3. Add the account name to `kv-ustp-cams` as `AZ-DORA-METRICS-STORAGE-NAME`.
+4. Create the empty `dora-metrics` GitHub environment, then run
+   `ops/scripts/utility/federated-credentials/setup-dora-metrics-federated-credential.sh`. It grants
+   the publish identity Storage Blob Data Contributor on the container only, plus read access to
+   that one Key Vault secret, and sets `AZ_CLIENT_ID` in the environment.
+
 ## CI/CD Pipeline Runtime Variables
 
 ?> Note required environment variables and secrets defined in build tool for pipeline execution in
@@ -330,6 +354,12 @@ Flexion and **shared** with USTP.
 | SNYK_OAUTH_CLIENT_SECRET      | Key Vault Secret       | ---              | OAuth client secret for Snyk government instance. Read from Key Vault as `SNYK-OAUTH-CLIENT-SECRET` (present in `kv-ustp-cams` only). |
 | AZ_SECURITY_SCAN_RG           | Secrets                | ---              | Resource group for the security scan storage account                                                                                  |
 | AZ_SECURITY_SCAN_STORAGE_NAME | Secrets                | ---              | Storage account name for security scan results (deployed by IaC)                                                                      |
+
+### DORA Metrics
+
+| Name                         | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                 |
+| ---------------------------- | ---------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| AZ_DORA_METRICS_STORAGE_NAME | Key Vault Secret       | Yes              | Storage account name for DORA metrics reports. Read from Key Vault as `AZ-DORA-METRICS-STORAGE-NAME` (`kv-ustp-cams` only). |
 
 ### LaunchDarkly
 
