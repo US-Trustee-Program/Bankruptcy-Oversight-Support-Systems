@@ -5,7 +5,7 @@
 # install, which has an unrelated broken dependency (path-to-regexp, absent from the root
 # lockfile's node_modules tree despite being pinned via root package.json overrides) that
 # otherwise blocks any express-based process from starting locally.
-FROM node:24.20.0-bookworm-slim
+FROM node:24.22.1-bookworm-slim
 
 WORKDIR /app
 
