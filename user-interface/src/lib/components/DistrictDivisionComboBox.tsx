@@ -34,11 +34,6 @@ type DistrictDivisionComboBoxProps = {
   // selection to the full allow list rather than the user's own office divisions.
   divisionCodeAllowList?: string[];
   disableDefaultDivisionCodes?: boolean;
-  // Opt-in: use ustDivisionCode (bare CS_DIV) instead of courtDivisionCode (CS_DIV_ACMS) for
-  // option values and encoded codes. Trustee-appointment divisionCodes are ust-coded for
-  // divisions like Winchester/Chattanooga that share a courtDivisionCode — see CAMS-936. Case
-  // search/identity stays courtDivisionCode-keyed, so this defaults to false.
-  useUstDivisionCodeForOptions?: boolean;
 };
 
 type DivisionOptionMeta = {
@@ -99,19 +94,12 @@ function computeAllowListDefaults(
   return allOptions.filter((opt) => !parseDivisionOptionValue(opt.value).isAll);
 }
 
-// The user's codes must be derived with the same flag that built allOptions. Options are keyed on
-// ustDivisionCode when useUstDivisionCodeForOptions is set, and a user's office carries both
-// codes, so deriving the default from the wrong one picks the sibling division sharing the ACMS
-// code — a Winchester user defaulting to Chattanooga. See CAMS-936 and cams-x54pm.1.
-function computeUserOfficeDefaults(
-  allOptions: ComboOption[],
-  useUstDivisionCode: boolean,
-): ComboOption[] {
-  const userCodes = getUserDivisionCodes(LocalStorage.getSession(), useUstDivisionCode);
+function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
+  const userCodes = getUserDivisionCodes(LocalStorage.getSession());
   if (userCodes.size === 0) return [];
   return allOptions.filter((opt) => {
-    const { isAll } = parseDivisionOptionValue(opt.value);
-    return !isAll && userCodes.has(opt.value);
+    const { code, isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && userCodes.has(code);
   });
 }
 
@@ -119,12 +107,11 @@ function computeDefaultOptions(
   allOptions: ComboOption[],
   initialDivisionCodes: string[] | undefined,
   divisionCodeAllowList: string[] | undefined,
-  useUstDivisionCode: boolean,
 ): ComboOption[] {
   if (initialDivisionCodes?.length)
     return computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
   if (divisionCodeAllowList) return computeAllowListDefaults(allOptions, divisionCodeAllowList);
-  return computeUserOfficeDefaults(allOptions, useUstDivisionCode);
+  return computeUserOfficeDefaults(allOptions);
 }
 
 const DistrictDivisionComboBox_ = (
@@ -139,7 +126,6 @@ const DistrictDivisionComboBox_ = (
     wrapPills,
     divisionCodeAllowList,
     disableDefaultDivisionCodes,
-    useUstDivisionCodeForOptions = false,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -165,10 +151,7 @@ const DistrictDivisionComboBox_ = (
         const allCourts = r.data;
         setCourts(allCourts);
         onCourtsLoaded?.(allCourts);
-        const nationalOptions = getDistrictDivisionComboOptions(
-          allCourts,
-          useUstDivisionCodeForOptions,
-        ) as ComboOption[];
+        const nationalOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
         const allOptions = divisionCodeAllowList
           ? (filterOptionsToAllowList(
               nationalOptions,
@@ -179,7 +162,7 @@ const DistrictDivisionComboBox_ = (
 
         const applyDefaults = (defaults: ComboOption[]) => {
           if (defaults.length > 0) {
-            const codes = encodeDivisionCodes(defaults, allCourts, useUstDivisionCodeForOptions);
+            const codes = encodeDivisionCodes(defaults, allCourts);
             setSelectedDivisions(defaults);
             previousSelectionsRef.current = defaults;
             onDivisionCodesChange?.(codes);
@@ -197,7 +180,6 @@ const DistrictDivisionComboBox_ = (
           allOptions,
           initialDivisionCodes,
           divisionCodeAllowList,
-          useUstDivisionCodeForOptions,
         );
         applyDefaults(defaults);
         const defaultOptionValues = new Set(defaults.map((d) => d.value));
@@ -216,7 +198,7 @@ const DistrictDivisionComboBox_ = (
 
   const handleDivisionChange = (selections: ComboOption[]) => {
     const resolved = resolveCombinedSelections(previousSelectionsRef.current, selections);
-    const upgraded = autoUpgradeToAll(resolved, courts, useUstDivisionCodeForOptions);
+    const upgraded = autoUpgradeToAll(resolved, courts);
     // Announce auto-upgrades before updating the ref so we can diff against the previous set.
     // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
     const previousValues = new Set(previousSelectionsRef.current.map((d) => d.value));
@@ -232,7 +214,7 @@ const DistrictDivisionComboBox_ = (
     }
     previousSelectionsRef.current = upgraded;
     setSelectedDivisions(upgraded);
-    const codes = encodeDivisionCodes(upgraded, courts, useUstDivisionCodeForOptions);
+    const codes = encodeDivisionCodes(upgraded, courts);
     onDivisionCodesChange?.(codes);
     onSelectionsChange?.(upgraded);
   };

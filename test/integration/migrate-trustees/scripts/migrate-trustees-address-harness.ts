@@ -1038,25 +1038,11 @@ async function run() {
     );
 
     // Pre-create a mapping for HL-98002 so the backfill must skip it (alreadyMapped).
-    // CAMS-876 (821c314a5) replaced createProfessionalId(trusteeId, acmsId, user) with
-    // upsertProfessionalId(document, user), which takes the whole document and requires an
-    // explicit disposition — the finders only return 'linked' records, so a mapping seeded with
-    // anything else would not be found and the backfill would treat it as unmapped.
     const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-    await professionalIdsRepo.upsertProfessionalId(
-      {
-        documentType: 'TRUSTEE_PROFESSIONAL_ID',
-        camsTrusteeId: healTrusteeId,
-        acmsProfessionalId: HEAL_ACMS_ID_ALREADY_MAPPED,
-        disposition: 'linked',
-        linkMethod: 'auto',
-        nameMatchCount: 1,
-      },
-      {
-        id: 'INTEGRATION-TEST',
-        name: 'Integration Test',
-      },
-    );
+    await professionalIdsRepo.createProfessionalId(healTrusteeId, HEAL_ACMS_ID_ALREADY_MAPPED, {
+      id: 'INTEGRATION-TEST',
+      name: 'Integration Test',
+    });
     info(
       `Pre-created mapping for ${HEAL_ACMS_ID_ALREADY_MAPPED} (expect alreadyMapped, not created)`,
     );
