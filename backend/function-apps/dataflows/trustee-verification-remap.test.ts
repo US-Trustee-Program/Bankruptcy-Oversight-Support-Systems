@@ -33,6 +33,7 @@ type RemapPageResult = Awaited<ReturnType<TrusteeVerificationRemapUseCase['remap
 const makeRemapPageResult = (overrides: Partial<RemapPageResult> = {}): RemapPageResult => ({
   documentsWritten: 1,
   documentsFailed: 0,
+  permanentFailureCount: 0,
   totalCandidates: 1,
   pageSize: 1,
   remainingCount: 0,
@@ -299,6 +300,84 @@ describe('trustee-verification-remap handleRemap', () => {
       );
       expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
         remap: { status: 'complete' },
+      });
+    });
+
+    test('stops requeuing when every surrogate in a page larger than the page size is permanently uncovered', async () => {
+      // Reviewer-reproduced on PR #3090: a bundle whose resolved trustee covers none of it
+      // (30 surrogates, page size 25) previously requeued the identical first page forever,
+      // since a permanent failure never deletes its surrogate and there's no cursor to skip
+      // past it -- an uncapped loop, not the ordinary "more pages to go" case.
+      const { handleRemap } = await import('./trustee-verification-remap');
+      remapPageSpy.mockResolvedValue(
+        makeRemapPageResult({
+          documentsWritten: 0,
+          documentsFailed: 0,
+          permanentFailureCount: 25,
+          totalCandidates: 30,
+          pageSize: 25,
+          remainingCount: 5,
+        }),
+      );
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      const message = makeMessage();
+      await handleRemap(message, makeInvocationContext());
+
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'TRUSTEE-MATCH-VERIFICATION-REMAP',
+        'handleRemap',
+        expect.anything(),
+        expect.objectContaining({
+          success: false,
+          documentsWritten: 0,
+          details: expect.objectContaining({
+            totalCandidates: '30',
+            pageSize: '25',
+            continuationQueued: 'false',
+            permanentFailureCount: '25',
+          }),
+        }),
+      );
+      expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+        remap: {
+          status: 'error',
+          error: expect.objectContaining({
+            originalError: expect.stringContaining('25 are permanently uncovered'),
+          }),
+        },
+      });
+    });
+
+    test('still requeues when a page makes partial progress alongside some permanent mismatches', async () => {
+      const { handleRemap } = await import('./trustee-verification-remap');
+      remapPageSpy.mockResolvedValue(
+        makeRemapPageResult({
+          documentsWritten: 20,
+          documentsFailed: 0,
+          permanentFailureCount: 5,
+          totalCandidates: 30,
+          pageSize: 25,
+          remainingCount: 5,
+        }),
+      );
+
+      const message = makeMessage();
+      await handleRemap(message, makeInvocationContext());
+
+      // Progress was made (20 succeeded), so the remaining 5 un-attempted surrogates still
+      // deserve a chance -- only an entirely-stuck page (documentsWritten === 0) stops.
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(message));
+      expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+        remap: {
+          status: 'error',
+          error: expect.objectContaining({
+            originalError: expect.stringContaining('5 are permanently uncovered'),
+          }),
+        },
       });
     });
   });

@@ -111,6 +111,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 1,
       documentsFailed: 0,
+      permanentFailureCount: 0,
       totalCandidates: 1,
       pageSize: 1,
       remainingCount: 0,
@@ -229,6 +230,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 0,
       documentsFailed: 0,
+      permanentFailureCount: 0,
       totalCandidates: 0,
       pageSize: 0,
       remainingCount: 0,
@@ -256,7 +258,10 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockUpsert).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
     expect(result.documentsWritten).toBe(0);
-    expect(result.documentsFailed).toBe(1);
+    // A genuine division mismatch is permanent -- retrying this surrogate can never succeed,
+    // so it's tracked separately from documentsFailed (which represents failures that might).
+    expect(result.documentsFailed).toBe(0);
+    expect(result.permanentFailureCount).toBe(1);
   });
 
   test('persists the freshly-fetched division/chapter, not the stale surrogate ones, when the case was transferred before remap', async () => {
@@ -311,5 +316,64 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockDelete).not.toHaveBeenCalled();
     expect(result.documentsWritten).toBe(0);
     expect(result.documentsFailed).toBe(1);
+    expect(result.permanentFailureCount).toBe(0);
+  });
+
+  test('a getCaseSummary failure mid-page rethrows instead of being counted as documentsFailed or a permanent mismatch', async () => {
+    // Reviewer-flagged on PR #3090: a DXTR lookup failure says nothing about division coverage
+    // and must not be conflated with a genuine division mismatch, which would otherwise make a
+    // transient lookup blip indistinguishable from a permanent, un-retriable failure.
+    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
+    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(
+      new Error('DXTR connection timed out'),
+    );
+
+    await expect(useCase.remapPage(makeMessage(), 25)).rejects.toThrow(
+      /Unable to look up case summary/,
+    );
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  test('tracks a mix of success, permanent mismatch, and ordinary failure independently in one page', async () => {
+    const covered = makeSurrogate({ id: 'surrogate-covered', caseId: '081-25-00001' });
+    const mismatched = makeSurrogate({
+      id: 'surrogate-mismatched',
+      caseId: '081-25-00002',
+      courtDivisionCode: '099',
+      chapter: '13',
+    });
+    const ordinaryFailure = makeSurrogate({
+      id: 'surrogate-ordinary-failure',
+      caseId: '081-25-00003',
+    });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([covered, mismatched, ordinaryFailure]);
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+      async (_context, caseId) => {
+        if (caseId === mismatched.caseId) {
+          return { caseId, courtId: '099', courtDivisionCode: '099', chapter: '13' } as CaseSummary;
+        }
+        return { caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' } as CaseSummary;
+      },
+    );
+    mockUpsert.mockImplementation(async (payload: { caseId: string }) => {
+      if (payload.caseId === ordinaryFailure.caseId) {
+        throw new Error('upsert failed');
+      }
+      return {};
+    });
+
+    const result = await useCase.remapPage(makeMessage(), 25);
+
+    expect(result).toMatchObject({
+      documentsWritten: 1,
+      documentsFailed: 1,
+      permanentFailureCount: 1,
+    });
+    expect(mockDelete).toHaveBeenCalledWith(covered.id);
+    expect(mockDelete).not.toHaveBeenCalledWith(mismatched.id);
+    expect(mockDelete).not.toHaveBeenCalledWith(ordinaryFailure.id);
   });
 });
