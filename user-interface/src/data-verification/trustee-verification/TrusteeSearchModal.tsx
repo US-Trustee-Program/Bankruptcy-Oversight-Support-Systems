@@ -10,10 +10,15 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
-import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import {
+  formatAppointmentStatus,
+  getUncoveredCases,
+  AppointmentCoverageCase,
+} from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
+import { getCaseNumber } from '@common/cams/cases';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -22,6 +27,20 @@ interface TrusteeSearchModalProps {
   dxtrTrusteePhone?: string;
   dxtrTrusteeEmail?: string;
   courtId?: string;
+  // When both are provided, search results are filtered server-side to trustees with an
+  // active appointment covering this court+chapter+division (isAppointmentMatch's rule) --
+  // so a user can't pick a trustee the backend would reject on approval anyway. Omitting
+  // either preserves the original district-only filtering, for any other caller of this
+  // same modal that doesn't have case context to provide.
+  divisionCode?: string;
+  chapter?: string;
+  // Every case this verification affects, not just the originating one -- used to disable
+  // Confirm and explain why when the selected trustee doesn't cover all of them (see
+  // getUncoveredCases). The divisionCode/chapter filter above only narrows results against the
+  // single originating case; this is the hard, bundle-wide gate, mirroring what the backend's
+  // approval endpoint is guaranteed to enforce. Omitted (or empty) disables this check entirely
+  // -- e.g. any other caller of this modal with no case-bundle context to provide.
+  affectedCases?: AppointmentCoverageCase[];
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
@@ -47,6 +66,9 @@ function TrusteeSearchModal_(
     dxtrTrusteePhone,
     dxtrTrusteeEmail,
     courtId,
+    divisionCode,
+    chapter,
+    affectedCases,
     onConfirm,
     onCancel,
     isProcessing,
@@ -101,9 +123,22 @@ function TrusteeSearchModal_(
       setSearchResults([]);
       return;
     }
+    // divisionCode/chapter describe the case that opened this modal, which is only a valid
+    // filter while the search is still scoped to that case's own court. If the user has
+    // switched the "Trustee District" dropdown away from the court this modal was opened
+    // with, divisionCode belongs to a different court than the one now being searched --
+    // applying it would filter search results against the wrong court's divisions. Falling
+    // back to district-only filtering here is safe: it can only ever show MORE candidates,
+    // never admit one the backend's own approval check would reject.
+    const isOriginatingCourt = selectedCourtId === courtId;
     debounce(async () => {
       try {
-        const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
+        const response = await Api2.searchTrustees(
+          value,
+          selectedCourtEntry?.courtId,
+          isOriginatingCourt ? divisionCode : undefined,
+          isOriginatingCourt ? chapter : undefined,
+        );
         setSearchResults(response.data);
       } catch {
         setSearchResults([]);
@@ -118,6 +153,11 @@ function TrusteeSearchModal_(
 
   function handleSelection(options: ComboOption[]) {
     if (options.length > 0) {
+      // ComboBox only ever emits a value drawn from the options list this component itself
+      // gave it (comboOptions, built from searchResults), so `selected` should never
+      // actually be undefined here in practice. The `?? null` is a defensive fallback for
+      // that "shouldn't happen" case (e.g. searchResults changing between render and this
+      // callback firing) rather than a reachable behavior to drive from a test.
       const selected = searchResults.find((r) => r.trusteeId === options[0].value);
       setSelectedTrustee(selected ?? null);
     } else {
@@ -163,12 +203,19 @@ function TrusteeSearchModal_(
       return `${courtName}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
     }) ?? [];
 
+  // Hard, bundle-wide coverage gate (see affectedCases' doc comment above) -- computed only
+  // once a trustee is selected, since there's nothing to warn about otherwise.
+  const uncoveredCases = selectedTrustee
+    ? getUncoveredCases(selectedTrustee.appointments, affectedCases ?? [])
+    : [];
+  const hasUncoveredCases = uncoveredCases.length > 0;
+
   const actionButtonGroup = {
     modalId: `trustee-search-modal-${id}`,
     modalRef,
     submitButton: {
       label: 'Confirm Appointment',
-      disabled: !selectedTrustee || isProcessing,
+      disabled: !selectedTrustee || isProcessing || hasUncoveredCases,
       // Without this, Modal closes itself on click by default, before isProcessing can render.
       closeOnClick: false,
       onClick: () => {
@@ -259,6 +306,18 @@ function TrusteeSearchModal_(
                   {appointmentLines.map((line, i) => (
                     <div key={i}>{line}</div>
                   ))}
+                  {hasUncoveredCases && (
+                    <p
+                      className="usa-error-message uncovered-cases-message"
+                      data-testid="search-uncovered-cases-message"
+                    >
+                      Does not have an appointment covering case(s){' '}
+                      {uncoveredCases
+                        .map((c) => `${getCaseNumber(c.caseId)} (Chapter ${c.chapter})`)
+                        .join(', ')}
+                      . This match cannot be approved until those cases are resolved separately.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div>No Trustee selected</div>

@@ -41,6 +41,11 @@
  *        durable record of which cases it affected.
  *     7. Already approved, WITH a populated affectedCaseIds snapshot (3 cases) - the normal
  *        post-fix state for an approved multi-case mismatch.
+ *     8. Pending, 3 affected cases, all Chapter 11, but one case is in a different court the
+ *        candidate has no appointment in at all (division/court mismatch rather than chapter
+ *        mismatch - #5 above varies chapter across cases that all share one division; this one
+ *        varies court+division across cases that all share one chapter, isolating the other
+ *        half of isAppointmentMatch). See CAMS-905 PR #3090's "Deferred, not included" note.
  *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
@@ -68,6 +73,17 @@ const CASE_MULTI_A = '091-99-86706';
 const CASE_MULTI_B = '091-99-99943';
 const CASE_MULTI_C = '091-99-98483';
 const CASE_RESOLVED_NO_SURROGATES = '091-99-97816';
+
+// Multi-case DIVISION-mismatch scenario (3 distinct cases, all Chapter 11, previously-unused
+// in this file): two share a court+division the candidate is appointed in, the third is a
+// genuinely different court the candidate has no appointment for at all. Isolates the
+// court+division half of isAppointmentMatch from the chapter half, which CASE_MULTI_A/B/C
+// above already exercises (same division, different chapters) -- see CAMS-905 PR #3090's
+// "Deferred, not included" note, which flagged this as the one case variant the existing
+// multi-case fixture couldn't exercise.
+const CASE_DIVISION_MISMATCH_A = '091-99-40761'; // Ch 11, Western District of NY - Buffalo (091)
+const CASE_DIVISION_MISMATCH_B = '091-99-11079'; // Ch 11, Western District of NY - Buffalo (091)
+const CASE_DIVISION_MISMATCH_C = '081-23-10005'; // Ch 11, Southern District of NY - Manhattan (081)
 
 // DXTR trustee identities shared between `fingerprint` (via computeFingerprint) and
 // `dxtrTrustee` below, so the two can never drift out of sync with each other.
@@ -124,6 +140,11 @@ const DXTR_MULTI_CASE = {
   lastName: 'Multicasematch',
   fullName: 'Casey Multicasematch',
 };
+const DXTR_DIVISION_MISMATCH = {
+  firstName: 'Devon',
+  lastName: 'Divisionmismatch',
+  fullName: 'Devon Divisionmismatch',
+};
 const DXTR_RESOLVED_NO_SURROGATES = {
   firstName: 'Riley',
   lastName: 'Resolvedmatch',
@@ -150,6 +171,35 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     isSurrogate: true,
     chapter: '11',
     courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+
+  // Surrogates for the division-mismatch scenario. Unlike multiCaseSurrogates above, the
+  // bookkeeping courtDivisionCode genuinely differs per case here (091 for A/B, 081 for C) --
+  // that division difference is the whole point of this fixture, not an incidental detail.
+  const divisionMismatchFingerprint = computeFingerprint(DXTR_DIVISION_MISMATCH);
+  const divisionMismatchCaseDivisions: Record<string, string> = {
+    [CASE_DIVISION_MISMATCH_A]: '091',
+    [CASE_DIVISION_MISMATCH_B]: '091',
+    [CASE_DIVISION_MISMATCH_C]: '081',
+  };
+  const divisionMismatchSurrogates = [
+    CASE_DIVISION_MISMATCH_A,
+    CASE_DIVISION_MISMATCH_B,
+    CASE_DIVISION_MISMATCH_C,
+  ].map((caseId) => ({
+    id: `seed-surrogate-divisionmismatch-${caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId,
+    trusteeId: divisionMismatchFingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter: '11',
+    courtDivisionCode: divisionMismatchCaseDivisions[caseId],
     createdOn: '2025-03-01T00:00:00.000Z',
     createdBy: SEEDER,
     updatedOn: '2025-03-01T00:00:00.000Z',
@@ -299,6 +349,27 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
+    // Active trustee, candidate for the division-mismatch multi-case scenario -- appointed in
+    // Buffalo (091) only, so cases A/B are covered but case C (Manhattan, 081) is not.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        createTrusteeBase({
+          id: 'seed-trustee-match-divisionmismatch',
+          firstName: 'Dana',
+          lastName: 'Divisionmismatch',
+          status: 'active',
+          address1: '800 Match Pl',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14201',
+          phone: '716-555-8000',
+          email: 'dana.divisionmismatch@example.com',
+        }),
+      ],
+    },
+
     // ── Cosmos: Appointments for status scenarios ────────────────────────────
 
     // Active appointment for inactive trustee
@@ -441,6 +512,32 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'deceased',
           effectiveDate: '2016-01-01',
           endDate: '2021-09-20',
+          courtName: 'U.S. Bankruptcy Court Western District of New York',
+          courtDivisionName: 'Buffalo',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Single active appointment for the division-mismatch candidate -- Buffalo (091) only, no
+    // Manhattan (081) appointment. Chapter 11 everywhere, so this isolates the court+division
+    // half of isAppointmentMatch from the chapter half CASE_MULTI_A/B/C already covers.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-divisionmismatch',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-match-divisionmismatch',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '0209',
+          divisionCodes: ['091'],
+          appointedDate: '2020-01-01',
+          status: 'active',
+          effectiveDate: '2020-01-01',
           courtName: 'U.S. Bankruptcy Court Western District of New York',
           courtDivisionName: 'Buffalo',
           updatedOn: '2025-03-01T00:00:00.000Z',
@@ -1067,6 +1164,68 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               },
               phone: { number: '212-555-7000' },
               email: 'cassidy.multicasematch@example.com',
+            },
+          ],
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Pending division-mismatch multi-case mismatch: 3 surrogate CASE_APPOINTMENTs sharing one
+    // fingerprint (same dual-write pattern as the chapter-mismatch bundle above). Dana
+    // Divisionmismatch covers CASE_DIVISION_MISMATCH_A/B (Buffalo, 091) but not
+    // CASE_DIVISION_MISMATCH_C (Manhattan, 081) -- approving this candidate should reject
+    // naming only case C, and the Data Verification UI should disable the match/confirm
+    // actions and explain why before that approval is even attempted.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: divisionMismatchSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: divisionMismatchSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-divisionmismatch-${CASE_DIVISION_MISMATCH_A}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_DIVISION_MISMATCH_A,
+          courtId: '0209',
+          status: 'pending',
+          taskDate: '2018-01-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: divisionMismatchFingerprint,
+          dxtrTrustee: DXTR_DIVISION_MISMATCH,
+          matchCandidates: [
+            // "Devon" vs "Dana" is a genuine first-name mismatch, same convention as the
+            // chapter-mismatch bundle's Casey/Cassidy pair -- nameScore is a real 0, so this
+            // never had a chance to auto-link regardless of appointment coverage.
+            {
+              trusteeId: 'seed-trustee-match-divisionmismatch',
+              trusteeName: 'Dana Divisionmismatch',
+              totalScore: 50,
+              addressScore: 0,
+              nameScore: 0,
+              phoneScore: 0,
+              emailScore: 0,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+              address: {
+                address1: '800 Match Pl',
+                city: 'Buffalo',
+                state: 'NY',
+                zipCode: '14201',
+                countryCode: 'US',
+              },
+              phone: { number: '716-555-8000' },
+              email: 'dana.divisionmismatch@example.com',
             },
           ],
           updatedOn: '2025-03-01T00:00:00.000Z',

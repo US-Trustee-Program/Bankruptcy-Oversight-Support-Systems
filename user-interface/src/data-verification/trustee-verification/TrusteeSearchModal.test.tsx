@@ -49,7 +49,11 @@ describe('TrusteeSearchModal', () => {
   const modalRef = React.createRef<TrusteeSearchModalImperative>();
   const userEvent = TestingUtilities.setupUserEvent();
 
-  function renderWithProps(onConfirm = vi.fn(), onCancel = vi.fn()) {
+  function renderWithProps(
+    onConfirm = vi.fn(),
+    onCancel = vi.fn(),
+    extraProps: Partial<React.ComponentProps<typeof TrusteeSearchModal>> = {},
+  ) {
     render(
       <BrowserRouter>
         <TrusteeSearchModal
@@ -58,6 +62,7 @@ describe('TrusteeSearchModal', () => {
           dxtrTrusteeName="DOE, JOHN"
           onConfirm={onConfirm}
           onCancel={onCancel}
+          {...extraProps}
         />
       </BrowserRouter>,
     );
@@ -114,7 +119,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -137,7 +142,76 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', undefined, undefined);
+    });
+  });
+
+  test('passes divisionCode and chapter to searchTrustees API when provided', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', '0208', '7');
+    });
+  });
+
+  test('drops divisionCode and chapter once the user switches away from the originating court', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    // Switch the district dropdown away from the originating court (0208) to a different one.
+    const districtExpandButton = document.querySelector(`#${districtComboBoxId}-expand`);
+    await userEvent.click(districtExpandButton!);
+    const districtInput = document.querySelector(
+      `#${districtComboBoxId}-combo-box-input`,
+    ) as HTMLInputElement;
+    // courtId="0208" pre-selects "Southern District of New York" as the input's starting
+    // value, so it must be cleared before typing or "Alaska" would just append to it.
+    await userEvent.clear(districtInput);
+    await userEvent.type(districtInput, 'Alaska');
+    await waitFor(() => {
+      const firstOption = screen.getByTestId(`${districtComboBoxId}-option-item-0`);
+      expect(firstOption).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${districtComboBoxId}-option-item-0`));
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      const alaskaCourtId = COURT_DIVISIONS.find(
+        (c) => c.courtName === 'District of Alaska',
+      )?.courtId;
+      expect(searchSpy).toHaveBeenCalledWith('sm', alaskaCourtId, undefined, undefined);
     });
   });
 
@@ -161,7 +235,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0206');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0206', undefined, undefined);
     });
   });
 
@@ -222,7 +296,7 @@ describe('TrusteeSearchModal', () => {
 
     await waitFor(() => {
       const courtId = COURT_DIVISIONS.find((c) => c.courtName === 'District of Alaska')?.courtId;
-      expect(searchSpy).toHaveBeenCalledWith('sm', courtId);
+      expect(searchSpy).toHaveBeenCalledWith('sm', courtId, undefined, undefined);
     });
   });
 
@@ -244,7 +318,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -274,7 +348,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -289,7 +363,11 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  test('shows only the trustee name for phonetic matches in dropdown, without a "similar name" label', async () => {
+  test('dropdown lists each search result by name only, regardless of matchType', async () => {
+    // matchType is present on TrusteeSearchResult but is never read by this component --
+    // there is no "(similar name)" or other matchType-driven label anywhere in the dropdown.
+    // This only proves the dropdown renders plain names; it's not evidence of any
+    // matchType-specific behavior, since none exists to test.
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -301,7 +379,6 @@ describe('TrusteeSearchModal', () => {
       const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
       expect(listItems.length).toBe(2);
       expect(listItems[0].textContent).toBe('John Smith');
-      // Second result is a phonetic match — no "(similar name)" suffix
       expect(listItems[1].textContent).toBe('Jane Smithson');
     });
   });
@@ -428,6 +505,37 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('disables Confirm and explains why when the selected trustee does not cover every affected case', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      ...sampleResults[0],
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), {
+      affectedCases: [
+        { caseId: '081-22-11111', courtId: '081', courtDivisionCode: '081', chapter: '12' },
+      ],
+    });
+
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    const message = await screen.findByTestId('search-uncovered-cases-message');
+    expect(message.textContent).toContain('22-11111');
+    expect(message.textContent).toContain('Chapter 12');
+
+    const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
+    expect(submitButton).toBeDisabled();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   test('calls onCancel when Cancel is clicked', async () => {
     const { onCancel } = renderWithProps();
 
@@ -496,7 +604,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -628,6 +736,39 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       const details = document.querySelector('.trustee-details');
       expect(details?.textContent).toContain('no-such-court');
+    });
+  });
+
+  test('omits the division parenthetical when the appointment has no courtDivisionName', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({ chapter: '7' }),
+          courtId: '0208',
+          courtDivisionName: undefined,
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const details = document.querySelector('.trustee-details');
+      // No "(...)" division suffix anywhere in the appointment line -- just "<court>: Chap ..."
+      expect(details?.textContent).toMatch(/Southern District of New York: Chap/);
+      expect(details?.textContent).not.toMatch(/Southern District of New York \(/);
     });
   });
 
