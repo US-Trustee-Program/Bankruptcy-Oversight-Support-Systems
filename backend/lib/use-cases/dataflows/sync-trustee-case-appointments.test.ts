@@ -499,6 +499,46 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
+    describe('unappointable chapter', () => {
+      test.each([['9'], ['15']])(
+        'skips matching and verification entirely for a chapter %s case, regardless of a usable name',
+        async (chapter) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', 'John Doe'), chapter },
+          ];
+
+          const { successCount, dlqMessages, notYetSyncedEvents, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.getVerification).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(mockCasesRepo.getCaseOrMovedCase).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+
+          expect(successCount).toBe(0);
+          expect(dlqMessages).toHaveLength(0);
+          expect(notYetSyncedEvents).toHaveLength(0);
+          expect(scenarioDistribution.unappointableChapterSkippedCount).toBe(1);
+        },
+      );
+
+      test('does not skip a normal chapter 11 case', async () => {
+        const events = [{ ...makeEvent('case-001', 'John Doe'), chapter: '11' }];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unappointableChapterSkippedCount).toBe(0);
+      });
+    });
+
     describe('empty demographics', () => {
       test('skips matching and verification entirely when fullName and all legacy/contact fields are blank', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
@@ -4218,6 +4258,7 @@ describe('handleClassifiedMismatch', () => {
       fingerprintMissCount: 0,
       retryableCount: 0,
       candidateLoadFailedCount: 0,
+      unappointableChapterSkippedCount: 0,
       emptyDemographicsSkippedCount: 0,
       sentinelBogusNameSkippedCount: 0,
       unattributableBogusNameSkippedCount: 0,

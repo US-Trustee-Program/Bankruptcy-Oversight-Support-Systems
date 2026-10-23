@@ -70,6 +70,13 @@ type ScenarioDistribution = {
    */
   candidateLoadFailedCount: number;
   /**
+   * The case's chapter (9 or 15) can never have a CAMS trustee appointment, so no candidate
+   * could ever pass isAppointmentMatch for it — routing it to trustee-match-verification would
+   * create a permanently-pending, permanently-unapprovable task. Never routed to matching or
+   * verification; logged loudly instead (see isUnappointableChapter).
+   */
+  unappointableChapterSkippedCount: number;
+  /**
    * dxtrTrustee had NO usable demographics at all (blank name AND no other legacy/contact
    * fields) — an event this sparse cannot be safely attributed to any trustee, since absent
    * demographics could describe any of them. Never routed to matching or verification; logged
@@ -1306,6 +1313,20 @@ const BOGUS_TRUSTEE_NAME_KEYWORDS = [
  * contain one of these substrings, so this check alone is never disqualifying on its own; callers
  * (isSentinelWithNoIdentity, isUnattributableBogusName) combine it with other evidence.
  */
+/**
+ * True when the case's chapter can never have a CAMS trustee appointment at all, regardless of
+ * identity: AppointmentChapterType (common/src/cams/trustees.ts) has no '9' or '15' member, so
+ * isAppointmentMatch can never return true for a chapter 9 or chapter 15 case -- no trustee,
+ * present or future, could ever satisfy it. Routing these to trustee-match-verification anyway
+ * would create a permanently-pending, permanently-unapprovable reviewer task (and, if bundled
+ * with other cases under the same fingerprint, permanently block the whole bundle from ever
+ * fully approving too, since approval is all-or-nothing). This is a simple stopgap -- CAMS-947
+ * owns the fuller, more durable version of this exclusion.
+ */
+function isUnappointableChapter(event: TrusteeAppointmentSyncEvent): boolean {
+  return event.chapter === '9' || event.chapter === '15';
+}
+
 function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
   const { dxtrTrustee } = event;
   const name = (
@@ -1351,21 +1372,32 @@ function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['le
 
 /**
  * Which pre-match short-circuit rule, if any, disqualifies this event from matching.
- * 'empty-demographics' is a totally blank record; 'sentinel-bogus-name' is a sentinel-coded
- * record whose populated name is itself a bogus/administrative placeholder; 'unattributable-bogus-name'
- * is a non-sentinel record whose name is an administrative placeholder with no firstName (see
- * isUnattributableBogusName).
+ * 'unappointable-chapter' is a chapter (9 or 15) no CAMS trustee appointment can ever cover,
+ * regardless of identity; 'empty-demographics' is a totally blank record; 'sentinel-bogus-name'
+ * is a sentinel-coded record whose populated name is itself a bogus/administrative placeholder;
+ * 'unattributable-bogus-name' is a non-sentinel record whose name is an administrative
+ * placeholder with no firstName (see isUnattributableBogusName).
  */
-type SkipReason = 'empty-demographics' | 'sentinel-bogus-name' | 'unattributable-bogus-name' | null;
+type SkipReason =
+  | 'unappointable-chapter'
+  | 'empty-demographics'
+  | 'sentinel-bogus-name'
+  | 'unattributable-bogus-name'
+  | null;
 
 /**
- * Determines whether dxtrTrustee carries no usable demographics at all, is a sentinel-coded
+ * Determines whether the case's chapter can never have a trustee appointment (see
+ * isUnappointableChapter), dxtrTrustee carries no usable demographics at all, is a sentinel-coded
  * record whose name is itself a bogus placeholder, or is a bogus administrative-office name with
  * no firstName (see isUnattributableBogusName). Checked before matchTrusteeByName in
  * processOneEvent: any condition means the event cannot be safely attributed to a trustee and
  * must never reach matching or verification.
  */
 function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
+  if (isUnappointableChapter(event)) {
+    return 'unappointable-chapter';
+  }
+
   const { dxtrTrustee } = event;
   const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
   const hasContact = hasUsableContact(dxtrTrustee.legacy);
@@ -1407,15 +1439,22 @@ function isSentinelWithNoIdentity(
 }
 
 /**
- * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
- * demographics at all ('empty-demographics'), or is a non-sentinel record whose name is an
- * administrative placeholder with no firstName ('unattributable-bogus-name'). Returns null when
- * neither applies, so the caller proceeds normally.
+ * Short-circuits processOneEvent before any repo call is made when the case's chapter can never
+ * have a trustee appointment ('unappointable-chapter'), dxtrTrustee has no usable demographics at
+ * all ('empty-demographics'), or is a non-sentinel record whose name is an administrative
+ * placeholder with no firstName ('unattributable-bogus-name'). Returns null when none applies, so
+ * the caller proceeds normally.
  *
  * A sentinel-coded record with a bogus placeholder name ('sentinel-bogus-name') is deliberately
  * NOT handled here, even though resolveSkipReason can return it — that case still needs to close
  * any real active appointment on the case (see the close-only handling in processOneEvent), which
  * requires a SyncedCase and I/O this pre-match, no-repo-call short-circuit doesn't have access to.
+ * 'unappointable-chapter' is handled here rather than given the same close-only treatment: no
+ * trustee appointment can legitimately exist for a chapter 9/15 case in the first place (the
+ * closed AppointmentChapterType union structurally prevents creating one), so there is nothing
+ * for a stray real appointment on such a case to represent other than a pre-existing data error —
+ * out of scope for this simple stopgap (see isUnappointableChapter; CAMS-947 owns the fuller
+ * version of this exclusion).
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1423,6 +1462,16 @@ function resolvePreMatchShortCircuit(
   scenarioDistribution: ScenarioDistribution,
 ): EventOutcome | null {
   const skipReason = resolveSkipReason(event);
+  if (skipReason === 'unappointable-chapter') {
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee appointment event for case ${event.caseId} is chapter ${event.chapter}, which ` +
+        `can never have a CAMS trustee appointment — no candidate could ever satisfy a ` +
+        `verification for this case. Skipping rather than creating an unresolvable mismatch.`,
+    );
+    scenarioDistribution.unappointableChapterSkippedCount++;
+    return { kind: 'none' };
+  }
   if (skipReason === 'empty-demographics') {
     deps.context.logger.warn(
       MODULE_NAME,
@@ -1771,6 +1820,10 @@ async function processOneEvent(
  *   on a later pass (does not count as a failure).
  * - The case was moved to a different caseId (movedToCaseId set): skipped entirely, no match
  *   attempted.
+ * - The case's chapter is 9 or 15, which can never have a CAMS trustee appointment (see
+ *   isUnappointableChapter): unappointable-chapter, skipped before matching
+ *   (unappointableChapterSkippedCount) rather than creating a permanently-unapprovable
+ *   verification task.
  * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
  *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
  *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
@@ -1802,6 +1855,7 @@ async function processAppointments(
     fingerprintMissCount: 0,
     retryableCount: 0,
     candidateLoadFailedCount: 0,
+    unappointableChapterSkippedCount: 0,
     emptyDemographicsSkippedCount: 0,
     sentinelBogusNameSkippedCount: 0,
     unattributableBogusNameSkippedCount: 0,
