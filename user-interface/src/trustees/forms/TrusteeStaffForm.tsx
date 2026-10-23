@@ -5,10 +5,6 @@ import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, {
-  TRUSTEE_MANAGEMENT,
-  TRUSTEE_TYPED_PHONES,
-} from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -22,24 +18,16 @@ import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { TrusteeStaffFormData, trusteeStaffSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import {
-  normalizeFormData,
-  validateDirectPhoneFields,
-  validateTypedPhones,
-} from './trusteeForms.utils';
+import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
-import { Address, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/contact';
+import { Address, TypedPhoneNumber } from '@common/cams/contact';
 import { Trustee } from '@common/cams/trustees';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
-import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 
-const getInitialFormData = (
-  staffMember: TrusteeStaff | undefined,
-  typedPhonesEnabled: boolean,
-): TrusteeStaffFormData => {
+const getInitialFormData = (staffMember: TrusteeStaff | undefined): TrusteeStaffFormData => {
   const contact = staffMember?.contact;
   return {
     name: staffMember?.name,
@@ -49,13 +37,7 @@ const getInitialFormData = (
     city: contact?.address?.city,
     state: contact?.address?.state,
     zipCode: contact?.address?.zipCode,
-    phones: typedPhonesEnabled
-      ? contact?.phones?.length
-        ? contact.phones
-        : [{ type: 'direct', number: '' }]
-      : PHONE_TYPES.map(
-          (type) => contact?.phones?.find((p) => p.type === type) ?? { number: '', type },
-        ),
+    phones: contact?.phones?.length ? contact.phones : [{ type: 'direct', number: '' }],
     email: contact?.email,
   };
 };
@@ -80,8 +62,6 @@ type TrusteeStaffFormProps = {
 };
 
 function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
-  const flags = useFeatureFlags();
-  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -95,15 +75,11 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
   const staffMember = isCreateMode ? undefined : trustee?.staff?.find((s) => s.id === staffId);
 
-  type FieldErrors = Partial<
-    Record<keyof TrusteeStaffFormData | '$' | 'phone' | 'extension', string[] | undefined>
-  >;
+  type FieldErrors = Partial<Record<keyof TrusteeStaffFormData | '$', string[] | undefined>>;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formData, setFormData] = useState<TrusteeStaffFormData>(
-    getInitialFormData(staffMember, typedPhonesEnabled),
-  );
+  const [formData, setFormData] = useState<TrusteeStaffFormData>(getInitialFormData(staffMember));
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
@@ -183,12 +159,6 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
   const handlePhonesChange = (phones: TypedPhoneNumber[]) => {
     updateField('phones', phones);
-    if (!typedPhonesEnabled) {
-      debounce(() => {
-        const { phone, extension } = validateDirectPhoneFields(phones);
-        setFieldErrors((prev) => ({ ...prev, phone, extension }));
-      }, 300);
-    }
   };
 
   const handleStateSelection = (selectedOptions: ComboOption[]) => {
@@ -233,11 +203,8 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeStaffFormData): boolean => {
     const results = validateObject(trusteeStaffSpec, formData);
-    const directPhoneErrors = typedPhonesEnabled ? {} : validateDirectPhoneFields(formData.phones);
-    const hasDirectPhoneErrors = !!(directPhoneErrors.phone || directPhoneErrors.extension);
-    const hasTypedPhoneRowErrors =
-      typedPhonesEnabled && Object.keys(validateTypedPhones(formData.phones)).length > 0;
-    const isValid = !!results.valid && !hasDirectPhoneErrors && !hasTypedPhoneRowErrors;
+    const hasTypedPhoneRowErrors = Object.keys(validateTypedPhones(formData.phones)).length > 0;
+    const isValid = !!results.valid && !hasTypedPhoneRowErrors;
 
     partialAddressAlertRef.current?.hide();
 
@@ -245,7 +212,7 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
       const reasonMapErrors = results.reasonMap
         ? Object.fromEntries(Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]))
         : {};
-      setFieldErrors({ ...reasonMapErrors, ...directPhoneErrors } as FieldErrors);
+      setFieldErrors(reasonMapErrors as FieldErrors);
 
       if (results.reasonMap?.$?.reasons) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
@@ -268,10 +235,6 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
   const updateField = (field: keyof TrusteeStaffFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  if (!flags[TRUSTEE_MANAGEMENT]) {
-    return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
-  }
 
   if (!canManage) {
     return (
@@ -400,22 +363,11 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
           <div className="form-column">
             <div id="phone-group" className="field-group">
-              {typedPhonesEnabled ? (
-                <PhoneEntryList
-                  phones={formData.phones}
-                  onChange={handlePhonesChange}
-                  errors={phoneRowErrors}
-                />
-              ) : (
-                <DirectPhoneFields
-                  phones={formData.phones}
-                  onChange={handlePhonesChange}
-                  errors={{
-                    phone: fieldErrors['phone'],
-                    extension: fieldErrors['extension'],
-                  }}
-                />
-              )}
+              <PhoneEntryList
+                phones={formData.phones}
+                onChange={handlePhonesChange}
+                errors={phoneRowErrors}
+              />
             </div>
 
             <div className="field-group">

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, Mock } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import TrusteeVerificationRemapUseCase from './trustee-verification-remap';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
@@ -7,13 +7,9 @@ import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import {
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import CaseManagement from '../cases/case-management';
 import { CaseSummary } from '@common/cams/cases';
-import * as syncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -48,9 +44,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
-  let mockQueueTrusteeAppointmentEvent: Mock<
-    (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
-  >;
   let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
@@ -62,7 +55,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
-    mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
     // Matches makeSurrogate's defaults (courtDivisionCode/chapter '081'/'7') so every
     // pre-existing test -- which doesn't care about the division re-validation guard --
     // continues to pass it by default. Tests exercising the guard itself override this.
@@ -90,13 +82,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
       async (_context, caseId) =>
         ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
     );
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
-      queueCaseAssignmentEvent: vi.fn(),
-      queueCaseReload: vi.fn(),
-      queueTrusteeVerificationRemap: vi.fn(),
-      queueTrusteeChangeNotification: vi.fn(),
-    });
 
     useCase = new TrusteeVerificationRemapUseCase(context);
   });
@@ -126,7 +111,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 1,
       documentsFailed: 0,
-      downstreamNotificationFailedCount: 0,
       totalCandidates: 1,
       pageSize: 1,
       remainingCount: 0,
@@ -218,62 +202,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  test('queues a downstream event per remapped case when the feature flag is on', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    // Spying directly on resolveGroupMatchedProfessionalId (rather than mocking its two
-    // gateway dependencies) keeps this file focused on what TrusteeVerificationRemapUseCase
-    // does with the result, not how that helper computes it -- its own group-designator
-    // matching/sentinel-fallback logic is exhaustively tested in
-    // sync-trustee-case-appointments.test.ts.
-    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
-      'PROF-123',
-    );
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    await useCase.remapPage(makeMessage(), 25);
-
-    expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        caseId: surrogate.caseId,
-        trusteeId: 'trustee-new',
-        acmsProfessionalId: 'PROF-123',
-      }),
-    );
-  });
-
-  test('does not queue a downstream event when the feature flag is off', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = false;
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    await useCase.remapPage(makeMessage(), 25);
-
-    expect(mockQueueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-
-  test('counts a failed downstream notification separately without treating the remap as failed', async () => {
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
-      'PROF-123',
-    );
-    mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
-    useCase = new TrusteeVerificationRemapUseCase(context);
-
-    const result = await useCase.remapPage(makeMessage(), 25);
-
-    // The Cosmos remap (upsert + delete) still happened -- only the downstream notification failed.
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(result.documentsWritten).toBe(1);
-    expect(result.documentsFailed).toBe(0);
-    expect(result.downstreamNotificationFailedCount).toBe(1);
-  });
-
   test('reports a positive remainingCount when surrogates exceed the requested page size', async () => {
     const surrogates = Array.from({ length: 30 }, (_, i) =>
       makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
@@ -301,7 +229,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 0,
       documentsFailed: 0,
-      downstreamNotificationFailedCount: 0,
       totalCandidates: 0,
       pageSize: 0,
       remainingCount: 0,

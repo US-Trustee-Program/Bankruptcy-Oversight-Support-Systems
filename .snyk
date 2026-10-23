@@ -42,20 +42,20 @@ ignore:
   SNYK-JS-NODEFORGE-19635204:
     - '*':
         reason: >-
-          Transitive dependency via @okta/okta-sdk-nodejs@8.1.0, which
+          Transitive dependency via @okta/okta-sdk-nodejs@8.2.0, which
           hard-depends on node-jose for its own package.json (every
           node-jose version, 0.9.0 through latest, requires node-forge,
           so no version swap avoids this). CVE-2026-85393 is an RSA
           signature-verification bypass, but our only reachable node-jose
           call is JWS.createSign for outbound DPoP proof signing
           (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. Re-verified 2026-09-30: still no
+          invoked anywhere in our usage. Re-verified 2026-10-14: still no
           fixed node-forge version on npm (latest remains 1.4.0). Upstream
-          fix PR #1151 was closed in favor of #1152
-          (digitalbazaar/forge#1152), which remains open/unmerged against
-          digitalbazaar/forge#1149. Shortened renewal window to 2 weeks
-          given active upstream PR churn.
-        expires: 2026-10-14T00:00:00.000Z
+          fix PR digitalbazaar/forge#1152 is still open/unmerged against
+          digitalbazaar/forge#1149, despite having multiple reviewer
+          approvals. Keeping the 2-week renewal window given the PR looks
+          close to merging.
+        expires: 2026-10-28T00:00:00.000Z
   SNYK-JS-SPRINTFJS-20532016:
     - '*':
         reason: >-
@@ -93,3 +93,82 @@ ignore:
           nor server actions, so exploitability remains low in the
           interim.
         expires: 2026-10-14T00:00:00.000Z
+  SNYK-JS-QS-20943482:
+    - '*':
+        reason: >-
+          Uncaught Exception in qs@6.16.0, bundled by express@5.2.1 and
+          body-parser@2.3.0 (node_modules/express/node_modules/qs,
+          node_modules/body-parser/node_modules/qs). The fix (qs 6.16.1
+          changelog: "stringify: arrayFormat: 'comma': do not throw on
+          elements with no callable toString") is scoped to
+          qs.stringify() called with arrayFormat: 'comma'. Not
+          reachable here: express and body-parser only call qs.parse()
+          to read incoming query strings/bodies, never qs.stringify().
+          No CAMS source calls qs directly or passes arrayFormat
+          anywhere (verified by grep across backend, common,
+          user-interface, dev-tools, dora-metrics, test). The only other
+          qs consumer in the lockfile is typed-rest-client (pulled in
+          transitively by @stryker-mutator/core, dev-only), which
+          defaults arrayFormat to 'repeat', not 'comma', and is never
+          invoked by CAMS code. Fixed version 6.16.1 was published
+          2026-10-14 and is blocked by CAMS's 14-day minimum npm
+          release-age policy (.npmrc min-release-age=14) until
+          2026-10-28. Bump the root package.json qs override from
+          6.16.0 to 6.16.1 and remove this ignore once the embargo
+          lifts.
+        expires: 2026-10-29T00:00:00.000Z
+  SNYK-JS-BODYPARSER-21431495:
+    - '*':
+        reason: >-
+          Uncaught Exception (DoS) in body-parser@2.3.0, pinned by the
+          root package.json override and pulled in by express@5.2.1. A
+          compressed request body with trailing bytes makes the
+          decompression stream emit an unhandled error that crashes the
+          Node process. Not reachable in any deployed environment: the
+          deployed API runs on Azure Functions, and nothing under
+          backend/function-apps or backend/lib imports express. The only
+          express servers are backend/express/server.ts (local dev via
+          npm run start:express, and the BDD harness in
+          test/bdd/helpers/api-server.ts) and the test/ui-sandbox
+          fake-okta server, all local or test only. Fixed version 2.4.0
+          was published 2026-10-22 and is blocked by CAMS's 14-day
+          minimum npm release-age policy (.npmrc min-release-age=14)
+          until 2026-11-05. It requires qs ^6.16.1, so bump the root
+          package.json overrides body-parser 2.3.0 -> 2.4.0 and qs
+          6.16.0 -> 6.16.1 together, then remove this ignore and the
+          SNYK-JS-QS-20943482 ignore.
+        expires: 2026-11-06T00:00:00.000Z
+  SNYK-JS-DOMPURIFY-21460653:
+    - '*':
+        reason: >-
+          XSS in dompurify@3.4.16 (user-interface dependency, pinned by
+          the root package.json override; flagged against test/uswds
+          only through the shared root lockfile). Template expressions
+          survive sanitization in an attached shadow root, exploitable
+          only when SAFE_FOR_TEMPLATES: true is combined with a
+          DOM-returning mode (RETURN_DOM, RETURN_DOM_FRAGMENT, or
+          IN_PLACE). Not reachable here: every CAMS call
+          (sanitize-text.ts, PrerenderedHtml.tsx, NoteFormModal.tsx,
+          CaseNoteFormModal.tsx) is DOMPurify.sanitize(string, config)
+          returning a string, and no CAMS code sets SAFE_FOR_TEMPLATES,
+          RETURN_DOM, RETURN_DOM_FRAGMENT, or IN_PLACE. Fixed version
+          3.4.17 was published 2026-10-12 and is blocked by CAMS's
+          14-day minimum npm release-age policy (.npmrc
+          min-release-age=14) until 2026-10-26. Bump the root
+          package.json override and user-interface/package.json
+          dompurify 3.4.16 -> 3.4.17 together, then remove this ignore
+          and SNYK-JS-DOMPURIFY-21460657.
+        expires: 2026-10-27T00:00:00.000Z
+  SNYK-JS-DOMPURIFY-21460657:
+    - '*':
+        reason: >-
+          XSS in dompurify@3.4.16 (GHSA-mrv2-3pqr-j5jr; same dependency
+          path as SNYK-JS-DOMPURIFY-21460653). A sanitize hook that
+          detaches a node other than the current one, used with
+          IN_PLACE: true, can leave an event handler in the sanitized
+          DOM. Not reachable here: no CAMS code registers DOMPurify
+          hooks (addHook) or sets IN_PLACE; every call sanitizes a
+          string and returns a string. Fixed in 3.4.17, blocked by the
+          release-age policy until 2026-10-26. Remove with
+          SNYK-JS-DOMPURIFY-21460653 when bumping to 3.4.17.
+        expires: 2026-10-27T00:00:00.000Z

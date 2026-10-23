@@ -33,7 +33,6 @@ type RemapPageResult = Awaited<ReturnType<TrusteeVerificationRemapUseCase['remap
 const makeRemapPageResult = (overrides: Partial<RemapPageResult> = {}): RemapPageResult => ({
   documentsWritten: 1,
   documentsFailed: 0,
-  downstreamNotificationFailedCount: 0,
   totalCandidates: 1,
   pageSize: 1,
   remainingCount: 0,
@@ -45,8 +44,8 @@ const makeRemapPageResult = (overrides: Partial<RemapPageResult> = {}): RemapPag
  * (env var guard, pagination continuation requeue, rate-limit/DLQ routing, telemetry, and
  * writing the verification document's remap status) -- by mocking its one real collaborator,
  * TrusteeVerificationRemapUseCase.remapPage, directly. The remap business rules themselves
- * (soft-close-before-upsert ordering, per-surrogate division re-validation, downstream-event
- * payload shape, etc.) are exhaustively covered in
+ * (soft-close-before-upsert ordering, per-surrogate division re-validation, etc.) are
+ * exhaustively covered in
  * backend/lib/use-cases/dataflows/trustee-verification-remap.test.ts against the use case
  * directly; duplicating them here against the same collaborator through an extra layer of
  * mocked repositories only doubles the maintenance surface without adding signal.
@@ -125,33 +124,6 @@ describe('trustee-verification-remap handleRemap', () => {
         }),
       },
     });
-  });
-
-  test('counts a failed downstream notification separately without treating the remap as failed', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    remapPageSpy.mockResolvedValue(
-      makeRemapPageResult({ documentsWritten: 1, downstreamNotificationFailedCount: 1 }),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'TRUSTEE-MATCH-VERIFICATION-REMAP',
-      'handleRemap',
-      expect.anything(),
-      expect.objectContaining({
-        success: true,
-        documentsWritten: 1,
-        documentsFailed: 0,
-        details: expect.objectContaining({ downstreamNotificationFailedCount: '1' }),
-        additionalMetrics: [
-          { name: 'TrusteeVerificationRemapDownstreamNotificationFailedCount', value: 1 },
-        ],
-      }),
-    );
   });
 
   test('a batch with no remaining surrogates (already fully remapped) is a no-op success', async () => {

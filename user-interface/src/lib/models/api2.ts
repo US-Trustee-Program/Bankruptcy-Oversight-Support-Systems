@@ -54,7 +54,6 @@ import {
   TrusteeSummary,
 } from '@common/cams/trustees';
 import {
-  CaseAppointment,
   CaseTrusteeAppointmentHistory,
   TrusteeAppointment,
   TrusteeAppointmentInput,
@@ -674,9 +673,7 @@ async function getSoftwareTrustees(softwareId: string, limit?: number, offset?: 
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
-  return api().get<CaseAppointment | CaseTrusteeAppointmentHistory>(
-    `/cases/${caseId}/trustee-appointment`,
-  );
+  return api().get<CaseTrusteeAppointmentHistory>(`/cases/${caseId}/trustee-appointment`);
 }
 
 async function postCaseReload(caseId: string) {

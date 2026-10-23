@@ -2,19 +2,13 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
-import {
-  assertValidChapter,
-  resolveGroupMatchedProfessionalId,
-} from './sync-trustee-case-appointments';
+import { assertValidChapter } from './sync-trustee-case-appointments';
 import {
   CaseAppointment,
   TrusteeAppointment,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
-import {
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
 import CaseManagement from '../cases/case-management';
 
@@ -23,7 +17,6 @@ const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
 type RemapPageResult = {
   documentsWritten: number;
   documentsFailed: number;
-  downstreamNotificationFailedCount: number;
   totalCandidates: number;
   pageSize: number;
   remainingCount: number;
@@ -49,13 +42,6 @@ class TrusteeVerificationRemapUseCase {
    * upsert succeeds. assignedOn is carried from the surrogate row (not stamped fresh) so the
    * upsert's natural key (caseId, trusteeId, assignedOn) makes retries genuinely idempotent.
    *
-   * Returns whether the downstream notification failed. The Cosmos remap itself (soft-close ->
-   * upsert -> delete) is the durable, retryable part of this operation and is never undone by a
-   * downstream queue failure — the case is genuinely remapped either way. Signaling the downstream
-   * failure back to the caller lets remapPage tally it separately from documentsWritten, so a
-   * batch with successful remaps but failed notifications is visibly partial in telemetry instead
-   * of reading as a full, unqualified success.
-   *
    * Re-validates isAppointmentMatch against a freshly-fetched case summary before remapping —
    * defense in depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
    * between its own division-check snapshot and the TRUSTEE_VARIATION write that stops new
@@ -68,7 +54,7 @@ class TrusteeVerificationRemapUseCase {
     surrogate: CaseAppointment,
     message: TrusteeVerificationRemapMessage,
     trusteeAppointments: TrusteeAppointment[],
-  ): Promise<{ downstreamNotificationFailed: boolean }> {
+  ): Promise<void> {
     const caseManagement = new CaseManagement(this.context);
     const caseSummary = await caseManagement.getCaseSummary(this.context, surrogate.caseId);
     if (
@@ -110,35 +96,6 @@ class TrusteeVerificationRemapUseCase {
     }
 
     await this.appointmentsRepo.delete(surrogate.id);
-
-    if (this.context.featureFlags['downstream-trustee-appointments-enabled']) {
-      const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
-        this.context,
-        message.resolvedTrusteeId,
-        surrogate.courtDivisionCode,
-      );
-      const openEvent: TrusteeAppointmentDownstreamEvent = {
-        caseId: surrogate.caseId,
-        trusteeId: message.resolvedTrusteeId,
-        acmsProfessionalId,
-        assignedOn: surrogate.assignedOn,
-        appointedDate: surrogate.appointedDate,
-        chapter: surrogate.chapter,
-      };
-      const apiToDataflows = factory.getApiToDataflowsGateway(this.context);
-      try {
-        await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
-      } catch (queueError) {
-        this.context.logger.error(
-          MODULE_NAME,
-          `Failed to queue downstream event for case ${surrogate.caseId}, trustee ${message.resolvedTrusteeId} — appointment remapped in Cosmos but downstream not notified`,
-          queueError,
-        );
-        return { downstreamNotificationFailed: true };
-      }
-    }
-
-    return { downstreamNotificationFailed: false };
   }
 
   /**
@@ -173,19 +130,11 @@ class TrusteeVerificationRemapUseCase {
 
     let documentsWritten = 0;
     let documentsFailed = 0;
-    let downstreamNotificationFailedCount = 0;
 
     for (const surrogate of page) {
       try {
-        const { downstreamNotificationFailed } = await this.remapSurrogateAppointment(
-          surrogate,
-          message,
-          trusteeAppointments,
-        );
+        await this.remapSurrogateAppointment(surrogate, message, trusteeAppointments);
         documentsWritten++;
-        if (downstreamNotificationFailed) {
-          downstreamNotificationFailedCount++;
-        }
       } catch (perCaseError) {
         if (isTooManyRequestsError(perCaseError) || isGatewayTimeoutError(perCaseError)) {
           throw perCaseError;
@@ -202,7 +151,6 @@ class TrusteeVerificationRemapUseCase {
     return {
       documentsWritten,
       documentsFailed,
-      downstreamNotificationFailedCount,
       totalCandidates: surrogates.length,
       pageSize: page.length,
       remainingCount,

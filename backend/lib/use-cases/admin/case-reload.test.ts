@@ -18,7 +18,6 @@ describe('Case Reload Use Case', () => {
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueCaseReload: queueCaseReloadSpy,
       queueCaseAssignmentEvent: vi.fn(),
-      queueTrusteeAppointmentEvent: vi.fn(),
       queueTrusteeVerificationRemap: vi.fn(),
       queueTrusteeChangeNotification: vi.fn(),
     });

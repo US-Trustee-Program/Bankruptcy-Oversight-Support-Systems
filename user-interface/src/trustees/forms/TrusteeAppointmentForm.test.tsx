@@ -3,8 +3,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TrusteeAppointmentForm, { TrusteeAppointmentFormProps } from './TrusteeAppointmentForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
@@ -197,31 +195,11 @@ describe('TrusteeAppointmentForm Tests', () => {
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': true,
-    } as FeatureFlagSet);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
 
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       data: MockData.getCourts(),
     });
-  });
-
-  test('should show disabled message when feature flag is disabled', async () => {
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': false,
-    } as FeatureFlagSet);
-
-    renderWithProps();
-
-    let disabledMessage;
-
-    await waitFor(() => {
-      disabledMessage = screen.getByTestId('trustee-appointment-create-disabled');
-    });
-
-    expect(disabledMessage).toBeInTheDocument();
-    expect(disabledMessage).toHaveTextContent('Trustee management is not enabled.');
   });
 
   test('should show forbidden message when user lacks TrusteeAdmin role', async () => {

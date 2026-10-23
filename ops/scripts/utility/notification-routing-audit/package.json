@@ -5,6 +5,6 @@
   "description": "Standalone, read-only audit of NOTIFICATION_ROUTING recipient address domains. See README.md.",
   "type": "module",
   "dependencies": {
-    "mongodb": "7.6.0"
+    "mongodb": "7.7.0"
   }
 }

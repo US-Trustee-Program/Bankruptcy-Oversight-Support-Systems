@@ -4,7 +4,7 @@
 
 The phonetic token backfill migration populates the `phoneticTokens` field on existing case documents. This field is required for the phonetic debtor name search feature to find existing cases.
 
-**When to run:** Before enabling the `phonetic-search-enabled` feature flag in production.
+**When to run:** When existing case documents in an environment are missing `phoneticTokens`. Phonetic search is always on, so those cases do not appear in debtor name searches until the backfill runs.
 
 **Impact:** Without backfill, existing cases will not appear in phonetic name searches. Only newly imported cases (which automatically generate tokens) will be searchable by name.
 

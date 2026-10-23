@@ -60,7 +60,6 @@ describe('App Router Tests', () => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-      'trustee-management': true,
       'restrict-adding-trustees': true,
     });
 
@@ -128,10 +127,6 @@ describe('App Router Tests', () => {
         MockData.getCamsSession({ user: unauthorizedUser }),
       );
 
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'trustee-management': true, // Feature flag enabled
-      });
-
       render(
         <MemoryRouter initialEntries={['/trustees']}>
           <App />
@@ -154,7 +149,6 @@ describe('App Router Tests', () => {
       );
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'trustee-management': true,
         'restrict-adding-trustees': true,
       });
 

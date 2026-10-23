@@ -151,10 +151,15 @@ function run() {
 
   console.log(`Backtesting auto-link rule against ${errored.length} error records...`);
   console.log(`Rule: nameScore >= ${NAME_THRESHOLD} AND EXACTLY ONE qualifying candidate AND `);
-  console.log(`      (addressScore >= ${ADDRESS_THRESHOLD} OR phoneScore == 100 OR emailScore == 100)\n`);
+  console.log(
+    `      (addressScore >= ${ADDRESS_THRESHOLD} OR phoneScore == 100 OR emailScore == 100)\n`,
+  );
 
-  const results: { record: TrusteeProfessionalId; acmsTrustee: DxtrTrusteeParty; verdict: Verdict }[] =
-    [];
+  const results: {
+    record: TrusteeProfessionalId;
+    acmsTrustee: DxtrTrusteeParty;
+    verdict: Verdict;
+  }[] = [];
 
   for (const record of errored) {
     const decoded: DecodedVariant = JSON.parse(record.variant!);
@@ -187,7 +192,9 @@ function run() {
     );
   }
 
-  console.log(`\n=== Ambiguous under this rule (2+ candidates clear nameScore>=${NAME_THRESHOLD}): ${counts['multiple-name-candidates']} ===`);
+  console.log(
+    `\n=== Ambiguous under this rule (2+ candidates clear nameScore>=${NAME_THRESHOLD}): ${counts['multiple-name-candidates']} ===`,
+  );
   const multi = results.filter((r) => r.verdict.kind === 'multiple-name-candidates').slice(0, 15);
   for (const r of multi) {
     const cands = (r.verdict as { candidates: Scored[] }).candidates;

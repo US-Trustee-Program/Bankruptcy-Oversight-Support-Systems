@@ -84,14 +84,14 @@ cd scripts && ./start-funcapp.sh
 One fingerprint spanning 4 cases — mirrors the staging report of several affected cases per approved
 match.
 
-| Assertion                                                       | What it verifies                                                       |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| All 4 surrogates drained from both partitions                   | `getSurrogatesByFingerprint` found them and `remapPage` processed them |
-| Resolved trustee active in `case-trustee-appointments` per case | The case detail UI's read path (`getActiveByCaseId`) sees the fix      |
-| Resolved trustee active in `trustee-case-appointments` per case | Dual-write completed on both partitions                                |
-| `trustee-match-verification` doc is `status: 'approved'`        | `approveVerification` persisted correctly                              |
-| `affectedCaseIds` snapshot matches all 4 seeded cases           | The pre-remap case-ID snapshot in `approveVerification` is correct     |
-| DLQ is empty                                                    | No messages were dead-lettered                                         |
+| Assertion                                                       | What it verifies                                                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| All 4 surrogates drained from both partitions                   | `getSurrogatesByFingerprint` found them and `remapPage` processed them                            |
+| Resolved trustee active in `case-trustee-appointments` per case | The case detail UI's read path (`getByCaseId` in `getCaseTrusteeAppointmentHistory`) sees the fix |
+| Resolved trustee active in `trustee-case-appointments` per case | Dual-write completed on both partitions                                                           |
+| `trustee-match-verification` doc is `status: 'approved'`        | `approveVerification` persisted correctly                                                         |
+| `affectedCaseIds` snapshot matches all 4 seeded cases           | The pre-remap case-ID snapshot in `approveVerification` is correct                                |
+| DLQ is empty                                                    | No messages were dead-lettered                                                                    |
 
 ### `run-pagination`
 

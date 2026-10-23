@@ -64,7 +64,7 @@ class HealSentinelCaseAppointmentsUseCase {
    * Returns false when no CAMS trustee mapping exists yet for this sentinel's acmsProfessionalId
    * — the sentinel is left in place for a future run once trustee-professional-ids improves.
    *
-   * findByAcmsProfessionalId only ever returns an auto-linked, non-conflicting disposition (see
+   * findByAcmsProfessionalId only ever returns a linked, non-conflicting disposition (see
    * isRealLink) - a 'conflict'-disposition record for this ACMS ID is invisible to it, so
    * matches.length !== 1 alone cannot distinguish "never linked" from "flagged as a data-integrity
    * conflict." Both currently leave the sentinel in place either way, but the conflict case is

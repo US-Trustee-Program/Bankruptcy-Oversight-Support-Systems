@@ -1,14 +1,17 @@
 # Azure Functions Deployment Troubleshooting Guide
 
-**Purpose**: Guide for AI agents (like Claude Code) to diagnose and resolve Azure Functions deployment issues in the CAMS project.
+**Purpose**: Guide for AI agents (like Claude Code) to diagnose and resolve Azure Functions
+deployment issues in the CAMS project.
 
-**Context**: This project uses Azure Functions v4 with Node.js, esbuild for bundling, and deploys to Azure US Government Cloud.
+**Context**: This project uses Azure Functions v4 with Node.js, esbuild for bundling, and deploys to
+Azure US Government Cloud.
 
 ---
 
 ## Step 0: Collect Required Variables from User
 
-**IMPORTANT**: Before proceeding with any diagnostics, an AI agent MUST ask the user for these variables:
+**IMPORTANT**: Before proceeding with any diagnostics, an AI agent MUST ask the user for these
+variables:
 
 ```bash
 # Required Azure variables (DO NOT include defaults - these are sensitive)
@@ -21,6 +24,7 @@ PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 ```
 
 **Example prompt for AI agent**:
+
 ```
 I need the following information to troubleshoot your Azure Functions deployment:
 
@@ -32,11 +36,13 @@ I'll use the current git repository root as the project root: ${PROJECT_ROOT}
 ```
 
 Once collected, the AI agent should:
+
 1. Store these in shell variables for the session
 2. Substitute them into all commands below
 3. Verify connectivity before proceeding
 
 **Verification**:
+
 ```bash
 # Export variables for use in subsequent commands
 export RESOURCE_GROUP_NAME="<user-provided>"
@@ -102,7 +108,7 @@ fi
 ```bash
 # Check Node.js version matches .nvmrc
 cat "${PROJECT_ROOT}/.nvmrc"
-# Expected: v24.20.0
+# Expected: v24.22.1
 
 node --version
 # Expected: v24.x.x (should match or be compatible with .nvmrc)
@@ -160,6 +166,7 @@ az functionapp config appsettings list \
 ```
 
 **Fix for Missing Feature Flag**:
+
 ```bash
 az functionapp config appsettings set \
   --name ${FUNCTION_APP_NAME} \
@@ -297,10 +304,12 @@ az functionapp config access-restriction remove \
 ### Root Cause 1: Missing AzureWebJobsFeatureFlags
 
 **Symptoms**:
+
 - `az functionapp function list` returns 0 functions
 - Portal shows "0 functions"
 
 **Diagnostic Confirmation**:
+
 ```bash
 az functionapp config appsettings list \
   --name ${FUNCTION_APP_NAME} \
@@ -311,6 +320,7 @@ az functionapp config appsettings list \
 ```
 
 **Fix**:
+
 ```bash
 az functionapp config appsettings set \
   --name ${FUNCTION_APP_NAME} \
@@ -323,18 +333,19 @@ az functionapp config appsettings set \
        --slot ${SLOT_NAME}
 ```
 
-**Verification**:
-Wait 30 seconds, then verify functions are now listed.
+**Verification**: Wait 30 seconds, then verify functions are now listed.
 
 ---
 
 ### Root Cause 2: Missing Dependencies in package.json
 
 **Symptoms**:
+
 - Logs show: `Cannot find module '@azure/functions'` or similar
 - Functions listed but fail to load
 
 **Diagnostic Confirmation**:
+
 ```bash
 # Check if package.json has dependencies field
 cat ${PROJECT_ROOT}/backend/function-apps/api/package.json \
@@ -342,8 +353,8 @@ cat ${PROJECT_ROOT}/backend/function-apps/api/package.json \
 # Should show: @azure/functions, mongodb, mssql, etc.
 ```
 
-**Fix**:
-Ensure `backend/function-apps/api/package.json` contains:
+**Fix**: Ensure `backend/function-apps/api/package.json` contains:
+
 ```json
 {
   "dependencies": {
@@ -360,6 +371,7 @@ Ensure `backend/function-apps/api/package.json` contains:
 Ensure `backend/function-apps/dataflows/package.json` contains the same dependencies.
 
 **Then rebuild and redeploy**:
+
 ```bash
 cd ${PROJECT_ROOT}/backend/function-apps/api
 npm run clean
@@ -373,11 +385,13 @@ npm run pack
 ### Root Cause 3: Platform Binary Mismatch (macOS vs Linux)
 
 **Symptoms**:
+
 - Logs show: `invalid ELF header` or architecture mismatch errors
 - Functions fail to start even though modules are present
 - Built on macOS but deployed to Linux Azure
 
 **Diagnostic Confirmation**:
+
 ```bash
 # Check if built on macOS without Podman
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -389,6 +403,7 @@ fi
 ```
 
 **Fix for macOS**:
+
 ```bash
 # Ensure Podman machine is running
 podman machine list
@@ -403,19 +418,20 @@ npm run pack
 # The pack.sh script will detect macOS and use Podman automatically
 ```
 
-**Fix for CI/CD**:
-CI/CD runs on Linux (GitHub Actions uses ubuntu-latest), so this should not be an issue.
-The `pack.sh` script detects Linux and builds directly.
+**Fix for CI/CD**: CI/CD runs on Linux (GitHub Actions uses ubuntu-latest), so this should not be an
+issue. The `pack.sh` script detects Linux and builds directly.
 
 ---
 
 ### Root Cause 4: node_modules Not Included in Deployment
 
 **Symptoms**:
+
 - Logs show module errors
 - Inspecting zip shows no node_modules directory
 
 **Diagnostic Confirmation**:
+
 ```bash
 cd ${PROJECT_ROOT}/backend/function-apps/api
 LATEST_ZIP=$(ls -t *.zip | head -1)
@@ -424,6 +440,7 @@ unzip -l "${LATEST_ZIP}" | grep -c "node_modules/"
 ```
 
 **Fix**:
+
 ```bash
 # The pack.sh script should handle this automatically
 # Verify the script is being called correctly:
@@ -450,7 +467,7 @@ unzip -l "${LATEST_ZIP}" | grep -c "node_modules/"
 
 ```
 ${PROJECT_ROOT}/
-├── .nvmrc                                    # Node version: v24.20.0
+├── .nvmrc                                    # Node version: v24.22.1
 ├── backend/
 │   ├── esbuild-shared.mjs                    # Shared esbuild config
 │   ├── pack.sh                               # OS-aware packaging script
@@ -479,9 +496,9 @@ ${PROJECT_ROOT}/
 
 ```javascript
 export const EXTERNAL_DEPENDENCIES = [
-  '@azure/functions',  // Cannot be bundled (dynamic requires)
-  'mssql',            // Native module (platform-specific binary)
-  'mongodb',          // Native module (platform-specific binary)
+  '@azure/functions', // Cannot be bundled (dynamic requires)
+  'mssql', // Native module (platform-specific binary)
+  'mongodb', // Native module (platform-specific binary)
   'applicationinsights',
   'dotenv',
   'express',
@@ -489,10 +506,12 @@ export const EXTERNAL_DEPENDENCIES = [
 ```
 
 **What gets bundled**:
+
 - Code from `@common/*` path aliases → Resolved and bundled into output
 - Local TypeScript files → Transpiled and bundled
 
 **What stays external**:
+
 - All third-party npm packages → Included as node_modules in deployment zip
 
 ### pack.sh Logic Flow
@@ -549,10 +568,12 @@ zip -q -r <app>.zip ./dist ./node_modules ./package.json ./host.json
 ```
 
 **Key points:**
+
 - Uses the single root `package-lock.json` as the source of truth for all environments
-- The closure is computed from the lockfile dependency graph, so packaging does not depend on
-  where npm happens to hoist a package in the root install (a hoisting-dependent
-  `npm ci --workspaces=false` was the cause of historical "Missing: &lt;pkg&gt; from lock file" pack failures)
+- The closure is computed from the lockfile dependency graph, so packaging does not depend on where
+  npm happens to hoist a package in the root install (a hoisting-dependent
+  `npm ci --workspaces=false` was the cause of historical "Missing: &lt;pkg&gt; from lock file" pack
+  failures)
 - `verify-function-app-node-modules.mjs` load-tests the assembled tree (including lazily-required
   drivers such as mssql → tedious) and fails the pack if anything cannot be resolved
 - Requires Podman on macOS (Docker Desktop is not authorized for use)
@@ -637,6 +658,7 @@ The workflow automatically:
 5. Deploys via `ops/scripts/pipeline/slots/az-func-slot-deploy.sh`
 
 **Key workflow files**:
+
 - `.github/workflows/sub-build.yml` - Lines 73-85
 - `.github/workflows/sub-deploy-code-slot.yml` - Lines 112-120
 
@@ -813,18 +835,21 @@ BRANCH D: Platform issues
 ## Key File Locations
 
 ### Configuration Files
+
 - `${PROJECT_ROOT}/.nvmrc` - Node version specification
 - `${PROJECT_ROOT}/backend/esbuild-shared.mjs` - esbuild external deps list
 - `${PROJECT_ROOT}/backend/pack.sh` - Packaging script with OS detection
 - `${PROJECT_ROOT}/backend/Dockerfile.build` - Linux build container
 
 ### Function App Files
+
 - `${PROJECT_ROOT}/backend/function-apps/api/package.json` - Must have dependencies
 - `${PROJECT_ROOT}/backend/function-apps/api/esbuild.config.mjs` - Build config
 - `${PROJECT_ROOT}/backend/function-apps/api/index.ts` - Function loader
 - `${PROJECT_ROOT}/backend/function-apps/dataflows/package.json` - Must have dependencies
 
 ### CI/CD Files
+
 - `${PROJECT_ROOT}/.github/workflows/sub-build.yml` - Build workflow
 - `${PROJECT_ROOT}/.github/workflows/sub-deploy-code-slot.yml` - Deploy workflow
 - `${PROJECT_ROOT}/ops/scripts/pipeline/slots/az-func-slot-deploy.sh` - Deploy script
@@ -833,7 +858,8 @@ BRANCH D: Platform issues
 
 ## Log Level Configuration
 
-The `host.json` files in both function apps (`api` and `dataflows`) configure logging to reduce noise while preserving custom application logs.
+The `host.json` files in both function apps (`api` and `dataflows`) configure logging to reduce
+noise while preserving custom application logs.
 
 ### Current Configuration
 
@@ -853,29 +879,35 @@ The `host.json` files in both function apps (`api` and `dataflows`) configure lo
 
 ### Log Category Reference
 
-| Category | Level | Purpose |
-|----------|-------|---------|
-| `default` | Debug | Captures all custom `logger.debug()`, `logger.info()`, etc. calls from application code |
-| `Host.Results` | Information | Function execution results and completion status |
-| `Host.Aggregator` | Warning | **Suppressed**: Function execution aggregation metrics (chatty) |
-| `Host.Triggers.Queue` | Warning | **Suppressed**: Queue polling logs like "will wait 2000 ms before polling again" |
-| `Microsoft.Azure.WebJobs.Host.Queues` | Warning | **Suppressed**: Queue message processing details |
-| `Azure.Core` | Warning | **Suppressed**: Azure SDK HTTP request/response logs |
-| `Azure.Identity` | Warning | **Suppressed**: Token acquisition and refresh logs |
-| `Function` | Information | Function-level logs from the Azure Functions runtime |
-| `Worker` | Information | Node.js worker process logs |
+| Category                              | Level       | Purpose                                                                                 |
+| ------------------------------------- | ----------- | --------------------------------------------------------------------------------------- |
+| `default`                             | Debug       | Captures all custom `logger.debug()`, `logger.info()`, etc. calls from application code |
+| `Host.Results`                        | Information | Function execution results and completion status                                        |
+| `Host.Aggregator`                     | Warning     | **Suppressed**: Function execution aggregation metrics (chatty)                         |
+| `Host.Triggers.Queue`                 | Warning     | **Suppressed**: Queue polling logs like "will wait 2000 ms before polling again"        |
+| `Microsoft.Azure.WebJobs.Host.Queues` | Warning     | **Suppressed**: Queue message processing details                                        |
+| `Azure.Core`                          | Warning     | **Suppressed**: Azure SDK HTTP request/response logs                                    |
+| `Azure.Identity`                      | Warning     | **Suppressed**: Token acquisition and refresh logs                                      |
+| `Function`                            | Information | Function-level logs from the Azure Functions runtime                                    |
+| `Worker`                              | Information | Node.js worker process logs                                                             |
 
 ### Why These Are Suppressed
 
-**Queue Polling Logs**: With `maxPollingInterval: "00:00:02"` (2 seconds), each queue-triggered function generates ~30 logs/minute just for polling. With multiple queue functions (SYNC-CASES, MIGRATE-CASES, etc.), this creates GB-scale log ingestion.
+**Queue Polling Logs**: With `maxPollingInterval: "00:00:02"` (2 seconds), each queue-triggered
+function generates ~30 logs/minute just for polling. With multiple queue functions (SYNC-CASES,
+MIGRATE-CASES, etc.), this creates GB-scale log ingestion.
 
-**Azure SDK Logs**: The Azure SDK logs every HTTP request to Azure services (Cosmos DB, Storage, etc.) at Debug/Information level. These are useful for debugging connectivity but generate excessive volume in production.
+**Azure SDK Logs**: The Azure SDK logs every HTTP request to Azure services (Cosmos DB, Storage,
+etc.) at Debug/Information level. These are useful for debugging connectivity but generate excessive
+volume in production.
 
-**Host Aggregator**: Emits periodic aggregation metrics that duplicate what Application Insights already captures.
+**Host Aggregator**: Emits periodic aggregation metrics that duplicate what Application Insights
+already captures.
 
 ### What's Preserved
 
 All custom application logging is preserved:
+
 - `logger.debug()` calls in migrations and use cases
 - `logger.info()` progress tracking
 - `logger.warn()` and `logger.error()` for issues
@@ -885,10 +917,12 @@ All custom application logging is preserved:
 ### Adding New Suppressions
 
 If you identify another chatty log category, add it to the `logLevel` section in both:
+
 - `backend/function-apps/api/host.json`
 - `backend/function-apps/dataflows/host.json`
 
 Common candidates for suppression:
+
 - `Microsoft.Azure.Cosmos` - Cosmos DB operation logs
 - `MongoDB.Driver` - MongoDB driver logs
 - `Microsoft.Data.SqlClient` - SQL client logs

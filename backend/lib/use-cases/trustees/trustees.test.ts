@@ -1611,13 +1611,11 @@ describe('TrusteesUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notification-enabled'] = true;
 
       queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
         queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
       });
@@ -1923,13 +1921,11 @@ describe('TrusteesUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notification-enabled'] = true;
 
       queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
         queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
       });
@@ -1949,17 +1945,6 @@ describe('TrusteesUseCase tests', () => {
           appointedDate: '2020-01-15',
         }),
       ]);
-    });
-
-    test('does not enqueue when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notification-enabled'] = false;
-
-      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-
-      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
-
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
     test('enqueues the fully-enriched changeSet (chapters, author, changedAt) on a profile-only change', async () => {

@@ -361,10 +361,7 @@ export class TrusteesUseCase {
         software,
       );
 
-      if (
-        context.featureFlags['trustee-change-notification-enabled'] &&
-        changeSet.fields.length > 0
-      ) {
+      if (changeSet.fields.length > 0) {
         await this.dispatchChangeNotification(context, changeSet, trusteeId);
       }
 

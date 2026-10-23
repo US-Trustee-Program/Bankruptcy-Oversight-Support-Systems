@@ -37,13 +37,11 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   > {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-    context.featureFlags['trustee-change-notification-enabled'] = true;
 
     const queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
       queueCaseAssignmentEvent: vi.fn(),
-      queueTrusteeAppointmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeVerificationRemap: vi.fn(),
     });
@@ -1560,45 +1558,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       queueTrusteeChangeNotificationSpy = await setupNotificationMocks();
     });
 
-    test('does not enqueue when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notification-enabled'] = false;
-
-      const existingAppointment = MockData.getTrusteeAppointment({
-        id: appointmentId,
-        trusteeId,
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCodes: ['001'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-      const updatedAppointment = {
-        ...existingAppointment,
-        status: 'voluntarily-suspended' as const,
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
-        existingAppointment,
-      ]);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
-        updatedAppointment,
-      );
-
-      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCode: '001',
-        appointedDate: '2024-01-15',
-        status: 'voluntarily-suspended',
-        effectiveDate: '2024-01-15',
-      });
-
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
-    });
-
     test('enqueues one changeSet when appointment status changes', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
@@ -1908,39 +1867,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
     beforeEach(async () => {
       queueTrusteeChangeNotificationSpy = await setupNotificationMocks();
-    });
-
-    test('does not enqueue when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notification-enabled'] = false;
-
-      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
-      const mockCreatedAppointment = MockData.getTrusteeAppointment({
-        trusteeId,
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCodes: ['001'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
-        mockCreatedAppointment,
-      );
-
-      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCode: '001',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
     test('enqueues a changeSet when a new appointment is created', async () => {

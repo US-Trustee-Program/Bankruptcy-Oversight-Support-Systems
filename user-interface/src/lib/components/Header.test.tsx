@@ -148,7 +148,6 @@ describe('Header', () => {
       // Current user has CaseAssignmentManager and DataVerifier but not TrusteeAdmin
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'transfer-orders-enabled': true,
-        'trustee-management': true, // Feature flag enabled
       });
 
       renderWithoutProps();
@@ -157,28 +156,12 @@ describe('Header', () => {
       expect(link).not.toBeInTheDocument();
     });
 
-    test('should not display trustees link when feature flag is disabled', () => {
+    test('should display trustees link when user has TrusteeAdmin role', () => {
       const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
       LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'transfer-orders-enabled': true,
-        'trustee-management': false, // Feature flag disabled
-      });
-
-      renderWithoutProps();
-
-      const link = screen.queryByTestId('header-trustees-link');
-      expect(link).not.toBeInTheDocument();
-    });
-
-    test('should display trustees link when user has TrusteeAdmin role and feature flag is enabled', () => {
-      const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
-      LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
-
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'transfer-orders-enabled': true,
-        'trustee-management': true, // Feature flag enabled
       });
 
       renderWithoutProps();
@@ -193,7 +176,6 @@ describe('Header', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'transfer-orders-enabled': true,
-        'trustee-management': true,
       });
 
       renderWithHistory('/trustees');
@@ -214,7 +196,6 @@ describe('Header', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'transfer-orders-enabled': true,
-        'trustee-management': true,
       });
 
       renderWithoutProps();

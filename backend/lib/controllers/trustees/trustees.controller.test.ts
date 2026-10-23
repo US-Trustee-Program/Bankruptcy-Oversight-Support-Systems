@@ -57,11 +57,6 @@ describe('TrusteesController', () => {
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrusteeAdmin] };
 
-    // Initialize featureFlags if it doesn't exist
-    if (!context.featureFlags) {
-      context.featureFlags = {};
-    }
-
     mockUseCase = {
       createTrustee: vi.fn(),
       listTrustees: vi.fn(),
@@ -76,31 +71,6 @@ describe('TrusteesController', () => {
     });
 
     controller = new TrusteesController(context);
-
-    // Mock feature flag to be enabled by default
-    context.featureFlags['trustee-management'] = true;
-  });
-
-  describe('Feature flag protection', () => {
-    test('should return 404 when trustee-management feature is disabled', async () => {
-      context.featureFlags['trustee-management'] = false;
-      context.request.method = 'POST';
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(404);
-    });
-
-    test('should proceed when trustee-management feature is enabled', async () => {
-      context.featureFlags['trustee-management'] = true;
-      context.request.method = 'POST';
-      context.request.body = sampleTrustee;
-      mockUseCase.createTrustee.mockResolvedValue(sampleTrusteeDocument);
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(201);
-    });
   });
 
   describe('Role-based authorization', () => {

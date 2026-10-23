@@ -3,11 +3,9 @@ import {
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
-  TrusteeAppointmentDownstreamEvent,
   CandidateScore,
   SoftCloseWriteFailed,
 } from '@common/cams/dataflow-events';
-import { findGroupDesignatorForDivision } from '@common/cams/offices';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
@@ -147,42 +145,6 @@ type ProcessAppointmentsResult = {
 // in a neutral shared location rather than reimplementing the check independently to avoid what
 // would otherwise be a circular import back to this file.
 
-const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
-
-/**
- * Resolves the ACMS professional ID for a trustee that matches the case's group designator.
- * A trustee may have multiple professional IDs across different ACMS groups; we must select
- * the one whose GROUP_DESIGNATOR prefix matches the group owning the case's court division.
- * Returns SENTINEL_PROFESSIONAL_ID ('XX-99999') and logs a warning when no match is found,
- * so the downstream event is always queued. Sentinel rows can be identified and remediated
- * when the trustee's professional ID is later corrected in the system.
- */
-export async function resolveGroupMatchedProfessionalId(
-  context: ApplicationContext,
-  trusteeId: string,
-  courtDivisionCode: string,
-): Promise<string> {
-  const officesGateway = factory.getOfficesGateway(context);
-  const offices = await officesGateway.getOffices(context);
-  const groupDesignator = findGroupDesignatorForDivision(offices, courtDivisionCode);
-
-  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-  const professionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
-  const matched = professionalIds.find(
-    (p) => p.acmsProfessionalId.split('-')[0] === groupDesignator,
-  );
-
-  if (!matched) {
-    context.logger.warn(
-      MODULE_NAME,
-      `No ACMS professional ID found for trustee ${trusteeId} in group ${groupDesignator ?? '(unknown)'} (division ${courtDivisionCode}) — using sentinel ${SENTINEL_PROFESSIONAL_ID}`,
-    );
-    return SENTINEL_PROFESSIONAL_ID;
-  }
-
-  return matched.acmsProfessionalId;
-}
-
 /**
  * Throws softCloseError when it is transient (Cosmos RU throttling or a read/write timeout),
  * logging a warning first. Aborts BEFORE any replacement appointment is created so the caller's
@@ -275,11 +237,7 @@ function deriveUnassignedOn(referenceDate: string, existingAssignedOn: string): 
 
 /**
  * Closes existingAppointment in Cosmos (unassignedOn = one day before referenceDate, clamped to
- * never precede existingAppointment.assignedOn — see deriveUnassignedOn) and, on success, notifies
- * downstream of the closed appointment when the feature flag is enabled. Downstream notification is
- * gated on soft-close success — firing a close event for a close that never actually happened in
- * Cosmos would misinform downstream, and skips resolveGroupMatchedProfessionalId's gateway reads on
- * a path that's already failing.
+ * never precede existingAppointment.assignedOn — see deriveUnassignedOn).
  *
  * Pure close primitive shared by softCloseExistingAppointment (replace flow, which additionally
  * creates a new appointment) and the bogus-trustee close-only path in processOneEvent (which must
@@ -294,7 +252,6 @@ export async function closeExistingAppointment(
   existingAppointment: CaseAppointment,
   referenceDate: string,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
-  syncedCase: SyncedCase,
 ): Promise<{ closed: boolean; softCloseError: CamsError | null; unassignedOn: string }> {
   const unassignedOn = deriveUnassignedOn(referenceDate, existingAppointment.assignedOn);
   let softCloseError: CamsError | null = null;
@@ -309,33 +266,6 @@ export async function closeExistingAppointment(
       MODULE_NAME,
       `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
     );
-
-    if (context.featureFlags['downstream-trustee-appointments-enabled']) {
-      const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
-        context,
-        existingAppointment.trusteeId,
-        syncedCase.courtDivisionCode,
-      );
-      const closeEvent: TrusteeAppointmentDownstreamEvent = {
-        caseId: event.caseId,
-        trusteeId: existingAppointment.trusteeId,
-        acmsProfessionalId: oldAcmsProfessionalId,
-        assignedOn: existingAppointment.assignedOn,
-        appointedDate: existingAppointment.appointedDate,
-        chapter: syncedCase.chapter,
-        unassignedOn,
-      };
-      const apiToDataflows = factory.getApiToDataflowsGateway(context);
-      try {
-        await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
-      } catch (queueError) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
-          queueError,
-        );
-      }
-    }
   }
 
   return { closed: !softCloseError, softCloseError, unassignedOn };
@@ -348,8 +278,7 @@ export async function closeExistingAppointment(
  *    BEFORE the new appointment is created, so the caller's event is retried from a clean state.
  *  - Permanent soft-close failure still creates the new appointment (manual replay required for
  *    the stale old appointment) and reports it via the returned dlqFailure.
- *  - On success, reports closed:true (closeExistingAppointment already handled the downstream
- *    notification).
+ *  - On success, reports closed:true.
  *
  * Exported for testing only — no production importer outside this module.
  */
@@ -360,7 +289,6 @@ export async function softCloseExistingAppointment(
   trusteeId: string,
   assignedOn: string,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
-  syncedCase: SyncedCase,
 ): Promise<{ closed: boolean; dlqFailure: TrusteeAppointmentSyncError | null }> {
   const { closed, softCloseError } = await closeExistingAppointment(
     context,
@@ -368,7 +296,6 @@ export async function softCloseExistingAppointment(
     existingAppointment,
     assignedOn,
     appointmentsRepo,
-    syncedCase,
   );
 
   if (softCloseError) {
@@ -461,7 +388,6 @@ async function applyResolvedTrustee(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
-  syncedCase: SyncedCase,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<TrusteeAppointmentSyncError | null> {
   assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
@@ -507,7 +433,6 @@ async function applyResolvedTrustee(
       trusteeId,
       assignedOn,
       appointmentsRepo,
-      syncedCase,
     );
     if (!closed) {
       return dlqFailure;
@@ -552,33 +477,6 @@ async function applyResolvedTrustee(
 
   await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn);
 
-  if (context.featureFlags['downstream-trustee-appointments-enabled']) {
-    const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
-      context,
-      trusteeId,
-      syncedCase.courtDivisionCode,
-    );
-
-    const openEvent: TrusteeAppointmentDownstreamEvent = {
-      caseId: event.caseId,
-      trusteeId,
-      acmsProfessionalId,
-      assignedOn,
-      appointedDate: event.appointedDate,
-      chapter: syncedCase.chapter,
-    };
-    const apiToDataflows = factory.getApiToDataflowsGateway(context);
-    try {
-      await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
-    } catch (queueError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
-        queueError,
-      );
-    }
-  }
-
   return null;
 }
 
@@ -599,11 +497,10 @@ async function applyResolvedTrustee(
  *
  * Takes MatchContext (absorbing context/event/fingerprint/variant/audit/scenarioDistribution, plus
  * caseAppointmentsRepo/variationRepo via ctx.deps) and only the values genuinely specific to this
- * call site: trusteeId, syncedCase, variationTrusteeId, logMessage.
+ * call site: trusteeId, variationTrusteeId, logMessage.
  */
 async function autoLinkTrustee(
   ctx: MatchContext,
-  syncedCase: SyncedCase,
   trusteeId: string,
   variationTrusteeId: string | null,
   logMessage: string,
@@ -615,7 +512,6 @@ async function autoLinkTrustee(
     context,
     event,
     trusteeId,
-    syncedCase,
     deps.caseAppointmentsRepo,
   );
   if (!variationTrusteeId) {
@@ -1284,7 +1180,6 @@ async function applyMatchOutcome(
   ) {
     const dlqFailure = await autoLinkTrustee(
       ctx,
-      syncedCase,
       trusteeId,
       variationTrusteeId,
       `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
@@ -1565,7 +1460,6 @@ function resolvePreMatchShortCircuit(
 async function handleBogusTrusteeCloseOnly(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
-  syncedCase: SyncedCase,
   scenarioDistribution: ScenarioDistribution,
 ): Promise<EventOutcome | null> {
   if (resolveSkipReason(event) !== 'sentinel-bogus-name') {
@@ -1597,7 +1491,6 @@ async function handleBogusTrusteeCloseOnly(
     existingAppointment,
     event.appointedDate,
     deps.caseAppointmentsRepo,
-    syncedCase,
   );
 
   if (!closed && softCloseError) {
@@ -1761,7 +1654,6 @@ async function processOneEvent(
     const bogusTrusteeOutcome = await handleBogusTrusteeCloseOnly(
       deps,
       event,
-      syncedCase,
       scenarioDistribution,
     );
     if (bogusTrusteeOutcome) return bogusTrusteeOutcome;

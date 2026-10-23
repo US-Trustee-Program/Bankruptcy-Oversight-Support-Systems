@@ -34,36 +34,6 @@
     }
   }
 
-  // Phone + extension: stacked by default, side-by-side above 960px
-  .phone-extension-row {
-    display: flex;
-    flex-direction: column;
-
-    .phone-col,
-    .extension-col {
-      width: 100%;
-    }
-
-    .extension-col {
-      margin-top: 1.5rem;
-    }
-
-    @media (min-width: 960px) {
-      flex-direction: row;
-      gap: 1rem;
-      max-width: 30rem;
-
-      .phone-col {
-        flex: 0 0 60%;
-      }
-
-      .extension-col {
-        flex: 1;
-        margin-top: 0;
-      }
-    }
-  }
-
   .contact-add-button {
     margin-top: 1.25rem;
     column-gap: 0;

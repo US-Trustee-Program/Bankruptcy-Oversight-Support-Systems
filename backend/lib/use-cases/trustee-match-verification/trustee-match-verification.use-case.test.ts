@@ -109,7 +109,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueTrusteeVerificationRemap: mockQueueTrusteeVerificationRemap,
       queueCaseAssignmentEvent: vi.fn(),
-      queueTrusteeAppointmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeChangeNotification: vi.fn(),
     });

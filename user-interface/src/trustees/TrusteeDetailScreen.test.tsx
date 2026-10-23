@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
-import * as TrusteesModule from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -67,6 +66,25 @@ const mockInternal: ContactInformation = {
   },
   phone: { number: '111-123-4567', extension: '4578' },
   email: 'john.doe.private@example.com',
+};
+
+const mockStaffMember = {
+  id: 'staff-1',
+  trusteeId: '123',
+  name: 'Jane Smith',
+  contact: {
+    email: 'jane.smith@example.com',
+    phone: { number: '555-987-6543' },
+    address: {
+      address1: '456 Oak St',
+      city: 'Springfield',
+      state: 'IL',
+      zipCode: '62701',
+      countryCode: 'US' as const,
+    },
+  },
+  updatedBy: { id: 'user-1', name: 'Admin User' },
+  updatedOn: '2024-01-01T00:00:00Z',
 };
 
 const mockCourts = MockData.getCourts().filter(
@@ -191,8 +209,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should handle API errors gracefully', async () => {
-    const originalConsoleError = console.error;
-    console.error = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('API Error'));
@@ -211,8 +228,6 @@ describe('TrusteeDetailScreen', () => {
 
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1, name: 'John Doe' })).not.toBeInTheDocument();
-
-    console.error = originalConsoleError;
   });
 
   test('should render NotFound when no trusteeId is provided', () => {
@@ -351,6 +366,12 @@ describe('TrusteeDetailScreen', () => {
       description: 'should render subheader "Trustee" for default route',
       needsLocationState: false,
     },
+    {
+      route: '/trustees/123/other/edit',
+      expectedSubheader: 'Edit Other Trustee Information',
+      description: 'should render subheader "Edit Other Trustee Information" for /other/edit route',
+      needsLocationState: false,
+    },
   ])(
     '$description',
     async ({ route, expectedSubheader, needsHistoryMock, needsAppointmentsMock }) => {
@@ -375,18 +396,29 @@ describe('TrusteeDetailScreen', () => {
     },
   );
 
-  test('should fetch software options from API on component mount', async () => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+  test('should show the fetched software name on the trustee profile', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({
+      data: { ...mockTrustee, softwareId: 'sw-bestcase' },
+    });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList');
+    vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({
+      data: [
+        {
+          id: 'sw-bestcase',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'BestCase Trustee Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: MockData.getCamsUserReference(),
+        },
+      ],
+    });
 
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+      expect(screen.getByTestId('trustee-software')).toHaveTextContent('BestCase Trustee Software');
     });
-
-    expect(getSoftwareListSpy).toHaveBeenCalled();
   });
 
   test('should handle software options API error and log error message', async () => {
@@ -482,26 +514,7 @@ describe('TrusteeDetailScreen', () => {
   test('should navigate to staff create route when add another staff button is clicked', async () => {
     const trusteeWithStaff = {
       ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: '123',
-          name: 'Jane Smith',
-          contact: {
-            email: 'jane.smith@example.com',
-            phone: { number: '555-987-6543' },
-            address: {
-              address1: '456 Oak St',
-              city: 'Springfield',
-              state: 'IL',
-              zipCode: '62701',
-              countryCode: 'US' as const,
-            },
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
+      staff: [mockStaffMember],
     };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -520,26 +533,7 @@ describe('TrusteeDetailScreen', () => {
   test('should navigate to staff edit route when an existing staff member edit button is clicked', async () => {
     const trusteeWithStaff = {
       ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: '123',
-          name: 'Jane Smith',
-          contact: {
-            email: 'jane.smith@example.com',
-            phone: { number: '555-987-6543' },
-            address: {
-              address1: '456 Oak St',
-              city: 'Springfield',
-              state: 'IL',
-              zipCode: '62701',
-              countryCode: 'US' as const,
-            },
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
+      staff: [mockStaffMember],
     };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -555,39 +549,29 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/edit/staff-1');
   });
 
-  test('runs the fetched trustee through sortTrusteePhoneNumbers before rendering', async () => {
-    // Sort-order correctness (type, then number, then extension, across every
-    // staff member) is sortTrusteePhoneNumbers's own contract, covered by
-    // common/src/cams/trustees.test.ts. This only confirms the screen actually
-    // wires the fetched trustee through it before storing it in state.
-    const sortSpy = vi.spyOn(TrusteesModule, 'sortTrusteePhoneNumbers');
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+  test('sorts the fetched trustee phone numbers before passing them to the edit form', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({
+      data: {
+        ...mockTrustee,
+        internal: {
+          phones: [
+            { type: 'fax', number: '555-000-0002' },
+            { type: 'direct', number: '555-000-0001' },
+          ],
+        },
+      },
+    });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
-    renderWithRouter();
+    renderWithRouter(['/trustees/123/contact/edit/internal']);
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(sortSpy).toHaveBeenCalledWith(mockTrustee);
+    const firstEntry = await screen.findByTestId('phone-entry-0');
+    expect(within(firstEntry).getByRole('combobox')).toHaveValue('direct');
+    expect(within(screen.getByTestId('phone-entry-1')).getByRole('combobox')).toHaveValue('fax');
   });
 
   describe('Trustee Notes Integration', () => {
-    test('should render TrusteeNotes component on notes route', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { level: 3, name: 'Trustee Notes' }),
-        ).toBeInTheDocument();
-      });
-    });
-
     test('should pass correct trusteeId to TrusteeNotes component', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -707,76 +691,6 @@ describe('TrusteeDetailScreen', () => {
           expect(mockNavigate).toHaveBeenCalledWith('/search');
         });
       }
-    });
-  });
-
-  describe('trustee-software-bank-display feature flag', () => {
-    beforeEach(() => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    });
-
-    test('should render OtherInformationCard when flag is enabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-software-bank-display': true,
-      });
-
-      renderWithRouter(['/trustees/123']);
-
-      await waitFor(() => {
-        expect(screen.getByText('Software and Bank')).toBeInTheDocument();
-      });
-      expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
-    });
-
-    test('should hide OtherInformationCard when flag is disabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-software-bank-display': false,
-      });
-
-      renderWithRouter(['/trustees/123']);
-
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-      });
-      expect(screen.queryByText('Software and Bank')).not.toBeInTheDocument();
-      expect(screen.getByText('341 Meeting Information')).toBeInTheDocument();
-    });
-
-    test('should render other/edit route when flag is enabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-software-bank-display': true,
-      });
-
-      renderWithRouter(['/trustees/123/other/edit']);
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
-        ).toBeInTheDocument();
-      });
-    });
-
-    test('should redirect home when navigating to other/edit with flag disabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-software-bank-display': false,
-      });
-
-      renderWithRouter(['/trustees/123/other/edit']);
-
-      await waitFor(() => {
-        // When feature flag is disabled, GoHome is rendered instead of the edit form
-        expect(
-          screen.queryByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
-        ).not.toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/search');
-      });
     });
   });
 

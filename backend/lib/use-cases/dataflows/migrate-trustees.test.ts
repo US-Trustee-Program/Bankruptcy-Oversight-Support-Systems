@@ -1739,7 +1739,6 @@ describe('Migrate Trustees Use Case', () => {
 
   describe('notification suppression (CAMS-768 Slice 4)', () => {
     beforeEach(() => {
-      context.featureFlags['trustee-change-notification-enabled'] = true;
       MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockResolvedValue([]);

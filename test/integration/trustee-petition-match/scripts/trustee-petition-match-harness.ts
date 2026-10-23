@@ -185,10 +185,6 @@ async function getAppContext() {
     invocationContext,
     logger: ApplicationContextCreator.getLogger(invocationContext),
   });
-  // Out of scope for this test: the downstream notification path queries
-  // AO_OFFICE/AO_COURT/AO_GRP_DES/AO_REGION, which aren't part of the DXTR
-  // schema this harness seeds (only AO_CS_DIV/AO_CS/AO_PY/AO_TX).
-  context.featureFlags['downstream-trustee-appointments-enabled'] = false;
   return context;
 }
 

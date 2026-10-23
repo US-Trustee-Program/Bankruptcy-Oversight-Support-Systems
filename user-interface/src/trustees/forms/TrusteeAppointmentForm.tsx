@@ -3,7 +3,6 @@ import './TrusteeAppointmentForm.scss';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -84,7 +83,6 @@ export type TrusteeAppointmentFormProps = {
 };
 
 function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
-  const flags = useFeatureFlags();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const navigate = useCamsNavigator();
@@ -452,14 +450,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const handleDateChange = (field: keyof FormData, e: React.ChangeEvent<HTMLInputElement>) => {
     handleFieldChange(field, e.target.value);
   };
-
-  if (!flags[TRUSTEE_MANAGEMENT]) {
-    return (
-      <div data-testid="trustee-appointment-create-disabled">
-        Trustee management is not enabled.
-      </div>
-    );
-  }
 
   if (!canManage) {
     return (

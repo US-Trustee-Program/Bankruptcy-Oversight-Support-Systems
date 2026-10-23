@@ -4,7 +4,6 @@ import './Header.scss';
 import useFeatureFlags, {
   TRANSFER_ORDERS_ENABLED,
   SYSTEM_MAINTENANCE_BANNER,
-  TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
@@ -226,21 +225,19 @@ export const Header = () => {
                 </NavLink>
               </li>
 
-              {session &&
-                flags[TRUSTEE_MANAGEMENT] &&
-                session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
-                  <li className="usa-nav__primary-item">
-                    <NavLink
-                      to="/trustees"
-                      data-testid="header-trustees-link"
-                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
-                      onClick={() => setActiveNav(NavState.TRUSTEES)}
-                      title="Manage trustee profiles"
-                    >
-                      Trustees
-                    </NavLink>
-                  </li>
-                )}
+              {session && session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/trustees"
+                    data-testid="header-trustees-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
+                    onClick={() => setActiveNav(NavState.TRUSTEES)}
+                    title="Manage trustee profiles"
+                  >
+                    Trustees
+                  </NavLink>
+                </li>
+              )}
 
               {session && (
                 <li className="usa-nav__primary-item desktop-user-menu">
