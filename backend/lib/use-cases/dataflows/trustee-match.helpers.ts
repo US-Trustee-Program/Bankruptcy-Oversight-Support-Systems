@@ -1192,13 +1192,6 @@ export { calculateTotalScore };
 export type CaseMatchContext = {
   courtId: string;
   courtDivisionCode: string;
-  // Bare CS_DIV (step 1 of CAMS-936), distinct from courtDivisionCode (CS_DIV_ACMS) only for
-  // Winchester/Johnson City (Eastern District of TN). TrusteeAppointment.divisionCode/
-  // divisionCodes are ustDivisionCode-valued (see migrate-trustees.ts), so division-match
-  // scoring must compare against this, not courtDivisionCode, or Winchester/Chattanooga
-  // appointments become indistinguishable. Falls back to courtDivisionCode when absent (every
-  // division outside that pair, or a case not yet backfilled).
-  ustDivisionCode?: string;
   chapter: string;
 };
 
@@ -1225,22 +1218,16 @@ export function calculateCandidateScore(
   appointments: TrusteeAppointment[],
   nameScore: number,
 ): CandidateScore {
-  const { courtId, courtDivisionCode, ustDivisionCode, chapter } = caseMatch;
-  const divisionCodeForMatching = ustDivisionCode ?? courtDivisionCode;
+  const { courtId, courtDivisionCode, chapter } = caseMatch;
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
   const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
   const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);
   const districtDivisionScore = calculateDistrictDivisionScore(
     courtId,
-    divisionCodeForMatching,
+    courtDivisionCode,
     appointments,
   );
-  const chapterScore = calculateChapterScore(
-    courtId,
-    divisionCodeForMatching,
-    chapter,
-    appointments,
-  );
+  const chapterScore = calculateChapterScore(courtId, courtDivisionCode, chapter, appointments);
 
   const totalScore = calculateTotalScore({
     addressScore,
@@ -1353,11 +1340,6 @@ export async function resolveNameCollisionByScoring(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
-  // The case's ustDivisionCode (bare CS_DIV, from the persisted SyncedCase — see
-  // CaseMatchContext's doc comment). Not sourced from event.ustDivisionCode: the SyncedCase is
-  // the authoritative, backfilled source, while the event's own ustDivisionCode merely reflects
-  // whatever the appointment-transaction query happened to join at sync time.
-  caseUstDivisionCode?: string,
 ): Promise<ScoringOutcome> {
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   const candidates = await fetchCandidateTrustees(context, candidateTrusteeIds, (trusteeId) =>
@@ -1371,7 +1353,6 @@ export async function resolveNameCollisionByScoring(
       {
         courtId: event.courtId,
         courtDivisionCode: event.courtDivisionCode,
-        ustDivisionCode: caseUstDivisionCode,
         chapter: event.chapter,
       },
       trustee,
@@ -1403,7 +1384,7 @@ export async function resolveNameCollisionByScoring(
   const sameAppointmentMatch = isAppointmentMatch(
     winner.appointments ?? [],
     event.courtId,
-    caseUstDivisionCode ?? event.courtDivisionCode ?? '',
+    event.courtDivisionCode ?? '',
     event.chapter ?? '',
   );
 

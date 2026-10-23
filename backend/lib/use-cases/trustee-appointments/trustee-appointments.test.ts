@@ -17,45 +17,32 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('getTrusteeAppointments', () => {
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should return list of appointments for a trustee', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
       const mockAppointments = [
-        MockData.getTrusteeAppointment({ trusteeId, courtId: '0208', courtName: 'stale name' }),
-        MockData.getTrusteeAppointment({ trusteeId, courtId: '0208', courtName: 'stale name' }),
+        MockData.getTrusteeAppointment({ trusteeId }),
+        MockData.getTrusteeAppointment({ trusteeId }),
       ];
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue(
         mockAppointments,
       );
-      // courtName is re-resolved from live courts data (findCourtDistrict), not trusted from the
-      // stored appointment doc — mock a distinct value to prove the lookup actually overwrote it.
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
-        {
-          officeName: 'Manhattan',
-          officeCode: '081',
-          courtId: '0208',
-          courtName: 'Southern District of New York',
-          courtDivisionCode: '081',
-          courtDivisionName: 'Manhattan',
-          groupDesignator: 'NY',
-          regionId: '02',
-          regionName: 'NEW YORK',
-        },
-      ]);
 
       const result = await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
 
       // Expect enriched appointments with courtName but courtDivisionName set to undefined
       const expectedEnrichedAppointments = mockAppointments.map((apt) => ({
         ...apt,
-        courtName: 'Southern District of New York',
         courtDivisionName: undefined, // Division names are not used per product requirements
       }));
 
@@ -120,9 +107,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should create a new appointment for a trustee', async () => {
@@ -138,7 +128,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockCreatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.createAppointment(
         context,
@@ -206,7 +196,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockCreatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
 
@@ -329,9 +319,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should update an appointment successfully', async () => {
@@ -349,7 +342,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockUpdatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -374,10 +367,11 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('should throw error when appointment does not exist', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-        new Error('Trustee appointment not found'),
+      const repositoryError = new Error('Trustee appointment not found');
+
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockRejectedValue(
+        repositoryError,
       );
-      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateAppointment');
 
       const actualError = await getTheThrownError(() =>
         trusteeAppointmentsUseCase.updateAppointment(
@@ -395,17 +389,11 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           module: 'TRUSTEE-APPOINTMENTS-USE-CASE',
         }),
       ]);
-      expect(updateSpy).not.toHaveBeenCalled();
     });
 
     test('should handle repository error during update', async () => {
-      const mockExistingAppointment = MockData.getTrusteeAppointment({
-        id: appointmentId,
-        trusteeId,
-      });
       const repositoryError = new Error('Database error');
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockRejectedValue(
         repositoryError,
       );
@@ -438,7 +426,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockUpdatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -511,7 +499,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
+        mockCourts,
+      );
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -557,7 +547,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         unchangedAppointment,
       );
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -684,9 +674,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should create audit history when appointment is created', async () => {
@@ -718,7 +711,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
         mockCreatedAppointment,
       );
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
+        mockCourts,
+      );
 
       await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
 
@@ -743,9 +738,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('hasAppointmentChanged with divisionCodes', () => {
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should detect division addition as change', async () => {
@@ -781,7 +779,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -830,7 +828,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -879,7 +877,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -931,7 +929,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -980,7 +978,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -999,9 +997,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('multi-division support', () => {
     beforeEach(async () => {
-      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('should accept divisionCodes array and normalize to both formats', async () => {
@@ -1458,83 +1459,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
       expect(districtField.comparisons[0].before).toBe('Southern District of New York (Manhattan)');
       expect(districtField.comparisons[0].after).toBe('Southern District of New York (Brooklyn)');
-    });
-
-    test('CAMS-936: resolves Winchester, not Chattanooga, for a ustDivisionCode-valued divisionCodes change', async () => {
-      // Chattanooga and Winchester share courtDivisionCode '491' (CS_DIV_ACMS) but have distinct
-      // ustDivisionCode ('491' vs '494', bare CS_DIV). divisionNameResolver must match on
-      // ustDivisionCode, not courtDivisionCode, or it can never resolve Winchester's name (and a
-      // naive courtDivisionCode match would silently resolve to Chattanooga's instead).
-      const courts: CourtDivisionDetails[] = [
-        {
-          officeName: 'Chattanooga',
-          officeCode: '1',
-          courtId: '0649',
-          courtName: 'Eastern District of Tennessee',
-          courtDivisionCode: '491',
-          ustDivisionCode: '491',
-          courtDivisionName: 'Chattanooga',
-          groupDesignator: 'CN',
-          regionId: '08',
-          regionName: 'ATLANTA',
-        },
-        {
-          officeName: 'Winchester',
-          officeCode: '4',
-          courtId: '0649',
-          courtName: 'Eastern District of Tennessee',
-          courtDivisionCode: '491',
-          ustDivisionCode: '494',
-          courtDivisionName: 'Winchester',
-          groupDesignator: 'CN',
-          regionId: '08',
-          regionName: 'ATLANTA',
-        },
-      ];
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(courts);
-
-      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
-      const existingAppointment = MockData.getTrusteeAppointment({
-        id: appointmentId,
-        trusteeId,
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '0649',
-        divisionCodes: ['491'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-      const updatedAppointment = {
-        ...existingAppointment,
-        divisionCode: '494',
-        divisionCodes: ['494'],
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
-        updatedAppointment,
-      );
-
-      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '0649',
-        divisionCodes: ['494'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-
-      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
-      const districtField = changeSet.fields.find(
-        (field: { label: string }) => field.label === 'District (Division)',
-      );
-      expect(districtField.comparisons[0].before).toBe(
-        'Eastern District of Tennessee (Chattanooga)',
-      );
-      expect(districtField.comparisons[0].after).toBe('Eastern District of Tennessee (Winchester)');
     });
   });
 

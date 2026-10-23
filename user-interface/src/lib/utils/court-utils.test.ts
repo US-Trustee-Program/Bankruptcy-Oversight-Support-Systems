@@ -683,43 +683,6 @@ describe('court-utils', () => {
         courtDivisionName: 'Manhattan',
       });
     });
-
-    test('should prefer ustDivisionCode so Winchester and Chattanooga stay distinct', () => {
-      // Chattanooga and Winchester share courtDivisionCode '491' (CS_DIV_ACMS) but have
-      // distinct ustDivisionCode (bare CS_DIV) values — see CAMS-936.
-      const easternTnCourts: CourtDivisionDetails[] = [
-        {
-          officeName: 'Chattanooga',
-          officeCode: '1',
-          courtId: '0649',
-          courtName: 'Eastern District of Tennessee',
-          courtDivisionCode: '491',
-          ustDivisionCode: '491',
-          courtDivisionName: 'Chattanooga',
-          groupDesignator: 'TN',
-          regionId: '4',
-          regionName: 'Atlanta',
-        },
-        {
-          officeName: 'Winchester',
-          officeCode: '4',
-          courtId: '0649',
-          courtName: 'Eastern District of Tennessee',
-          courtDivisionCode: '491',
-          ustDivisionCode: '494',
-          courtDivisionName: 'Winchester',
-          groupDesignator: 'TN',
-          regionId: '4',
-          regionName: 'Atlanta',
-        },
-      ];
-
-      const divisions = getDivisionsForDistrict(easternTnCourts, '0649');
-
-      expect(divisions.map((d) => d.courtDivisionCode)).toEqual(
-        expect.arrayContaining(['491', '494']),
-      );
-    });
   });
 
   describe('groupDivisionsByDistrict', () => {
@@ -917,21 +880,6 @@ describe('court-utils', () => {
 
       expect(appointments).toEqual(originalOrder);
     });
-
-    test('uses the full courtName as state when it does not match the "District of X" pattern', () => {
-      // parseDistrictName's fallback branch — a court name with no "District of" substring.
-      const appointments = [
-        MockData.getTrusteeAppointment({ courtName: 'Guam District Court', chapter: '7' }),
-        MockData.getTrusteeAppointment({ courtName: 'District of Nevada', chapter: '7' }),
-      ];
-
-      const sorted = sortTrusteeAppointments(appointments);
-
-      // 'District of Nevada' parses state='Nevada'; 'Guam District Court' has no match so its
-      // whole name is used as state — 'Guam...' sorts before 'Nevada' alphabetically.
-      expect(sorted[0].courtName).toBe('Guam District Court');
-      expect(sorted[1].courtName).toBe('District of Nevada');
-    });
   });
 
   describe('encodeDivisionCodes', () => {
@@ -992,51 +940,6 @@ describe('court-utils', () => {
         courts,
       );
       expect(result).toEqual(expect.arrayContaining(['081', '087']));
-      expect(result).toHaveLength(2);
-    });
-
-    const sharedCourtDivisionCodeCourts: CourtDivisionDetails[] = [
-      {
-        officeName: 'Chattanooga',
-        officeCode: '491',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '491',
-        courtDivisionName: 'Chattanooga',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-      {
-        officeName: 'Winchester',
-        officeCode: '494',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '494',
-        courtDivisionName: 'Winchester',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-    ];
-
-    test('expands an ALL selection to the ACMS courtDivisionCode by default, collapsing Winchester into Chattanooga', () => {
-      const result = encodeDivisionCodes(
-        [{ value: '0649|ALL', label: 'All' }],
-        sharedCourtDivisionCodeCourts,
-      );
-      expect(result).toEqual(['491']);
-    });
-
-    test('expands an ALL selection to ustDivisionCode when useUstDivisionCode is true, keeping Winchester distinct', () => {
-      const result = encodeDivisionCodes(
-        [{ value: '0649|ALL', label: 'All' }],
-        sharedCourtDivisionCodeCourts,
-        true,
-      );
-      expect(result).toEqual(expect.arrayContaining(['491', '494']));
       expect(result).toHaveLength(2);
     });
   });
@@ -1108,43 +1011,6 @@ describe('court-utils', () => {
       expect(mixedOptions.find((o) => o.value === 'VTB|ALL')).toBeUndefined();
       expect(mixedOptions.find((o) => o.value === 'VTB|088')).toBeDefined();
       expect(mixedOptions.find((o) => o.value === 'NYSB|ALL')).toBeDefined();
-    });
-
-    const sharedCourtDivisionCodeCourts: CourtDivisionDetails[] = [
-      {
-        officeName: 'Chattanooga',
-        officeCode: '491',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '491',
-        courtDivisionName: 'Chattanooga',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-      {
-        officeName: 'Winchester',
-        officeCode: '494',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '494',
-        courtDivisionName: 'Winchester',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-    ];
-
-    test('defaults to courtDivisionCode (ACMS) when useUstDivisionCode is omitted, so Winchester and Chattanooga share a value', () => {
-      const options = getDistrictDivisionComboOptions(sharedCourtDivisionCodeCourts);
-      expect(options.map((o) => o.value)).toEqual(['0649|ALL', '0649|491', '0649|491']);
-    });
-
-    test('uses ustDivisionCode for the option value when useUstDivisionCode is true, so Winchester and Chattanooga get distinct values', () => {
-      const options = getDistrictDivisionComboOptions(sharedCourtDivisionCodeCourts, true);
-      expect(options.map((o) => o.value)).toEqual(['0649|ALL', '0649|491', '0649|494']);
     });
   });
 
@@ -1390,64 +1256,6 @@ describe('autoUpgradeToAll', () => {
     ];
     expect(autoUpgradeToAll(selections, [])).toEqual(selections);
   });
-
-  describe('useUstDivisionCode', () => {
-    const sharedCourtDivisionCodeCourts = [
-      {
-        officeName: 'Chattanooga',
-        officeCode: '491',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '491',
-        courtDivisionName: 'Chattanooga',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-      {
-        officeName: 'Winchester',
-        officeCode: '494',
-        courtId: '0649',
-        courtName: 'Eastern District of Tennessee',
-        courtDivisionCode: '491',
-        ustDivisionCode: '494',
-        courtDivisionName: 'Winchester',
-        groupDesignator: 'CN',
-        regionId: '04',
-        regionName: 'Region 4',
-      },
-    ];
-
-    test('without the flag, both ACMS-coded "491" divisions collapse to one code, so the district looks single-division and never upgrades to ALL', () => {
-      const selections: ComboOption[] = [
-        { value: '0649|491', label: 'Eastern District of Tennessee (Chattanooga)' },
-      ];
-      const result = autoUpgradeToAll(selections, sharedCourtDivisionCodeCourts);
-      expect(result.find((s) => s.value === '0649|ALL')).toBeUndefined();
-    });
-
-    test('with the flag, Winchester (494) and Chattanooga (491) are distinct, so both must be selected to upgrade to ALL', () => {
-      const chattanoogaOnly: ComboOption[] = [
-        { value: '0649|491', label: 'Eastern District of Tennessee (Chattanooga)' },
-      ];
-      expect(
-        autoUpgradeToAll(chattanoogaOnly, sharedCourtDivisionCodeCourts, true).find(
-          (s) => s.value === '0649|ALL',
-        ),
-      ).toBeUndefined();
-
-      const both: ComboOption[] = [
-        { value: '0649|491', label: 'Eastern District of Tennessee (Chattanooga)' },
-        { value: '0649|494', label: 'Eastern District of Tennessee (Winchester)' },
-      ];
-      expect(
-        autoUpgradeToAll(both, sharedCourtDivisionCodeCourts, true).find(
-          (s) => s.value === '0649|ALL',
-        ),
-      ).toBeDefined();
-    });
-  });
 });
 
 describe('resolveCombinedSelections', () => {
@@ -1564,7 +1372,7 @@ describe('getUserDivisionCodes', () => {
       },
     };
     const codes = getUserDivisionCodes(session);
-    expect(codes).toEqual(new Set(['NYSB|081', 'NYSB|087', 'VTB|088']));
+    expect(codes).toEqual(new Set(['081', '087', '088']));
   });
 
   test('skips a division with an empty divisionCode', () => {
@@ -1596,141 +1404,5 @@ describe('getUserDivisionCodes', () => {
       },
     };
     expect(getUserDivisionCodes(session).size).toBe(0);
-  });
-
-  test('returns the ACMS divisionCode, not ustDivisionCode, to match the combobox option values', () => {
-    const session: CamsSession = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '0649',
-            officeName: 'Winchester',
-            idpGroupName: 'Winchester',
-            regionId: '04',
-            regionName: 'Nashville',
-            groups: [
-              {
-                groupDesignator: 'TN',
-                divisions: [
-                  {
-                    divisionCode: '491',
-                    ustDivisionCode: '494',
-                    court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
-                    courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    expect(getUserDivisionCodes(session)).toEqual(new Set(['0649|491']));
-  });
-
-  // The flag must match the one the options were built with. Trustee-list options are
-  // ustDivisionCode-keyed, so a Winchester user's default has to resolve to 494 — matching 491
-  // there would select Chattanooga, its sibling under the shared ACMS code. See CAMS-936.
-  test('returns the ustDivisionCode when the caller built its options with it', () => {
-    const session: CamsSession = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '0649',
-            officeName: 'Winchester',
-            idpGroupName: 'Winchester',
-            regionId: '04',
-            regionName: 'Nashville',
-            groups: [
-              {
-                groupDesignator: 'TN',
-                divisions: [
-                  {
-                    divisionCode: '491',
-                    ustDivisionCode: '494',
-                    court: { courtId: '0649', courtName: 'Eastern District of Tennessee' },
-                    courtOffice: { courtOfficeCode: '494', courtOfficeName: 'Winchester' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    expect(getUserDivisionCodes(session, true)).toEqual(new Set(['0649|494']));
-  });
-
-  // Most divisions have no ustDivisionCode at all (and none do under mock gateways), so the
-  // ust-keyed caller has to fall back to the ACMS code rather than dropping the division.
-  test('falls back to the ACMS divisionCode when a division has no ustDivisionCode', () => {
-    const session: CamsSession = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: { courtId: 'NYSB', courtName: 'SDNY' },
-                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    expect(getUserDivisionCodes(session, true)).toEqual(new Set(['NYSB|081']));
-  });
-
-  // Codes are only unique within a court: 321 is a bare CS_DIV in court 113C and an ACMS code in
-  // 113E. Keying defaults on the bare code alone would let one court's office select another
-  // court's option.
-  test('scopes each code to its own court', () => {
-    const session: CamsSession = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '113C',
-            officeName: 'Tampa',
-            idpGroupName: 'Tampa',
-            regionId: '21',
-            regionName: 'Tampa',
-            groups: [
-              {
-                groupDesignator: 'MM',
-                divisions: [
-                  {
-                    divisionCode: '321',
-                    court: { courtId: '113C', courtName: 'Middle District of Florida' },
-                    courtOffice: { courtOfficeCode: '1', courtOfficeName: 'Tampa' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    const codes = getUserDivisionCodes(session);
-    expect(codes).toEqual(new Set(['113C|321']));
-    expect(codes.has('113E|321')).toBe(false);
   });
 });

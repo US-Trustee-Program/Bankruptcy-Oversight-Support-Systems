@@ -365,10 +365,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  setUstDivisionCode(..._ignore): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
   findByCursor(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -406,14 +402,6 @@ export class MockMongoRepository
   }
 
   updateVerificationTaskDate(..._ignore): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  findVerificationsMissingUstDivisionCode(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  updateVerificationUstDivisionCode(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

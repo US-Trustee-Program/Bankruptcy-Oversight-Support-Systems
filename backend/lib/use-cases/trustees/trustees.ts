@@ -136,12 +136,7 @@ export class TrusteesUseCase {
     divisionCode: string | undefined,
   ): string | undefined {
     if (!divisionCode) return undefined;
-    // appt.divisionCode is ustDivisionCode-valued when DXTR's bare CS_DIV diverges from the
-    // ACMS CS_DIV_ACMS courts carry as courtDivisionCode (e.g. Winchester/Chattanooga) — see
-    // migrate-trustees.ts buildDistrictToDivisionsMap. Check both so divergent divisions resolve.
-    return courts.find(
-      (c) => c.courtDivisionCode === divisionCode || c.ustDivisionCode === divisionCode,
-    )?.courtDivisionName;
+    return courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
   }
 
   private checkValidation(validatorResult: ValidatorResult) {
