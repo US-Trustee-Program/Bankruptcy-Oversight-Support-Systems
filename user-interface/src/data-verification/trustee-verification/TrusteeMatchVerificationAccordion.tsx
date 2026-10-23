@@ -507,17 +507,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // which is correct: the backend's own approval check remains the authoritative gate
   // regardless of whether this client-side warning had data to compute from yet.
   //
-  // A candidate with no appointments populated at all is likewise left enabled rather than
-  // treated as covering nothing. CandidateScore.appointments is optional, and per that type's
-  // own notes some producers (resolveByContactCorroboration, resolveDuplicateNameCandidates)
-  // always pass an empty list regardless of the trustee's real appointments -- so an absent or
-  // empty list means "no coverage data to judge from" here, not "covers nothing". Disabling on
-  // it would block approvals the backend would have accepted.
+  // A candidate with NO appointments at all (appointments: []) is deliberately treated as
+  // covering nothing, not as "no data to judge from" -- every current call site that
+  // constructs a CandidateScore for a TrusteeMatchVerification (calculateCandidateScore,
+  // handleInactivePerfectMatch) populates appointments with a real, freshly-fetched array, and
+  // getEnrichedVerification unconditionally re-fetches and overwrites it again before this
+  // component ever sees it. So an empty array here always means the trustee genuinely has zero
+  // appointments (e.g. a name-only match with no CAMS appointment record yet) -- exactly the
+  // case this check exists to catch, not an ambiguous absence of data.
   const uncoveredCasesByTrusteeId: Record<string, CaseSummary[]> = {};
   for (const candidate of candidatesToShow) {
-    uncoveredCasesByTrusteeId[candidate.trusteeId] = candidate.appointments?.length
-      ? getUncoveredCases(candidate.appointments, affectedCaseSummaries)
-      : [];
+    uncoveredCasesByTrusteeId[candidate.trusteeId] = getUncoveredCases(
+      candidate.appointments ?? [],
+      affectedCaseSummaries,
+    );
   }
 
   // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions

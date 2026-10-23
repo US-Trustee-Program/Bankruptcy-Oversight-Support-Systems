@@ -146,6 +146,11 @@ function clickTwiceInSameBatch(button: HTMLElement | null) {
 describe('TrusteeMatchVerificationAccordion', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Default: no case-coverage data available, so the pre-approval coverage check
+    // (getUncoveredCases) has nothing to flag and every test's Match Trustee/Confirm button
+    // stays enabled unless a test cares about coverage specifically and overrides this with
+    // its own getCaseSummary mock (as the coverage/search-filtering tests below do).
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not mocked in this test'));
   });
 
   test('should render accordion heading with court, date, task type, and status', () => {
