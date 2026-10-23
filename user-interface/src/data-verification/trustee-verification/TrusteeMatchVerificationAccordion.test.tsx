@@ -1235,7 +1235,34 @@ describe('TrusteeMatchVerificationAccordion', () => {
     ];
 
     function setupSearchMocks() {
-      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: manualSearchMockData });
+      // The modal's Confirm button gates on bundle-wide coverage (getUncoveredCases), so the
+      // default fixture is a trustee who genuinely covers the affected case -- otherwise every
+      // test that merely needs to reach Confirm would stall on a disabled button. Coverage
+      // behavior itself is asserted directly by the uncovered-case tests.
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: sampleOrder.caseId,
+            chapter: '7',
+            courtId: '081',
+            courtDivisionCode: '081',
+          },
+        }),
+      });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [
+          {
+            ...manualSearchMockData[0],
+            appointments: [
+              MockData.getTrusteeAppointment({
+                courtId: '081',
+                divisionCode: '081',
+                chapter: '7',
+              }),
+            ],
+          },
+        ],
+      });
     }
 
     // Integration helper: opens search modal, searches, selects, and confirms
@@ -2188,6 +2215,20 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     test('approval flow calls API with clicked candidate trustee ID and name', async () => {
+      // The candidates above carry MockData's default appointment (court 0208, division 081,
+      // chapter 7), so the affected case has to match for the pre-approval coverage check to
+      // leave Match Trustee enabled -- this test is about the approval call itself, not about
+      // coverage (which 'disables Match Trustee and explains why...' covers directly).
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: multipleCandidatesOrder.caseId,
+            courtId: '0208',
+            courtDivisionCode: '081',
+            chapter: '7',
+          },
+        }),
+      });
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
       renderWithProps({ order: multipleCandidatesOrder, onOrderUpdate });

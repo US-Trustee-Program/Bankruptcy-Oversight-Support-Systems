@@ -506,12 +506,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // hasn't loaded yet, or candidatesToShow is empty pre-expand) means nothing is disabled,
   // which is correct: the backend's own approval check remains the authoritative gate
   // regardless of whether this client-side warning had data to compute from yet.
+  //
+  // A candidate with no appointments populated at all is likewise left enabled rather than
+  // treated as covering nothing. CandidateScore.appointments is optional, and per that type's
+  // own notes some producers (resolveByContactCorroboration, resolveDuplicateNameCandidates)
+  // always pass an empty list regardless of the trustee's real appointments -- so an absent or
+  // empty list means "no coverage data to judge from" here, not "covers nothing". Disabling on
+  // it would block approvals the backend would have accepted.
   const uncoveredCasesByTrusteeId: Record<string, CaseSummary[]> = {};
   for (const candidate of candidatesToShow) {
-    uncoveredCasesByTrusteeId[candidate.trusteeId] = getUncoveredCases(
-      candidate.appointments ?? [],
-      affectedCaseSummaries,
-    );
+    uncoveredCasesByTrusteeId[candidate.trusteeId] = candidate.appointments?.length
+      ? getUncoveredCases(candidate.appointments, affectedCaseSummaries)
+      : [];
   }
 
   // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
