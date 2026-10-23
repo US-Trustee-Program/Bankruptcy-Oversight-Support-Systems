@@ -45,6 +45,51 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     }
   });
 
+  test('pending division-mismatch multi-case mismatch: candidate covers two cases but not the third', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-divisionmismatch-091-99-40761');
+
+    expect(verification).toBeDefined();
+    expect(verification?.status).toBe('pending');
+    expect(verification?.fingerprint).toBeTruthy();
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = surrogatesFor(ops, table);
+      const forThisFingerprint = surrogates.filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(3);
+      for (const surrogate of forThisFingerprint) {
+        expect(surrogate.documentType).toBe('CASE_APPOINTMENT');
+        expect(surrogate.isSurrogate).toBe(true);
+        expect(surrogate.chapter).toBe('11');
+      }
+      const caseIds = forThisFingerprint.map((s) => s.caseId).sort();
+      expect(caseIds).toEqual(['081-23-10005', '091-99-11079', '091-99-40761']);
+      // The whole point of this fixture: two cases share one division, the third is in a
+      // genuinely different court+division the candidate has no appointment for.
+      const divisionsByCaseId = Object.fromEntries(
+        forThisFingerprint.map((s) => [s.caseId, s.courtDivisionCode]),
+      );
+      expect(divisionsByCaseId['091-99-40761']).toBe('091');
+      expect(divisionsByCaseId['091-99-11079']).toBe('091');
+      expect(divisionsByCaseId['081-23-10005']).toBe('081');
+    }
+
+    const matchCandidates = verification?.matchCandidates as { trusteeId: string }[] | undefined;
+    const candidateTrusteeId = matchCandidates?.[0]?.trusteeId;
+    expect(candidateTrusteeId).toBe('seed-trustee-match-divisionmismatch');
+
+    const appointments = ops
+      .filter((o) => o.collectionOrTable === 'trustee-appointments')
+      .flatMap((o) => o.data)
+      .filter((a) => a.trusteeId === candidateTrusteeId);
+    expect(appointments).toHaveLength(1);
+    expect(appointments[0].courtId).toBe('0209');
+    expect(appointments[0].divisionCodes).toEqual(['091']);
+    expect(appointments[0].chapter).toBe('11');
+  });
+
   test('already-approved mismatch has no surviving surrogate rows for its fingerprint', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-97816');
