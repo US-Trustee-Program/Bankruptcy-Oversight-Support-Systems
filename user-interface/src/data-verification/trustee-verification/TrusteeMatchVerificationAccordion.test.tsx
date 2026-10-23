@@ -708,6 +708,35 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(caseSummarySpy).not.toHaveBeenCalled();
     });
 
+    test('does not fetch the case summary on mount for a pending, un-expanded order', async () => {
+      // DataVerificationScreen mounts every accordion up front regardless of which rows the
+      // user has expanded, so an ungated fetch here would fire once per pending row on every
+      // page load; the result is unusable pre-expand anyway (candidatesToShow, the only
+      // consumer, stays empty until enrichedOrder loads).
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
+    });
+
+    test('fetches the case summary once a pending order is expanded', async () => {
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: { caseId: sampleOrderWithCandidates.caseId },
+        }),
+      });
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      await waitFor(() =>
+        expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrderWithCandidates.caseId),
+      );
+    });
+
     test('does not fetch detail when a resolved order is manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -1058,6 +1087,58 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const message = await screen.findByTestId('uncovered-cases-trustee-1');
     expect(message.textContent).toContain(getCaseNumber(sampleOrder.caseId));
     expect(message.textContent).toContain('Chapter 12');
+    expect(screen.getByTestId('approve-candidate-trustee-1')).toBeDisabled();
+  });
+
+  test('still warns on an uncovered case whose summary loaded, even when a sibling case in the bundle fails to load', async () => {
+    // Regression guard for the Promise.all -> Promise.allSettled fix: a single rejected
+    // getCaseSummary must not silently discard the summaries that DID load, which would
+    // otherwise report "no problem" for a case the candidate genuinely does not cover.
+    const loadedCaseId = '081-22-11111';
+    const unloadableCaseId = '081-22-99999';
+    vi.spyOn(Api2, 'getCaseSummary').mockImplementation(async (caseId: string) => {
+      if (caseId === unloadableCaseId) {
+        throw new Error('case not yet synced');
+      }
+      return {
+        data: MockData.getCaseSummary({
+          override: { caseId, chapter: '12', courtId: '081', courtDivisionCode: '081' },
+        }),
+      };
+    });
+    const candidateMissingCoverage: CandidateScore = {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Jane Smith',
+      totalScore: 95,
+      addressScore: 90,
+      nameScore: 90,
+      phoneScore: null,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 95,
+      // Covers chapter 7; loadedCaseId above is chapter 12.
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    const orderWithCandidate: TrusteeMatchVerificationListItem = {
+      ...sampleOrder,
+      preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+      candidateCount: 1,
+      affectedCaseCount: 2,
+      affectedCaseIds: [loadedCaseId, unloadableCaseId],
+    };
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
+      ...sampleOrderDetail,
+      matchCandidates: [candidateMissingCoverage],
+      affectedCaseIds: [loadedCaseId, unloadableCaseId],
+    };
+    renderWithProps({ order: orderWithCandidate });
+    await mockDetailAndExpand(detailWithCandidate);
+
+    const message = await screen.findByTestId('uncovered-cases-trustee-1');
+    expect(message.textContent).toContain(getCaseNumber(loadedCaseId));
+    expect(message.textContent).not.toContain(getCaseNumber(unloadableCaseId));
     expect(screen.getByTestId('approve-candidate-trustee-1')).toBeDisabled();
   });
 
@@ -1525,6 +1606,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
         data: [{ ...manualSearchMockData[0], appointments: [coveringAppointment] }],
       });
       renderWithProps();
+      // The coverage-data fetch is gated on the row having been expanded (hasEnrichedOrder) --
+      // in real usage the search link only renders once expanded anyway, which already
+      // triggers this same detail fetch, so this mirrors how a user actually reaches it.
+      await mockDetailAndExpand(sampleOrderDetail);
 
       await searchAndSelectTrustee();
 

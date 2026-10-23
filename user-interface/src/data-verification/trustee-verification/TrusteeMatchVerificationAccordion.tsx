@@ -655,34 +655,45 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   // Fetched so the UI can warn a reviewer, before they attempt an approval, when a candidate's
   // appointments don't cover every case in this bundle (getUncoveredCases) -- the same per-case
-  // rule the backend's approval endpoint is guaranteed to enforce. Pre-expand, affectedCaseIds
-  // is just [order.caseId], so this only fetches the full bundle once enrichedOrder's real list
-  // is known; the dependency on the joined id string (rather than the array itself, a new
-  // reference every render) keeps this from refetching on every re-render.
+  // rule the backend's approval endpoint is guaranteed to enforce.
   //
-  // Skipped for already-approved orders, matching handleExpand's existing guard above: an
-  // approved order's candidate/search UI can never be reached, so there is no render for which
-  // this fetch has any display benefit, only an unconditional per-row network call.
+  // Gated on hasEnrichedOrder, not just order.status: affectedCaseIds is only the real bundle
+  // once detail has loaded (pre-expand it's just [order.caseId]), and candidatesToShow -- the
+  // only consumer of this data -- is empty pre-expand regardless, so fetching before then has
+  // no display benefit. DataVerificationScreen mounts every accordion up front (hidden rows
+  // included, filtered via a `hidden` prop rather than conditional rendering), so without this
+  // gate every pending verification on the screen would fire this fetch on page load whether
+  // or not the row is ever expanded.
+  //
+  // Also skipped for already-approved orders, matching handleExpand's existing guard above: an
+  // approved order's candidate/search UI can never be reached.
   const affectedCaseIdsKey = affectedCaseIds.join(',');
+  const hasEnrichedOrder = !!enrichedOrder;
   useEffect(() => {
-    if (order.status === 'approved') return;
+    if (order.status === 'approved' || !hasEnrichedOrder) return;
     let cancelled = false;
-    Promise.all(affectedCaseIdsKey.split(',').map((caseId) => Api2.getCaseSummary(caseId)))
-      .then((responses) => {
-        if (!cancelled) {
-          setAffectedCaseSummaries(
-            responses.map((response) => (response as ResponseBody<CaseSummary>).data),
-          );
-        }
-      })
-      .catch(() => {
-        // coverage warnings are optional, best-effort context; approval still works (and the
-        // backend remains the authoritative gate) if these summaries can't be loaded
-      });
+    // allSettled rather than all: a single rejected lookup (a closed case, one not yet synced,
+    // a moved case) would otherwise reject the whole chain and leave affectedCaseSummaries
+    // untouched, silently discarding coverage data for every case that DID load successfully
+    // -- which reads to a reviewer as "no problem" rather than "unknown". Keeping whichever
+    // summaries did load is strictly better: the backend's approval check remains the
+    // authoritative gate regardless of what this best-effort warning could compute.
+    Promise.allSettled(
+      affectedCaseIdsKey.split(',').map((caseId) => Api2.getCaseSummary(caseId)),
+    ).then((results) => {
+      if (cancelled) return;
+      const loaded = results
+        .filter(
+          (result): result is PromiseFulfilledResult<ResponseBody<CaseSummary>> =>
+            result.status === 'fulfilled',
+        )
+        .map((result) => result.value.data);
+      setAffectedCaseSummaries(loaded);
+    });
     return () => {
       cancelled = true;
     };
-  }, [affectedCaseIdsKey, order.status]);
+  }, [affectedCaseIdsKey, order.status, hasEnrichedOrder]);
 
   // Scoped to the originating case only (order.caseId) -- used solely to narrow the manual
   // search modal's results list, which stays a heuristic regardless (see TrusteeSearchModal's

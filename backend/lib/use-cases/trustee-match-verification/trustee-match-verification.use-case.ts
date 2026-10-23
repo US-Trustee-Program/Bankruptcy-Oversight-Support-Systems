@@ -33,6 +33,11 @@ const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
 // used to produce. This is not real pagination; exceeding it just logs a warning.
 const AFFECTED_CASE_COUNT_SANITY_CAP = 50;
 
+// Caps simultaneous DXTR getCaseSummary lookups during approval -- AFFECTED_CASE_COUNT_SANITY_CAP
+// above only logs past 50 affected cases, it never bounds anything, so without this a large
+// fingerprint bundle would fire that many concurrent DXTR queries inside one synchronous request.
+const CASE_SUMMARY_FETCH_CONCURRENCY = 10;
+
 type VerificationListParams = {
   statusParam?: string;
 };
@@ -127,6 +132,29 @@ export class TrusteeMatchVerificationUseCase {
     }
 
     return affectedCaseIdsByFingerprint;
+  }
+
+  /**
+   * Fetches case summaries for every affected case, capped at CASE_SUMMARY_FETCH_CONCURRENCY
+   * simultaneous lookups rather than firing one per case all at once. Preserves caseIds' order
+   * in the returned array (each batch is itself order-preserving, and batches run sequentially),
+   * so callers can zip results back to case IDs by index exactly as a single
+   * Promise.allSettled over the whole list would.
+   */
+  private async fetchCaseSummariesBatched(
+    context: ApplicationContext,
+    caseManagement: CaseManagement,
+    caseIds: string[],
+  ): Promise<PromiseSettledResult<CaseSummary>[]> {
+    const results: PromiseSettledResult<CaseSummary>[] = [];
+    for (let i = 0; i < caseIds.length; i += CASE_SUMMARY_FETCH_CONCURRENCY) {
+      const batch = caseIds.slice(i, i + CASE_SUMMARY_FETCH_CONCURRENCY);
+      const batchResults = await Promise.allSettled(
+        batch.map((caseId) => caseManagement.getCaseSummary(context, caseId)),
+      );
+      results.push(...batchResults);
+    }
+    return results;
   }
 
   private resolvePreselectedCandidate(
@@ -236,9 +264,13 @@ export class TrusteeMatchVerificationUseCase {
         // transient gateway timeout) is a different failure mode than a real division
         // mismatch -- this method's all-or-nothing behavior is specifically about division
         // coverage, not about case-lookup reliability, so the two must surface as distinct,
-        // non-conflatable errors rather than both failing identically.
-        const caseSummaryResults: PromiseSettledResult<CaseSummary>[] = await Promise.allSettled(
-          affectedCaseIds.map((caseId) => caseManagement.getCaseSummary(context, caseId)),
+        // non-conflatable errors rather than both failing identically. Batched (not one
+        // Promise.allSettled over the whole list) so a large affected-case bundle can't fire
+        // dozens of simultaneous DXTR queries inside this one synchronous request.
+        const caseSummaryResults = await this.fetchCaseSummariesBatched(
+          context,
+          caseManagement,
+          affectedCaseIds,
         );
         const failedCaseIds = affectedCaseIds.filter(
           (_caseId, index) => caseSummaryResults[index].status === 'rejected',
@@ -248,9 +280,12 @@ export class TrusteeMatchVerificationUseCase {
             message: `Unable to verify division coverage for case(s): ${failedCaseIds.join(', ')}. Approval was not processed; retry once the lookup succeeds.`,
           });
         }
-        const caseSummaries = caseSummaryResults.map(
-          (result) => (result as PromiseFulfilledResult<CaseSummary>).value,
-        );
+        const caseSummaries = caseSummaryResults
+          .filter(
+            (result): result is PromiseFulfilledResult<CaseSummary> =>
+              result.status === 'fulfilled',
+          )
+          .map((result) => result.value);
         const uncoveredCaseIds = caseSummaries
           .filter(
             (summary) =>

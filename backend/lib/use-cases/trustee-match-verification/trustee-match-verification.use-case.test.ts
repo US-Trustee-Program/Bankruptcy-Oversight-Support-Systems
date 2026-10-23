@@ -861,6 +861,44 @@ describe('TrusteeMatchVerificationUseCase', () => {
           expect.objectContaining({ status: 'approved' }),
         );
       });
+
+      // Guards against a large affected-case bundle firing one simultaneous DXTR query per
+      // case inside a single synchronous request (reviewer-flagged on PR #3090) -- 25 cases
+      // is comfortably above CASE_SUMMARY_FETCH_CONCURRENCY (10), so an unbounded fan-out
+      // would push concurrent in-flight calls well past the cap this test asserts against.
+      test('bounds concurrent case-summary lookups rather than firing one per affected case at once', async () => {
+        const affectedCases = Array.from({ length: 25 }, (_, i) => ({
+          caseId: `case-${i}`,
+          trusteeId: 'fp-abc123',
+          isSurrogate: true,
+        }));
+        mockGetSurrogatesByFingerprints.mockResolvedValue(affectedCases);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+        ]);
+
+        let inFlight = 0;
+        let maxInFlight = 0;
+        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+          async (_context, caseId) => {
+            inFlight++;
+            maxInFlight = Math.max(maxInFlight, inFlight);
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            inFlight--;
+            return {
+              caseId,
+              courtId: '081',
+              courtDivisionCode: '081',
+              chapter: '7',
+            } as CaseSummary;
+          },
+        );
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(maxInFlight).toBeGreaterThan(0);
+        expect(maxInFlight).toBeLessThanOrEqual(10);
+      });
     });
   });
 
