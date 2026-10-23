@@ -29,7 +29,6 @@ import {
 import {
   matchTrusteeByName,
   resolveNameCollisionByScoring,
-  isAppointmentMatch,
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
@@ -42,7 +41,11 @@ import {
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { AppointmentStatus } from '@common/cams/trustees';
-import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  isAppointmentMatch,
+} from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { randomUUID } from 'node:crypto';

@@ -49,7 +49,11 @@ describe('TrusteeSearchModal', () => {
   const modalRef = React.createRef<TrusteeSearchModalImperative>();
   const userEvent = TestingUtilities.setupUserEvent();
 
-  function renderWithProps(onConfirm = vi.fn(), onCancel = vi.fn()) {
+  function renderWithProps(
+    onConfirm = vi.fn(),
+    onCancel = vi.fn(),
+    extraProps: Partial<React.ComponentProps<typeof TrusteeSearchModal>> = {},
+  ) {
     render(
       <BrowserRouter>
         <TrusteeSearchModal
@@ -58,6 +62,7 @@ describe('TrusteeSearchModal', () => {
           dxtrTrusteeName="DOE, JOHN"
           onConfirm={onConfirm}
           onCancel={onCancel}
+          {...extraProps}
         />
       </BrowserRouter>,
     );
@@ -498,6 +503,37 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledWith(sampleResults[0]);
     });
+  });
+
+  test('disables Confirm and explains why when the selected trustee does not cover every affected case', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      ...sampleResults[0],
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), {
+      affectedCases: [
+        { caseId: '081-22-11111', courtId: '081', courtDivisionCode: '081', chapter: '12' },
+      ],
+    });
+
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    const message = await screen.findByTestId('search-uncovered-cases-message');
+    expect(message.textContent).toContain('22-11111');
+    expect(message.textContent).toContain('Chapter 12');
+
+    const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
+    expect(submitButton).toBeDisabled();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   test('calls onCancel when Cancel is clicked', async () => {

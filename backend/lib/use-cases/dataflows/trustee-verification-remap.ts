@@ -6,8 +6,11 @@ import {
   assertValidChapter,
   resolveGroupMatchedProfessionalId,
 } from './sync-trustee-case-appointments';
-import { isAppointmentMatch } from './trustee-match.helpers';
-import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  isAppointmentMatch,
+} from '@common/cams/trustee-appointments';
 import {
   TrusteeAppointmentDownstreamEvent,
   TrusteeVerificationRemapMessage,

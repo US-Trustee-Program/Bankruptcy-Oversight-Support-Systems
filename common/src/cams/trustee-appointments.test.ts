@@ -11,6 +11,9 @@ import {
   findMergeTarget,
   buildMergePayload,
   getDivisionCodes,
+  normalizeChapter,
+  isAppointmentMatch,
+  getUncoveredCases,
   isChapter11CaseByCase,
   isChapter11SubchapterV,
   isChapter12Or13CaseByCase,
@@ -567,6 +570,183 @@ describe('trustee-appointments', () => {
 
     test('does not fall back to divisionCode when divisionCodes is an explicit empty array', () => {
       expect(getDivisionCodes({ divisionCodes: [], divisionCode: '301' })).toEqual([]);
+    });
+  });
+
+  describe('normalizeChapter', () => {
+    test('should remove leading zeros from single-digit chapters', () => {
+      expect(normalizeChapter('07')).toBe('7');
+      expect(normalizeChapter('013')).toBe('13');
+    });
+
+    test('should keep double-digit chapters as-is', () => {
+      expect(normalizeChapter('11')).toBe('11');
+      expect(normalizeChapter('12')).toBe('12');
+      expect(normalizeChapter('13')).toBe('13');
+    });
+
+    test('should normalize chapter with subchapter suffix', () => {
+      expect(normalizeChapter('11-subchapter-v')).toBe('11');
+      expect(normalizeChapter('7-subchapter-b')).toBe('7');
+    });
+
+    test('should handle already normalized chapters', () => {
+      expect(normalizeChapter('7')).toBe('7');
+      expect(normalizeChapter('11')).toBe('11');
+    });
+
+    test('should be case-insensitive', () => {
+      expect(normalizeChapter('11-SUBCHAPTER-V')).toBe('11');
+    });
+
+    test('should lowercase and return as-is when the chapter has no leading digits', () => {
+      expect(normalizeChapter('ABC')).toBe('abc');
+      expect(normalizeChapter('')).toBe('');
+    });
+  });
+
+  describe('isAppointmentMatch', () => {
+    test('should return true when active appointment matches court, division, and chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test('should return false when appointments array is empty', () => {
+      expect(isAppointmentMatch([], '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when matching appointment has status inactive', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when matching appointment has status voluntarily-suspended', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: '1',
+          chapter: '7',
+          status: 'voluntarily-suspended',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when court and division match but chapter does not', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when chapter matches but court does not', () => {
+      const appointments = [
+        makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when court and chapter match on different appointments', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+        makeAppointment({ courtId: '082', divisionCode: '2', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return true with chapter normalization: case "07" matches appointment "7"', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '07')).toBe(true);
+    });
+
+    test('should return true with chapter normalization: case "11-subchapter-v" matches appointment "11"', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '11-subchapter-v')).toBe(true);
+    });
+
+    test('should return true when multiple appointments exist and one is a perfect match', () => {
+      const appointments = [
+        makeAppointment({ courtId: '082', divisionCode: '2', chapter: '13', status: 'active' }),
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+        makeAppointment({ courtId: '083', divisionCode: '3', chapter: '11', status: 'inactive' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test('should return true when case division is included in a multi-division divisionCodes array', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: undefined,
+          divisionCodes: ['235', '236', '237'],
+          chapter: '7',
+          status: 'active',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(true);
+    });
+
+    test('should return false when case division is not in the divisionCodes array', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: undefined,
+          divisionCodes: ['235', '236'],
+          chapter: '7',
+          status: 'active',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(false);
+    });
+  });
+
+  describe('getUncoveredCases', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+
+    test('returns an empty array when every case is covered', () => {
+      const cases = [
+        { caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' },
+        { caseId: '2', courtId: '081', courtDivisionCode: '1', chapter: '07' },
+      ];
+      expect(getUncoveredCases(appointments, cases)).toEqual([]);
+    });
+
+    test('returns only the cases the appointments do not cover', () => {
+      const covered = { caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' };
+      const uncoveredChapter = {
+        caseId: '2',
+        courtId: '081',
+        courtDivisionCode: '1',
+        chapter: '12',
+      };
+      const uncoveredDivision = {
+        caseId: '3',
+        courtId: '081',
+        courtDivisionCode: '2',
+        chapter: '7',
+      };
+      expect(
+        getUncoveredCases(appointments, [covered, uncoveredChapter, uncoveredDivision]),
+      ).toEqual([uncoveredChapter, uncoveredDivision]);
+    });
+
+    test('returns every case when there are no appointments', () => {
+      const cases = [{ caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' }];
+      expect(getUncoveredCases([], cases)).toEqual(cases);
+    });
+
+    test('returns an empty array when there are no cases', () => {
+      expect(getUncoveredCases(appointments, [])).toEqual([]);
     });
   });
 

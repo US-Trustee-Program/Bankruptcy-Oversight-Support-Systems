@@ -268,6 +268,85 @@ export function getDivisionCodes(appointment: {
 }
 
 /**
+ * Normalizes a chapter string for comparison. Removes leading zeros and extracts the base
+ * chapter number from subchapter variants. Examples: "07" -> "7", "11-subchapter-v" -> "11".
+ */
+export function normalizeChapter(chapter: string): string {
+  const match = new RegExp(/^0*(\d+)/).exec(chapter);
+  if (!match) return chapter.toLowerCase();
+  return match[1];
+}
+
+/**
+ * Determines whether an appointment covers a given division, checking both the deprecated
+ * singular `divisionCode` and the current `divisionCodes` array (modern appointments,
+ * including multi-division panel appointments, only populate `divisionCodes`).
+ */
+export function appointmentCoversDivision(
+  appointment: TrusteeAppointment,
+  divisionCode: string,
+): boolean {
+  return (
+    appointment.divisionCode === divisionCode ||
+    getDivisionCodes(appointment).includes(divisionCode)
+  );
+}
+
+/**
+ * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
+ * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
+ * backend's auto-match pipeline, trustee-search filtering, verification-approval enforcement,
+ * and remap re-validation, as well as the Data Verification UI's own pre-approval check (which
+ * runs this exact predicate against data it already has on hand -- CandidateScore.appointments
+ * and TrusteeSearchResult.appointments -- so it can warn a reviewer before they attempt an
+ * approval the backend is guaranteed to reject, without a second network round-trip). Living
+ * here keeps every caller from drifting into disagreeing about what counts as coverage.
+ */
+export function isAppointmentMatch(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+  chapter: string,
+): boolean {
+  const normalizedChapter = normalizeChapter(chapter);
+  return appointments.some(
+    (a) =>
+      a.status === 'active' &&
+      a.courtId === courtId &&
+      appointmentCoversDivision(a, divisionCode) &&
+      normalizeChapter(a.chapter) === normalizedChapter,
+  );
+}
+
+export type AppointmentCoverageCase = {
+  caseId: string;
+  courtId: string;
+  courtDivisionCode: string;
+  chapter: string;
+};
+
+/**
+ * Filters a set of cases down to the ones a trustee's appointments do NOT cover (per
+ * isAppointmentMatch). A verification can affect multiple cases at once (the court reported
+ * the same trustee demographic string across several filings), and a trustee resolving one of
+ * them isn't guaranteed to hold a covering appointment for all of them -- same district,
+ * different chapter is a routine split. The Data Verification UI uses this to warn a reviewer
+ * *before* they attempt an approval that TrusteeMatchVerificationUseCase.approveVerification
+ * is guaranteed to reject for an affected case outside the resolved trustee's coverage,
+ * reusing data it already has on hand (CandidateScore.appointments / TrusteeSearchResult.
+ * appointments) rather than a speculative round-trip. The backend check remains the
+ * authoritative gate regardless of what this returns.
+ */
+export function getUncoveredCases<T extends AppointmentCoverageCase>(
+  appointments: TrusteeAppointment[],
+  cases: T[],
+): T[] {
+  return cases.filter(
+    (c) => !isAppointmentMatch(appointments, c.courtId, c.courtDivisionCode, c.chapter),
+  );
+}
+
+/**
  * Find a merge target among a trustee's existing appointments. A merge target is an active
  * appointment with the same courtId, chapter, and appointmentType -- "duplicate" here means
  * same court+chapter+type, not requiring division overlap; merging is what reconciles

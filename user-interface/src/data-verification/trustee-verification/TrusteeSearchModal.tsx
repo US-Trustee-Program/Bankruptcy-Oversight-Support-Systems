@@ -10,10 +10,15 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
-import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import {
+  formatAppointmentStatus,
+  getUncoveredCases,
+  AppointmentCoverageCase,
+} from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
+import { getCaseNumber } from '@common/cams/cases';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -29,6 +34,13 @@ interface TrusteeSearchModalProps {
   // same modal that doesn't have case context to provide.
   divisionCode?: string;
   chapter?: string;
+  // Every case this verification affects, not just the originating one -- used to disable
+  // Confirm and explain why when the selected trustee doesn't cover all of them (see
+  // getUncoveredCases). The divisionCode/chapter filter above only narrows results against the
+  // single originating case; this is the hard, bundle-wide gate, mirroring what the backend's
+  // approval endpoint is guaranteed to enforce. Omitted (or empty) disables this check entirely
+  // -- e.g. any other caller of this modal with no case-bundle context to provide.
+  affectedCases?: AppointmentCoverageCase[];
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
@@ -56,6 +68,7 @@ function TrusteeSearchModal_(
     courtId,
     divisionCode,
     chapter,
+    affectedCases,
     onConfirm,
     onCancel,
     isProcessing,
@@ -190,12 +203,19 @@ function TrusteeSearchModal_(
       return `${courtName}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
     }) ?? [];
 
+  // Hard, bundle-wide coverage gate (see affectedCases' doc comment above) -- computed only
+  // once a trustee is selected, since there's nothing to warn about otherwise.
+  const uncoveredCases = selectedTrustee
+    ? getUncoveredCases(selectedTrustee.appointments, affectedCases ?? [])
+    : [];
+  const hasUncoveredCases = uncoveredCases.length > 0;
+
   const actionButtonGroup = {
     modalId: `trustee-search-modal-${id}`,
     modalRef,
     submitButton: {
       label: 'Confirm Appointment',
-      disabled: !selectedTrustee || isProcessing,
+      disabled: !selectedTrustee || isProcessing || hasUncoveredCases,
       // Without this, Modal closes itself on click by default, before isProcessing can render.
       closeOnClick: false,
       onClick: () => {
@@ -286,6 +306,18 @@ function TrusteeSearchModal_(
                   {appointmentLines.map((line, i) => (
                     <div key={i}>{line}</div>
                   ))}
+                  {hasUncoveredCases && (
+                    <p
+                      className="usa-error-message uncovered-cases-message"
+                      data-testid="search-uncovered-cases-message"
+                    >
+                      Does not have an appointment covering case(s){' '}
+                      {uncoveredCases
+                        .map((c) => `${getCaseNumber(c.caseId)} (Chapter ${c.chapter})`)
+                        .join(', ')}
+                      . This match cannot be approved until those cases are resolved separately.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div>No Trustee selected</div>

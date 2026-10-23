@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { isAppointmentMatch } from '../dataflows/trustee-match.helpers';
+import { isAppointmentMatch } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'TRUSTEE-SEARCH-USE-CASE';
 

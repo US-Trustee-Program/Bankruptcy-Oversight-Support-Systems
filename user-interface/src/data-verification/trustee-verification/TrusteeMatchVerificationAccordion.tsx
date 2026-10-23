@@ -12,7 +12,7 @@ import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
-import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import { formatAppointmentStatus, getUncoveredCases } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
@@ -189,9 +189,20 @@ type TrusteeCandidateRowProps = {
   candidate: CandidateScore;
   onApprove?: (candidate: CandidateScore) => void;
   isProcessing?: boolean;
+  // Cases in this verification's bundle that candidate.appointments does not cover (per
+  // isAppointmentMatch) -- undefined/empty means every affected case is covered. Non-empty
+  // disables the Match Trustee button, since approving would just fail the backend's own
+  // per-case coverage check; see TrusteeMatchVerificationAccordion's uncoveredCasesByTrusteeId.
+  uncoveredCases?: CaseSummary[];
 };
 
-function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCandidateRowProps) {
+function TrusteeCandidateRow({
+  candidate,
+  onApprove,
+  isProcessing,
+  uncoveredCases,
+}: TrusteeCandidateRowProps) {
+  const hasUncoveredCases = !!uncoveredCases && uncoveredCases.length > 0;
   const rowAddressLines = candidate.address
     ? [
         candidate.address.address1,
@@ -243,12 +254,24 @@ function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCand
             type="button"
             data-testid={`approve-candidate-${candidate.trusteeId}`}
             onClick={() => onApprove(candidate)}
-            disabled={isProcessing}
+            disabled={isProcessing || hasUncoveredCases}
             className="match-trustee-link"
           >
             <Icon name="check" />
             Match Trustee
           </button>
+        )}
+        {onApprove && hasUncoveredCases && (
+          <p
+            className="usa-error-message uncovered-cases-message"
+            data-testid={`uncovered-cases-${candidate.trusteeId}`}
+          >
+            Does not have an appointment covering case(s){' '}
+            {formatFieldList(
+              uncoveredCases!.map((c) => `${getCaseNumber(c.caseId)} (Chapter ${c.chapter})`),
+            )}
+            . This match cannot be approved until those cases are resolved separately.
+          </p>
         )}
       </div>
     </div>
@@ -267,6 +290,9 @@ type CandidateTableProps = {
   // Trustee Appointment column always shows a mismatch icon regardless of district/chapter
   // scores, since an inactive trustee is itself an appointment-level problem.
   forceAppointmentMismatch?: boolean;
+  // Per-candidate uncovered-case lists (see TrusteeCandidateRowProps.uncoveredCases), keyed by
+  // trusteeId. Undefined for the read-only table (no onApprove, so nothing to disable).
+  uncoveredCasesByTrusteeId?: Record<string, CaseSummary[]>;
 };
 
 function CandidateTable({
@@ -275,6 +301,7 @@ function CandidateTable({
   isProcessing,
   scoreCandidate,
   forceAppointmentMismatch,
+  uncoveredCasesByTrusteeId,
 }: CandidateTableProps) {
   // Single source of truth for both the header icons and the problem-statement sentence
   // (getMismatchedFieldLabels) - avoids two independent mismatch computations drifting apart.
@@ -328,6 +355,7 @@ function CandidateTable({
           candidate={candidate}
           onApprove={onApprove}
           isProcessing={isProcessing}
+          uncoveredCases={uncoveredCasesByTrusteeId?.[candidate.trusteeId]}
         />
       ))}
     </div>
@@ -391,7 +419,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
-  const [caseChapter, setCaseChapter] = useState<string | undefined>(undefined);
+  const [affectedCaseSummaries, setAffectedCaseSummaries] = useState<CaseSummary[]>([]);
   const OTHER_MATCHES_PAGE_SIZE = 5;
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
@@ -474,6 +502,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
+  // Per-candidate uncovered-case lists, keyed by trusteeId -- empty (affectedCaseSummaries
+  // hasn't loaded yet, or candidatesToShow is empty pre-expand) means nothing is disabled,
+  // which is correct: the backend's own approval check remains the authoritative gate
+  // regardless of whether this client-side warning had data to compute from yet.
+  const uncoveredCasesByTrusteeId: Record<string, CaseSummary[]> = {};
+  for (const candidate of candidatesToShow) {
+    uncoveredCasesByTrusteeId[candidate.trusteeId] = getUncoveredCases(
+      candidate.appointments ?? [],
+      affectedCaseSummaries,
+    );
+  }
+
   // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
   const preselected = enrichedOrder
     ? candidatesToShow[0]
@@ -501,33 +541,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   useEffect(() => {
     setOtherMatchesPage(1);
   }, [order.id, otherMatchesCount]);
-
-  // Fetched only so the manual search modal can filter to division-eligible trustees
-  // (court+chapter+division, matching isAppointmentMatch's rule). Scoped to the originating
-  // case (order.caseId), same as courtDetails above -- a verification can affect multiple
-  // cases, but the search modal only narrows candidates plausibly; the backend's approval
-  // check remains the authoritative gate across every affected case regardless. If this
-  // fetch fails, chapter stays undefined and the search modal falls back to its original
-  // district-only filtering rather than blocking search entirely.
-  //
-  // Skipped for already-approved orders, matching handleExpand's existing guard above: an
-  // approved order's search modal can never be reached, so there is no accordion-group row
-  // render for which this fetch has any display benefit, only an unconditional per-row
-  // network call.
-  useEffect(() => {
-    if (order.status === 'approved') return;
-    let cancelled = false;
-    Api2.getCaseSummary(order.caseId)
-      .then((response) => {
-        if (!cancelled) setCaseChapter((response as ResponseBody<CaseSummary>).data.chapter);
-      })
-      .catch(() => {
-        // chapter is optional context for search filtering; search still works without it
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [order.caseId, order.status]);
 
   async function approveTrustee({
     trusteeId,
@@ -631,6 +644,42 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         : order.affectedCaseCount;
   const hasFullCaseList = viewMode === 'resolved' || !!enrichedOrder;
 
+  // Fetched so the UI can warn a reviewer, before they attempt an approval, when a candidate's
+  // appointments don't cover every case in this bundle (getUncoveredCases) -- the same per-case
+  // rule the backend's approval endpoint is guaranteed to enforce. Pre-expand, affectedCaseIds
+  // is just [order.caseId], so this only fetches the full bundle once enrichedOrder's real list
+  // is known; the dependency on the joined id string (rather than the array itself, a new
+  // reference every render) keeps this from refetching on every re-render.
+  //
+  // Skipped for already-approved orders, matching handleExpand's existing guard above: an
+  // approved order's candidate/search UI can never be reached, so there is no render for which
+  // this fetch has any display benefit, only an unconditional per-row network call.
+  const affectedCaseIdsKey = affectedCaseIds.join(',');
+  useEffect(() => {
+    if (order.status === 'approved') return;
+    let cancelled = false;
+    Promise.all(affectedCaseIdsKey.split(',').map((caseId) => Api2.getCaseSummary(caseId)))
+      .then((responses) => {
+        if (!cancelled) {
+          setAffectedCaseSummaries(
+            responses.map((response) => (response as ResponseBody<CaseSummary>).data),
+          );
+        }
+      })
+      .catch(() => {
+        // coverage warnings are optional, best-effort context; approval still works (and the
+        // backend remains the authoritative gate) if these summaries can't be loaded
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [affectedCaseIdsKey, order.status]);
+
+  // Scoped to the originating case only (order.caseId) -- used solely to narrow the manual
+  // search modal's results list, which stays a heuristic regardless (see TrusteeSearchModal's
+  // own doc comment); the hard, bundle-wide gate is uncoveredCasesBySelection below.
+  const originatingCaseSummary = affectedCaseSummaries.find((c) => c.caseId === order.caseId);
+
   const singleCaseLink = (
     <NewTabLink
       to={`/case-detail/${affectedCaseIds[0]}`}
@@ -721,6 +770,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   isProcessing={isProcessing}
                   scoreCandidate={candidatesToShow[0]}
                   forceAppointmentMismatch={isInactiveStatus}
+                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
                 />
                 <h3>Other Potential Matches</h3>
                 <p className="other-matches-subtext">
@@ -746,6 +796,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     )}
                   onApprove={openConfirmation}
                   isProcessing={isProcessing}
+                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
                 />
                 {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
                   <OtherMatchesPagination
@@ -766,6 +817,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   isProcessing={isProcessing}
                   scoreCandidate={candidatesToShow[0]}
                   forceAppointmentMismatch={isInactiveStatus}
+                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
                 />
                 <TrusteeSearchLink
                   linkMessage="There are no other suggested matches in CAMS."
@@ -1001,7 +1053,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         dxtrTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
         divisionCode={divisionCode}
-        chapter={caseChapter}
+        chapter={originatingCaseSummary?.chapter}
+        affectedCases={affectedCaseSummaries}
         onConfirm={handleManualMatch}
         isProcessing={isProcessing}
       />

@@ -14,6 +14,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import { getCaseNumber } from '@common/cams/cases';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -1011,6 +1012,50 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).toContain('Eastern District');
   });
 
+  test('disables Match Trustee and explains why when the candidate does not cover an affected case', async () => {
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+      data: MockData.getCaseSummary({
+        override: {
+          caseId: sampleOrder.caseId,
+          chapter: '12',
+          courtId: '081',
+          courtDivisionCode: '081',
+        },
+      }),
+    });
+    const candidateMissingCoverage: CandidateScore = {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Jane Smith',
+      totalScore: 95,
+      addressScore: 90,
+      nameScore: 90,
+      phoneScore: null,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 95,
+      // Covers chapter 7 at this court/division; the case above is chapter 12.
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    const orderWithCandidate: TrusteeMatchVerificationListItem = {
+      ...sampleOrder,
+      preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+      candidateCount: 1,
+    };
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
+      ...sampleOrderDetail,
+      matchCandidates: [candidateMissingCoverage],
+    };
+    renderWithProps({ order: orderWithCandidate });
+    await mockDetailAndExpand(detailWithCandidate);
+
+    const message = await screen.findByTestId('uncovered-cases-trustee-1');
+    expect(message.textContent).toContain(getCaseNumber(sampleOrder.caseId));
+    expect(message.textContent).toContain('Chapter 12');
+    expect(screen.getByTestId('approve-candidate-trustee-1')).toBeDisabled();
+  });
+
   test('should render read-only candidate table for rejected order, selecting highest-scoring candidate', async () => {
     const candidates: CandidateScore[] = [
       {
@@ -1425,12 +1470,28 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
+      // courtId/courtDivisionCode/chapter must agree with the search result's own appointment
+      // below -- the modal's Confirm button now also gates on bundle-wide coverage
+      // (getUncoveredCases), so a mismatch here would leave the button disabled regardless of
+      // what this test is actually asserting (the search call's own parameters).
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
-        data: MockData.getCaseSummary({ override: { chapter: '7' } }),
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: sampleOrder.caseId,
+            chapter: '7',
+            courtId: '081',
+            courtDivisionCode: '081',
+          },
+        }),
       });
-      const searchSpy = vi
-        .spyOn(Api2, 'searchTrustees')
-        .mockResolvedValue({ data: manualSearchMockData });
+      const coveringAppointment = MockData.getTrusteeAppointment({
+        courtId: '081',
+        divisionCode: '081',
+        chapter: '7',
+      });
+      const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...manualSearchMockData[0], appointments: [coveringAppointment] }],
+      });
       renderWithProps();
 
       await searchAndSelectTrustee();

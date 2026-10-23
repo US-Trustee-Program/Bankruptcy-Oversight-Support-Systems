@@ -23,7 +23,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
-import { isAppointmentMatch } from '../dataflows/trustee-match.helpers';
+import { isAppointmentMatch } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
