@@ -17,6 +17,8 @@
 #   - az CLI logged in as an Entra ID admin
 #   - AZ_SECURITY_SCAN_STORAGE_NAME and AZ_SECURITY_SCAN_RG set in environment
 #     (required by setup-security-scan-federated-credential.sh only)
+#   - AZ_DORA_METRICS_STORAGE_NAME, AZ_DORA_METRICS_RG, and AZ_MAIN_KV_RG set in
+#     environment (required by setup-dora-metrics-federated-credential.sh)
 #
 # This script is idempotent — re-running will update existing resources rather
 # than creating duplicates.
