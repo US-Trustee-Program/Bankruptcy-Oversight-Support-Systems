@@ -159,6 +159,31 @@ ignore:
           dompurify 3.4.16 -> 3.4.17 together, then remove this ignore
           and SNYK-JS-DOMPURIFY-21460657.
         expires: 2026-10-27T00:00:00.000Z
+  SNYK-JS-AZUREMSALNODE-21689163:
+    - '*':
+        reason: >-
+          Origin Validation Error (CVE-2026-109461) in
+          @azure/msal-node@6.0.0, pulled in transitively by
+          @azure/identity@4.13.3 (pinned to msal-node ^6.0.0). Flagged
+          across backend (node), dev-tools, and test/e2e (via mssql >
+          tedious > @azure/identity). No fixed version available from
+          upstream: @azure/identity's latest release (4.14.0) still pins
+          msal-node ^6.0.0, and the fix (7.1.0) is a major version bump
+          npm's ^6.0.0 range won't resolve to; no @azure/identity release
+          depends on msal-node >=7.1.0 yet. The flaw is in
+          ConfidentialClientApplication.acquireTokenByCode, which fails
+          to sanitize the caller-supplied authCodePayload during an
+          authorization-code token exchange. Not reachable in CAMS: every
+          @azure/identity usage — the explicit DefaultAzureCredential in
+          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
+          and the azure-active-directory-default auth type used by
+          mssql/tedious across backend, dev-tools, and test/e2e (see
+          application-configuration.ts, sql-config.ts,
+          seed-sqlserver.ts) — resolves to DefaultAzureCredential's
+          client-credential/managed-identity token acquisition, never
+          the authorization-code flow. Re-check for an @azure/identity
+          release that bumps msal-node to >=7.1.0.
+        expires: 2026-11-23T00:00:00.000Z
   SNYK-JS-DOMPURIFY-21460657:
     - '*':
         reason: >-
