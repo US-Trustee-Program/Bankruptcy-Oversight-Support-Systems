@@ -9,7 +9,12 @@ import {
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  normalizeChapter,
+  appointmentCoversDivision,
+  isAppointmentMatch,
+} from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -440,54 +445,6 @@ export function calculateAddressScore(
   // Rounded to the nearest integer so this behaves like every other CandidateScore sub-score
   // (nameScore, districtDivisionScore, chapterScore are always whole numbers).
   return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
-}
-
-/**
- * Normalizes a chapter string for comparison.
- * Removes leading zeros and extracts base chapter from subchapter variants.
- * Examples: "07" → "7", "11-subchapter-v" → "11"
- */
-export function normalizeChapter(chapter: string): string {
-  // Extract base chapter number (before any dash or subchapter suffix)
-  const match = new RegExp(/^0*(\d+)/).exec(chapter);
-  if (!match) return chapter.toLowerCase();
-  return match[1];
-}
-
-/**
- * Determines whether an appointment covers a given division, checking both
- * the deprecated singular `divisionCode` and the current `divisionCodes`
- * array (modern appointments, including multi-division panel appointments,
- * only populate `divisionCodes`).
- */
-function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
-  return (
-    appointment.divisionCode === divisionCode ||
-    (appointment.divisionCodes?.includes(divisionCode) ?? false)
-  );
-}
-
-/**
- * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
- * chapter all on that same record — used both for perfect-match auto-linking and as a gate (see
- * resolveNameCollisionByScoring) ensuring a fuzzy-match winner's district/division and chapter
- * evidence didn't come from two different appointments. Stricter than the individual scoring
- * functions, which check these criteria independently across all appointments.
- */
-export function isAppointmentMatch(
-  appointments: TrusteeAppointment[],
-  courtId: string,
-  divisionCode: string,
-  chapter: string,
-): boolean {
-  const normalizedChapter = normalizeChapter(chapter);
-  return appointments.some(
-    (a) =>
-      a.status === 'active' &&
-      a.courtId === courtId &&
-      appointmentCoversDivision(a, divisionCode) &&
-      normalizeChapter(a.chapter) === normalizedChapter,
-  );
 }
 
 /**

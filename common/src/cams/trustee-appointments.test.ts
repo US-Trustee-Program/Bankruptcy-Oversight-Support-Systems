@@ -4,9 +4,16 @@ import {
   chapterAppointmentTypeMap,
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
   TrusteeAppointmentInput,
+  TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
   isChapter7Elected,
+  findMergeTarget,
+  buildMergePayload,
+  getDivisionCodes,
+  normalizeChapter,
+  isAppointmentMatch,
+  getUncoveredCases,
   isChapter11CaseByCase,
   isChapter11SubchapterV,
   isChapter12Or13CaseByCase,
@@ -16,6 +23,38 @@ import {
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
+
+const BASE_COURT_ID = '081-';
+
+function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment {
+  return {
+    id: 'appt-1',
+    trusteeId: 'trustee-1',
+    courtId: BASE_COURT_ID,
+    chapter: '7',
+    appointmentType: 'panel',
+    divisionCodes: ['301'],
+    appointedDate: '2020-01-01',
+    status: 'active',
+    effectiveDate: '2020-01-01',
+    updatedOn: '2020-01-01T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    ...overrides,
+  };
+}
+
+function makePayload(overrides: Partial<TrusteeAppointmentInput> = {}): TrusteeAppointmentInput {
+  return {
+    courtId: BASE_COURT_ID,
+    chapter: '7',
+    appointmentType: 'panel',
+    divisionCodes: ['303'],
+    appointedDate: '2021-01-01',
+    status: 'active',
+    effectiveDate: '2021-01-01',
+    ...overrides,
+  };
+}
 
 describe('trustee-appointments', () => {
   describe('formatAppointmentStatus', () => {
@@ -103,6 +142,14 @@ describe('trustee-appointments', () => {
       const result = getStatusOptions('7' as AppointmentChapterType, 'standing' as AppointmentType);
       expect(result).toEqual(['active', 'inactive']);
     });
+
+    test('should return default fallback for an unrecognized chapter, not throw', () => {
+      // AppointmentChapterType is a closed union at compile time, but this runs against
+      // untrusted input cast from an HTTP request body at runtime -- an out-of-range chapter
+      // must fail safely, not throw on an undefined lookup.
+      const result = getStatusOptions('99' as AppointmentChapterType, 'panel');
+      expect(result).toEqual(['active', 'inactive']);
+    });
   });
 
   describe('chapterAppointmentTypeMap', () => {
@@ -178,10 +225,22 @@ describe('trustee-appointments', () => {
           status: 'active',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "standing" is not valid for chapter 7',
         );
+      });
+
+      test('should fail validation cleanly (not throw) when chapter is not a recognized value', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '99' as AppointmentChapterType,
+          appointmentType: 'panel',
+          status: 'active',
+        };
+        expect(() => validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment)).not.toThrow();
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBeUndefined();
       });
 
       test('should fail validation when appointmentType pool is used for Chapter 7', () => {
@@ -192,7 +251,7 @@ describe('trustee-appointments', () => {
           status: 'active',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "pool" is not valid for chapter 7',
         );
@@ -265,7 +324,7 @@ describe('trustee-appointments', () => {
             status: status as AppointmentStatus,
           };
           const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-          expect(result.valid).not.toBe(true);
+          expect(result.valid).toBeUndefined();
           expect(result.reasonMap?.$?.reasons).toContain(expectedMessage);
         },
       );
@@ -278,7 +337,7 @@ describe('trustee-appointments', () => {
           status: 'removed',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Status "removed" is not valid for chapter 7 with appointment type "panel"',
         );
@@ -294,7 +353,7 @@ describe('trustee-appointments', () => {
           status: 'removed',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "standing" is not valid for chapter 7',
         );
@@ -493,6 +552,354 @@ describe('trustee-appointments', () => {
       expect(isChapter7Elected(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
         false,
       );
+    });
+  });
+
+  describe('getDivisionCodes', () => {
+    test('returns divisionCodes when present', () => {
+      expect(getDivisionCodes({ divisionCodes: ['301', '303'] })).toEqual(['301', '303']);
+    });
+
+    test('falls back to the legacy divisionCode when divisionCodes is absent', () => {
+      expect(getDivisionCodes({ divisionCode: '301' })).toEqual(['301']);
+    });
+
+    test('returns an empty array when both divisionCodes and divisionCode are absent', () => {
+      expect(getDivisionCodes({})).toEqual([]);
+    });
+
+    test('does not fall back to divisionCode when divisionCodes is an explicit empty array', () => {
+      expect(getDivisionCodes({ divisionCodes: [], divisionCode: '301' })).toEqual([]);
+    });
+  });
+
+  describe('normalizeChapter', () => {
+    test('should remove leading zeros from single-digit chapters', () => {
+      expect(normalizeChapter('07')).toBe('7');
+      expect(normalizeChapter('013')).toBe('13');
+    });
+
+    test('should keep double-digit chapters as-is', () => {
+      expect(normalizeChapter('11')).toBe('11');
+      expect(normalizeChapter('12')).toBe('12');
+      expect(normalizeChapter('13')).toBe('13');
+    });
+
+    test('should normalize chapter with subchapter suffix', () => {
+      expect(normalizeChapter('11-subchapter-v')).toBe('11');
+      expect(normalizeChapter('7-subchapter-b')).toBe('7');
+    });
+
+    test('should handle already normalized chapters', () => {
+      expect(normalizeChapter('7')).toBe('7');
+      expect(normalizeChapter('11')).toBe('11');
+    });
+
+    test('should be case-insensitive', () => {
+      expect(normalizeChapter('11-SUBCHAPTER-V')).toBe('11');
+    });
+
+    test('should lowercase and return as-is when the chapter has no leading digits', () => {
+      expect(normalizeChapter('ABC')).toBe('abc');
+      expect(normalizeChapter('')).toBe('');
+    });
+  });
+
+  describe('isAppointmentMatch', () => {
+    test('should return true when active appointment matches court, division, and chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test('should return false when appointments array is empty', () => {
+      expect(isAppointmentMatch([], '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when matching appointment has status inactive', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when matching appointment has status voluntarily-suspended', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: '1',
+          chapter: '7',
+          status: 'voluntarily-suspended',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when court and division match but chapter does not', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when chapter matches but court does not', () => {
+      const appointments = [
+        makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when court and chapter match on different appointments', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+        makeAppointment({ courtId: '082', divisionCode: '2', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return true with chapter normalization: case "07" matches appointment "7"', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '07')).toBe(true);
+    });
+
+    test('should return true with chapter normalization: case "11-subchapter-v" matches appointment "11"', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '11-subchapter-v')).toBe(true);
+    });
+
+    test('should return true when multiple appointments exist and one is a perfect match', () => {
+      const appointments = [
+        makeAppointment({ courtId: '082', divisionCode: '2', chapter: '13', status: 'active' }),
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+        makeAppointment({ courtId: '083', divisionCode: '3', chapter: '11', status: 'inactive' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test('should return true when case division is included in a multi-division divisionCodes array', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: undefined,
+          divisionCodes: ['235', '236', '237'],
+          chapter: '7',
+          status: 'active',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(true);
+    });
+
+    test('should return false when case division is not in the divisionCodes array', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCode: undefined,
+          divisionCodes: ['235', '236'],
+          chapter: '7',
+          status: 'active',
+        }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(false);
+    });
+  });
+
+  describe('getUncoveredCases', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+
+    test('returns an empty array when every case is covered', () => {
+      const cases = [
+        { caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' },
+        { caseId: '2', courtId: '081', courtDivisionCode: '1', chapter: '07' },
+      ];
+      expect(getUncoveredCases(appointments, cases)).toEqual([]);
+    });
+
+    test('returns only the cases the appointments do not cover', () => {
+      const covered = { caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' };
+      const uncoveredChapter = {
+        caseId: '2',
+        courtId: '081',
+        courtDivisionCode: '1',
+        chapter: '12',
+      };
+      const uncoveredDivision = {
+        caseId: '3',
+        courtId: '081',
+        courtDivisionCode: '2',
+        chapter: '7',
+      };
+      expect(
+        getUncoveredCases(appointments, [covered, uncoveredChapter, uncoveredDivision]),
+      ).toEqual([uncoveredChapter, uncoveredDivision]);
+    });
+
+    test('returns every case when there are no appointments', () => {
+      const cases = [{ caseId: '1', courtId: '081', courtDivisionCode: '1', chapter: '7' }];
+      expect(getUncoveredCases([], cases)).toEqual(cases);
+    });
+
+    test('returns an empty array when there are no cases', () => {
+      expect(getUncoveredCases(appointments, [])).toEqual([]);
+    });
+  });
+
+  describe('findMergeTarget', () => {
+    test('returns undefined when the list is empty', () => {
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [])).toBeUndefined();
+    });
+
+    test('returns undefined when no appointment matches court/chapter/type', () => {
+      const appt = makeAppointment({ courtId: '097-' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
+
+    test('returns undefined when the matching appointment is not active', () => {
+      const appt = makeAppointment({ status: 'inactive' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
+
+    test('returns the matching active appointment, skipping inactive ones', () => {
+      const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
+      const active = makeAppointment({ id: 'appt-active' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [inactive, active])).toBe(
+        active,
+      );
+    });
+
+    test('has no built-in self-exclusion -- a caller must filter out the appointment being updated itself', () => {
+      // findMergeTarget itself has no notion of "the appointment being updated": passed its
+      // own unfiltered active appointment, it matches itself. An update path must exclude
+      // that appointment from existingAppointments before calling this, or it would
+      // spuriously detect a self-duplicate -- this test proves the exclusion is the caller's
+      // responsibility, not something this function does for you.
+      const self = makeAppointment({ id: 'self' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [self])).toBe(self);
+    });
+
+    test.each(['inactive', 'voluntarily-suspended', 'deceased', 'resigned'] as AppointmentStatus[])(
+      'returns undefined when the incoming status is %s, even if a matching active appointment exists',
+      (incomingStatus) => {
+        const active = makeAppointment({ id: 'appt-active' });
+        expect(
+          findMergeTarget(BASE_COURT_ID, '7', 'panel', incomingStatus, [active]),
+        ).toBeUndefined();
+      },
+    );
+
+    test('returns undefined when chapter differs, even with matching court and appointmentType', () => {
+      const appt = makeAppointment({ chapter: '11', appointmentType: 'panel' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
+
+    test('returns undefined when appointmentType differs, even with matching court and chapter', () => {
+      const appt = makeAppointment({ chapter: '7', appointmentType: 'off-panel' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
+  });
+
+  describe('buildMergePayload', () => {
+    test('returns { type: "created" } when there is no merge target', () => {
+      expect(buildMergePayload(undefined, makePayload())).toEqual({ type: 'created' });
+    });
+
+    test('merges division codes and deduplicates them', () => {
+      const target = makeAppointment({ divisionCodes: ['301', '303'] });
+      const payload = makePayload({ divisionCodes: ['303', '310'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toHaveLength(3);
+      expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303', '310']));
+    });
+
+    test('sets divisionCode to the first element of the merged array', () => {
+      const target = makeAppointment({ divisionCodes: ['301'] });
+      const payload = makePayload({ divisionCodes: ['303'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCode).toBe(result.payload.divisionCodes![0]);
+    });
+
+    test('reports only the newly-added division codes, not codes already on the target', () => {
+      const target = makeAppointment({ divisionCodes: ['301', '303'] });
+      const payload = makePayload({ divisionCodes: ['303', '310'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.addedDivisionCodes).toEqual(['310']);
+    });
+
+    test('uses legacy divisionCode when divisionCodes is absent on the target', () => {
+      const target = makeAppointment({ divisionCodes: undefined, divisionCode: '301' });
+      const payload = makePayload({ divisionCodes: ['303'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303']));
+    });
+
+    test('tolerates a payload with no divisionCodes at all, merging in nothing new', () => {
+      // A legacy caller could in principle omit divisionCodes entirely (the type permits it,
+      // even though both current callers normalize it in first) -- this proves that path
+      // doesn't throw and simply contributes no new divisions, rather than exercising only
+      // the common case where payload.divisionCodes is always set.
+      const target = makeAppointment({ divisionCodes: ['301'] });
+      const payload = makePayload({ divisionCodes: undefined, divisionCode: undefined });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toEqual(['301']);
+      expect(result.addedDivisionCodes).toEqual([]);
+    });
+
+    test('includes the target id', () => {
+      const target = makeAppointment({ id: 'my-target-id' });
+      const result = buildMergePayload(target, makePayload());
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.targetId).toBe('my-target-id');
+    });
+
+    test("preserves the merge target's own appointedDate/status/effectiveDate rather than the incoming payload's", () => {
+      // Only division codes are meant to be unioned -- every other field belongs to the
+      // pre-existing target record and must survive the merge untouched, even though the
+      // incoming payload (the record being redirected away from) carries different values.
+      const target = makeAppointment({
+        divisionCodes: ['301'],
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+      });
+      const payload = makePayload({
+        divisionCodes: ['303'],
+        appointedDate: '2022-06-15',
+        status: 'active',
+        effectiveDate: '2022-07-01',
+      });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.appointedDate).toBe('2020-01-01');
+      expect(result.payload.status).toBe('active');
+      expect(result.payload.effectiveDate).toBe('2020-01-01');
+    });
+
+    test("preserves the merge target's own courtName/courtDivisionName", () => {
+      const target = makeAppointment({
+        divisionCodes: ['301'],
+        courtName: 'Target District',
+        courtDivisionName: 'Target Division',
+      });
+      const payload = makePayload({
+        divisionCodes: ['303'],
+        courtName: 'Incoming District',
+        courtDivisionName: 'Incoming Division',
+      });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.courtName).toBe('Target District');
+      expect(result.payload.courtDivisionName).toBe('Target Division');
     });
   });
 
