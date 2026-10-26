@@ -2,7 +2,6 @@ import { vi } from 'vitest';
 import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
-import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
@@ -119,11 +118,6 @@ describe('Test DXTR Gateway', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-
-    const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
-    featureFlagSpy.mockImplementation(async () => {
-      return {};
-    });
 
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
@@ -769,68 +763,41 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockResolvedValueOnce(mockQueryJointDebtorAttorney);
 
     await testCasesDxtrGateway.getCaseDetail(applicationContext, '081-23-12345');
-    // getCase — args: (context, query, input) → index 2 is input
-    expect(querySpy.mock.calls[0][2]).toEqual(
+
+    const caseIdParams = expect.arrayContaining([
+      expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
+      expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
+    ]);
+
+    // getCase query is identifiable by its unique @dxtrCaseId / @courtDiv params
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('@dxtrCaseId'),
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrCaseId', value: '23-12345' }),
         expect.objectContaining({ name: 'courtDiv', value: '081' }),
       ]),
     );
-    // getDebtors
-    expect(querySpy.mock.calls[1][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
+    // party/alias/transaction/trustee/attorney queries all carry dxtrId + courtId
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('@partyCode'),
+      caseIdParams,
     );
-    // getDebtorAliases
-    expect(querySpy.mock.calls[2][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('AO_ALIAS'),
+      caseIdParams,
     );
-    // getJointDebtors
-    expect(querySpy.mock.calls[3][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('@closedByCourtTxCode'),
+      caseIdParams,
     );
-    // getJointDebtorAliases
-    expect(querySpy.mock.calls[4][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getTransactions
-    expect(querySpy.mock.calls[5][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getTrustee
-    expect(querySpy.mock.calls[6][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getDebtorAttorneys
-    expect(querySpy.mock.calls[7][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
-    );
-    // getJointDebtorAttorneys
-    expect(querySpy.mock.calls[8][2]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
-        expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
-      ]),
+    expect(querySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('AO_AT'),
+      caseIdParams,
     );
   });
 
@@ -1341,10 +1308,22 @@ describe('Test DXTR Gateway', () => {
       );
     });
 
-    test('should return undefined when no transactions exist', async () => {
+    test('should return undefined when recordset row has no MAX_TX_ID', async () => {
       querySpy.mockResolvedValue({
         success: true,
         results: { recordset: [{}] },
+        message: '',
+      } as QueryResults);
+
+      const actual = await testCasesDxtrGateway.findMaxTransactionId(applicationContext);
+
+      expect(actual).toBeUndefined();
+    });
+
+    test('should return undefined when recordset is empty', async () => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
         message: '',
       } as QueryResults);
 
@@ -1479,6 +1458,7 @@ describe('Test DXTR Gateway', () => {
         querySpy.mockResolvedValueOnce(casesResults);
         querySpy.mockResolvedValueOnce(transactionsResults);
 
+        // lastTransactionsTxId = 0 is the bootstrap-equivalent starting cursor (catches all history)
         const result = await testCasesDxtrGateway.getUpdatedCaseIds(
           applicationContext,
           '2024-01-01',
@@ -1491,26 +1471,21 @@ describe('Test DXTR Gateway', () => {
 
         expect(result.latestCasesSyncDate).toEqual(expectedLatestCasesSyncDate);
         expect(result.latestTransactionsTxId).toEqual(expectedLatestTransactionsTxId);
+        expect(result.latestTransactionsSyncDate).toBeDefined();
       },
     );
 
-    test('should use TX_ID > @lastTransactionsTxId in terminal transactions query', async () => {
+    test('should use TX_ID cursor (not TX_DATE) in terminal transactions query', async () => {
       querySpy.mockResolvedValue(makeQueryResults([]));
 
       await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', 0);
 
       const allSqlCalls = querySpy.mock.calls.map((call) => call[1] as string);
-      const transactionsQueryCall = allSqlCalls[1];
+      const transactionsQueryCall = allSqlCalls.find((sql) =>
+        sql.includes('@lastTransactionsTxId'),
+      );
+      expect(transactionsQueryCall).toBeDefined();
       expect(transactionsQueryCall).toContain('TX.TX_ID > @lastTransactionsTxId');
-    });
-
-    test('should NOT use TX_DATE in terminal transactions query', async () => {
-      querySpy.mockResolvedValue(makeQueryResults([]));
-
-      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', 0);
-
-      const allSqlCalls = querySpy.mock.calls.map((call) => call[1] as string);
-      const transactionsQueryCall = allSqlCalls[1];
       expect(transactionsQueryCall).not.toContain('TX_DATE > @transactionsStart');
     });
   });

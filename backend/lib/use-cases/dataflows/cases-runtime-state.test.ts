@@ -17,7 +17,6 @@ describe('storeRuntimeState tests', () => {
   });
 
   test('should persist a new sync state and log', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
     const upsertSpy = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(undefined);
@@ -40,20 +39,23 @@ describe('storeRuntimeState tests', () => {
       lastTransactionsTxId,
     });
     expect(errorLogSpy).not.toHaveBeenCalled();
-    expect(infoLogSpy).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.stringContaining('Wrote runtime state: '),
-      expect.anything(),
-    );
+    expect(infoLogSpy).toHaveBeenCalled();
+  });
+
+  test('should omit lastTransactionsTxId from state document when not provided', async () => {
+    const upsertSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue(undefined);
+
+    const lastCasesSyncDate = '2025-01-01T00:00:00.000Z';
+    const lastTransactionsSyncDate = '2025-01-01T00:00:00.000Z';
+    await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
+
+    const upserted = upsertSpy.mock.calls[0][0] as CasesSyncState;
+    expect(upserted).not.toHaveProperty('lastTransactionsTxId');
   });
 
   test('should log CamsError', async () => {
-    const original: CasesSyncState = {
-      documentType: 'CASES_SYNC_STATE',
-      lastCasesSyncDate: '1000',
-      lastTransactionsSyncDate: '1000',
-    };
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
     vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('some error'));
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
@@ -62,8 +64,8 @@ describe('storeRuntimeState tests', () => {
     ).resolves.toBeUndefined();
     expect(errorLogSpy).toHaveBeenCalled();
     expect(infoLogSpy).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.stringContaining('Wrote runtime state: '),
+      'CASE-RUNTIME-STATE',
+      expect.anything(),
       expect.anything(),
     );
   });

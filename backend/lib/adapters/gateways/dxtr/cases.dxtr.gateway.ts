@@ -348,7 +348,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
     const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
     const { results } = await this.executeQuery(context, query);
-    return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
+    return results['recordset'][0]?.['MAX_TX_ID'] ?? undefined;
   }
 
   private async bisectBound(

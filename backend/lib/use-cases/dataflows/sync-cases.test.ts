@@ -57,14 +57,12 @@ describe('getCaseIds tests', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('should use provided lastSyncDate if provided and return gateway latestSyncDate', async () => {
+  test('should use provided lastSyncDate if provided, bootstrap TX_ID, and not read stored state', async () => {
     const lastSyncDate = '2025-02-01T23:59:59.000Z';
     const latestCasesSyncDate = '2025-02-11T14:00:00.456Z';
     const latestTransactionsSyncDate = '2025-02-11T15:30:00.123Z';
     const latestTransactionsTxId = 99;
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new Error('this should not be called'),
-    );
+    const readSpy = vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
 
     const mockCaseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
@@ -75,17 +73,16 @@ describe('getCaseIds tests', () => {
       start: 45,
     });
 
-    const getUpdatedSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({
-        caseIds: mockCaseIds,
-        latestCasesSyncDate,
-        latestTransactionsSyncDate,
-        latestTransactionsTxId,
-      });
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds: mockCaseIds,
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+      latestTransactionsTxId,
+    });
 
     const actual = await SyncCases.getCaseIds(context, lastSyncDate);
-    expect(getUpdatedSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 50);
+    expect(readSpy).not.toHaveBeenCalled();
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 50);
     expect(actual).toEqual({
       events: expect.anything(),
       lastCasesSyncDate: latestCasesSyncDate,
@@ -139,31 +136,6 @@ describe('getCaseIds tests', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('should produce all CASE_CHANGED events', async () => {
-    const caseIds = ['081-20-10001', '081-20-10002'];
-
-    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
-      caseIds,
-      latestCasesSyncDate: '2025-02-11T10:30:00.124Z',
-      latestTransactionsSyncDate: '2025-02-11T12:45:00.789Z',
-      latestTransactionsTxId: 100,
-    });
-
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
-      documentType: 'CASES_SYNC_STATE',
-      lastCasesSyncDate: '2025-01-01',
-      lastTransactionsSyncDate: '2025-01-01',
-      lastTransactionsTxId: 50,
-    } as CasesSyncState);
-
-    const actual = await SyncCases.getCaseIds(context);
-
-    expect(actual.events).toEqual([
-      { caseId: '081-20-10001', type: 'CASE_CHANGED' },
-      { caseId: '081-20-10002', type: 'CASE_CHANGED' },
-    ]);
-  });
-
   test('should bootstrap TX_ID from date range when lastTransactionsTxId absent from sync state', async () => {
     const lastSyncDate = '2025-03-01T00:00:00.000Z';
     const caseIds = MockData.buildArray(MockData.randomCaseId, 2);
@@ -186,10 +158,16 @@ describe('getCaseIds tests', () => {
       // no lastTransactionsTxId — simulates first run after deploy
     } as CasesSyncState);
 
-    await SyncCases.getCaseIds(context);
+    const actual = await SyncCases.getCaseIds(context);
 
     expect(findRangeSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate);
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 42);
+    expect(actual).toEqual({
+      events: caseIds.map((caseId) => ({ caseId, type: 'CASE_CHANGED' })),
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+      lastTransactionsTxId: 42,
+    });
   });
 
   test('should bootstrap TX_ID using findMaxTransactionId when date range not found', async () => {
@@ -219,9 +197,78 @@ describe('getCaseIds tests', () => {
       // no lastTransactionsTxId
     } as CasesSyncState);
 
-    await SyncCases.getCaseIds(context);
+    const actual = await SyncCases.getCaseIds(context);
 
     expect(findMaxSpy).toHaveBeenCalled();
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 999);
+    expect(actual).toEqual({
+      events: caseIds.map((caseId) => ({ caseId, type: 'CASE_CHANGED' })),
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+      lastTransactionsTxId: 999,
+    });
+  });
+
+  test('should bootstrap TX_ID using findMaxTransactionId when range found but end is undefined', async () => {
+    const lastSyncDate = '2025-03-01T00:00:00.000Z';
+    const caseIds = MockData.buildArray(MockData.randomCaseId, 2);
+
+    vi.spyOn(CasesLocalGateway.prototype, 'findTransactionIdRangeForDate').mockResolvedValue({
+      findDate: lastSyncDate,
+      found: true,
+      // end deliberately absent — edge case where range found but end could not be determined
+    });
+
+    const findMaxSpy = vi
+      .spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId')
+      .mockResolvedValue('888');
+
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      latestCasesSyncDate: lastSyncDate,
+      latestTransactionsSyncDate: lastSyncDate,
+      latestTransactionsTxId: 888,
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+    } as CasesSyncState);
+
+    await SyncCases.getCaseIds(context);
+
+    expect(findMaxSpy).toHaveBeenCalled();
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 888);
+  });
+
+  test('should not self-heal when sync state has both lastSyncDate and lastCasesSyncDate', async () => {
+    const lastCasesSyncDate = '2025-04-01T00:00:00.000Z';
+    const lastTransactionsTxId = 500;
+
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds: [],
+      latestCasesSyncDate: lastCasesSyncDate,
+      latestTransactionsSyncDate: lastCasesSyncDate,
+      latestTransactionsTxId: lastTransactionsTxId,
+    });
+
+    // Document has both fields — should NOT be treated as legacy (lastSyncDate field ignored)
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastSyncDate: '2020-01-01T00:00:00.000Z',
+      lastCasesSyncDate,
+      lastTransactionsSyncDate: lastCasesSyncDate,
+      lastTransactionsTxId,
+    } as CasesSyncState);
+
+    await SyncCases.getCaseIds(context);
+
+    // Should use lastCasesSyncDate from the modern fields, not lastSyncDate from legacy field
+    expect(getIdSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      lastCasesSyncDate,
+      lastTransactionsTxId,
+    );
   });
 });
