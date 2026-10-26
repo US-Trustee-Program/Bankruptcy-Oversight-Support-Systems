@@ -1355,9 +1355,9 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('getUpdatedCaseIds', () => {
-    test('should return case ids and latest sync date from first record', async () => {
+    test('should return case ids and latest TX_ID from first transaction record', async () => {
       const latestCasesSyncDate = '2025-02-11T10:30:00.124Z';
-      const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
+      const latestTransactionsTxId = 9001;
 
       const casesRecordset = MockData.buildArray(MockData.randomCaseId, 50).map((caseId, idx) => {
         const syncDate = idx === 0 ? latestCasesSyncDate : '2025-02-10T08:00:00.000Z';
@@ -1366,8 +1366,8 @@ describe('Test DXTR Gateway', () => {
 
       const transactionsRecordset = MockData.buildArray(MockData.randomCaseId, 50).map(
         (caseId, idx) => {
-          const syncDate = idx === 0 ? latestTransactionsSyncDate : '2025-02-10T09:00:00.000Z';
-          return { caseId, latestSyncDate: syncDate };
+          const txId = idx === 0 ? latestTransactionsTxId : latestTransactionsTxId - idx;
+          return { caseId, txId };
         },
       );
 
@@ -1392,19 +1392,19 @@ describe('Test DXTR Gateway', () => {
       querySpy.mockResolvedValueOnce(transactionsResults);
 
       const casesStart = new Date().toISOString();
-      const transactionsStart = new Date().toISOString();
+      const lastTransactionsTxId = 8000;
       const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
         applicationContext,
         casesStart,
-        transactionsStart,
+        lastTransactionsTxId,
       );
 
       expect(actual.caseIds).toHaveLength(allCaseIds.size);
       expect(actual.latestCasesSyncDate).toEqual(latestCasesSyncDate);
-      expect(actual.latestTransactionsSyncDate).toEqual(latestTransactionsSyncDate);
+      expect(actual.latestTransactionsTxId).toEqual(latestTransactionsTxId);
     });
 
-    test('should return empty array and original start dates when no results', async () => {
+    test('should return empty array and original cursor values when no results', async () => {
       const emptyResults: QueryResults = {
         success: true,
         results: { recordset: [] },
@@ -1412,7 +1412,7 @@ describe('Test DXTR Gateway', () => {
       };
 
       const casesStart = '2025-02-11T08:00:00.000Z';
-      const transactionsStart = '2025-02-11T09:00:00.000Z';
+      const lastTransactionsTxId = 500;
 
       querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
@@ -1420,14 +1420,12 @@ describe('Test DXTR Gateway', () => {
       const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
         applicationContext,
         casesStart,
-        transactionsStart,
+        lastTransactionsTxId,
       );
 
-      expect(actual).toEqual({
-        caseIds: [],
-        latestCasesSyncDate: casesStart,
-        latestTransactionsSyncDate: transactionsStart,
-      });
+      expect(actual.caseIds).toEqual([]);
+      expect(actual.latestCasesSyncDate).toEqual(casesStart);
+      expect(actual.latestTransactionsTxId).toEqual(lastTransactionsTxId);
     });
 
     test.each([
@@ -1437,34 +1435,34 @@ describe('Test DXTR Gateway', () => {
           { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
           { caseId: '081-21-12345', latestSyncDate: '2025-02-11T09:00:00.000Z' },
         ],
-        transactionsData: [],
+        transactionsData: [] as Array<{ caseId: string; txId: number }>,
         expectedCaseIds: ['081-20-10508', '081-21-12345'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
-        expectedLatestTransactionsSyncDate: '2024-01-01',
+        expectedLatestTransactionsTxId: 0,
       },
       {
         description: 'should include cases with terminal transactions from AO_TX',
         casesData: [],
-        transactionsData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        transactionsData: [{ caseId: '081-20-10508', txId: 1234 }],
         expectedCaseIds: ['081-20-10508'],
         expectedLatestCasesSyncDate: '2024-01-01',
-        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+        expectedLatestTransactionsTxId: 1234,
       },
       {
         description: 'should deduplicate cases found in both AO_CS and AO_TX queries',
         casesData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' }],
-        transactionsData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        transactionsData: [{ caseId: '081-20-10508', txId: 2000 }],
         expectedCaseIds: ['081-20-10508'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
-        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+        expectedLatestTransactionsTxId: 2000,
       },
       {
         description: 'should return cases from both AO_CS and AO_TX queries',
         casesData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' }],
-        transactionsData: [{ caseId: '081-21-12345', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        transactionsData: [{ caseId: '081-21-12345', txId: 3000 }],
         expectedCaseIds: ['081-20-10508', '081-21-12345'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
-        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+        expectedLatestTransactionsTxId: 3000,
       },
     ])(
       '$description',
@@ -1473,7 +1471,7 @@ describe('Test DXTR Gateway', () => {
         transactionsData,
         expectedCaseIds,
         expectedLatestCasesSyncDate,
-        expectedLatestTransactionsSyncDate,
+        expectedLatestTransactionsTxId,
       }) => {
         const casesResults = makeQueryResults(casesData);
         const transactionsResults = makeQueryResults(transactionsData);
@@ -1484,7 +1482,7 @@ describe('Test DXTR Gateway', () => {
         const result = await testCasesDxtrGateway.getUpdatedCaseIds(
           applicationContext,
           '2024-01-01',
-          '2024-01-01',
+          0,
         );
 
         expectedCaseIds.forEach((caseId) => {
@@ -1492,9 +1490,29 @@ describe('Test DXTR Gateway', () => {
         });
 
         expect(result.latestCasesSyncDate).toEqual(expectedLatestCasesSyncDate);
-        expect(result.latestTransactionsSyncDate).toEqual(expectedLatestTransactionsSyncDate);
+        expect(result.latestTransactionsTxId).toEqual(expectedLatestTransactionsTxId);
       },
     );
+
+    test('should use TX_ID > @lastTransactionsTxId in terminal transactions query', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', 0);
+
+      const allSqlCalls = querySpy.mock.calls.map((call) => call[1] as string);
+      const transactionsQueryCall = allSqlCalls[1];
+      expect(transactionsQueryCall).toContain('TX.TX_ID > @lastTransactionsTxId');
+    });
+
+    test('should NOT use TX_DATE in terminal transactions query', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', 0);
+
+      const allSqlCalls = querySpy.mock.calls.map((call) => call[1] as string);
+      const transactionsQueryCall = allSqlCalls[1];
+      expect(transactionsQueryCall).not.toContain('TX_DATE > @transactionsStart');
+    });
   });
 
   describe('getCasesWithTerminalTransactionBlindSpot', () => {

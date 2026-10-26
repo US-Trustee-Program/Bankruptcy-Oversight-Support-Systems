@@ -41,11 +41,34 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     }
 
     const casesGateway = factory.getCasesGateway(context);
-    const { caseIds, latestCasesSyncDate, latestTransactionsSyncDate } =
+
+    // Bootstrap: derive starting TX_ID from date cursor on first run after deploy.
+    // Once lastTransactionsTxId is stored in Cosmos it is used directly on all
+    // subsequent runs.
+    let lastTransactionsTxId: number;
+    if (syncState.lastTransactionsTxId !== undefined) {
+      lastTransactionsTxId = syncState.lastTransactionsTxId;
+    } else {
+      const range = await casesGateway.findTransactionIdRangeForDate(
+        context,
+        syncState.lastTransactionsSyncDate,
+      );
+      if (range.found && range.end !== undefined) {
+        lastTransactionsTxId = range.end;
+      } else {
+        // Edge case: no transactions exist for that exact date.
+        // Fall back to current max TX_ID — safe because any transaction inserted after
+        // this point will still be caught on the next run.
+        const maxTxIdStr = await casesGateway.findMaxTransactionId(context);
+        lastTransactionsTxId = Number.parseInt(maxTxIdStr, 10);
+      }
+    }
+
+    const { caseIds, latestCasesSyncDate, latestTransactionsSyncDate, latestTransactionsTxId } =
       await casesGateway.getUpdatedCaseIds(
         context,
         syncState.lastCasesSyncDate,
-        syncState.lastTransactionsSyncDate,
+        lastTransactionsTxId,
       );
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
@@ -56,6 +79,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
       events,
       lastCasesSyncDate: latestCasesSyncDate,
       lastTransactionsSyncDate: latestTransactionsSyncDate,
+      lastTransactionsTxId: latestTransactionsTxId,
     };
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME);

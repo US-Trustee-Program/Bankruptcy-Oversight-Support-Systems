@@ -71,10 +71,8 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       invocationContext,
       observability,
     });
-    const { events, lastCasesSyncDate, lastTransactionsSyncDate } = await SyncCases.getCaseIds(
-      context,
-      startMessage['lastSyncDate'],
-    );
+    const { events, lastCasesSyncDate, lastTransactionsSyncDate, lastTransactionsTxId } =
+      await SyncCases.getCaseIds(context, startMessage['lastSyncDate']);
 
     if (!events.length) {
       completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -96,7 +94,12 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
     }
     invocationContext.extraOutputs.set(PAGE, pages);
 
-    await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
+    await CasesRuntimeState.storeRuntimeState(
+      context,
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
+      lastTransactionsTxId,
+    );
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,

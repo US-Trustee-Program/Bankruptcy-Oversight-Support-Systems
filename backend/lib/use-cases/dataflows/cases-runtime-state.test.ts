@@ -24,13 +24,20 @@ describe('storeRuntimeState tests', () => {
 
     const lastCasesSyncDate = new Date().toISOString();
     const lastTransactionsSyncDate = new Date().toISOString();
+    const lastTransactionsTxId = 12345;
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
-    await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
+    await CasesRuntimeState.storeRuntimeState(
+      context,
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
+      lastTransactionsTxId,
+    );
     expect(upsertSpy).toHaveBeenCalledWith({
       documentType: 'CASES_SYNC_STATE',
       lastCasesSyncDate,
       lastTransactionsSyncDate,
+      lastTransactionsTxId,
     });
     expect(errorLogSpy).not.toHaveBeenCalled();
     expect(infoLogSpy).toHaveBeenCalledWith(
@@ -51,7 +58,7 @@ describe('storeRuntimeState tests', () => {
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
     await expect(
-      CasesRuntimeState.storeRuntimeState(context, '1001', '1001'),
+      CasesRuntimeState.storeRuntimeState(context, '1001', '1001', 1001),
     ).resolves.toBeUndefined();
     expect(errorLogSpy).toHaveBeenCalled();
     expect(infoLogSpy).not.toHaveBeenCalledWith(
