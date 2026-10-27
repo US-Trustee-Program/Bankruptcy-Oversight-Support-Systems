@@ -53,7 +53,7 @@ describe('getCaseIds tests', () => {
       lastTransactionsTxId: latestTransactionsTxId,
     };
 
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 10);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 10, lastSyncDate);
     expect(actual).toEqual(expected);
   });
 
@@ -82,7 +82,7 @@ describe('getCaseIds tests', () => {
 
     const actual = await SyncCases.getCaseIds(context, lastSyncDate);
     expect(readSpy).not.toHaveBeenCalled();
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 50);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 50, lastSyncDate);
     expect(actual).toEqual({
       events: expect.anything(),
       lastCasesSyncDate: latestCasesSyncDate,
@@ -122,7 +122,12 @@ describe('getCaseIds tests', () => {
     const actual = await SyncCases.getCaseIds(context);
 
     // Should call gateway with legacy date for cases cursor and bootstrapped TX_ID
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), legacyLastSyncDate, 77);
+    expect(getIdSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      legacyLastSyncDate,
+      77,
+      legacyLastSyncDate,
+    );
 
     const expected = {
       events: caseIds.map((caseId) => {
@@ -161,7 +166,7 @@ describe('getCaseIds tests', () => {
     const actual = await SyncCases.getCaseIds(context);
 
     expect(findRangeSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate);
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 42);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 42, lastSyncDate);
     expect(actual).toEqual({
       events: caseIds.map((caseId) => ({ caseId, type: 'CASE_CHANGED' })),
       lastCasesSyncDate: lastSyncDate,
@@ -200,7 +205,7 @@ describe('getCaseIds tests', () => {
     const actual = await SyncCases.getCaseIds(context);
 
     expect(findMaxSpy).toHaveBeenCalled();
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 999);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 999, lastSyncDate);
     expect(actual).toEqual({
       events: caseIds.map((caseId) => ({ caseId, type: 'CASE_CHANGED' })),
       lastCasesSyncDate: lastSyncDate,
@@ -239,7 +244,7 @@ describe('getCaseIds tests', () => {
     await SyncCases.getCaseIds(context);
 
     expect(findMaxSpy).toHaveBeenCalled();
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 888);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 888, lastSyncDate);
   });
 
   test('should not self-heal when sync state has both lastSyncDate and lastCasesSyncDate', async () => {
@@ -269,6 +274,7 @@ describe('getCaseIds tests', () => {
       expect.anything(),
       lastCasesSyncDate,
       lastTransactionsTxId,
+      lastCasesSyncDate,
     );
   });
 });

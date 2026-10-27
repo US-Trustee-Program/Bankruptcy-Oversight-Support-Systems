@@ -76,7 +76,7 @@ type PartyCode = DebtorPartyCode | 'tr';
 const NOT_FOUND = -1;
 
 type CaseIdRecord = { caseId: string; latestSyncDate: string };
-type TransactionIdRecord = { caseId: string; txId: number };
+type TransactionIdRecord = { caseId: string; txId: number; txDate: string };
 
 type TrusteeAppointmentEventRecord = {
   caseId: string;
@@ -635,6 +635,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     context: ApplicationContext,
     casesStart: string,
     lastTransactionsTxId: number,
+    lastTransactionsSyncDate: string,
   ): Promise<UpdatedCaseIds> {
     // Query 1: Get cases updated in AO_CS (unchanged — LAST_UPDATE_DATE is a system
     // timestamp and does not have the backdating problem that TX_DATE has)
@@ -671,7 +672,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const transactionsQuery = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
-        TX.TX_ID AS txId
+        TX.TX_ID AS txId,
+        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS txDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -706,9 +708,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         : lastTransactionsTxId;
 
     // latestTransactionsSyncDate kept for rollback safety — old code reads this field.
+    // Use the actual TX_DATE of the latest terminal transaction so a rollback to date-based
+    // sync covers the same window. Fall back to the prior cursor (not casesStart) so a
+    // no-results run does not corrupt the rollback field with the unrelated AO_CS cursor.
     // See cleanup ticket cams-qg4jq.
     const latestTransactionsSyncDate =
-      transactionsResults.length > 0 ? new Date().toISOString() : casesStart;
+      transactionsResults.length > 0 ? transactionsResults[0].txDate : lastTransactionsSyncDate;
 
     return {
       caseIds: Array.from(caseIdSet),
