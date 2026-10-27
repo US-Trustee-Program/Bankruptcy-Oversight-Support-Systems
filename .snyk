@@ -138,6 +138,31 @@ ignore:
           6.16.0 -> 6.16.1 together, then remove this ignore and the
           SNYK-JS-QS-20943482 ignore.
         expires: 2026-11-06T00:00:00.000Z
+  SNYK-JS-QS-21755395:
+    - '*':
+        reason: >-
+          Improper Encoding or Escaping of Output (CVE-2026-110910) in
+          qs@6.16.0, pinned by the root package.json override and pulled
+          in by express@5.3.0 and body-parser@2.3.0. The flaw is in
+          qs.stringify() when called with { allowEmptyArrays: true }: an
+          attacker-controlled object key containing '&', '=', or '#' is
+          not encoded, letting the key name inject extra query-string
+          parameters or a URL fragment into the output. Not reachable in
+          CAMS: express and body-parser only call qs.parse() to read
+          incoming query strings/bodies, never qs.stringify() (verified
+          by grep across backend, common, user-interface, dev-tools,
+          dora-metrics, test — no CAMS source calls qs.stringify or
+          passes allowEmptyArrays anywhere). The only other qs consumer
+          in the lockfile is typed-rest-client (pulled in transitively by
+          @stryker-mutator/core, dev-only), which never calls stringify
+          with allowEmptyArrays either. Fixed version 6.17.0 was
+          published 2026-10-27 and is blocked by CAMS's 14-day minimum
+          npm release-age policy (.npmrc min-release-age=14) until
+          2026-11-10. Bump the root package.json qs override from
+          6.16.0 to 6.17.0 (or 6.16.1, once that also clears the embargo
+          — see SNYK-JS-QS-20943482) and remove this ignore once the
+          embargo lifts.
+        expires: 2026-11-11T00:00:00.000Z
   SNYK-JS-AZUREMSALNODE-21689163:
     - '*':
         reason: >-
