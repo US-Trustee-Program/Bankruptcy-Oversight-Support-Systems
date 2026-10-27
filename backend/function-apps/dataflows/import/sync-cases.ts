@@ -75,6 +75,16 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       await SyncCases.getCaseIds(context, startMessage['lastSyncDate']);
 
     if (!events.length) {
+      // Always persist runtime state even when no cases changed, so the TX_ID cursor
+      // is not discarded on quiet runs or on the first bootstrap run with zero events.
+      if (lastCasesSyncDate && lastTransactionsTxId !== undefined) {
+        await CasesRuntimeState.storeRuntimeState(
+          context,
+          lastCasesSyncDate,
+          lastTransactionsSyncDate,
+          lastTransactionsTxId,
+        );
+      }
       completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
@@ -270,7 +280,7 @@ function setup() {
   });
 }
 
-export { handlePage, handlePagePoison };
+export { handleStart, handlePage, handlePagePoison };
 export default {
   MODULE_NAME,
   setup,

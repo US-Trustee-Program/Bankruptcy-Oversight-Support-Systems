@@ -2,6 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import * as SyncCasesUseCase from '../../../lib/use-cases/dataflows/sync-cases';
+import * as CasesRuntimeStateModule from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
@@ -22,6 +24,60 @@ const makeCaseSyncEvent = (caseId: string): CaseSyncEvent =>
     type: 'CASE_CHANGED',
     caseId,
   }) as CaseSyncEvent;
+
+describe('sync-cases handleStart', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should persist runtime state even when no cases changed', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+
+    const lastCasesSyncDate = '2025-10-01T09:30:00.000Z';
+    const lastTransactionsSyncDate = '2025-10-01T09:30:00.000Z';
+    const lastTransactionsTxId = 42;
+
+    vi.spyOn(SyncCasesUseCase.default, 'getCaseIds').mockResolvedValue({
+      events: [],
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
+      lastTransactionsTxId,
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const storeStateSpy = vi
+      .spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState')
+      .mockResolvedValue(undefined);
+
+    await handleStart({}, invocationContext);
+
+    expect(storeStateSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
+      lastTransactionsTxId,
+    );
+  });
+
+  test('should not persist runtime state when getCaseIds returns no sync dates (error path)', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncCasesUseCase.default, 'getCaseIds').mockResolvedValue({ events: [] });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const storeStateSpy = vi
+      .spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState')
+      .mockResolvedValue(undefined);
+
+    await handleStart({}, invocationContext);
+
+    expect(storeStateSpy).not.toHaveBeenCalled();
+  });
+});
 
 describe('sync-cases handlePage', () => {
   beforeEach(() => {
