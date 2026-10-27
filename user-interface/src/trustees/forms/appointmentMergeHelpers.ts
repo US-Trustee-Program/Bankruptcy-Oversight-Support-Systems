@@ -1,7 +1,13 @@
 import { getDivisionsForDistrict } from '@/lib/utils/court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+  buildMergePayload,
+  findMergeTarget,
+} from '@common/cams/trustee-appointments';
+
+export { findMergeTarget };
 
 type MergeResult =
   | {
@@ -15,57 +21,33 @@ type MergeResult =
     };
 
 /**
- * Find a merge target among existing appointments.
- * A merge target is an active appointment with the same courtId, chapter, and appointmentType.
- */
-export function findMergeTarget(
-  courtId: string,
-  chapter: AppointmentChapterType | string,
-  appointmentType: AppointmentType | string,
-  existingAppointments: TrusteeAppointment[],
-): TrusteeAppointment | undefined {
-  return existingAppointments.find(
-    (appt) =>
-      appt.courtId === courtId &&
-      appt.chapter === chapter &&
-      appt.appointmentType === appointmentType &&
-      appt.status === 'active',
-  );
-}
-
-/**
- * Determine whether to merge into an existing appointment or create a new one.
- * If a merge target exists, builds a merged payload with deduplicated division codes.
+ * Determine whether to merge into an existing appointment or create a new one, for display
+ * in the appointment form's UX (e.g. "Updated existing appointment to include X"). The
+ * duplicate-detection and division-merge logic itself lives in
+ * common/src/cams/trustee-appointments.ts (buildMergePayload) so the backend can enforce the
+ * identical rule -- this wrapper only adds human-readable division names, which needs a
+ * district's full division list and has no backend equivalent.
  */
 export function buildMergeResult(
   mergeTarget: TrusteeAppointment | undefined,
   payload: TrusteeAppointmentInput,
   allCourts: CourtDivisionDetails[],
 ): MergeResult {
-  if (!mergeTarget) {
-    return { type: 'created' };
+  const result = buildMergePayload(mergeTarget, payload);
+  if (result.type === 'created') {
+    return result;
   }
 
-  const existingDivisions = (mergeTarget.divisionCodes ?? [mergeTarget.divisionCode]).filter(
-    Boolean,
-  ) as string[];
-  const mergedDivisions = [...new Set([...existingDivisions, ...payload.divisionCodes!])];
-  const addedDivisions = payload.divisionCodes!.filter((code) => !existingDivisions.includes(code));
-
   const divisions = getDivisionsForDistrict(allCourts, payload.courtId);
-  const addedNames = addedDivisions.map((code) => {
+  const addedNames = result.addedDivisionCodes.map((code) => {
     const div = divisions.find((d) => d.courtDivisionCode === code);
     return div?.courtDivisionName ?? code;
   });
 
   return {
     type: 'merged',
-    targetId: mergeTarget.id,
-    payload: {
-      ...payload,
-      divisionCodes: mergedDivisions,
-      divisionCode: mergedDivisions[0],
-    },
+    targetId: result.targetId,
+    payload: result.payload,
     addedNames,
   };
 }

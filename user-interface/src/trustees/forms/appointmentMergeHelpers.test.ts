@@ -1,6 +1,10 @@
 import { describe, test, expect } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+  findMergeTarget as commonFindMergeTarget,
+} from '@common/cams/trustee-appointments';
 import { findMergeTarget, buildMergeResult } from './appointmentMergeHelpers';
 
 // ──────────────────────────────────────────────
@@ -82,47 +86,13 @@ function makePayload(overrides: Partial<TrusteeAppointmentInput> = {}): TrusteeA
 // findMergeTarget
 // ──────────────────────────────────────────────
 
+// This module only re-exports common/src/cams/trustee-appointments.ts's findMergeTarget --
+// its own matching/active/status logic is exhaustively tested there against the same function
+// object. A smoke test here just proves the re-export is wired correctly; the full behavior
+// matrix belongs in common's own test suite, not duplicated here.
 describe('findMergeTarget', () => {
-  test('returns undefined when the list is empty', () => {
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', []);
-    expect(result).toBeUndefined();
-  });
-
-  test('returns undefined when no appointment matches the courtId', () => {
-    const appt = makeAppointment({ courtId: '097-' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
-    expect(result).toBeUndefined();
-  });
-
-  test('returns undefined when no appointment matches the chapter', () => {
-    const appt = makeAppointment({ chapter: '13' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
-    expect(result).toBeUndefined();
-  });
-
-  test('returns undefined when no appointment matches the appointmentType', () => {
-    const appt = makeAppointment({ appointmentType: 'off-panel' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
-    expect(result).toBeUndefined();
-  });
-
-  test('returns undefined when matching appointment is not active', () => {
-    const appt = makeAppointment({ status: 'inactive' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
-    expect(result).toBeUndefined();
-  });
-
-  test('returns the matching active appointment', () => {
-    const appt = makeAppointment();
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
-    expect(result).toBe(appt);
-  });
-
-  test('skips inactive appointments and finds the active one', () => {
-    const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
-    const active = makeAppointment({ id: 'appt-active' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [inactive, active]);
-    expect(result).toBe(active);
+  test('re-exports the same function as common/src/cams/trustee-appointments', () => {
+    expect(findMergeTarget).toBe(commonFindMergeTarget);
   });
 });
 
@@ -130,6 +100,11 @@ describe('findMergeTarget', () => {
 // buildMergeResult
 // ──────────────────────────────────────────────
 
+// buildMergeResult's only unique responsibility is resolving human-readable division names via
+// allCourts/getDivisionsForDistrict (see appointmentMergeHelpers.ts's own doc comment) -- the
+// duplicate-detection and division-merge logic itself lives in common's buildMergePayload and
+// is exhaustively tested there. These tests cover only this wrapper's own value-add: name
+// resolution and the created/merged passthrough.
 describe('buildMergeResult', () => {
   describe('when mergeTarget is undefined', () => {
     test('returns { type: "created" }', () => {
@@ -139,39 +114,6 @@ describe('buildMergeResult', () => {
   });
 
   describe('when mergeTarget is defined', () => {
-    test('returns type "merged"', () => {
-      const target = makeAppointment({ divisionCodes: ['301'] });
-      const payload = makePayload({ divisionCodes: ['303'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      expect(result.type).toBe('merged');
-    });
-
-    test('includes the target id', () => {
-      const target = makeAppointment({ id: 'my-target-id', divisionCodes: ['301'] });
-      const payload = makePayload({ divisionCodes: ['303'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.targetId).toBe('my-target-id');
-    });
-
-    test('merges division codes and deduplicates them', () => {
-      const target = makeAppointment({ divisionCodes: ['301', '303'] });
-      const payload = makePayload({ divisionCodes: ['303', '310'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      // 301 from target, 303 deduped, 310 added — exactly these three
-      expect(result.payload.divisionCodes).toHaveLength(3);
-      expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303', '310']));
-    });
-
-    test('sets divisionCode to the first element of the merged array', () => {
-      const target = makeAppointment({ divisionCodes: ['301'] });
-      const payload = makePayload({ divisionCodes: ['303'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.payload.divisionCode).toBe(result.payload.divisionCodes![0]);
-    });
-
     test('resolves added division names from allCourts', () => {
       const target = makeAppointment({ divisionCodes: ['301'] });
       const payload = makePayload({ divisionCodes: ['303'] }); // St. Louis
@@ -194,43 +136,6 @@ describe('buildMergeResult', () => {
       const result = buildMergeResult(target, payload, COURTS);
       if (result.type !== 'merged') throw new Error('expected merged');
       expect(result.addedNames).toEqual([]);
-    });
-
-    test('spreads all other payload fields into the merged payload', () => {
-      const target = makeAppointment({ divisionCodes: ['301'] });
-      const payload = makePayload({
-        divisionCodes: ['303'],
-        appointedDate: '2022-06-15',
-        effectiveDate: '2022-07-01',
-        status: 'active',
-      });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.payload.appointedDate).toBe('2022-06-15');
-      expect(result.payload.effectiveDate).toBe('2022-07-01');
-      expect(result.payload.status).toBe('active');
-    });
-
-    // ── divisionCodes ?? [divisionCode] branch ──
-
-    test('uses legacy divisionCode when divisionCodes is absent on the target', () => {
-      // mergeTarget has only divisionCode (no divisionCodes array)
-      const target = makeAppointment({ divisionCodes: undefined, divisionCode: '301' });
-      const payload = makePayload({ divisionCodes: ['303'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.payload.divisionCodes).toContain('301');
-      expect(result.payload.divisionCodes).toContain('303');
-    });
-
-    test('filters out falsy entries when divisionCodes is absent and divisionCode is undefined', () => {
-      // divisionCodes undefined, divisionCode undefined → existingDivisions should be []
-      const target = makeAppointment({ divisionCodes: undefined, divisionCode: undefined });
-      const payload = makePayload({ divisionCodes: ['303'] });
-      const result = buildMergeResult(target, payload, COURTS);
-      if (result.type !== 'merged') throw new Error('expected merged');
-      // only the payload division survives (no falsy entries from target)
-      expect(result.payload.divisionCodes).toEqual(['303']);
     });
 
     test('handles multiple added divisions and resolves each name', () => {

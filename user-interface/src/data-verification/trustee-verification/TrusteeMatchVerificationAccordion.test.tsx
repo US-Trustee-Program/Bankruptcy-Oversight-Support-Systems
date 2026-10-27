@@ -14,6 +14,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import { getCaseNumber } from '@common/cams/cases';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -145,6 +146,11 @@ function clickTwiceInSameBatch(button: HTMLElement | null) {
 describe('TrusteeMatchVerificationAccordion', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Default: no case-coverage data available, so the pre-approval coverage check
+    // (getUncoveredCases) has nothing to flag and every test's Match Trustee/Confirm button
+    // stays enabled unless a test cares about coverage specifically and overrides this with
+    // its own getCaseSummary mock (as the coverage/search-filtering tests below do).
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not mocked in this test'));
   });
 
   test('should render accordion heading with court, date, task type, and status', () => {
@@ -177,6 +183,29 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
     expect(heading.textContent).toContain('Southern District of New York');
+  });
+
+  test('order.courtName takes precedence over the courts-prop lookup when both are present', () => {
+    renderWithProps({
+      order: { ...sampleOrder, courtName: 'Direct Court Name' },
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+    expect(heading.textContent).toContain('Direct Court Name');
+    expect(heading.textContent).not.toContain('Southern District of New York');
   });
 
   test('should render case link, trustee name, and no-match message in content', () => {
@@ -659,6 +688,55 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
+    test('does not fetch the case summary on mount for a resolved order', async () => {
+      // The accordion group keeps every row mounted (toggling visibility, not conditional
+      // rendering), so an ungated fetch here would fire once per approved row on every list
+      // render -- this order's search modal can never be reached, so there is no display
+      // benefit to the fetch, only an unconditional per-row network call.
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+      };
+
+      renderWithProps({ order: resolvedOrder });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
+    });
+
+    test('does not fetch the case summary on mount for a pending, un-expanded order', async () => {
+      // DataVerificationScreen mounts every accordion up front regardless of which rows the
+      // user has expanded, so an ungated fetch here would fire once per pending row on every
+      // page load; the result is unusable pre-expand anyway (candidatesToShow, the only
+      // consumer, stays empty until enrichedOrder loads).
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
+    });
+
+    test('fetches the case summary once a pending order is expanded', async () => {
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: { caseId: sampleOrderWithCandidates.caseId },
+        }),
+      });
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      await waitFor(() =>
+        expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrderWithCandidates.caseId),
+      );
+    });
+
     test('does not fetch detail when a resolved order is manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -698,7 +776,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('keeps the confirmation modal open with a spinner while approval is in flight', async () => {
+  test('threads isProcessing=true into the confirmation modal while approval is in flight', async () => {
+    // Scoped to wiring only: does the Accordion set isProcessing=true on the modal while its
+    // own approveTrustee call is pending? The modal's own rendering in response to
+    // isProcessing (spinner text, is-visible/is-hidden CSS classes) is already covered in
+    // isolation by TrusteeMatchConfirmationModal.test.tsx and isn't re-asserted here, so this
+    // test doesn't break on a refactor to that component's internals.
     let resolveApproval: () => void = () => {};
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockImplementation(
       () => new Promise<void>((resolve) => (resolveApproval = () => resolve())),
@@ -712,21 +795,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
     );
     fireEvent.click(modalSubmit!);
 
-    const wrapper = document.getElementById(
-      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-wrapper`,
-    );
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-visible');
-      expect(
-        within(wrapper as HTMLElement).getByText('Confirming appointment...'),
-      ).toBeInTheDocument();
       expect(modalSubmit).toBeDisabled();
     });
 
     resolveApproval();
 
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-hidden');
+      expect(modalSubmit).not.toBeDisabled();
     });
   });
 
@@ -778,10 +854,32 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('calls onOrderUpdate with error alert on approve failure', async () => {
+  test('calls onOrderUpdate with the specific error message on approve failure', async () => {
+    // Surfacing the caught error's own message (rather than a generic fallback) is what lets a
+    // division-mismatch rejection from the backend show the user something actionable.
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
       new Error('Network error'),
     );
+    const onOrderUpdate = vi.fn();
+    renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
+
+    await waitFor(() => {
+      expect(onOrderUpdate).toHaveBeenCalledWith(
+        { message: 'Network error', type: UswdsAlertStyle.Error, timeOut: 8 },
+        sampleOrderWithCandidates,
+      );
+    });
+  });
+
+  test('falls back to a generic message when the caught rejection is not an Error instance', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
     const onOrderUpdate = vi.fn();
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
     await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
@@ -946,6 +1044,102 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).toContain('555-5678 x123');
     expect(content.textContent).toContain('Southern District');
     expect(content.textContent).toContain('Eastern District');
+  });
+
+  test('disables Match Trustee and explains why when the candidate does not cover an affected case', async () => {
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+      data: MockData.getCaseSummary({
+        override: {
+          caseId: sampleOrder.caseId,
+          chapter: '12',
+          courtId: '081',
+          courtDivisionCode: '081',
+        },
+      }),
+    });
+    const candidateMissingCoverage: CandidateScore = {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Jane Smith',
+      totalScore: 95,
+      addressScore: 90,
+      nameScore: 90,
+      phoneScore: null,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 95,
+      // Covers chapter 7 at this court/division; the case above is chapter 12.
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    const orderWithCandidate: TrusteeMatchVerificationListItem = {
+      ...sampleOrder,
+      preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+      candidateCount: 1,
+    };
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
+      ...sampleOrderDetail,
+      matchCandidates: [candidateMissingCoverage],
+    };
+    renderWithProps({ order: orderWithCandidate });
+    await mockDetailAndExpand(detailWithCandidate);
+
+    const message = await screen.findByTestId('uncovered-cases-trustee-1');
+    expect(message.textContent).toContain(getCaseNumber(sampleOrder.caseId));
+    expect(message.textContent).toContain('Chapter 12');
+    expect(screen.getByTestId('approve-candidate-trustee-1')).toBeDisabled();
+  });
+
+  test('still warns on an uncovered case whose summary loaded, even when a sibling case in the bundle fails to load', async () => {
+    // Regression guard for the Promise.all -> Promise.allSettled fix: a single rejected
+    // getCaseSummary must not silently discard the summaries that DID load, which would
+    // otherwise report "no problem" for a case the candidate genuinely does not cover.
+    const loadedCaseId = '081-22-11111';
+    const unloadableCaseId = '081-22-99999';
+    vi.spyOn(Api2, 'getCaseSummary').mockImplementation(async (caseId: string) => {
+      if (caseId === unloadableCaseId) {
+        throw new Error('case not yet synced');
+      }
+      return {
+        data: MockData.getCaseSummary({
+          override: { caseId, chapter: '12', courtId: '081', courtDivisionCode: '081' },
+        }),
+      };
+    });
+    const candidateMissingCoverage: CandidateScore = {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Jane Smith',
+      totalScore: 95,
+      addressScore: 90,
+      nameScore: 90,
+      phoneScore: null,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 95,
+      // Covers chapter 7; loadedCaseId above is chapter 12.
+      appointments: [
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+      ],
+    };
+    const orderWithCandidate: TrusteeMatchVerificationListItem = {
+      ...sampleOrder,
+      preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+      candidateCount: 1,
+      affectedCaseCount: 2,
+      affectedCaseIds: [loadedCaseId, unloadableCaseId],
+    };
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
+      ...sampleOrderDetail,
+      matchCandidates: [candidateMissingCoverage],
+      affectedCaseIds: [loadedCaseId, unloadableCaseId],
+    };
+    renderWithProps({ order: orderWithCandidate });
+    await mockDetailAndExpand(detailWithCandidate);
+
+    const message = await screen.findByTestId('uncovered-cases-trustee-1');
+    expect(message.textContent).toContain(getCaseNumber(loadedCaseId));
+    expect(message.textContent).not.toContain(getCaseNumber(unloadableCaseId));
+    expect(screen.getByTestId('approve-candidate-trustee-1')).toBeDisabled();
   });
 
   test('should render read-only candidate table for rejected order, selecting highest-scoring candidate', async () => {
@@ -1127,7 +1321,34 @@ describe('TrusteeMatchVerificationAccordion', () => {
     ];
 
     function setupSearchMocks() {
-      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: manualSearchMockData });
+      // The modal's Confirm button gates on bundle-wide coverage (getUncoveredCases), so the
+      // default fixture is a trustee who genuinely covers the affected case -- otherwise every
+      // test that merely needs to reach Confirm would stall on a disabled button. Coverage
+      // behavior itself is asserted directly by the uncovered-case tests.
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: sampleOrder.caseId,
+            chapter: '7',
+            courtId: '081',
+            courtDivisionCode: '081',
+          },
+        }),
+      });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [
+          {
+            ...manualSearchMockData[0],
+            appointments: [
+              MockData.getTrusteeAppointment({
+                courtId: '081',
+                divisionCode: '081',
+                chapter: '7',
+              }),
+            ],
+          },
+        ],
+      });
     }
 
     // Integration helper: opens search modal, searches, selects, and confirms
@@ -1321,7 +1542,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     // Integration test: exercises full search-to-approval error flow
-    test('manual search approval failure calls onOrderUpdate with error', async () => {
+    test('manual search approval failure calls onOrderUpdate with the specific error message', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
         new Error('Network error'),
       );
@@ -1333,10 +1554,81 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({ type: UswdsAlertStyle.Error }),
+          expect.objectContaining({ type: UswdsAlertStyle.Error, message: 'Network error' }),
           sampleOrder,
         );
       });
+    });
+
+    // Mirrors handleConfirm's identical non-Error-rejection fallback test above --
+    // handleManualMatch has the same `error instanceof Error ? error.message : '...'` ternary
+    // but previously only had Error-instance coverage here.
+    test('falls back to a generic message when the manual-match rejection is not an Error instance', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
+      setupSearchMocks();
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ onOrderUpdate });
+
+      await searchAndSelectTrustee();
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: UswdsAlertStyle.Error,
+            message: 'Failed to confirm trustee match.',
+          }),
+          sampleOrder,
+        );
+      });
+    });
+
+    test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
+      // courtId/courtDivisionCode/chapter must agree with the search result's own appointment
+      // below -- the modal's Confirm button now also gates on bundle-wide coverage
+      // (getUncoveredCases), so a mismatch here would leave the button disabled regardless of
+      // what this test is actually asserting (the search call's own parameters).
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: sampleOrder.caseId,
+            chapter: '7',
+            courtId: '081',
+            courtDivisionCode: '081',
+          },
+        }),
+      });
+      const coveringAppointment = MockData.getTrusteeAppointment({
+        courtId: '081',
+        divisionCode: '081',
+        chapter: '7',
+      });
+      const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...manualSearchMockData[0], appointments: [coveringAppointment] }],
+      });
+      renderWithProps();
+      // The coverage-data fetch is gated on the row having been expanded (hasEnrichedOrder) --
+      // in real usage the search link only renders once expanded anyway, which already
+      // triggers this same detail fetch, so this mirrors how a user actually reaches it.
+      await mockDetailAndExpand(sampleOrderDetail);
+
+      await searchAndSelectTrustee();
+
+      const [, , divisionCode, chapter] = searchSpy.mock.calls[0];
+      expect(divisionCode).toBe('081');
+      expect(chapter).toBe('7');
+    });
+
+    test('falls back to district-only filtering (chapter stays undefined) when the case-summary fetch fails', async () => {
+      vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not found'));
+      const searchSpy = vi
+        .spyOn(Api2, 'searchTrustees')
+        .mockResolvedValue({ data: manualSearchMockData });
+      renderWithProps();
+
+      await searchAndSelectTrustee();
+
+      const [, , , chapter] = searchSpy.mock.calls[0];
+      expect(chapter).toBeUndefined();
     });
   });
 
@@ -2013,6 +2305,20 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     test('approval flow calls API with clicked candidate trustee ID and name', async () => {
+      // The candidates above carry MockData's default appointment (court 0208, division 081,
+      // chapter 7), so the affected case has to match for the pre-approval coverage check to
+      // leave Match Trustee enabled -- this test is about the approval call itself, not about
+      // coverage (which 'disables Match Trustee and explains why...' covers directly).
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({
+          override: {
+            caseId: multipleCandidatesOrder.caseId,
+            courtId: '0208',
+            courtDivisionCode: '081',
+            chapter: '7',
+          },
+        }),
+      });
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
       renderWithProps({ order: multipleCandidatesOrder, onOrderUpdate });

@@ -138,27 +138,6 @@ ignore:
           6.16.0 -> 6.16.1 together, then remove this ignore and the
           SNYK-JS-QS-20943482 ignore.
         expires: 2026-11-06T00:00:00.000Z
-  SNYK-JS-DOMPURIFY-21460653:
-    - '*':
-        reason: >-
-          XSS in dompurify@3.4.16 (user-interface dependency, pinned by
-          the root package.json override; flagged against test/uswds
-          only through the shared root lockfile). Template expressions
-          survive sanitization in an attached shadow root, exploitable
-          only when SAFE_FOR_TEMPLATES: true is combined with a
-          DOM-returning mode (RETURN_DOM, RETURN_DOM_FRAGMENT, or
-          IN_PLACE). Not reachable here: every CAMS call
-          (sanitize-text.ts, PrerenderedHtml.tsx, NoteFormModal.tsx,
-          CaseNoteFormModal.tsx) is DOMPurify.sanitize(string, config)
-          returning a string, and no CAMS code sets SAFE_FOR_TEMPLATES,
-          RETURN_DOM, RETURN_DOM_FRAGMENT, or IN_PLACE. Fixed version
-          3.4.17 was published 2026-10-12 and is blocked by CAMS's
-          14-day minimum npm release-age policy (.npmrc
-          min-release-age=14) until 2026-10-26. Bump the root
-          package.json override and user-interface/package.json
-          dompurify 3.4.16 -> 3.4.17 together, then remove this ignore
-          and SNYK-JS-DOMPURIFY-21460657.
-        expires: 2026-10-27T00:00:00.000Z
   SNYK-JS-AZUREMSALNODE-21689163:
     - '*':
         reason: >-
@@ -184,16 +163,3 @@ ignore:
           the authorization-code flow. Re-check for an @azure/identity
           release that bumps msal-node to >=7.1.0.
         expires: 2026-11-23T00:00:00.000Z
-  SNYK-JS-DOMPURIFY-21460657:
-    - '*':
-        reason: >-
-          XSS in dompurify@3.4.16 (GHSA-mrv2-3pqr-j5jr; same dependency
-          path as SNYK-JS-DOMPURIFY-21460653). A sanitize hook that
-          detaches a node other than the current one, used with
-          IN_PLACE: true, can leave an event handler in the sanitized
-          DOM. Not reachable here: no CAMS code registers DOMPurify
-          hooks (addHook) or sets IN_PLACE; every call sanitizes a
-          string and returns a string. Fixed in 3.4.17, blocked by the
-          release-age policy until 2026-10-26. Remove with
-          SNYK-JS-DOMPURIFY-21460653 when bumping to 3.4.17.
-        expires: 2026-10-27T00:00:00.000Z
