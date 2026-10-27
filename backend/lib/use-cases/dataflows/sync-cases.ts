@@ -7,6 +7,12 @@ import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
+// Cursor of 0 means "fetch all terminal transactions" — safe starting point when AO_TX is empty.
+function parseMaxTxId(raw: string | undefined): number {
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 function isLegacySyncState(
   state: CasesSyncState | LegacyCasesSyncState,
 ): state is LegacyCasesSyncState {
@@ -61,8 +67,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
         if (range.found && range.end !== undefined) {
           lastTransactionsTxId = range.end;
         } else {
-          const maxTxIdStr = await casesGateway.findMaxTransactionId(context);
-          lastTransactionsTxId = Number.parseInt(maxTxIdStr, 10);
+          lastTransactionsTxId = parseMaxTxId(await casesGateway.findMaxTransactionId(context));
         }
       } catch (bisectError) {
         context.logger.warn(
@@ -70,8 +75,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
           'Bootstrap bisection encountered a TX_ID gap; falling back to max TX_ID',
           bisectError,
         );
-        const maxTxIdStr = await casesGateway.findMaxTransactionId(context);
-        lastTransactionsTxId = Number.parseInt(maxTxIdStr, 10);
+        lastTransactionsTxId = parseMaxTxId(await casesGateway.findMaxTransactionId(context));
       }
     }
 

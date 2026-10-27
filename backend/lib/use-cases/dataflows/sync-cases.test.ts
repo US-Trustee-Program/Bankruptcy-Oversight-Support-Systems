@@ -278,6 +278,35 @@ describe('getCaseIds tests', () => {
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 777, lastSyncDate);
   });
 
+  test('should use cursor 0 when findMaxTransactionId returns undefined (empty AO_TX table)', async () => {
+    const lastSyncDate = '2025-03-01T00:00:00.000Z';
+
+    vi.spyOn(CasesLocalGateway.prototype, 'findTransactionIdRangeForDate').mockResolvedValue({
+      findDate: lastSyncDate,
+      found: false,
+    });
+
+    vi.spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId').mockResolvedValue(undefined);
+
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds: [],
+      latestCasesSyncDate: lastSyncDate,
+      latestTransactionsSyncDate: lastSyncDate,
+      latestTransactionsTxId: 0,
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+    } as CasesSyncState);
+
+    await SyncCases.getCaseIds(context);
+
+    // Cursor 0 means "fetch all" — correct starting point for an empty table
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 0, lastSyncDate);
+  });
+
   test('should not self-heal when sync state has both lastSyncDate and lastCasesSyncDate', async () => {
     const lastCasesSyncDate = '2025-04-01T00:00:00.000Z';
     const lastTransactionsTxId = 500;
