@@ -7,8 +7,21 @@ import {
 import { OrderStatus } from './orders';
 import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
+import { TrusteeSerializedState } from './trustee-match-pipeline';
 
 export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICATION' as const;
+
+/** Which legacy system fed this identity task's source record. */
+export type TrusteeMatchSource = 'ACMS' | 'DXTR';
+
+/**
+ * Mismatch reason used by pipeline-driven identity-task writes (S2.3+), narrower than
+ * TrusteeAppointmentSyncErrorCode's legacy numeric-scoring vocabulary. There is no "multiple
+ * linked trustees" outcome — an ACMS professional id links to at most one CAMS trustee (bd memory
+ * professional-id-never-multi-linked) — and PERFECT_MATCH_INACTIVE_STATUS/CANDIDATE_LOAD_FAILED
+ * are appointment/transient concerns, not identity-match outcomes.
+ */
+export type IdentityMismatchReason = 'ambiguous' | 'no match';
 
 export type TrusteeMatchVerification = Auditable & {
   id: string;
@@ -39,8 +52,22 @@ export type TrusteeMatchVerification = Auditable & {
    * without needing to cross-reference DXTR directly.
    */
   acmsProfessionalId?: string;
-  mismatchReason?: TrusteeAppointmentSyncErrorCode;
+  mismatchReason?: TrusteeAppointmentSyncErrorCode | IdentityMismatchReason;
+  /** @deprecated Legacy numeric-scoring candidates, superseded by `findings`. Kept so UI and
+   * seeds still compile until S2.7 removes it. */
   matchCandidates: CandidateScore[];
+  /**
+   * Which legacy system produced this task's source record. Set only by pipeline-driven writes
+   * (S2.3+); undefined on documents written by the legacy numeric-scoring DXTR sync path.
+   */
+  source?: TrusteeMatchSource;
+  /**
+   * The trustee-match pipeline's serialized state for this task's source record, stored
+   * unchanged (decision: facts read from stored findings, no recompute on open). Set only by
+   * pipeline-driven writes (S2.3+); undefined on documents written by the legacy
+   * numeric-scoring DXTR sync path.
+   */
+  findings?: TrusteeSerializedState;
   status: OrderStatus;
   resolvedTrusteeId?: string;
   resolvedTrusteeName?: string;
