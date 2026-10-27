@@ -76,6 +76,7 @@ export class TrusteeMatchVerificationMongoRepository
     if ('id' in fields) conditions.push(doc('id').equals(fields.id));
     if ('fingerprint' in fields) conditions.push(doc('fingerprint').equals(fields.fingerprint));
     if ('variant' in fields) conditions.push(doc('variant').equals(fields.variant));
+    if ('status' in fields) conditions.push(doc('status').equals(fields.status));
     return and(...conditions);
   }
 
@@ -114,21 +115,41 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
+  /**
+   * Merge-upserts a TrusteeMatchVerification bucketed by fingerprint/variant. The filter only
+   * matches an existing document whose status is still 'pending', so a resolved (approved or
+   * rejected) task is never reached by this write at all — not even its mutable fields, let
+   * alone caseId/courtId. `id`, `caseId`, `courtId`, `createdOn` and `createdBy` go in
+   * $setOnInsert only, so a matching update (status already 'pending') can never clear or
+   * overwrite the case this task was originally opened for, or its creation record. Every other
+   * field (mismatchReason, matchCandidates, findings, source, status, etc.) is in $set, so a
+   * re-sync refreshes them from the latest event.
+   */
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
       const query = this.verificationQuery({
         fingerprint: item.fingerprint,
         variant: item.variant,
+        status: 'pending',
       });
-      await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
+      const { id, caseId, courtId, createdOn, createdBy, taskDate, ...setFields } = item;
+      await this.getAdapter<TrusteeMatchVerification>().findOneAndUpdate(
+        query,
+        { $set: setFields, $setOnInsert: { id, caseId, courtId, createdOn, createdBy, taskDate } },
+        { upsert: true },
+      );
     } catch (originalError) {
       if (isDuplicateKeyError(originalError)) {
-        // The racing documents are not guaranteed identical (taskDate, updatedOn may
-        // differ), so the loser's field values are silently discarded here with no other trace
-        // -- log so an unexpectedly high rate of this is visible in telemetry.
+        // Either a genuine concurrent writer already created the document for this
+        // fingerprint/variant, or an existing document has already moved past 'pending'
+        // (approved/rejected) — the filter's status:'pending' condition excludes it, so this
+        // upsert attempts an insert that collides with the (fingerprint, variant, documentType)
+        // unique index instead of updating it in place. Either way the write is silently
+        // discarded with no other trace -- log so an unexpectedly high rate of this is visible
+        // in telemetry.
         this.context.logger.warn(
           MODULE_NAME,
-          `Lost an upsert race for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer — this document's field values were discarded.`,
+          `Lost an upsert for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer or a task past 'pending' — this document's field values were discarded.`,
         );
         return;
       }
