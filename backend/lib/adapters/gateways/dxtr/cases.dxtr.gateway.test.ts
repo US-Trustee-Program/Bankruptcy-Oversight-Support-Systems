@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import * as mssql from 'mssql';
 import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
@@ -1475,10 +1476,30 @@ describe('Test DXTR Gateway', () => {
       },
     );
 
-    test('should use TX_ID cursor (not TX_DATE) in terminal transactions query', async () => {
+    test('should use TX_ID cursor (not TX_DATE) with BigInt binding in terminal transactions query', async () => {
       querySpy.mockResolvedValue(makeQueryResults([]));
+      const lastTransactionsTxId = 42;
 
-      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', 0);
+      await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        lastTransactionsTxId,
+      );
+
+      const allParamCalls = querySpy.mock.calls.map((call) => call[2] as DbTableFieldSpec[]);
+      const transactionsParamCall = allParamCalls.find((params) =>
+        params?.some((p) => p.name === 'lastTransactionsTxId'),
+      );
+      expect(transactionsParamCall).toBeDefined();
+      expect(transactionsParamCall).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'lastTransactionsTxId',
+            type: mssql.BigInt,
+            value: lastTransactionsTxId,
+          }),
+        ]),
+      );
 
       const allSqlCalls = querySpy.mock.calls.map((call) => call[1] as string);
       const transactionsQueryCall = allSqlCalls.find((sql) =>

@@ -663,7 +663,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const transactionsParams: DbTableFieldSpec[] = [
       {
         name: 'lastTransactionsTxId',
-        type: mssql.Int,
+        type: mssql.BigInt,
         value: lastTransactionsTxId,
       },
     ];
@@ -697,9 +697,13 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
 
-    // Advance TX_ID cursor (first result has highest TX_ID due to DESC ordering)
+    // Advance TX_ID cursor (first result has highest TX_ID due to DESC ordering).
+    // mssql returns BIGINT/INT columns as strings for large values — coerce explicitly
+    // so the stored cursor is always a number regardless of driver return type.
     const latestTransactionsTxId =
-      transactionsResults.length > 0 ? transactionsResults[0].txId : lastTransactionsTxId;
+      transactionsResults.length > 0
+        ? Number.parseInt(String(transactionsResults[0].txId), 10)
+        : lastTransactionsTxId;
 
     // latestTransactionsSyncDate kept for rollback safety — old code reads this field.
     // See cleanup ticket cams-qg4jq.

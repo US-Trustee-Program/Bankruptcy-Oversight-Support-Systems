@@ -47,7 +47,8 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     // subsequent runs.
     let lastTransactionsTxId: number;
     if (syncState.lastTransactionsTxId !== undefined) {
-      lastTransactionsTxId = syncState.lastTransactionsTxId;
+      // Coerce explicitly — mssql and Cosmos may round-trip large integers as strings.
+      lastTransactionsTxId = Number.parseInt(String(syncState.lastTransactionsTxId), 10);
     } else {
       const range = await casesGateway.findTransactionIdRangeForDate(
         context,
