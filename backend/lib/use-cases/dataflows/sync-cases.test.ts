@@ -247,6 +247,37 @@ describe('getCaseIds tests', () => {
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 888, lastSyncDate);
   });
 
+  test('should fall back to findMaxTransactionId when bootstrap bisection throws (TX_ID gap)', async () => {
+    const lastSyncDate = '2025-03-01T00:00:00.000Z';
+    const caseIds = MockData.buildArray(MockData.randomCaseId, 2);
+
+    vi.spyOn(CasesLocalGateway.prototype, 'findTransactionIdRangeForDate').mockRejectedValue(
+      new Error('Found gap in the transaction IDs'),
+    );
+
+    const findMaxSpy = vi
+      .spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId')
+      .mockResolvedValue('777');
+
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      latestCasesSyncDate: lastSyncDate,
+      latestTransactionsSyncDate: lastSyncDate,
+      latestTransactionsTxId: 777,
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+    } as CasesSyncState);
+
+    await SyncCases.getCaseIds(context);
+
+    expect(findMaxSpy).toHaveBeenCalled();
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, 777, lastSyncDate);
+  });
+
   test('should not self-heal when sync state has both lastSyncDate and lastCasesSyncDate', async () => {
     const lastCasesSyncDate = '2025-04-01T00:00:00.000Z';
     const lastTransactionsTxId = 500;

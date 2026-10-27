@@ -50,16 +50,26 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
       // Coerce explicitly — mssql and Cosmos may round-trip large integers as strings.
       lastTransactionsTxId = Number.parseInt(String(syncState.lastTransactionsTxId), 10);
     } else {
-      const range = await casesGateway.findTransactionIdRangeForDate(
-        context,
-        syncState.lastTransactionsSyncDate,
-      );
-      if (range.found && range.end !== undefined) {
-        lastTransactionsTxId = range.end;
-      } else {
-        // Edge case: no transactions exist for that exact date.
-        // Fall back to current max TX_ID — safe because any transaction inserted after
-        // this point will still be caught on the next run.
+      // bisectBound throws when it probes a TX_ID gap (deleted rows or identity gaps in
+      // AO_TX). Catch and fall back to findMaxTransactionId so the bootstrap always
+      // produces a valid cursor rather than propagating and silently stalling the sync.
+      try {
+        const range = await casesGateway.findTransactionIdRangeForDate(
+          context,
+          syncState.lastTransactionsSyncDate,
+        );
+        if (range.found && range.end !== undefined) {
+          lastTransactionsTxId = range.end;
+        } else {
+          const maxTxIdStr = await casesGateway.findMaxTransactionId(context);
+          lastTransactionsTxId = Number.parseInt(maxTxIdStr, 10);
+        }
+      } catch (bisectError) {
+        context.logger.warn(
+          MODULE_NAME,
+          'Bootstrap bisection encountered a TX_ID gap; falling back to max TX_ID',
+          bisectError,
+        );
         const maxTxIdStr = await casesGateway.findMaxTransactionId(context);
         lastTransactionsTxId = Number.parseInt(maxTxIdStr, 10);
       }
