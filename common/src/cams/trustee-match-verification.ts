@@ -5,6 +5,7 @@ import {
   TrusteeAppointmentSyncErrorCode,
 } from './dataflow-events';
 import { OrderStatus } from './orders';
+import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
 
 export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICATION' as const;
@@ -86,21 +87,7 @@ export type TrusteeMatchVerification = Auditable & {
 
 type TrusteeMatchVerificationRemapStatus = {
   status: 'pending' | 'processing' | 'complete' | 'error';
-  error?: TrusteeVerificationRemapError;
-};
-
-/**
- * Mirrors CamsError's (backend/lib/common-errors/cams-error.ts) serializable shape without
- * importing it — common cannot depend on backend (the Dependency Rule runs the other way: both
- * backend and user-interface depend on common, never the reverse). A real CamsError/UnknownError
- * instance is structurally assignable here, so backend can write one directly.
- */
-type TrusteeVerificationRemapError = {
-  message: string;
-  module: string;
-  status: number;
-  originalError?: string;
-  data?: object;
+  error?: SerializedCamsError;
 };
 
 /**
