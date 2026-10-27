@@ -1370,8 +1370,14 @@ describe('Test DXTR Gateway', () => {
         ...transactionsRecordset.map((r) => r.caseId),
       ]);
 
+      const globalMaxTxId = 9999;
       querySpy.mockResolvedValueOnce(casesResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
+      querySpy.mockResolvedValueOnce({
+        success: true,
+        results: { recordset: [{ MAX_TX_ID: globalMaxTxId }] },
+        message: '',
+      } as QueryResults);
 
       const casesStart = new Date().toISOString();
       const lastTransactionsTxId = 8000;
@@ -1385,7 +1391,8 @@ describe('Test DXTR Gateway', () => {
 
       expect(actual.caseIds).toHaveLength(allCaseIds.size);
       expect(actual.latestCasesSyncDate).toEqual(latestCasesSyncDate);
-      expect(actual.latestTransactionsTxId).toEqual(latestTransactionsTxId);
+      // Cursor advances to the global max (9999) since it exceeds the highest terminal TX_ID (9001)
+      expect(actual.latestTransactionsTxId).toEqual(globalMaxTxId);
       expect(actual.latestTransactionsSyncDate).toEqual(latestTxDate);
     });
 
@@ -1400,8 +1407,14 @@ describe('Test DXTR Gateway', () => {
       const lastTransactionsTxId = 500;
       const lastTransactionsSyncDate = '2025-02-10T14:00:00.000Z';
 
+      const globalMaxTxId = 9999;
       querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
+      querySpy.mockResolvedValueOnce({
+        success: true,
+        results: { recordset: [{ MAX_TX_ID: globalMaxTxId }] },
+        message: '',
+      } as QueryResults);
 
       const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
         applicationContext,
@@ -1412,7 +1425,9 @@ describe('Test DXTR Gateway', () => {
 
       expect(actual.caseIds).toEqual([]);
       expect(actual.latestCasesSyncDate).toEqual(casesStart);
-      expect(actual.latestTransactionsTxId).toEqual(lastTransactionsTxId);
+      // Cursor advances to global max even with no terminal transactions,
+      // so the next run only scans truly new rows
+      expect(actual.latestTransactionsTxId).toEqual(globalMaxTxId);
       // Rollback cursor preserves the prior transaction date, not the unrelated casesStart
       expect(actual.latestTransactionsSyncDate).toEqual(lastTransactionsSyncDate);
     });
@@ -1425,9 +1440,11 @@ describe('Test DXTR Gateway', () => {
           { caseId: '081-21-12345', latestSyncDate: '2025-02-11T09:00:00.000Z' },
         ],
         transactionsData: [] as Array<{ caseId: string; txId: number; txDate: string }>,
+        globalMaxTxId: 500,
         expectedCaseIds: ['081-20-10508', '081-21-12345'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
-        expectedLatestTransactionsTxId: 0,
+        // No terminal TX — cursor advances to global max (500) not stays at 0
+        expectedLatestTransactionsTxId: 500,
         // No TX results — rollback cursor falls back to the passed-in prior date
         expectedLatestTransactionsSyncDate: '2024-01-01T00:00:00.000Z',
       },
@@ -1437,6 +1454,7 @@ describe('Test DXTR Gateway', () => {
         transactionsData: [
           { caseId: '081-20-10508', txId: 1234, txDate: '2025-02-11T14:00:00.000Z' },
         ],
+        globalMaxTxId: 1234,
         expectedCaseIds: ['081-20-10508'],
         expectedLatestCasesSyncDate: '2024-01-01',
         expectedLatestTransactionsTxId: 1234,
@@ -1448,6 +1466,7 @@ describe('Test DXTR Gateway', () => {
         transactionsData: [
           { caseId: '081-20-10508', txId: 2000, txDate: '2025-02-11T11:00:00.000Z' },
         ],
+        globalMaxTxId: 2000,
         expectedCaseIds: ['081-20-10508'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
         expectedLatestTransactionsTxId: 2000,
@@ -1459,6 +1478,7 @@ describe('Test DXTR Gateway', () => {
         transactionsData: [
           { caseId: '081-21-12345', txId: 3000, txDate: '2025-02-11T13:00:00.000Z' },
         ],
+        globalMaxTxId: 3000,
         expectedCaseIds: ['081-20-10508', '081-21-12345'],
         expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
         expectedLatestTransactionsTxId: 3000,
@@ -1469,6 +1489,7 @@ describe('Test DXTR Gateway', () => {
       async ({
         casesData,
         transactionsData,
+        globalMaxTxId,
         expectedCaseIds,
         expectedLatestCasesSyncDate,
         expectedLatestTransactionsTxId,
@@ -1479,6 +1500,11 @@ describe('Test DXTR Gateway', () => {
 
         querySpy.mockResolvedValueOnce(casesResults);
         querySpy.mockResolvedValueOnce(transactionsResults);
+        querySpy.mockResolvedValueOnce({
+          success: true,
+          results: { recordset: [{ MAX_TX_ID: globalMaxTxId }] },
+          message: '',
+        } as QueryResults);
 
         const priorTransactionsSyncDate = '2024-01-01T00:00:00.000Z';
         // lastTransactionsTxId = 0 is the bootstrap-equivalent starting cursor (catches all history)
@@ -1500,7 +1526,14 @@ describe('Test DXTR Gateway', () => {
     );
 
     test('should use TX_ID cursor (not TX_DATE) with BigInt binding in terminal transactions query', async () => {
-      querySpy.mockResolvedValue(makeQueryResults([]));
+      // First two calls return empty terminal results; third call is global max query
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
+      querySpy.mockResolvedValueOnce({
+        success: true,
+        results: { recordset: [{ MAX_TX_ID: 42 }] },
+        message: '',
+      } as QueryResults);
       const lastTransactionsTxId = 42;
 
       await testCasesDxtrGateway.getUpdatedCaseIds(

@@ -683,12 +683,17 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       ORDER BY TX.TX_ID DESC, TX.CS_CASEID DESC
     `;
 
-    const casesResults = await this.fetchCaseIdRecords(context, casesQuery, casesParams);
-    const transactionsResults = await this.fetchTransactionIdRecords(
-      context,
-      transactionsQuery,
-      transactionsParams,
-    );
+    // Query 3: Global max TX_ID across all transaction types.
+    // Advancing the cursor to the global max (not just the highest terminal TX_ID) means
+    // the next run only scans truly new rows, preventing unbounded scan growth when many
+    // non-terminal rows are inserted between runs.
+    const globalMaxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+
+    const [casesResults, transactionsResults, globalMaxResult] = await Promise.all([
+      this.fetchCaseIdRecords(context, casesQuery, casesParams),
+      this.fetchTransactionIdRecords(context, transactionsQuery, transactionsParams),
+      this.executeQuery(context, globalMaxQuery),
+    ]);
 
     // Consolidate case IDs using Set
     const caseIdSet = new Set<string>();
@@ -699,13 +704,19 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
 
-    // Advance TX_ID cursor (first result has highest TX_ID due to DESC ordering).
-    // mssql returns BIGINT/INT columns as strings for large values — coerce explicitly
-    // so the stored cursor is always a number regardless of driver return type.
-    const latestTransactionsTxId =
+    // Advance TX_ID cursor to the higher of the highest terminal TX_ID and the global max.
+    // Using global max ensures non-terminal rows inserted between runs don't accumulate
+    // into the next scan window. mssql returns BIGINT/INT columns as strings for large
+    // values — coerce explicitly so the stored cursor is always a number.
+    const terminalMaxTxId =
       transactionsResults.length > 0
         ? Number.parseInt(String(transactionsResults[0].txId), 10)
         : lastTransactionsTxId;
+    const globalMaxTxId =
+      globalMaxResult.success && globalMaxResult.results?.['recordset']?.[0]?.['MAX_TX_ID']
+        ? Number.parseInt(String(globalMaxResult.results['recordset'][0]['MAX_TX_ID']), 10)
+        : lastTransactionsTxId;
+    const latestTransactionsTxId = Math.max(terminalMaxTxId, globalMaxTxId);
 
     // latestTransactionsSyncDate kept for rollback safety — old code reads this field.
     // Use the actual TX_DATE of the latest terminal transaction so a rollback to date-based
