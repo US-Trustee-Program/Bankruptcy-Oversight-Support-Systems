@@ -27,17 +27,14 @@ const makeTrusteeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
 
 const makeEmptyScenarioDistribution = () => ({
   autoMatchCount: 0,
-  imperfectMatchCount: 0,
-  highConfidenceMatchCount: 0,
   noMatchCount: 0,
   multipleMatchCount: 0,
   reVerificationCount: 0,
-  perfectMatchInactiveCount: 0,
   verificationBucketHitCount: 0,
   fingerprintHitCount: 0,
   fingerprintMissCount: 0,
   retryableCount: 0,
-  candidateLoadFailedCount: 0,
+  pipelineSkippedCount: 0,
   unappointableChapterSkippedCount: 0,
   emptyDemographicsSkippedCount: 0,
   sentinelBogusNameSkippedCount: 0,

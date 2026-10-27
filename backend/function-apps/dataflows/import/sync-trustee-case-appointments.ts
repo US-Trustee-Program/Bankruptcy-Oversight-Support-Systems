@@ -333,10 +333,9 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
         details: {
           totalEvents: String(totalEvents),
           autoMatchCount: String(scenarioDistribution.autoMatchCount),
-          imperfectMatchCount: String(scenarioDistribution.imperfectMatchCount),
           noMatchCount: String(scenarioDistribution.noMatchCount),
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
-          perfectMatchInactiveCount: String(scenarioDistribution.perfectMatchInactiveCount),
+          pipelineSkippedCount: String(scenarioDistribution.pipelineSkippedCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
           verificationBucketHitCount: String(scenarioDistribution.verificationBucketHitCount),
           fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
@@ -347,8 +346,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
           { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
           {
-            name: 'TrusteePerfectMatchInactiveCount',
-            value: scenarioDistribution.perfectMatchInactiveCount,
+            name: 'TrusteePipelineSkippedCount',
+            value: scenarioDistribution.pipelineSkippedCount,
           },
           { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
           {

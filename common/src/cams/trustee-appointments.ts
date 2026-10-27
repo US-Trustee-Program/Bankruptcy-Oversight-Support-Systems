@@ -451,6 +451,21 @@ export function buildMergePayload(
   };
 }
 
+/**
+ * Per-write evidence of what a case-appointment resolution actually checked, for #3190's
+ * appointment-task follow-up to consume (shape per #3189's checks definition). matchedCase and
+ * matchedTrustee record that a case and a CAMS trustee were both identified; matchedTrusteeAppointment
+ * records whether a single active appointment covered this case's court+division+chapter
+ * (isAppointmentMatch); matchedBy names what resolved the trustee — a trustee-match pipeline
+ * RESOLVE stage's name (PipelineMatch.resolvedBy), or 'variation' for a fingerprint-bucket hit.
+ */
+export type CaseAppointmentChecks = {
+  matchedCase: boolean;
+  matchedTrustee: boolean;
+  matchedTrusteeAppointment: boolean;
+  matchedBy: string;
+};
+
 export type CaseAppointmentInput = {
   caseId: string;
   trusteeId: string;
@@ -464,6 +479,7 @@ export type CaseAppointmentInput = {
   reopenedDate?: string;
   isSurrogate?: boolean;
   variant?: string;
+  checks?: CaseAppointmentChecks;
 };
 
 export type CaseAppointment = Auditable &
@@ -481,6 +497,7 @@ export type CaseAppointment = Auditable &
     caseStatus?: 'OPEN' | 'CLOSED';
     isSurrogate?: boolean;
     variant?: string;
+    checks?: CaseAppointmentChecks;
   };
 
 export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {

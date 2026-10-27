@@ -1,14 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   TrusteeAppointmentSyncError,
-  TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
-  CandidateScore,
   SoftCloseWriteFailed,
 } from '@common/cams/dataflow-events';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
+  IdentityMismatchReason,
 } from '@common/cams/trustee-match-verification';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
@@ -24,24 +23,14 @@ import {
   RuntimeStateDocumentType,
   RuntimeStateRepository,
 } from '../gateways.types';
-import {
-  matchTrusteeByName,
-  resolveNameCollisionByScoring,
-  findInactivePerfectMatch,
-  calculateCandidateScore,
-  calculateAddressScore,
-  calculatePhoneScore,
-  calculateEmailScore,
-  calculateTotalScore,
-  parseCityStateZip,
-  normalizeName,
-} from './trustee-match.helpers';
+import { parseCityStateZip, normalizeName } from './trustee-match.helpers';
+import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
+import { serializeState, candidatePool, TrusteeSerializedState } from './trustee-match-pipeline';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
-import { AppointmentStatus } from '@common/cams/trustees';
 import {
   CaseAppointment,
-  TrusteeAppointment,
+  CaseAppointmentChecks,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
@@ -53,22 +42,25 @@ const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
 type ScenarioDistribution = {
   autoMatchCount: number;
-  imperfectMatchCount: number;
+  /** The trustee-match pipeline settled on 'no match' — zero or one unresolved candidate. */
   noMatchCount: number;
+  /** The trustee-match pipeline settled on 'ambiguous' — two or more unresolved candidates. */
   multipleMatchCount: number;
-  perfectMatchInactiveCount: number;
   reVerificationCount: number;
   verificationBucketHitCount: number;
   fingerprintHitCount: number;
   fingerprintMissCount: number;
   retryableCount: number;
   /**
-   * matchTrusteeByName found more than one raw name candidate, but scoring could not load ANY
-   * of their trustee/appointment records (e.g. every candidate rejected with a non-transient
-   * error) — distinct from multipleMatchCount, which means scoring DID run and simply found no
-   * clear winner. See TrusteeAppointmentSyncErrorCode.CandidateLoadFailed's doc comment.
+   * The trustee-match pipeline's own skipAdministrativePlaceholder stage fired during identity
+   * resolution — a record that already passed this file's own DXTR skip checks (unappointable
+   * chapter, empty demographics, sentinel/bogus name) but still reads as an administrative
+   * placeholder (a disavowal phrase, "U.S. Trustee"/"(UST)", or no-person wording) to the
+   * pipeline's ACMS-shaped gate. Treated as a no-op, the same as the other skip counters below;
+   * counted separately so an unexpectedly high rate (e.g. a real "United States Trustee"
+   * DXTR appointee) is visible rather than silently dropped.
    */
-  candidateLoadFailedCount: number;
+  pipelineSkippedCount: number;
   /**
    * The case's chapter (9 or 15) can never have a CAMS trustee appointment, so no candidate
    * could ever pass isAppointmentMatch for it — routing it to trustee-match-verification would
@@ -106,17 +98,13 @@ type MatchAuditEntry = {
   dxtrTrusteeName: string;
   matchOutcome:
     | 'auto-matched'
-    | 'imperfect-match'
-    | 'ambiguous-match-resolved'
     | 'no-match'
-    | 'ambiguous-match-unresolved'
-    | 'candidate-load-failed'
-    | 'inactive-perfect-match'
+    | 'ambiguous'
+    | 'skipped-administrative-placeholder'
     | 'verification-bucket-hit'
     | 'retryable-error'
     | 'error';
   matchedTrusteeId: string | null;
-  scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
   appointmentStatus: string | null;
 };
 
@@ -205,12 +193,14 @@ export async function createNewAppointment(
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
   assignedOn: string,
+  checks: CaseAppointmentChecks,
 ): Promise<void> {
   await appointmentsRepo.upsert({
     caseId: event.caseId,
     trusteeId,
     assignedOn,
     appointedDate: event.appointedDate,
+    checks,
   });
   context.logger.info(
     MODULE_NAME,
@@ -296,6 +286,7 @@ export async function softCloseExistingAppointment(
   trusteeId: string,
   assignedOn: string,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
+  checks: CaseAppointmentChecks,
 ): Promise<{ closed: boolean; dlqFailure: TrusteeAppointmentSyncError | null }> {
   const { closed, softCloseError } = await closeExistingAppointment(
     context,
@@ -338,7 +329,7 @@ export async function softCloseExistingAppointment(
       mismatchReason: SoftCloseWriteFailed,
       matchCandidates: [],
     };
-    await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn);
+    await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn, checks);
     return { closed: false, dlqFailure };
   }
 
@@ -396,6 +387,7 @@ async function applyResolvedTrustee(
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
+  checks: CaseAppointmentChecks,
 ): Promise<TrusteeAppointmentSyncError | null> {
   assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
   const assignedOn = event.appointedDate;
@@ -440,6 +432,7 @@ async function applyResolvedTrustee(
       trusteeId,
       assignedOn,
       appointmentsRepo,
+      checks,
     );
     if (!closed) {
       return dlqFailure;
@@ -482,7 +475,7 @@ async function applyResolvedTrustee(
     );
   }
 
-  await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn);
+  await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn, checks);
 
   return null;
 }
@@ -504,13 +497,14 @@ async function applyResolvedTrustee(
  *
  * Takes MatchContext (absorbing context/event/fingerprint/variant/audit/scenarioDistribution, plus
  * caseAppointmentsRepo/variationRepo via ctx.deps) and only the values genuinely specific to this
- * call site: trusteeId, variationTrusteeId, logMessage.
+ * call site: trusteeId, variationTrusteeId, logMessage, checks.
  */
 async function autoLinkTrustee(
   ctx: MatchContext,
   trusteeId: string,
   variationTrusteeId: string | null,
   logMessage: string,
+  checks: CaseAppointmentChecks,
 ): Promise<TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const { context } = deps;
@@ -520,6 +514,7 @@ async function autoLinkTrustee(
     event,
     trusteeId,
     deps.caseAppointmentsRepo,
+    checks,
   );
   if (!variationTrusteeId) {
     await deps.variationRepo.createVariation(
@@ -587,17 +582,20 @@ async function findVerificationBucketEntry(
 }
 
 /**
- * Upserts a TrusteeMatchVerification document for a non-auto-match outcome.
- * Skips the write if the existing document has already been resolved or dismissed.
+ * Upserts a TrusteeMatchVerification identity task for an unresolved (ambiguous or no-match)
+ * pipeline outcome. Skips the write if the existing document has already been resolved or
+ * dismissed (S2.3's repository-level merge-upsert enforces the same rule again at the DB layer;
+ * this pre-check avoids even attempting the write and lets reVerificationCount be reported here).
+ * matchCandidates is always empty — see IdentityMismatchReason's doc comment: findings/source
+ * replace the legacy numeric-scoring shape for pipeline-driven writes.
  */
-async function upsertMatchVerification(
+async function upsertIdentityTask(
   verificationRepo: TrusteeMatchVerificationRepository,
   event: TrusteeAppointmentSyncEvent,
-  mismatchReason: TrusteeAppointmentSyncErrorCode,
-  matchCandidates: CandidateScore[],
+  mismatchReason: IdentityMismatchReason,
+  findings: TrusteeSerializedState,
   fingerprint: string,
   variant: string,
-  inactiveAppointmentStatus?: AppointmentStatus,
 ): Promise<boolean> {
   const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
   if (existing && existing.status !== 'pending') {
@@ -608,8 +606,9 @@ async function upsertMatchVerification(
     await verificationRepo.upsertVerification({
       ...existing,
       mismatchReason,
-      matchCandidates,
-      inactiveAppointmentStatus,
+      matchCandidates: [],
+      source: 'DXTR',
+      findings,
       appointedDate: event.appointedDate,
       acmsProfessionalId,
       updatedOn: new Date().toISOString(),
@@ -623,8 +622,9 @@ async function upsertMatchVerification(
         courtId: event.courtId,
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
-        matchCandidates,
-        inactiveAppointmentStatus,
+        matchCandidates: [],
+        source: 'DXTR',
+        findings,
         appointedDate: event.appointedDate,
         acmsProfessionalId,
         taskType: 'trustee-match',
@@ -638,119 +638,6 @@ async function upsertMatchVerification(
     await verificationRepo.upsertVerification(doc);
   }
   return false;
-}
-
-/**
- * Handles the NoTrusteeMatch and ImperfectMatch classified-mismatch outcomes, which processed
- * identically apart from which TrusteeAppointmentSyncErrorCode is used, which scenario counter
- * increments, and (for NoTrusteeMatch only) setting audit.matchOutcome — ImperfectMatch leaves
- * it at its default, matching the pre-consolidation switch case exactly. Increments
- * reVerificationCount when upsertMatchVerification reports an existing resolved/dismissed
- * document, then writes the case's surrogate appointment.
- *
- * Takes MatchContext plus only the two genuinely per-call values (mismatchReason,
- * matchCandidates) and syncedCase — no writeSurrogateAppointment callback field: since that
- * function is a plain deps-first free function (not a bound class method), this calls it
- * directly via ctx.deps rather than threading a closure through the options object.
- *
- * Exported for testing only — no production importer outside this module; called internally
- * from resolveByScoring and applyMatchOutcome above.
- */
-export async function handleClassifiedMismatch(
-  ctx: MatchContext,
-  syncedCase: SyncedCase | undefined,
-  mismatchReason:
-    | typeof TrusteeAppointmentSyncErrorCode.NoTrusteeMatch
-    | typeof TrusteeAppointmentSyncErrorCode.ImperfectMatch,
-  matchCandidates: CandidateScore[],
-): Promise<void> {
-  const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-
-  if (mismatchReason === TrusteeAppointmentSyncErrorCode.NoTrusteeMatch) {
-    scenarioDistribution.noMatchCount++;
-    audit.matchOutcome = 'no-match';
-  } else {
-    scenarioDistribution.imperfectMatchCount++;
-  }
-
-  const isReVerification = await upsertMatchVerification(
-    deps.verificationRepo,
-    event,
-    mismatchReason,
-    matchCandidates,
-    fingerprint,
-    variant,
-  );
-  if (isReVerification) {
-    scenarioDistribution.reVerificationCount++;
-  }
-
-  await writeSurrogateAppointment(deps, event, fingerprint, variant, assertSyncedCase(syncedCase));
-}
-
-async function handleInactivePerfectMatch(
-  ctx: MatchContext,
-  trusteeId: string,
-  trusteeAppointments: TrusteeAppointment[],
-  inactiveMatch: TrusteeAppointment,
-  nameScore: number,
-): Promise<void> {
-  const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  const trustee = await deps.trusteesRepo.read(trusteeId);
-  const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
-  // nameScore is already known (the trusteeId came from a fingerprint hit or
-  // matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
-  // nameScoreOverride doc comment for why re-deriving it here via calculateNameScore's discrete
-  // firstName/lastName comparison would risk contradicting an already-correct match.
-  const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
-  const emailScore = calculateEmailScore(event.dxtrTrustee.legacy?.email, trustee.public.email);
-  const candidateScore: CandidateScore = {
-    trusteeId,
-    trusteeName: trustee.name,
-    totalScore: calculateTotalScore({
-      addressScore,
-      nameScore,
-      phoneScore,
-      emailScore,
-      districtDivisionScore: 100,
-      chapterScore: 100,
-    }),
-    addressScore,
-    nameScore,
-    phoneScore,
-    emailScore,
-    districtDivisionScore: 100,
-    chapterScore: 100,
-    address: trustee.public.address,
-    phone: trustee.public.phone,
-    email: trustee.public.email,
-    appointments: trusteeAppointments,
-  };
-
-  const isReVerification = await upsertMatchVerification(
-    deps.verificationRepo,
-    event,
-    TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
-    [candidateScore],
-    fingerprint,
-    variant,
-    inactiveMatch.status,
-  );
-  if (isReVerification) scenarioDistribution.reVerificationCount++;
-  scenarioDistribution.perfectMatchInactiveCount++;
-
-  deps.context.logger.info(
-    MODULE_NAME,
-    `Perfect match with inactive status (${inactiveMatch.status}): case ${event.caseId} trustee ${trusteeId} saved for verification`,
-  );
-
-  audit.matchOutcome = 'inactive-perfect-match';
-  audit.matchedTrusteeId = trusteeId;
-  audit.appointmentStatus = inactiveMatch.status;
-  audit.scoringBreakdown = {
-    districtDivisionScore: 100,
-    chapterScore: 100,
-  };
 }
 
 /**
@@ -986,253 +873,141 @@ type MatchContext = {
 };
 
 /**
- * Outcome of resolveTrusteeIdByName/resolveByScoring: either a trusteeId to proceed with (plus
- * the nameScore already established for it, carried through so applyMatchOutcome's downstream
- * scoring doesn't need to independently re-derive name confidence - see NameMatchResult's doc
- * comment in trustee-match.helpers.ts for why that re-derivation can diverge from what actually
- * matched), or a signal that the step already fully handled the event (wrote its
- * audit/verification/surrogate) and the caller should treat this event as done for this pass.
+ * Outcome of resolveTrusteeViaPipeline: either a trusteeId to proceed with (plus matchedBy, the
+ * name of whatever resolved it — a pipeline RESOLVE stage, or 'variation' for a fingerprint-bucket
+ * hit — carried through for checks.matchedBy), or a signal that the step already fully handled the
+ * event (wrote its audit/identity-task/surrogate, or determined the record names no one) and the
+ * caller should treat this event as done for this pass.
  */
-type NameResolution =
-  { outcome: 'resolved'; trusteeId: string; nameScore: number } | { outcome: 'handled' };
+type IdentityResolution =
+  { outcome: 'resolved'; trusteeId: string; matchedBy: string } | { outcome: 'handled' };
 
 /**
- * Outcome of applyMatchOutcome (perfect/inactive/imperfect-match stage). 'auto-linked' counts
- * toward successCount; 'handled' means some other terminal path (inactive-match or a classified
- * mismatch) already ran. A separate type from NameResolution rather than a shared union — this
- * stage never reports a trusteeId back upward, so its vocabulary shouldn't carry a case that
- * can't occur here, the same reasoning as keeping SoftCloseWriteFailed/AmbiguousNameMatch out of
- * TrusteeAppointmentSyncErrorCode.
+ * Resolves a trusteeId via the trustee-match pipeline when no fingerprint pre-match exists. Runs
+ * the same pipeline orchestrator the ACMS professional-id sync uses (runTrusteeMatchPipeline) —
+ * DxtrTrusteeParty and AcmsTrusteeProfessional are both CanonicalTrusteeSource, so no DXTR-specific
+ * orchestrator is needed.
+ *
+ * NEVER catches anything except to immediately rethrow state.error (see below), and never calls
+ * isTransientInfraError/isTooManyRequestsError/isGatewayTimeoutError. Transient-error
+ * classification happens exactly once, at processAppointments' own outer catch.
+ */
+async function resolveTrusteeViaPipeline(
+  ctx: MatchContext,
+  syncedCase: SyncedCase,
+): Promise<IdentityResolution> {
+  const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
+  const state = await runTrusteeMatchPipeline(deps.context, event.dxtrTrustee);
+
+  // Rethrown unconditionally (not gated on isTransientInfraError) so it reaches
+  // processOneEvent's one existing catch, which already classifies retryable vs DLQ — "error:
+  // transient retries, otherwise DLQ, as today."
+  if (state.error) {
+    throw state.error;
+  }
+
+  // The pipeline's own skipAdministrativePlaceholder stage (disavowal phrases, "U.S.
+  // Trustee"/"(UST)", no-person wording) can fire on a record that already passed this file's
+  // own DXTR skip checks (resolvePreMatchShortCircuit/handleBogusTrusteeCloseOnly) — a new edge
+  // case that didn't exist under the old numeric-scoring resolver. Treated as a plain no-op, the
+  // same as those DXTR-specific skip reasons; counted and logged separately so an unexpectedly
+  // high rate (e.g. a real "United States Trustee" DXTR appointee) is visible rather than silent.
+  if (state.skip) {
+    scenarioDistribution.pipelineSkippedCount++;
+    audit.matchOutcome = 'skipped-administrative-placeholder';
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee match pipeline skipped case ${event.caseId} as an administrative placeholder.`,
+    );
+    return { outcome: 'handled' };
+  }
+
+  if (state.match) {
+    return {
+      outcome: 'resolved',
+      trusteeId: state.match.trusteeId,
+      matchedBy: state.match.resolvedBy,
+    };
+  }
+
+  // Unresolved: 2+ candidates is ambiguous, 0 or 1 is no match (candidate-pool size, per the
+  // bead's explicit rule — not ACMS's deriveDisposition, which counts by a different threshold).
+  const findings = serializeState(state);
+  const reason: IdentityMismatchReason =
+    candidatePool(state).length >= 2 ? 'ambiguous' : 'no match';
+  if (reason === 'ambiguous') {
+    scenarioDistribution.multipleMatchCount++;
+    audit.matchOutcome = 'ambiguous';
+  } else {
+    scenarioDistribution.noMatchCount++;
+    audit.matchOutcome = 'no-match';
+  }
+  const isReVerification = await upsertIdentityTask(
+    deps.verificationRepo,
+    event,
+    reason,
+    findings,
+    fingerprint,
+    variant,
+  );
+  if (isReVerification) scenarioDistribution.reVerificationCount++;
+  await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  return { outcome: 'handled' };
+}
+
+/**
+ * Applies any resolved trusteeId — from a pipeline match or a fingerprint/variation-bucket hit —
+ * by always writing the real case appointment, recording what was checked (checks.matchedBy,
+ * checks.matchedTrusteeAppointment) rather than gating the write on coverage. Decision 1a
+ * (2026-10-27): no more IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS identity tasks — an
+ * uncovered or inactive-appointment match still auto-links, with checks.matchedTrusteeAppointment
+ * recording the fact for #3190's appointment-task follow-up to consume.
+ *
+ * Same never-catch rule as resolveTrusteeViaPipeline above.
+ */
+async function applyResolvedMatch(
+  ctx: MatchContext,
+  trusteeId: string,
+  matchedBy: string,
+  variationTrusteeId: string | null,
+): Promise<MatchOutcomeResolution> {
+  const { deps, event } = ctx;
+  const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
+  const checks: CaseAppointmentChecks = {
+    matchedCase: true,
+    matchedTrustee: true,
+    matchedTrusteeAppointment: isAppointmentMatch(
+      trusteeAppointments,
+      event.courtId,
+      event.courtDivisionCode,
+      event.chapter,
+    ),
+    matchedBy,
+  };
+  const dlqFailure = await autoLinkTrustee(
+    ctx,
+    trusteeId,
+    variationTrusteeId,
+    `Match: case ${event.caseId} auto-linked to trustee ${trusteeId} (matchedBy: ${matchedBy}, matchedTrusteeAppointment: ${checks.matchedTrusteeAppointment})`,
+    checks,
+  );
+  return { outcome: 'auto-linked', dlqFailure };
+}
+
+/**
+ * Outcome of applyResolvedMatch. Kept as its own type rather than folded into IdentityResolution —
+ * this stage never reports a trusteeId back upward, so its vocabulary shouldn't carry a case that
+ * can't occur here.
  * 'auto-linked' carries an optional dlqFailure: a permanent soft-close failure means
  * createNewAppointment never ran (see autoLinkTrustee/applyResolvedTrustee), so the event wasn't
  * actually linked even though this stage still reports 'auto-linked' for successCount purposes —
  * the caller (processOneEvent/processAppointments) is responsible for also routing dlqFailure to
  * the DLQ, keeping that routing visible in the one aggregation loop rather than a side mutation.
  */
-type MatchOutcomeResolution =
-  | {
-      outcome: 'auto-linked';
-      dlqFailure: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null;
-    }
-  | { outcome: 'handled' };
-
-/**
- * Resolves a trusteeId by name when no fingerprint pre-match exists. Extracted
- * from processAppointments' main loop (cams-joiwy follow-on) — replaces what was previously two
- * nested switch statements inline in that function with a single call site there, since sonarjs's
- * cognitive-complexity rule counts the switch/case/nesting-depth cost at the point a branching
- * construct is written, not how large its body is; moving whole decision procedures out (not just
- * case bodies) is what actually reduces the caller's measured complexity.
- *
- * NEVER catches anything, for any reason, and never calls isTransientInfraError/
- * isTooManyRequestsError/isGatewayTimeoutError. Transient-error classification happens exactly
- * once, at processAppointments' own outer catch — a thrown infra error from any repo call inside
- * this function (or resolveByScoring below) propagates unhandled through the await chain exactly
- * like a synchronous throw through nested calls, all the way up to that one boundary.
- */
-async function resolveTrusteeIdByName(
-  ctx: MatchContext,
-  syncedCase: SyncedCase,
-): Promise<NameResolution> {
-  const { deps, event } = ctx;
-  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee);
-
-  switch (nameMatch.kind) {
-    case 'resolved':
-      return {
-        outcome: 'resolved',
-        trusteeId: nameMatch.trusteeId,
-        nameScore: nameMatch.nameScore,
-      };
-
-    case 'no-match':
-      await handleClassifiedMismatch(
-        ctx,
-        syncedCase,
-        TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
-        [],
-      );
-      return { outcome: 'handled' };
-
-    case 'ambiguous':
-      return resolveByScoring(
-        ctx,
-        syncedCase,
-        nameMatch.matchCandidates.map((c) => c.trusteeId),
-      );
-
-    default: {
-      const _exhaustive: never = nameMatch;
-      throw new Error(`Unhandled NameMatchResult kind: ${JSON.stringify(_exhaustive)}`);
-    }
-  }
-}
-
-/**
- * Resolves an ambiguous name collision by fuzzy-match scoring. Extracted alongside
- * resolveTrusteeIdByName above — see that function's doc comment for why (whole-procedure
- * extraction, not case-body extraction) and the same never-catch rule, which applies here too.
- */
-async function resolveByScoring(
-  ctx: MatchContext,
-  syncedCase: SyncedCase,
-  candidateTrusteeIds: string[],
-): Promise<NameResolution> {
-  const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  const scoringOutcome = await resolveNameCollisionByScoring(
-    deps.context,
-    event,
-    candidateTrusteeIds,
-  );
-
-  switch (scoringOutcome.kind) {
-    // A clear scoring winner (score > FUZZY_MATCH_SCORE_THRESHOLD, gap >= FUZZY_MATCH_MIN_GAP,
-    // isAppointmentMatch already checked by resolveNameCollisionByScoring itself) is treated the
-    // same as any other resolved trusteeId — the caller (processOneEvent) routes it through
-    // applyMatchOutcome, which re-verifies isAppointmentMatch and auto-links on a pass or falls
-    // through to ImperfectMatch human review on a miss. Minimizes human review wherever the
-    // existing scoring already gives high confidence, whether that confidence comes from
-    // disambiguating a raw name collision (this path) or from a fuzzy name-normalization match
-    // with only one candidate (matchTrusteeByName's fallback in trustee-match.helpers.ts).
-    case 'resolved': {
-      // The winner's own nameScore, already computed with real data by calculateCandidateScore
-      // inside resolveNameCollisionByScoring/calculateNameScore - a genuine per-candidate score,
-      // not a re-derivation of an already-known match (contrast with matchTrusteeByName's fuzzy
-      // fallback, which fixes its nameScore at 100 since it isn't scoring between candidates,
-      // just confirming one already-identified match). Falls back to 100 only in the
-      // (should-never-happen) case the winner is somehow absent from its own candidateScores.
-      const winnerScore = scoringOutcome.candidateScores.find(
-        (c) => c.trusteeId === scoringOutcome.trusteeId,
-      );
-      return {
-        outcome: 'resolved',
-        trusteeId: scoringOutcome.trusteeId,
-        nameScore: winnerScore?.nameScore ?? 100,
-      };
-    }
-
-    case 'no-match': {
-      // NOT the same as NoTrusteeMatch: matchTrusteeByName found more than one raw name
-      // candidate — scoring simply couldn't load any of their records. Routing this to
-      // NoTrusteeMatch would misreport "no trustee matched this name" and (via a
-      // AmbiguousMatchUnresolved-style reclassification instead) would make the Data
-      // Verification UI's "Multiple Match" label appear next to zero displayed candidates. See
-      // TrusteeAppointmentSyncErrorCode.CandidateLoadFailed's doc comment.
-      deps.context.logger.warn(
-        MODULE_NAME,
-        `Fuzzy matching failed: no candidate data could be loaded for case ${event.caseId}.`,
-      );
-      scenarioDistribution.candidateLoadFailedCount++;
-      const isReVerification = await upsertMatchVerification(
-        deps.verificationRepo,
-        event,
-        TrusteeAppointmentSyncErrorCode.CandidateLoadFailed,
-        [],
-        fingerprint,
-        variant,
-      );
-      if (isReVerification) scenarioDistribution.reVerificationCount++;
-      audit.matchOutcome = 'candidate-load-failed';
-      await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
-      return { outcome: 'handled' };
-    }
-
-    case 'unresolved': {
-      deps.context.logger.warn(MODULE_NAME, `Fuzzy matching failed for case ${event.caseId}.`);
-      scenarioDistribution.multipleMatchCount++;
-      const isReVerification = await upsertMatchVerification(
-        deps.verificationRepo,
-        event,
-        TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved,
-        scoringOutcome.candidateScores,
-        fingerprint,
-        variant,
-      );
-      if (isReVerification) scenarioDistribution.reVerificationCount++;
-      audit.matchOutcome = 'ambiguous-match-unresolved';
-      await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
-      return { outcome: 'handled' };
-    }
-
-    default: {
-      const _exhaustive: never = scoringOutcome;
-      throw new Error(`Unhandled ScoringOutcome kind: ${JSON.stringify(_exhaustive)}`);
-    }
-  }
-}
-
-/**
- * Resolves the perfect/inactive/high-scoring/imperfect-match outcome once a trusteeId is known.
- * Extracted from processAppointments' main loop for the same reason as resolveTrusteeIdByName/
- * resolveByScoring above — whole-procedure extraction removes the if/else chain and its nesting
- * penalty from the measured function, not merely its case bodies. Same never-catch rule applies:
- * this function never catches anything, and never calls isTransientInfraError/
- * isTooManyRequestsError/isGatewayTimeoutError. A thrown infra error from any repo call inside it
- * propagates unhandled up to processAppointments' one outer catch, exactly like a synchronous
- * throw through nested calls.
- */
-async function applyMatchOutcome(
-  ctx: MatchContext,
-  syncedCase: SyncedCase,
-  trusteeId: string,
-  variationTrusteeId: string | null,
-  nameScore: number,
-): Promise<MatchOutcomeResolution> {
-  const { deps, event, fingerprint, variant, audit } = ctx;
-  const { context } = deps;
-  const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
-
-  if (
-    isAppointmentMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
-  ) {
-    const dlqFailure = await autoLinkTrustee(
-      ctx,
-      trusteeId,
-      variationTrusteeId,
-      `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
-    );
-    return { outcome: 'auto-linked', dlqFailure };
-  }
-
-  const inactiveMatch = findInactivePerfectMatch(
-    trusteeAppointments,
-    event.courtId,
-    event.courtDivisionCode,
-    event.chapter,
-  );
-
-  if (inactiveMatch) {
-    await handleInactivePerfectMatch(ctx, trusteeId, trusteeAppointments, inactiveMatch, nameScore);
-    await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
-    return { outcome: 'handled' };
-  }
-
-  const trustee = await deps.trusteesRepo.read(trusteeId);
-  const candidateScore = calculateCandidateScore(
-    context,
-    event.dxtrTrustee,
-    { courtId: event.courtId, courtDivisionCode: event.courtDivisionCode, chapter: event.chapter },
-    trustee,
-    trusteeAppointments,
-    nameScore,
-  );
-
-  // Every single-candidate non-perfect-match falls through to ImperfectMatch for human review,
-  // regardless of totalScore and regardless of whether trusteeId holds any active appointment in
-  // this case's court - district/division evidence is a scoring signal (see calculateCandidateScore's
-  // districtDivisionScore, 0/50/100), not a gate on whether the candidate reaches the reviewer.
-  audit.matchOutcome = 'imperfect-match';
-  audit.matchedTrusteeId = trusteeId;
-  audit.scoringBreakdown = {
-    districtDivisionScore: candidateScore.districtDivisionScore,
-    chapterScore: candidateScore.chapterScore,
-  };
-
-  await handleClassifiedMismatch(ctx, syncedCase, TrusteeAppointmentSyncErrorCode.ImperfectMatch, [
-    candidateScore,
-  ]);
-  return { outcome: 'handled' };
-}
+type MatchOutcomeResolution = {
+  outcome: 'auto-linked';
+  dlqFailure: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null;
+};
 
 /**
  * Outcome of processOneEvent, reported back to processAppointments' thin aggregation loop:
@@ -1684,7 +1459,6 @@ async function processOneEvent(
     dxtrTrusteeName: event.dxtrTrustee.fullName,
     matchOutcome: 'error',
     matchedTrusteeId: null,
-    scoringBreakdown: null,
     appointmentStatus: null,
   };
 
@@ -1713,31 +1487,21 @@ async function processOneEvent(
     }
 
     let trusteeId: string;
-    let nameScore: number;
+    let matchedBy: string;
     if (variationTrusteeId) {
-      // A fingerprint hit involved no name comparison at all - there is no name-based
-      // uncertainty to represent, so 100 is accurate here, not a fudge (same reasoning as
-      // matchTrusteeByName's 'resolved' tiers - see NameMatchResult's doc comment in
-      // trustee-match.helpers.ts).
+      // A fingerprint-bucket hit involved no pipeline run at all — checks.matchedBy names the
+      // bucket, not a RESOLVE stage.
       trusteeId = variationTrusteeId;
-      nameScore = 100;
+      matchedBy = 'variation';
     } else {
-      const resolution = await resolveTrusteeIdByName(ctx, syncedCase);
+      const resolution = await resolveTrusteeViaPipeline(ctx, syncedCase);
       if (resolution.outcome === 'handled') return { kind: 'none' };
       trusteeId = resolution.trusteeId;
-      nameScore = resolution.nameScore;
+      matchedBy = resolution.matchedBy;
     }
 
-    const matchOutcome = await applyMatchOutcome(
-      ctx,
-      syncedCase,
-      trusteeId,
-      variationTrusteeId,
-      nameScore,
-    );
-    return matchOutcome.outcome === 'auto-linked'
-      ? { kind: 'success', dlqFailure: matchOutcome.dlqFailure }
-      : { kind: 'none' };
+    const matchOutcome = await applyResolvedMatch(ctx, trusteeId, matchedBy, variationTrusteeId);
+    return { kind: 'success', dlqFailure: matchOutcome.dlqFailure };
   } catch (originalError) {
     const camsError = getCamsError(
       originalError,
@@ -1751,9 +1515,9 @@ async function processOneEvent(
     // occurrence would permanently drop a case appointment that a retry could sync successfully,
     // and the next scheduled run does not recover it since the date cursor has already advanced
     // past this event. This is the ONLY transient-error check for this event: every repo call in
-    // this pipeline — the fingerprint lookup, case sync, and matchTrusteeByName/
-    // resolveNameCollisionByScoring (which return rather than throw for every business outcome) —
-    // runs inside the try block above at the same nesting depth, so any transient error from any
+    // this pipeline — the fingerprint lookup, case sync, and the trustee-match pipeline itself
+    // (whose own non-transient errors are rethrown by resolveTrusteeViaPipeline, landing here too)
+    // — runs inside the try block above at the same nesting depth, so any transient error from any
     // of them surfaces here, in this one enclosing catch, with no second, independent recheck
     // required (contrast with the pre-Move-B nested catch (fuzzyError), which needed its own
     // recheck because it lived one frame deeper — see cams-o5gh).
@@ -1767,11 +1531,11 @@ async function processOneEvent(
       return { kind: 'retryable' };
     }
 
-    // Unexpected/unclassified error — route to DLQ. Both known business outcomes previously
-    // classified via a dedicated helper here (a no-match and an unscored name collision) are now
-    // dispatched directly from matchTrusteeByName/resolveNameCollisionByScoring's returned
-    // NameMatchResult/ScoringOutcome values rather than reaching this catch via a thrown+caught
-    // error — so anything still reaching here is, by construction, a genuinely unclassified error.
+    // Unexpected/unclassified error — route to DLQ. Known business outcomes (no-match, ambiguous,
+    // an administrative-placeholder skip) are dispatched directly from
+    // resolveTrusteeViaPipeline's returned IdentityResolution rather than reaching this catch via
+    // a thrown+caught error — so anything still reaching here is, by construction, a genuinely
+    // unclassified error (or a non-transient pipeline processing failure).
     context.logger.warn(MODULE_NAME, `${camsError}`);
     return { kind: 'dlq', message: { ...event, error: camsError } };
   } finally {
@@ -1781,13 +1545,17 @@ async function processOneEvent(
 
 /**
  * Process trustee appointment events by:
- * 1. Matching each DXTR trustee to a CAMS trustee by name
- * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
- * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
+ * 1. Resolving each DXTR trustee to a CAMS trustee via the trustee-match pipeline (or a
+ *    fingerprint/TRUSTEE_VARIATION bucket hit, bypassing the pipeline entirely)
+ * 2. Always writing the case appointment once a trusteeId is resolved, recording what was
+ *    checked (checks.matchedTrusteeAppointment, checks.matchedBy) rather than gating the write
+ *    on appointment coverage
+ * 3. Creating a pending identity task (source 'DXTR', with the pipeline's serialized findings)
+ *    only when the pipeline could not resolve a trusteeId at all
  *
  * A thin loop over processOneEvent above, which owns the entire per-event pipeline (previously
- * inline here) — fingerprint/case-sync/verification-bucket checks, name/scoring
- * resolution, match-outcome application, and the one transient-error catch boundary. This function
+ * inline here) — fingerprint/case-sync/verification-bucket checks, identity resolution,
+ * match-outcome application, and the one transient-error catch boundary. This function
  * only aggregates each event's EventOutcome into the four result buckets below; scenarioDistribution
  * is updated by reference inside processOneEvent and its callees, so nothing here re-derives it.
  *
@@ -1796,24 +1564,26 @@ async function processOneEvent(
  * these against a real DXTR/Cosmos round trip — that harness's header comment cross-references
  * this list rather than restating the rules):
  *
- * Name resolution (matchTrusteeByName / resolveTrusteeIdByName / resolveByScoring):
- * - Exactly one CAMS trustee matches the DXTR name (exact or fuzzy-normalized): resolved directly,
- *   nameScore 100.
- * - No CAMS trustee matches: NoTrusteeMatch — pending verification, no candidates.
- * - More than one CAMS trustee matches (ambiguous): resolveNameCollisionByScoring scores every
- *   candidate. A clear winner (totalScore > FUZZY_MATCH_SCORE_THRESHOLD, gap >=
- *   FUZZY_MATCH_MIN_GAP, AND isAppointmentMatch true for that winner) resolves exactly like an
- *   exact-name match. Otherwise: AmbiguousMatchUnresolved (no clear winner, e.g. a genuine tie) or
- *   CandidateLoadFailed (every candidate's data failed to load).
+ * Identity resolution (resolveTrusteeViaPipeline), once there is no fingerprint/variation hit:
+ * - The trustee-match pipeline resolves a single trusteeId (state.match set, by any RESOLVE
+ *   stage): resolved, matchedBy = the stage's name.
+ * - The pipeline's own skipAdministrativePlaceholder stage fires (state.skip): no-op,
+ *   pipelineSkippedCount — see that function's doc comment for why this is a new edge case.
+ * - The pipeline does not resolve a trusteeId (state.match null): the candidate pool's size
+ *   decides the identity task's mismatchReason — 2 or more candidates is 'ambiguous', 0 or 1 is
+ *   'no match'. findings is the pipeline's serialized state, unchanged; matchCandidates is
+ *   always empty.
+ * - A non-transient pipeline processing failure (state.error): rethrown, landing in
+ *   processOneEvent's one catch exactly like any other unclassified error (retry if transient,
+ *   otherwise DLQ).
  *
- * Match-outcome application (applyMatchOutcome), once a trusteeId is known:
- * - isAppointmentMatch true (a SINGLE active appointment covers court+division+chapter together):
- *   auto-linked — no human review, no verification doc written.
- * - No active appointment matches, but an INACTIVE appointment matches court+division+chapter
- *   exactly: PerfectMatchInactiveStatus — pending verification, surrogate appointment written.
- * - Neither: ImperfectMatch — pending verification with a real CandidateScore breakdown, however
- *   high totalScore is. isAppointmentMatch's single-record requirement is the ONLY gate for
- *   auto-linking; a high totalScore is never sufficient on its own.
+ * Match-outcome application (applyResolvedMatch), once a trusteeId is known (from either the
+ * pipeline or a fingerprint/variation-bucket hit): always auto-links — decision 1a (2026-10-27)
+ * removed the old appointment-coverage gate that used to send an uncovered or inactive-only
+ * match to a human-review identity task (IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS no longer
+ * exist). checks.matchedTrusteeAppointment records isAppointmentMatch's result (a SINGLE active
+ * appointment covering court+division+chapter together) as data for #3190's appointment-task
+ * follow-up, not as a gate on whether to write.
  *
  * Pre-matching short-circuits (processOneEvent / resolveSyncedCase):
  * - No SYNCED_CASE document exists yet for this caseId: not-yet-synced, event queued for retry
@@ -1830,7 +1600,7 @@ async function processOneEvent(
  *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /
  *   sentinelBogusNameSkippedCount).
  * - A fingerprint/TRUSTEE_VARIATION hit already resolved this exact DXTR record to a trusteeId on
- *   a prior pass: short-circuits straight to that trusteeId, bypassing matchTrusteeByName.
+ *   a prior pass: short-circuits straight to that trusteeId, bypassing the trustee-match pipeline.
  * - A prior pass already wrote a pending or approved verification doc for this event
  *   (handleVerificationBucketHit): re-verification — an approved verification is never
  *   overwritten by a later pass; a pending one is refreshed.
@@ -1845,16 +1615,14 @@ async function processAppointments(
   let successCount = 0;
   const scenarioDistribution: ScenarioDistribution = {
     autoMatchCount: 0,
-    imperfectMatchCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
-    perfectMatchInactiveCount: 0,
     reVerificationCount: 0,
     verificationBucketHitCount: 0,
     fingerprintHitCount: 0,
     fingerprintMissCount: 0,
     retryableCount: 0,
-    candidateLoadFailedCount: 0,
+    pipelineSkippedCount: 0,
     unappointableChapterSkippedCount: 0,
     emptyDemographicsSkippedCount: 0,
     sentinelBogusNameSkippedCount: 0,
