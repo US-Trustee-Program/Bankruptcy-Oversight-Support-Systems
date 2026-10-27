@@ -504,9 +504,9 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      const trusteeMismatchOption = screen.getByTestId('task-type-filter-option-item-2');
-      expect(trusteeMismatchOption).toBeInTheDocument();
-      expect(trusteeMismatchOption.textContent).toContain('Trustee Mismatch');
+      const trusteeIdentityOption = screen.getByTestId('task-type-filter-option-item-2');
+      expect(trusteeIdentityOption).toBeInTheDocument();
+      expect(trusteeIdentityOption.textContent).toContain('Trustee Identity');
     });
   });
 
@@ -859,7 +859,7 @@ describe('Review Orders screen', () => {
     // Deselect Consolidation → only transfers visible.
     const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
     fireEvent.click(expandBtn);
-    const consolidationOption = screen.getByTestId('task-type-filter-option-item-1');
+    const consolidationOption = screen.getByTestId('task-type-filter-option-item-0');
     fireEvent.click(consolidationOption);
 
     await waitFor(async () => {
@@ -876,7 +876,7 @@ describe('Review Orders screen', () => {
     });
 
     // Deselect Transfer, reselect Consolidation → only consolidations visible.
-    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
+    const transferOption = screen.getByTestId('task-type-filter-option-item-1');
     fireEvent.click(transferOption);
     fireEvent.click(consolidationOption);
 
@@ -1092,5 +1092,95 @@ describe('Review Orders screen', () => {
     expect(
       screen.getByTestId(`mock-consolidation-order-${existingOrder.id}-pending`),
     ).toBeInTheDocument();
+  });
+
+  test('should not render a region heading, and should label the task list for screen readers', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [MockData.getTransferOrder()] });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Region 02')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Region/i)).not.toBeInTheDocument();
+    const srOnlyHeading = screen.getByRole('heading', { level: 2 });
+    expect(srOnlyHeading).toHaveClass('usa-sr-only');
+    expect(srOnlyHeading.textContent).not.toMatch(/Region/i);
+  });
+
+  test('should render "Subject" as the first column header', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [MockData.getTransferOrder()] });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const header = screen.getByTestId('orders-header');
+      expect(header.textContent).toContain('Subject');
+      expect(header.textContent).not.toContain('Court District');
+    });
+  });
+
+  test('should list task type filter options alphabetically with no "Trustee Mismatch"', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const consolidationOption = screen.getByTestId('task-type-filter-option-item-0');
+      const transferOption = screen.getByTestId('task-type-filter-option-item-1');
+      const trusteeOption = screen.getByTestId('task-type-filter-option-item-2');
+      expect(consolidationOption.textContent).toContain('Consolidation');
+      expect(transferOption.textContent).toContain('Transfer');
+      expect(trusteeOption.textContent).toContain('Trustee Identity');
+      expect(screen.queryByText('Trustee Mismatch')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should re-derive a stale session-stored "Trustee Mismatch" filter label as "Trustee Identity"', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [sampleVerificationOrder],
+    });
+
+    sessionStorage.setItem(
+      TYPE_FILTER_SESSION_KEY,
+      JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).toBeVisible();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Trustee Identity')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Trustee Mismatch')).not.toBeInTheDocument();
   });
 });

@@ -23,10 +23,10 @@ test.describe('Trustee Match Verification', () => {
     // Wait for the verification list to load before interacting with filters
     const verificationResponse = await verificationResponsePromise;
 
-    // Deselect Transfer and Consolidation, leaving only Trustee Mismatch selected
+    // Deselect Transfer and Consolidation, leaving only Trustee Identity selected
     await page.locator('#task-type-filter-expand').click(timeoutOption);
-    await page.getByTestId('task-type-filter-option-item-0').click(timeoutOption);
-    await page.getByTestId('task-type-filter-option-item-1').click(timeoutOption);
+    await page.locator('[id="option-transfer"]').click(timeoutOption);
+    await page.locator('[id="option-consolidation"]').click(timeoutOption);
     await expect(page.getByTestId('accordion-group')).toBeVisible(timeoutOption);
     verificationItems = (await verificationResponse.json()).data;
     expect(verificationItems).not.toBeFalsy();

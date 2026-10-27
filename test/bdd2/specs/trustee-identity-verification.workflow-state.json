@@ -1,12 +1,12 @@
 {
   "ticketNumber": "CAMS-953",
   "featureName": "trustee-identity-verification",
-  "currentPhase": 3,
-  "currentSlice": 1,
+  "currentPhase": 2,
+  "currentSlice": 2,
   "totalSlices": 7,
-  "status": "waiting-for-implementation",
-  "lastUpdated": "2026-10-27T15:03:23",
-  "nextSteps": "Fresh instance: run `bd show cams-c45pn.1` and follow the HANDOFF in its DESIGN field (implements Slice 1, records results, then continues to Slice 2 Phase 2).",
+  "status": "in-progress",
+  "lastUpdated": "2026-10-27T20:52:40",
+  "nextSteps": "Phase 2 design for Slice 2 (cams-c45pn.5)",
   "notes": "Sources: GitHub #3187, beads cams-c45pn (incl. UX mock notes 2026-10-26), bd memory professional-id-never-multi-linked (drop 'multiple linked trustees' reason). claude.ai artifact Gqe7YYhv9riCHPFAhtLjE8 was not readable; user chose to proceed without it. Phase 1 complete 2026-10-27. Beads: parent cams-c45pn; slices 1-7 = cams-c45pn.1, .5, .6, .7, .8, .9, .10 (chained blocked-by). Decisions recorded in feature-qa.md. 2026-10-27: All CAMS-953 planning artifacts live in the CAMS repo at test/bdd2/specs/ (trustee-identity-verification.feature, .feature-qa.md, and this file, trustee-identity-verification.workflow-state.json). Write slice designs, prompts and implementation notes there as trustee-identity-verification.slice-N-*.md.",
   "testDataScripts": [
     {

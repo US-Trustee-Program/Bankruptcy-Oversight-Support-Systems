@@ -21,6 +21,7 @@ import useFeatureFlags, {
   TRANSFER_ORDERS_ENABLED,
   TRUSTEE_VERIFICATION_ENABLED,
 } from '../lib/hooks/UseFeatureFlags';
+import { FeatureFlagSet } from '@common/feature-flags';
 import { TrusteeMatchVerificationListItem } from '@common/cams/trustee-match-verification';
 import { TrusteeMatchVerificationAccordion } from './trustee-verification/TrusteeMatchVerificationAccordion';
 import { sortByDate } from '@/lib/utils/datetime';
@@ -51,6 +52,11 @@ export default function DataVerificationScreen() {
   );
   const typeFilter = typeSelections.map((s) => s.value as DataVerificationItemType);
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
+  const taskTypeOptions = getTaskTypeOptions(featureFlags);
+  const typeSelectionsWithCurrentLabels = typeSelections.map((selection) => ({
+    ...selection,
+    label: taskType.get(selection.value as DataVerificationItemType) ?? selection.label,
+  }));
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [isOrderListLoading, setIsOrderListLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
@@ -65,10 +71,21 @@ export default function DataVerificationScreen() {
   const hasOffices = session?.user?.offices && session?.user?.offices.length > 0;
   const showDataVerification = hasValidPermissions && hasOffices;
 
-  // TODO: This needs to be dynamic!
-  const regionHeader = 'Region 02';
+  const accordionFieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
 
-  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+  function getTaskTypeOptions(flags: FeatureFlagSet): ComboOption[] {
+    return [
+      ...(flags[CONSOLIDATIONS_ENABLED]
+        ? [{ value: 'consolidation', label: taskType.get('consolidation')! }]
+        : []),
+      ...(flags[TRANSFER_ORDERS_ENABLED]
+        ? [{ value: 'transfer', label: taskType.get('transfer')! }]
+        : []),
+      ...(flags[TRUSTEE_VERIFICATION_ENABLED]
+        ? [{ value: 'trustee-match', label: taskType.get('trustee-match')! }]
+        : []),
+    ];
+  }
 
   function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
@@ -110,15 +127,7 @@ export default function DataVerificationScreen() {
 
   useEffect(() => {
     if (typeSelections.length > 0) return;
-    const defaults: ComboOption[] = [
-      ...(featureFlags[TRANSFER_ORDERS_ENABLED] ? [{ value: 'transfer', label: 'Transfer' }] : []),
-      ...(featureFlags[CONSOLIDATIONS_ENABLED]
-        ? [{ value: 'consolidation', label: 'Consolidation' }]
-        : []),
-      ...(featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-        ? [{ value: 'trustee-match', label: 'Trustee Mismatch' }]
-        : []),
-    ];
+    const defaults = getTaskTypeOptions(featureFlags);
     if (defaults.length > 0) setTypeSelections(defaults);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -328,25 +337,20 @@ export default function DataVerificationScreen() {
           )}
           {!isOrderListLoading && showDataVerification && (
             <>
-              <h2>{regionHeader}</h2>
-              <section className="order-list-container">
+              <section
+                className="order-list-container"
+                aria-labelledby="data-verification-tasks-heading"
+              >
+                <h2 id="data-verification-tasks-heading" className="usa-sr-only">
+                  Data Verification Tasks
+                </h2>
                 <div className="filters">
                   <ComboBox
                     id="task-type-filter"
                     label="Task Type"
                     multiSelect={true}
-                    options={[
-                      ...(featureFlags[TRANSFER_ORDERS_ENABLED]
-                        ? [{ value: 'transfer', label: 'Transfer' }]
-                        : []),
-                      ...(featureFlags[CONSOLIDATIONS_ENABLED]
-                        ? [{ value: 'consolidation', label: 'Consolidation' }]
-                        : []),
-                      ...(featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-                        ? [{ value: 'trustee-match', label: 'Trustee Mismatch' }]
-                        : []),
-                    ]}
-                    selections={typeSelections}
+                    options={taskTypeOptions}
+                    selections={typeSelectionsWithCurrentLabels}
                     onUpdateSelection={handleTypeFilter}
                     singularLabel="type"
                     pluralLabel="types"

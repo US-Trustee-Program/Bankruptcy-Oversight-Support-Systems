@@ -460,7 +460,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
-  const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
   // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates: the first-token-lastName
   // search tier (see matchTrusteeByName in trustee-match.helpers.ts) can surface a single
@@ -841,7 +840,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 />
                 <TrusteeSearchLink
                   linkMessage="There are no other suggested matches in CAMS."
-                  linkLabel="Search for a different trustee"
+                  linkLabel="Search for a trustee"
                   onClick={openSearch}
                 />
               </>
@@ -901,7 +900,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 />
                 <TrusteeSearchLink
                   linkMessage="There are no other suggested matches in CAMS."
-                  linkLabel="Search for a different trustee."
+                  linkLabel="Search for a trustee"
                   onClick={openSearch}
                 />
               </>
@@ -934,10 +933,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           <div
             className="accordion-header-field grid-col-6 text-no-wrap"
-            aria-label={`${fieldHeaders[0]} – ${courtName}.`}
+            aria-label={`${fieldHeaders[0]} – ${order.dxtrTrustee.fullName}.`}
             data-cell={fieldHeaders[0]}
           >
-            {courtName}
+            {order.dxtrTrustee.fullName}
           </div>
           <div
             className="accordion-header-field grid-col-2 text-no-wrap"

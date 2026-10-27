@@ -16,7 +16,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { getCaseNumber } from '@common/cams/cases';
 
-const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+const fieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
 
 const sampleOrder: TrusteeMatchVerificationListItem = {
   id: 'case-001:john doe',
@@ -153,39 +153,29 @@ describe('TrusteeMatchVerificationAccordion', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not mocked in this test'));
   });
 
-  test('should render accordion heading with court, date, task type, and status', () => {
+  test('should render accordion heading with trustee name, date, task type, and status', () => {
     renderWithProps();
 
     const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
     expect(heading).toBeInTheDocument();
-    expect(heading.textContent).toContain(sampleOrder.courtId);
+    expect(heading.textContent).toContain(sampleOrder.dxtrTrustee.fullName);
     expect(heading.textContent).toContain('01/15/2026');
-    expect(heading.textContent).toContain('Trustee Mismatch');
+    expect(heading.textContent).toContain('Trustee Identity');
     expect(heading.textContent).toContain('Pending Review');
   });
 
-  test('should render court name when courts prop is provided', () => {
-    renderWithProps({
-      courts: [
-        {
-          courtId: '0881',
-          courtName: 'Southern District of New York',
-          officeName: '',
-          officeCode: '',
-          courtDivisionCode: '081',
-          courtDivisionName: 'Manhattan',
-          groupDesignator: '',
-          regionId: '',
-          regionName: '',
-        },
-      ],
-    });
+  test('should render the Subject cell with the source trustee name and a matching aria-label', () => {
+    renderWithProps();
 
     const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
-    expect(heading.textContent).toContain('Southern District of New York');
+    const subjectCell = within(heading).getByText(sampleOrder.dxtrTrustee.fullName);
+    expect(subjectCell).toHaveAttribute(
+      'aria-label',
+      `Subject – ${sampleOrder.dxtrTrustee.fullName}.`,
+    );
   });
 
-  test('order.courtName takes precedence over the courts-prop lookup when both are present', () => {
+  test('should show the trustee name, not the court, even when courts and courtName are provided', () => {
     renderWithProps({
       order: { ...sampleOrder, courtName: 'Direct Court Name' },
       courts: [
@@ -204,7 +194,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
-    expect(heading.textContent).toContain('Direct Court Name');
+    expect(heading.textContent).toContain(sampleOrder.dxtrTrustee.fullName);
+    expect(heading.textContent).not.toContain('Direct Court Name');
     expect(heading.textContent).not.toContain('Southern District of New York');
   });
 
@@ -247,9 +238,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(candidateInfo).toBeInTheDocument();
     expect(screen.getByTestId('candidate-name-trustee-1').textContent).toContain('Jane Smith');
     expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /Search for a trustee/, hidden: true }),
-    ).not.toBeInTheDocument();
   });
 
   test('backfills court name/division from the courts prop when an appointment is missing them', async () => {
@@ -913,7 +901,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     await mockDetailAndExpand(readonlyDetail);
 
     const searchButton = screen.getByRole('button', {
-      name: /Search for a different trustee\./,
+      name: /Search for a trustee/,
       hidden: true,
     });
     expect(searchButton).toBeInTheDocument();
@@ -922,7 +910,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     );
   });
 
-  test('should render "Search for a different trustee." link when match candidates exist', async () => {
+  test('should render "Search for a trustee" link when match candidates exist', async () => {
     const orderWithCandidate: TrusteeMatchVerificationListItem = {
       ...sampleOrder,
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
@@ -948,7 +936,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     await mockDetailAndExpand(detailWithCandidate);
 
     const searchButton = screen.getByRole('button', {
-      name: /Search for a different trustee/,
+      name: /Search for a trustee/,
       hidden: true,
     });
     expect(searchButton).toBeInTheDocument();
@@ -1997,7 +1985,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const heading = screen.getByTestId(`accordion-heading-${inactiveOrder.id}`);
       expect(heading.textContent).toContain('Inactive Trustee');
-      expect(heading.textContent).not.toContain('Trustee Mismatch');
+      expect(heading.textContent).not.toContain('Trustee Identity');
     });
 
     test('should render distinct problem statement for inactive match', async () => {
@@ -2103,13 +2091,13 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(content.textContent).not.toContain('CAMS found a possible match');
     });
 
-    test('should render "Trustee Mismatch" as task type label for non-inactive mismatch types', () => {
+    test('should render "Trustee Identity" as task type label for non-inactive mismatch types', () => {
       renderWithProps({
         order: { ...sampleOrderWithCandidates, mismatchReason: 'IMPERFECT_MATCH' },
       });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
-      expect(heading.textContent).toContain('Trustee Mismatch');
+      expect(heading.textContent).toContain('Trustee Identity');
       expect(heading.textContent).not.toContain('Inactive Trustee');
     });
   });
@@ -2250,14 +2238,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
       expect(heading.textContent).toContain('Multiple Matches');
-      expect(heading.textContent).not.toContain('Trustee Mismatch');
+      expect(heading.textContent).not.toContain('Trustee Identity');
     });
 
-    test('shows "Trustee Mismatch", not "Multiple Matches", for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', () => {
+    test('shows "Trustee Identity", not "Multiple Matches", for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', () => {
       renderWithProps({ order: singleCandidateAmbiguousOrder });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
-      expect(heading.textContent).toContain('Trustee Mismatch');
+      expect(heading.textContent).toContain('Trustee Identity');
       expect(heading.textContent).not.toContain('Multiple Match');
     });
 
