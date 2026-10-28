@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -144,6 +145,31 @@ function renderWithProps(props: Partial<TrusteeMatchVerificationAccordionProps> 
   return render(
     <BrowserRouter>
       <TrusteeMatchVerificationAccordion {...defaultProps} {...props} />
+    </BrowserRouter>,
+  );
+}
+
+/**
+ * Renders the accordion under a parent that applies onOrderUpdate's order to its own state, as
+ * DataVerificationScreen does, so a successful approval swaps the accordion to its resolved view.
+ */
+function renderWithParentState() {
+  function Parent() {
+    const [order, setOrder] = useState<TrusteeMatchVerificationListItem>(sampleOrder);
+    return (
+      <TrusteeMatchVerificationAccordion
+        order={order}
+        taskType={taskType}
+        statusType={orderStatusType}
+        fieldHeaders={fieldHeaders}
+        hidden={false}
+        onOrderUpdate={(_alert, updated) => setOrder(updated)}
+      />
+    );
+  }
+  return render(
+    <BrowserRouter>
+      <Parent />
     </BrowserRouter>,
   );
 }
@@ -442,6 +468,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
+    test('does not move focus to the resolved statement for a task that was already approved', () => {
+      renderWithProps({ order: resolvedOrder });
+
+      expect(screen.getByTestId('resolved-statement')).not.toHaveFocus();
+    });
+
     test('does not fetch detail when manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       renderWithProps({ order: resolvedOrder });
@@ -584,6 +616,19 @@ describe('TrusteeMatchVerificationAccordion', () => {
           },
         );
       });
+    });
+
+    test('moves focus to the resolved statement after a confirmed approval', async () => {
+      // The Match Trustee button that opened the modal unmounts with the pending view, so
+      // focus would otherwise fall to <body>.
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      renderWithParentState();
+      await mockDetailAndExpand();
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(confirmModalSubmit()!);
+
+      await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
     });
 
     test('reports every affected case in the success message', async () => {
@@ -806,6 +851,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
           }),
         );
       });
+    });
+
+    test('moves focus to the resolved statement after a manual-match approval', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      setupSearchMocks();
+      renderWithParentState();
+      await mockDetailAndExpand();
+
+      await openSearchModal();
+      fireEvent.click(await selectFirstSearchResult());
+
+      await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
     });
 
     test('ignores a second rapid manual-match submit while the first is still in flight', async () => {

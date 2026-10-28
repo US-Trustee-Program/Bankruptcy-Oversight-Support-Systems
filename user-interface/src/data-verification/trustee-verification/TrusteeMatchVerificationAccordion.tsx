@@ -90,6 +90,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // (e.g. a rapid repeat event, or two calls in the same tick). This ref is mutated synchronously
   // so it blocks re-entrancy immediately, regardless of render timing.
   const isSubmittingRef = useRef(false);
+  // Approving swaps the pending view for the resolved one, unmounting the button that opened the
+  // modal, so focus is moved to the resolved statement instead of falling to <body>. Set only by
+  // an approval made here, so a task that loads already approved never takes focus.
+  const justApprovedRef = useRef(false);
+  const resolvedStatementRef = useRef<HTMLParagraphElement>(null);
 
   const { source } = order;
   // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
@@ -126,6 +131,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const isResolved = order.status === 'approved';
   const canApprove = order.status === 'pending';
 
+  useEffect(() => {
+    if (isResolved && justApprovedRef.current) {
+      justApprovedRef.current = false;
+      resolvedStatementRef.current?.focus();
+    }
+  }, [isResolved]);
+
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
     legacy?.address1,
@@ -142,6 +154,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     trusteeName: string;
   }) {
     await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
+    justApprovedRef.current = true;
     const approvalMessage =
       affectedCaseCount > 1
         ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
@@ -401,7 +414,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           data-testid={`accordion-content-${order.id}`}
         >
           {isResolved ? (
-            <p className="resolved-statement" data-testid="resolved-statement">
+            <p
+              className="resolved-statement"
+              data-testid="resolved-statement"
+              ref={resolvedStatementRef}
+              tabIndex={-1}
+            >
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
                 {affectedCaseCount > 1 ? '' : 'case: '}
