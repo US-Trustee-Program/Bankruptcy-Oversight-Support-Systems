@@ -45,7 +45,7 @@
     "@azure/monitor-query-logs": "1.0.0",
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
-    "@launchdarkly/node-server-sdk": "9.14.4",
+    "@launchdarkly/node-server-sdk": "9.14.5",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "8.2.0",
     "applicationinsights": "3.14.0",
