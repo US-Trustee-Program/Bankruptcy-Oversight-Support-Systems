@@ -114,6 +114,7 @@ describe('TrusteeMatchVerificationController', () => {
     context = await createMockApplicationContext();
     context.featureFlags['trustee-verification-enabled'] = true;
     context.request.method = 'GET';
+    context.session.user.roles = [CamsRole.DataVerifier];
   });
 
   test('should return 404 when trustee-verification-enabled flag is off', async () => {
@@ -124,6 +125,23 @@ describe('TrusteeMatchVerificationController', () => {
 
     expect(response.statusCode).toBe(404);
   });
+
+  test.each([
+    ['GET list', {}],
+    ['GET by ID', { id: 'case-001:john doe' }],
+  ])(
+    'should reject %s when user does not have DataVerifier role',
+    async (_label, params: Record<string, string>) => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.params = params;
+      const repoSpy = vi.spyOn(factory, 'getTrusteeMatchVerificationRepository');
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Unauthorized');
+      expect(repoSpy).not.toHaveBeenCalled();
+    },
+  );
 
   describe('GET list', () => {
     test('should return verification orders without enriched appointments', async () => {
