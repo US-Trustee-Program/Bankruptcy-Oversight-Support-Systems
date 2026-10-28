@@ -1,23 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import {
-  DxtrTrusteeParty,
-  CandidateScore,
-  TrusteeAppointmentSyncEvent,
-  UNSCORED,
-  calculateTotalScore,
-} from '@common/cams/dataflow-events';
+import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
-import {
-  TrusteeAppointment,
-  normalizeChapter,
-  appointmentCoversDivision,
-  isAppointmentMatch,
-} from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
-import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import {
   generateBigrams,
   isKnownNicknamePair,
@@ -25,19 +12,6 @@ import {
 } from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
-
-/**
- * Minimum totalScore for a multi-candidate fuzzy-match winner. Set to 74 so a genuine last-name
- * mismatch (nameScore=0, everything else perfect) lands exactly at the threshold and is excluded.
- */
-const FUZZY_MATCH_SCORE_THRESHOLD = 74;
-
-/**
- * Minimum point gap a multi-candidate winner must have over the runner-up. Set to the smallest
- * single-dimension swing under WEIGHTS (address/phone/email each at 8%), so a disagreement on any
- * one of those dimensions alone is enough to break a tie.
- */
-const FUZZY_MATCH_MIN_GAP = 8;
 
 /**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
@@ -442,74 +416,9 @@ export function calculateAddressScore(
   const camsZip = zip5(camsAddress.zipCode);
   const zipScore = dxtrZip && camsZip && dxtrZip === camsZip ? 100 : 0;
 
-  // Rounded to the nearest integer so this behaves like every other CandidateScore sub-score
+  // Rounded to the nearest integer so this behaves like every other per-field sub-score
   // (nameScore, districtDivisionScore, chapterScore are always whole numbers).
   return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
-}
-
-/**
- * Calculates district/division match score for a trustee.
- * Scoring:
- * - Exact court + division match with active appointment: 100 points
- * - Same court, different division with active appointment: 50 points
- * - No matching court: 0 points
- * Only active appointments count. calculateChapterScore reuses this function's division match
- * as the basis for its own scoping, so the two scores can never be satisfied by two different
- * appointment records.
- */
-export function calculateDistrictDivisionScore(
-  caseCourtId: string,
-  caseDivisionCode: string,
-  appointments: TrusteeAppointment[],
-): number {
-  const activeAppointments = appointments.filter((a) => a.status === 'active');
-
-  if (activeAppointments.length === 0) return 0;
-
-  // Check for exact court + division match
-  const exactMatch = activeAppointments.some((a) => {
-    return a.courtId === caseCourtId && appointmentCoversDivision(a, caseDivisionCode);
-  });
-  if (exactMatch) return 100;
-
-  // Check for same court, different division
-  const courtMatch = activeAppointments.some((a) => a.courtId === caseCourtId);
-  if (courtMatch) return 50;
-
-  return 0;
-}
-
-/**
- * Calculates chapter match score for a trustee.
- * Scoring:
- * - Exact chapter match, but ONLY counted against an active appointment that also covers the
- *   case's court + division: 100 points
- * - No match: 0 points
- * Normalizes chapters before comparison (e.g., "7" === "07"). Only active appointments that also
- * cover the case's court + division are eligible — a trustee active in an unrelated division
- * must never score 100 on chapter just because some other appointment's chapter happens to
- * match. chapterScore can therefore never be 100 when calculateDistrictDivisionScore is 50 or 0.
- */
-export function calculateChapterScore(
-  caseCourtId: string,
-  caseDivisionCode: string,
-  caseChapter: string,
-  appointments: TrusteeAppointment[],
-): number {
-  const normalizedCaseChapter = normalizeChapter(caseChapter);
-
-  const divisionMatchingAppointments = appointments.filter(
-    (a) =>
-      a.status === 'active' &&
-      a.courtId === caseCourtId &&
-      appointmentCoversDivision(a, caseDivisionCode),
-  );
-
-  const chapterMatch = divisionMatchingAppointments.some((a) => {
-    return normalizeChapter(a.chapter) === normalizedCaseChapter;
-  });
-
-  return chapterMatch ? 100 : 0;
 }
 
 /**
@@ -1111,231 +1020,6 @@ export function calculateEmailScore(
 // Defined in common/src/cams/dataflow-events.ts so dev-tools' seed-data validator can import the
 // exact same function instead of duplicating its weights. Re-exported here so existing consumers
 // of this module don't need to change their import path.
-export { calculateTotalScore };
-
-/**
- * The case-identifying fields calculateCandidateScore needs to score district/division and
- * chapter alignment. Grouped into one object since all three are always sourced and passed
- * together (a case's court, division, and chapter are inseparable facts about the same case).
- */
-export type CaseMatchContext = {
-  courtId: string;
-  courtDivisionCode: string;
-  chapter: string;
-};
-
-/**
- * Calculates a comprehensive candidate score for a trustee, orchestrating address, phone, email,
- * district/division, and chapter scoring into a weighted total against an already-known
- * nameScore (see calculateTotalScore for the weights). Logs the scoring breakdown at info level.
- *
- * Takes nameScore as an input rather than computing it internally via calculateNameScore, since
- * every caller already knows it by the time it has a single camsTrustee to score: either it
- * scored discrete firstName/lastName fields itself (resolveNameCollisionByScoring - see
- * calculateNameScore), or it already knows how this trusteeId was resolved (applyMatchOutcome's
- * ImperfectMatch/PerfectMatchInactiveStatus paths, via a fingerprint hit or matchTrusteeByName's
- * exact/fuzzy tiers) and re-deriving it here via calculateNameScore's discrete-field comparison
- * would risk a WRONG answer when a CAMS trustee's own name fields carry data-quality issues (e.g.
- * a generational suffix baked into lastName, "Eggmann, III", that DXTR's clean "Eggmann" never
- * equals under discrete-field comparison even though the composed name matched perfectly).
- */
-export function calculateCandidateScore(
-  context: ApplicationContext,
-  dxtrTrustee: DxtrTrusteeParty,
-  caseMatch: CaseMatchContext,
-  camsTrustee: Trustee,
-  appointments: TrusteeAppointment[],
-  nameScore: number,
-): CandidateScore {
-  const { courtId, courtDivisionCode, chapter } = caseMatch;
-  const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
-  const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
-  const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);
-  const districtDivisionScore = calculateDistrictDivisionScore(
-    courtId,
-    courtDivisionCode,
-    appointments,
-  );
-  const chapterScore = calculateChapterScore(courtId, courtDivisionCode, chapter, appointments);
-
-  const totalScore = calculateTotalScore({
-    addressScore,
-    nameScore,
-    phoneScore,
-    emailScore,
-    districtDivisionScore,
-    chapterScore,
-  });
-
-  const candidateScore: CandidateScore = {
-    trusteeId: camsTrustee.trusteeId,
-    trusteeName: camsTrustee.name,
-    totalScore,
-    addressScore,
-    nameScore,
-    phoneScore,
-    emailScore,
-    districtDivisionScore,
-    chapterScore,
-    address: camsTrustee.public.address,
-    phone: camsTrustee.public.phone,
-    email: camsTrustee.public.email,
-    appointments,
-  };
-
-  context.logger.info(
-    MODULE_NAME,
-    `Scoring candidate ${camsTrustee.trusteeId}: ` +
-      `address=${addressScore}, name=${nameScore}, phone=${phoneScore}, email=${emailScore}, ` +
-      `district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
-  );
-
-  return candidateScore;
-}
-
-/**
- * Outcome of a name-collision scoring attempt (see resolveNameCollisionByScoring):
- *  - 'resolved': a clear winner was found (score >75% AND 5+ points ahead of the runner-up).
- *  - 'no-match': every candidate failed to load, so nothing could be scored.
- *  - 'unresolved': candidates were scored but none stood out as a clear winner.
- */
-export type ScoringOutcome =
-  | { kind: 'resolved'; trusteeId: string; candidateScores: CandidateScore[] }
-  | { kind: 'no-match' }
-  | { kind: 'unresolved'; candidateScores: CandidateScore[] };
-
-/**
- * Fetches each candidate trustee (and whatever extra per-candidate data `fetchExtra` loads
- * alongside it, e.g. appointments) in parallel - "load a candidate, and if it fails for a
- * non-transient reason carry the failure forward instead of throwing." A transient infrastructure
- * error (Cosmos RU throttling, a read/write timeout) is not evidence a candidate is unscorable —
- * it means the caller doesn't yet know, so it rethrows to abort the whole resolution attempt
- * rather than silently continuing with a smaller candidate set that could misclassify a transient
- * failure as a permanent outcome. Uses the shared isTransientInfraError
- * (../../common-errors/transient-infra-error.ts) rather than
- * sync-trustee-case-appointments.ts's own check, since that module imports this one and importing
- * back would be circular.
- */
-async function fetchCandidateTrustees<TExtra>(
-  context: ApplicationContext,
-  candidateTrusteeIds: string[],
-  fetchExtra: (trusteeId: string) => Promise<TExtra>,
-): Promise<{ trusteeId: string; trustee: Trustee; extra: TExtra; error: null }[]> {
-  const trusteesRepo = factory.getTrusteesRepository(context);
-
-  const candidateData = await Promise.all(
-    candidateTrusteeIds.map(async (trusteeId) => {
-      try {
-        const [trustee, extra] = await Promise.all([
-          trusteesRepo.read(trusteeId),
-          fetchExtra(trusteeId),
-        ]);
-        return { trusteeId, trustee, extra, error: null };
-      } catch (error) {
-        if (isTransientInfraError(error)) {
-          throw error;
-        }
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        return { trusteeId, trustee: null, extra: null, error: errorMessage };
-      }
-    }),
-  );
-
-  const loaded: { trusteeId: string; trustee: Trustee; extra: TExtra; error: null }[] = [];
-  for (const candidate of candidateData) {
-    if (candidate.error) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Skipping candidate ${candidate.trusteeId}: ${candidate.error}`,
-      );
-      continue;
-    }
-    loaded.push(candidate as { trusteeId: string; trustee: Trustee; extra: TExtra; error: null });
-  }
-
-  return loaded;
-}
-
-/**
- * Resolves a name collision (matchTrusteeByName found more than one raw candidate) by scoring
- * each candidate on address, district/division, and chapter alignment.
- * Winner criteria: score >75% AND 5+ points ahead of next candidate.
- * Returns a ScoringOutcome discriminated union for all three business outcomes. A transient
- * infrastructure error (Cosmos RU throttling, a read/write timeout) fetching a candidate's data
- * still propagates as a thrown error — see the try/catch below — since that's not a business
- * decision this function can make.
- */
-export async function resolveNameCollisionByScoring(
-  context: ApplicationContext,
-  event: TrusteeAppointmentSyncEvent,
-  candidateTrusteeIds: string[],
-): Promise<ScoringOutcome> {
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-  const candidates = await fetchCandidateTrustees(context, candidateTrusteeIds, (trusteeId) =>
-    appointmentsRepo.getTrusteeAppointments(trusteeId),
-  );
-
-  const candidateScores: CandidateScore[] = candidates.map(({ trustee, extra: appointments }) =>
-    calculateCandidateScore(
-      context,
-      event.dxtrTrustee,
-      {
-        courtId: event.courtId,
-        courtDivisionCode: event.courtDivisionCode,
-        chapter: event.chapter,
-      },
-      trustee,
-      appointments,
-      calculateNameScore(event.dxtrTrustee, trustee),
-    ),
-  );
-
-  // Guard against empty results (all candidates failed to load)
-  if (candidateScores.length === 0) {
-    context.logger.warn(
-      MODULE_NAME,
-      `Fuzzy matching failed: no valid candidates could be scored for case ${event.caseId}`,
-    );
-    return { kind: 'no-match' };
-  }
-
-  // Sort by totalScore descending
-  candidateScores.sort((a, b) => b.totalScore - a.totalScore);
-
-  const winner = candidateScores[0];
-  const runnerUp = candidateScores[1];
-
-  const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
-  const hasSignificantGap =
-    !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
-  // isAppointmentMatch requires court + division + chapter to match on a SINGLE record —
-  // stronger than "the winner's totalScore cleared the threshold" alone.
-  const sameAppointmentMatch = isAppointmentMatch(
-    winner.appointments ?? [],
-    event.courtId,
-    event.courtDivisionCode ?? '',
-    event.chapter ?? '',
-  );
-
-  if (meetsThreshold && hasSignificantGap && sameAppointmentMatch) {
-    context.logger.info(
-      MODULE_NAME,
-      `Fuzzy matching resolved to ${winner.trusteeId} with score ${winner.totalScore}`,
-    );
-    return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
-  }
-
-  // No clear winner
-  const candidateList = candidateScores
-    .map((score) => `${score.trusteeId} (${score.totalScore} pts)`)
-    .join(', ');
-  context.logger.warn(
-    MODULE_NAME,
-    `Fuzzy matching failed: no clear winner among ${candidateScores.length} candidates [${candidateList}]`,
-  );
-
-  return { kind: 'unresolved', candidateScores };
-}
 
 /**
  * ACMS's sentinel for "no real value recorded" on the legacy phone/fax/email fields is the STRING
@@ -1371,35 +1055,13 @@ type NameMatchQuality = 'exact' | 'fuzzy';
  *    lastName, "Eggmann, III", that DXTR's clean "Eggmann" never equals under discrete-field
  *    comparison even though the composed name matched here just fine).
  *  - 'no-match': zero CAMS trustees matched the name.
- *  - 'ambiguous': more than one CAMS trustee matched the name (raw, unscored candidates), which
- *    the caller resolves via resolveNameCollisionByScoring.
+ *  - 'ambiguous': more than one CAMS trustee matched the name (unscored), which the
+ *    trustee-match pipeline's recallByName stage adds as candidates for its own scorers.
  */
 export type NameMatchResult =
   | { kind: 'resolved'; trusteeId: string; nameScore: number; nameMatchQuality: NameMatchQuality }
   | { kind: 'no-match' }
-  | { kind: 'ambiguous'; candidates: CandidateScore[] };
-
-/**
- * Builds the UNSCORED CandidateScore[] shape used for an ambiguous NameMatchResult, whether the
- * candidates came from the exact-match path or the fuzzy fallback below - these candidates have
- * not been through resolveNameCollisionByScoring yet, so every score field is UNSCORED.
- */
-function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
-  return trustees.map((t) => ({
-    trusteeId: t.trusteeId,
-    trusteeName: t.name,
-    totalScore: UNSCORED,
-    addressScore: UNSCORED,
-    nameScore: UNSCORED,
-    phoneScore: UNSCORED,
-    emailScore: UNSCORED,
-    districtDivisionScore: UNSCORED,
-    chapterScore: UNSCORED,
-    address: t.public.address,
-    phone: t.public.phone,
-    email: t.public.email,
-  }));
-}
+  | { kind: 'ambiguous'; trusteeIds: string[] };
 
 /**
  * Reduces a raw lastName field to the lastName-token search candidates for discovery: the first
@@ -1448,9 +1110,8 @@ const LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD = 0.8;
 
 /**
  * Searches CAMS trustees by lastName-token candidates (see lastNameTokenSearchCandidates) derived
- * from the DXTR trustee's lastName. Does not narrow results by court appointment -
- * district/division evidence is left to the caller's resolveNameCollisionByScoring, which scores
- * it (0/50/100, see calculateDistrictDivisionScore) rather than gating candidate discovery on it.
+ * from the DXTR trustee's lastName. Does not narrow results by court appointment - candidate
+ * discovery is name-only; appointment coverage is checked once a trustee is resolved.
  * Does narrow by lastName similarity: searchTrusteesByNameScored's only floor is a phonetic
  * matchScore > 0 against the WHOLE trustees collection, which a bare single-word query can clear
  * on weak metaphone/bigram overlap with a completely unrelated surname (this shape shows up as,
@@ -1459,10 +1120,9 @@ const LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD = 0.8;
  * JaroWinkler-close
  * to the searched token (see LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD) keeps a genuine
  * near-miss (a transposition, a dropped letter) while dropping candidates that only share a
- * phonetic code coincidentally. Returns deduped-by-trusteeId candidates; the caller's
- * resolveNameCollisionByScoring performs the address/phone/email/district/chapter/name scoring
- * and appointment-match discrimination. Requires a lastName on the DXTR side - there's nothing to
- * search by without one.
+ * phonetic code coincidentally. Returns deduped-by-trusteeId candidates for the pipeline's
+ * scorers to evaluate. Requires a lastName on the DXTR side - there's nothing to search by
+ * without one.
  */
 async function findLastNameTokenMatches(
   context: ApplicationContext,
@@ -1518,7 +1178,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
     );
-    return { kind: 'ambiguous', candidates: toUnscoredCandidates(matches) };
+    return { kind: 'ambiguous', trusteeIds: matches.map((t) => t.trusteeId) };
   }
 
   if (matches.length === 1) {
@@ -1542,7 +1202,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `Multiple CAMS trustees found matching normalized name "${normalizedTarget}": ${candidates}.`,
     );
-    return { kind: 'ambiguous', candidates: toUnscoredCandidates(fallbackMatches) };
+    return { kind: 'ambiguous', trusteeIds: fallbackMatches.map((t) => t.trusteeId) };
   }
 
   if (fallbackMatches.length === 1) {
@@ -1557,8 +1217,7 @@ export async function matchTrusteeByName(
   // Third-pass fallback: search by DXTR's lastName-token candidates - the first token, plus the
   // first token of the last hyphen segment for a compound surname (see
   // lastNameTokenSearchCandidates/findLastNameTokenMatches). Always surfaced as 'ambiguous', even
-  // for a single candidate, so it routes through resolveNameCollisionByScoring's scoring and
-  // appointment-match gate rather than being trusted outright.
+  // for a single candidate, so the pipeline's scorers evaluate it rather than trusting it outright.
   const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee);
 
   if (lastNameTokenMatches.length > 0) {
@@ -1569,7 +1228,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `CAMS trustee(s) found matching "${normalized}" by lastName-token search: ${candidates}.`,
     );
-    return { kind: 'ambiguous', candidates: toUnscoredCandidates(lastNameTokenMatches) };
+    return { kind: 'ambiguous', trusteeIds: lastNameTokenMatches.map((t) => t.trusteeId) };
   }
 
   context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);

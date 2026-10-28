@@ -2179,7 +2179,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             documentType: 'TRUSTEE_MATCH_VERIFICATION',
             caseId: 'case-999', // a different case already pending on this same fingerprint
             status: 'pending',
-            mismatchReason: 'NO_TRUSTEE_MATCH',
+            mismatchReason: 'no match',
             variant: buildVariant(event.dxtrTrustee),
             fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',
@@ -2220,7 +2220,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             documentType: 'TRUSTEE_MATCH_VERIFICATION',
             caseId: 'case-999',
             status: 'pending',
-            mismatchReason: 'NO_TRUSTEE_MATCH',
+            mismatchReason: 'no match',
             variant: buildVariant(event.dxtrTrustee),
             fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',

@@ -122,7 +122,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const taskTypeLabel = taskType.get(order.taskType);
-  const reasonLabel = REASON_LABELS[order.mismatchReason as IdentityMismatchReason];
+  const reasonLabel = REASON_LABELS[order.mismatchReason];
   const isResolved = order.status === 'approved';
   const canApprove = order.status === 'pending';
 

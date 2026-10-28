@@ -833,7 +833,7 @@ const trusteeMatchSource = {
 };
 
 const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
-  id: '081-22-11111:Smith John',
+  id: 'e8c1f0a2-identity-task-smith',
   documentType: 'TRUSTEE_MATCH_VERIFICATION',
   taskType: 'trustee-match',
   caseId: '081-22-11111',

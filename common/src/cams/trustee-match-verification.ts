@@ -1,5 +1,5 @@
 import { Auditable } from './auditable';
-import { DxtrTrusteeParty, TrusteeAppointmentSyncErrorCode } from './dataflow-events';
+import { DxtrTrusteeParty } from './dataflow-events';
 import { OrderStatus } from './orders';
 import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
@@ -11,11 +11,10 @@ export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICAT
 export type TrusteeMatchSource = 'ACMS' | 'DXTR';
 
 /**
- * Mismatch reason used by pipeline-driven identity-task writes (S2.3+), narrower than
- * TrusteeAppointmentSyncErrorCode's legacy numeric-scoring vocabulary. There is no "multiple
- * linked trustees" outcome — an ACMS professional id links to at most one CAMS trustee (bd memory
- * professional-id-never-multi-linked) — and PERFECT_MATCH_INACTIVE_STATUS/CANDIDATE_LOAD_FAILED
- * are appointment/transient concerns, not identity-match outcomes.
+ * Why the trustee-match pipeline could not resolve the source record: 2+ candidates ('ambiguous')
+ * or 0-1 ('no match'). There is no "multiple linked trustees" outcome — an ACMS professional id
+ * links to at most one CAMS trustee (bd memory professional-id-never-multi-linked) — and
+ * inactive appointments are appointment concerns, not identity-match outcomes.
  */
 export type IdentityMismatchReason = 'ambiguous' | 'no match';
 
@@ -48,7 +47,7 @@ export type TrusteeMatchVerification = Auditable & {
    * without needing to cross-reference DXTR directly.
    */
   acmsProfessionalId?: string;
-  mismatchReason?: TrusteeAppointmentSyncErrorCode | IdentityMismatchReason;
+  mismatchReason: IdentityMismatchReason;
   /** Which legacy system produced this task's source record. */
   source: TrusteeMatchSource;
   /**

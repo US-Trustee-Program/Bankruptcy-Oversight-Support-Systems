@@ -132,13 +132,10 @@ type ProcessAppointmentsResult = {
 
 // isTransientInfraError (shared, see ../../common-errors/transient-infra-error.ts) is the check
 // that decides whether processOneEvent's one catch block reports 'retryable' instead of routing
-// to the DLQ - matchTrusteeByName and resolveNameCollisionByScoring return (rather than throw)
-// for business outcomes, so that catch is the only place in the per-event pipeline a transient
-// error from either call can surface (see cams-o5gh for the bug this fixed when a second,
-// independent recheck was still required). throwIfTransientSoftCloseFailure below calls it
-// directly; trustee-match.helpers.ts (imported BY this module) also imports it now that it lives
-// in a neutral shared location rather than reimplementing the check independently to avoid what
-// would otherwise be a circular import back to this file.
+// to the DLQ - the trustee-match pipeline returns (rather than throws) for business outcomes, so
+// that catch is the only place in the per-event pipeline a transient error can surface (see
+// cams-o5gh for the bug this fixed when a second, independent recheck was still required).
+// throwIfTransientSoftCloseFailure below calls it directly.
 
 /**
  * Throws softCloseError when it is transient (Cosmos RU throttling or a read/write timeout),
@@ -549,9 +546,8 @@ function findByVariant<T extends { variant: string }>(bucket: T[], variant: stri
 
 /**
  * Guards the "syncedCase is always assigned before a classified mismatch outcome is reached"
- * invariant relied on by processAppointments' surrogate writes (the direct ImperfectMatch call in
- * the try block, and the catch block's NoTrusteeMatch/AmbiguousMatchUnresolved handling), so a
- * future code path that breaks the ordering fails loudly here instead of as an opaque TypeError
+ * invariant relied on by processAppointments' surrogate writes for an unresolved identity
+ * match, so a future code path that breaks the ordering fails loudly here instead of as an opaque TypeError
  * inside writeSurrogateAppointment.
  *
  * Exported for testing only — no production importer outside this module; called internally

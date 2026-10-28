@@ -21,7 +21,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     caseId: 'case-001',
     courtId: '081',
     dxtrTrustee: { fullName: 'John Doe' },
-    mismatchReason: 'IMPERFECT_MATCH',
+    mismatchReason: 'no match',
     source: 'DXTR',
     findings,
     taskType: 'trustee-match',
@@ -412,7 +412,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
           $set: {
             documentType: 'TRUSTEE_MATCH_VERIFICATION',
             dxtrTrustee: { fullName: 'John Doe' },
-            mismatchReason: 'IMPERFECT_MATCH',
+            mismatchReason: 'no match',
             source: 'DXTR',
             findings,
             taskType: 'trustee-match',
@@ -479,7 +479,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       const reSynced: TrusteeMatchVerification = {
         ...sampleVerification,
         caseId: 'case-999',
-        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        mismatchReason: 'ambiguous',
       };
 
       await repository.upsertVerification(reSynced);
@@ -491,7 +491,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       // never applies it, so the document's original case link survives.
       expect(update.$set.caseId).toBeUndefined();
       expect(update.$setOnInsert.caseId).toBe('case-999');
-      expect(update.$set.mismatchReason).toBe('AMBIGUOUS_MATCH_UNRESOLVED');
+      expect(update.$set.mismatchReason).toBe('ambiguous');
     });
 
     test('a task that is not pending is never changed: the pending-only filter excludes it, so the write collides as a duplicate key and is discarded', async () => {

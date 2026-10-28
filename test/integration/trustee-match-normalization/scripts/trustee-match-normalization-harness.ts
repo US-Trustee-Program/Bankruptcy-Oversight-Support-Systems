@@ -209,7 +209,7 @@ type ReplayOutcome =
   // came back ambiguous with EXACTLY the one expected trusteeId as its sole candidate - this
   // harness's courtId-less call bypasses the first-token-lastName tier's court filter (see this
   // file's header comment), so any 'ambiguous' result seen here comes from a composed-name fuzzy
-  // tier finding a weaker-evidence match and correctly deferring to resolveNameCollisionByScoring
+  // tier finding a weaker-evidence match and correctly deferring to the pipeline's scorers
   // rather than a court-filtered result. NOT a failure - this is the tier working as designed.
   | 'single-candidate-relaxed-match'
   | 'false-ambiguous' // came back ambiguous, but not the single-candidate-relaxed-match case above
