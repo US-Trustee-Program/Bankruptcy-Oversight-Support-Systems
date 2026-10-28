@@ -76,7 +76,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: MockData.getCaseSummary() });
   });
 
-  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+  const accordionFieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
 
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {

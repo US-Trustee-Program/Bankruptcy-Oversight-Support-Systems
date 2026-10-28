@@ -6,9 +6,9 @@
  * assignments, trustee profiles, whatever the next thing you're poking at needs). This isn't
  * wired to any other suite, so there's nothing else to keep in sync when you extend it.
  *
- * The trustee-match-verification mismatch fixture below is just the first example seeded here -
- * useful on its own (a real field-level CandidateScore mismatch, which none of test/e2e's
- * checked-in fixtures currently exercise), but not the sandbox's scope.
+ * The trustee identity task fixture below is just the first example seeded here - useful on its
+ * own (a candidate that differs from the source record on nearly every field, so the Data
+ * Verification comparison table shows its warning markers), but not the sandbox's scope.
  *
  * Requires MongoDB reachable at MONGO_CONNECTION_STRING (default: localhost via
  * ./start-services.sh) and writes into the `cams-sandbox` database - the safety check below
@@ -23,6 +23,20 @@ import { MongoClient } from 'mongodb';
 const CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-sandbox?retrywrites=false';
 const DB_NAME = process.env.COSMOS_DATABASE_NAME || 'cams-sandbox';
+
+// The DXTR source record the identity task below was opened for (matches its `variant`).
+const SANDBOX_SOURCE = {
+  firstName: 'Sandbox',
+  lastName: 'Dxtr Trustee',
+  fullName: 'Sandbox Dxtr Trustee',
+  legacy: {
+    address1: '999 Court Filed Rd',
+    cityStateZipCountry: 'Albany, NY 12201',
+    phone: '555-999-8888',
+    email: 'court-sent@example.com',
+    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12201' },
+  },
+};
 
 async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
   const now = new Date().toISOString();
@@ -94,21 +108,51 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
         caseId: '081-91-99999',
         courtId: '0208',
         status: 'pending',
-        mismatchReason: 'IMPERFECT_MATCH',
-        dxtrTrustee: { fullName: 'Sandbox Dxtr Trustee' },
-        matchCandidates: [
-          {
-            trusteeId: 'sandbox-trustee-candidate',
-            trusteeName: 'Sandbox Trustee Candidate',
-            totalScore: 58,
-            addressScore: 0,
-            nameScore: 0,
-            phoneScore: 0,
-            emailScore: 0,
-            districtDivisionScore: 100,
-            chapterScore: 100,
-          },
-        ],
+        mismatchReason: 'no match',
+        source: 'DXTR',
+        dxtrTrustee: SANDBOX_SOURCE,
+        // The pipeline's stored state, scored by hand from the scorer rules against the records
+        // above: only the state agrees (geography 1 point, no street points), and the name,
+        // city, zip, phone (7 digits off) and email all differ.
+        findings: {
+          sourceRaw: SANDBOX_SOURCE,
+          sourceNormalized: {},
+          memo: {},
+          candidates: [
+            {
+              camsRaw: {
+                trusteeId: 'sandbox-trustee-candidate',
+                firstName: 'Sandbox',
+                lastName: 'Trustee Candidate',
+                name: 'Sandbox Trustee Candidate',
+                address: {
+                  address1: '123 Candidate Ave',
+                  city: 'Poughkeepsie',
+                  state: 'NY',
+                  zipCode: '12601',
+                  countryCode: 'US',
+                },
+                phone: { number: '555-000-1111' },
+                email: 'candidate@example.com',
+              },
+              camsNormalized: {},
+              memo: {},
+              scores: {
+                doesNameMatch: { pass: false },
+                doesCityMatch: { pass: false },
+                doesStateMatch: { pass: true },
+                doesZipCodeMatch: { pass: false },
+                doesAddressMatch: { pass: true, quality: 'weak', points: 1, streetCloseness: 0 },
+                doesPhoneMatch: { pass: false, phoneDigitDistance: 7 },
+                doesEmailMatch: { pass: false },
+              },
+              origin: 'recallByTokenIntersection',
+            },
+          ],
+          match: null,
+          skip: false,
+          error: null,
+        },
         fingerprint: 'sandbox-fingerprint-mismatch',
         variant: JSON.stringify({
           firstName: 'sandbox',
@@ -134,7 +178,7 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
     { upsert: true },
   );
 
-  console.log('Seeded sandbox-trustee-match-mismatch with a real field-level score mismatch.');
+  console.log('Seeded sandbox-trustee-match-mismatch, a no-match identity task with findings.');
 }
 
 async function main() {

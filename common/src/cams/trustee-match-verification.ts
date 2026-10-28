@@ -1,13 +1,22 @@
 import { Auditable } from './auditable';
-import {
-  CandidateScore,
-  DxtrTrusteeParty,
-  TrusteeAppointmentSyncErrorCode,
-} from './dataflow-events';
+import { DxtrTrusteeParty } from './dataflow-events';
 import { OrderStatus } from './orders';
+import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
+import { TrusteeSerializedState } from './trustee-match-pipeline';
 
 export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICATION' as const;
+
+/** Which legacy system fed this identity task's source record. */
+export type TrusteeMatchSource = 'ACMS' | 'DXTR';
+
+/**
+ * Why the trustee-match pipeline could not resolve the source record: 2+ candidates ('ambiguous')
+ * or 0-1 ('no match'). There is no "multiple linked trustees" outcome — an ACMS professional id
+ * links to at most one CAMS trustee (bd memory professional-id-never-multi-linked) — and
+ * inactive appointments are appointment concerns, not identity-match outcomes.
+ */
+export type IdentityMismatchReason = 'ambiguous' | 'no match';
 
 export type TrusteeMatchVerification = Auditable & {
   id: string;
@@ -38,8 +47,15 @@ export type TrusteeMatchVerification = Auditable & {
    * without needing to cross-reference DXTR directly.
    */
   acmsProfessionalId?: string;
-  mismatchReason?: TrusteeAppointmentSyncErrorCode;
-  matchCandidates: CandidateScore[];
+  mismatchReason: IdentityMismatchReason;
+  /** Which legacy system produced this task's source record. */
+  source: TrusteeMatchSource;
+  /**
+   * The trustee-match pipeline's serialized state for this task's source record, stored
+   * unchanged (decision: facts read from stored findings, no recompute on open). Candidates are
+   * in discovery order; rankCandidates gives the pipeline's rank order.
+   */
+  findings: TrusteeSerializedState;
   status: OrderStatus;
   resolvedTrusteeId?: string;
   resolvedTrusteeName?: string;
@@ -86,32 +102,18 @@ export type TrusteeMatchVerification = Auditable & {
 
 type TrusteeMatchVerificationRemapStatus = {
   status: 'pending' | 'processing' | 'complete' | 'error';
-  error?: TrusteeVerificationRemapError;
+  error?: SerializedCamsError;
 };
 
 /**
- * Mirrors CamsError's (backend/lib/common-errors/cams-error.ts) serializable shape without
- * importing it — common cannot depend on backend (the Dependency Rule runs the other way: both
- * backend and user-interface depend on common, never the reverse). A real CamsError/UnknownError
- * instance is structurally assignable here, so backend can write one directly.
+ * The projected shape returned by repository.search(). Auditable fields (createdOn, createdBy,
+ * updatedOn, updatedBy) and findings are excluded by the MongoDB projection - findings carry
+ * trustee PII and are served only by the single-task detail view.
  */
-type TrusteeVerificationRemapError = {
-  message: string;
-  module: string;
-  status: number;
-  originalError?: string;
-  data?: object;
-};
-
-/**
- * The projected shape returned by repository.search(). Auditable fields
- * (createdOn, createdBy, updatedOn, updatedBy) are excluded by the MongoDB
- * projection; matchCandidates is retained so the use-case can compute
- * candidateCount and preselectedCandidate before stripping it.
- */
-export type TrusteeMatchVerificationSearchResult = Omit<TrusteeMatchVerification, keyof Auditable>;
-
-export type TrusteeCandidate = { trusteeId: string; trusteeName: string };
+export type TrusteeMatchVerificationSearchResult = Omit<
+  TrusteeMatchVerification,
+  keyof Auditable | 'findings'
+>;
 
 export type TrusteeMatchVerificationListItem = Pick<
   TrusteeMatchVerification,
@@ -128,9 +130,8 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'taskType'
   | 'taskDate'
   | 'inactiveAppointmentStatus'
+  | 'source'
 > & {
-  preselectedCandidate: TrusteeCandidate | null;
-  candidateCount: number;
   affectedCaseCount: number;
   affectedCaseIds: string[];
 };

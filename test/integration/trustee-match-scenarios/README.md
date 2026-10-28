@@ -2,40 +2,42 @@
 
 Exercises `SyncTrusteeCaseAppointmentsUseCase`
 (`backend/lib/use-cases/dataflows/sync-trustee-case-appointments.ts`) against a real DXTR SQL Server
-instance (mimicked locally with SQL Edge), covering every distinct outcome branch of the trustee
-matching algorithm (`backend/lib/use-cases/dataflows/trustee-match.helpers.ts` +
-`processAppointments`'s decision tree) with twelve fixture cases (numbered 2-13; #1
-`reserved-id-skip` was removed once ACMS professional ID matching was retired).
+instance (mimicked locally with SQL Edge), covering every distinct outcome of the trustee-match
+pipeline (`backend/lib/use-cases/dataflows/trustee-match-pipeline-stages.ts`) as the DXTR sync
+applies it, with twelve fixture cases (numbered 2-13; #1 `reserved-id-skip` was removed once ACMS
+professional ID matching was retired).
 
 ## Scope
 
-Scenarios 2-11 test the **existing (pre-Slice-5) matching algorithm** — the Slice 1-4
-scoring/matching pipeline. Scenarios 12-13 test the **Slice 5 fingerprint/variant memoization
-mechanism** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on top of that same
-algorithm: a fingerprint hit resolves `trusteeId` directly (bypassing `matchTrusteeByName`
-entirely), and a miss falls through to the untouched algorithm from scenarios 2-11.
+The pipeline decides (CAMS-953 Slice 2): a **resolved** match writes the case appointment and
+records in `checks.matchedTrusteeAppointment` whether one of the trustee's appointments covers the
+case; an **unresolved** match writes a pending identity task (`trustee-match-verification`) with
+`source: 'DXTR'`, `mismatchReason` `'ambiguous'` (2+ candidates) or `'no match'` (0 or 1), and the
+pipeline's serialized state as `findings` - never `matchCandidates`. Scenarios 12-13 test the
+**fingerprint/variant memoization** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on
+top: a fingerprint hit resolves `trusteeId` directly, a miss falls through to the pipeline.
 
 ## What it tests
 
-| #   | Scenario                                         | Trigger                                                                                                | Expected outcome                                                                                                                                                                                                                                                                 |
-| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2   | perfect-match-ambiguous-name-resolved-by-scoring | name ambiguous between two seeded trustees; fuzzy scoring picks a clear winner on demographics         | Auto-linked to the winning trustee via `resolveNameCollisionByScoring`, no `trustee-match-verification` doc written (never reviewed by a human, so nothing belongs in the review queue), `autoMatchCount++`                                                                      |
-| 3   | perfect-match-by-name                            | unique CAMS trustee name match + active appointment                                                    | Auto-linked (same as #2, via `matchTrusteeByName`)                                                                                                                                                                                                                               |
-| 4   | perfect-match-inactive-status                    | resolves uniquely, but the only matching-court/division/chapter appointment is `voluntarily-suspended` | Pending verification, `PERFECT_MATCH_INACTIVE_STATUS`, `perfectMatchInactiveCount++`                                                                                                                                                                                             |
-| 5   | imperfect-match                                  | resolves uniquely, trustee has **zero** appointments at all                                            | Pending verification, reclassified to `NO_TRUSTEE_MATCH` (no candidates, `noMatchCount++`) — zero appointments means zero district/division evidence, indistinguishable from a name that matched nothing at all; see `hasDistrictDivisionMatch` in `trustee-match.helpers.ts` |
-| 6   | no-match                                         | name matches no seeded CAMS trustee                                                                    | Pending verification, `NO_TRUSTEE_MATCH`, no candidates, `noMatchCount++`                                                                                                                                                                                                        |
-| 7   | multiple-match-high-confidence                   | name ambiguous between 2 trustees; demographics clearly favor one                                      | Auto-linked to the "real" trustee — a clear fuzzy-scoring winner is routed through the same `applyMatchOutcome`/`isAppointmentMatch` gate as any other resolved trusteeId, no verification doc, `autoMatchCount++`                                                               |
-| 8   | multiple-match-no-winner                         | name ambiguous between 2 trustees with **identical** scoring inputs (genuine tie)                      | Pending verification, `AMBIGUOUS_MATCH_UNRESOLVED`, tied candidate scores, `multipleMatchCount++`                                                                                                                                                                                |
-| 9   | case-not-yet-synced                              | resolves fine, but no `SYNCED_CASE` Cosmos doc exists yet                                              | Event lands in `notYetSyncedEvents` (requeued) — no verification, no appointment                                                                                                                                                                                                 |
-| 10  | case-moved                                       | resolves fine, but the seeded `SYNCED_CASE` carries `movedToCaseId`                                    | Skipped silently — no verification, no appointment, no counter incremented                                                                                                                                                                                                       |
-| 11  | re-verification                                  | an already-`approved` case is resynced with a would-be-different outcome                               | `reVerificationCount++`; the existing resolved verification is **not** overwritten                                                                                                                                                                                               |
-| 12  | fingerprint-repeat (Slice 5)                     | byte-identical repeat of #2's trustee                                                                  | Auto-linked to #2's trustee via the `TRUSTEE_VARIATION` fingerprint bucket — `matchTrusteeByName` is never called, even though #2's trustee shares its name with a decoy trustee seeded for #12/#13                                                                              |
-| 13  | fingerprint-no-false-collapse (Slice 5)          | same ambiguous name as #2/#12, but genuinely different address/phone/email (matches the decoy)         | Fingerprint bucket misses (different variant); falls through to fuzzy matching, which resolves confidently to the decoy — **not** #2's trustee — and auto-links (`autoMatchCount++`), same as #7                                                                                 |
+| #   | Scenario                                         | Trigger                                                                                                | Expected outcome                                                                                                  |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 2   | perfect-match-ambiguous-name-resolved-by-scoring | name ambiguous between two seeded trustees; demographics favor one                                     | Appointment written to the winner, `matchedTrusteeAppointment: true`, no identity task, `autoMatchCount++`        |
+| 3   | perfect-match-by-name                            | unique CAMS trustee name match + active appointment                                                    | Same as #2                                                                                                        |
+| 4   | perfect-match-inactive-status                    | resolves uniquely, but the only matching-court/division/chapter appointment is `voluntarily-suspended` | Appointment written, `matchedTrusteeAppointment: false` (an appointment concern, not an identity task), no task   |
+| 5   | imperfect-match                                  | resolves uniquely, trustee has **zero** appointments at all                                            | Same as #4                                                                                                        |
+| 6   | no-match                                         | name matches no seeded CAMS trustee                                                                    | Pending `'no match'` identity task, no findings candidates, `noMatchCount++`                                      |
+| 7   | multiple-match-high-confidence                   | name ambiguous between 2 trustees; demographics clearly favor one                                      | Same as #2, linked to the "real" trustee                                                                          |
+| 8   | multiple-match-no-winner                         | name ambiguous between 2 trustees with nothing that separates them                                     | Pending `'ambiguous'` identity task with both trustees as findings candidates, `multipleMatchCount++`             |
+| 9   | case-not-yet-synced                              | resolves fine, but no `SYNCED_CASE` Cosmos doc exists yet                                              | Event lands in `notYetSyncedEvents` (requeued) — no task, no appointment                                          |
+| 10  | case-moved                                       | resolves fine, but the seeded `SYNCED_CASE` carries `movedToCaseId`                                    | Skipped silently — no task, no appointment, no counter incremented                                                |
+| 11  | re-verification                                  | an already-`approved` task is resynced                                                                 | `reVerificationCount++`; the approved task is **not** overwritten                                                 |
+| 12  | fingerprint-repeat (Slice 5)                     | byte-identical repeat of #2's trustee                                                                  | Auto-linked to #2's trustee via the `TRUSTEE_VARIATION` fingerprint bucket, without matching                      |
+| 13  | fingerprint-no-false-collapse (Slice 5)          | same ambiguous name as #2/#12, but genuinely different address/phone/email (matches the decoy)         | Fingerprint bucket misses; the pipeline resolves to the decoy — **not** #2's trustee — and auto-links, same as #7 |
 
-Scenario 11 runs in two extra `processAppointments` calls after the main first pass: first resolving
-as `NO_TRUSTEE_MATCH` (zero appointments, like #5), then a simulated human approval is written
-directly to Mongo, then the same event is reprocessed to prove `upsertMatchVerification`'s "already
-resolved, don't rewrite" guard.
+Scenario 11 runs in two extra `processAppointments` calls after the main first pass. Its seeded CAMS
+trustee is deliberately named differently from the DXTR party, so the first call writes a pending
+`'no match'` identity task; a simulated human approval is then written directly to Mongo, and the
+same event is reprocessed to prove the merge-upsert's "never change a non-pending task" guard.
 
 Scenarios 12-13 run together in their own `processAppointments` call, deliberately AFTER the main
 first pass completes (rather than in the same batch) — the DXTR query orders events by
@@ -87,14 +89,15 @@ directly into Cosmos (no DXTR row involved):
   always reaches matching regardless of what its name looks like. Seeds four `AO_TX` rows (CS_CASEID
   `999999414`-`999999417`, cases `083-26-88914`-`88917`) covering: sentinel + no name/address
   (skip), sentinel + bogus name WITH populated contact fields (NOT skipped — reaches matching,
-  resolves to `NO_TRUSTEE_MATCH`), sentinel + genuine synthetic name/address (NOT skipped — reaches
-  matching, resolves to `NO_TRUSTEE_MATCH`), and a non-sentinel code with no demographics (skipped
-  only by the pre-existing empty-demographics rule). Like Stage 8, round-trips through DXTR directly
-  (proving the real `SUBSTRING(TX.REC, 17, 5)` extraction) and additionally through
-  `processAppointments()` for the skip/no-skip decision — proof against real query results and real
-  `resolveSkipReason`/`isSentinelWithNoIdentity` orchestration, which a mocked-gateway unit test
-  cannot provide. Seeds two Cosmos `SYNCED_CASE` fixtures (one for each of the two cases that reach
-  matching) directly in the stage itself rather than joining the shared 12-scenario fixture set.
+  writes a `'no match'` identity task), sentinel + genuine synthetic name/address (NOT skipped —
+  reaches matching, writes a `'no match'` identity task), and a non-sentinel code with no
+  demographics (skipped only by the pre-existing empty-demographics rule). Like Stage 8, round-trips
+  through DXTR directly (proving the real `SUBSTRING(TX.REC, 17, 5)` extraction) and additionally
+  through `processAppointments()` for the skip/no-skip decision — proof against real query results
+  and real `resolveSkipReason`/`isSentinelWithNoIdentity` orchestration, which a mocked-gateway unit
+  test cannot provide. Seeds two Cosmos `SYNCED_CASE` fixtures (one for each of the two cases that
+  reach matching) directly in the stage itself rather than joining the shared 12-scenario fixture
+  set.
 
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient
 soft-close-failure path (`TooManyRequestsError`/`GatewayTimeoutError` aborting before create). That
