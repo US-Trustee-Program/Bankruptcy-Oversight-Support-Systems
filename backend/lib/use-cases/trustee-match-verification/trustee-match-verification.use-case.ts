@@ -15,7 +15,7 @@ import { OrderStatus } from '@common/cams/orders';
 import { rankCandidates } from '@common/cams/trustee-match-pipeline';
 import { CourtsUseCase } from '../courts/courts';
 import CaseManagement from '../cases/case-management';
-import { getCaseIdParts, CaseSummary } from '@common/cams/cases';
+import { getCaseIdParts, getCaseNumber, CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
@@ -266,8 +266,10 @@ export class TrusteeMatchVerificationUseCase {
           )
           .map((summary) => summary.caseId);
         if (uncoveredCaseIds.length > 0) {
+          const trusteeLabel = resolvedTrusteeName ?? resolvedTrusteeId;
+          const caseNumbers = uncoveredCaseIds.map((caseId) => getCaseNumber(caseId)).join(', ');
           throw new BadRequestError(MODULE_NAME, {
-            message: `Resolved trustee ${resolvedTrusteeId} is not assigned to the division(s) for case(s): ${uncoveredCaseIds.join(', ')}.`,
+            message: `${trusteeLabel} is not assigned to the division(s) for case(s): ${caseNumbers}. Choose a different candidate or search for a trustee whose appointments cover these cases.`,
           });
         }
       }

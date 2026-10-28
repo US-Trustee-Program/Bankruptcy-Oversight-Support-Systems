@@ -392,6 +392,15 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ]);
     });
 
+    test('gives the comparison table an accessible name via the Potential Matches heading', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const heading = screen.getByRole('heading', { name: 'Potential Matches' });
+      const table = screen.getByTestId('trustee-comparison-table');
+      expect(heading).toHaveAttribute('id', table.getAttribute('aria-labelledby'));
+    });
+
     test('shows every candidate for a no-match task', async () => {
       const candidates = [
         candidate('trustee-1', 'Jane Smith', exactScores),

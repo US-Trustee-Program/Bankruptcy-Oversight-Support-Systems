@@ -71,7 +71,11 @@ export default function DataVerificationScreen() {
   const hasOffices = session?.user?.offices && session?.user?.offices.length > 0;
   const showDataVerification = hasValidPermissions && hasOffices;
 
+  // Shared top header row and the trustee-identity accordion both use "Subject" — a trustee
+  // task's subject is the trustee, not a court. Transfer/consolidation orders keep "Court
+  // District" for their own row-level aria-labels, since their first column is still a court.
   const accordionFieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
+  const orderAccordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
   function getTaskTypeOptions(flags: FeatureFlagSet): ComboOption[] {
     return [
@@ -269,7 +273,7 @@ export default function DataVerificationScreen() {
             taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={handleTransferOrderUpdate}
-            fieldHeaders={accordionFieldHeaders}
+            fieldHeaders={orderAccordionFieldHeaders}
             hidden={isHidden}
           ></TransferOrderAccordion>
         );
@@ -295,7 +299,7 @@ export default function DataVerificationScreen() {
             taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={handleConsolidationOrderUpdate}
-            fieldHeaders={accordionFieldHeaders}
+            fieldHeaders={orderAccordionFieldHeaders}
             hidden={isHidden}
           ></ConsolidationOrderAccordion>
         );

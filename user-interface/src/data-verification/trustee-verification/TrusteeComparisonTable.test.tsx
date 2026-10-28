@@ -170,10 +170,17 @@ describe('TrusteeComparisonTable', () => {
     const onApprove = vi.fn();
     renderTable({ onApprove });
 
-    fireEvent.click(screen.getByTestId('approve-candidate-t2'));
+    fireEvent.click(screen.getByRole('button', { name: 'Match Trustee Janet Doe' }));
 
     expect(onApprove).toHaveBeenCalledWith(comparison.candidates[1]);
     expect(screen.getAllByRole('button', { name: /Match Trustee/ })).toHaveLength(2);
+  });
+
+  test('gives each Match Trustee button a distinct accessible name', () => {
+    renderTable({ onApprove: vi.fn() });
+
+    expect(screen.getByRole('button', { name: 'Match Trustee Jane Doe' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Match Trustee Janet Doe' })).toBeInTheDocument();
   });
 
   test('disables Match Trustee while an approval is processing', () => {

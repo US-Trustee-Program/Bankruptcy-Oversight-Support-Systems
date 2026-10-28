@@ -343,7 +343,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     const hasCandidates = comparison.candidates.length > 0;
     return (
       <div className="trustee-match-candidate-section" data-testid="candidate-info">
-        <h3>Potential Matches</h3>
+        <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
         <p className="other-matches-subtext">
           Results are ordered from strongest to weakest match. A{' '}
           <Icon
@@ -359,6 +359,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           sourceLabel={`Source record (${source})`}
           onApprove={canApprove ? openConfirmation : undefined}
           isProcessing={isProcessing}
+          labelledBy={`potential-matches-heading-${order.id}`}
         />
         <TrusteeSearchLink
           className={hasCandidates ? undefined : 'no-candidates-message'}

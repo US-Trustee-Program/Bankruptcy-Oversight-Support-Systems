@@ -42,6 +42,13 @@ const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
 type ScenarioDistribution = {
   autoMatchCount: number;
+  /**
+   * Subset of autoMatchCount where checks.matchedTrusteeAppointment was false — decision 1a
+   * (2026-10-27) still writes the case appointment, but the matched trustee has no active
+   * appointment covering this case's court/division/chapter. Tracked separately so an
+   * unexpectedly high rate is visible rather than buried inside autoMatchCount.
+   */
+  autoMatchUncoveredCount: number;
   /** The trustee-match pipeline settled on 'no match' — zero or one unresolved candidate. */
   noMatchCount: number;
   /** The trustee-match pipeline settled on 'ambiguous' — two or more unresolved candidates. */
@@ -105,7 +112,10 @@ type MatchAuditEntry = {
     | 'retryable-error'
     | 'error';
   matchedTrusteeId: string | null;
-  appointmentStatus: string | null;
+  /** 'uncovered' means a case appointment was still written (decision 1a) but
+   * checks.matchedTrusteeAppointment was false — the matched trustee has no active appointment
+   * covering this case's court/division/chapter. */
+  appointmentStatus: 'active' | 'uncovered' | null;
 };
 
 type ProcessAppointmentsResult = {
@@ -527,9 +537,12 @@ async function autoLinkTrustee(
   }
   context.logger.info(MODULE_NAME, logMessage);
   scenarioDistribution.autoMatchCount++;
+  if (!checks.matchedTrusteeAppointment) {
+    scenarioDistribution.autoMatchUncoveredCount++;
+  }
   audit.matchOutcome = 'auto-matched';
   audit.matchedTrusteeId = trusteeId;
-  audit.appointmentStatus = 'active';
+  audit.appointmentStatus = checks.matchedTrusteeAppointment ? 'active' : 'uncovered';
   return softCloseFailure;
 }
 
@@ -1631,6 +1644,7 @@ async function processAppointments(
   let successCount = 0;
   const scenarioDistribution: ScenarioDistribution = {
     autoMatchCount: 0,
+    autoMatchUncoveredCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
     reVerificationCount: 0,

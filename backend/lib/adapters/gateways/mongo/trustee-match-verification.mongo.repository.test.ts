@@ -443,6 +443,36 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       expect(setArg).not.toHaveProperty('taskDate');
     });
 
+    test('generates an id for $setOnInsert when the caller did not supply one', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const { id: _id, ...verificationWithoutId } = sampleVerification;
+      await repository.upsertVerification(verificationWithoutId as TrusteeMatchVerification);
+
+      const [, update] = (
+        MongoCollectionAdapter.prototype.findOneAndUpdate as ReturnType<typeof vi.spyOn>
+      ).mock.calls[0];
+      expect(update.$setOnInsert.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
+
+    test('drops _id from $set rather than persisting a value spread in from a prior read', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const verificationWithMongoId = {
+        ...sampleVerification,
+        _id: 'mongo-internal-object-id',
+      };
+      await repository.upsertVerification(verificationWithMongoId as TrusteeMatchVerification);
+
+      const [, update] = (
+        MongoCollectionAdapter.prototype.findOneAndUpdate as ReturnType<typeof vi.spyOn>
+      ).mock.calls[0];
+      expect(update.$set).not.toHaveProperty('_id');
+      expect(update.$setOnInsert).not.toHaveProperty('_id');
+    });
+
     test('a second fingerprint for the same caseId targets its own document, not the first', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
 
@@ -471,7 +501,12 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
-    test('an existing pending document is updated without its case link in $set, so the existing case link is kept', async () => {
+    // This asserts the shape of the document sent to the driver, not what a real Mongo/Cosmos
+    // server does with it (the mocked resolved value plays no part in the split below). Whether
+    // an update against an existing pending document actually leaves its case link untouched can
+    // only be proven against a real Mongo instance — see the trustee-match-scenarios integration
+    // harness.
+    test('caseId is sent only in $setOnInsert, never in $set, on a re-synced document', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(
         sampleVerification,
       );
@@ -487,14 +522,16 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       const [, update] = (
         MongoCollectionAdapter.prototype.findOneAndUpdate as ReturnType<typeof vi.spyOn>
       ).mock.calls[0];
-      // caseId only travels in $setOnInsert -- an update against an existing pending document
-      // never applies it, so the document's original case link survives.
       expect(update.$set.caseId).toBeUndefined();
       expect(update.$setOnInsert.caseId).toBe('case-999');
       expect(update.$set.mismatchReason).toBe('ambiguous');
     });
 
-    test('a task that is not pending is never changed: the pending-only filter excludes it, so the write collides as a duplicate key and is discarded', async () => {
+    // This proves only that the repository treats a mocked duplicate-key rejection as a no-op;
+    // it does not prove that a resolved task actually produces that rejection in a real Mongo
+    // with the (fingerprint, variant, documentType) unique index in place. See the same caveat
+    // on the duplicate-key tests below.
+    test('a mocked duplicate-key rejection for a non-pending task resolves as a no-op and logs a warning', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
         new Error(
           'Failed to findOneAndUpdate. E11000 duplicate key error collection: cams.trustee-match-verification index: fingerprint_variant_documentType dup key: { : "fp-abc123" }',

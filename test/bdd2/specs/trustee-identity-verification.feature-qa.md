@@ -95,6 +95,22 @@ A: **The pipeline decides.**
 - The old DXTR numeric scoring is removed for identity matching.
 - Follow-up: #3191's backtest wording needs updating to reflect this.
 
+### Q: Decision 1a (2026-10-27). Does a resolved match still need to cover the case's court/division/chapter before auto-linking?
+
+A: **No — the coverage gate is removed.** Any resolved trusteeId (a pipeline match or a
+fingerprint/variation hit) always auto-links and writes the real case appointment, even when no
+active appointment covers the case's court+division+chapter or the covering one is inactive. There
+is no more IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS identity task for this.
+
+- `isAppointmentMatch`'s result becomes informational `checks.matchedTrusteeAppointment` data on the
+  appointment, not a write gate. #3190 later turns a `false` value into a human-review appointment
+  task; until #3190 ships, nothing reads the flag, so an uncovered auto-link is written with no
+  human review.
+- **This is safe only because `SyncTrusteeCaseAppointments` is commented out of `DEFAULT_DATAFLOWS`
+  in `backend/function-apps/dataflows/dataflows.ts`.** The DXTR sync must stay disabled there until
+  #3190 ships.
+- Recorded in bead `cams-c45pn.5.8`.
+
 ### Q: What happens to the IMPERFECT_MATCH, PERFECT_MATCH_INACTIVE_STATUS and CANDIDATE_LOAD_FAILED reasons?
 
 A: Identity tasks use **only "ambiguous" and "no match"**.

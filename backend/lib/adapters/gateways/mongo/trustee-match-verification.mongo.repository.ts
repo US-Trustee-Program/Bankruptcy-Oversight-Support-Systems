@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -119,11 +120,19 @@ export class TrusteeMatchVerificationMongoRepository
    * Merge-upserts a TrusteeMatchVerification bucketed by fingerprint/variant. The filter only
    * matches an existing document whose status is still 'pending', so a resolved (approved or
    * rejected) task is never reached by this write at all — not even its mutable fields, let
-   * alone caseId/courtId. `id`, `caseId`, `courtId`, `createdOn` and `createdBy` go in
+   * alone caseId/courtId. `id`, `caseId`, `courtId`, `createdOn`, `createdBy` and `taskDate` go in
    * $setOnInsert only, so a matching update (status already 'pending') can never clear or
    * overwrite the case this task was originally opened for, or its creation record. Every other
    * field (mismatchReason, findings, source, status, etc.) is in $set, so a
    * re-sync refreshes them from the latest event.
+   *
+   * `id` falls back to a generated UUID on insert: callers building a new verification via
+   * `createAuditRecord` never set `id`, and the Mongo client's `ignoreUndefined: true` would
+   * otherwise silently drop an `undefined` key from `$setOnInsert`, leaving the new document
+   * with no `id` at all.
+   *
+   * `_id` is dropped rather than spread into `$set`: a caller that merges `...existing` from a
+   * prior read (which carries Mongo's `_id`) would otherwise write it back unchanged.
    */
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
@@ -132,10 +141,29 @@ export class TrusteeMatchVerificationMongoRepository
         variant: item.variant,
         status: 'pending',
       });
-      const { id, caseId, courtId, createdOn, createdBy, taskDate, ...setFields } = item;
+      const {
+        id,
+        caseId,
+        courtId,
+        createdOn,
+        createdBy,
+        taskDate,
+        _id: _mongoId,
+        ...setFields
+      } = item as TrusteeMatchVerification & { _id?: unknown };
       await this.getAdapter<TrusteeMatchVerification>().findOneAndUpdate(
         query,
-        { $set: setFields, $setOnInsert: { id, caseId, courtId, createdOn, createdBy, taskDate } },
+        {
+          $set: setFields,
+          $setOnInsert: {
+            id: id ?? randomUUID(),
+            caseId,
+            courtId,
+            createdOn,
+            createdBy,
+            taskDate,
+          },
+        },
         { upsert: true },
       );
     } catch (originalError) {

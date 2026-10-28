@@ -1351,6 +1351,32 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
+      test("a TRUSTEE_VARIATION bucket hit writes checks.matchedBy: 'variation' with matchedTrusteeAppointment from isAppointmentMatch", async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        const variant = buildVariant(event.dxtrTrustee);
+        const fingerprint = computeFingerprint(variant);
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
+        ]);
+        vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(false);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({
+              matchedBy: 'variation',
+              matchedTrusteeAppointment: false,
+            }),
+          }),
+        );
+      });
+
       test('counts a TRUSTEE_VARIATION bucket miss as fingerprintMissCount', async () => {
         const event = makeEvent('case-001', 'John Doe');
 
@@ -1854,6 +1880,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(successCount).toBe(1);
       expect(dlqMessages).toHaveLength(0);
       expect(scenarioDistribution.autoMatchCount).toBe(1);
+      expect(scenarioDistribution.autoMatchUncoveredCount).toBe(0);
     });
 
     test('should still auto-link a pipeline-resolved trustee whose appointment does not cover court/division/chapter (decision 1a: no coverage gate)', async () => {
@@ -1874,6 +1901,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         },
       ]);
       vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(false);
+      const infoSpy = vi.spyOn(context.logger, 'info');
 
       const { successCount, dlqMessages, scenarioDistribution } =
         await SyncTrusteeCaseAppointments.processAppointments(
@@ -1895,6 +1923,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(successCount).toBe(1);
       expect(dlqMessages).toHaveLength(0);
       expect(scenarioDistribution.autoMatchCount).toBe(1);
+      expect(scenarioDistribution.autoMatchUncoveredCount).toBe(1);
+
+      const auditCall = infoSpy.mock.calls.find((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+      expect(auditCall?.[2]).toMatchObject({ appointmentStatus: 'uncovered' });
     });
 
     test('should persist an ambiguous identity task when the pipeline finds 2+ unresolved candidates, not DLQ', async () => {
@@ -2113,6 +2145,23 @@ describe('SyncTrusteeCaseAppointments', () => {
             mismatchReason: 'ambiguous',
             source: 'DXTR',
             status: 'pending',
+          }),
+        );
+      });
+
+      test("a single unresolved candidate is 'no match', not 'ambiguous' — boundary at 2 candidates", async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(1));
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mismatchReason: 'no match',
           }),
         );
       });

@@ -39,6 +39,7 @@ export type TrusteeComparisonTableProps = {
   sourceLabel: string;
   onApprove?: (candidate: ComparisonCandidate) => void;
   isProcessing?: boolean;
+  labelledBy?: string;
 };
 
 export default function TrusteeComparisonTable({
@@ -46,6 +47,7 @@ export default function TrusteeComparisonTable({
   sourceLabel,
   onApprove,
   isProcessing,
+  labelledBy,
 }: Readonly<TrusteeComparisonTableProps>) {
   const { rows, source, candidates } = comparison;
   return (
@@ -53,6 +55,7 @@ export default function TrusteeComparisonTable({
       <table
         className="usa-table usa-table--borderless trustee-comparison-table"
         data-testid="trustee-comparison-table"
+        aria-labelledby={labelledBy}
       >
         <thead>
           <tr>
@@ -97,6 +100,7 @@ export default function TrusteeComparisonTable({
                     onClick={() => onApprove(candidate)}
                     disabled={isProcessing}
                     className="match-trustee-link"
+                    aria-label={`Match Trustee ${candidate.trusteeName}`}
                   >
                     <Icon name="check" />
                     Match Trustee

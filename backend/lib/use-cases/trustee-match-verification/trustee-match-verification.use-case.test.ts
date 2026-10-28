@@ -690,6 +690,32 @@ describe('TrusteeMatchVerificationUseCase', () => {
         ).rejects.toThrow(/case-001/);
       });
 
+      test('rejection names the resolved trustee by name and gives next-step guidance, rather than a raw ID', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockCaseSummaries({
+          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+        });
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-new', 'Jane Doe'),
+        ).rejects.toThrow(
+          'Jane Doe is not assigned to the division(s) for case(s): case-001. Choose a different candidate or search for a trustee whose appointments cover these cases.',
+        );
+      });
+
+      test('rejection falls back to the resolved trustee id when no name was supplied', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockCaseSummaries({
+          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+        });
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
+        ).rejects.toThrow(/^trustee-new is not assigned/);
+      });
+
       test('rejects a multi-case verification when only one of several affected cases is uncovered', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
         // Covers case-001's division (081) but not case-002's (082).
