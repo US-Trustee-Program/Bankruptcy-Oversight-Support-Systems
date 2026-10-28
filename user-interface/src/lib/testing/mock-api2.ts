@@ -23,6 +23,7 @@ import {
   Order,
 } from '@common/cams/orders';
 import {
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
@@ -809,29 +810,118 @@ const consolidationLeadCase = {
   _actions: [],
 };
 
+// One ambiguous DXTR identity task: two CAMS candidates, the second in a different state, so
+// the comparison table shows warning markers on fake-API runs. Plain literals rather than
+// MockData, since this module ships in the app bundle and MockData pulls in faker.
+const exactTrusteeMatchScores = {
+  doesNameMatch: { pass: true, quality: 'exact' },
+  doesPhoneMatch: { pass: true, quality: 'exact' },
+  doesAddressMatch: { pass: true, quality: 'exact', points: 6, streetCloseness: 1 },
+  doesCityMatch: { pass: true },
+  doesStateMatch: { pass: true },
+  doesZipCodeMatch: { pass: true },
+};
+
+const trusteeMatchSource = {
+  fullName: 'John Smith',
+  legacy: {
+    address1: '123 Main St',
+    cityStateZipCountry: 'New York, NY 10001',
+    phone: '212-555-0100',
+    parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
+  },
+};
+
+const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-smith',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  caseId: '081-22-11111',
+  courtId: '0881',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchSource,
+  findings: {
+    sourceRaw: trusteeMatchSource,
+    sourceNormalized: {},
+    memo: {},
+    candidates: [
+      {
+        camsRaw: {
+          trusteeId: 'trustee-001',
+          firstName: 'John',
+          lastName: 'Smith',
+          name: 'John Smith',
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+          phone: { number: '212-555-0100' },
+          email: 'john.smith@example.com',
+        },
+        camsNormalized: {},
+        memo: {},
+        scores: exactTrusteeMatchScores,
+        origin: 'recallBySurnameExact',
+      },
+      {
+        camsRaw: {
+          trusteeId: 'trustee-002',
+          firstName: 'Jon',
+          lastName: 'Smith',
+          name: 'Jon Smith',
+          address: {
+            address1: '9 Elm St',
+            city: 'Newark',
+            state: 'NJ',
+            zipCode: '07102',
+            countryCode: 'US',
+          },
+          phone: { number: '212-555-0100' },
+        },
+        camsNormalized: {},
+        memo: {},
+        scores: {
+          ...exactTrusteeMatchScores,
+          doesNameMatch: { pass: true, quality: 'strong' },
+          doesAddressMatch: { pass: false, points: 0, streetCloseness: 0.2 },
+          doesCityMatch: { pass: false },
+          doesStateMatch: { pass: false },
+          doesZipCodeMatch: { pass: false },
+        },
+        origin: 'recallByName',
+      },
+    ],
+    match: null,
+    skip: false,
+    error: null,
+  },
+  fingerprint: 'mock-fingerprint',
+  variant: 'john smith',
+  taskDate: '2026-01-15T10:00:00.000Z',
+  updatedOn: '2026-01-15T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: ['081-22-11111'],
+};
+
 const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   {
-    id: '081-22-11111:Smith John',
-    documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    taskType: 'trustee-match',
-    caseId: '081-22-11111',
-    courtId: '0881',
-    status: 'pending',
-    mismatchReason: 'IMPERFECT_MATCH',
-    dxtrTrustee: {
-      fullName: 'Smith John',
-      legacy: {
-        cityStateZipCountry: 'New York, NY 10001',
-      },
-    },
-    preselectedCandidate: {
-      trusteeId: 'trustee-001',
-      trusteeName: 'John Smith',
-    },
-    candidateCount: 1,
+    id: trusteeMatchVerificationDetail.id,
+    documentType: trusteeMatchVerificationDetail.documentType,
+    taskType: trusteeMatchVerificationDetail.taskType,
+    caseId: trusteeMatchVerificationDetail.caseId,
+    courtId: trusteeMatchVerificationDetail.courtId,
+    status: trusteeMatchVerificationDetail.status,
+    mismatchReason: trusteeMatchVerificationDetail.mismatchReason,
+    source: trusteeMatchVerificationDetail.source,
+    dxtrTrustee: trusteeMatchVerificationDetail.dxtrTrustee,
     affectedCaseCount: 1,
-    affectedCaseIds: ['081-22-11111'],
-    taskDate: '2026-01-15T10:00:00.000Z',
+    affectedCaseIds: trusteeMatchVerificationDetail.affectedCaseIds,
+    taskDate: trusteeMatchVerificationDetail.taskDate,
   },
 ];
 
@@ -1850,6 +1940,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
     response = {
       data: [caseDetails],
+    };
+  } else if (path.match(/\/trustee-match-verification\/.+/)) {
+    response = {
+      data: trusteeMatchVerificationDetail,
     };
   } else if (path.match(/\/trustee-match-verification/)) {
     response = {

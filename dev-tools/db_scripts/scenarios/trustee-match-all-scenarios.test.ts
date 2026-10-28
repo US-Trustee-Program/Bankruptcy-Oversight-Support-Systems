@@ -76,8 +76,10 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
       expect(divisionsByCaseId['081-23-10005']).toBe('081');
     }
 
-    const matchCandidates = verification?.matchCandidates as { trusteeId: string }[] | undefined;
-    const candidateTrusteeId = matchCandidates?.[0]?.trusteeId;
+    const candidates = (
+      verification?.findings as { candidates: { camsRaw: { trusteeId: string } }[] } | undefined
+    )?.candidates;
+    const candidateTrusteeId = candidates?.[0]?.camsRaw.trusteeId;
     expect(candidateTrusteeId).toBe('seed-trustee-match-divisionmismatch');
 
     const appointments = ops

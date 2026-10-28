@@ -8,6 +8,48 @@ import {
   validators,
 } from './test-data-utils.js';
 
+// A TRUSTEE_MATCH_VERIFICATION seed doc whose one candidate's scores are all backed by data on
+// both the source record and the candidate. Typed loosely so tests can remove fields.
+type FindingsDoc = Parameters<typeof validators.assertTrusteeMatchFindingsValid>[0];
+
+function validFindingsDoc(): FindingsDoc & {
+  findings: NonNullable<FindingsDoc['findings']> & {
+    candidates: { camsRaw: Record<string, unknown>; scores: Record<string, unknown> }[];
+  };
+} {
+  return {
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    source: 'DXTR',
+    findings: {
+      sourceRaw: {
+        legacy: {
+          address1: '1 Main St',
+          phone: '212-555-0100',
+          parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
+        },
+      },
+      candidates: [
+        {
+          camsRaw: {
+            trusteeId: 'trustee-001',
+            name: 'Jane Smith',
+            address: { address1: '1 Main St', city: 'New York', state: 'NY', zipCode: '10001' },
+            phone: { number: '212-555-0100' },
+          },
+          scores: {
+            doesNameMatch: { pass: true },
+            doesPhoneMatch: { pass: true },
+            doesAddressMatch: { pass: true, streetCloseness: 1 },
+            doesCityMatch: { pass: true },
+            doesStateMatch: { pass: true },
+            doesZipCodeMatch: { pass: true },
+          },
+        },
+      ],
+    },
+  };
+}
+
 describe('fakeUsPhoneNumber', () => {
   test('generates phone number in ###-###-#### format', () => {
     const phone = fakeUsPhoneNumber();
@@ -1029,31 +1071,12 @@ describe('validators', () => {
       expect(errors).toEqual([]);
     });
 
-    test('passes for a TRUSTEE_MATCH_VERIFICATION doc with an internally-consistent candidate', () => {
+    test('passes for a TRUSTEE_MATCH_VERIFICATION doc whose findings are backed by its data', () => {
       const ops = [
         {
           db: 'cams',
           collectionOrTable: 'trustee-match-verification',
-          data: [
-            {
-              id: 'match-good',
-              documentType: 'TRUSTEE_MATCH_VERIFICATION',
-              dxtrTrustee: {},
-              matchCandidates: [
-                {
-                  trusteeId: 'trustee-001',
-                  trusteeName: 'Jane Smith',
-                  totalScore: 76,
-                  addressScore: 0,
-                  nameScore: 100,
-                  phoneScore: 0,
-                  emailScore: 0,
-                  districtDivisionScore: 100,
-                  chapterScore: 100,
-                },
-              ],
-            },
-          ],
+          data: [{ id: 'match-good', ...validFindingsDoc() }],
         },
       ];
 
@@ -1061,31 +1084,14 @@ describe('validators', () => {
       expect(errors).toEqual([]);
     });
 
-    test('catches a TRUSTEE_MATCH_VERIFICATION candidate whose totalScore does not match its component scores', () => {
+    test('catches a TRUSTEE_MATCH_VERIFICATION candidate that records a comparison with no data behind it', () => {
+      const doc = validFindingsDoc();
+      doc.findings.candidates[0].scores.doesEmailMatch = { pass: false };
       const ops = [
         {
           db: 'cams',
           collectionOrTable: 'trustee-match-verification',
-          data: [
-            {
-              id: 'match-bad',
-              documentType: 'TRUSTEE_MATCH_VERIFICATION',
-              dxtrTrustee: {},
-              matchCandidates: [
-                {
-                  trusteeId: 'trustee-001',
-                  trusteeName: 'Jane Smith',
-                  totalScore: 50,
-                  addressScore: 0,
-                  nameScore: 100,
-                  phoneScore: 0,
-                  emailScore: 0,
-                  districtDivisionScore: 100,
-                  chapterScore: 100,
-                },
-              ],
-            },
-          ],
+          data: [{ id: 'match-bad', ...doc }],
         },
       ];
 
@@ -1093,8 +1099,7 @@ describe('validators', () => {
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('match-bad');
       expect(errors[0]).toContain('Jane Smith');
-      expect(errors[0]).toContain('totalScore 50');
-      expect(errors[0]).toContain('weighted sum of its component scores is 76.00');
+      expect(errors[0]).toContain('records doesEmailMatch');
     });
   });
 
@@ -1247,123 +1252,62 @@ describe('validators', () => {
     });
   });
 
-  describe('assertCandidateScoreValid', () => {
-    const validCandidate = {
-      trusteeId: 'trustee-001',
-      trusteeName: 'Jane Smith',
-      totalScore: 76,
-      addressScore: 0,
-      nameScore: 100,
-      phoneScore: 0,
-      emailScore: 0,
-      districtDivisionScore: 100,
-      chapterScore: 100,
-    };
-
-    test('passes for a valid candidate with no DXTR address to compare', () => {
+  describe('assertTrusteeMatchFindingsValid', () => {
+    test('passes when every recorded comparison has a value on both sides', () => {
       expect(() =>
-        validators.assertCandidateScoreValid(validCandidate, false, 'Test'),
+        validators.assertTrusteeMatchFindingsValid(validFindingsDoc(), 'Test'),
       ).not.toThrow();
     });
 
-    test('passes for a valid candidate with a real, non-zero addressScore backed by a DXTR address', () => {
-      // addressScore 70 shifts the weighted sum from validCandidate's base 76 to 81.6.
-      const candidate = { ...validCandidate, addressScore: 70, totalScore: 81.6 };
-      expect(() => validators.assertCandidateScoreValid(candidate, true, 'Test')).not.toThrow();
+    test('passes for findings with no candidates', () => {
+      const doc = validFindingsDoc();
+      doc.findings.candidates = [];
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).not.toThrow();
     });
 
-    test('throws if totalScore does not match the weighted sum of its component scores', () => {
-      const candidate = { ...validCandidate, totalScore: 50 };
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" has totalScore 50 but the weighted sum of its component scores is 76.00',
+    test('throws when source is missing', () => {
+      const doc = { ...validFindingsDoc(), source: undefined };
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'Test: missing source',
       );
     });
 
-    test('allows null/undefined candidate', () => {
-      expect(() => validators.assertCandidateScoreValid(null, false, 'Test')).not.toThrow();
-      expect(() => validators.assertCandidateScoreValid(undefined, false, 'Test')).not.toThrow();
-    });
-
-    test('throws if totalScore missing', () => {
-      const { totalScore: _totalScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing totalScore',
+    test('throws when findings are missing', () => {
+      const doc = { ...validFindingsDoc(), findings: undefined };
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'Test: missing findings (sourceRaw and candidates)',
       );
     });
 
-    test('throws if addressScore missing', () => {
-      const { addressScore: _addressScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing addressScore',
+    test('throws when a candidate has no doesNameMatch score', () => {
+      const doc = validFindingsDoc();
+      delete doc.findings.candidates[0].scores.doesNameMatch;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'Test: candidate "Jane Smith" has no doesNameMatch score',
       );
     });
 
-    test('throws if nameScore missing', () => {
-      const { nameScore: _nameScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing nameScore',
+    test('throws when a phone comparison is recorded but the source record has no phone', () => {
+      const doc = validFindingsDoc();
+      delete doc.findings.sourceRaw!.legacy!.phone;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'Test: candidate "Jane Smith" records doesPhoneMatch but the source record or candidate has no phone to compare',
       );
     });
 
-    test('throws if phoneScore missing', () => {
-      const { phoneScore: _phoneScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing phoneScore',
+    test('throws when a state comparison is recorded but the candidate has no address', () => {
+      const doc = validFindingsDoc();
+      delete doc.findings.candidates[0].camsRaw.address;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'records doesCityMatch but the source record or candidate has no city, state or zip to compare',
       );
     });
 
-    test('throws if emailScore missing', () => {
-      const { emailScore: _emailScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing emailScore',
-      );
-    });
-
-    test('throws if districtDivisionScore missing', () => {
-      const { districtDivisionScore: _districtDivisionScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing districtDivisionScore',
-      );
-    });
-
-    test('throws if chapterScore missing', () => {
-      const { chapterScore: _chapterScore, ...candidate } = validCandidate;
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing chapterScore',
-      );
-    });
-
-    test('throws if addressScore is non-zero with no DXTR address to back it up', () => {
-      const candidate = { ...validCandidate, addressScore: 100 };
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" has addressScore 100 but dxtrTrustee has no legacy address to compare - should be 0',
-      );
-    });
-
-    test('throws if phoneScore is null instead of a number', () => {
-      const candidate = { ...validCandidate, phoneScore: null };
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing phoneScore',
-      );
-    });
-
-    test('throws if emailScore is null instead of a number', () => {
-      const candidate = { ...validCandidate, emailScore: null };
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" missing emailScore',
-      );
-    });
-
-    test.each([
-      'totalScore',
-      'addressScore',
-      'nameScore',
-      'districtDivisionScore',
-      'chapterScore',
-    ] as const)('throws if %s is null instead of a number', (field) => {
-      const candidate = { ...validCandidate, [field]: null };
-      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        `Test: candidate "Jane Smith" missing ${field}`,
+    test('throws when a street closeness is recorded but the source record has no street', () => {
+      const doc = validFindingsDoc();
+      delete doc.findings.sourceRaw!.legacy!.address1;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'records doesAddressMatch.streetCloseness but the source record or candidate has no street to compare',
       );
     });
   });
