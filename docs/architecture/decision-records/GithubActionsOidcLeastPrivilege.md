@@ -91,7 +91,6 @@ Each reusable workflow that requires Azure access is assigned a dedicated GitHub
 | `reusable-dast.yml` | `dast-main`, `dast-branch` |
 | `reusable-endpoint-test.yml` | `endpoint-test-main`, `endpoint-test-branch` |
 | `sub-security-scan.yml`, `deploy-security-scan-storage.yml` | `security-scan` |
-| `dora-metrics.yml` | `dora-metrics` |
 | `azure-remove-branch.yml` | `remove-branch` |
 
 These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope, and `security-scan` holds nothing at all, reading the repository-level `AZ_SECURITY_SCAN_CLIENT_ID` instead.
@@ -100,7 +99,7 @@ This is distinct from the legacy `Main-Gov` and `Develop` environments, which st
 
 ### Azure Federated Credentials
 
-Each GitHub environment maps to one Azure federated credential on a dedicated app registration. Least privilege is expressed primarily through **role choice** rather than assignment scope: with the exceptions of `security-scan`, `dora-metrics`, and `deploy-branch`, every identity's primary role is assigned at subscription scope, and the bound on what it can do comes from how narrow that role is.
+Each GitHub environment maps to one Azure federated credential on a dedicated app registration. Least privilege is expressed primarily through **role choice** rather than assignment scope: with the exceptions of `security-scan` and `deploy-branch`, every identity's primary role is assigned at subscription scope, and the bound on what it can do comes from how narrow that role is.
 
 | Identity | Primary role | Scope |
 |---|---|---|
@@ -110,7 +109,6 @@ Each GitHub environment maps to one Azure federated credential on a dedicated ap
 | `deploy-main`, `infrastructure-deploy-*`, `e2e-*`, `remove-branch` | Contributor | Subscription |
 | `deploy-branch` | Contributor | Four resource groups: `rg-cams-app-dev`, `rg-cams-network-dev`, `rg-analytics`, `bankruptcy-oversight-support-systems` |
 | `security-scan` | Storage Blob Data Contributor | Storage account |
-| `dora-metrics` | Storage Blob Data Contributor | Blob container |
 
 Every identity additionally holds Key Vault Secrets User on each **individual secret** it reads, never at vault scope. Many secrets are deliberately shared across identities — `AZ-APP-RG` is granted to eight of the ten, `SLOT-NAME` to six — so this does not isolate workflows from one another. What it bounds is the tail: an identity can read only the secrets it was explicitly granted, not the rest of the vault.
 
@@ -171,7 +169,7 @@ Accepted
 ## Consequences
 
 - Long-lived `AZURE_CREDENTIALS` secrets are eliminated from all workflows
-- Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; most roles are still assigned at subscription scope, so for those identities the bound is the role, not the scope. `security-scan` and `dora-metrics` are bounded by scope as well, and `deploy-branch`'s Contributor grant is now written against four named resource groups rather than the subscription
+- Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; most roles are still assigned at subscription scope, so for those identities the bound is the role, not the scope. `security-scan` is bounded by scope as well, and `deploy-branch`'s Contributor grant is now written against four named resource groups rather than the subscription
 - Narrowing an existing identity's scope is a two-part operation, and only the first part can be automated: the runbooks grant but never revoke, so a narrowed grant has no effect until the broader one is revoked manually. Until that revocation lands, the runbook's scope is a statement of intent, not of effective privilege
 - GitHub environments contain no secrets or variables; all environment-specific configuration lives in Azure Key Vault
 - Two Key Vaults are maintained (main and branch) with identical secret names; any change to a vault secret is a two-step operation — update main vault, then branch vault

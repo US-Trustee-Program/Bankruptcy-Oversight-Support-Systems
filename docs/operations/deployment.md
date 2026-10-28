@@ -279,7 +279,8 @@ A dedicated, Flexion-only storage account holds the weekly DORA Metrics workflow
 workflow's publish job is added, reports still exist only as expiring workflow artifacts. The
 account is defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from `main.bicep`,
 so it is never deployed to USTP. Shared-key access is disabled; every reader and writer uses Entra
-ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container.
+ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container. Deleted
+or overwritten blobs, and a deleted container, stay recoverable for 30 days.
 
 ### One-time setup
 

@@ -15,10 +15,18 @@
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin
+#   - AZ_MAIN_KV_RG set in environment (resource group containing kv-ustp-cams;
+#     required by every main identity's script)
 #   - AZ_SECURITY_SCAN_STORAGE_NAME and AZ_SECURITY_SCAN_RG set in environment
-#     (required by setup-security-scan-federated-credential.sh only)
-#   - AZ_DORA_METRICS_STORAGE_NAME, AZ_DORA_METRICS_RG, and AZ_MAIN_KV_RG set in
-#     environment (required by setup-dora-metrics-federated-credential.sh)
+#     (required by setup-security-scan-federated-credential.sh only; that script
+#     reads the Key Vault resource group from AZ_KV_RG, not AZ_MAIN_KV_RG, and
+#     defaults it to AZ_SECURITY_SCAN_RG)
+#   - AZ_DORA_METRICS_STORAGE_NAME and AZ_DORA_METRICS_RG set in environment
+#     (required by setup-dora-metrics-federated-credential.sh only)
+#
+# A script that fails (e.g. because its variables are unset) does not stop the
+# run: every script is attempted, failures are listed at the end, and the exit
+# status is non-zero if any failed.
 #
 # This script is idempotent — re-running will update existing resources rather
 # than creating duplicates.
@@ -39,9 +47,23 @@ run_script() {
 # Every setup-*-federated-credential.sh script in this directory is run.
 # Adding a new script here is sufficient to have it provisioned — nothing
 # else needs to be updated.
+failed=()
 for script_path in "$SCRIPT_DIR"/setup-*-federated-credential.sh; do
-  run_script "$(basename "$script_path")"
+  script="$(basename "$script_path")"
+  if ! run_script "$script"; then
+    failed+=("$script")
+  fi
 done
+
+if (( ${#failed[@]} > 0 )); then
+  echo "" >&2
+  echo "###################################################################" >&2
+  echo "  ${#failed[@]} script(s) failed; their identities were not provisioned:" >&2
+  printf '    - %s\n' "${failed[@]}" >&2
+  echo "  Fix the cause (often an unset variable) and re-run the script directly." >&2
+  echo "###################################################################" >&2
+  exit 1
+fi
 
 echo ""
 echo "###################################################################"
