@@ -838,21 +838,55 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
-const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
-  {
-    id: trusteeMatchVerificationDetail.id,
-    documentType: trusteeMatchVerificationDetail.documentType,
-    taskType: trusteeMatchVerificationDetail.taskType,
-    caseId: trusteeMatchVerificationDetail.caseId,
-    courtId: trusteeMatchVerificationDetail.courtId,
-    status: trusteeMatchVerificationDetail.status,
-    mismatchReason: trusteeMatchVerificationDetail.mismatchReason,
-    source: trusteeMatchVerificationDetail.source,
-    dxtrTrustee: trusteeMatchVerificationDetail.dxtrTrustee,
+// One-candidate DXTR identity task whose name did not score exact, so the accordion shows the
+// "How CAMS read this name" section - the a11y suite needs this fake-API task to cover it.
+const oneCandidateNonExactNameFindings =
+  generatedTrusteeMatchFindings.oneCandidateAddressAndPhoneDiffer as TrusteeSerializedState;
+
+const trusteeMatchVerificationDetailNonExactName: EnrichedTrusteeMatchVerification = {
+  id: 'f3b2c1d0-identity-task-name-nonexact',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  caseId: '081-33-22222',
+  courtId: '0881',
+  status: 'pending',
+  mismatchReason: 'no match',
+  source: 'DXTR',
+  dxtrTrustee: oneCandidateNonExactNameFindings.sourceRaw,
+  findings: oneCandidateNonExactNameFindings,
+  fingerprint: 'mock-fingerprint-2',
+  variant: 'jordan imperfectmach',
+  taskDate: '2026-01-15T10:00:00.000Z',
+  updatedOn: '2026-01-15T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: ['081-33-22222'],
+};
+
+function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerificationListItem {
+  return {
+    id: detail.id,
+    documentType: detail.documentType,
+    taskType: detail.taskType,
+    caseId: detail.caseId,
+    courtId: detail.courtId,
+    status: detail.status,
+    mismatchReason: detail.mismatchReason,
+    source: detail.source,
+    dxtrTrustee: detail.dxtrTrustee,
     affectedCaseCount: 1,
-    affectedCaseIds: trusteeMatchVerificationDetail.affectedCaseIds,
-    taskDate: trusteeMatchVerificationDetail.taskDate,
-  },
+    affectedCaseIds: detail.affectedCaseIds,
+    taskDate: detail.taskDate,
+  };
+}
+
+const trusteeMatchVerificationDetailsById: Record<string, EnrichedTrusteeMatchVerification> = {
+  [trusteeMatchVerificationDetail.id]: trusteeMatchVerificationDetail,
+  [trusteeMatchVerificationDetailNonExactName.id]: trusteeMatchVerificationDetailNonExactName,
+};
+
+const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
+  toListItem(trusteeMatchVerificationDetail),
+  toListItem(trusteeMatchVerificationDetailNonExactName),
 ];
 
 const orders = [
@@ -1871,9 +1905,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
-  } else if (path.match(/\/trustee-match-verification\/.+/)) {
+  } else if (path.match(/\/trustee-match-verification\/(.+)/)) {
+    const id = path.match(/\/trustee-match-verification\/(.+)/)![1];
     response = {
-      data: trusteeMatchVerificationDetail,
+      data: trusteeMatchVerificationDetailsById[id] ?? trusteeMatchVerificationDetail,
     };
   } else if (path.match(/\/trustee-match-verification/)) {
     response = {

@@ -21,6 +21,7 @@ import TrusteeMatchConfirmationModal, {
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
 import { buildTrusteeComparison, ComparisonCandidate } from './trustee-comparison';
+import { buildTrusteeExplanation } from './trustee-explanation';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -114,6 +115,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
   const comparison = useMemo(
     () => (detail ? buildTrusteeComparison(detail.findings, detail.source) : null),
+    [detail],
+  );
+  const explanation = useMemo(
+    () => (detail ? buildTrusteeExplanation(detail.findings) : null),
     [detail],
   );
 
@@ -343,6 +348,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     const hasCandidates = comparison.candidates.length > 0;
     return (
       <div className="trustee-match-candidate-section" data-testid="candidate-info">
+        {explanation?.showNameInterpretation && (
+          <div data-testid="name-interpretation">
+            <h3>How CAMS read this name</h3>
+            <p>{detail?.findings.sourceRaw.fullName}</p>
+          </div>
+        )}
         <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
         <p className="other-matches-subtext">
           Results are ordered from strongest to weakest match. A{' '}
@@ -459,13 +470,35 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
                 </span>
               </div>
-              <p className="problem-statement">
-                <span>
-                  Trustee sent from the court does not match a CAMS Trustee for{' '}
-                  {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
-                </span>
-                {caseLink}
-              </p>
+              {explanation ? (
+                <p className="problem-statement">
+                  <span>{explanation.sentence} Affects </span>
+                  {affectedCaseCount > 1 ? (
+                    <span data-testid="affected-cases">
+                      {affectedCaseCount} cases:
+                      <span className="affected-cases-list">
+                        {sortedAffectedCaseIds.map((caseId) => (
+                          <span key={caseId} className="affected-case-item">
+                            <NewTabLink
+                              to={`/case-detail/${caseId}`}
+                              label={getCaseNumber(caseId)}
+                            />
+                          </span>
+                        ))}
+                      </span>
+                    </span>
+                  ) : (
+                    <>
+                      <span>1 case: </span>
+                      {singleCaseLink}
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="problem-statement" data-testid="affected-cases-loading">
+                  Loading&hellip;
+                </p>
+              )}
               {renderDetailSection()}
             </>
           )}

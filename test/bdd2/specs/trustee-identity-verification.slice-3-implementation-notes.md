@@ -1,6 +1,7 @@
 # CAMS-953 Slice 3: Explanations — Implementation Notes
 
-In progress, started 2026-10-28. Bead: cams-c45pn.6 (Task 1: cams-c45pn.6.1).
+Started 2026-10-28. Bead: cams-c45pn.6 (Task 1: cams-c45pn.6.1, closed; Tasks 2-4 tracked only in
+trustee-identity-verification.slice-3-prompts.md).
 
 ## What Was Built
 
@@ -103,3 +104,86 @@ All four drift items above are now in the seeds. Changes:
   `seed-trustee-match-multi-b`.
 - **dev-tools `scenarios.test.ts`**: the trustee-data task is `'ambiguous'`, with Sam and Pat as
   candidates.
+
+## Task 3: Explanation mapper and accordion rendering
+
+- **Mapper.** `trustee-explanation.ts` adds `buildTrusteeExplanation(findings)`, a pure function
+  reusing `differingRows` (now exported from `trustee-comparison.ts`). Zero/2+ candidates get the
+  generic sentences; one candidate maps its differing rows to groups (name; address from
+  street/city/zip; state; phone; email) in that fixed order, joined with no serial comma, with
+  `does`/`do` on group count. `showNameInterpretation` reuses the name row's `differs` flag as-is.
+- **Spec-vs-reality gap, resolved by reusing the existing flag.** The prompt's wording for
+  `showNameInterpretation` ("missing, failed, or non-exact quality") reads as true for a missing
+  `doesNameMatch` record, but `differingRows`' existing `isExactGrade` treats a missing scorer as
+  neutral/not-differing for every field (a scorer that wrote nothing found nothing to compare).
+  Since the task says to reuse the same condition as the name row's `differs` flag, the
+  implementation follows that flag's actual behavior rather than the prose: a missing name score
+  does not show the section. This never arises with real findings anyway - the pipeline always
+  scores name, since it drives recall.
+- **Loading state covers more than "fetching."** The accordion only fetches `findings` on first
+  expand (`handleExpand`), so "before expansion" and "actively fetching" are both states where no
+  explanation exists yet. The implementation shows the `Loading…` placeholder (reusing the existing
+  `affected-cases-loading` test id) whenever `buildTrusteeExplanation`'s input isn't available yet,
+  covering both - this is harmless since the collapsed panel isn't visible either way, and it
+  matches "until detail loads, show only the loading placeholder, not the generic sentence."
+- **No duplicated case count.** The sentence now says "Affects N case(s):" itself, so the case-link
+  rendering for pending tasks no longer prints its own "{n} cases:" prefix (the resolved-task view's
+  rendering is untouched and keeps its own).
+- Five pre-existing `TrusteeMatchVerificationAccordion.test.tsx` tests asserted the old
+  pre-explanation behavior (case count visible before any expand, independent of findings); these
+  were updated to reflect the new behavior rather than preserved, since the old behavior is exactly
+  what this task changes.
+
+## Task 4: Playwright e2e, Playwright a11y and integration coverage
+
+- **e2e fixture.** Added a fifth `trustee-match-verification` task
+  (`e2e-trustee-match-verification-pending-4`, case `081-94-55601`) using the
+  `oneCandidateStateDiffers` scenario, so the fixture now covers all five sentence/name-section
+  states: 0 candidates, 2+ candidates, 1 candidate address+phone differing (non-exact name), 1
+  candidate state-only differing (exact name), plus the existing approved task.
+- **e2e assertions** (`trustee-match-verification.spec.ts`): one test asserts each sentence kind's
+  text; one asserts the name section shows only for the non-exact-name task and is absent on the
+  exact-name, multi-candidate and no-candidate tasks.
+- **a11y.** The fake API (`mock-api2.ts`) only ever served one ambiguous (2-candidate) ask, which
+  never shows the name section, so a second fake-API task was added
+  (`f3b2c1d0-identity-task-name-nonexact`, the `oneCandidateAddressAndPhoneDiffer` scenario, a
+  non-exact name) and the detail endpoint now looks up by id instead of always returning the one
+  task. A new a11y test expands it, asserts no axe violations, and checks the heading order
+  (`How CAMS read this name` directly before `Potential Matches`, both `h3`).
+- **Integration (`trustee-match-scenarios-harness.ts`).** Added `assertCandidateScoresForUi`, called
+  for scenario 6 (no-match) and scenario 8 (ambiguous, two candidates): asserts every candidate's
+  stored `doesNameMatch` is a graded pass, and that `doesStateMatch` is recorded whenever both the
+  source and the candidate have a state. Scenario 6 has zero candidates, so its call is a documented
+  no-op kept only for parity with the task's wording; the real assertions run against scenario 8.
+  Not run in this session (requires SQL Edge + Mongo infrastructure); typechecked standalone against
+  `backend/tsconfig.json`.
+
+## Slice Completion Checklist status
+
+- Tasks 1-4 implemented; `cams-c45pn.6.1` closed after Task 1.
+- Unit tests pass (`trustee-explanation.test.ts`, updated
+  `TrusteeMatchVerificationAccordion.test.tsx`, all other `user-interface` and `backend` tests green
+  aside from two pre-existing, unrelated flakes: `consolidationsUseCase.test.ts` and an
+  unhandled-rejection warning in `Session.test.tsx` under full-suite parallel runs, both reproduced
+  identically on the unmodified branch).
+- **a11y**: run locally (`npm run start:a11y` +
+  `npx playwright test --project=chromium test/accessibility/data-verification.test.ts`) - all 3
+  tests pass, including the new name-section coverage.
+- **Integration harness**: run locally against containerized SQL Edge + Mongo
+  (`test/integration/trustee-match-scenarios/scripts/start-services.sh`, then `seed-schema`,
+  `seed-sql`, `seed-cosmos`, `run`, `clean`, `stop-services.sh`) - all scenarios pass, including the
+  new scenario 6/8 scorer-coverage assertions.
+- **e2e**: not run in this session. `npm run e2e` failed for two reasons, both local-environment
+  issues unrelated to this slice's code: (1) this podman version has removed `slirp4netns`, which
+  `run-e2e-workflow.sh` forces as a deliberate CI-runner pasta-bug workaround - confirmed `pasta`
+  networking works fine on this machine as a local-only substitute, but didn't change the shared
+  script; (2) `test/e2e/.env`'s `MSSQL_HOST`/`MSSQL_USER`/`MSSQL_PASS` pointed at a real Azure Gov
+  Cloud SQL Server instead of the local SQL Edge container the script starts (should be
+  `localhost`/`sa`/a local password + `MSSQL_DATABASE_DXTR=CAMS_E2E`, per `.env.local.example`) -
+  left unchanged pending the human fixing their local `.env`. Run `npm run e2e` from `test/e2e/`
+  once that's fixed, covering the new fixture task and sentence/name-section e2e assertions.
+- **UX sign-off still needed** (per the prompts doc) from Brian Posey on the generated sentences,
+  which differ from the mock's copy - "does not _exactly_ match" for state, plus the new field
+  combinations above.
+- `trustee-identity-verification.workflow-state.json` not yet advanced to Slice 4 - do that once the
+  above test runs and sign-off are confirmed.

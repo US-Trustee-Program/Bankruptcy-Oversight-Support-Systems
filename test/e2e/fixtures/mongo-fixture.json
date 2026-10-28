@@ -2213,6 +2213,28 @@
         "taskType": "trustee-match"
       },
       {
+        "_id": "69c3f5c935071a9817e23cf4",
+        "id": "e2e-trustee-match-verification-pending-4",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "caseId": "081-94-55601",
+        "courtId": "0208",
+        "status": "pending",
+        "source": "DXTR",
+        "findingsScenario": "oneCandidateStateDiffers",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
+      },
+      {
         "_id": "69c3f5c935071a9817e23cf3",
         "id": "e2e-trustee-match-verification-approved",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
