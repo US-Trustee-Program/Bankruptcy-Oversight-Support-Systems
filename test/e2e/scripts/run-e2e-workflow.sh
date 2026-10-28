@@ -167,12 +167,39 @@ else
     echo "Using local deps image (hash: ${DEPS_HASH})"
 fi
 
+# The compiled image bakes in common/, backend/ and user-interface/ (see Dockerfile.built), so it
+# is only reusable when it was built from the same source on the same deps image - otherwise the
+# run silently tests stale code. Hash every file Dockerfile.built copies (tracked or untracked,
+# minus gitignored build output), Dockerfile.built itself and the deps image id, and stamp it on
+# the image like the deps hash above. A rebuild keeps the layer cache, so only changed layers redo.
+compute_built_hash() {
+    {
+        podman image inspect localhost/e2e_deps:latest --format '{{.Id}}'
+        git -C ../.. ls-files -z --cached --others --exclude-standard -- \
+            common backend user-interface test/e2e/Dockerfile.built |
+            (cd ../.. && xargs -0 sha256sum 2>/dev/null || true)
+    } | sha256sum | cut -c1-12
+}
+
+BUILT_HASH=$(compute_built_hash)
+BUILT_CACHED_HASH=$(podman image inspect localhost/e2e_built:latest --format '{{index .Labels "e2e.built.hash"}}' 2>/dev/null || true)
 BUILT_EXISTS=$(podman images -q localhost/e2e_built:latest)
-if [ -z "$BUILT_EXISTS" ]; then
+
+build_built_image() {
+    podman build --label "e2e.built.hash=${BUILT_HASH}" -t localhost/e2e_built:latest -f Dockerfile.built ../../
+}
+
+if [ "${FORCE_REBUILD_BUILT:-false}" = "true" ]; then
+    echo "Force-rebuilding compiled image..."
+    build_built_image
+elif [ -z "$BUILT_EXISTS" ]; then
     echo "Building compiled image (first time)..."
-    podman build -t localhost/e2e_built:latest -f Dockerfile.built ../../
+    build_built_image
+elif [ "${BUILT_CACHED_HASH}" != "${BUILT_HASH}" ]; then
+    echo -e "${YELLOW}⚠️  Compiled image is stale (source changed: ${BUILT_CACHED_HASH:-unlabeled} → ${BUILT_HASH}). Rebuilding...${NC}"
+    build_built_image
 else
-    echo "Using cached built image (run 'npm run podman:rebuild-built' to rebuild)"
+    echo "Using cached built image (hash: ${BUILT_HASH})"
 fi
 
 echo "Building service images..."

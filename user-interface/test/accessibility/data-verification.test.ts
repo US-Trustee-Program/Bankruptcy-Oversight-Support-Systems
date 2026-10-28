@@ -1,5 +1,11 @@
 import test, { expect } from '@playwright/test';
-import { COMPLEX_TEST_TIMEOUT, LARGE_VIEWPORT, createAxeBuilder, getUrl } from './test-constants';
+import {
+  ANALYZE_DELAY,
+  COMPLEX_TEST_TIMEOUT,
+  LARGE_VIEWPORT,
+  createAxeBuilder,
+  getUrl,
+} from './test-constants';
 
 test.describe('Data Verification', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -109,5 +115,42 @@ test.describe('Data Verification', () => {
     // Check accessibility for sixth accordion
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('should not have accessibility issues in the trustee identity comparison table and confirmation modal', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    // The fake API serves one ambiguous DXTR identity task with two candidates, one of which
+    // differs from the source record (mock-api2.ts trusteeMatchVerificationDetail).
+    const taskId = 'e8c1f0a2-identity-task-smith';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    // Narrow the type filter to trustee identity tasks only
+    await page.locator('#task-type-filter .input-container').click();
+    await page.locator('[id="option-transfer"]').click();
+    await page.locator('[id="option-consolidation"]').click();
+    await page.keyboard.press('Escape');
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const table = page.locator('[data-testid="trustee-comparison-table"]');
+    await expect(table).toBeVisible();
+    await expect(table.getByLabel(/differs from the source record/).first()).toBeVisible();
+
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    // Open the confirmation modal for the second candidate
+    await page.locator('[data-testid="approve-candidate-trustee-002"]').click();
+    const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
+    await expect(cancelButton).toBeVisible();
+    // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await cancelButton.click();
+    await expect(cancelButton).toBeHidden();
   });
 });

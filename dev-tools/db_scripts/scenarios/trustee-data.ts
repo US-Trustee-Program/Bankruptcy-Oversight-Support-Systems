@@ -22,6 +22,11 @@ import { generateSearchTokens } from '../lib/phonetic-tokens.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
+const SEED_DXTR_TRUSTEE = {
+  firstName: 'Samuel',
+  lastName: 'Seedtrustee',
+  fullName: 'Samuel Seedtrustee',
+};
 const NO_EMAIL_TRUSTEE_ID = 'seed-trustee-nocontact-001';
 
 // Existing DXTR case in Buffalo (091)
@@ -214,48 +219,44 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           status: 'pending',
           taskDate: '2025-03-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: computeFingerprint({
-            firstName: 'Samuel',
-            lastName: 'Seedtrustee',
-            fullName: 'Samuel Seedtrustee',
-          }),
-          dxtrTrustee: {
-            firstName: 'Samuel',
-            lastName: 'Seedtrustee',
-            fullName: 'Samuel Seedtrustee',
-          },
-          // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
-          // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
-          // against this fixture's actual DXTR/candidate data, then hand-transcribed here).
-          // "Samuel" vs "Sam" is a nickname relationship, not the literal initial-vs-full pattern
-          // the scorer recognizes, so nameScore is a real 0. No DXTR legacy address/phone/email
-          // at all, so addressScore is a real 0 (not 100 as previously hardcoded); phoneScore/
-          // emailScore are hardcoded to 0 rather than the real function's null (not-comparable)
-          // result, to keep the mismatch icon visible for missing contact info per product
-          // decision.
-          matchCandidates: [
-            {
-              trusteeId: ACTIVE_TRUSTEE_ID,
-              trusteeName: 'Sam Seedtrustee',
-              totalScore: 50,
-              addressScore: 0,
-              nameScore: 0,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '200 Trustee Ave',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10002',
-                countryCode: 'US',
+          mismatchReason: 'no match',
+          source: 'DXTR',
+          fingerprint: computeFingerprint(SEED_DXTR_TRUSTEE),
+          dxtrTrustee: SEED_DXTR_TRUSTEE,
+          // The pipeline's stored state for this name-only source record: one candidate, found
+          // by exact surname. "Samuel" vs "Sam" is a known nickname pair, so the name grades
+          // 'strong'; with no DXTR address, phone or email there is nothing else to compare.
+          findings: {
+            sourceRaw: SEED_DXTR_TRUSTEE,
+            sourceNormalized: {},
+            memo: {},
+            candidates: [
+              {
+                camsRaw: {
+                  trusteeId: ACTIVE_TRUSTEE_ID,
+                  firstName: 'Sam',
+                  lastName: 'Seedtrustee',
+                  name: 'Sam Seedtrustee',
+                  address: {
+                    address1: '200 Trustee Ave',
+                    city: 'New York',
+                    state: 'NY',
+                    zipCode: '10002',
+                    countryCode: 'US',
+                  },
+                  phone: { number: '212-555-0200' },
+                  email: 'sam.seedtrustee@example.com',
+                },
+                camsNormalized: {},
+                memo: {},
+                scores: { doesNameMatch: { pass: true, quality: 'strong' } },
+                origin: 'recallBySurnameExact',
               },
-              phone: { number: '212-555-0200' },
-              email: 'sam.seedtrustee@example.com',
-            },
-          ],
+            ],
+            match: null,
+            skip: false,
+            error: null,
+          },
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

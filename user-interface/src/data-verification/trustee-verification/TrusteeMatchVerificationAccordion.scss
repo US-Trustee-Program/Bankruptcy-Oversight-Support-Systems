@@ -1,11 +1,22 @@
 @use '@/styles/abstracts/colors';
-@use 'styles/abstracts/device-screens' as device-screens;
 
 .usa-accordion__content:has(.trustee-match-content) {
   padding-top: 0;
 }
 
 .trustee-match-content {
+  .identity-task-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+
+    .identity-task-reason {
+      font-weight: bold;
+    }
+  }
+
   p.problem-statement,
   p.resolved-statement {
     margin: 1.5rem 0;
@@ -25,65 +36,48 @@
     }
   }
 
-  p.other-matches-count {
-    font-weight: bold;
-    margin: 0 0 0.75rem;
+  // Wide candidate sets scroll horizontally rather than squeezing every column.
+  .trustee-comparison-table-container {
+    overflow-x: auto;
+    margin-bottom: 1rem;
   }
 
-  .trustee-data-grid {
-    margin-bottom: 1.5rem;
-    overflow-x: auto;
+  .trustee-comparison-table {
+    margin-top: 0;
 
-    .trustee-data-header {
+    th[scope='row'] {
       font-weight: bold;
-
-      .trustee-data-cell {
-        padding: 0.5rem 0.5rem 0.5rem 0;
-        border-bottom: 1px solid colors.$ink;
-
-        &.no-border {
-          border-bottom: none;
-        }
-      }
+      white-space: nowrap;
     }
 
-    .trustee-data-row {
-      .trustee-data-cell {
-        padding: 0.5rem 0.5rem 0.5rem 0;
-        word-wrap: break-word;
-        overflow-wrap: anywhere;
-        min-width: 0;
-        border-bottom: 1px solid colors.$ink;
-
-        &.no-border {
-          border-bottom: none;
-        }
-      }
+    td {
+      overflow-wrap: anywhere;
     }
+
+    .comparison-cell-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+  }
+
+  // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). Every field,
+  // State included, uses the same neutral marker; the icon carries its own accessible name, so
+  // meaning never rests on color alone.
+  .difference-icon {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .difference-icon-symbol {
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: text-bottom;
+    fill: colors.$ink;
   }
 
   .no-candidates-message {
     margin: 0.5rem 0 1rem;
-  }
-
-  // Column-header mismatch icons for the CAMS Strongest Match table only (see ColumnHeader/
-  // MismatchIcon in TrusteeMatchVerificationAccordion.tsx). Color alone never carries the
-  // meaning - each icon also has a visually-hidden (usa-sr-only) text label.
-  .column-header-with-mismatch {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .mismatch-icon {
-    display: inline-flex;
-    align-items: center;
-
-    .mismatch-icon-symbol {
-      width: 1.1rem;
-      height: 1.1rem;
-      fill: colors.$error-text;
-    }
   }
 
   .match-trustee-link {
@@ -135,72 +129,6 @@
       vertical-align: text-bottom;
       line-height: 1.59rem;
       padding-right: 0.25rem;
-    }
-  }
-
-  .candidate-radio-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    input[type='radio'] {
-      width: 1.25rem;
-      height: 1.25rem;
-      cursor: pointer;
-    }
-  }
-
-  .candidate-scores-cell {
-    font-size: 0.8125rem;
-    line-height: 1.4;
-
-    .score-label {
-      font-weight: 600;
-    }
-  }
-
-  .candidate-selection-fieldset {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .multiple-match-actions {
-    margin: 1rem 0 0.5rem;
-  }
-}
-
-@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
-  .trustee-match-content {
-    .trustee-data-grid {
-      .trustee-data-header {
-        display: none;
-      }
-
-      .trustee-data-row {
-        display: block;
-      }
-
-      .trustee-data-cell.no-border {
-        display: none;
-      }
-
-      .trustee-data-cell[data-cell] {
-        display: block;
-        width: 100%;
-        min-height: 1.75rem;
-        padding: 0.25rem 0.375rem 0.25rem 30%;
-        position: relative;
-
-        &::before {
-          content: attr(data-cell) ':';
-          position: absolute;
-          left: 0;
-          top: 0.25rem;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-      }
     }
   }
 }

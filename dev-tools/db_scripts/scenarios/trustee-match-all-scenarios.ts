@@ -2,50 +2,37 @@
  * Scenario: trustee-match-all-scenarios
  * Database: cams only
  *
- * Seeds comprehensive trustee match verification data to exercise all match types:
+ * Seeds trustee identity tasks (TRUSTEE_MATCH_VERIFICATION documents) the way the DXTR trustee
+ * appointment sync writes them: source 'DXTR', the trustee-match pipeline's serialized state as
+ * `findings`, and mismatchReason 'ambiguous' (2+ candidates) or 'no match' (0 or 1 candidate).
+ * A resolved pipeline match writes the appointment instead, so it has no document to seed here.
  *
- *   - All 4 match verification types (a fuzzy-scoring clear winner now auto-links instead of
- *     reaching this collection - see resolveByScoring's 'resolved' case in
- *     sync-trustee-case-appointments.ts - so it has no verification-document scenario to seed
- *     here):
- *     1. NO_TRUSTEE_MATCH - No candidates found
- *     2. AMBIGUOUS_MATCH_UNRESOLVED - Multiple equally-scored candidates (genuine raw-candidate
- *        collision - the UI's "Multiple Match" label and "Other Potential Matches" section)
- *     2b. AMBIGUOUS_MATCH_UNRESOLVED - a SINGLE candidate that scored below the auto-link
- *        threshold (see resolveNameCollisionByScoring/matchTrusteeByName's first-token-lastName
- *        search tier in trustee-match.helpers.ts) - same mismatchReason as #2, but only one raw
- *        candidate ever existed. The UI (TrusteeMatchVerificationAccordion.tsx's isMultipleMatch)
- *        distinguishes this from #2 by candidateCount, showing "Trustee Mismatch" (not "Multiple
- *        Match") and zero "Other Potential Matches" - this scenario exists specifically to
- *        exercise that distinction against real seeded data, not just unit-test mocks.
- *     3. IMPERFECT_MATCH - Single candidate with low confidence score
- *     4. PERFECT_MATCH_INACTIVE_STATUS - Perfect match but trustee/appointment inactive
+ * Each candidate's stored scores are derived by hand from the pipeline's scorer rules
+ * (trustee-match-pipeline-stages.ts) against the fixture's own source and CAMS data, and the
+ * seed validator (assertTrusteeMatchFindingsValid) rejects any comparison with no data behind it:
  *
- *   - 6 inactive status variations for PERFECT_MATCH_INACTIVE_STATUS:
- *     - Inactive trustee + active appointment
- *     - Active trustee + inactive appointment
- *     - Inactive trustee + terminated appointment
- *     - Inactive trustee + resigned appointment
- *     - Inactive trustee + removed appointment
- *     - Inactive trustee + deceased appointment
+ *   1. No match, no candidates.
+ *   2. Ambiguous, 2 candidates: one agrees on everything compared, the other has a phone typo
+ *      and a different street number - two candidates, warning markers on the second.
+ *   3. No match, 1 candidate: the name and state agree, the city, zip and phone differ.
  *
- *   - Multi-case scenarios. For a pending mismatch, affectedCaseCount/affectedCaseIds are
- *     derived live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows
- *     sharing the mismatch's fingerprint (see getAffectedCaseIdsByFingerprint in
+ *   - Multi-case scenarios. For a pending task, affectedCaseCount/affectedCaseIds are derived
+ *     live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows sharing the
+ *     task's fingerprint (see getAffectedCaseIdsByFingerprint in
  *     trustee-match-verification.use-case.ts); once approved, they come from the affectedCaseIds
  *     snapshot taken at approval time instead, since the remap deletes the surrogates:
- *     5. Pending, 3 affected cases, one match candidate.
- *     6. Already approved, with NO affectedCaseIds snapshot and NO surviving surrogate rows -
+ *     4. Pending, 3 affected cases, one candidate.
+ *     5. Already approved, with NO affectedCaseIds snapshot and NO surviving surrogate rows -
  *        simulates the state after trustee-verification-remap.ts has deleted every surrogate for
- *        a resolved fingerprint approved before the affectedCaseIds snapshot existed, leaving no
- *        durable record of which cases it affected.
- *     7. Already approved, WITH a populated affectedCaseIds snapshot (3 cases) - the normal
- *        post-fix state for an approved multi-case mismatch.
- *     8. Pending, 3 affected cases, all Chapter 11, but one case is in a different court the
- *        candidate has no appointment in at all (division/court mismatch rather than chapter
- *        mismatch - #5 above varies chapter across cases that all share one division; this one
- *        varies court+division across cases that all share one chapter, isolating the other
- *        half of isAppointmentMatch). See CAMS-905 PR #3090's "Deferred, not included" note.
+ *        a resolved fingerprint approved before the affectedCaseIds snapshot existed.
+ *     6. Already approved, WITH a populated affectedCaseIds snapshot (3 cases) - the normal
+ *        state for an approved multi-case task.
+ *     7. Pending, 3 affected cases, all Chapter 11, but one case is in a different court the
+ *        candidate has no appointment in at all (court+division mismatch rather than chapter
+ *        mismatch), isolating the other half of isAppointmentMatch. See CAMS-905 PR #3090.
+ *
+ * Inactive-trustee/appointment variations are not identity tasks (an appointment concern, see
+ * CAMS-956), so this scenario no longer seeds them.
  *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
@@ -59,81 +46,134 @@ const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 // Existing DXTR cases (Buffalo district)
 const CASE_NO_MATCH = '091-99-87899'; // Ch 11 (Kassulke Group)
 const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch 11
-const CASE_SINGLE_CANDIDATE_AMBIGUOUS = '091-99-92748'; // Ch 12 (reuse)
-const CASE_IMPERFECT_MATCH = '091-99-92748'; // Ch 12 (Botsford LLC)
-const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch 11 (reuse)
-const CASE_INACTIVE_APPOINTMENT = '091-99-92748'; // Ch 12 (reuse)
-const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
-const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
-const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
-const CASE_DECEASED = '091-99-00874'; // Ch 11 (reuse)
+const CASE_SINGLE_CANDIDATE = '091-99-92748'; // Ch 12 (Botsford LLC)
 
-// Multi-case scenarios (3 distinct cases, previously-unused in this file)
+// Multi-case scenarios (3 distinct cases)
 const CASE_MULTI_A = '091-99-86706';
 const CASE_MULTI_B = '091-99-99943';
 const CASE_MULTI_C = '091-99-98483';
 const CASE_RESOLVED_NO_SURROGATES = '091-99-97816';
 
-// Multi-case DIVISION-mismatch scenario (3 distinct cases, all Chapter 11, previously-unused
-// in this file): two share a court+division the candidate is appointed in, the third is a
-// genuinely different court the candidate has no appointment for at all. Isolates the
-// court+division half of isAppointmentMatch from the chapter half, which CASE_MULTI_A/B/C
-// above already exercises (same division, different chapters) -- see CAMS-905 PR #3090's
-// "Deferred, not included" note, which flagged this as the one case variant the existing
-// multi-case fixture couldn't exercise.
+// Multi-case DIVISION-mismatch scenario (3 distinct cases, all Chapter 11): two share a
+// court+division the candidate is appointed in, the third is a genuinely different court the
+// candidate has no appointment for at all.
 const CASE_DIVISION_MISMATCH_A = '091-99-40761'; // Ch 11, Western District of NY - Buffalo (091)
 const CASE_DIVISION_MISMATCH_B = '091-99-11079'; // Ch 11, Western District of NY - Buffalo (091)
 const CASE_DIVISION_MISMATCH_C = '081-23-10005'; // Ch 11, Southern District of NY - Manhattan (081)
 
-// DXTR trustee identities shared between `fingerprint` (via computeFingerprint) and
-// `dxtrTrustee` below, so the two can never drift out of sync with each other.
-const DXTR_NO_MATCH = { firstName: 'Unique', lastName: 'Nomatch', fullName: 'Unique Nomatch' };
-const DXTR_MULTIPLE_MATCH = { firstName: 'T', lastName: 'Multimatch', fullName: 'T Multimatch' };
-const DXTR_IMPERFECT_MATCH = {
+// ── CAMS trustees ───────────────────────────────────────────────────────────
+// Defined once and reused for both the trustees collection and each task's findings, so a
+// candidate's stored camsRaw can never drift from the trustee it names.
+const TRUSTEE_MULTI_A = createTrusteeBase({
+  id: 'seed-trustee-match-multi-a',
+  firstName: 'Taylor',
+  lastName: 'Multimatch',
+  status: 'active',
+  address1: '300 Match Ave',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10003',
+  phone: '212-555-3000',
+  email: 'taylor.multimatch@example.com',
+});
+const TRUSTEE_MULTI_B = createTrusteeBase({
+  id: 'seed-trustee-match-multi-b',
+  firstName: 'Tyler',
+  lastName: 'Multimatch',
+  status: 'active',
+  address1: '301 Match Ave',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10003',
+  phone: '212-555-3001',
+  email: 'tyler.multimatch@example.com',
+});
+const TRUSTEE_SINGLE_CANDIDATE = createTrusteeBase({
+  id: 'seed-trustee-match-imperfect',
+  firstName: 'Jordan',
+  lastName: 'Imperfectmatch',
+  status: 'active',
+  address1: '400 Match Blvd',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10004',
+  phone: '212-555-4000',
+  email: 'jordan.imperfectmatch@example.com',
+});
+// The trustee the approved tasks below were resolved to.
+const TRUSTEE_RESOLVED = createTrusteeBase({
+  id: 'seed-trustee-match-highconf',
+  firstName: 'Alex',
+  lastName: 'Highconfidence',
+  status: 'active',
+  address1: '500 Match St',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10005',
+  phone: '212-555-5000',
+  email: 'alex.highconfidence@example.com',
+});
+const TRUSTEE_MULTI_CASE = createTrusteeBase({
+  id: 'seed-trustee-match-multicase',
+  firstName: 'Cassidy',
+  lastName: 'Multicasematch',
+  status: 'active',
+  address1: '700 Match Ln',
+  city: 'New York',
+  state: 'NY',
+  zipCode: '10007',
+  phone: '212-555-7000',
+  email: 'cassidy.multicasematch@example.com',
+});
+// Appointed in Buffalo (091) only, so division-mismatch cases A/B are covered but C (081) is not.
+const TRUSTEE_DIVISION_MISMATCH = createTrusteeBase({
+  id: 'seed-trustee-match-divisionmismatch',
+  firstName: 'Dana',
+  lastName: 'Divisionmismatch',
+  status: 'active',
+  address1: '800 Match Pl',
+  city: 'Buffalo',
+  state: 'NY',
+  zipCode: '14201',
+  phone: '716-555-8000',
+  email: 'dana.divisionmismatch@example.com',
+});
+
+// ── DXTR source records ─────────────────────────────────────────────────────
+// Shared between `fingerprint` (via computeFingerprint), `dxtrTrustee` and findings.sourceRaw, so
+// the three can never drift out of sync with each other.
+const DXTR_NO_MATCH = {
+  firstName: 'Unique',
+  lastName: 'Nomatch',
+  fullName: 'Unique Nomatch',
+  legacy: {
+    address1: '1 Nowhere Rd',
+    cityStateZipCountry: 'Albany NY 12207',
+    phone: '518-555-0100',
+    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12207' },
+  },
+};
+const DXTR_MULTIPLE_MATCH = {
+  firstName: 'T',
+  lastName: 'Multimatch',
+  fullName: 'T Multimatch',
+  legacy: {
+    address1: '300 Match Ave',
+    cityStateZipCountry: 'New York NY 10003',
+    phone: '212-555-3000',
+    parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10003' },
+  },
+};
+const DXTR_SINGLE_CANDIDATE = {
   firstName: 'J',
   lastName: 'Imperfectmatch',
   fullName: 'J Imperfectmatch',
-};
-const DXTR_HIGH_CONFIDENCE = {
-  firstName: 'Alex',
-  lastName: 'Highconfidence',
-  fullName: 'Alex Highconfidence',
-};
-const DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT = {
-  firstName: 'Morgan',
-  middleName: 'A',
-  lastName: 'Inactivematch',
-  fullName: 'Morgan A Inactivematch',
-};
-const DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT = {
-  firstName: 'Alex',
-  middleName: 'Q',
-  lastName: 'Highconfidence',
-  fullName: 'Alex Q Highconfidence',
-};
-const DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT = {
-  firstName: 'Morgan',
-  middleName: 'B',
-  lastName: 'Inactivematch',
-  fullName: 'Morgan B Inactivematch',
-};
-const DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT = {
-  firstName: 'Morgan',
-  middleName: 'C',
-  lastName: 'Inactivematch',
-  fullName: 'Morgan C Inactivematch',
-};
-const DXTR_INACTIVE_TRUSTEE_REMOVED_APPT = {
-  firstName: 'Morgan',
-  middleName: 'D',
-  lastName: 'Inactivematch',
-  fullName: 'Morgan D Inactivematch',
-};
-const DXTR_INACTIVE_TRUSTEE_DECEASED_APPT = {
-  firstName: 'Morgan',
-  middleName: 'E',
-  lastName: 'Inactivematch',
-  fullName: 'Morgan E Inactivematch',
+  legacy: {
+    address1: '400 Match Blvd',
+    cityStateZipCountry: 'Albany NY 12207',
+    phone: '518-555-9999',
+    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12207' },
+  },
 };
 const DXTR_MULTI_CASE = {
   firstName: 'Casey',
@@ -156,10 +196,61 @@ const DXTR_RESOLVED_WITH_SNAPSHOT = {
   fullName: 'Drew Snapshotmatch',
 };
 
+type SeedTrustee = ReturnType<typeof createTrusteeBase>;
+type Scores = Record<string, Record<string, unknown>>;
+
+/** A findings candidate as the pipeline stores it: the projected CAMS trustee plus its scores. */
+function candidate(trustee: SeedTrustee, scores: Scores, origin = 'recallBySurnameExact') {
+  return {
+    camsRaw: {
+      trusteeId: trustee.trusteeId,
+      firstName: trustee.firstName,
+      lastName: trustee.lastName,
+      name: trustee.name,
+      address: trustee.public.address,
+      phone: trustee.public.phone,
+      email: trustee.public.email,
+    },
+    camsNormalized: {},
+    memo: {},
+    scores,
+    origin,
+  };
+}
+
+/** The pipeline's serialized state for an unresolved source record. */
+function findings(sourceRaw: object, candidates: ReturnType<typeof candidate>[] = []) {
+  return {
+    sourceRaw,
+    sourceNormalized: {},
+    memo: {},
+    candidates,
+    match: null,
+    skip: false,
+    error: null,
+  };
+}
+
+/** Fields every seeded identity task shares. */
+function identityTask(dxtrTrustee: object & { fullName: string }) {
+  return {
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    taskType: 'trustee-match',
+    source: 'DXTR',
+    fingerprint: computeFingerprint(dxtrTrustee),
+    dxtrTrustee,
+  };
+}
+
+// The only comparison a name-only source record supports: the given name was relaxed ("T" is an
+// initial of "Taylor"), the surname matched outright.
+const NAME_STRONG = { doesNameMatch: { pass: true, quality: 'strong' } };
+// A surname match whose given name does not match at all ("Casey" vs "Cassidy").
+const NAME_FAILS = { doesNameMatch: { pass: false } };
+
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
-  // Surrogates shared by the multi-case pending mismatch below. Computed up front (rather than
-  // inline in the array) so the fingerprint on the surrogates and the verification document
-  // can never drift apart.
+  // Surrogates shared by the multi-case pending task below. Computed up front (rather than
+  // inline in the array) so the fingerprint on the surrogates and the task can never drift apart.
   const multiCaseFingerprint = computeFingerprint(DXTR_MULTI_CASE);
   const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
     id: `seed-surrogate-multicase-${caseId}`,
@@ -207,316 +298,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   }));
 
   return [
-    // ── Cosmos: Trustees for match scenarios ─────────────────────────────────
-
-    // Active trustee for multiple matches
+    // ── Cosmos: Trustees named by the identity tasks ─────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-multi-a',
-          firstName: 'Taylor',
-          lastName: 'Multimatch',
-          status: 'active',
-          address1: '300 Match Ave',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10003',
-          phone: '212-555-3000',
-          email: 'taylor.multimatch@example.com',
-        }),
-      ],
-    },
-
-    // Second active trustee for multiple matches
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-multi-b',
-          firstName: 'Tyler',
-          lastName: 'Multimatch',
-          status: 'active',
-          address1: '301 Match Ave',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10003',
-          phone: '212-555-3001',
-          email: 'tyler.multimatch@example.com',
-        }),
-      ],
-    },
-
-    // Active trustee for single-candidate AMBIGUOUS_MATCH_UNRESOLVED (below auto-link threshold)
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-lowconf',
-          firstName: 'Sam',
-          lastName: 'Lowconfidence',
-          status: 'active',
-          address1: '350 Match Way',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10003',
-          phone: '212-555-3500',
-          email: 'sam.lowconfidence@example.com',
-        }),
-      ],
-    },
-
-    // Active trustee for imperfect match
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-imperfect',
-          firstName: 'Jordan',
-          lastName: 'Imperfectmatch',
-          status: 'active',
-          address1: '400 Match Blvd',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10004',
-          phone: '212-555-4000',
-          email: 'jordan.imperfectmatch@example.com',
-        }),
-      ],
-    },
-
-    // Active trustee, later given only an inactive appointment (status variation below)
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-highconf',
-          firstName: 'Alex',
-          lastName: 'Highconfidence',
-          status: 'active',
-          address1: '500 Match St',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10005',
-          phone: '212-555-5000',
-          email: 'alex.highconfidence@example.com',
-        }),
-      ],
-    },
-
-    // Inactive trustee for status scenarios
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-inactive',
-          firstName: 'Morgan',
-          lastName: 'Inactivematch',
-          status: 'inactive',
-          address1: '600 Match Dr',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10006',
-          phone: '212-555-6000',
-          email: 'morgan.inactivematch@example.com',
-        }),
-      ],
-    },
-
-    // Active trustee, candidate for the multi-case mismatch scenario
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-multicase',
-          firstName: 'Cassidy',
-          lastName: 'Multicasematch',
-          status: 'active',
-          address1: '700 Match Ln',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10007',
-          phone: '212-555-7000',
-          email: 'cassidy.multicasematch@example.com',
-        }),
-      ],
-    },
-
-    // Active trustee, candidate for the division-mismatch multi-case scenario -- appointed in
-    // Buffalo (091) only, so cases A/B are covered but case C (Manhattan, 081) is not.
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: 'seed-trustee-match-divisionmismatch',
-          firstName: 'Dana',
-          lastName: 'Divisionmismatch',
-          status: 'active',
-          address1: '800 Match Pl',
-          city: 'Buffalo',
-          state: 'NY',
-          zipCode: '14201',
-          phone: '716-555-8000',
-          email: 'dana.divisionmismatch@example.com',
-        }),
-      ],
-    },
-
-    // ── Cosmos: Appointments for status scenarios ────────────────────────────
-
-    // Active appointment for inactive trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-inactive-trustee-active-appt',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-inactive',
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '0208',
-          divisionCodes: ['081'],
-          appointedDate: '2020-01-01',
-          status: 'active',
-          effectiveDate: '2020-01-01',
-          courtName: 'U.S. Bankruptcy Court Southern District of New York',
-          courtDivisionName: 'Manhattan',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Inactive appointment for high-confidence trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-active-trustee-inactive-appt',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-highconf',
-          chapter: '11',
-          appointmentType: 'case-by-case',
-          courtId: '0209',
-          divisionCodes: ['091'],
-          appointedDate: '2020-01-01',
-          status: 'inactive',
-          effectiveDate: '2020-01-01',
-          courtName: 'U.S. Bankruptcy Court Western District of New York',
-          courtDivisionName: 'Buffalo',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Terminated appointment for inactive trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-terminated',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-inactive',
-          chapter: '11',
-          appointmentType: 'case-by-case',
-          courtId: '0209',
-          divisionCodes: ['091'],
-          appointedDate: '2019-01-01',
-          status: 'terminated',
-          effectiveDate: '2019-01-01',
-          endDate: '2024-12-31',
-          courtName: 'U.S. Bankruptcy Court Western District of New York',
-          courtDivisionName: 'Buffalo',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Resigned appointment for inactive trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-resigned',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-inactive',
-          chapter: '13',
-          appointmentType: 'standing',
-          courtId: '0208',
-          divisionCodes: ['081'],
-          appointedDate: '2018-01-01',
-          status: 'resigned',
-          effectiveDate: '2018-01-01',
-          endDate: '2023-06-30',
-          courtName: 'U.S. Bankruptcy Court Southern District of New York',
-          courtDivisionName: 'Manhattan',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Removed appointment for inactive trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-removed',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-inactive',
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '0208',
-          divisionCodes: ['081'],
-          appointedDate: '2017-01-01',
-          status: 'removed',
-          effectiveDate: '2017-01-01',
-          endDate: '2022-03-15',
-          courtName: 'U.S. Bankruptcy Court Southern District of New York',
-          courtDivisionName: 'Manhattan',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Deceased appointment for inactive trustee
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-appointments',
-      data: [
-        {
-          id: 'seed-appointment-deceased',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-inactive',
-          chapter: '11',
-          appointmentType: 'case-by-case',
-          courtId: '0209',
-          divisionCodes: ['091'],
-          appointedDate: '2016-01-01',
-          status: 'deceased',
-          effectiveDate: '2016-01-01',
-          endDate: '2021-09-20',
-          courtName: 'U.S. Bankruptcy Court Western District of New York',
-          courtDivisionName: 'Buffalo',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+        TRUSTEE_MULTI_A,
+        TRUSTEE_MULTI_B,
+        TRUSTEE_SINGLE_CANDIDATE,
+        TRUSTEE_RESOLVED,
+        TRUSTEE_MULTI_CASE,
+        TRUSTEE_DIVISION_MISMATCH,
       ],
     },
 
@@ -530,7 +322,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: 'seed-appointment-divisionmismatch',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-match-divisionmismatch',
+          trusteeId: TRUSTEE_DIVISION_MISMATCH.trusteeId,
           chapter: '11',
           appointmentType: 'case-by-case',
           courtId: '0209',
@@ -546,573 +338,93 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Match Verification Type 1 - NO_TRUSTEE_MATCH ─────────────────
+    // ── Cosmos: Identity tasks ───────────────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
       data: [
+        // 1. No match, no candidates.
         {
           id: `seed-match-no-match-${CASE_NO_MATCH}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_NO_MATCH),
           caseId: CASE_NO_MATCH,
           courtId: '0208',
           status: 'pending',
           taskDate: '2011-07-08T00:00:00.000Z',
-          mismatchReason: 'NO_TRUSTEE_MATCH',
-          fingerprint: computeFingerprint(DXTR_NO_MATCH),
-          dxtrTrustee: DXTR_NO_MATCH,
-          matchCandidates: [],
+          mismatchReason: 'no match',
+          findings: findings(DXTR_NO_MATCH),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
-      ],
-    },
 
-    // ── Cosmos: Match Verification Type 2 - AMBIGUOUS_MATCH_UNRESOLVED ───────
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
+        // 2. Ambiguous, 2 candidates. Taylor agrees on everything compared (geography 3 + street
+        // 3 points = exact). Tyler's phone is one digit off (a likely typo, 'strong') and his
+        // street number differs ("301" vs "300": 2 of 3 street tokens agree, 2 street points),
+        // so he ranks second and his Phone and Street cells get the warning marker. The source
+        // record has no email, so neither candidate has a doesEmailMatch score.
         {
           id: `seed-match-multiple-${CASE_MULTIPLE_MATCH}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_MULTIPLE_MATCH),
           caseId: CASE_MULTIPLE_MATCH,
           courtId: '0208',
           status: 'pending',
           taskDate: '2015-02-19T00:00:00.000Z',
-          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
-          fingerprint: computeFingerprint(DXTR_MULTIPLE_MATCH),
-          dxtrTrustee: DXTR_MULTIPLE_MATCH,
-          matchCandidates: [
-            // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
-            // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
-            // against this fixture's actual DXTR/candidate data, then hand-transcribed here -
-            // see slice notes). DXTR provided only "T Multimatch" - no legacy address/phone/
-            // email at all, and "T" is an initial-vs-full partial match against either
-            // candidate's first name (85, identical for both - a genuine tie, which is exactly
-            // why this scenario is ambiguous). addressScore is a real mismatch (0), not "not
-            // comparable" - address never has a null/not-comparable state, unlike phone/email.
-            // phoneScore/emailScore are hardcoded to 0 rather than the real function's null
-            // (not-comparable) result - deliberately, to keep the mismatch icon visible for
-            // missing contact info per product decision, not because the real algorithm would
-            // penalize it this way.
-            {
-              trusteeId: 'seed-trustee-match-multi-a',
-              trusteeName: 'Taylor Multimatch',
-              totalScore: 72.1,
-              addressScore: 0,
-              nameScore: 85,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '300 Match Ave',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10003',
-                countryCode: 'US',
+          mismatchReason: 'ambiguous',
+          findings: findings(DXTR_MULTIPLE_MATCH, [
+            candidate(TRUSTEE_MULTI_A, {
+              ...NAME_STRONG,
+              doesCityMatch: { pass: true },
+              doesStateMatch: { pass: true },
+              doesZipCodeMatch: { pass: true },
+              doesAddressMatch: { pass: true, quality: 'exact', points: 6, streetCloseness: 1 },
+              doesPhoneMatch: { pass: true, quality: 'exact' },
+            }),
+            candidate(TRUSTEE_MULTI_B, {
+              ...NAME_STRONG,
+              doesCityMatch: { pass: true },
+              doesStateMatch: { pass: true },
+              doesZipCodeMatch: { pass: true },
+              doesAddressMatch: {
+                pass: true,
+                quality: 'strong',
+                points: 5,
+                streetCloseness: 0.667,
               },
-              phone: { number: '212-555-3000' },
-              email: 'taylor.multimatch@example.com',
-            },
-            {
-              trusteeId: 'seed-trustee-match-multi-b',
-              trusteeName: 'Tyler Multimatch',
-              totalScore: 72.1,
-              addressScore: 0,
-              nameScore: 85,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '301 Match Ave',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10003',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-3001' },
-              email: 'tyler.multimatch@example.com',
-            },
-          ],
+              doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
+            }),
+          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
-      ],
-    },
 
-    // ── Cosmos: Match Verification Type 2b - AMBIGUOUS_MATCH_UNRESOLVED (single candidate) ──
-    // Same mismatchReason as Type 2, but only ONE raw candidate scored below the auto-link
-    // threshold - not a genuine 2+ candidate collision. Exercises the UI's candidateCount-based
-    // distinction (see TrusteeMatchVerificationAccordion.tsx's isMultipleMatch): this should
-    // render as "Trustee Mismatch" with zero "Other Potential Matches", not "Multiple Match".
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
+        // 3. No match, 1 candidate. The source record is in Albany: the state agrees, the city
+        // and zip differ (geography 1 point) and the street line agrees (3 points); the phone
+        // is 6 digits off, a different number rather than a typo.
         {
-          id: `seed-match-lowconf-${CASE_SINGLE_CANDIDATE_AMBIGUOUS}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_SINGLE_CANDIDATE_AMBIGUOUS,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2016-04-11T00:00:00.000Z',
-          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
-          fingerprint: computeFingerprint({
-            firstName: 'S',
-            lastName: 'Lowconfidence',
-            fullName: 'S Lowconfidence',
-          }),
-          dxtrTrustee: {
-            firstName: 'S',
-            lastName: 'Lowconfidence',
-            fullName: 'S Lowconfidence',
-          },
-          matchCandidates: [
-            // Real values (see multiple's comment above for methodology). "S" is an
-            // initial-vs-full partial match against "Sam" (nameScore 85); no DXTR legacy data
-            // at all, so addressScore is a real 0 (not 100 as previously hardcoded).
-            {
-              trusteeId: 'seed-trustee-match-lowconf',
-              trusteeName: 'Sam Lowconfidence',
-              totalScore: 72.1,
-              addressScore: 0,
-              nameScore: 85,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '350 Match Way',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10003',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-3500' },
-              email: 'sam.lowconfidence@example.com',
-            },
-          ],
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // ── Cosmos: Match Verification Type 3 - IMPERFECT_MATCH ──────────────────
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-imperfect-${CASE_IMPERFECT_MATCH}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_IMPERFECT_MATCH,
+          id: `seed-match-imperfect-${CASE_SINGLE_CANDIDATE}`,
+          ...identityTask(DXTR_SINGLE_CANDIDATE),
+          caseId: CASE_SINGLE_CANDIDATE,
           courtId: '0208',
           status: 'pending',
           taskDate: '2019-11-30T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: computeFingerprint(DXTR_IMPERFECT_MATCH),
-          dxtrTrustee: DXTR_IMPERFECT_MATCH,
-          matchCandidates: [
-            // Real values (see multiple's comment above for methodology). "J" is an
-            // initial-vs-full partial match against "Jordan" (nameScore 85); no DXTR legacy
-            // data at all, so addressScore is a real 0 (not 70 as previously hardcoded).
-            {
-              trusteeId: 'seed-trustee-match-imperfect',
-              trusteeName: 'Jordan Imperfectmatch',
-              totalScore: 67.1,
-              addressScore: 0,
-              nameScore: 85,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 80,
-              chapterScore: 100,
-              address: {
-                address1: '400 Match Blvd',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10004',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-4000' },
-              email: 'jordan.imperfectmatch@example.com',
-            },
-          ],
+          mismatchReason: 'no match',
+          findings: findings(DXTR_SINGLE_CANDIDATE, [
+            candidate(TRUSTEE_SINGLE_CANDIDATE, {
+              ...NAME_STRONG,
+              doesCityMatch: { pass: false },
+              doesStateMatch: { pass: true },
+              doesZipCodeMatch: { pass: false },
+              doesAddressMatch: { pass: true, quality: 'strong', points: 4, streetCloseness: 1 },
+              doesPhoneMatch: { pass: false, phoneDigitDistance: 6 },
+            }),
+          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
     },
 
-    // ── Cosmos: Match Verification Type 4 - Status Variations ─────────────────
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-highconf-${CASE_INACTIVE_TRUSTEE}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_INACTIVE_TRUSTEE,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2010-05-12T00:00:00.000Z',
-          // 'AMBIGUOUS_MATCH_RESOLVED' was not a valid TrusteeAppointmentSyncErrorCode value -
-          // this candidate's own seeded appointment (seed-appointment-active-trustee-inactive-
-          // appt) has status 'inactive', the same underlying record "5b" (seed-match-inactive-
-          // appt) uses, so this is genuinely a PERFECT_MATCH_INACTIVE_STATUS case.
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_HIGH_CONFIDENCE),
-          dxtrTrustee: DXTR_HIGH_CONFIDENCE,
-          matchCandidates: [
-            // Real values (see multiple's comment above for methodology). "Alex Highconfidence"
-            // (no middle name either side) is a genuine, complete name match (nameScore 100) -
-            // the only such case among these fixtures. No DXTR legacy data at all, so
-            // addressScore is a real 0 (not 95 as previously hardcoded).
-            {
-              trusteeId: 'seed-trustee-match-highconf',
-              trusteeName: 'Alex Highconfidence',
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '500 Match St',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10005',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-5000' },
-              email: 'alex.highconfidence@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'inactive',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // ── Cosmos: Match Verification Type 5 - Status Variations ─────────────────
-
-    // 5a: Inactive trustee + active appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-inactive-trustee-${CASE_INACTIVE_TRUSTEE}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_INACTIVE_TRUSTEE,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2014-10-25T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT),
-          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-inactive',
-              trusteeName: 'Morgan Inactivematch',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '600 Match Dr',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10006',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-6000' },
-              email: 'morgan.inactivematch@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'active',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // 5b: Active trustee + inactive appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-inactive-appt-${CASE_INACTIVE_APPOINTMENT}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_INACTIVE_APPOINTMENT,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2023-04-07T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT),
-          dxtrTrustee: DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-highconf',
-              trusteeName: 'Alex Highconfidence',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '500 Match St',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10005',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-5000' },
-              email: 'alex.highconfidence@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'inactive',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // 5c: Inactive trustee + terminated appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-terminated-${CASE_TERMINATED}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_TERMINATED,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2013-01-16T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT),
-          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-inactive',
-              trusteeName: 'Morgan Inactivematch',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '600 Match Dr',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10006',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-6000' },
-              email: 'morgan.inactivematch@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'terminated',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // 5d: Inactive trustee + resigned appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-resigned-${CASE_RESIGNED}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_RESIGNED,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2017-08-22T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT),
-          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-inactive',
-              trusteeName: 'Morgan Inactivematch',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '600 Match Dr',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10006',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-6000' },
-              email: 'morgan.inactivematch@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'resigned',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // 5e: Inactive trustee + removed appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-removed-${CASE_REMOVED}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_REMOVED,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2016-12-09T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_REMOVED_APPT),
-          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_REMOVED_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-inactive',
-              trusteeName: 'Morgan Inactivematch',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '600 Match Dr',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10006',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-6000' },
-              email: 'morgan.inactivematch@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'removed',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // 5f: Inactive trustee + deceased appointment
-    {
-      db: 'cams',
-      collectionOrTable: 'trustee-match-verification',
-      data: [
-        {
-          id: `seed-match-deceased-${CASE_DECEASED}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_DECEASED,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2020-03-28T00:00:00.000Z',
-          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_DECEASED_APPT),
-          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_DECEASED_APPT,
-          matchCandidates: [
-            {
-              trusteeId: 'seed-trustee-match-inactive',
-              trusteeName: 'Morgan Inactivematch',
-              // Real values (see multiple's comment above for methodology). A one-sided middle
-              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
-              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
-              // name match (nameScore 100) despite the middle-initial variation across these six
-              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
-              // previously hardcoded).
-              totalScore: 76,
-              addressScore: 0,
-              nameScore: 100,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '600 Match Dr',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10006',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-6000' },
-              email: 'morgan.inactivematch@example.com',
-            },
-          ],
-          inactiveAppointmentStatus: 'deceased',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Pending multi-case mismatch: 3 surrogate CASE_APPOINTMENTs sharing one fingerprint,
+    // 4. Pending multi-case task: 3 surrogate CASE_APPOINTMENTs sharing one fingerprint,
     // dual-written to both partitions (see TrusteeCaseAppointmentsMongoRepository's
     // casePartition/trusteePartition) so getSurrogatesByFingerprints can find them.
     {
@@ -1131,53 +443,24 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-multicase-${CASE_MULTI_A}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_MULTI_CASE),
+          fingerprint: multiCaseFingerprint,
           caseId: CASE_MULTI_A,
           courtId: '0208',
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: multiCaseFingerprint,
-          dxtrTrustee: DXTR_MULTI_CASE,
-          matchCandidates: [
-            // Real values (see multiple's comment above for methodology). "Casey" vs "Cassidy"
-            // is a genuine first-name mismatch (not an initial-vs-full relationship), so
-            // nameScore is a real 0 - not the 70 previously hardcoded for addressScore (which is
-            // also 0: no DXTR legacy data at all).
-            {
-              trusteeId: 'seed-trustee-match-multicase',
-              trusteeName: 'Cassidy Multicasematch',
-              totalScore: 50,
-              addressScore: 0,
-              nameScore: 0,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '700 Match Ln',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10007',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-7000' },
-              email: 'cassidy.multicasematch@example.com',
-            },
-          ],
+          mismatchReason: 'no match',
+          findings: findings(DXTR_MULTI_CASE, [candidate(TRUSTEE_MULTI_CASE, NAME_FAILS)]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
     },
 
-    // Pending division-mismatch multi-case mismatch: 3 surrogate CASE_APPOINTMENTs sharing one
-    // fingerprint (same dual-write pattern as the chapter-mismatch bundle above). Dana
-    // Divisionmismatch covers CASE_DIVISION_MISMATCH_A/B (Buffalo, 091) but not
-    // CASE_DIVISION_MISMATCH_C (Manhattan, 081) -- approving this candidate should reject
-    // naming only case C, and the Data Verification UI should disable the match/confirm
-    // actions and explain why before that approval is even attempted.
+    // 7. Pending division-mismatch multi-case task: 3 surrogate CASE_APPOINTMENTs sharing one
+    // fingerprint (same dual-write pattern as the bundle above). Dana Divisionmismatch covers
+    // CASE_DIVISION_MISMATCH_A/B (Buffalo, 091) but not CASE_DIVISION_MISMATCH_C (Manhattan,
+    // 081) -- approving this candidate should reject naming only case C.
     {
       db: 'cams',
       collectionOrTable: 'case-trustee-appointments',
@@ -1194,47 +477,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-divisionmismatch-${CASE_DIVISION_MISMATCH_A}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_DIVISION_MISMATCH),
+          fingerprint: divisionMismatchFingerprint,
           caseId: CASE_DIVISION_MISMATCH_A,
           courtId: '0209',
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: divisionMismatchFingerprint,
-          dxtrTrustee: DXTR_DIVISION_MISMATCH,
-          matchCandidates: [
-            // "Devon" vs "Dana" is a genuine first-name mismatch, same convention as the
-            // chapter-mismatch bundle's Casey/Cassidy pair -- nameScore is a real 0, so this
-            // never had a chance to auto-link regardless of appointment coverage.
-            {
-              trusteeId: 'seed-trustee-match-divisionmismatch',
-              trusteeName: 'Dana Divisionmismatch',
-              totalScore: 50,
-              addressScore: 0,
-              nameScore: 0,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '800 Match Pl',
-                city: 'Buffalo',
-                state: 'NY',
-                zipCode: '14201',
-                countryCode: 'US',
-              },
-              phone: { number: '716-555-8000' },
-              email: 'dana.divisionmismatch@example.com',
-            },
-          ],
+          mismatchReason: 'no match',
+          findings: findings(DXTR_DIVISION_MISMATCH, [
+            candidate(TRUSTEE_DIVISION_MISMATCH, NAME_FAILS),
+          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
     },
 
-    // Already-approved mismatch, no surviving surrogates: simulates the state after
+    // 5. Already-approved task, no surviving surrogates: simulates the state after
     // trustee-verification-remap.ts has deleted every surrogate for this fingerprint, so
     // getAffectedCaseIdsByFingerprint returns an empty array.
     {
@@ -1243,47 +502,41 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-resolved-no-surrogates-${CASE_RESOLVED_NO_SURROGATES}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_RESOLVED_NO_SURROGATES),
           caseId: CASE_RESOLVED_NO_SURROGATES,
           courtId: '0208',
           status: 'approved',
           taskDate: '2018-06-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: computeFingerprint(DXTR_RESOLVED_NO_SURROGATES),
-          dxtrTrustee: DXTR_RESOLVED_NO_SURROGATES,
-          matchCandidates: [],
-          resolvedTrusteeId: 'seed-trustee-match-highconf',
-          resolvedTrusteeName: 'Alex Highconfidence',
+          mismatchReason: 'no match',
+          findings: findings(DXTR_RESOLVED_NO_SURROGATES),
+          resolvedTrusteeId: TRUSTEE_RESOLVED.trusteeId,
+          resolvedTrusteeName: TRUSTEE_RESOLVED.name,
           updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
     },
 
-    // Already-approved multi-case mismatch WITH a populated affectedCaseIds snapshot: the
-    // normal post-fix state (see the doc comment on TrusteeMatchVerification.affectedCaseIds in
+    // 6. Already-approved multi-case task WITH a populated affectedCaseIds snapshot (see the doc
+    // comment on TrusteeMatchVerification.affectedCaseIds in
     // common/src/cams/trustee-match-verification.ts). No surrogate rows are seeded for this
-    // fingerprint - approval's remap would have deleted them, so the snapshot (not a live
-    // surrogate query) is the only source for this document's affected cases.
+    // fingerprint - approval's remap would have deleted them, so the snapshot is the only
+    // source for this task's affected cases.
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
       data: [
         {
           id: `seed-match-resolved-with-snapshot-${CASE_MULTI_A}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
+          ...identityTask(DXTR_RESOLVED_WITH_SNAPSHOT),
           caseId: CASE_MULTI_A,
           courtId: '0208',
           status: 'approved',
           taskDate: '2018-06-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: computeFingerprint(DXTR_RESOLVED_WITH_SNAPSHOT),
-          dxtrTrustee: DXTR_RESOLVED_WITH_SNAPSHOT,
-          matchCandidates: [],
-          resolvedTrusteeId: 'seed-trustee-match-highconf',
-          resolvedTrusteeName: 'Alex Highconfidence',
+          mismatchReason: 'no match',
+          findings: findings(DXTR_RESOLVED_WITH_SNAPSHOT),
+          resolvedTrusteeId: TRUSTEE_RESOLVED.trusteeId,
+          resolvedTrusteeName: TRUSTEE_RESOLVED.name,
           affectedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],
           updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,

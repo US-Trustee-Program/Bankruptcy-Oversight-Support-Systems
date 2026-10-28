@@ -12,10 +12,20 @@ import { CourtsUseCase } from '../courts/courts';
 import CaseManagement from '../cases/case-management';
 import { CaseSummary } from '@common/cams/cases';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
   let useCase: TrusteeMatchVerificationUseCase;
+
+  const alice = MockData.getTrusteeMatchCandidate({ trusteeId: 'trustee-a', name: 'Alice' });
+  const bob = MockData.getTrusteeMatchCandidate(
+    { trusteeId: 'trustee-b', name: 'Bob' },
+    {
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesAddressMatch: { pass: true, quality: 'moderate', points: 3 },
+    },
+  );
 
   const sampleVerification: TrusteeMatchVerification = {
     id: 'verification-1',
@@ -23,31 +33,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
     caseId: 'case-001',
     courtId: '081',
     dxtrTrustee: { fullName: 'John Doe' },
-    mismatchReason: 'IMPERFECT_MATCH',
-    matchCandidates: [
-      {
-        trusteeId: 'trustee-a',
-        trusteeName: 'Alice',
-        totalScore: 90,
-        addressScore: 80,
-        nameScore: 80,
-        phoneScore: null,
-        emailScore: null,
-        districtDivisionScore: 100,
-        chapterScore: 90,
-      },
-      {
-        trusteeId: 'trustee-b',
-        trusteeName: 'Bob',
-        totalScore: 70,
-        addressScore: 60,
-        nameScore: 60,
-        phoneScore: null,
-        emailScore: null,
-        districtDivisionScore: 80,
-        chapterScore: 70,
-      },
-    ],
+    mismatchReason: 'ambiguous',
+    source: 'DXTR',
+    // Alice ranks first (more address points); Bob second.
+    findings: MockData.getTrusteeMatchFindings({
+      candidates: [alice, bob],
+    }),
     taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
@@ -262,107 +253,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBeUndefined();
     });
 
-    test('selects the highest-scoring candidate as preselectedCandidate for AmbiguousMatchUnresolved', async () => {
-      mockSearch.mockResolvedValue([
-        { ...sampleVerification, mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED' },
-      ]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].preselectedCandidate).toEqual({
-        trusteeId: 'trustee-a',
-        trusteeName: 'Alice',
-      });
-      expect(result[0].candidateCount).toBe(2);
-    });
-
-    test('selects the highest-scoring candidate even when it is not first in the array', async () => {
-      mockSearch.mockResolvedValue([
-        {
-          ...sampleVerification,
-          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
-          // Reversed from sampleVerification's own order - Bob (lower score) first, Alice
-          // (higher score) second - so a mutation that swaps reduce() for matchCandidates[0]
-          // would return Bob and fail this assertion.
-          matchCandidates: [...sampleVerification.matchCandidates].reverse(),
-        },
-      ]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].preselectedCandidate).toEqual({
-        trusteeId: 'trustee-a',
-        trusteeName: 'Alice',
-      });
-    });
-
-    test('preselects the sole candidate for AmbiguousMatchUnresolved with only one candidate', async () => {
-      mockSearch.mockResolvedValue([
-        {
-          ...sampleVerification,
-          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
-          matchCandidates: [sampleVerification.matchCandidates[0]],
-        },
-      ]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].preselectedCandidate).toEqual({
-        trusteeId: 'trustee-a',
-        trusteeName: 'Alice',
-      });
-      expect(result[0].candidateCount).toBe(1);
-    });
-
-    test('preselects the first candidate for non-multiple-match mismatch reasons', async () => {
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].preselectedCandidate).toEqual({
-        trusteeId: 'trustee-a',
-        trusteeName: 'Alice',
-      });
-    });
-
-    // getVerifications' resolvePreselectedCandidate and approveVerification's own
-    // preselectedTrusteeId computation (used for the wasPreselectedConfirmed telemetry
-    // field) are DIFFERENT functions with different rules: this one picks the first
-    // candidate for any non-ambiguous mismatch reason; approveVerification always picks the
-    // highest-scoring one regardless of mismatch reason (see the mutation-guard test
-    // "resolves wasPreselectedConfirmed against the highest-scoring candidate..." in the
-    // approveVerification describe below). For a non-ambiguous mismatch whose candidates
-    // are NOT already in score order, these two computations disagree on which candidate is
-    // "preselected" -- this test documents that current behavior explicitly, since sampleVerification's
-    // own candidate order (already highest-first) doesn't surface the divergence above. Whether
-    // this divergence is intentional or a latent bug needs a product/design decision, not a
-    // silent test-only fix -- flagging here rather than unifying the two behaviors.
-    test('documents a real divergence: preselects the FIRST (not highest-scoring) candidate for a non-ambiguous mismatch reason when candidates are out of score order', async () => {
-      mockSearch.mockResolvedValue([
-        {
-          ...sampleVerification,
-          mismatchReason: 'IMPERFECT_MATCH',
-          matchCandidates: [...sampleVerification.matchCandidates].reverse(),
-        },
-      ]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      // Bob (lower score) is first in the reversed array; resolvePreselectedCandidate
-      // returns him for a non-ambiguous reason even though Alice scores higher.
-      expect(result[0].preselectedCandidate).toEqual({
-        trusteeId: 'trustee-b',
-        trusteeName: 'Bob',
-      });
-    });
-
-    test('returns null preselectedCandidate when there are no match candidates', async () => {
-      mockSearch.mockResolvedValue([{ ...sampleVerification, matchCandidates: [] }]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].preselectedCandidate).toBeNull();
-      expect(result[0].candidateCount).toBe(0);
-    });
-
     test('computes affectedCaseCount/affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
@@ -531,7 +421,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           properties: expect.objectContaining({
             action: 'approve',
             caseId: 'case-001',
-            mismatchReason: 'IMPERFECT_MATCH',
+            mismatchReason: 'ambiguous',
             wasPreselectedConfirmed: 'true',
           }),
           measurements: expect.objectContaining({
@@ -558,12 +448,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('resolves wasPreselectedConfirmed against the highest-scoring candidate even when it is not first in the array', async () => {
+    test('resolves wasPreselectedConfirmed against the top-ranked candidate, not discovery order', async () => {
       mockFindById.mockResolvedValue({
         ...sampleVerification,
-        // Reversed - Bob (lower score) first, Alice (higher score) second. A mutation that
-        // swaps the reduce() for matchCandidates[0] would preselect Bob instead of Alice.
-        matchCandidates: [...sampleVerification.matchCandidates].reverse(),
+        // Bob discovered first; Alice still ranks first, so approving her confirms the
+        // preselection.
+        findings: { ...sampleVerification.findings, candidates: [bob, alice] },
       });
 
       await useCase.approveVerification(context, 'verification-1', 'trustee-a');
@@ -579,8 +469,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('treats no candidate as preselected when matchCandidates is empty', async () => {
-      mockFindById.mockResolvedValue({ ...sampleVerification, matchCandidates: [] });
+    test('treats no candidate as preselected when the findings have no candidates', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        findings: { ...sampleVerification.findings, candidates: [] },
+      });
 
       await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
@@ -596,14 +489,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('includes a 1-based selectedCandidateRank in telemetry when the resolved trustee is found', async () => {
+    test("includes the resolved trustee's 1-based rank as selectedCandidateRank", async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        findings: { ...sampleVerification.findings, candidates: [bob, alice] },
+      });
+
       await useCase.approveVerification(context, 'verification-1', 'trustee-b');
 
       const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
       expect(eventBody.properties.selectedCandidateRank).toBe('2');
     });
 
-    test('omits selectedCandidateRank from telemetry when the resolved trustee is not among matchCandidates', async () => {
+    test('omits selectedCandidateRank from telemetry when the resolved trustee is not among the candidates', async () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-unknown');
 
       const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
@@ -792,6 +690,32 @@ describe('TrusteeMatchVerificationUseCase', () => {
         ).rejects.toThrow(/case-001/);
       });
 
+      test('rejection names the resolved trustee by name and gives next-step guidance, rather than a raw ID', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockCaseSummaries({
+          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+        });
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-new', 'Jane Doe'),
+        ).rejects.toThrow(
+          'Jane Doe is not assigned to the division(s) for case(s): case-001. Choose a different candidate or search for a trustee whose appointments cover these cases.',
+        );
+      });
+
+      test('rejection falls back to the resolved trustee id when no name was supplied', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockCaseSummaries({
+          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+        });
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
+        ).rejects.toThrow(/^trustee-new is not assigned/);
+      });
+
       test('rejects a multi-case verification when only one of several affected cases is uncovered', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
         // Covers case-001's division (081) but not case-002's (082).
@@ -932,36 +856,14 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('enriches every candidate with trustee contact info and appointment history', async () => {
+    test('returns the stored findings unchanged, without reading any trustee', async () => {
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
-      expect(result.matchCandidates).toHaveLength(2);
-      expect(result.matchCandidates[0]).toEqual(
-        expect.objectContaining({
-          trusteeId: 'trustee-a',
-          address: { address1: '123 Main St' },
-          phone: { number: '555-1234' },
-          email: 'trustee@example.com',
-          appointments: [],
-        }),
-      );
+      expect(result.findings).toEqual(sampleVerification.findings);
+      expect(mockTrusteeRead).not.toHaveBeenCalled();
     });
 
-    test('falls back to the raw candidate when enrichment fails for that candidate', async () => {
-      mockTrusteeRead.mockImplementation((trusteeId: string) => {
-        if (trusteeId === 'trustee-a') return Promise.reject(new Error('not found'));
-        return Promise.resolve(makeTrustee(trusteeId));
-      });
-
-      const result = await useCase.getEnrichedVerification(context, 'verification-1');
-
-      expect(result.matchCandidates[0]).toEqual(sampleVerification.matchCandidates[0]);
-      expect(result.matchCandidates[1]).toEqual(
-        expect.objectContaining({ trusteeId: 'trustee-b', address: expect.anything() }),
-      );
-    });
-
-    test('backfills resolvedTrusteeName when approved and the resolved trustee is not in matchCandidates', async () => {
+    test('backfills resolvedTrusteeName when an approved task has none', async () => {
       mockFindById.mockResolvedValue({
         ...sampleVerification,
         status: 'approved',
