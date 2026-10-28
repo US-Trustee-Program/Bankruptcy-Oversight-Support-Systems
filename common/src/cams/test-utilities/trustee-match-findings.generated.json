@@ -1,0 +1,1166 @@
+{
+  "noCandidates": {
+    "sourceRaw": {
+      "firstName": "Unique",
+      "lastName": "Nomatch",
+      "fullName": "Unique Nomatch",
+      "legacy": {
+        "address1": "1 Nowhere Rd",
+        "cityStateZipCountry": "Albany NY 12207",
+        "phone": "518-555-0100",
+        "parsedCityStateZip": {
+          "city": "Albany",
+          "state": "NY",
+          "zipCode": "12207"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "unique",
+      "middleName": "",
+      "lastName": "nomatch",
+      "legacy": {
+        "address1": "1 Nowhere Rd",
+        "cityStateZipCountry": "Albany NY 12207",
+        "phone": "518-555-0100",
+        "parsedCityStateZip": {
+          "city": "Albany",
+          "state": "NY",
+          "zipCode": "12207"
+        }
+      },
+      "fullName": "Unique Nomatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "multipleCandidates": {
+    "sourceRaw": {
+      "firstName": "T",
+      "lastName": "Multimatch",
+      "fullName": "T Multimatch",
+      "legacy": {
+        "address1": "1 Source St",
+        "cityStateZipCountry": "New York NY 10003",
+        "phone": "212-555-9999",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10003"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "t",
+      "middleName": "",
+      "lastName": "multimatch",
+      "legacy": {
+        "address1": "1 Source St",
+        "cityStateZipCountry": "New York NY 10003",
+        "phone": "212-555-9999",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10003"
+        }
+      },
+      "fullName": "T Multimatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-multi-a",
+          "firstName": "Taylor",
+          "lastName": "Multimatch",
+          "name": "Taylor Multimatch",
+          "address": {
+            "address1": "300 Match Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3000"
+          },
+          "email": "taylor.multimatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "taylor",
+          "middleName": "",
+          "lastName": "multimatch",
+          "phone": {
+            "number": "212-555-3000"
+          },
+          "email": "taylor.multimatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "taylor multimatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "t multimatch|taylor multimatch",
+              "value": 0.812
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "t multimatch|taylor multimatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 4
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-multi-b",
+          "firstName": "Tyler",
+          "lastName": "Multimatch",
+          "name": "Tyler Multimatch",
+          "address": {
+            "address1": "301 Match Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3001"
+          },
+          "email": "tyler.multimatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "tyler",
+          "middleName": "",
+          "lastName": "multimatch",
+          "phone": {
+            "number": "212-555-3001"
+          },
+          "email": "tyler.multimatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "tyler multimatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "t multimatch|tyler multimatch",
+              "value": 0.875
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "t multimatch|tyler multimatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 4
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "oneCandidateStateDiffers": {
+    "sourceRaw": {
+      "firstName": "Morgan",
+      "lastName": "Stateline",
+      "fullName": "Morgan Stateline",
+      "legacy": {
+        "cityStateZipCountry": "Texarkana TX",
+        "parsedCityStateZip": null
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "morgan",
+      "middleName": "",
+      "lastName": "stateline",
+      "legacy": {
+        "cityStateZipCountry": "Texarkana TX",
+        "parsedCityStateZip": null
+      },
+      "fullName": "Morgan Stateline",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-stateline",
+          "firstName": "Morgan",
+          "lastName": "Stateline",
+          "name": "Morgan Stateline",
+          "address": {
+            "address1": "100 State Line Ave",
+            "city": "Texarkana",
+            "state": "AR",
+            "zipCode": "71854",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "870-555-0100"
+          },
+          "email": "morgan.stateline@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "morgan",
+          "middleName": "",
+          "lastName": "stateline",
+          "phone": {
+            "number": "870-555-0100"
+          },
+          "email": "morgan.stateline@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "morgan stateline"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "morgan stateline|morgan stateline",
+              "value": 1
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "morgan stateline|morgan stateline",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "exact"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "weak",
+            "points": 1
+          },
+          "recallByTokenIntersection": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "oneCandidateAddressAndPhoneDiffer": {
+    "sourceRaw": {
+      "firstName": "Jordan",
+      "lastName": "Imperfectmach",
+      "fullName": "Jordan Imperfectmach",
+      "legacy": {
+        "address1": "12 Harbor Rd",
+        "cityStateZipCountry": "Albany NY 12207",
+        "phone": "518-555-9999",
+        "parsedCityStateZip": {
+          "city": "Albany",
+          "state": "NY",
+          "zipCode": "12207"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "jordan",
+      "middleName": "",
+      "lastName": "imperfectmach",
+      "legacy": {
+        "address1": "12 Harbor Rd",
+        "cityStateZipCountry": "Albany NY 12207",
+        "phone": "518-555-9999",
+        "parsedCityStateZip": {
+          "city": "Albany",
+          "state": "NY",
+          "zipCode": "12207"
+        }
+      },
+      "fullName": "Jordan Imperfectmach",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-imperfect",
+          "firstName": "Jordan",
+          "lastName": "Imperfectmatch",
+          "name": "Jordan Imperfectmatch",
+          "address": {
+            "address1": "400 Match Blvd",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10004",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-4000"
+          },
+          "email": "jordan.imperfectmatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "jordan",
+          "middleName": "",
+          "lastName": "imperfectmatch",
+          "phone": {
+            "number": "212-555-4000"
+          },
+          "email": "jordan.imperfectmatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "jordan imperfectmatch"
+        },
+        "memo": {
+          "isFuzzyNamePartMatch": [
+            {
+              "key": "imperfectmach|imperfectmatch",
+              "value": true
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "jordan imperfectmach|jordan imperfectmatch",
+              "value": 0.99
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "jordan imperfectmach|jordan imperfectmatch",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "weak"
+          },
+          "doesCityMatch": {
+            "pass": false
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "weak",
+            "points": 1,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 6
+          },
+          "recallByAnchoredLevenshtein": {
+            "value": 1,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallByAnchoredLevenshtein"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "oneCandidateNameAddressEmailDiffer": {
+    "sourceRaw": {
+      "firstName": "Q",
+      "lastName": "Lakeshore",
+      "fullName": "Q Lakeshore",
+      "legacy": {
+        "cityStateZipCountry": "Chicago 60611",
+        "email": "q.lakeshore@example.org",
+        "parsedCityStateZip": {
+          "city": "Chicago",
+          "state": null,
+          "zipCode": "60611"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "q",
+      "middleName": "",
+      "lastName": "lakeshore",
+      "legacy": {
+        "cityStateZipCountry": "Chicago 60611",
+        "email": "q.lakeshore@example.org",
+        "parsedCityStateZip": {
+          "city": "Chicago",
+          "state": null,
+          "zipCode": "60611"
+        }
+      },
+      "fullName": "Q Lakeshore",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-lakeshore",
+          "firstName": "Quinn",
+          "lastName": "Lakeshore",
+          "name": "Quinn Lakeshore",
+          "address": {
+            "address1": "900 Lake Shore Dr",
+            "city": "Chicago",
+            "state": "IL",
+            "zipCode": "60601",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "312-555-0900"
+          },
+          "email": "quinn.lakeshore@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "quinn",
+          "middleName": "",
+          "lastName": "lakeshore",
+          "phone": {
+            "number": "312-555-0900"
+          },
+          "email": "quinn.lakeshore@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "quinn lakeshore"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "q lakeshore|quinn lakeshore",
+              "value": 0.92
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "q lakeshore|quinn lakeshore",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "weak",
+            "points": 1
+          },
+          "doesEmailMatch": {
+            "pass": false
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "oneCandidateExactName": {
+    "sourceRaw": {
+      "firstName": "Rowan",
+      "lastName": "Relocated",
+      "fullName": "Rowan Relocated",
+      "legacy": {
+        "address1": "55 Desert Way",
+        "cityStateZipCountry": "Phoenix AZ 85004",
+        "phone": "602-555-0155",
+        "email": "rowan@relocated.example.com",
+        "parsedCityStateZip": {
+          "city": "Phoenix",
+          "state": "AZ",
+          "zipCode": "85004"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "rowan",
+      "middleName": "",
+      "lastName": "relocated",
+      "legacy": {
+        "address1": "55 Desert Way",
+        "cityStateZipCountry": "Phoenix AZ 85004",
+        "phone": "602-555-0155",
+        "email": "rowan@relocated.example.com",
+        "parsedCityStateZip": {
+          "city": "Phoenix",
+          "state": "AZ",
+          "zipCode": "85004"
+        }
+      },
+      "fullName": "Rowan Relocated",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-relocated",
+          "firstName": "Rowan",
+          "lastName": "Relocated",
+          "name": "Rowan Relocated",
+          "address": {
+            "address1": "10 Old Town Rd",
+            "city": "Denver",
+            "state": "CO",
+            "zipCode": "80202",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "303-555-0110"
+          },
+          "email": "rowan.relocated@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "rowan",
+          "middleName": "",
+          "lastName": "relocated",
+          "phone": {
+            "number": "303-555-0110"
+          },
+          "email": "rowan.relocated@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "rowan relocated"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "rowan relocated|rowan relocated",
+              "value": 1
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "rowan relocated|rowan relocated",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "exact"
+          },
+          "doesCityMatch": {
+            "pass": false
+          },
+          "doesStateMatch": {
+            "pass": false
+          },
+          "doesZipCodeMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": false,
+            "points": 0,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 4
+          },
+          "doesEmailMatch": {
+            "pass": false
+          },
+          "recallByTokenIntersection": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "oneCandidateNothingDiffers": {
+    "sourceRaw": {
+      "firstName": "Sky",
+      "lastName": "Unlisted",
+      "fullName": "Sky Unlisted",
+      "legacy": {
+        "address1": "1 Main St",
+        "cityStateZipCountry": "Boston MA 02108",
+        "phone": "617-555-0100",
+        "parsedCityStateZip": {
+          "city": "Boston",
+          "state": "MA",
+          "zipCode": "02108"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "sky",
+      "middleName": "",
+      "lastName": "unlisted",
+      "legacy": {
+        "address1": "1 Main St",
+        "cityStateZipCountry": "Boston MA 02108",
+        "phone": "617-555-0100",
+        "parsedCityStateZip": {
+          "city": "Boston",
+          "state": "MA",
+          "zipCode": "02108"
+        }
+      },
+      "fullName": "Sky Unlisted",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-unlisted",
+          "firstName": "Sky",
+          "lastName": "Unlisted",
+          "name": "Sky Unlisted",
+          "address": {
+            "address1": "",
+            "city": "",
+            "state": "",
+            "zipCode": "",
+            "countryCode": "US"
+          }
+        },
+        "camsNormalized": {
+          "firstName": "sky",
+          "middleName": "",
+          "lastName": "unlisted",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sky unlisted"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "sky unlisted|sky unlisted",
+              "value": 1
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "sky unlisted|sky unlisted",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "exact"
+          },
+          "recallByTokenIntersection": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "multiCase": {
+    "sourceRaw": {
+      "firstName": "Casey",
+      "lastName": "Multicasematch",
+      "fullName": "Casey Multicasematch"
+    },
+    "sourceNormalized": {
+      "firstName": "casey",
+      "middleName": "",
+      "lastName": "multicasematch",
+      "fullName": "Casey Multicasematch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-multicase",
+          "firstName": "Cassidy",
+          "lastName": "Multicasematch",
+          "name": "Cassidy Multicasematch",
+          "address": {
+            "address1": "700 Match Ln",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10007",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-7000"
+          },
+          "email": "cassidy.multicasematch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "cassidy",
+          "middleName": "",
+          "lastName": "multicasematch",
+          "phone": {
+            "number": "212-555-7000"
+          },
+          "email": "cassidy.multicasematch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "cassidy multicasematch"
+        },
+        "memo": {
+          "isPlausibleNicknameByDistance": [
+            {
+              "key": "casey|cassidy",
+              "value": true
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "casey multicasematch|cassidy multicasematch",
+              "value": 0.895
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "casey multicasematch|cassidy multicasematch",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong",
+            "firstNameBySpellingOnly": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "divisionMismatch": {
+    "sourceRaw": {
+      "firstName": "Devon",
+      "lastName": "Divisionmismatch",
+      "fullName": "Devon Divisionmismatch"
+    },
+    "sourceNormalized": {
+      "firstName": "devon",
+      "middleName": "",
+      "lastName": "divisionmismatch",
+      "fullName": "Devon Divisionmismatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-divisionmismatch",
+          "firstName": "Dana",
+          "lastName": "Divisionmismatch",
+          "name": "Dana Divisionmismatch",
+          "address": {
+            "address1": "800 Match Pl",
+            "city": "Buffalo",
+            "state": "NY",
+            "zipCode": "14201",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "716-555-8000"
+          },
+          "email": "dana.divisionmismatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "dana",
+          "middleName": "",
+          "lastName": "divisionmismatch",
+          "phone": {
+            "number": "716-555-8000"
+          },
+          "email": "dana.divisionmismatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "dana divisionmismatch"
+        },
+        "memo": {
+          "isPlausibleNicknameByDistance": [
+            {
+              "key": "devon|dana",
+              "value": false
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "devon divisionmismatch|dana divisionmismatch",
+              "value": 0.867
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "devon divisionmismatch|dana divisionmismatch",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": false
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "resolvedNoSurrogates": {
+    "sourceRaw": {
+      "firstName": "Riley",
+      "lastName": "Resolvedmatch",
+      "fullName": "Riley Resolvedmatch"
+    },
+    "sourceNormalized": {
+      "firstName": "riley",
+      "middleName": "",
+      "lastName": "resolvedmatch",
+      "fullName": "Riley Resolvedmatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "resolvedWithSnapshot": {
+    "sourceRaw": {
+      "firstName": "Drew",
+      "lastName": "Snapshotmatch",
+      "fullName": "Drew Snapshotmatch"
+    },
+    "sourceNormalized": {
+      "firstName": "drew",
+      "middleName": "",
+      "lastName": "snapshotmatch",
+      "fullName": "Drew Snapshotmatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "seedTrusteeNickname": {
+    "sourceRaw": {
+      "firstName": "Samuel",
+      "lastName": "Seedtrustee",
+      "fullName": "Samuel Seedtrustee"
+    },
+    "sourceNormalized": {
+      "firstName": "samuel",
+      "middleName": "",
+      "lastName": "seedtrustee",
+      "fullName": "Samuel Seedtrustee",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-active-001",
+          "firstName": "Sam",
+          "lastName": "Seedtrustee",
+          "name": "Sam Seedtrustee",
+          "address": {
+            "address1": "200 Trustee Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10002",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0200"
+          },
+          "email": "sam.seedtrustee@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "sam",
+          "middleName": "",
+          "lastName": "seedtrustee",
+          "phone": {
+            "number": "212-555-0200"
+          },
+          "email": "sam.seedtrustee@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sam seedtrustee"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "samuel seedtrustee|sam seedtrustee",
+              "value": 0.876
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "samuel seedtrustee|sam seedtrustee",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-inactive-001",
+          "firstName": "Pat",
+          "lastName": "Seedtrustee",
+          "name": "Pat Seedtrustee",
+          "address": {
+            "address1": "300 Trustee Blvd",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0300"
+          },
+          "email": "pat.seedtrustee@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "pat",
+          "middleName": "",
+          "lastName": "seedtrustee",
+          "phone": {
+            "number": "212-555-0300"
+          },
+          "email": "pat.seedtrustee@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "pat seedtrustee"
+        },
+        "memo": {
+          "isPlausibleNicknameByDistance": [
+            {
+              "key": "samuel|pat",
+              "value": false
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "samuel seedtrustee|pat seedtrustee",
+              "value": 0.722
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "samuel seedtrustee|pat seedtrustee",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": false
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  }
+}
