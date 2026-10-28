@@ -99,8 +99,6 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   mismatchReason: 'ambiguous',
   source: 'DXTR',
   dxtrTrustee: { fullName: 'John Doe' },
-  preselectedCandidate: null,
-  candidateCount: 0,
   affectedCaseCount: 1,
   affectedCaseIds: ['081-22-11111'],
   taskDate: '2026-01-15T10:00:00.000Z',
@@ -117,7 +115,6 @@ const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   source: 'DXTR',
   findings: findings([janetSmith, janeSmith]),
   dxtrTrustee: { fullName: 'John Doe' },
-  matchCandidates: [],
   updatedOn: '2026-01-15T10:00:00.000Z',
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
   createdOn: '2026-01-15T10:00:00.000Z',
@@ -367,16 +364,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(searchButton.closest('.search-link-container')).toHaveTextContent(
         'There are no suggested matches in CAMS.',
       );
-    });
-
-    test('still offers trustee search when a loaded task has no findings', async () => {
-      renderWithProps();
-      await mockDetailAndExpand({ ...sampleOrderDetail, findings: undefined });
-
-      expect(screen.queryByTestId('trustee-comparison-table')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /Search for a trustee/, hidden: true }),
-      ).toBeInTheDocument();
     });
 
     test('offers Match Trustee for each candidate of a pending task', async () => {

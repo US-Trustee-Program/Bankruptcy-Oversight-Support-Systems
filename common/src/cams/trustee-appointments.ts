@@ -297,8 +297,8 @@ export function appointmentCoversDivision(
  * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
  * backend's auto-match pipeline, trustee-search filtering, verification-approval enforcement,
  * and remap re-validation, as well as the Data Verification UI's own pre-approval check (which
- * runs this exact predicate against data it already has on hand -- CandidateScore.appointments
- * and TrusteeSearchResult.appointments -- so it can warn a reviewer before they attempt an
+ * runs this exact predicate against data it already has on hand -- TrusteeSearchResult.
+ * appointments -- so it can warn a reviewer before they attempt an
  * approval the backend is guaranteed to reject, without a second network round-trip). Living
  * here keeps every caller from drifting into disagreeing about what counts as coverage.
  */
@@ -333,8 +333,8 @@ export type AppointmentCoverageCase = {
  * different chapter is a routine split. The Data Verification UI uses this to warn a reviewer
  * *before* they attempt an approval that TrusteeMatchVerificationUseCase.approveVerification
  * is guaranteed to reject for an affected case outside the resolved trustee's coverage,
- * reusing data it already has on hand (CandidateScore.appointments / TrusteeSearchResult.
- * appointments) rather than a speculative round-trip. The backend check remains the
+ * reusing data it already has on hand (TrusteeSearchResult.appointments) rather than a
+ * speculative round-trip. The backend check remains the
  * authoritative gate regardless of what this returns.
  */
 export function getUncoveredCases<T extends AppointmentCoverageCase>(

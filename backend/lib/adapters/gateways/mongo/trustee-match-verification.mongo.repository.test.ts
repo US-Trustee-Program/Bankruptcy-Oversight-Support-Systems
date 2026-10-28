@@ -7,6 +7,9 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import QueryBuilder from '../../../query/query-builder';
+import MockData from '@common/cams/test-utilities/mock-data';
+
+const findings = MockData.getTrusteeMatchFindings();
 
 describe('TrusteeMatchVerificationMongoRepository', () => {
   let context: ApplicationContext;
@@ -19,7 +22,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     courtId: '081',
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
-    matchCandidates: [],
+    source: 'DXTR',
+    findings,
     taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
@@ -322,7 +326,6 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             'courtName',
             'dxtrTrustee',
             'mismatchReason',
-            'matchCandidates',
             'status',
             'resolvedTrusteeId',
             'resolvedTrusteeName',
@@ -410,7 +413,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             documentType: 'TRUSTEE_MATCH_VERIFICATION',
             dxtrTrustee: { fullName: 'John Doe' },
             mismatchReason: 'IMPERFECT_MATCH',
-            matchCandidates: [],
+            source: 'DXTR',
+            findings,
             taskType: 'trustee-match',
             status: 'pending',
             updatedOn: '2025-01-01T00:00:00.000Z',

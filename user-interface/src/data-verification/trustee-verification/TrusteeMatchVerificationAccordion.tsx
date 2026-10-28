@@ -91,11 +91,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // so it blocks re-entrancy immediately, regardless of render timing.
   const isSubmittingRef = useRef(false);
 
-  const source = order.source ?? detail?.source;
+  const { source } = order;
   // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
   const comparison = useMemo(
-    () =>
-      detail?.findings ? buildTrusteeComparison(detail.findings, detail.source ?? 'DXTR') : null,
+    () => (detail ? buildTrusteeComparison(detail.findings, detail.source) : null),
     [detail],
   );
 
@@ -311,17 +310,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <p className="text-error">Failed to load candidate details. Please try again later.</p>
       );
     }
-    if (!detail) return null;
-    if (!comparison) {
-      return (
-        <TrusteeSearchLink
-          className="no-candidates-message"
-          linkMessage="There are no suggested matches in CAMS."
-          linkLabel="Search for a trustee"
-          onClick={openSearch}
-        />
-      );
-    }
+    if (!comparison) return null;
 
     const hasCandidates = comparison.candidates.length > 0;
     return (
@@ -339,7 +328,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         </p>
         <TrusteeComparisonTable
           comparison={comparison}
-          sourceLabel={`Source record (${source ?? 'DXTR'})`}
+          sourceLabel={`Source record (${source})`}
           onApprove={canApprove ? openConfirmation : undefined}
           isProcessing={isProcessing}
         />
@@ -427,11 +416,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     {reasonLabel}
                   </span>
                 )}
-                {source && (
-                  <Tag id={`identity-task-source-${order.id}`} title={`Source: ${source}`}>
-                    {source}
-                  </Tag>
-                )}
+                <Tag id={`identity-task-source-${order.id}`} title={`Source: ${source}`}>
+                  {source}
+                </Tag>
                 <span className="identity-task-case-count" data-testid="identity-task-case-count">
                   {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
                 </span>

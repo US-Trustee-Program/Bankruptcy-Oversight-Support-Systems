@@ -122,7 +122,7 @@ export class TrusteeMatchVerificationMongoRepository
    * alone caseId/courtId. `id`, `caseId`, `courtId`, `createdOn` and `createdBy` go in
    * $setOnInsert only, so a matching update (status already 'pending') can never clear or
    * overwrite the case this task was originally opened for, or its creation record. Every other
-   * field (mismatchReason, matchCandidates, findings, source, status, etc.) is in $set, so a
+   * field (mismatchReason, findings, source, status, etc.) is in $set, so a
    * re-sync refreshes them from the latest event.
    */
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
@@ -170,9 +170,8 @@ export class TrusteeMatchVerificationMongoRepository
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy).
-      // matchCandidates is included so the use-case can compute candidateCount and
-      // preselectedCandidate; it is stripped from the response after mapping to TrusteeMatchVerificationListItem.
+      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy) and
+      // findings, which carry trustee PII and are served only by findById.
       const projection = pick<TrusteeMatchVerificationSearchResult>(
         'id',
         'documentType',
@@ -181,7 +180,6 @@ export class TrusteeMatchVerificationMongoRepository
         'courtName',
         'dxtrTrustee',
         'mismatchReason',
-        'matchCandidates',
         'status',
         'resolvedTrusteeId',
         'resolvedTrusteeName',

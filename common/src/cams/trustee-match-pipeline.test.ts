@@ -1,6 +1,7 @@
 import {
   compareByAddressPointsThenNameQuality,
   compareByNameQuality,
+  rankCandidates,
   ScoreByScorer,
 } from './trustee-match-pipeline';
 
@@ -46,5 +47,27 @@ describe('trustee-match-pipeline ranking', () => {
 
   test('a tie on both address points and name quality compares equal', () => {
     expect(compareByAddressPointsThenNameQuality(scores('strong', 3), scores('strong', 3))).toBe(0);
+  });
+
+  test('rankCandidates returns candidates in pipeline rank order, keeping discovery order on a tie', () => {
+    const candidate = (id: string, candidateScores: ScoreByScorer) => ({
+      camsRaw: { id },
+      camsNormalized: {},
+      memo: {},
+      scores: candidateScores,
+      origin: 'recallByName',
+    });
+    const discovered = [
+      candidate('tie-first', scores('strong', 3)),
+      candidate('best', scores('exact', 6)),
+      candidate('tie-second', scores('strong', 3)),
+    ];
+
+    expect(rankCandidates(discovered).map((c) => c.camsRaw.id)).toEqual([
+      'best',
+      'tie-first',
+      'tie-second',
+    ]);
+    expect(discovered.map((c) => c.camsRaw.id)).toEqual(['tie-first', 'best', 'tie-second']);
   });
 });

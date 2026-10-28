@@ -56,6 +56,13 @@ import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../dataflow-events';
+import {
+  ProjectedTrustee,
+  ScoreByScorer,
+  SerializedCandidate,
+  TrusteeSerializedState,
+} from '../trustee-match-pipeline';
+import { TrusteeMatchVerification } from '../trustee-match-verification';
 
 const { getIsoDate, getTodaysIsoDate, sortDates, nowInSeconds } = DateHelper;
 
@@ -1120,7 +1127,106 @@ function getPhoneNumber(): string {
   return `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
 }
 
+/** Every stored scorer agrees exactly - override individual scorers to make a field differ. */
+const EXACT_MATCH_SCORES: ScoreByScorer = {
+  doesNameMatch: { pass: true, quality: 'exact' },
+  doesPhoneMatch: { pass: true, quality: 'exact' },
+  doesAddressMatch: { pass: true, quality: 'exact', points: 6, streetCloseness: 1 },
+  doesCityMatch: { pass: true },
+  doesStateMatch: { pass: true },
+  doesZipCodeMatch: { pass: true },
+  doesEmailMatch: { pass: true },
+};
+
+/** A trustee-match pipeline candidate as stored in an identity task's findings. */
+function getTrusteeMatchCandidate(
+  camsRaw: Partial<ProjectedTrustee> = {},
+  scores: ScoreByScorer = EXACT_MATCH_SCORES,
+  origin = 'recallBySurnameExact',
+): SerializedCandidate<ProjectedTrustee> {
+  const firstName = camsRaw.firstName ?? 'Jane';
+  const lastName = camsRaw.lastName ?? 'Smith';
+  return {
+    camsRaw: {
+      trusteeId: faker.string.uuid(),
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`,
+      address: {
+        address1: '123 Main St',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US',
+      },
+      phone: { number: '212-555-0100' },
+      email: `${firstName}.${lastName}@example.com`.toLowerCase(),
+      ...camsRaw,
+    },
+    camsNormalized: {},
+    memo: {},
+    scores,
+    origin,
+  };
+}
+
+/** An identity task's stored findings: a source record and its candidates, no match. */
+function getTrusteeMatchFindings(
+  override: Partial<TrusteeSerializedState> = {},
+): TrusteeSerializedState {
+  return {
+    sourceRaw: {
+      fullName: 'Jane Smith',
+      legacy: {
+        address1: '123 Main St',
+        cityStateZipCountry: 'New York NY 10001',
+        phone: '212-555-0100',
+        email: 'jane.smith@example.com',
+        parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
+      },
+    },
+    sourceNormalized: {},
+    memo: {},
+    candidates: [],
+    match: null,
+    skip: false,
+    error: null,
+    ...override,
+  };
+}
+
+/** A pending DXTR identity task whose findings carry the given candidates (none by default). */
+function getTrusteeMatchVerification(
+  override: Partial<TrusteeMatchVerification> = {},
+): TrusteeMatchVerification {
+  const caseId = override.caseId ?? randomCaseId();
+  const findings = override.findings ?? getTrusteeMatchFindings();
+  return {
+    id: faker.string.uuid(),
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    taskType: 'trustee-match',
+    caseId,
+    courtId: '081',
+    status: 'pending',
+    mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
+    source: 'DXTR',
+    findings,
+    dxtrTrustee: findings.sourceRaw,
+    fingerprint: faker.string.hexadecimal({ length: 64, prefix: '' }),
+    variant: findings.sourceRaw.fullName.toLowerCase(),
+    taskDate: '2026-01-15T10:00:00.000Z',
+    createdOn: '2026-01-15T10:00:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2026-01-15T10:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    ...override,
+  };
+}
+
 const MockData = {
+  getTrusteeMatchCandidate,
+  getTrusteeMatchFindings,
+  getTrusteeMatchVerification,
   addAction,
   randomAlphaNumeric,
   randomId,

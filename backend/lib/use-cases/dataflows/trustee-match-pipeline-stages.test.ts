@@ -409,7 +409,7 @@ describe('recallByName', () => {
   test('adds and scores every candidate of an ambiguous outcome, without resolving', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
-      matchCandidates: [{ trusteeId: 't1' } as never, { trusteeId: 't2' } as never],
+      candidates: [{ trusteeId: 't1' } as never, { trusteeId: 't2' } as never],
     });
     stubFindTrusteesByIds([
       makeTrustee({ trusteeId: 't1', name: 'Someone Moon' }),

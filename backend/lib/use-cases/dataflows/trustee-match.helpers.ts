@@ -1377,7 +1377,7 @@ type NameMatchQuality = 'exact' | 'fuzzy';
 export type NameMatchResult =
   | { kind: 'resolved'; trusteeId: string; nameScore: number; nameMatchQuality: NameMatchQuality }
   | { kind: 'no-match' }
-  | { kind: 'ambiguous'; matchCandidates: CandidateScore[] };
+  | { kind: 'ambiguous'; candidates: CandidateScore[] };
 
 /**
  * Builds the UNSCORED CandidateScore[] shape used for an ambiguous NameMatchResult, whether the
@@ -1518,7 +1518,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
     );
-    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(matches) };
+    return { kind: 'ambiguous', candidates: toUnscoredCandidates(matches) };
   }
 
   if (matches.length === 1) {
@@ -1542,7 +1542,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `Multiple CAMS trustees found matching normalized name "${normalizedTarget}": ${candidates}.`,
     );
-    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(fallbackMatches) };
+    return { kind: 'ambiguous', candidates: toUnscoredCandidates(fallbackMatches) };
   }
 
   if (fallbackMatches.length === 1) {
@@ -1569,7 +1569,7 @@ export async function matchTrusteeByName(
       MODULE_NAME,
       `CAMS trustee(s) found matching "${normalized}" by lastName-token search: ${candidates}.`,
     );
-    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(lastNameTokenMatches) };
+    return { kind: 'ambiguous', candidates: toUnscoredCandidates(lastNameTokenMatches) };
   }
 
   context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);

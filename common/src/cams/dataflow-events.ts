@@ -257,7 +257,6 @@ export function calculateTotalScore(scores: {
  */
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
   mismatchReason: TrusteeAppointmentSyncErrorCode | SoftCloseWriteFailed;
-  matchCandidates: CandidateScore[];
 };
 
 /**

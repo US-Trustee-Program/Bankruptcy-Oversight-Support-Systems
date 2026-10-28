@@ -12,7 +12,7 @@ describe('trustee-match-verification', () => {
     expect(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE).toBe('TRUSTEE_MATCH_VERIFICATION');
   });
 
-  test('accepts findings, source, and an identity mismatchReason alongside matchCandidates', () => {
+  test('carries findings, source, and an identity mismatchReason', () => {
     const findings: TrusteeSerializedState = {
       sourceRaw: { fullName: 'Jane Doe' },
       sourceNormalized: {},
@@ -32,7 +32,6 @@ describe('trustee-match-verification', () => {
       courtId: '0881',
       dxtrTrustee: { fullName: 'Jane Doe' },
       mismatchReason,
-      matchCandidates: [],
       source,
       findings,
       status: 'pending',
@@ -44,25 +43,5 @@ describe('trustee-match-verification', () => {
     expect(task.mismatchReason).toBe('ambiguous');
     expect(task.source).toBe('DXTR');
     expect(task.findings).toBe(findings);
-    expect(task.matchCandidates).toEqual([]);
-  });
-
-  test('still accepts a legacy TrusteeAppointmentSyncErrorCode mismatchReason with no findings or source', () => {
-    const task = createAuditRecord<TrusteeMatchVerification>({
-      documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-      caseId: '081-22-11111',
-      courtId: '0881',
-      dxtrTrustee: { fullName: 'Jane Doe' },
-      mismatchReason: 'IMPERFECT_MATCH',
-      matchCandidates: [],
-      status: 'pending',
-      taskType: 'trustee-match',
-      fingerprint: 'fp-abc123',
-      variant: '{"firstName":"jane","lastName":"doe"}',
-    });
-
-    expect(task.mismatchReason).toBe('IMPERFECT_MATCH');
-    expect(task.source).toBeUndefined();
-    expect(task.findings).toBeUndefined();
   });
 });

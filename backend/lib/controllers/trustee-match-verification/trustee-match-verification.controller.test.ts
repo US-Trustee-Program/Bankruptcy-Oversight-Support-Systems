@@ -9,6 +9,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '@common/cams/roles';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('TrusteeMatchVerificationController', () => {
   let context: ApplicationContext;
@@ -20,21 +21,14 @@ describe('TrusteeMatchVerificationController', () => {
     caseId: 'case-001',
     courtId: '081',
     status: 'pending',
-    mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+    mismatchReason: 'ambiguous',
     dxtrTrustee: { fullName: 'John Doe' },
-    matchCandidates: [
-      {
-        trusteeId: 'trustee-001',
-        trusteeName: 'John Doe',
-        totalScore: 88,
-        addressScore: 100,
-        nameScore: 100,
-        phoneScore: null,
-        emailScore: null,
-        districtDivisionScore: 100,
-        chapterScore: 60,
-      },
-    ],
+    source: 'DXTR',
+    findings: MockData.getTrusteeMatchFindings({
+      candidates: [
+        MockData.getTrusteeMatchCandidate({ trusteeId: 'trustee-001', name: 'John Doe' }),
+      ],
+    }),
     updatedOn: '2026-01-15T10:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     createdOn: '2026-01-15T10:00:00.000Z',
@@ -144,8 +138,9 @@ describe('TrusteeMatchVerificationController', () => {
   );
 
   describe('GET list', () => {
-    test('should return verification orders without enriched appointments', async () => {
-      mockVerificationRepo([sampleOrder]);
+    test('should return verification list items with their source', async () => {
+      const { findings: _findings, ...searchResult } = sampleOrder;
+      mockVerificationRepo([searchResult as TrusteeMatchVerification]);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
 
       const controller = new TrusteeMatchVerificationController();
@@ -153,12 +148,9 @@ describe('TrusteeMatchVerificationController', () => {
 
       expect(response.body.data).toHaveLength(1);
       const item = response.body.data[0];
-      expect(item.candidateCount).toBe(1);
-      expect(item.preselectedCandidate).toEqual({
-        trusteeId: 'trustee-001',
-        trusteeName: 'John Doe',
-      });
-      expect(item.matchCandidates).toBeUndefined();
+      expect(item.id).toBe(sampleOrder.id);
+      expect(item.source).toBe('DXTR');
+      expect(item).not.toHaveProperty('findings');
     });
 
     test('should return empty array when repository returns no documents', async () => {
@@ -216,7 +208,7 @@ describe('TrusteeMatchVerificationController', () => {
   });
 
   describe('GET by ID', () => {
-    test('should return a single enriched verification with appointments', async () => {
+    test('should return a single verification with its stored findings', async () => {
       context.request.params = { id: 'case-001:john doe' };
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
@@ -230,11 +222,7 @@ describe('TrusteeMatchVerificationController', () => {
 
       const data = response.body.data as TrusteeMatchVerification;
       expect(data.id).toBe('case-001:john doe');
-      const candidate = data.matchCandidates[0];
-      expect(candidate.address).toEqual(mockTrustee.public.address);
-      expect(candidate.phone).toEqual(mockTrustee.public.phone);
-      expect(candidate.email).toEqual(mockTrustee.public.email);
-      expect(candidate.appointments).toEqual(mockAppointments);
+      expect(data.findings).toEqual(sampleOrder.findings);
     });
   });
 
@@ -329,24 +317,11 @@ describe('TrusteeMatchVerificationController', () => {
       );
     }
 
-    test('should resolve trustee name when manually selected trustee is not in candidates', async () => {
+    test('should resolve the trustee name when an approved task has none', async () => {
       const approvedOrder: TrusteeMatchVerification = {
         ...sampleOrder,
         status: 'approved',
         resolvedTrusteeId: 'manual-trustee-999',
-        matchCandidates: [
-          {
-            trusteeId: 'trustee-001',
-            trusteeName: 'John Doe',
-            totalScore: 88,
-            addressScore: 100,
-            nameScore: 100,
-            phoneScore: null,
-            emailScore: null,
-            districtDivisionScore: 100,
-            chapterScore: 60,
-          },
-        ],
       };
 
       context.request.params = { id: approvedOrder.id };
@@ -396,7 +371,6 @@ describe('TrusteeMatchVerificationController', () => {
         ...sampleOrder,
         status: 'approved',
         resolvedTrusteeId: 'manual-trustee-999',
-        matchCandidates: [],
       };
 
       context.request.params = { id: approvedOrder.id };
@@ -428,7 +402,6 @@ describe('TrusteeMatchVerificationController', () => {
         status: 'approved',
         resolvedTrusteeId: 'manual-trustee-999',
         resolvedTrusteeName: 'Already Resolved Name',
-        matchCandidates: [],
       };
 
       context.request.params = { id: approvedOrder.id };
@@ -450,37 +423,6 @@ describe('TrusteeMatchVerificationController', () => {
 
       expect(data.resolvedTrusteeName).toBe('Already Resolved Name');
       expect(readSpy).not.toHaveBeenCalledWith('manual-trustee-999');
-    });
-
-    test('should not attempt name resolution when resolvedTrusteeId is in candidates', async () => {
-      const approvedOrder: TrusteeMatchVerification = {
-        ...sampleOrder,
-        status: 'approved',
-        resolvedTrusteeId: 'trustee-001',
-        matchCandidates: [
-          {
-            trusteeId: 'trustee-001',
-            trusteeName: 'John Doe',
-            totalScore: 88,
-            addressScore: 100,
-            nameScore: 100,
-            phoneScore: null,
-            emailScore: null,
-            districtDivisionScore: 100,
-            chapterScore: 60,
-          },
-        ],
-      };
-
-      context.request.params = { id: approvedOrder.id };
-      mockFindById(approvedOrder);
-      mockEnrichmentRepos();
-
-      const controller = new TrusteeMatchVerificationController();
-      const response = await controller.handleRequest(context);
-      const data = response.body.data as TrusteeMatchVerification;
-
-      expect(data.resolvedTrusteeId).toBe('trustee-001');
     });
   });
 

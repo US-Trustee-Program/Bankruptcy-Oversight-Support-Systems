@@ -273,7 +273,7 @@ async function run() {
         outcome = 'wrong-match';
       }
     } else if (result.kind === 'ambiguous') {
-      const candidateIds = result.matchCandidates.map((c) => c.trusteeId);
+      const candidateIds = result.candidates.map((c) => c.trusteeId);
       actualDescription = `ambiguous -> [${candidateIds.join(', ')}]`;
       const sameSet =
         expectedIds.size === candidateIds.length && candidateIds.every((id) => expectedIds.has(id));

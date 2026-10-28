@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import BackfillTrusteeVerificationTaskDateUseCase from './backfill-trustee-verification-task-date';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 type BackfillVerification = TrusteeMatchVerification & { _id: string };
 
@@ -14,7 +15,8 @@ function makeVerification(override: Partial<TrusteeMatchVerification> = {}): Bac
     caseId: '081-25-12345',
     courtId: '081',
     dxtrTrustee: { fullName: 'Test Trustee' },
-    matchCandidates: [],
+    source: 'DXTR',
+    findings: MockData.getTrusteeMatchFindings(),
     taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-03-10T00:00:00.000Z',

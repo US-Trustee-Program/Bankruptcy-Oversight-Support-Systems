@@ -1,6 +1,6 @@
 import {
-  compareByAddressPointsThenNameQuality,
   ProjectedTrustee,
+  rankCandidates,
   ScoreByScorer,
   SerializedCandidate,
   TrusteeSerializedState,
@@ -128,8 +128,6 @@ export function buildTrusteeComparison(
       email: legacy?.email,
       foundBy: undefined,
     },
-    candidates: [...findings.candidates]
-      .sort((a, b) => compareByAddressPointsThenNameQuality(a.scores, b.scores))
-      .map(toCandidate),
+    candidates: rankCandidates(findings.candidates).map(toCandidate),
   };
 }

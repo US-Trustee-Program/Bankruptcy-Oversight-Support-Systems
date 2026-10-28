@@ -1,9 +1,5 @@
 import { Auditable } from './auditable';
-import {
-  CandidateScore,
-  DxtrTrusteeParty,
-  TrusteeAppointmentSyncErrorCode,
-} from './dataflow-events';
+import { DxtrTrusteeParty, TrusteeAppointmentSyncErrorCode } from './dataflow-events';
 import { OrderStatus } from './orders';
 import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
@@ -53,21 +49,14 @@ export type TrusteeMatchVerification = Auditable & {
    */
   acmsProfessionalId?: string;
   mismatchReason?: TrusteeAppointmentSyncErrorCode | IdentityMismatchReason;
-  /** @deprecated Legacy numeric-scoring candidates, superseded by `findings`. Kept so UI and
-   * seeds still compile until S2.7 removes it. */
-  matchCandidates: CandidateScore[];
-  /**
-   * Which legacy system produced this task's source record. Set only by pipeline-driven writes
-   * (S2.3+); undefined on documents written by the legacy numeric-scoring DXTR sync path.
-   */
-  source?: TrusteeMatchSource;
+  /** Which legacy system produced this task's source record. */
+  source: TrusteeMatchSource;
   /**
    * The trustee-match pipeline's serialized state for this task's source record, stored
-   * unchanged (decision: facts read from stored findings, no recompute on open). Set only by
-   * pipeline-driven writes (S2.3+); undefined on documents written by the legacy
-   * numeric-scoring DXTR sync path.
+   * unchanged (decision: facts read from stored findings, no recompute on open). Candidates are
+   * in discovery order; rankCandidates gives the pipeline's rank order.
    */
-  findings?: TrusteeSerializedState;
+  findings: TrusteeSerializedState;
   status: OrderStatus;
   resolvedTrusteeId?: string;
   resolvedTrusteeName?: string;
@@ -118,14 +107,14 @@ type TrusteeMatchVerificationRemapStatus = {
 };
 
 /**
- * The projected shape returned by repository.search(). Auditable fields
- * (createdOn, createdBy, updatedOn, updatedBy) are excluded by the MongoDB
- * projection; matchCandidates is retained so the use-case can compute
- * candidateCount and preselectedCandidate before stripping it.
+ * The projected shape returned by repository.search(). Auditable fields (createdOn, createdBy,
+ * updatedOn, updatedBy) and findings are excluded by the MongoDB projection - findings carry
+ * trustee PII and are served only by the single-task detail view.
  */
-export type TrusteeMatchVerificationSearchResult = Omit<TrusteeMatchVerification, keyof Auditable>;
-
-export type TrusteeCandidate = { trusteeId: string; trusteeName: string };
+export type TrusteeMatchVerificationSearchResult = Omit<
+  TrusteeMatchVerification,
+  keyof Auditable | 'findings'
+>;
 
 export type TrusteeMatchVerificationListItem = Pick<
   TrusteeMatchVerification,
@@ -144,8 +133,6 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'inactiveAppointmentStatus'
   | 'source'
 > & {
-  preselectedCandidate: TrusteeCandidate | null;
-  candidateCount: number;
   affectedCaseCount: number;
   affectedCaseIds: string[];
 };

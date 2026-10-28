@@ -1891,7 +1891,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect.objectContaining({
           mismatchReason: 'ambiguous',
           source: 'DXTR',
-          matchCandidates: [],
         }),
       );
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
@@ -2155,7 +2154,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             caseId: 'case-001',
             mismatchReason: 'no match',
             source: 'DXTR',
-            matchCandidates: [],
             status: 'pending',
           }),
         );
@@ -2182,7 +2180,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             caseId: 'case-999', // a different case already pending on this same fingerprint
             status: 'pending',
             mismatchReason: 'NO_TRUSTEE_MATCH',
-            matchCandidates: [],
             variant: buildVariant(event.dxtrTrustee),
             fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',
@@ -2224,7 +2221,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             caseId: 'case-999',
             status: 'pending',
             mismatchReason: 'NO_TRUSTEE_MATCH',
-            matchCandidates: [],
             variant: buildVariant(event.dxtrTrustee),
             fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',
@@ -2588,7 +2584,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(scenarioDistribution.autoMatchCount).toBe(1);
       });
 
-      test('should persist an empty matchCandidates array for an ambiguous outcome', async () => {
+      test('should write the identity task without legacy matchCandidates', async () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeUnresolvedState(2));
@@ -2599,12 +2595,10 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(dlqMessages).toHaveLength(0);
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            mismatchReason: 'ambiguous',
-            matchCandidates: [],
-          }),
-        );
+        const [written] = (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
+          .calls[0];
+        expect(written).toMatchObject({ mismatchReason: 'ambiguous', source: 'DXTR' });
+        expect(written).not.toHaveProperty('matchCandidates');
       });
 
       test('should track reVerificationCount when an ambiguous outcome is already resolved', async () => {

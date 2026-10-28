@@ -2153,23 +2153,77 @@
         "caseId": "081-18-61881",
         "courtId": "0208",
         "status": "pending",
-        "mismatchReason": "IMPERFECT_MATCH",
+        "mismatchReason": "ambiguous",
+        "source": "DXTR",
+        "findings": {
+          "sourceRaw": {
+            "fullName": "E2E Dxtr Trustee 1"
+          },
+          "sourceNormalized": {},
+          "memo": {},
+          "candidates": [
+            {
+              "camsRaw": {
+                "trusteeId": "e2e-trustee-candidate-1",
+                "firstName": "E2E",
+                "lastName": "Trustee 1",
+                "name": "E2E Trustee 1",
+                "address": {
+                  "address1": "100 E2E Ave",
+                  "city": "New York",
+                  "state": "NY",
+                  "zipCode": "10001",
+                  "countryCode": "US"
+                },
+                "phone": {
+                  "number": "212-555-0100"
+                },
+                "email": "e2e.trustee.1@example.com"
+              },
+              "camsNormalized": {},
+              "memo": {},
+              "scores": {
+                "doesNameMatch": {
+                  "pass": false
+                }
+              },
+              "origin": "recallByName"
+            },
+            {
+              "camsRaw": {
+                "trusteeId": "e2e-trustee-candidate-2",
+                "firstName": "E2E",
+                "lastName": "Trustee 2",
+                "name": "E2E Trustee 2",
+                "address": {
+                  "address1": "200 E2E Ave",
+                  "city": "New York",
+                  "state": "NY",
+                  "zipCode": "10001",
+                  "countryCode": "US"
+                },
+                "phone": {
+                  "number": "212-555-0200"
+                },
+                "email": "e2e.trustee.2@example.com"
+              },
+              "camsNormalized": {},
+              "memo": {},
+              "scores": {
+                "doesNameMatch": {
+                  "pass": false
+                }
+              },
+              "origin": "recallByName"
+            }
+          ],
+          "match": null,
+          "skip": false,
+          "error": null
+        },
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee 1"
         },
-        "matchCandidates": [
-          {
-            "trusteeId": "e2e-trustee-candidate-1",
-            "trusteeName": "E2E Trustee 1",
-            "totalScore": 80,
-            "addressScore": 0,
-            "nameScore": 0,
-            "phoneScore": 0,
-            "emailScore": 0,
-            "districtDivisionScore": 90,
-            "chapterScore": 80
-          }
-        ],
         "fingerprint": "9d29d4c8f05850f1f2349c63291abff5c6686a64a58d9c2414a3f00bec6b3115",
         "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 1\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
@@ -2192,23 +2246,50 @@
         "caseId": "081-91-06221",
         "courtId": "0208",
         "status": "pending",
-        "mismatchReason": "IMPERFECT_MATCH",
+        "mismatchReason": "no match",
+        "source": "DXTR",
+        "findings": {
+          "sourceRaw": {
+            "fullName": "E2E Dxtr Trustee 2"
+          },
+          "sourceNormalized": {},
+          "memo": {},
+          "candidates": [
+            {
+              "camsRaw": {
+                "trusteeId": "e2e-trustee-candidate-2",
+                "firstName": "E2E",
+                "lastName": "Trustee 2",
+                "name": "E2E Trustee 2",
+                "address": {
+                  "address1": "200 E2E Ave",
+                  "city": "New York",
+                  "state": "NY",
+                  "zipCode": "10001",
+                  "countryCode": "US"
+                },
+                "phone": {
+                  "number": "212-555-0200"
+                },
+                "email": "e2e.trustee.2@example.com"
+              },
+              "camsNormalized": {},
+              "memo": {},
+              "scores": {
+                "doesNameMatch": {
+                  "pass": false
+                }
+              },
+              "origin": "recallByName"
+            }
+          ],
+          "match": null,
+          "skip": false,
+          "error": null
+        },
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee 2"
         },
-        "matchCandidates": [
-          {
-            "trusteeId": "e2e-trustee-candidate-2",
-            "trusteeName": "E2E Trustee 2",
-            "totalScore": 70,
-            "addressScore": 0,
-            "nameScore": 0,
-            "phoneScore": 0,
-            "emailScore": 0,
-            "districtDivisionScore": 90,
-            "chapterScore": 80
-          }
-        ],
         "fingerprint": "a018713ad389b0cef6f620cb2247ea46df32d40956ef61194823319ce8d73cc1",
         "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 2\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
@@ -2231,11 +2312,22 @@
         "caseId": "081-51-51841",
         "courtId": "0208",
         "status": "pending",
-        "mismatchReason": "NO_TRUSTEE_MATCH",
+        "mismatchReason": "no match",
+        "source": "DXTR",
+        "findings": {
+          "sourceRaw": {
+            "fullName": "E2E Dxtr Trustee 3"
+          },
+          "sourceNormalized": {},
+          "memo": {},
+          "candidates": [],
+          "match": null,
+          "skip": false,
+          "error": null
+        },
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee 3"
         },
-        "matchCandidates": [],
         "fingerprint": "df7ab3ca07786d3a775f7203c9adf672aa9170e77f1dffa6cc6250d95c0fbcc5",
         "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 3\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
@@ -2258,66 +2350,53 @@
         "caseId": "081-56-78971",
         "courtId": "0208",
         "status": "approved",
-        "mismatchReason": "IMPERFECT_MATCH",
+        "mismatchReason": "no match",
+        "source": "DXTR",
+        "findings": {
+          "sourceRaw": {
+            "fullName": "E2E Dxtr Trustee Approved"
+          },
+          "sourceNormalized": {},
+          "memo": {},
+          "candidates": [
+            {
+              "camsRaw": {
+                "trusteeId": "e2e-trustee-candidate-approved",
+                "firstName": "E2E",
+                "lastName": "Trustee Approved",
+                "name": "E2E Trustee Approved",
+                "address": {
+                  "address1": "900 E2E Ave",
+                  "city": "New York",
+                  "state": "NY",
+                  "zipCode": "10001",
+                  "countryCode": "US"
+                },
+                "phone": {
+                  "number": "212-555-0900"
+                },
+                "email": "e2e.trustee.9@example.com"
+              },
+              "camsNormalized": {},
+              "memo": {},
+              "scores": {
+                "doesNameMatch": {
+                  "pass": false
+                }
+              },
+              "origin": "recallByName"
+            }
+          ],
+          "match": null,
+          "skip": false,
+          "error": null
+        },
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee Approved"
         },
-        "matchCandidates": [
-          {
-            "trusteeId": "e2e-trustee-candidate-approved",
-            "trusteeName": "E2E Trustee Approved",
-            "totalScore": 95,
-            "addressScore": 0,
-            "nameScore": 0,
-            "phoneScore": 0,
-            "emailScore": 0,
-            "districtDivisionScore": 100,
-            "chapterScore": 95
-          }
-        ],
         "resolvedTrusteeId": "e2e-trustee-candidate-approved",
         "fingerprint": "0f2a92cf2ffeba7b5ff868b4057ac23ddeee3a8728392574c3ba0228941952d0",
         "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee approved\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
-        "updatedOn": "2026-03-26T21:28:24.333Z",
-        "updatedBy": {
-          "id": "SYSTEM",
-          "name": "SYSTEM"
-        },
-        "createdOn": "2026-03-26T21:28:24.333Z",
-        "createdBy": {
-          "id": "SYSTEM",
-          "name": "SYSTEM"
-        },
-        "taskDate": "2026-03-26T21:28:24.333Z",
-        "taskType": "trustee-match"
-      },
-      {
-        "_id": "69c3f5c935071a9817e23cf5",
-        "id": "e2e-trustee-match-verification-inactive",
-        "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "caseId": "081-72-11223",
-        "courtId": "0208",
-        "status": "pending",
-        "mismatchReason": "PERFECT_MATCH_INACTIVE_STATUS",
-        "inactiveAppointmentStatus": "voluntarily-suspended",
-        "dxtrTrustee": {
-          "fullName": "E2E Dxtr Trustee Inactive"
-        },
-        "matchCandidates": [
-          {
-            "trusteeId": "e2e-trustee-candidate-inactive",
-            "trusteeName": "E2E Trustee Inactive",
-            "totalScore": 98,
-            "addressScore": 0,
-            "nameScore": 0,
-            "phoneScore": 0,
-            "emailScore": 0,
-            "districtDivisionScore": 100,
-            "chapterScore": 98
-          }
-        ],
-        "fingerprint": "7e43e05c989a6311280dbbf206b85718e79b97e141993ddaa0fd49fe0230da81",
-        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee inactive\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",

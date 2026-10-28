@@ -435,7 +435,7 @@ export function recallByName(context: ApplicationContext): Stage {
       result.kind === 'resolved'
         ? [result.trusteeId]
         : result.kind === 'ambiguous'
-          ? result.matchCandidates.map((c) => c.trusteeId)
+          ? result.candidates.map((c) => c.trusteeId)
           : [];
     if (trusteeIds.length === 0) return state;
 

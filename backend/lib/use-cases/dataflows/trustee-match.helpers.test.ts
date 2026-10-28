@@ -399,7 +399,7 @@ describe('matchTrusteeByName', () => {
     expect(result).toEqual({ kind: 'no-match' });
   });
 
-  test('should return an ambiguous outcome with matchCandidates when multiple trustees match', async () => {
+  test('should return an ambiguous outcome with candidates when multiple trustees match', async () => {
     const trustee1 = MockData.getTrustee();
     const trustee2 = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
@@ -411,7 +411,7 @@ describe('matchTrusteeByName', () => {
 
     expect(result).toEqual({
       kind: 'ambiguous',
-      matchCandidates: expect.arrayContaining([
+      candidates: expect.arrayContaining([
         expect.objectContaining({ trusteeId: trustee1.trusteeId }),
         expect.objectContaining({ trusteeId: trustee2.trusteeId }),
       ]),
@@ -496,7 +496,7 @@ describe('matchTrusteeByName', () => {
 
     expect(result).toEqual({
       kind: 'ambiguous',
-      matchCandidates: expect.arrayContaining([
+      candidates: expect.arrayContaining([
         expect.objectContaining({ trusteeId: trustee1.trusteeId, totalScore: UNSCORED }),
         expect.objectContaining({ trusteeId: trustee2.trusteeId, totalScore: UNSCORED }),
       ]),
@@ -526,7 +526,7 @@ describe('matchTrusteeByName', () => {
 
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+        candidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
 
@@ -563,7 +563,7 @@ describe('matchTrusteeByName', () => {
 
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+        candidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
 
@@ -582,7 +582,7 @@ describe('matchTrusteeByName', () => {
 
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: expect.arrayContaining([
+        candidates: expect.arrayContaining([
           expect.objectContaining({ trusteeId: trustee1.trusteeId }),
           expect.objectContaining({ trusteeId: trustee2.trusteeId }),
         ]),
@@ -628,7 +628,7 @@ describe('matchTrusteeByName', () => {
       expect(scoredSpy).toHaveBeenNthCalledWith(3, 'rowley');
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+        candidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
 
@@ -683,7 +683,7 @@ describe('matchTrusteeByName', () => {
 
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+        candidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
 
@@ -723,7 +723,7 @@ describe('matchTrusteeByName', () => {
 
       expect(result).toEqual({
         kind: 'ambiguous',
-        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+        candidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
   });

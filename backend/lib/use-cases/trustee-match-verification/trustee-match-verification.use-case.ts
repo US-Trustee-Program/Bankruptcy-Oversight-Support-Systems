@@ -7,15 +7,12 @@ import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import {
   EnrichedTrusteeMatchVerification,
-  TrusteeCandidate,
   TrusteeMatchVerificationListItem,
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
-import {
-  TrusteeAppointmentSyncErrorCode,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
+import { rankCandidates } from '@common/cams/trustee-match-pipeline';
 import { CourtsUseCase } from '../courts/courts';
 import CaseManagement from '../cases/case-management';
 import { getCaseIdParts, CaseSummary } from '@common/cams/cases';
@@ -76,16 +73,13 @@ export class TrusteeMatchVerificationUseCase {
         resultsWithoutSnapshot.map((v) => v.fingerprint),
       );
       return results.map((verification) => {
-        const { matchCandidates, ...rest } = verification;
         const affectedCaseIds =
           verification.affectedCaseIds ??
           affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
           [];
         return {
-          ...rest,
+          ...verification,
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
-          candidateCount: matchCandidates.length,
-          preselectedCandidate: this.resolvePreselectedCandidate(verification),
           affectedCaseIds,
           affectedCaseCount: affectedCaseIds.length,
         };
@@ -157,25 +151,6 @@ export class TrusteeMatchVerificationUseCase {
     return results;
   }
 
-  private resolvePreselectedCandidate(
-    verification: TrusteeMatchVerificationSearchResult,
-  ): TrusteeCandidate | null {
-    if (verification.matchCandidates.length === 0) return null;
-    // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates (see
-    // TrusteeMatchVerificationAccordion.tsx's isMultipleMatch for the full explanation) — but
-    // reduce() over a single-element array returns that element unchanged, so this branch's
-    // result is identical either way. Kept aligned with the UI's isMultipleMatch condition
-    // anyway for clarity, since a reader comparing the two shouldn't have to notice they're
-    // subtly different definitions of the same concept.
-    const isMultipleMatch =
-      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved &&
-      verification.matchCandidates.length >= 2;
-    const best = isMultipleMatch
-      ? verification.matchCandidates.reduce((a, b) => (b.totalScore > a.totalScore ? b : a))
-      : verification.matchCandidates[0];
-    return { trusteeId: best.trusteeId, trusteeName: best.trusteeName };
-  }
-
   private resolveCourtName(
     verification: TrusteeMatchVerificationSearchResult,
     courts: CourtDivisionDetails[],
@@ -219,21 +194,14 @@ export class TrusteeMatchVerificationUseCase {
       const resolutionMs = verification.createdOn
         ? Date.now() - new Date(verification.createdOn).getTime()
         : 0;
-      const preselectedTrusteeId =
-        verification.matchCandidates.length > 0
-          ? verification.matchCandidates.reduce((best, c) =>
-              c.totalScore > best.totalScore ? c : best,
-            ).trusteeId
-          : undefined;
-      const wasPreselectedConfirmed = preselectedTrusteeId === resolvedTrusteeId;
-
-      // Calculate resolution path for telemetry
-      const resolutionPath = wasPreselectedConfirmed ? 'accepted' : 'manual-search';
-
-      // Calculate selected candidate rank (1-based index); undefined if not found in candidates
-      const candidateIdx = verification.matchCandidates.findIndex(
-        (c) => c.trusteeId === resolvedTrusteeId,
+      // Telemetry reads the candidates in the same pipeline rank order the verifier saw them in:
+      // the top-ranked candidate is the preselected one, and rank is 1-based.
+      const rankedTrusteeIds = rankCandidates(verification.findings.candidates).map(
+        (candidate) => candidate.camsRaw.trusteeId,
       );
+      const wasPreselectedConfirmed = rankedTrusteeIds[0] === resolvedTrusteeId;
+      const resolutionPath = wasPreselectedConfirmed ? 'accepted' : 'manual-search';
+      const candidateIdx = rankedTrusteeIds.indexOf(resolvedTrusteeId);
       const selectedCandidateRank = candidateIdx >= 0 ? candidateIdx + 1 : undefined;
 
       const now = new Date().toISOString();
@@ -373,7 +341,7 @@ export class TrusteeMatchVerificationUseCase {
           },
           measurements: {
             resolutionMs,
-            candidateCount: verification.matchCandidates.length,
+            candidateCount: rankedTrusteeIds.length,
           },
         },
         [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
@@ -402,7 +370,6 @@ export class TrusteeMatchVerificationUseCase {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const trusteesRepo = factory.getTrusteesRepository(context);
-      const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
       let affectedCaseIds: string[];
@@ -419,32 +386,12 @@ export class TrusteeMatchVerificationUseCase {
         affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
       }
 
-      const enrichedCandidates = await Promise.all(
-        verification.matchCandidates.map(async (candidate) => {
-          try {
-            const [trustee, appointments] = await Promise.all([
-              trusteesRepo.read(candidate.trusteeId),
-              appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
-            ]);
-            return {
-              ...candidate,
-              address: trustee.public.address,
-              phone: trustee.public.phone,
-              email: trustee.public.email,
-              appointments,
-            };
-          } catch {
-            return candidate;
-          }
-        }),
-      );
-
+      // Approval stores resolvedTrusteeName; read the trustee only when it is missing.
       let resolvedTrusteeName = verification.resolvedTrusteeName;
       if (
         verification.status === 'approved' &&
         verification.resolvedTrusteeId &&
-        !resolvedTrusteeName &&
-        !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
+        !resolvedTrusteeName
       ) {
         try {
           const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
@@ -456,7 +403,6 @@ export class TrusteeMatchVerificationUseCase {
 
       return {
         ...verification,
-        matchCandidates: enrichedCandidates,
         resolvedTrusteeName,
         affectedCaseIds,
       };

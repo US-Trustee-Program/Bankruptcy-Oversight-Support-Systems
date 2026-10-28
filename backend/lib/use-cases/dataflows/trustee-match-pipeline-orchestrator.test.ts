@@ -202,7 +202,7 @@ describe('runTrusteeMatchPipeline', () => {
   test('resolves in the recallByName tier via resolveByPhone and never reaches the later tiers', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
-      matchCandidates: [{ trusteeId: 't1' } as never],
+      candidates: [{ trusteeId: 't1' } as never],
     });
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
       makeTrustee({ trusteeId: 't1', public: { phone: { number: '206-555-1000' } } as never }),
@@ -225,7 +225,7 @@ describe('runTrusteeMatchPipeline', () => {
   test('resolves via anchoredLevenshtein candidate pooled alongside a non-corroborating matchTrusteeByName candidate', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
-      matchCandidates: [{ trusteeId: 't1' } as never],
+      candidates: [{ trusteeId: 't1' } as never],
     });
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
       makeTrustee({ trusteeId: 't1', firstName: 'Someone', lastName: 'Else' }),
@@ -279,7 +279,7 @@ describe('runTrusteeMatchPipeline', () => {
   test('resolves a recallByName candidate with an exact name and a one-digit phone typo via resolveByPhoneWithTypo', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
-      matchCandidates: [{ trusteeId: 't1' } as never],
+      candidates: [{ trusteeId: 't1' } as never],
     });
     const candidate = makeTrustee({
       trusteeId: 't1',

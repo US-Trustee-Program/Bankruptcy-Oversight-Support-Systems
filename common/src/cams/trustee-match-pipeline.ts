@@ -122,3 +122,11 @@ export function compareByNameQuality(a: ScoreByScorer, b: ScoreByScorer): number
 export function compareByAddressPointsThenNameQuality(a: ScoreByScorer, b: ScoreByScorer): number {
   return addressPoints(b) - addressPoints(a) || compareByNameQuality(a, b);
 }
+
+/** A copy of the candidates in pipeline rank order (compareByAddressPointsThenNameQuality); a
+ * tie keeps discovery order. */
+export function rankCandidates<TCandidate>(
+  candidates: SerializedCandidate<TCandidate>[],
+): SerializedCandidate<TCandidate>[] {
+  return [...candidates].sort((a, b) => compareByAddressPointsThenNameQuality(a.scores, b.scores));
+}

@@ -327,7 +327,6 @@ export async function softCloseExistingAppointment(
     const dlqFailure: TrusteeAppointmentSyncError = {
       ...event,
       mismatchReason: SoftCloseWriteFailed,
-      matchCandidates: [],
     };
     await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn, checks);
     return { closed: false, dlqFailure };
@@ -586,8 +585,6 @@ async function findVerificationBucketEntry(
  * pipeline outcome. Skips the write if the existing document has already been resolved or
  * dismissed (S2.3's repository-level merge-upsert enforces the same rule again at the DB layer;
  * this pre-check avoids even attempting the write and lets reVerificationCount be reported here).
- * matchCandidates is always empty — see IdentityMismatchReason's doc comment: findings/source
- * replace the legacy numeric-scoring shape for pipeline-driven writes.
  */
 async function upsertIdentityTask(
   verificationRepo: TrusteeMatchVerificationRepository,
@@ -606,7 +603,6 @@ async function upsertIdentityTask(
     await verificationRepo.upsertVerification({
       ...existing,
       mismatchReason,
-      matchCandidates: [],
       source: 'DXTR',
       findings,
       appointedDate: event.appointedDate,
@@ -622,7 +618,6 @@ async function upsertIdentityTask(
         courtId: event.courtId,
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
-        matchCandidates: [],
         source: 'DXTR',
         findings,
         appointedDate: event.appointedDate,
@@ -1571,8 +1566,7 @@ async function processOneEvent(
  *   pipelineSkippedCount — see that function's doc comment for why this is a new edge case.
  * - The pipeline does not resolve a trusteeId (state.match null): the candidate pool's size
  *   decides the identity task's mismatchReason — 2 or more candidates is 'ambiguous', 0 or 1 is
- *   'no match'. findings is the pipeline's serialized state, unchanged; matchCandidates is
- *   always empty.
+ *   'no match'. findings is the pipeline's serialized state, unchanged.
  * - A non-transient pipeline processing failure (state.error): rethrown, landing in
  *   processOneEvent's one catch exactly like any other unclassified error (retry if transient,
  *   otherwise DLQ).
