@@ -49,13 +49,18 @@ ignore:
           signature-verification bypass, but our only reachable node-jose
           call is JWS.createSign for outbound DPoP proof signing
           (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. Re-verified 2026-10-14: still no
-          fixed node-forge version on npm (latest remains 1.4.0). Upstream
-          fix PR digitalbazaar/forge#1152 is still open/unmerged against
-          digitalbazaar/forge#1149, despite having multiple reviewer
-          approvals. Keeping the 2-week renewal window given the PR looks
-          close to merging.
-        expires: 2026-10-28T00:00:00.000Z
+          invoked anywhere in our usage. Re-verified 2026-10-28: node-forge
+          1.4.1 (published 2026-10-27, fixes CVE-2026-85393 per
+          digitalbazaar/forge CHANGELOG.md) and 1.4.2 (published
+          2026-10-27, unrelated PEM-decode regression fix on top of 1.4.1)
+          are now available upstream; PR #1152 itself was closed/superseded,
+          but the fix landed directly as commit c7f42614 ("Verify
+          certificate signatures with the child's scheme"). Bumping is
+          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
+          min-release-age=14) until 2026-11-10. Bump the root package.json
+          node-forge override from 1.4.0 to 1.4.2 and remove this ignore
+          once the embargo lifts.
+        expires: 2026-11-11T00:00:00.000Z
   SNYK-JS-SPRINTFJS-20532016:
     - '*':
         reason: >-
