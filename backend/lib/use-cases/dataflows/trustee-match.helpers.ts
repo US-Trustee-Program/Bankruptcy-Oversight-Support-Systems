@@ -9,7 +9,12 @@ import {
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  normalizeChapter,
+  appointmentCoversDivision,
+  isAppointmentMatch,
+} from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -440,54 +445,6 @@ export function calculateAddressScore(
   // Rounded to the nearest integer so this behaves like every other CandidateScore sub-score
   // (nameScore, districtDivisionScore, chapterScore are always whole numbers).
   return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
-}
-
-/**
- * Normalizes a chapter string for comparison.
- * Removes leading zeros and extracts base chapter from subchapter variants.
- * Examples: "07" → "7", "11-subchapter-v" → "11"
- */
-export function normalizeChapter(chapter: string): string {
-  // Extract base chapter number (before any dash or subchapter suffix)
-  const match = new RegExp(/^0*(\d+)/).exec(chapter);
-  if (!match) return chapter.toLowerCase();
-  return match[1];
-}
-
-/**
- * Determines whether an appointment covers a given division, checking both
- * the deprecated singular `divisionCode` and the current `divisionCodes`
- * array (modern appointments, including multi-division panel appointments,
- * only populate `divisionCodes`).
- */
-function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
-  return (
-    appointment.divisionCode === divisionCode ||
-    (appointment.divisionCodes?.includes(divisionCode) ?? false)
-  );
-}
-
-/**
- * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
- * chapter all on that same record — used both for perfect-match auto-linking and as a gate (see
- * resolveNameCollisionByScoring) ensuring a fuzzy-match winner's district/division and chapter
- * evidence didn't come from two different appointments. Stricter than the individual scoring
- * functions, which check these criteria independently across all appointments.
- */
-export function isAppointmentMatch(
-  appointments: TrusteeAppointment[],
-  courtId: string,
-  divisionCode: string,
-  chapter: string,
-): boolean {
-  const normalizedChapter = normalizeChapter(chapter);
-  return appointments.some(
-    (a) =>
-      a.status === 'active' &&
-      a.courtId === courtId &&
-      appointmentCoversDivision(a, divisionCode) &&
-      normalizeChapter(a.chapter) === normalizedChapter,
-  );
 }
 
 /**
@@ -1192,13 +1149,6 @@ export { calculateTotalScore };
 export type CaseMatchContext = {
   courtId: string;
   courtDivisionCode: string;
-  // Bare CS_DIV (step 1 of CAMS-936), distinct from courtDivisionCode (CS_DIV_ACMS) only for
-  // Winchester/Johnson City (Eastern District of TN). TrusteeAppointment.divisionCode/
-  // divisionCodes are ustDivisionCode-valued (see migrate-trustees.ts), so division-match
-  // scoring must compare against this, not courtDivisionCode, or Winchester/Chattanooga
-  // appointments become indistinguishable. Falls back to courtDivisionCode when absent (every
-  // division outside that pair, or a case not yet backfilled).
-  ustDivisionCode?: string;
   chapter: string;
 };
 
@@ -1225,22 +1175,16 @@ export function calculateCandidateScore(
   appointments: TrusteeAppointment[],
   nameScore: number,
 ): CandidateScore {
-  const { courtId, courtDivisionCode, ustDivisionCode, chapter } = caseMatch;
-  const divisionCodeForMatching = ustDivisionCode ?? courtDivisionCode;
+  const { courtId, courtDivisionCode, chapter } = caseMatch;
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
   const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
   const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);
   const districtDivisionScore = calculateDistrictDivisionScore(
     courtId,
-    divisionCodeForMatching,
+    courtDivisionCode,
     appointments,
   );
-  const chapterScore = calculateChapterScore(
-    courtId,
-    divisionCodeForMatching,
-    chapter,
-    appointments,
-  );
+  const chapterScore = calculateChapterScore(courtId, courtDivisionCode, chapter, appointments);
 
   const totalScore = calculateTotalScore({
     addressScore,
@@ -1353,11 +1297,6 @@ export async function resolveNameCollisionByScoring(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
-  // The case's ustDivisionCode (bare CS_DIV, from the persisted SyncedCase — see
-  // CaseMatchContext's doc comment). Not sourced from event.ustDivisionCode: the SyncedCase is
-  // the authoritative, backfilled source, while the event's own ustDivisionCode merely reflects
-  // whatever the appointment-transaction query happened to join at sync time.
-  caseUstDivisionCode?: string,
 ): Promise<ScoringOutcome> {
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   const candidates = await fetchCandidateTrustees(context, candidateTrusteeIds, (trusteeId) =>
@@ -1371,7 +1310,6 @@ export async function resolveNameCollisionByScoring(
       {
         courtId: event.courtId,
         courtDivisionCode: event.courtDivisionCode,
-        ustDivisionCode: caseUstDivisionCode,
         chapter: event.chapter,
       },
       trustee,
@@ -1403,7 +1341,7 @@ export async function resolveNameCollisionByScoring(
   const sameAppointmentMatch = isAppointmentMatch(
     winner.appointments ?? [],
     event.courtId,
-    caseUstDivisionCode ?? event.courtDivisionCode ?? '',
+    event.courtDivisionCode ?? '',
     event.chapter ?? '',
   );
 

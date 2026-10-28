@@ -25,15 +25,6 @@ export type TrusteeMatchVerification = Auditable & {
    */
   caseId: string;
   courtId: string;
-  /**
-   * The case's bare DXTR CS_DIV at the time this verification was created, distinct from the
-   * ACMS-coded prefix embedded in caseId (CS_DIV_ACMS) only for divisions where the two diverge
-   * (e.g. Winchester/Chattanooga, see CAMS-936). Lets resolveCourtName in
-   * trustee-match-verification.use-case.ts resolve the correct division even when caseId's ACMS
-   * prefix is shared with a sibling division. Absent on documents created before this field
-   * existed — callers fall back to the ACMS case-ID prefix for those.
-   */
-  ustDivisionCode?: string;
   dxtrTrustee: DxtrTrusteeParty;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted

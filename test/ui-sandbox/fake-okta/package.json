@@ -8,13 +8,13 @@
     "seed-users": "tsx seed-users.ts"
   },
   "dependencies": {
-    "express": "5.2.1",
+    "express": "5.3.0",
     "jose": "6.2.12",
     "mongodb": "7.7.0"
   },
   "devDependencies": {
     "@types/express": "5.0.6",
-    "@types/node": "24.19.1",
+    "@types/node": "24.19.2",
     "tsx": "4.23.15",
     "typescript": "6.0.3"
   }

@@ -73,11 +73,17 @@ jobs:
       # does not need the custom msedge derivative image (unlike
       # reusable-accessibility.yml, whose UI Edge project IS active).
       # Digest reused from test/e2e/Dockerfile.playwright-msedge's FROM
-      # line, which resolves the same v1.63.0-noble tag. If the msedge
+      # line, which resolves the same v1.64.0-noble tag. If the msedge
       # project in test/e2e/playwright.config.ts is ever re-enabled,
       # switch this to the shared custom image (ghcr.io playwright-msedge
       # / Dockerfile.playwright-msedge) instead.
-      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      #
+      # Must stay in lockstep with @playwright/test in test/e2e/package.json:
+      # the container image bundles the browser binaries, and a mismatched
+      # version here causes "Executable doesn't exist" failures when npm's
+      # @playwright/test driver looks for a browser revision the image
+      # doesn't have.
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     steps:
       - name: Get source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -273,7 +279,7 @@ jobs:
             npx playwright test --reporter=list,html
 
       - name: Upload report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: playwright-report

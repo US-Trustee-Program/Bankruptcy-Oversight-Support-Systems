@@ -49,13 +49,18 @@ ignore:
           signature-verification bypass, but our only reachable node-jose
           call is JWS.createSign for outbound DPoP proof signing
           (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. Re-verified 2026-10-14: still no
-          fixed node-forge version on npm (latest remains 1.4.0). Upstream
-          fix PR digitalbazaar/forge#1152 is still open/unmerged against
-          digitalbazaar/forge#1149, despite having multiple reviewer
-          approvals. Keeping the 2-week renewal window given the PR looks
-          close to merging.
-        expires: 2026-10-28T00:00:00.000Z
+          invoked anywhere in our usage. Re-verified 2026-10-28: node-forge
+          1.4.1 (published 2026-10-27, fixes CVE-2026-85393 per
+          digitalbazaar/forge CHANGELOG.md) and 1.4.2 (published
+          2026-10-27, unrelated PEM-decode regression fix on top of 1.4.1)
+          are now available upstream; PR #1152 itself was closed/superseded,
+          but the fix landed directly as commit c7f42614 ("Verify
+          certificate signatures with the child's scheme"). Bumping is
+          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
+          min-release-age=14) until 2026-11-10. Bump the root package.json
+          node-forge override from 1.4.0 to 1.4.2 and remove this ignore
+          once the embargo lifts.
+        expires: 2026-11-11T00:00:00.000Z
   SNYK-JS-SPRINTFJS-20532016:
     - '*':
         reason: >-
@@ -117,3 +122,74 @@ ignore:
           6.16.0 to 6.16.1 and remove this ignore once the embargo
           lifts.
         expires: 2026-10-29T00:00:00.000Z
+  SNYK-JS-BODYPARSER-21431495:
+    - '*':
+        reason: >-
+          Uncaught Exception (DoS) in body-parser@2.3.0, pinned by the
+          root package.json override and pulled in by express@5.2.1. A
+          compressed request body with trailing bytes makes the
+          decompression stream emit an unhandled error that crashes the
+          Node process. Not reachable in any deployed environment: the
+          deployed API runs on Azure Functions, and nothing under
+          backend/function-apps or backend/lib imports express. The only
+          express servers are backend/express/server.ts (local dev via
+          npm run start:express, and the BDD harness in
+          test/bdd/helpers/api-server.ts) and the test/ui-sandbox
+          fake-okta server, all local or test only. Fixed version 2.4.0
+          was published 2026-10-22 and is blocked by CAMS's 14-day
+          minimum npm release-age policy (.npmrc min-release-age=14)
+          until 2026-11-05. It requires qs ^6.16.1, so bump the root
+          package.json overrides body-parser 2.3.0 -> 2.4.0 and qs
+          6.16.0 -> 6.16.1 together, then remove this ignore and the
+          SNYK-JS-QS-20943482 ignore.
+        expires: 2026-11-06T00:00:00.000Z
+  SNYK-JS-QS-21755395:
+    - '*':
+        reason: >-
+          Improper Encoding or Escaping of Output (CVE-2026-110910) in
+          qs@6.16.0, pinned by the root package.json override and pulled
+          in by express@5.3.0 and body-parser@2.3.0. The flaw is in
+          qs.stringify() when called with { allowEmptyArrays: true }: an
+          attacker-controlled object key containing '&', '=', or '#' is
+          not encoded, letting the key name inject extra query-string
+          parameters or a URL fragment into the output. Not reachable in
+          CAMS: express and body-parser only call qs.parse() to read
+          incoming query strings/bodies, never qs.stringify() (verified
+          by grep across backend, common, user-interface, dev-tools,
+          dora-metrics, test — no CAMS source calls qs.stringify or
+          passes allowEmptyArrays anywhere). The only other qs consumer
+          in the lockfile is typed-rest-client (pulled in transitively by
+          @stryker-mutator/core, dev-only), which never calls stringify
+          with allowEmptyArrays either. Fixed version 6.17.0 was
+          published 2026-10-27 and is blocked by CAMS's 14-day minimum
+          npm release-age policy (.npmrc min-release-age=14) until
+          2026-11-10. Bump the root package.json qs override from
+          6.16.0 to 6.17.0 (or 6.16.1, once that also clears the embargo
+          — see SNYK-JS-QS-20943482) and remove this ignore once the
+          embargo lifts.
+        expires: 2026-11-11T00:00:00.000Z
+  SNYK-JS-AZUREMSALNODE-21689163:
+    - '*':
+        reason: >-
+          Origin Validation Error (CVE-2026-109461) in
+          @azure/msal-node@6.0.0, pulled in transitively by
+          @azure/identity@4.13.3 (pinned to msal-node ^6.0.0). Flagged
+          across backend (node), dev-tools, and test/e2e (via mssql >
+          tedious > @azure/identity). No fixed version available from
+          upstream: @azure/identity's latest release (4.14.0) still pins
+          msal-node ^6.0.0, and the fix (7.1.0) is a major version bump
+          npm's ^6.0.0 range won't resolve to; no @azure/identity release
+          depends on msal-node >=7.1.0 yet. The flaw is in
+          ConfidentialClientApplication.acquireTokenByCode, which fails
+          to sanitize the caller-supplied authCodePayload during an
+          authorization-code token exchange. Not reachable in CAMS: every
+          @azure/identity usage — the explicit DefaultAzureCredential in
+          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
+          and the azure-active-directory-default auth type used by
+          mssql/tedious across backend, dev-tools, and test/e2e (see
+          application-configuration.ts, sql-config.ts,
+          seed-sqlserver.ts) — resolves to DefaultAzureCredential's
+          client-credential/managed-identity token acquisition, never
+          the authorization-code flow. Re-check for an @azure/identity
+          release that bumps msal-node to >=7.1.0.
+        expires: 2026-11-23T00:00:00.000Z

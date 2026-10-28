@@ -1,11 +1,5 @@
-import {
-  parseDebtorType,
-  parsePetitionType,
-  parseTransactionDate,
-  ustDivisionCodeSelect,
-} from './dxtr.gateway.helper';
+import { parseDebtorType, parsePetitionType, parseTransactionDate } from './dxtr.gateway.helper';
 import { DxtrTransactionRecord } from '../../types/cases';
-import { UST_DIVISION_CODE_COURT_IDS } from '@common/cams/courts';
 
 describe('DXTR Gateway Helper Tests', () => {
   describe('parseTransactionDate tests', () => {
@@ -99,27 +93,5 @@ describe('DXTR Gateway Helper Tests', () => {
         expect(parsePetitionType(transactionRecord)).toEqual(expected);
       },
     );
-  });
-
-  describe('ustDivisionCodeSelect tests', () => {
-    test('should take the bare CS_DIV only for courts whose ACMS codes are shared', () => {
-      expect(ustDivisionCodeSelect('cs_div')).toEqual(
-        "CASE WHEN cs_div.COURT_ID IN ('0649') THEN cs_div.CS_DIV ELSE cs_div.CS_DIV_ACMS END",
-      );
-    });
-
-    test('should use the alias the calling query gave AO_CS_DIV', () => {
-      expect(ustDivisionCodeSelect('a')).toEqual(
-        "CASE WHEN a.COURT_ID IN ('0649') THEN a.CS_DIV ELSE a.CS_DIV_ACMS END",
-      );
-    });
-
-    // CAMS-936. Widening this list is a migration, not a config change: every stored
-    // TRUSTEE_APPOINTMENT division code in the added court has to be backfilled in the same
-    // release, or re-synced cases in that court stop matching their trustees. Courts outside
-    // 0649 (113E, 113A, 0420, ...) must keep ustDivisionCode === courtDivisionCode until then.
-    test('should be scoped to the Eastern District of Tennessee only', () => {
-      expect(UST_DIVISION_CODE_COURT_IDS).toEqual(['0649']);
-    });
   });
 });

@@ -38,6 +38,7 @@ const makeEmptyScenarioDistribution = () => ({
   fingerprintMissCount: 0,
   retryableCount: 0,
   candidateLoadFailedCount: 0,
+  unappointableChapterSkippedCount: 0,
   emptyDemographicsSkippedCount: 0,
   sentinelBogusNameSkippedCount: 0,
   unattributableBogusNameSkippedCount: 0,

@@ -4,7 +4,7 @@
 # MongoDB and SQL Edge run as separate official containers in the same Podman pod,
 # sharing localhost — no library grafting needed.
 
-FROM node:24.20.0-bookworm-slim
+FROM node:24.22.1-bookworm-slim
 
 WORKDIR /app
 

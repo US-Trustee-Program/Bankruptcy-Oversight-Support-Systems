@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 36
-- **Main Workflows**: 17
+- **Total Workflows**: 37
+- **Main Workflows**: 18
 - **Reusable Workflows**: 19
 
 ## Legend
@@ -112,6 +112,7 @@ flowchart LR
 Workflows triggered by `push`:
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
+- **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
 - **Continuous Deployment** (`continuous-deployment.yml`)
 
 ```mermaid
@@ -122,6 +123,8 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
+    launchdarkly_code_references_yml["LaunchDarkly Code References"]
+    launchdarkly_code_references_yml_find_code_references["find-code-references"]
     continuous_deployment_yml["Continuous Deployment"]
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
@@ -195,6 +198,8 @@ flowchart LR
     trigger_push --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
+    trigger_push --> launchdarkly_code_references_yml
+    launchdarkly_code_references_yml --> launchdarkly_code_references_yml_find_code_references
     trigger_push --> continuous_deployment_yml
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
@@ -279,6 +284,8 @@ flowchart LR
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
+    class launchdarkly_code_references_yml mainWorkflow
+    class launchdarkly_code_references_yml_find_code_references job
     class continuous_deployment_yml mainWorkflow
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
@@ -1402,6 +1409,7 @@ flowchart LR
     trigger_push(["push"])
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_pages_yml["Deploy GitHub Pages"]
+    launchdarkly_code_references_yml["LaunchDarkly Code References"]
     continuous_deployment_yml["Continuous Deployment"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
@@ -1435,6 +1443,7 @@ flowchart LR
     trigger_schedule --> dast_scan_yml
     trigger_push --> build_playwright_msedge_image_yml
     trigger_push --> deploy_pages_yml
+    trigger_push --> launchdarkly_code_references_yml
     trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
     trigger_pull_request --> pr_validation_yml
@@ -1460,6 +1469,7 @@ flowchart LR
     class prune_e2e_image_cache_yml mainWorkflow
     class refresh_e2e_base_images_yml mainWorkflow
     class pr_validation_yml mainWorkflow
+    class launchdarkly_code_references_yml mainWorkflow
     class constrained_test_report_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1502,6 +1512,9 @@ flowchart LR
   - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request, workflow_dispatch
+  - Jobs: 1
+- **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
+  - Triggers: push
   - Jobs: 1
 - **Constrained Test Report** (`constrained-test-report.yml`)
   - Triggers: schedule, workflow_dispatch
