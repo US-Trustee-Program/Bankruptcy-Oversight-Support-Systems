@@ -2,23 +2,16 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteeMatchConfirmationModal, {
+  ConfirmationCandidate,
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
-import { CandidateScore } from '@common/cams/dataflow-events';
 import MockData from '@common/cams/test-utilities/mock-data';
 
 const modalId = 'test-order-id';
 
-const sampleCandidate: CandidateScore = {
+const sampleCandidate: ConfirmationCandidate = {
   trusteeId: 'trustee-1',
   trusteeName: 'Jane Smith',
-  totalScore: 95,
-  addressScore: 90,
-  nameScore: 100,
-  phoneScore: null,
-  emailScore: null,
-  districtDivisionScore: 100,
-  chapterScore: 95,
   address: {
     address1: '123 Main St',
     address2: 'Suite 200',
@@ -128,16 +121,9 @@ describe('TrusteeMatchConfirmationModal', () => {
   });
 
   test('shows candidate without address or phone when those fields are absent', async () => {
-    const minimalCandidate: CandidateScore = {
+    const minimalCandidate: ConfirmationCandidate = {
       trusteeId: 'trustee-2',
       trusteeName: 'Bob Jones',
-      totalScore: 80,
-      addressScore: 80,
-      nameScore: 80,
-      phoneScore: null,
-      emailScore: null,
-      districtDivisionScore: 80,
-      chapterScore: 80,
     };
     renderWithProps();
     act(() => modalRef.current?.show(minimalCandidate));
@@ -148,7 +134,7 @@ describe('TrusteeMatchConfirmationModal', () => {
   });
 
   test('shows phone number without extension when extension is absent', async () => {
-    const candidateNoExtension: CandidateScore = {
+    const candidateNoExtension: ConfirmationCandidate = {
       ...sampleCandidate,
       phone: { number: '555-9999' },
     };

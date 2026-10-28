@@ -1,8 +1,6 @@
 import { CaseAssignment } from './assignments';
 import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
-import { Address, PhoneNumber } from './contact';
-import { TrusteeAppointment } from './trustee-appointments';
 import { TrusteeChangeSet } from './notifications';
 
 /**
@@ -114,150 +112,19 @@ export type TrusteeAppointmentSyncEvent = {
 };
 
 /**
- * Match-outcome vocabulary for trustee appointment sync. A name collision that resolves to a
- * clear scoring winner (score > FUZZY_MATCH_SCORE_THRESHOLD, gap >= FUZZY_MATCH_MIN_GAP,
- * isAppointmentMatch passes) is treated the same as any other resolved trusteeId and auto-linked
- * — it is never persisted here, since minimizing human review is the point of scoring in the
- * first place. Only genuinely unresolved outcomes reach this enum:
- *  - AmbiguousMatchUnresolved: the fuzzy-match attempt failed to find a clear winner (scored, no
- *    resolution). Persisted, countable, verification-triggering.
- *  - CandidateLoadFailed: matchTrusteeByName found more than one raw name candidate (so this is
- *    NOT "no trustee matched this name" — NoTrusteeMatch would be misleading here), but scoring
- *    could not load ANY of their trustee/appointment records (e.g. every candidate rejected with
- *    a non-transient error). Distinct from AmbiguousMatchUnresolved, which means scoring DID run
- *    and simply found no clear winner — conflating the two would make the Data Verification UI's
- *    "Multiple Match" label (gated on AmbiguousMatchUnresolved) appear next to zero candidates,
- *    which is its own kind of misleading. Still routed through the same
- *    upsertMatchVerification/writeSurrogateAppointment sequence for human review.
- */
-export const TrusteeAppointmentSyncErrorCode = {
-  // matchTrusteeByName found zero CAMS trustees with a name matching the DXTR trustee, and the
-  // fuzzy-normalization fallback also found nothing — no candidate exists to review at all.
-  NoTrusteeMatch: 'NO_TRUSTEE_MATCH',
-  // The name resolved to exactly one CAMS trustee, but that trustee's data doesn't clear the
-  // court+division+chapter appointment-match bar (isAppointmentMatch fails) — e.g. no
-  // appointments at all, or only appointments that don't cover this case. One known candidate,
-  // but not with enough confidence to auto-link, so a human reviews the single candidate.
-  ImperfectMatch: 'IMPERFECT_MATCH',
-  // matchTrusteeByName found more than one raw name-collision candidate, and scoring
-  // (resolveNameCollisionByScoring) ran but found no clear winner (no candidate cleared the
-  // score/gap threshold, or the winner's appointment doesn't cover this case's
-  // court/division/chapter). Genuinely ambiguous — needs a human to pick among the candidates.
-  AmbiguousMatchUnresolved: 'AMBIGUOUS_MATCH_UNRESOLVED',
-  // The name resolved to exactly one CAMS trustee with an appointment that matches this case's
-  // court/division/chapter, but that appointment's status isn't 'active' (e.g. suspended,
-  // terminated, resigned, deceased) — otherwise a perfect match, so a human confirms the
-  // trustee's current status is still correct before linking.
-  PerfectMatchInactiveStatus: 'PERFECT_MATCH_INACTIVE_STATUS',
-  // matchTrusteeByName found more than one raw name-collision candidate, but scoring could not
-  // load ANY of their trustee/appointment records (e.g. every candidate rejected with a
-  // non-transient error) — distinct from AmbiguousMatchUnresolved, which means scoring DID run
-  // and simply found no clear winner. See the doc comment above this object for why conflating
-  // the two would mislead the Data Verification UI's "Multiple Match" label.
-  CandidateLoadFailed: 'CANDIDATE_LOAD_FAILED',
-} as const;
-
-export type TrusteeAppointmentSyncErrorCode =
-  (typeof TrusteeAppointmentSyncErrorCode)[keyof typeof TrusteeAppointmentSyncErrorCode];
-
-/**
  * Wire value persisted for a soft-close write failure. Not a match outcome — it is a
  * post-resolution write-failure concern (the trustee was already resolved; persisting the new
- * appointment failed) — so it is kept out of TrusteeAppointmentSyncErrorCode rather than
- * collapsed into the same enum as the match-outcome vocabulary above.
+ * appointment failed). Unresolved identity matches become identity tasks, never DLQ messages.
  */
 export const SoftCloseWriteFailed = 'SOFT_CLOSE_WRITE_FAILED' as const;
 export type SoftCloseWriteFailed = typeof SoftCloseWriteFailed;
 
 /**
- * Sentinel value indicating a candidate trustee has not been scored yet.
- * Used when candidates are identified but fuzzy matching has not been performed.
- */
-export const UNSCORED = -1;
-
-/**
- * Scoring details for a candidate trustee during fuzzy matching.
- * Used to aid manual resolution when fuzzy matching cannot determine a clear winner.
- *
- * TODO: trusteeId/trusteeName/address/phone/appointments mix candidate IDENTITY into a type meant
- * to carry SCORE data, and appointments is populated even for callers with no case-appointment
- * context to score against (see trustee-match.helpers.ts's resolveByContactCorroboration/
- * resolveDuplicateNameCandidates, which always pass appointments: []). Worth a refactor for
- * clarity - splitting identity fields from the score fields - but this type is shared with the
- * DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts), so any change here needs
- * to account for both call paths, not just the ACMS one.
- */
-export type CandidateScore = {
-  trusteeId: string;
-  trusteeName: string;
-  totalScore: number;
-  addressScore: number;
-  nameScore: number;
-  phoneScore: number | null;
-  emailScore: number | null;
-  districtDivisionScore: number;
-  chapterScore: number;
-  address?: Address;
-  phone?: PhoneNumber;
-  email?: string;
-  appointments?: TrusteeAppointment[];
-};
-
-/**
- * Calculates the weighted total score from the individual score components.
- * Weighting: 8% address, 26% name, 8% phone, 8% email, 25% district/division, 25% chapter.
- * District/division and chapter are drawn from active CMMAP appointments, so together they carry
- * the majority (50%) as the strongest identity evidence; the remainder favors name (26%, the
- * primary human-readable identifier) with address/phone/email as smaller but non-trivial
- * corroborating signals - phone and email are high-entropy exact-match booleans, while address is
- * fuzzy-scored and more prone to staleness (trustees relocate), so all three are weighted equally
- * rather than favoring address's finer-grained scoring. Phone and email are nullable ("not
- * comparable" - data missing on either side): when null, that dimension's weight is excluded from
- * the calculation entirely and redistributed proportionally among the remaining applicable
- * dimensions, rather than penalizing the candidate with a 0.
- * Lives here (not in backend) so dev-tools' seed-data validator can call the exact same
- * function backend uses, rather than duplicating its weights and risking drift (see CAMS-871
- * Slice 2 Task 3).
- */
-export function calculateTotalScore(scores: {
-  addressScore: number;
-  nameScore: number;
-  phoneScore: number | null;
-  emailScore: number | null;
-  districtDivisionScore: number;
-  chapterScore: number;
-}): number {
-  const WEIGHTS = {
-    addressScore: 0.08,
-    nameScore: 0.26,
-    phoneScore: 0.08,
-    emailScore: 0.08,
-    districtDivisionScore: 0.25,
-    chapterScore: 0.25,
-  } as const;
-
-  let weightedSum = 0;
-  let applicableWeight = 0;
-
-  for (const key of Object.keys(WEIGHTS) as (keyof typeof WEIGHTS)[]) {
-    const score = scores[key];
-    if (score === null) continue;
-    weightedSum += score * WEIGHTS[key];
-    applicableWeight += WEIGHTS[key];
-  }
-
-  return applicableWeight === 0 ? 0 : weightedSum / applicableWeight;
-}
-
-/**
  * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.
  * Extends the original event to preserve full context for future recovery processing.
- * mismatchReason additionally accepts SoftCloseWriteFailed (a post-resolution write-failure,
- * not a match outcome) since a soft-close failure is also reported via this same DLQ shape.
  */
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
-  mismatchReason: TrusteeAppointmentSyncErrorCode | SoftCloseWriteFailed;
-  matchCandidates: CandidateScore[];
+  mismatchReason: SoftCloseWriteFailed;
 };
 
 /**

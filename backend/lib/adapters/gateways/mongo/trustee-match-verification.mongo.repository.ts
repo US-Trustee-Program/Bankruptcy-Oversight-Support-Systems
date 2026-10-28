@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -76,6 +77,7 @@ export class TrusteeMatchVerificationMongoRepository
     if ('id' in fields) conditions.push(doc('id').equals(fields.id));
     if ('fingerprint' in fields) conditions.push(doc('fingerprint').equals(fields.fingerprint));
     if ('variant' in fields) conditions.push(doc('variant').equals(fields.variant));
+    if ('status' in fields) conditions.push(doc('status').equals(fields.status));
     return and(...conditions);
   }
 
@@ -114,21 +116,68 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
+  /**
+   * Merge-upserts a TrusteeMatchVerification bucketed by fingerprint/variant. The filter only
+   * matches an existing document whose status is still 'pending', so a resolved (approved or
+   * rejected) task is never reached by this write at all — not even its mutable fields, let
+   * alone caseId/courtId. `id`, `caseId`, `courtId`, `createdOn`, `createdBy` and `taskDate` go in
+   * $setOnInsert only, so a matching update (status already 'pending') can never clear or
+   * overwrite the case this task was originally opened for, or its creation record. Every other
+   * field (mismatchReason, findings, source, status, etc.) is in $set, so a
+   * re-sync refreshes them from the latest event.
+   *
+   * `id` falls back to a generated UUID on insert: callers building a new verification via
+   * `createAuditRecord` never set `id`, and the Mongo client's `ignoreUndefined: true` would
+   * otherwise silently drop an `undefined` key from `$setOnInsert`, leaving the new document
+   * with no `id` at all.
+   *
+   * `_id` is dropped rather than spread into `$set`: a caller that merges `...existing` from a
+   * prior read (which carries Mongo's `_id`) would otherwise write it back unchanged.
+   */
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
       const query = this.verificationQuery({
         fingerprint: item.fingerprint,
         variant: item.variant,
+        status: 'pending',
       });
-      await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
+      const {
+        id,
+        caseId,
+        courtId,
+        createdOn,
+        createdBy,
+        taskDate,
+        _id: _mongoId,
+        ...setFields
+      } = item as TrusteeMatchVerification & { _id?: unknown };
+      await this.getAdapter<TrusteeMatchVerification>().findOneAndUpdate(
+        query,
+        {
+          $set: setFields,
+          $setOnInsert: {
+            id: id ?? randomUUID(),
+            caseId,
+            courtId,
+            createdOn,
+            createdBy,
+            taskDate,
+          },
+        },
+        { upsert: true },
+      );
     } catch (originalError) {
       if (isDuplicateKeyError(originalError)) {
-        // The racing documents are not guaranteed identical (taskDate, updatedOn may
-        // differ), so the loser's field values are silently discarded here with no other trace
-        // -- log so an unexpectedly high rate of this is visible in telemetry.
+        // Either a genuine concurrent writer already created the document for this
+        // fingerprint/variant, or an existing document has already moved past 'pending'
+        // (approved/rejected) — the filter's status:'pending' condition excludes it, so this
+        // upsert attempts an insert that collides with the (fingerprint, variant, documentType)
+        // unique index instead of updating it in place. Either way the write is silently
+        // discarded with no other trace -- log so an unexpectedly high rate of this is visible
+        // in telemetry.
         this.context.logger.warn(
           MODULE_NAME,
-          `Lost an upsert race for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer — this document's field values were discarded.`,
+          `Lost an upsert for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer or a task past 'pending' — this document's field values were discarded.`,
         );
         return;
       }
@@ -149,9 +198,8 @@ export class TrusteeMatchVerificationMongoRepository
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy).
-      // matchCandidates is included so the use-case can compute candidateCount and
-      // preselectedCandidate; it is stripped from the response after mapping to TrusteeMatchVerificationListItem.
+      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy) and
+      // findings, which carry trustee PII and are served only by findById.
       const projection = pick<TrusteeMatchVerificationSearchResult>(
         'id',
         'documentType',
@@ -160,7 +208,6 @@ export class TrusteeMatchVerificationMongoRepository
         'courtName',
         'dxtrTrustee',
         'mismatchReason',
-        'matchCandidates',
         'status',
         'resolvedTrusteeId',
         'resolvedTrusteeName',
@@ -170,6 +217,7 @@ export class TrusteeMatchVerificationMongoRepository
         'inactiveAppointmentStatus',
         'fingerprint',
         'variant',
+        'source',
       );
       return (await this.getAdapter<TrusteeMatchVerification>().find(
         and(...conditions),

@@ -467,7 +467,7 @@ describe('trustee-data scenario', () => {
     });
   });
 
-  test('pending match verification is in trustee-match-verification collection with IMPERFECT_MATCH reason', async () => {
+  test('pending match verification is a no-match DXTR identity task with one findings candidate', async () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
@@ -477,11 +477,13 @@ describe('trustee-data scenario', () => {
       taskType: 'trustee-match',
       caseId: '091-99-87899',
       status: 'pending',
-      mismatchReason: 'IMPERFECT_MATCH',
+      mismatchReason: 'no match',
+      source: 'DXTR',
     });
-    const candidates = (verification?.data[0] as Record<string, unknown>)
-      ?.matchCandidates as unknown[];
-    expect(candidates).toHaveLength(1);
+    const findings = (verification?.data[0] as Record<string, unknown>)?.findings as {
+      candidates: unknown[];
+    };
+    expect(findings.candidates).toHaveLength(1);
   });
 
   test('match verification id is stable and seed-prefixed for idempotent reruns', async () => {

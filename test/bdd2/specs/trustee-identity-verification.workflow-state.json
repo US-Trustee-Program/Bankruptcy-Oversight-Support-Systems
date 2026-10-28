@@ -1,0 +1,25 @@
+{
+  "ticketNumber": "CAMS-953",
+  "featureName": "trustee-identity-verification",
+  "currentPhase": 2,
+  "currentSlice": 3,
+  "totalSlices": 7,
+  "status": "in-progress",
+  "lastUpdated": "2026-10-28T18:00:00",
+  "nextSteps": "Phase 2 design for Slice 3 (cams-c45pn.6, identity task explanations). Slice 2 complete; open its PR (Slice 1 commits are still on the same branch).",
+  "notes": "Sources: GitHub #3187, beads cams-c45pn (incl. UX mock notes 2026-10-26), bd memory professional-id-never-multi-linked (drop 'multiple linked trustees' reason). claude.ai artifact Gqe7YYhv9riCHPFAhtLjE8 was not readable; user chose to proceed without it. Phase 1 complete 2026-10-27. Beads: parent cams-c45pn; slices 1-7 = cams-c45pn.1, .5, .6, .7, .8, .9, .10 (chained blocked-by). Decisions recorded in feature-qa.md. 2026-10-27: All CAMS-953 planning artifacts live in the CAMS repo at test/bdd2/specs/ (trustee-identity-verification.feature, .feature-qa.md, and this file, trustee-identity-verification.workflow-state.json). Write slice designs, prompts and implementation notes there as trustee-identity-verification.slice-N-*.md. 2026-10-28: Slice 2 implemented (S2.1-S2.8), notes in trustee-identity-verification.slice-2-implementation-notes.md.",
+  "testDataScripts": [
+    {
+      "script": "existing seeds (trustee-match-all-scenarios.ts, test/e2e/scripts/seed-database.ts, test/ui-sandbox/scripts/seed.ts)",
+      "target": "none new",
+      "slice": 1,
+      "populationPath": "direct seed, unchanged"
+    },
+    {
+      "script": "dev-tools/db_scripts/scenarios/trustee-match-all-scenarios.ts, dev-tools/db_scripts/scenarios/trustee-data.ts, test/e2e/fixtures/mongo-fixture.json, test/ui-sandbox/scripts/seed.ts, user-interface/src/lib/testing/mock-api2.ts",
+      "target": "trustee-match-verification (source + findings)",
+      "slice": 2,
+      "populationPath": "direct seed, rewritten; purge and reseed every environment"
+    }
+  ]
+}

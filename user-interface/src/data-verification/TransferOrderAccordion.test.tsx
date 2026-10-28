@@ -82,7 +82,7 @@ describe('TransferOrderAccordion', () => {
     },
   ];
 
-  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+  const accordionFieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
 
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
