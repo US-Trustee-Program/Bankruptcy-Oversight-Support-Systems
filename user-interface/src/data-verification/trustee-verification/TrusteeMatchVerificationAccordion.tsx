@@ -74,10 +74,24 @@ export interface TrusteeMatchVerificationAccordionProps {
   courts?: CourtDivisionDetails[];
   hidden?: boolean;
   onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerificationListItem) => void;
+  onExpand?: (id: string) => void;
+  onCollapse?: (id: string) => void;
+  expandedId?: string;
 }
 
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
-  const { order, hidden, statusType, taskType, fieldHeaders, courts = [], onOrderUpdate } = props;
+  const {
+    order,
+    hidden,
+    statusType,
+    taskType,
+    fieldHeaders,
+    courts = [],
+    onOrderUpdate,
+    onExpand,
+    onCollapse,
+    expandedId,
+  } = props;
   const [isProcessing, setIsProcessing] = useState(false);
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -119,7 +133,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // Resolved (approved) tasks render their case list and trustee name straight from the list
   // response (order.affectedCaseIds/resolvedTrusteeName) - no detail fetch needed, so skip it
   // even on manual expand rather than issuing a network call with no display benefit.
-  async function handleExpand(_id: string) {
+  async function handleExpand(id: string) {
+    if (onExpand) onExpand(id);
     if (order.status === 'approved') return;
     await fetchDetail();
   }
@@ -365,7 +380,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         key={order.id}
         id={`order-list-${order.id}`}
         hidden={hidden}
+        expandedId={expandedId}
         onExpand={handleExpand}
+        onCollapse={onCollapse}
       >
         <section
           className="accordion-heading grid-row grid-gap-lg"

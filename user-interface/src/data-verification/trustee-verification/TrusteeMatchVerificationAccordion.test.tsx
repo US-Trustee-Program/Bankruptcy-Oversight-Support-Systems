@@ -20,6 +20,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 
 const fieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -172,6 +173,42 @@ function renderWithParentState() {
       <Parent />
     </BrowserRouter>,
   );
+}
+
+/**
+ * Renders several accordions inside an AccordionGroup, as DataVerificationScreen does, with a
+ * parent that applies onOrderUpdate's order to its own list.
+ */
+function renderInAccordionGroup(orders: TrusteeMatchVerificationListItem[]) {
+  function Parent() {
+    const [list, setList] = useState(orders);
+    return (
+      <AccordionGroup>
+        {list.map((order) => (
+          <TrusteeMatchVerificationAccordion
+            key={order.id}
+            order={order}
+            taskType={taskType}
+            statusType={orderStatusType}
+            fieldHeaders={fieldHeaders}
+            hidden={false}
+            onOrderUpdate={(_alert, updated) =>
+              setList((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+            }
+          />
+        ))}
+      </AccordionGroup>
+    );
+  }
+  return render(
+    <BrowserRouter>
+      <Parent />
+    </BrowserRouter>,
+  );
+}
+
+function accordionButton(orderId: string) {
+  return screen.getByTestId(`accordion-button-order-list-${orderId}`);
 }
 
 /** Clicks the accordion expand button for the given order id, triggering handleExpand. */
@@ -482,6 +519,67 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(detailSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('inside an accordion group', () => {
+    const secondOrder: TrusteeMatchVerificationListItem = { ...sampleOrder, id: 'order-2' };
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockImplementation(
+        async (id: string) => ({ data: { ...sampleOrderDetail, id } }) as never,
+      );
+    });
+
+    test('expanding a second task collapses the first', async () => {
+      renderInAccordionGroup([sampleOrder, secondOrder]);
+
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+      fireEvent.click(accordionButton(secondOrder.id));
+
+      await waitFor(() =>
+        expect(accordionButton(secondOrder.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+      expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('clicking an expanded task collapses it', async () => {
+      renderInAccordionGroup([sampleOrder, secondOrder]);
+
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+      fireEvent.click(accordionButton(sampleOrder.id));
+
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'false'),
+      );
+    });
+
+    test('still loads the task details when expanded', async () => {
+      renderInAccordionGroup([sampleOrder, secondOrder]);
+
+      fireEvent.click(accordionButton(secondOrder.id));
+
+      await waitFor(() =>
+        expect(Api2.getTrusteeMatchVerificationDetail).toHaveBeenCalledWith(secondOrder.id),
+      );
+    });
+
+    test('stays expanded and focuses the resolved statement after an approval', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      renderInAccordionGroup([sampleOrder, secondOrder]);
+
+      fireEvent.click(accordionButton(sampleOrder.id));
+      fireEvent.click(await screen.findByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(confirmModalSubmit()!);
+
+      await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
+      expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'true');
     });
   });
 
