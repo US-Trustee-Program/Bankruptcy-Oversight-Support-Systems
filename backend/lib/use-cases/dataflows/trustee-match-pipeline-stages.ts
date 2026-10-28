@@ -1,6 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
+import {
+  compareByAddressPointsThenNameQuality,
+  compareByNameQuality,
+} from '@common/cams/trustee-match-pipeline';
 import factory from '../../factory';
 import {
   firstLastNameToken,
@@ -1188,19 +1192,12 @@ function addAndScoreCandidate(
   }
 }
 
-const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
-
-function nameQualityRank(candidate: PipelineCandidate): number {
-  const score = nameMatch(candidate);
-  return score.pass ? NAME_QUALITY_RANK[score.quality] : Number.MAX_SAFE_INTEGER;
-}
-
 type Ranking = (a: PipelineCandidate, b: PipelineCandidate) => number;
 
-const byNameQuality: Ranking = (a, b) => nameQualityRank(a) - nameQualityRank(b);
+const byNameQuality: Ranking = (a, b) => compareByNameQuality(a.scores, b.scores);
 
 const byAddressPointsThenNameQuality: Ranking = (a, b) =>
-  (addressMatch(b)?.points ?? 0) - (addressMatch(a)?.points ?? 0) || byNameQuality(a, b);
+  compareByAddressPointsThenNameQuality(a.scores, b.scores);
 
 /** The single best-ranked survivor, or undefined when there are none or the top rank is a tie. */
 function uniqueBest(

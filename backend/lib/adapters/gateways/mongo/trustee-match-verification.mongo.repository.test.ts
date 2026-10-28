@@ -351,6 +351,18 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
+    test('projection includes source but never findings', async () => {
+      const find = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([sampleVerification]);
+
+      await repository.search({ status: ['pending'] });
+
+      const projection = find.mock.calls[0][3] as { fields: string[] };
+      expect(projection.fields).toContain('source');
+      expect(projection.fields).not.toContain('findings');
+    });
+
     test('should wrap errors', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
         new Error('Database failure'),

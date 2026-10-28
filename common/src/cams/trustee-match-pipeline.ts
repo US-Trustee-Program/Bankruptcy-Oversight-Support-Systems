@@ -99,3 +99,26 @@ export type SerializedState<TSource, TCandidate> = {
 };
 
 export type TrusteeSerializedState = SerializedState<CanonicalTrusteeSource, ProjectedTrustee>;
+
+const NAME_QUALITY_RANK: Record<string, number> = { exact: 0, strong: 1, weak: 2 };
+
+function nameQualityRank(scores: ScoreByScorer): number {
+  const score = scores.doesNameMatch;
+  if (!score?.pass) return Number.MAX_SAFE_INTEGER;
+  return NAME_QUALITY_RANK[score.quality as string] ?? Number.MAX_SAFE_INTEGER;
+}
+
+function addressPoints(scores: ScoreByScorer): number {
+  return (scores.doesAddressMatch?.points as number | undefined) ?? 0;
+}
+
+/** Sort comparator: the better doesNameMatch grade first (exact, strong, weak, then a failure). */
+export function compareByNameQuality(a: ScoreByScorer, b: ScoreByScorer): number {
+  return nameQualityRank(a) - nameQualityRank(b);
+}
+
+/** Sort comparator: the pipeline's ranking - more doesAddressMatch points first, ties broken by
+ * compareByNameQuality. Shared so the pipeline and the identity task UI agree on rank order. */
+export function compareByAddressPointsThenNameQuality(a: ScoreByScorer, b: ScoreByScorer): number {
+  return addressPoints(b) - addressPoints(a) || compareByNameQuality(a, b);
+}

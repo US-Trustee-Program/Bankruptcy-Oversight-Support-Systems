@@ -3,21 +3,32 @@ import './TrusteeMatchConfirmationModal.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
-import { CandidateScore } from '@common/cams/dataflow-events';
-import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import { Address, PhoneNumber } from '@common/cams/contact';
+import { formatAppointmentStatus, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 
+/** The trustee a verifier is about to confirm: identity plus whatever contact details and
+ * appointments are known for display. */
+export type ConfirmationCandidate = {
+  trusteeId: string;
+  trusteeName: string;
+  address?: Partial<Address>;
+  phone?: PhoneNumber;
+  email?: string;
+  appointments?: TrusteeAppointment[];
+};
+
 interface TrusteeMatchConfirmationModalProps {
   id: string;
-  onConfirm: (candidate: CandidateScore) => void;
+  onConfirm: (candidate: ConfirmationCandidate) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
 }
 
 export type TrusteeMatchConfirmationModalImperative = {
-  show: (candidate: CandidateScore) => void;
+  show: (candidate: ConfirmationCandidate) => void;
   hide: () => void;
 };
 
@@ -27,9 +38,9 @@ function TrusteeMatchConfirmationModal_(
 ) {
   const { id, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
-  const [candidate, setCandidate] = useState<CandidateScore | null>(null);
+  const [candidate, setCandidate] = useState<ConfirmationCandidate | null>(null);
 
-  function show(c: CandidateScore) {
+  function show(c: ConfirmationCandidate) {
     setCandidate(c);
     modalRef.current?.show({});
   }

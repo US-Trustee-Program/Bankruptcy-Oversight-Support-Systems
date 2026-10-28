@@ -1,104 +1,34 @@
 import './TrusteeMatchVerificationAccordion.scss';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
+import Tag from '@/lib/components/uswds/Tag';
 import {
   EnrichedTrusteeMatchVerification,
+  IdentityMismatchReason,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
-import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
-import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
-import { formatAppointmentStatus, getUncoveredCases } from '@common/cams/trustee-appointments';
-import { formatChapterType } from '@common/cams/trustees';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts, CaseSummary } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchConfirmationModal, {
+  ConfirmationCandidate,
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
+import TrusteeComparisonTable from './TrusteeComparisonTable';
+import { buildTrusteeComparison, ComparisonCandidate } from './trustee-comparison';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
-// A field is a mismatch when it has a comparable score (not null) that isn't a full 100 match.
-// null means "not comparable" (e.g. missing phone/email on one side) - absent data, not a mismatch.
-function isFieldMismatch(score: number | null): boolean {
-  return score !== null && score !== 100;
-}
-
-type MismatchIconProps = {
-  label: string;
+const REASON_LABELS: Record<IdentityMismatchReason, string> = {
+  ambiguous: 'Multiple matches',
+  'no match': 'No match',
 };
-
-/**
- * A red "no match" icon for a CAMS Strongest Match column header, shown only when that field's
- * CandidateScore indicates a mismatch. The icon carries its own accessible name (rather than a
- * visually-hidden sibling span) so screen readers announce it on hover/touch exploration, not
- * only when reading the full page - an aria-hidden icon with a separate sr-only label is skipped
- * by that interaction mode. Meaning is also never color-only signaling (WCAG 1.4.1).
- */
-function MismatchIcon({ label }: MismatchIconProps) {
-  return (
-    <span className="mismatch-icon" title={`${label} does not match`}>
-      <Icon
-        name="cancel"
-        className="mismatch-icon-symbol"
-        decorative={false}
-        tooltip={`${label} does not match`}
-      />
-    </span>
-  );
-}
-
-type ColumnHeaderProps = {
-  label: string;
-  mismatch: boolean;
-};
-
-function ColumnHeader({ label, mismatch }: ColumnHeaderProps) {
-  return (
-    <span className="column-header-with-mismatch">
-      {label}
-      {mismatch && <MismatchIcon label={label} />}
-    </span>
-  );
-}
-
-const FIELD_LABELS = {
-  name: 'name',
-  address: 'address',
-  phone: 'phone',
-  email: 'email',
-  appointment: 'appointment',
-} as const;
-
-// Which fields mismatch between the CAMS Strongest Match candidate and the court-sent trustee
-// info, in column order - drives both the header icons and the dynamic problem-statement sentence.
-function getMismatchedFieldLabels(candidate: CandidateScore): string[] {
-  const labels: string[] = [];
-  if (isFieldMismatch(candidate.nameScore)) labels.push(FIELD_LABELS.name);
-  if (isFieldMismatch(candidate.addressScore)) labels.push(FIELD_LABELS.address);
-  if (isFieldMismatch(candidate.phoneScore)) labels.push(FIELD_LABELS.phone);
-  if (isFieldMismatch(candidate.emailScore)) labels.push(FIELD_LABELS.email);
-  if (isFieldMismatch(candidate.districtDivisionScore) || isFieldMismatch(candidate.chapterScore)) {
-    labels.push(FIELD_LABELS.appointment);
-  }
-  return labels;
-}
-
-// Only called with a non-empty array - the caller (mismatchedFieldsPrefix) already guards on
-// mismatchedFields.length before invoking this.
-function formatFieldList(fields: string[]): string {
-  if (fields.length === 1) return fields[0];
-  if (fields.length === 2) return `${fields[0]} and ${fields[1]}`;
-  return `${fields.slice(0, -1).join(', ')}, and ${fields[fields.length - 1]}`;
-}
 
 type TrusteeSearchLinkProps = {
   linkLabel: string;
@@ -106,261 +36,6 @@ type TrusteeSearchLinkProps = {
   className?: string;
   onClick: () => void;
 };
-
-type OtherMatchesPaginationProps = {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-};
-
-function OtherMatchesPagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-}: OtherMatchesPaginationProps) {
-  const pages: (number | '...')[] = [];
-
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else if (currentPage < 5) {
-    pages.push(1, 2, 3, 4, 5, '...', totalPages);
-  } else if (currentPage > totalPages - 4) {
-    pages.push(
-      1,
-      '...',
-      totalPages - 4,
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    );
-  } else {
-    pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-  }
-
-  return (
-    <nav aria-label="Other matches pagination" className="usa-pagination">
-      <ul className="usa-pagination__list">
-        {currentPage > 1 && (
-          <li className="usa-pagination__item usa-pagination__arrow">
-            <PaginationButton
-              id="other-matches-previous"
-              isPrevious
-              onClick={() => onPageChange(currentPage - 1)}
-            />
-          </li>
-        )}
-        {pages.map((p, i) =>
-          p === '...' ? (
-            <li
-              key={`ellipsis-${i}`}
-              className="usa-pagination__item usa-pagination__overflow"
-              aria-label="ellipsis indicating non-visible pages"
-            >
-              <span>…</span>
-            </li>
-          ) : (
-            <li key={p} className="usa-pagination__item usa-pagination__page-no">
-              <PaginationButton
-                id={`other-matches-page-${p}`}
-                isCurrent={currentPage === p}
-                onClick={() => onPageChange(p as number)}
-              >
-                {p}
-              </PaginationButton>
-            </li>
-          ),
-        )}
-        {currentPage < totalPages && (
-          <li className="usa-pagination__item usa-pagination__arrow">
-            <PaginationButton
-              id="other-matches-next"
-              isNext
-              onClick={() => onPageChange(currentPage + 1)}
-            />
-          </li>
-        )}
-      </ul>
-    </nav>
-  );
-}
-
-type TrusteeCandidateRowProps = {
-  candidate: CandidateScore;
-  onApprove?: (candidate: CandidateScore) => void;
-  isProcessing?: boolean;
-  // Cases in this verification's bundle that candidate.appointments does not cover (per
-  // isAppointmentMatch) -- undefined/empty means every affected case is covered. Non-empty
-  // disables the Match Trustee button, since approving would just fail the backend's own
-  // per-case coverage check; see TrusteeMatchVerificationAccordion's uncoveredCasesByTrusteeId.
-  uncoveredCases?: CaseSummary[];
-};
-
-function TrusteeCandidateRow({
-  candidate,
-  onApprove,
-  isProcessing,
-  uncoveredCases,
-}: TrusteeCandidateRowProps) {
-  const hasUncoveredCases = !!uncoveredCases && uncoveredCases.length > 0;
-  const rowAddressLines = candidate.address
-    ? [
-        candidate.address.address1,
-        candidate.address.address2,
-        candidate.address.address3,
-        `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
-      ].filter(Boolean)
-    : [];
-
-  return (
-    <div className="trustee-data-row grid-row grid-gap-lg">
-      <div
-        className="trustee-data-cell grid-col-2"
-        data-cell="Name"
-        data-testid={`candidate-name-${candidate.trusteeId}`}
-      >
-        <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
-      </div>
-
-      <div className="trustee-data-cell grid-col-2" data-cell="Address">
-        {rowAddressLines.length > 0
-          ? rowAddressLines.map((line, i, arr) => (
-              <span key={i}>
-                {line}
-                {i < arr.length - 1 && <br />}
-              </span>
-            ))
-          : 'Not Provided'}
-      </div>
-      <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-        {formatPhoneWithExtension(candidate.phone) ?? 'Not Provided'}
-      </div>
-      <div className="trustee-data-cell grid-col-2" data-cell="Email">
-        {candidate.email ?? 'Not Provided'}
-      </div>
-      <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-        {candidate.appointments?.map((appt, i, arr) => (
-          <span key={i}>
-            {appt.courtName}
-            {appt.courtDivisionName ? ` (${appt.courtDivisionName})` : ''}: Chap{' '}
-            {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-            {i < arr.length - 1 && <br />}
-          </span>
-        ))}
-      </div>
-      <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-        {onApprove && (
-          <button
-            type="button"
-            data-testid={`approve-candidate-${candidate.trusteeId}`}
-            onClick={() => onApprove(candidate)}
-            disabled={isProcessing || hasUncoveredCases}
-            className="match-trustee-link"
-          >
-            <Icon name="check" />
-            Match Trustee
-          </button>
-        )}
-        {onApprove && hasUncoveredCases && (
-          <p
-            className="usa-error-message uncovered-cases-message"
-            data-testid={`uncovered-cases-${candidate.trusteeId}`}
-          >
-            Does not have an appointment covering case(s){' '}
-            {formatFieldList(
-              uncoveredCases!.map((c) => `${getCaseNumber(c.caseId)} (Chapter ${c.chapter})`),
-            )}
-            . This match cannot be approved until those cases are resolved separately.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type CandidateTableProps = {
-  candidates: CandidateScore[];
-  onApprove?: (candidate: CandidateScore) => void;
-  isProcessing?: boolean;
-  // Set only for the CAMS Strongest Match table (always exactly one candidate) - shows a
-  // mismatch icon on each column header reflecting that candidate's own score. Not set for the
-  // Other Potential Matches table (multiple candidates, no single score a header could represent).
-  scoreCandidate?: CandidateScore;
-  // True for inactive-status tasks (a "perfect" score match whose trustee is inactive) - the
-  // Trustee Appointment column always shows a mismatch icon regardless of district/chapter
-  // scores, since an inactive trustee is itself an appointment-level problem.
-  forceAppointmentMismatch?: boolean;
-  // Per-candidate uncovered-case lists (see TrusteeCandidateRowProps.uncoveredCases), keyed by
-  // trusteeId. Undefined for the read-only table (no onApprove, so nothing to disable).
-  uncoveredCasesByTrusteeId?: Record<string, CaseSummary[]>;
-};
-
-function CandidateTable({
-  candidates,
-  onApprove,
-  isProcessing,
-  scoreCandidate,
-  forceAppointmentMismatch,
-  uncoveredCasesByTrusteeId,
-}: CandidateTableProps) {
-  // Single source of truth for both the header icons and the problem-statement sentence
-  // (getMismatchedFieldLabels) - avoids two independent mismatch computations drifting apart.
-  const mismatchedFields = new Set(scoreCandidate ? getMismatchedFieldLabels(scoreCandidate) : []);
-  const appointmentMismatch =
-    mismatchedFields.has(FIELD_LABELS.appointment) || !!forceAppointmentMismatch;
-
-  return (
-    <div className="trustee-data-grid trustee-candidates-grid">
-      <div className="trustee-data-header grid-row grid-gap-lg">
-        <div className="trustee-data-cell grid-col-2">
-          {scoreCandidate ? (
-            <ColumnHeader label="Name" mismatch={mismatchedFields.has(FIELD_LABELS.name)} />
-          ) : (
-            'Name'
-          )}
-        </div>
-        <div className="trustee-data-cell grid-col-2">
-          {scoreCandidate ? (
-            <ColumnHeader label="Address" mismatch={mismatchedFields.has(FIELD_LABELS.address)} />
-          ) : (
-            'Address'
-          )}
-        </div>
-        <div className="trustee-data-cell grid-col-1">
-          {scoreCandidate ? (
-            <ColumnHeader label="Phone" mismatch={mismatchedFields.has(FIELD_LABELS.phone)} />
-          ) : (
-            'Phone'
-          )}
-        </div>
-        <div className="trustee-data-cell grid-col-2">
-          {scoreCandidate ? (
-            <ColumnHeader label="Email" mismatch={mismatchedFields.has(FIELD_LABELS.email)} />
-          ) : (
-            'Email'
-          )}
-        </div>
-        <div className="trustee-data-cell grid-col-3">
-          {scoreCandidate ? (
-            <ColumnHeader label="Trustee Appointment" mismatch={appointmentMismatch} />
-          ) : (
-            'Trustee Appointment'
-          )}
-        </div>
-        <div className="trustee-data-cell grid-col-2">Action</div>
-      </div>
-      {candidates.map((candidate) => (
-        <TrusteeCandidateRow
-          key={candidate.trusteeId}
-          candidate={candidate}
-          onApprove={onApprove}
-          isProcessing={isProcessing}
-          uncoveredCases={uncoveredCasesByTrusteeId?.[candidate.trusteeId]}
-        />
-      ))}
-    </div>
-  );
-}
 
 function TrusteeSearchLink({
   linkLabel,
@@ -380,6 +55,17 @@ function TrusteeSearchLink({
   );
 }
 
+function toConfirmationCandidate(candidate: ComparisonCandidate): ConfirmationCandidate {
+  const { camsRaw } = candidate;
+  return {
+    trusteeId: candidate.trusteeId,
+    trusteeName: candidate.trusteeName,
+    address: camsRaw.address,
+    phone: camsRaw.phone,
+    email: camsRaw.email,
+  };
+}
+
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerificationListItem;
   statusType: Map<string, string>;
@@ -390,37 +76,13 @@ export interface TrusteeMatchVerificationAccordionProps {
   onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerificationListItem) => void;
 }
 
-function enrichWithCourtNames(
-  detail: EnrichedTrusteeMatchVerification,
-  courts: CourtDivisionDetails[],
-): EnrichedTrusteeMatchVerification {
-  return {
-    ...detail,
-    matchCandidates: detail.matchCandidates.map((candidate) => ({
-      ...candidate,
-      appointments: candidate.appointments?.map((appt) => {
-        const court = courts.find(
-          (c) => c.courtDivisionCode === appt.divisionCode || c.courtId === appt.courtId,
-        );
-        return {
-          ...appt,
-          courtName: appt.courtName ?? court?.courtName,
-          courtDivisionName: appt.courtDivisionName ?? court?.courtDivisionName,
-        };
-      }),
-    })),
-  };
-}
-
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
   const { order, hidden, statusType, taskType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
-  const [otherMatchesPage, setOtherMatchesPage] = useState(1);
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
   const [affectedCaseSummaries, setAffectedCaseSummaries] = useState<CaseSummary[]>([]);
-  const OTHER_MATCHES_PAGE_SIZE = 5;
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
   // isProcessing (state) drives the disabled/spinner UI but only takes effect once React commits
@@ -429,12 +91,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // so it blocks re-entrancy immediately, regardless of render timing.
   const isSubmittingRef = useRef(false);
 
-  // Enriched separately from the fetch, keyed off the live `courts` prop, so a courts load
-  // that resolves after this detail was fetched still fills in court name/division instead of
-  // being permanently baked out.
-  const enrichedOrder = useMemo(
-    () => (detail ? enrichWithCourtNames(detail, courts) : null),
-    [detail, courts],
+  const source = order.source ?? detail?.source;
+  // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
+  const comparison = useMemo(
+    () =>
+      detail?.findings ? buildTrusteeComparison(detail.findings, detail.source ?? 'DXTR') : null,
+    [detail],
   );
 
   async function fetchDetail() {
@@ -460,23 +122,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
-
-  // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates: the first-token-lastName
-  // search tier (see matchTrusteeByName in trustee-match.helpers.ts) can surface a single
-  // candidate that resolveNameCollisionByScoring then scores below the auto-link threshold,
-  // landing here with only one entry in matchCandidates. Labeling that "Multiple Match" is
-  // misleading (there are no "other potential matches" to compare against), so this also
-  // requires candidateCount >= 2 - a genuine raw-candidate collision, not just a low score.
-  const isMultipleMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved &&
-    order.candidateCount >= 2;
-  const isInactiveStatus =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
-  const taskTypeLabel = isMultipleMatch
-    ? 'Multiple Matches'
-    : isInactiveStatus
-      ? 'Inactive Trustee'
-      : taskType.get(order.taskType);
+  const taskTypeLabel = taskType.get(order.taskType);
+  const reasonLabel = REASON_LABELS[order.mismatchReason as IdentityMismatchReason];
+  const isResolved = order.status === 'approved';
+  const canApprove = order.status === 'pending';
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
@@ -485,70 +134,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.address3,
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
-
-  // candidatesToShow comes from the enriched detail once loaded; falls back to empty pre-expand
-  let candidatesToShow: CandidateScore[] = [];
-  if (enrichedOrder) {
-    if (isMultipleMatch) {
-      candidatesToShow = [...enrichedOrder.matchCandidates].sort(
-        (a, b) => b.totalScore - a.totalScore,
-      );
-    } else if (enrichedOrder.matchCandidates.length > 0) {
-      const best = enrichedOrder.matchCandidates.reduce((b, c) =>
-        c.totalScore > b.totalScore ? c : b,
-      );
-      candidatesToShow = [best];
-    }
-  }
-
-  // Per-candidate uncovered-case lists, keyed by trusteeId -- empty (affectedCaseSummaries
-  // hasn't loaded yet, or candidatesToShow is empty pre-expand) means nothing is disabled,
-  // which is correct: the backend's own approval check remains the authoritative gate
-  // regardless of whether this client-side warning had data to compute from yet.
-  //
-  // A candidate with NO appointments at all (appointments: []) is deliberately treated as
-  // covering nothing, not as "no data to judge from" -- every current call site that
-  // constructs a CandidateScore for a TrusteeMatchVerification (calculateCandidateScore,
-  // handleInactivePerfectMatch) populates appointments with a real, freshly-fetched array, and
-  // getEnrichedVerification unconditionally re-fetches and overwrites it again before this
-  // component ever sees it. So an empty array here always means the trustee genuinely has zero
-  // appointments (e.g. a name-only match with no CAMS appointment record yet) -- exactly the
-  // case this check exists to catch, not an ambiguous absence of data.
-  const uncoveredCasesByTrusteeId: Record<string, CaseSummary[]> = {};
-  for (const candidate of candidatesToShow) {
-    uncoveredCasesByTrusteeId[candidate.trusteeId] = getUncoveredCases(
-      candidate.appointments ?? [],
-      affectedCaseSummaries,
-    );
-  }
-
-  // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
-  const preselected = enrichedOrder
-    ? candidatesToShow[0]
-    : (order.preselectedCandidate ?? undefined);
-
-  type ViewMode =
-    'resolved' | 'pending-with-candidate' | 'readonly-with-candidate' | 'no-candidates';
-  let viewMode: ViewMode;
-  if (order.status === 'approved') {
-    viewMode = 'resolved';
-  } else if (preselected && order.status === 'pending') {
-    viewMode = 'pending-with-candidate';
-  } else if (preselected) {
-    viewMode = 'readonly-with-candidate';
-  } else {
-    viewMode = 'no-candidates';
-  }
-
-  function getOtherMatchesCount(): number {
-    if (!isMultipleMatch) return 0;
-    if (enrichedOrder) return Math.max(0, candidatesToShow.length - 1);
-    return Math.max(0, order.candidateCount - 1);
-  }
-  const otherMatchesCount = getOtherMatchesCount();
-  useEffect(() => {
-    setOtherMatchesPage(1);
-  }, [order.id, otherMatchesCount]);
 
   async function approveTrustee({
     trusteeId,
@@ -577,7 +162,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     );
   }
 
-  async function handleApprove(candidate: CandidateScore) {
+  async function handleApprove(candidate: ConfirmationCandidate) {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setIsProcessing(true);
@@ -599,8 +184,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
-  function openConfirmation(candidate: CandidateScore) {
-    confirmationModalRef.current?.show(candidate);
+  function openConfirmation(candidate: ComparisonCandidate) {
+    confirmationModalRef.current?.show(toConfirmationCandidate(candidate));
   }
 
   function openSearch() {
@@ -634,49 +219,37 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   // The resolved view sources affectedCaseIds straight from the list response (already the
-  // complete, snapshotted/derived array - see getVerifications), so it never needs enrichedOrder.
-  // Other view modes keep the existing lazy pre-expand/post-expand fallback unchanged.
-  const affectedCaseIds =
-    viewMode === 'resolved'
-      ? order.affectedCaseIds.length
-        ? order.affectedCaseIds
-        : [order.caseId]
-      : enrichedOrder?.affectedCaseIds?.length
-        ? enrichedOrder.affectedCaseIds
-        : [order.caseId];
+  // complete, snapshotted/derived array - see getVerifications), so it never needs detail.
+  // Pending tasks use the list response until detail loads, then the detail's live list.
+  const affectedCaseIds = isResolved
+    ? order.affectedCaseIds.length
+      ? order.affectedCaseIds
+      : [order.caseId]
+    : detail?.affectedCaseIds?.length
+      ? detail.affectedCaseIds
+      : [order.caseId];
   const affectedCaseCount =
-    viewMode === 'resolved'
-      ? order.affectedCaseCount
-      : enrichedOrder
-        ? enrichedOrder.affectedCaseIds.length
-        : order.affectedCaseCount;
-  const hasFullCaseList = viewMode === 'resolved' || !!enrichedOrder;
+    isResolved || !detail ? order.affectedCaseCount : detail.affectedCaseIds.length;
+  const hasFullCaseList = isResolved || !!detail;
+  // A task always renders at least its originating case link (see affectedCaseIds), so the
+  // header never claims fewer cases than it lists.
+  const headerCaseCount = Math.max(affectedCaseCount, 1);
 
-  // Fetched so the UI can warn a reviewer, before they attempt an approval, when a candidate's
-  // appointments don't cover every case in this bundle (getUncoveredCases) -- the same per-case
-  // rule the backend's approval endpoint is guaranteed to enforce.
-  //
-  // Gated on hasEnrichedOrder, not just order.status: affectedCaseIds is only the real bundle
-  // once detail has loaded (pre-expand it's just [order.caseId]), and candidatesToShow -- the
-  // only consumer of this data -- is empty pre-expand regardless, so fetching before then has
-  // no display benefit. DataVerificationScreen mounts every accordion up front (hidden rows
-  // included, filtered via a `hidden` prop rather than conditional rendering), so without this
-  // gate every pending verification on the screen would fire this fetch on page load whether
-  // or not the row is ever expanded.
-  //
-  // Also skipped for already-approved orders, matching handleExpand's existing guard above: an
-  // approved order's candidate/search UI can never be reached.
+  // Fetched for the manual search modal, which narrows its results to trustees whose
+  // appointments cover the task's cases. Gated on detail having loaded: affectedCaseIds is only
+  // the real bundle once detail has loaded (pre-expand it's just [order.caseId]).
+  // DataVerificationScreen mounts every accordion up front (hidden rows included, filtered via a
+  // `hidden` prop rather than conditional rendering), so without this gate every pending
+  // verification on the screen would fire this fetch on page load whether or not the row is
+  // ever expanded. Also skipped for already-approved orders, matching handleExpand's guard.
   const affectedCaseIdsKey = affectedCaseIds.join(',');
-  const hasEnrichedOrder = !!enrichedOrder;
+  const hasDetail = !!detail;
   useEffect(() => {
-    if (order.status === 'approved' || !hasEnrichedOrder) return;
+    if (order.status === 'approved' || !hasDetail) return;
     let cancelled = false;
     // allSettled rather than all: a single rejected lookup (a closed case, one not yet synced,
-    // a moved case) would otherwise reject the whole chain and leave affectedCaseSummaries
-    // untouched, silently discarding coverage data for every case that DID load successfully
-    // -- which reads to a reviewer as "no problem" rather than "unknown". Keeping whichever
-    // summaries did load is strictly better: the backend's approval check remains the
-    // authoritative gate regardless of what this best-effort warning could compute.
+    // a moved case) would otherwise reject the whole chain and discard every summary that DID
+    // load. The backend's approval check remains the authoritative coverage gate regardless.
     Promise.allSettled(
       affectedCaseIdsKey.split(',').map((caseId) => Api2.getCaseSummary(caseId)),
     ).then((results) => {
@@ -692,11 +265,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return () => {
       cancelled = true;
     };
-  }, [affectedCaseIdsKey, order.status, hasEnrichedOrder]);
+  }, [affectedCaseIdsKey, order.status, hasDetail]);
 
   // Scoped to the originating case only (order.caseId) -- used solely to narrow the manual
   // search modal's results list, which stays a heuristic regardless (see TrusteeSearchModal's
-  // own doc comment); the hard, bundle-wide gate is uncoveredCasesBySelection below.
+  // own doc comment).
   const originatingCaseSummary = affectedCaseSummaries.find((c) => c.caseId === order.caseId);
 
   const singleCaseLink = (
@@ -709,7 +282,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const sortedAffectedCaseIds = [...affectedCaseIds].sort();
 
   // While the snapshotted count is loading, avoid flashing the (potentially stale or "0
-  // cases") live-derived list-view count before it's replaced by enrichedOrder's count.
+  // cases") live-derived list-view count before it's replaced by the detail's count.
   const caseLink = isLoadingDetail ? (
     <span data-testid="affected-cases-loading">Loading&hellip;</span>
   ) : affectedCaseCount > 1 ? (
@@ -729,31 +302,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     singleCaseLink
   );
 
-  // The problem-statement's leading sentence names the specific mismatching fields once
-  // candidate detail has loaded; pre-expand it falls back to today's generic wording.
-  const mismatchedFields =
-    enrichedOrder && candidatesToShow[0] ? getMismatchedFieldLabels(candidatesToShow[0]) : [];
-  const mismatchedFieldsPrefix = mismatchedFields.length
-    ? `${formatFieldList(mismatchedFields)} `
-    : '';
-
-  // For inactive-status tasks, "appointment" is excluded here - "is inactive in CAMS" already
-  // conveys the appointment-level problem, so repeating "appointment" in the field list would
-  // be redundant.
-  const inactiveOtherMismatchedFields = mismatchedFields.filter(
-    (field) => field !== FIELD_LABELS.appointment,
-  );
-  const inactiveMismatchedFieldsPrefix = inactiveOtherMismatchedFields.length
-    ? `${formatFieldList(inactiveOtherMismatchedFields)} `
-    : '';
-
-  // "does not match" when the sentence names a single field (or none, pre-expand), "do not
-  // match" once it names more than one - the verb's number agrees with the mismatched-fields
-  // list (the sentence's actual subject), NOT the affected case count, which is unrelated.
-  const matchVerb = mismatchedFields.length > 1 ? 'do not match' : 'does not match';
-  const inactiveMatchVerb =
-    inactiveOtherMismatchedFields.length > 1 ? 'do not match' : 'does not match';
-
   function renderDetailSection() {
     if (isLoadingDetail) {
       return <LoadingSpinner caption="Loading candidate details..." />;
@@ -763,159 +311,49 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <p className="text-error">Failed to load candidate details. Please try again later.</p>
       );
     }
-    if (!enrichedOrder) {
-      if (viewMode === 'no-candidates') {
-        return (
-          <TrusteeSearchLink
-            className="no-candidates-message"
-            linkMessage="There are no suggested matches in CAMS."
-            linkLabel="Search for a trustee"
-            onClick={openSearch}
-          />
-        );
-      }
-      return null;
+    if (!detail) return null;
+    if (!comparison) {
+      return (
+        <TrusteeSearchLink
+          className="no-candidates-message"
+          linkMessage="There are no suggested matches in CAMS."
+          linkLabel="Search for a trustee"
+          onClick={openSearch}
+        />
+      );
     }
+
+    const hasCandidates = comparison.candidates.length > 0;
     return (
-      <>
-        {viewMode === 'pending-with-candidate' && preselected && (
-          <div className="trustee-match-candidate-section" data-testid="candidate-info">
-            {isMultipleMatch ? (
-              <>
-                <h3>CAMS Strongest Match</h3>
-                <CandidateTable
-                  candidates={[candidatesToShow[0]]}
-                  onApprove={openConfirmation}
-                  isProcessing={isProcessing}
-                  scoreCandidate={candidatesToShow[0]}
-                  forceAppointmentMismatch={isInactiveStatus}
-                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
-                />
-                <h3>Other Potential Matches</h3>
-                <p className="other-matches-subtext">
-                  Results are ordered from strongest to weakest match. If you don&apos;t find the
-                  trustee you&apos;re looking for{' '}
-                  <button
-                    type="button"
-                    onClick={openSearch}
-                    className="search-trustee-link search-trustee-inline-link"
-                  >
-                    search here.
-                  </button>
-                </p>
-                <p className="other-matches-count" data-testid="other-matches-count">
-                  {candidatesToShow.slice(1).length} matches
-                </p>
-                <CandidateTable
-                  candidates={candidatesToShow
-                    .slice(1)
-                    .slice(
-                      (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
-                      otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
-                    )}
-                  onApprove={openConfirmation}
-                  isProcessing={isProcessing}
-                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
-                />
-                {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
-                  <OtherMatchesPagination
-                    currentPage={otherMatchesPage}
-                    totalPages={Math.ceil(
-                      candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
-                    )}
-                    onPageChange={setOtherMatchesPage}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <h3>CAMS Strongest Match</h3>
-                <CandidateTable
-                  candidates={candidatesToShow}
-                  onApprove={openConfirmation}
-                  isProcessing={isProcessing}
-                  scoreCandidate={candidatesToShow[0]}
-                  forceAppointmentMismatch={isInactiveStatus}
-                  uncoveredCasesByTrusteeId={uncoveredCasesByTrusteeId}
-                />
-                <TrusteeSearchLink
-                  linkMessage="There are no other suggested matches in CAMS."
-                  linkLabel="Search for a trustee"
-                  onClick={openSearch}
-                />
-              </>
-            )}
-          </div>
-        )}
-        {viewMode === 'readonly-with-candidate' && preselected && (
-          <>
-            {isMultipleMatch ? (
-              <>
-                <h3>CAMS Strongest Match</h3>
-                <CandidateTable
-                  candidates={[candidatesToShow[0]]}
-                  scoreCandidate={candidatesToShow[0]}
-                  forceAppointmentMismatch={isInactiveStatus}
-                />
-                <h3>Other Potential Matches</h3>
-                <p className="other-matches-subtext">
-                  Results are ordered from strongest to weakest match. If you don&apos;t find the
-                  trustee you&apos;re looking for{' '}
-                  <button
-                    type="button"
-                    onClick={openSearch}
-                    className="search-trustee-link search-trustee-inline-link"
-                  >
-                    search here.
-                  </button>
-                </p>
-                <p className="other-matches-count" data-testid="other-matches-count">
-                  {candidatesToShow.slice(1).length} matches
-                </p>
-                <CandidateTable
-                  candidates={candidatesToShow
-                    .slice(1)
-                    .slice(
-                      (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
-                      otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
-                    )}
-                />
-                {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
-                  <OtherMatchesPagination
-                    currentPage={otherMatchesPage}
-                    totalPages={Math.ceil(
-                      candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
-                    )}
-                    onPageChange={setOtherMatchesPage}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <h3>CAMS Strongest Match</h3>
-                <CandidateTable
-                  candidates={candidatesToShow}
-                  scoreCandidate={candidatesToShow[0]}
-                  forceAppointmentMismatch={isInactiveStatus}
-                />
-                <TrusteeSearchLink
-                  linkMessage="There are no other suggested matches in CAMS."
-                  linkLabel="Search for a trustee"
-                  onClick={openSearch}
-                />
-              </>
-            )}
-          </>
-        )}
-        {viewMode === 'no-candidates' && (
-          <TrusteeSearchLink
-            className="no-candidates-message"
-            linkMessage="There are no suggested matches in CAMS."
-            linkLabel="Search for a trustee"
-            onClick={openSearch}
-          />
-        )}
-      </>
+      <div className="trustee-match-candidate-section" data-testid="candidate-info">
+        <h3>Potential Matches</h3>
+        <p className="other-matches-subtext">
+          Results are ordered from strongest to weakest match. A{' '}
+          <Icon
+            name="warning"
+            className="difference-icon-symbol"
+            decorative={false}
+            tooltip="warning icon"
+          />{' '}
+          marks information that differs from what was sent.
+        </p>
+        <TrusteeComparisonTable
+          comparison={comparison}
+          sourceLabel={`Source record (${source ?? 'DXTR'})`}
+          onApprove={canApprove ? openConfirmation : undefined}
+          isProcessing={isProcessing}
+        />
+        <TrusteeSearchLink
+          className={hasCandidates ? undefined : 'no-candidates-message'}
+          linkMessage={
+            hasCandidates
+              ? "If you don't find the trustee you're looking for,"
+              : 'There are no suggested matches in CAMS.'
+          }
+          linkLabel="Search for a trustee"
+          onClick={openSearch}
+        />
+      </div>
     );
   }
 
@@ -973,7 +411,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           className="accordion-content trustee-match-content"
           data-testid={`accordion-content-${order.id}`}
         >
-          {viewMode === 'resolved' && (
+          {isResolved ? (
             <p className="resolved-statement" data-testid="resolved-statement">
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
@@ -981,77 +419,30 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               </span>
               {caseLink}
             </p>
-          )}
-          {viewMode !== 'resolved' && (
+          ) : (
             <>
-              {isInactiveStatus ? (
-                inactiveOtherMismatchedFields.length ? (
-                  <p className="problem-statement">
-                    <span>
-                      Trustee is inactive in CAMS and {inactiveMismatchedFieldsPrefix}sent from the
-                      court {inactiveMatchVerb} a CAMS Trustee for{' '}
-                      {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
-                    </span>
-                    {caseLink}
-                  </p>
-                ) : (
-                  <p className="problem-statement">
-                    <span>
-                      Trustee is inactive in CAMS but was appointed to{' '}
-                      {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
-                    </span>
-                    {caseLink}
-                  </p>
-                )
-              ) : (
-                <p className="problem-statement">
-                  <span>
-                    Trustee {mismatchedFieldsPrefix}sent from the court {matchVerb} a CAMS Trustee
-                    for {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
+              <div className="identity-task-header" data-testid="identity-task-header">
+                {reasonLabel && (
+                  <span className="identity-task-reason" data-testid="identity-task-reason">
+                    {reasonLabel}
                   </span>
-                  {caseLink}
-                </p>
-              )}
-
-              <h3>Trustee Information Sent By Court</h3>
-              <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">
-                <div className="trustee-data-header grid-row grid-gap-lg">
-                  <div className="trustee-data-cell grid-col-2">Name</div>
-                  <div className="trustee-data-cell grid-col-2">Address</div>
-                  <div className="trustee-data-cell grid-col-1">Phone</div>
-                  <div className="trustee-data-cell grid-col-2">Email</div>
-                  <div className="trustee-data-cell grid-col-3 no-border"></div>
-                  <div className="trustee-data-cell grid-col-2 no-border"></div>
-                </div>
-                <div className="trustee-data-row grid-row grid-gap-lg">
-                  <div
-                    className="trustee-data-cell grid-col-2"
-                    data-cell="Name"
-                    data-testid="dxtr-trustee-name"
-                  >
-                    {order.dxtrTrustee.fullName}
-                  </div>
-                  <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                    {addressLines.length > 0
-                      ? addressLines.map((line, i) => (
-                          <span key={i}>
-                            {line}
-                            {i < addressLines.length - 1 && <br />}
-                          </span>
-                        ))
-                      : 'Not Provided'}
-                  </div>
-                  <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                    {legacy?.phone ?? 'Not Provided'}
-                  </div>
-                  <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                    {legacy?.email ?? 'Not Provided'}
-                  </div>
-                  <div className="trustee-data-cell grid-col-3 no-border"></div>
-                  <div className="trustee-data-cell grid-col-2 no-border"></div>
-                </div>
+                )}
+                {source && (
+                  <Tag id={`identity-task-source-${order.id}`} title={`Source: ${source}`}>
+                    {source}
+                  </Tag>
+                )}
+                <span className="identity-task-case-count" data-testid="identity-task-case-count">
+                  {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
+                </span>
               </div>
-
+              <p className="problem-statement">
+                <span>
+                  Trustee sent from the court does not match a CAMS Trustee for{' '}
+                  {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
+                </span>
+                {caseLink}
+              </p>
               {renderDetailSection()}
             </>
           )}

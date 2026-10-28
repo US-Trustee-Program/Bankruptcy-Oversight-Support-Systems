@@ -68,9 +68,10 @@ Feature: Trustee identity verification on matching-pipeline findings
     And I see "Source record (DXTR)" in place of "Sent By Court"
     And I see a table with the source record first, then one column per candidate in pipeline ranking order
     And the table rows are Name, Phone, Street, City, State, Zip, Email, Found by
-    And each candidate cell shows the CAMS value and one marker: Agrees (exact, strong or weak), Close, Differs, Conflicts, or Not comparable
-    And each marker shows text and an icon, never color alone
-    And only a State difference gets conflict styling
+    And each candidate cell shows the CAMS value
+    And a field that does not match the source record exactly shows one warning icon with an accessible name, never color alone
+    And a field that could not be compared shows its value, or "Not Provided", with no icon
+    And a State difference uses the same warning icon as any other field
 
   Scenario: Every candidate is shown for no-match tasks
     Given a pending no-match identity task with 3 candidates

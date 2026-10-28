@@ -142,6 +142,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'taskType'
   | 'taskDate'
   | 'inactiveAppointmentStatus'
+  | 'source'
 > & {
   preselectedCandidate: TrusteeCandidate | null;
   candidateCount: number;

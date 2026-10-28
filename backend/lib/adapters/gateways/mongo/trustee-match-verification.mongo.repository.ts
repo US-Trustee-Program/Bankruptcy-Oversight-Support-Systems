@@ -191,6 +191,7 @@ export class TrusteeMatchVerificationMongoRepository
         'inactiveAppointmentStatus',
         'fingerprint',
         'variant',
+        'source',
       );
       return (await this.getAdapter<TrusteeMatchVerification>().find(
         and(...conditions),
