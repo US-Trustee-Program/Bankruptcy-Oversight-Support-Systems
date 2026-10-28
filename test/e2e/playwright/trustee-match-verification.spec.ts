@@ -7,7 +7,7 @@ const timeoutOption = { timeout: 60000 };
 
 // Seeded identity tasks (test/e2e/fixtures/mongo-fixture.json). Each source record is name-only,
 // so the name is the one comparison the pipeline could make, and it differs for every candidate.
-const AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-pending-1'; // candidates 1 and 2
+const AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-pending-1'; // Taylor and Tyler Multimatch
 const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
 
@@ -80,8 +80,8 @@ test.describe('Trustee Identity Verification', () => {
     await expect(table.getByRole('columnheader')).toHaveText([
       'Field',
       'Source record (DXTR)',
-      'E2E Trustee 1',
-      'E2E Trustee 2',
+      'Taylor Multimatch',
+      'Tyler Multimatch',
     ]);
     // Body rows only: a pending task's footer adds a screen-reader-only 'Action' row header.
     await expect(table.locator('tbody').getByRole('rowheader')).toHaveText([
@@ -95,22 +95,23 @@ test.describe('Trustee Identity Verification', () => {
       'Found by',
     ]);
 
-    // Only the name was compared; both candidates' names differ from the source record.
+    // "T" is only an initial, and neither candidate shares the source's street or phone; the city,
+    // state and zip agree and no email was sent, so those rows carry no marker.
     const nameRow = table
       .getByRole('row')
       .filter({ has: page.getByRole('rowheader', { name: 'Name' }) });
     await expect(nameRow.getByLabel('Name differs from the source record')).toHaveCount(2);
-    await expect(table.getByLabel(/differs from the source record/)).toHaveCount(2);
+    await expect(table.getByLabel(/differs from the source record/)).toHaveCount(6);
   });
 
   test('opens the confirmation modal for the chosen candidate', async ({ page }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
-    await content.getByTestId('approve-candidate-e2e-trustee-candidate-2').click();
+    await content.getByTestId('approve-candidate-seed-trustee-match-multi-b').click();
 
     const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}`);
     await expect(modal).toBeVisible(timeoutOption);
-    await expect(modal).toContainText('E2E Trustee 2');
+    await expect(modal).toContainText('Tyler Multimatch');
     await page.locator(`#trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}-cancel-button`).click();
     await expect(modal).toBeHidden(timeoutOption);
   });

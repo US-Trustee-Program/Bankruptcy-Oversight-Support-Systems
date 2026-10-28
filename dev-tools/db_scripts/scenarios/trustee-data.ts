@@ -9,24 +9,22 @@
  *   - One inactive trustee (Pat Seedtrustee) — appears on the trustees list
  *   - One matched appointment (active trustee, active status, chapter 7)
  *   - One mismatched appointment (active trustee, mismatched status, chapter 13)
- *   - One pending trustee match verification against case 091-99-87899
+ *   - One pending trustee match verification against case 091-99-87899: Samuel Seedtrustee, an
+ *     ambiguous task with both Seedtrustees as candidates (fixture scenario seedTrusteeNickname)
  *
  * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
-import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
-import { computeFingerprint } from '../lib/compute-fingerprint.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
+import {
+  identityTaskFields,
+  scenarioTrusteeDocuments,
+} from '../lib/trustee-match-scenario-seeds.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
-const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
-const SEED_DXTR_TRUSTEE = {
-  firstName: 'Samuel',
-  lastName: 'Seedtrustee',
-  fullName: 'Samuel Seedtrustee',
-};
 const NO_EMAIL_TRUSTEE_ID = 'seed-trustee-nocontact-001';
 
 // Existing DXTR case in Buffalo (091)
@@ -85,45 +83,13 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: active trustee ───────────────────────────────────────────────
-    {
-      db: 'cams',
+    // ── Cosmos: active trustee (Sam) and inactive trustee (Pat) ─────────────
+    // The candidates of the identity task below, so they come from its fixture scenario.
+    ...scenarioTrusteeDocuments('seedTrusteeNickname').map((trustee) => ({
+      db: 'cams' as const,
       collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: ACTIVE_TRUSTEE_ID,
-          firstName: 'Sam',
-          lastName: 'Seedtrustee',
-          status: 'active',
-          address1: '200 Trustee Ave',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10002',
-          phone: '212-555-0200',
-          email: 'sam.seedtrustee@example.com',
-        }),
-      ],
-    },
-
-    // ── Cosmos: inactive trustee ─────────────────────────────────────────────
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: INACTIVE_TRUSTEE_ID,
-          firstName: 'Pat',
-          lastName: 'Seedtrustee',
-          status: 'inactive',
-          address1: '300 Trustee Blvd',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10003',
-          phone: '212-555-0300',
-          email: 'pat.seedtrustee@example.com',
-        }),
-      ],
-    },
+      data: [trustee],
+    })),
 
     // ── Cosmos: active trustee missing email (constructed literally, not via  ──
     // createTrusteeBase, since that helper always faker-fills phone/email) ────
@@ -213,50 +179,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-trustee-match-verification-${CASE_ID}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
           caseId: CASE_ID,
           courtId: '0208',
           status: 'pending',
           taskDate: '2025-03-01T00:00:00.000Z',
-          mismatchReason: 'no match',
-          source: 'DXTR',
-          fingerprint: computeFingerprint(SEED_DXTR_TRUSTEE),
-          dxtrTrustee: SEED_DXTR_TRUSTEE,
-          // The pipeline's stored state for this name-only source record: one candidate, found
-          // by exact surname. "Samuel" vs "Sam" is a known nickname pair, so the name grades
-          // 'strong'; with no DXTR address, phone or email there is nothing else to compare.
-          findings: {
-            sourceRaw: SEED_DXTR_TRUSTEE,
-            sourceNormalized: {},
-            memo: {},
-            candidates: [
-              {
-                camsRaw: {
-                  trusteeId: ACTIVE_TRUSTEE_ID,
-                  firstName: 'Sam',
-                  lastName: 'Seedtrustee',
-                  name: 'Sam Seedtrustee',
-                  address: {
-                    address1: '200 Trustee Ave',
-                    city: 'New York',
-                    state: 'NY',
-                    zipCode: '10002',
-                    countryCode: 'US',
-                  },
-                  phone: { number: '212-555-0200' },
-                  email: 'sam.seedtrustee@example.com',
-                },
-                camsNormalized: {},
-                memo: {},
-                scores: { doesNameMatch: { pass: true, quality: 'strong' } },
-                origin: 'recallBySurnameExact',
-              },
-            ],
-            match: null,
-            skip: false,
-            error: null,
-          },
+          ...identityTaskFields('seedTrusteeNickname'),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

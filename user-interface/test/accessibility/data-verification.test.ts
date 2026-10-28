@@ -121,9 +121,9 @@ test.describe('Data Verification', () => {
     page,
   }) => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
-    // The fake API serves one ambiguous DXTR identity task with two candidates, one of which
-    // differs from the source record (mock-api2.ts trusteeMatchVerificationDetail).
-    const taskId = 'e8c1f0a2-identity-task-smith';
+    // The fake API serves one ambiguous DXTR identity task with two candidates whose street and
+    // phone differ from the source record (mock-api2.ts trusteeMatchVerificationDetail).
+    const taskId = 'e8c1f0a2-identity-task-multimatch';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
     // Narrow the type filter to trustee identity tasks only
@@ -141,7 +141,7 @@ test.describe('Data Verification', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
 
     // Open the confirmation modal for the second candidate
-    await page.locator('[data-testid="approve-candidate-trustee-002"]').click();
+    await page.locator('[data-testid="approve-candidate-seed-trustee-match-multi-b"]').click();
     const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
     await expect(cancelButton).toBeVisible();
     // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.

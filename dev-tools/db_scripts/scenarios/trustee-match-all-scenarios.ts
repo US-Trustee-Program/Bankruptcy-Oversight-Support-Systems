@@ -7,14 +7,14 @@
  * `findings`, and mismatchReason 'ambiguous' (2+ candidates) or 'no match' (0 or 1 candidate).
  * A resolved pipeline match writes the appointment instead, so it has no document to seed here.
  *
- * Each candidate's stored scores are derived by hand from the pipeline's scorer rules
- * (trustee-match-pipeline-stages.ts) against the fixture's own source and CAMS data, and the
- * seed validator (assertTrusteeMatchFindingsValid) rejects any comparison with no data behind it:
+ * Each task's findings, DXTR source and candidate trustees come from a trustee-match fixture
+ * scenario (common/src/cams/test-utilities/trustee-match-findings.scenarios.ts), whose findings
+ * are the real pipeline's output. No score is written by hand:
  *
- *   1. No match, no candidates.
- *   2. Ambiguous, 2 candidates: one agrees on everything compared, the other has a phone typo
- *      and a different street number - two candidates, warning markers on the second.
- *   3. No match, 1 candidate: the name and state agree, the city, zip and phone differ.
+ *   1. No match, no candidates (noCandidates).
+ *   2. Ambiguous, 2 candidates that tie on every resolver (multipleCandidates).
+ *   3. No match, 1 candidate whose name, address and phone differ
+ *      (oneCandidateAddressAndPhoneDiffer).
  *
  *   - Multi-case scenarios. For a pending task, affectedCaseCount/affectedCaseIds are derived
  *     live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows sharing the
@@ -39,7 +39,10 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createTrusteeBase } from '../lib/test-data-utils.js';
-import { computeFingerprint } from '../lib/compute-fingerprint.js';
+import {
+  identityTaskFields,
+  scenarioTrusteeDocuments,
+} from '../lib/trustee-match-scenario-seeds.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -61,46 +64,7 @@ const CASE_DIVISION_MISMATCH_A = '091-99-40761'; // Ch 11, Western District of N
 const CASE_DIVISION_MISMATCH_B = '091-99-11079'; // Ch 11, Western District of NY - Buffalo (091)
 const CASE_DIVISION_MISMATCH_C = '081-23-10005'; // Ch 11, Southern District of NY - Manhattan (081)
 
-// ── CAMS trustees ───────────────────────────────────────────────────────────
-// Defined once and reused for both the trustees collection and each task's findings, so a
-// candidate's stored camsRaw can never drift from the trustee it names.
-const TRUSTEE_MULTI_A = createTrusteeBase({
-  id: 'seed-trustee-match-multi-a',
-  firstName: 'Taylor',
-  lastName: 'Multimatch',
-  status: 'active',
-  address1: '300 Match Ave',
-  city: 'New York',
-  state: 'NY',
-  zipCode: '10003',
-  phone: '212-555-3000',
-  email: 'taylor.multimatch@example.com',
-});
-const TRUSTEE_MULTI_B = createTrusteeBase({
-  id: 'seed-trustee-match-multi-b',
-  firstName: 'Tyler',
-  lastName: 'Multimatch',
-  status: 'active',
-  address1: '301 Match Ave',
-  city: 'New York',
-  state: 'NY',
-  zipCode: '10003',
-  phone: '212-555-3001',
-  email: 'tyler.multimatch@example.com',
-});
-const TRUSTEE_SINGLE_CANDIDATE = createTrusteeBase({
-  id: 'seed-trustee-match-imperfect',
-  firstName: 'Jordan',
-  lastName: 'Imperfectmatch',
-  status: 'active',
-  address1: '400 Match Blvd',
-  city: 'New York',
-  state: 'NY',
-  zipCode: '10004',
-  phone: '212-555-4000',
-  email: 'jordan.imperfectmatch@example.com',
-});
-// The trustee the approved tasks below were resolved to.
+// The trustee the approved tasks below were resolved to. Not a candidate in any scenario.
 const TRUSTEE_RESOLVED = createTrusteeBase({
   id: 'seed-trustee-match-highconf',
   firstName: 'Alex',
@@ -113,145 +77,13 @@ const TRUSTEE_RESOLVED = createTrusteeBase({
   phone: '212-555-5000',
   email: 'alex.highconfidence@example.com',
 });
-const TRUSTEE_MULTI_CASE = createTrusteeBase({
-  id: 'seed-trustee-match-multicase',
-  firstName: 'Cassidy',
-  lastName: 'Multicasematch',
-  status: 'active',
-  address1: '700 Match Ln',
-  city: 'New York',
-  state: 'NY',
-  zipCode: '10007',
-  phone: '212-555-7000',
-  email: 'cassidy.multicasematch@example.com',
-});
-// Appointed in Buffalo (091) only, so division-mismatch cases A/B are covered but C (081) is not.
-const TRUSTEE_DIVISION_MISMATCH = createTrusteeBase({
-  id: 'seed-trustee-match-divisionmismatch',
-  firstName: 'Dana',
-  lastName: 'Divisionmismatch',
-  status: 'active',
-  address1: '800 Match Pl',
-  city: 'Buffalo',
-  state: 'NY',
-  zipCode: '14201',
-  phone: '716-555-8000',
-  email: 'dana.divisionmismatch@example.com',
-});
-
-// ── DXTR source records ─────────────────────────────────────────────────────
-// Shared between `fingerprint` (via computeFingerprint), `dxtrTrustee` and findings.sourceRaw, so
-// the three can never drift out of sync with each other.
-const DXTR_NO_MATCH = {
-  firstName: 'Unique',
-  lastName: 'Nomatch',
-  fullName: 'Unique Nomatch',
-  legacy: {
-    address1: '1 Nowhere Rd',
-    cityStateZipCountry: 'Albany NY 12207',
-    phone: '518-555-0100',
-    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12207' },
-  },
-};
-const DXTR_MULTIPLE_MATCH = {
-  firstName: 'T',
-  lastName: 'Multimatch',
-  fullName: 'T Multimatch',
-  legacy: {
-    address1: '300 Match Ave',
-    cityStateZipCountry: 'New York NY 10003',
-    phone: '212-555-3000',
-    parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10003' },
-  },
-};
-const DXTR_SINGLE_CANDIDATE = {
-  firstName: 'J',
-  lastName: 'Imperfectmatch',
-  fullName: 'J Imperfectmatch',
-  legacy: {
-    address1: '400 Match Blvd',
-    cityStateZipCountry: 'Albany NY 12207',
-    phone: '518-555-9999',
-    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12207' },
-  },
-};
-const DXTR_MULTI_CASE = {
-  firstName: 'Casey',
-  lastName: 'Multicasematch',
-  fullName: 'Casey Multicasematch',
-};
-const DXTR_DIVISION_MISMATCH = {
-  firstName: 'Devon',
-  lastName: 'Divisionmismatch',
-  fullName: 'Devon Divisionmismatch',
-};
-const DXTR_RESOLVED_NO_SURROGATES = {
-  firstName: 'Riley',
-  lastName: 'Resolvedmatch',
-  fullName: 'Riley Resolvedmatch',
-};
-const DXTR_RESOLVED_WITH_SNAPSHOT = {
-  firstName: 'Drew',
-  lastName: 'Snapshotmatch',
-  fullName: 'Drew Snapshotmatch',
-};
-
-type SeedTrustee = ReturnType<typeof createTrusteeBase>;
-type Scores = Record<string, Record<string, unknown>>;
-
-/** A findings candidate as the pipeline stores it: the projected CAMS trustee plus its scores. */
-function candidate(trustee: SeedTrustee, scores: Scores, origin = 'recallBySurnameExact') {
-  return {
-    camsRaw: {
-      trusteeId: trustee.trusteeId,
-      firstName: trustee.firstName,
-      lastName: trustee.lastName,
-      name: trustee.name,
-      address: trustee.public.address,
-      phone: trustee.public.phone,
-      email: trustee.public.email,
-    },
-    camsNormalized: {},
-    memo: {},
-    scores,
-    origin,
-  };
-}
-
-/** The pipeline's serialized state for an unresolved source record. */
-function findings(sourceRaw: object, candidates: ReturnType<typeof candidate>[] = []) {
-  return {
-    sourceRaw,
-    sourceNormalized: {},
-    memo: {},
-    candidates,
-    match: null,
-    skip: false,
-    error: null,
-  };
-}
-
-/** Fields every seeded identity task shares. */
-function identityTask(dxtrTrustee: object & { fullName: string }) {
-  return {
-    documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    taskType: 'trustee-match',
-    source: 'DXTR',
-    fingerprint: computeFingerprint(dxtrTrustee),
-    dxtrTrustee,
-  };
-}
-
-// The only comparison a name-only source record supports: the given name was relaxed ("T" is an
-// initial of "Taylor"), the surname matched outright.
-const NAME_STRONG = { doesNameMatch: { pass: true, quality: 'strong' } };
-// A surname match whose given name does not match at all ("Casey" vs "Cassidy").
-const NAME_FAILS = { doesNameMatch: { pass: false } };
+const DIVISION_MISMATCH_TRUSTEE_ID = 'seed-trustee-match-divisionmismatch';
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   // Surrogates shared by the multi-case pending task below. Computed up front (rather than
   // inline in the array) so the fingerprint on the surrogates and the task can never drift apart.
-  const multiCaseFingerprint = computeFingerprint(DXTR_MULTI_CASE);
+  const multiCaseTask = identityTaskFields('multiCase');
+  const multiCaseFingerprint = multiCaseTask.fingerprint;
   const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
     id: `seed-surrogate-multicase-${caseId}`,
     documentType: 'CASE_APPOINTMENT',
@@ -271,7 +103,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   // Surrogates for the division-mismatch scenario. Unlike multiCaseSurrogates above, the
   // bookkeeping courtDivisionCode genuinely differs per case here (091 for A/B, 081 for C) --
   // that division difference is the whole point of this fixture, not an incidental detail.
-  const divisionMismatchFingerprint = computeFingerprint(DXTR_DIVISION_MISMATCH);
+  const divisionMismatchTask = identityTaskFields('divisionMismatch');
+  const divisionMismatchFingerprint = divisionMismatchTask.fingerprint;
   const divisionMismatchCaseDivisions: Record<string, string> = {
     [CASE_DIVISION_MISMATCH_A]: '091',
     [CASE_DIVISION_MISMATCH_B]: '091',
@@ -303,12 +136,13 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        TRUSTEE_MULTI_A,
-        TRUSTEE_MULTI_B,
-        TRUSTEE_SINGLE_CANDIDATE,
+        ...scenarioTrusteeDocuments(
+          'multipleCandidates',
+          'oneCandidateAddressAndPhoneDiffer',
+          'multiCase',
+          'divisionMismatch',
+        ),
         TRUSTEE_RESOLVED,
-        TRUSTEE_MULTI_CASE,
-        TRUSTEE_DIVISION_MISMATCH,
       ],
     },
 
@@ -322,7 +156,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: 'seed-appointment-divisionmismatch',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: TRUSTEE_DIVISION_MISMATCH.trusteeId,
+          trusteeId: DIVISION_MISMATCH_TRUSTEE_ID,
           chapter: '11',
           appointmentType: 'case-by-case',
           courtId: '0209',
@@ -346,78 +180,37 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         // 1. No match, no candidates.
         {
           id: `seed-match-no-match-${CASE_NO_MATCH}`,
-          ...identityTask(DXTR_NO_MATCH),
+          ...identityTaskFields('noCandidates'),
           caseId: CASE_NO_MATCH,
           courtId: '0208',
           status: 'pending',
           taskDate: '2011-07-08T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_NO_MATCH),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
 
-        // 2. Ambiguous, 2 candidates. Taylor agrees on everything compared (geography 3 + street
-        // 3 points = exact). Tyler's phone is one digit off (a likely typo, 'strong') and his
-        // street number differs ("301" vs "300": 2 of 3 street tokens agree, 2 street points),
-        // so he ranks second and his Phone and Street cells get the warning marker. The source
-        // record has no email, so neither candidate has a doesEmailMatch score.
+        // 2. Ambiguous, 2 candidates. Both share the source's city, state and zip but not its
+        // street or phone, so their Street and Phone cells get the warning marker.
         {
           id: `seed-match-multiple-${CASE_MULTIPLE_MATCH}`,
-          ...identityTask(DXTR_MULTIPLE_MATCH),
+          ...identityTaskFields('multipleCandidates'),
           caseId: CASE_MULTIPLE_MATCH,
           courtId: '0208',
           status: 'pending',
           taskDate: '2015-02-19T00:00:00.000Z',
-          mismatchReason: 'ambiguous',
-          findings: findings(DXTR_MULTIPLE_MATCH, [
-            candidate(TRUSTEE_MULTI_A, {
-              ...NAME_STRONG,
-              doesCityMatch: { pass: true },
-              doesStateMatch: { pass: true },
-              doesZipCodeMatch: { pass: true },
-              doesAddressMatch: { pass: true, quality: 'exact', points: 6, streetCloseness: 1 },
-              doesPhoneMatch: { pass: true, quality: 'exact' },
-            }),
-            candidate(TRUSTEE_MULTI_B, {
-              ...NAME_STRONG,
-              doesCityMatch: { pass: true },
-              doesStateMatch: { pass: true },
-              doesZipCodeMatch: { pass: true },
-              doesAddressMatch: {
-                pass: true,
-                quality: 'strong',
-                points: 5,
-                streetCloseness: 0.667,
-              },
-              doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
-            }),
-          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
 
-        // 3. No match, 1 candidate. The source record is in Albany: the state agrees, the city
-        // and zip differ (geography 1 point) and the street line agrees (3 points); the phone
-        // is 6 digits off, a different number rather than a typo.
+        // 3. No match, 1 candidate. The surname is misspelled (a 'weak' name), and the street,
+        // city, zip and phone all differ; the state agrees.
         {
           id: `seed-match-imperfect-${CASE_SINGLE_CANDIDATE}`,
-          ...identityTask(DXTR_SINGLE_CANDIDATE),
+          ...identityTaskFields('oneCandidateAddressAndPhoneDiffer'),
           caseId: CASE_SINGLE_CANDIDATE,
           courtId: '0208',
           status: 'pending',
           taskDate: '2019-11-30T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_SINGLE_CANDIDATE, [
-            candidate(TRUSTEE_SINGLE_CANDIDATE, {
-              ...NAME_STRONG,
-              doesCityMatch: { pass: false },
-              doesStateMatch: { pass: true },
-              doesZipCodeMatch: { pass: false },
-              doesAddressMatch: { pass: true, quality: 'strong', points: 4, streetCloseness: 1 },
-              doesPhoneMatch: { pass: false, phoneDigitDistance: 6 },
-            }),
-          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -443,14 +236,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-multicase-${CASE_MULTI_A}`,
-          ...identityTask(DXTR_MULTI_CASE),
-          fingerprint: multiCaseFingerprint,
+          ...multiCaseTask,
           caseId: CASE_MULTI_A,
           courtId: '0208',
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_MULTI_CASE, [candidate(TRUSTEE_MULTI_CASE, NAME_FAILS)]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -477,16 +267,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-divisionmismatch-${CASE_DIVISION_MISMATCH_A}`,
-          ...identityTask(DXTR_DIVISION_MISMATCH),
-          fingerprint: divisionMismatchFingerprint,
+          ...divisionMismatchTask,
           caseId: CASE_DIVISION_MISMATCH_A,
           courtId: '0209',
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_DIVISION_MISMATCH, [
-            candidate(TRUSTEE_DIVISION_MISMATCH, NAME_FAILS),
-          ]),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -502,13 +287,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-resolved-no-surrogates-${CASE_RESOLVED_NO_SURROGATES}`,
-          ...identityTask(DXTR_RESOLVED_NO_SURROGATES),
+          ...identityTaskFields('resolvedNoSurrogates'),
           caseId: CASE_RESOLVED_NO_SURROGATES,
           courtId: '0208',
           status: 'approved',
           taskDate: '2018-06-01T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_RESOLVED_NO_SURROGATES),
           resolvedTrusteeId: TRUSTEE_RESOLVED.trusteeId,
           resolvedTrusteeName: TRUSTEE_RESOLVED.name,
           updatedOn: '2025-06-01T00:00:00.000Z',
@@ -528,13 +311,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: `seed-match-resolved-with-snapshot-${CASE_MULTI_A}`,
-          ...identityTask(DXTR_RESOLVED_WITH_SNAPSHOT),
+          ...identityTaskFields('resolvedWithSnapshot'),
           caseId: CASE_MULTI_A,
           courtId: '0208',
           status: 'approved',
           taskDate: '2018-06-01T00:00:00.000Z',
-          mismatchReason: 'no match',
-          findings: findings(DXTR_RESOLVED_WITH_SNAPSHOT),
           resolvedTrusteeId: TRUSTEE_RESOLVED.trusteeId,
           resolvedTrusteeName: TRUSTEE_RESOLVED.name,
           affectedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],

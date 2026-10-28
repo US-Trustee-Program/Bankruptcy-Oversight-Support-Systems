@@ -62,3 +62,44 @@ Generated values that differ from the current hand-written seeds:
   `cityStateZipCountry` with a zipless "CITY ST" fallback. For "Texarkana TX", `parsedCityStateZip`
   is `null`, yet `doesCityMatch` and `doesStateMatch` are recorded, so the validator would reject
   real pipeline output.
+
+## Task 2: Seeds on generated findings
+
+All four drift items above are now in the seeds. Changes:
+
+- **dev-tools.** The new helpers in `dev-tools/db_scripts/lib/trustee-match-scenario-seeds.ts` are
+  `identityTaskFields(key)` and `scenarioTrusteeDocuments(...keys)`.
+  - `identityTaskFields(key)` returns `findings`, `dxtrTrustee` (the same record as `sourceRaw`),
+    `fingerprint`, `mismatchReason` and `source`.
+  - `scenarioTrusteeDocuments(...keys)` returns the scenarios' trustees with `documentType` and
+    `phoneticTokens`.
+  - `trustee-match-all-scenarios.ts` and `trustee-data.ts` use these helpers. The hand-scoring
+    helpers `candidate()`, `findings()` and `identityTask()` and the `NAME_*` constants are deleted.
+  - dev-tools loads the JSON at runtime through `MockData` under tsx.
+- **e2e.** Each task in `mongo-fixture.json` now carries a `findingsScenario` key, with no
+  `findings`, `dxtrTrustee`, `fingerprint`, `variant` or `mismatchReason`. `seed-database.ts`
+  resolves the key and removes it.
+  - It computes `variant` and `fingerprint` with the production `trustee-variant.helpers.ts`.
+  - It inserts the scenarios' trustees after the PII step, since they are fictional.
+  - **Deviation from the prompt:** the prompt said to read the JSON with `readFileSync`. The seed
+    imports common (relative path) instead, because it also needs the scenario trustees. The backend
+    container already contains `/app/common` and `/app/backend`.
+  - The approved task now resolves to `seed-trustee-match-relocated`.
+- **ui-sandbox** seeds `oneCandidateAddressAndPhoneDiffer` the same way.
+- **mock-api2** imports `trustee-match-findings.generated.json` directly, not through `MockData`, so
+  faker stays out of the bundle. The fake task id is now `e8c1f0a2-identity-task-multimatch`.
+- **Validator.** `assertTrusteeMatchFindingsValid` now reads the raw `cityStateZipCountry`, not
+  `parsedCityStateZip`.
+
+### Assertions changed because generated values differ
+
+- **e2e `trustee-match-verification.spec.ts`** (ambiguous task):
+  - Column headers are now Taylor Multimatch and Tyler Multimatch.
+  - The approve test id is `approve-candidate-seed-trustee-match-multi-b`; the modal name is Tyler
+    Multimatch.
+  - The differs-icon count goes from 2 to 6: name, phone and street for both candidates. The old
+    hand-written findings compared only the name.
+- **a11y `data-verification.test.ts`**: uses the new fake task id and the approve id
+  `seed-trustee-match-multi-b`.
+- **dev-tools `scenarios.test.ts`**: the trustee-data task is `'ambiguous'`, with Sam and Pat as
+  candidates.

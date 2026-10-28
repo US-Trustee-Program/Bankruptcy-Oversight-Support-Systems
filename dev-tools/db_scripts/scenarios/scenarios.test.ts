@@ -467,7 +467,7 @@ describe('trustee-data scenario', () => {
     });
   });
 
-  test('pending match verification is a no-match DXTR identity task with one findings candidate', async () => {
+  test('pending match verification is an ambiguous DXTR identity task: both Seedtrustees are candidates', async () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
@@ -477,13 +477,16 @@ describe('trustee-data scenario', () => {
       taskType: 'trustee-match',
       caseId: '091-99-87899',
       status: 'pending',
-      mismatchReason: 'no match',
+      mismatchReason: 'ambiguous',
       source: 'DXTR',
     });
     const findings = (verification?.data[0] as Record<string, unknown>)?.findings as {
-      candidates: unknown[];
+      candidates: { camsRaw: { trusteeId: string } }[];
     };
-    expect(findings.candidates).toHaveLength(1);
+    expect(findings.candidates.map((candidate) => candidate.camsRaw.trusteeId)).toEqual([
+      'seed-trustee-active-001',
+      'seed-trustee-inactive-001',
+    ]);
   });
 
   test('match verification id is stable and seed-prefixed for idempotent reruns', async () => {
