@@ -267,6 +267,28 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('routes an event that throws before matching to dlqMessages and still processes the rest of the page', async () => {
+      // No producer sends an event without dxtrTrustee today; it stands in for any throw from
+      // the pre-match steps (skip-reason checks, variant/fingerprint), which run before
+      // processOneEvent's catch. Without a per-event boundary, that throw would discard the
+      // whole page and send it to the native poison queue.
+      const malformed = {
+        ...makeEvent('case-002', 'Bad Event'),
+        dxtrTrustee: undefined,
+      } as unknown as TrusteeAppointmentSyncEvent;
+      const events = [malformed, makeEvent('case-001', 'John Doe')];
+
+      const { successCount, dlqMessages } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        events,
+      );
+
+      expect(dlqMessages).toEqual([
+        expect.objectContaining({ caseId: 'case-002', error: expect.any(CamsError) }),
+      ]);
+      expect(successCount).toBe(1);
+    });
+
     test('does nothing further when the same trustee is already active in both partitions', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-1',

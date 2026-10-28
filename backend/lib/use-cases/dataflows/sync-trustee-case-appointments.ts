@@ -1428,7 +1428,8 @@ function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
  * processAppointments' loop body, not duplicated. None of the helpers above ever catch anything
  * themselves; every repo call's thrown error propagates up to the one catch below, exactly as
  * before this extraction. See isTransientInfraError's doc comment for why a second, independent
- * recheck used to be required and no longer is (cams-o5gh).
+ * recheck used to be required and no longer is (cams-o5gh). The pre-match steps before the try
+ * are outside it; processOneEventOrDlq routes anything they throw to the DLQ.
  */
 async function processOneEvent(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1535,6 +1536,31 @@ async function processOneEvent(
 }
 
 /**
+ * Runs processOneEvent with a last-resort per-event boundary. processOneEvent's own catch covers
+ * matching and writes but not its pre-match steps (skip-reason checks, variant/fingerprint), and
+ * an error escaping here would fail the whole page: handlePage rethrows anything that is not a
+ * rate-limit or timeout, so every event in it is retried and then sent to the native poison
+ * queue. Routing the one event to the DLQ keeps the rest of the page.
+ */
+async function processOneEventOrDlq(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  scenarioDistribution: ScenarioDistribution,
+): Promise<EventOutcome> {
+  try {
+    return await processOneEvent(deps, event, scenarioDistribution);
+  } catch (originalError) {
+    const camsError = getCamsError(
+      originalError,
+      MODULE_NAME,
+      `Failed to process trustee appointment for case ${event.caseId}.`,
+    );
+    deps.context.logger.warn(MODULE_NAME, `${camsError}`);
+    return { kind: 'dlq', message: { ...event, error: camsError } };
+  }
+}
+
+/**
  * Process trustee appointment events by:
  * 1. Resolving each DXTR trustee to a CAMS trustee via the trustee-match pipeline (or a
  *    fingerprint/TRUSTEE_VARIATION bucket hit, bypassing the pipeline entirely)
@@ -1620,7 +1646,7 @@ async function processAppointments(
   };
 
   for (const event of events) {
-    const outcome = await processOneEvent(deps, event, scenarioDistribution);
+    const outcome = await processOneEventOrDlq(deps, event, scenarioDistribution);
     switch (outcome.kind) {
       case 'success':
         successCount++;
