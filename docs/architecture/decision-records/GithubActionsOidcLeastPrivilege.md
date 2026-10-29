@@ -78,65 +78,27 @@ Because the template expects an `environment` claim, `id-token: write` should be
 
 ### GitHub Environment Naming Convention
 
-Each reusable workflow that requires Azure access is assigned a dedicated GitHub environment. Environment names follow the convention `<workflow-purpose>-<target>` where target is `main` for production and `branch` for non-production:
+Each reusable workflow that requires Azure access is assigned a dedicated GitHub environment. Environment names follow the convention `<workflow-purpose>-<target>` where target is `main` for production and `branch` for non-production. Which workflow uses which environment is listed in the [OIDC identity inventory](../../../ops/scripts/utility/federated-credentials/README.md).
 
-| Reusable Workflow | GitHub Environment |
-|---|---|
-| `reusable-deploy.yml` | `deploy-main`, `deploy-branch` |
-| `reusable-infrastructure-deploy.yml` | `infrastructure-deploy-main`, `infrastructure-deploy-branch` |
-| `sub-deploy-code.yml`, `sub-deploy-code-slot.yml` | `deploy-code-main`, `deploy-code-branch` |
-| `reusable-build-info.yml` | `build-info-main`, `build-info-branch` |
-| `reusable-build-frontend.yml` | `build-frontend-main`, `build-frontend-branch` |
-| `reusable-e2e.yml` | `e2e-main`, `e2e-branch` |
-| `reusable-dast.yml` | `dast-main`, `dast-branch` |
-| `reusable-endpoint-test.yml` | `endpoint-test-main`, `endpoint-test-branch` |
-| `sub-security-scan.yml`, `deploy-security-scan-storage.yml` | `security-scan` |
-| `azure-remove-branch.yml` | `remove-branch` |
-
-These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope, and `security-scan` holds nothing at all, reading the repository-level `AZ_SECURITY_SCAN_CLIENT_ID` instead.
-
-This is distinct from the legacy `Main-Gov` and `Develop` environments, which still carry the full set of resource names and connection strings pending completion of the Key Vault migration.
+These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope.
 
 ### Azure Federated Credentials
 
-Each GitHub environment maps to one Azure federated credential on a dedicated app registration. Least privilege is expressed primarily through **role choice** rather than assignment scope: with the exceptions of `security-scan` and `deploy-branch`, every identity's primary role is assigned at subscription scope, and the bound on what it can do comes from how narrow that role is.
+Each GitHub environment maps to one Azure federated credential on a dedicated app registration. Least privilege is expressed primarily through **role choice**: each identity gets the narrowest Azure role that covers its workflow's work, and where no built-in role is narrow enough, a custom role holding only the needed actions is preferred over a broader built-in. For example, deploying or deleting an Azure Deployment Stack created with `--deny-settings-mode denyDelete` requires `Microsoft.Resources/deploymentStacks/manageDenySetting/action`, which belongs to neither Contributor nor the built-in Deployment Stack Contributor role — only to Deployment Stack Owner, which is far broader — so a custom role grants that one action instead.
 
-| Identity | Primary role | Scope |
-|---|---|---|
-| `build-frontend-*`, `build-info-*` | Reader | Subscription |
-| `deploy-code-*`, `endpoint-test-*` | Website Contributor | Subscription |
-| `dast-*` | Website Contributor, SQL Server Contributor | Subscription |
-| `deploy-main`, `infrastructure-deploy-*`, `e2e-*`, `remove-branch` | Contributor | Subscription |
-| `deploy-branch` | Contributor | Four resource groups: `rg-cams-app-dev`, `rg-cams-network-dev`, `rg-analytics`, `bankruptcy-oversight-support-systems` |
-| `security-scan` | Storage Blob Data Contributor | Storage account |
+Assignment scope is narrowed where a stable scope exists. Azure RBAC has no wildcard scoping, so an identity whose targets are named at deploy time can only be pre-granted at a scope that already exists, which may be the subscription. Subscription-scope assignment is broader than ideal and remains a deliberate tradeoff for each identity that still carries it; for those identities the bound on what they can do comes from how narrow the role is. Scoping to a resource group is a real reduction, but Contributor there still carries delete rights over everything else in that group, so resource-group scope is not the floor.
 
-Every identity additionally holds Key Vault Secrets User on each **individual secret** it reads, never at vault scope. Many secrets are deliberately shared across identities — `AZ-APP-RG` is granted to eight of the ten, `SLOT-NAME` to six — so this does not isolate workflows from one another. What it bounds is the tail: an identity can read only the secrets it was explicitly granted, not the rest of the vault.
+Every identity additionally holds Key Vault Secrets User on each **individual secret** it reads, never at vault scope. Many secrets are deliberately shared across identities, so this does not isolate workflows from one another. What it bounds is the tail: an identity can read only the secrets it was explicitly granted, not the rest of the vault.
 
-Subscription-scope assignment is broader than ideal and remains a deliberate, temporary tradeoff for every identity above that still carries it.
+Grants are made by the federated-credential runbooks under `ops/scripts/utility/federated-credentials/`, which only grant and never revoke. Azure RBAC is additive across scopes, so narrowing an identity's scope has no effect until the broader grant is revoked, and revocation is necessarily a manual, out-of-band procedure — grant, revoke, verify, roll back if needed — because the narrower scope's sufficiency cannot be verified while the broad grant is still in place.
 
-When this decision was first recorded, resource-group-scoped grants were genuinely incompatible with branch deployments: branch resource groups were created per-commit-hash at deploy time, and Azure RBAC has no wildcard scoping, so there was no stable scope to pre-grant. Rather than diverge main (static resource groups, scopable) from branch (dynamic, not scopable), both environments used the same subscription-scope grant, and narrowing was deferred to a focused follow-up.
-
-That constraint has since been removed. PR #2773 co-located branch deploys onto stable, statically-named resource groups — `rg-cams-app-dev` and `rg-cams-network-dev` — with per-branch isolation now expressed through per-branch-unique *resource* names rather than a per-branch resource group. PR #2803 is the deferred follow-up: it narrows `deploy-branch` to Contributor on four named resource groups, a strict subset of what main's own grant already covers. Two are the stable app and network groups. The other two — `rg-analytics` and `bankruptcy-oversight-support-systems` — were never per-branch and are shared with main, but every branch deploy writes into them (the branch-only Log Analytics Workspace deploy, and the shared app-config Key Vault and managed-identity setup that runs on every deploy). They are part of the narrowed grant because omitting them would break those steps the moment the broad grant is withdrawn. That inventory came from a static trace of every `az` call the `deploy-branch` identity makes across a branch deploy, not from inspection of the roles it happened to hold.
-
-Alongside Contributor, `deploy-branch` holds two narrowly scoped custom roles in preference to broader built-ins: `CAMS KV Role Assignment Operator` on the Key Vault resource (see below), and `CAMS Deployment Stack Deny Setting Operator` on the app and network resource groups. The latter exists because both branch deploys are Azure Deployment Stacks created with `--deny-settings-mode denyDelete`, and `Microsoft.Resources/deploymentStacks/manageDenySetting/action` belongs to neither Contributor nor the built-in Deployment Stack Contributor role — only to Deployment Stack Owner, which is far broader. `remove-branch` holds the same custom role at the same two resource-group scopes, for the symmetric reason: deleting a stack created with `denyDelete` requires `manageDenySetting` just as creating it does.
-
-`deploy-main` keeps subscription-scope Contributor deliberately. Main is the path that genuinely creates resource groups, so there is no narrower scope that covers its work today. Narrowing main is separate future work (cams-y8s2).
-
-**Least privilege has not yet been reached for `deploy-branch`.** Azure RBAC is additive across scopes, so the resource-group grants above are, on their own, a no-op for permission checking: the identity still holds its original subscription-scope Contributor, and until that is revoked the narrower grants change nothing. Revocation is necessarily a manual, out-of-band procedure — grant, revoke, verify, roll back if needed — because the narrower scope's sufficiency cannot be verified while the broad grant is still in place. It is tracked separately (cams-v4ngd). Three further standing grants on `deploy-branch` are also outstanding:
-
-- `User Access Administrator`, scoped to the `bankruptcy-oversight-support-systems` resource group (not the subscription). Superseded by `CAMS KV Role Assignment Operator`; to be revoked.
-- `CAMS Deploy Subscription Role`, a custom role at subscription scope (`Microsoft.Resources/deployments/*`, `subscriptions/resourceGroups/read`, `subscriptions/resourceGroups/write`). It is residue of an earlier, abandoned per-resource-group RBAC design, is defined only in live Azure, and is referenced nowhere in this repository; to be revoked.
-- `Role Based Access Control Administrator`, scoped to `rg-analytics`. Granted out of band and currently **load-bearing** — it must not be revoked until a narrower replacement grant is in place. Its provenance is untraced (cams-y8s2).
-
-Beyond those, the most consequential over-grant that will remain once the revocations above are complete is the resource-group scope itself. Two of the four `Contributor` grants — `rg-analytics` and `bankruptcy-oversight-support-systems` — are on resource groups shared with `main`, and Contributor at resource-group scope carries delete rights over everything else in that group, including main's shared Key Vault and Log Analytics workspace. Narrowing subscription to resource group is a real reduction, and these two grants are necessary today because every branch deploy writes into both groups — but resource-group scope is not the floor, and it should not be mistaken for the end state (cams-y8s2).
+The current identities, their roles and scopes, grants made outside the runbooks, and open narrowing work are listed in the [OIDC identity inventory](../../../ops/scripts/utility/federated-credentials/README.md). The runbooks are the source of truth for actual grants.
 
 ### Role Assignments Created by Bicep
 
 Contributor does not include `Microsoft.Authorization/roleAssignments/write`. Any Bicep module that creates a role assignment therefore requires the identity deploying it to hold that permission **at the scope of the assignment being created**, granted separately from Contributor.
 
-Today that is the custom role `CAMS KV Role Assignment Operator`, held by the deploy identities on the Key Vault *resource* — deliberately narrower than User Access Administrator, and narrower than the resource group, to limit privilege-escalation surface. A Bicep module that creates a role assignment at any **other** scope will fail at deploy time until the deploy identity is granted `roleAssignments/write` there as well. This failure surfaces only during deployment; nothing at commit time detects it.
-
-That pattern is not held to everywhere yet: `deploy-branch` also carries `Role Based Access Control Administrator` on `rg-analytics`, granted out of band rather than through this pattern, and it is currently load-bearing. Replacing it with a role as narrow as the Key Vault one is outstanding work (see above).
+That permission is granted through a custom role holding only the role-assignment actions, assigned on the exact *resource* the Bicep assignment targets — deliberately narrower than User Access Administrator, and narrower than the resource group, to limit privilege-escalation surface. A Bicep module that creates a role assignment at any **other** scope will fail at deploy time until the deploy identity is granted `roleAssignments/write` there as well. This failure surfaces only during deployment; nothing at commit time detects it.
 
 Which side owns the grant depends on whose identity it is for:
 
@@ -169,7 +131,7 @@ Accepted
 ## Consequences
 
 - Long-lived `AZURE_CREDENTIALS` secrets are eliminated from all workflows
-- Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; most roles are still assigned at subscription scope, so for those identities the bound is the role, not the scope. `security-scan` is bounded by scope as well, and `deploy-branch`'s Contributor grant is now written against four named resource groups rather than the subscription
+- Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; where that role is assigned at subscription scope, the bound is the role, not the scope
 - Narrowing an existing identity's scope is a two-part operation, and only the first part can be automated: the runbooks grant but never revoke, so a narrowed grant has no effect until the broader one is revoked manually. Until that revocation lands, the runbook's scope is a statement of intent, not of effective privilege
 - GitHub environments contain no secrets or variables; all environment-specific configuration lives in Azure Key Vault
 - Two Key Vaults are maintained (main and branch) with identical secret names; any change to a vault secret is a two-step operation — update main vault, then branch vault
