@@ -161,7 +161,7 @@ test.describe('Trustee Identity Verification', () => {
       'Trustee state sent to CAMS does not exactly match a trustee in CAMS. Affects 1 case:',
     );
     await expect(await expandTask(page, ADDRESS_PHONE_TASK_ID)).toContainText(
-      'Trustee address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 1 case:',
+      'Trustee name, address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 1 case:',
     );
   });
 

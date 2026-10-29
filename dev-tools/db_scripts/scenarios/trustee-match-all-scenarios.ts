@@ -113,11 +113,13 @@ const SINGLE_CASE_TASKS = [
   taskDate: string;
 }[];
 
-// Multi-case scenarios (3 distinct cases)
-const CASE_MULTI_A = '091-99-86706';
-const CASE_MULTI_B = '091-99-99943';
-const CASE_MULTI_C = '091-99-98483';
-const CASE_RESOLVED_NO_SURROGATES = '091-99-97816';
+// Multi-case scenarios (3 distinct cases, all Chapter 11, Buffalo). None of these cases carries
+// another scenario's trustee appointments: the sync only raises a task for a case whose trustee
+// it could not resolve.
+const CASE_MULTI_A = '091-99-25850';
+const CASE_MULTI_B = '091-99-26681';
+const CASE_MULTI_C = '091-99-26914';
+const CASE_RESOLVED_NO_SURROGATES = '091-99-28263';
 
 // Multi-case DIVISION-mismatch scenario (3 distinct cases, all Chapter 11): two share a
 // court+division the candidate is appointed in, the third is a genuinely different court the

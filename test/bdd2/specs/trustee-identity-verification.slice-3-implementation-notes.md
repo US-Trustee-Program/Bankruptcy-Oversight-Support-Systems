@@ -173,17 +173,45 @@ All four drift items above are now in the seeds. Changes:
   (`test/integration/trustee-match-scenarios/scripts/start-services.sh`, then `seed-schema`,
   `seed-sql`, `seed-cosmos`, `run`, `clean`, `stop-services.sh`) - all scenarios pass, including the
   new scenario 6/8 scorer-coverage assertions.
-- **e2e**: not run in this session. `npm run e2e` failed for two reasons, both local-environment
-  issues unrelated to this slice's code: (1) this podman version has removed `slirp4netns`, which
-  `run-e2e-workflow.sh` forces as a deliberate CI-runner pasta-bug workaround - confirmed `pasta`
-  networking works fine on this machine as a local-only substitute, but didn't change the shared
-  script; (2) `test/e2e/.env`'s `MSSQL_HOST`/`MSSQL_USER`/`MSSQL_PASS` pointed at a real Azure Gov
-  Cloud SQL Server instead of the local SQL Edge container the script starts (should be
-  `localhost`/`sa`/a local password + `MSSQL_DATABASE_DXTR=CAMS_E2E`, per `.env.local.example`) -
-  left unchanged pending the human fixing their local `.env`. Run `npm run e2e` from `test/e2e/`
-  once that's fixed, covering the new fixture task and sentence/name-section e2e assertions.
-- **UX sign-off still needed** (per the prompts doc) from Brian Posey on the generated sentences,
-  which differ from the mock's copy - "does not _exactly_ match" for state, plus the new field
-  combinations above.
-- `trustee-identity-verification.workflow-state.json` not yet advanced to Slice 4 - do that once the
-  above test runs and sign-off are confirmed.
+- **e2e**: `npm run e2e` from `test/e2e/` passes, 20 passed and 1 skipped (`trustees.spec.ts`
+  "should assign an auditor to a trustee", skipped before this slice). The first run failed one
+  assertion: the `oneCandidateAddressAndPhoneDiffer` task expected "Trustee address and phone ...",
+  but its source name "Jordan Imperfectmach" differs from the candidate "Jordan Imperfectmatch", so
+  the mapper correctly renders "Trustee name, address and phone sent to CAMS do not exactly match a
+  trustee in CAMS." The spec's expected text was corrected. The local-environment blockers recorded
+  in an earlier session (`slirp4netns` removed, `test/e2e/.env` pointing at Azure SQL) were specific
+  to that machine: podman 5.8.1 on macOS still supports `slirp4netns`, and a `test/e2e/.env` built
+  from `.env.local.example` works.
+- **UX sign-off**: the sentence for each seeded scenario was reviewed and approved by Kelly
+  Diabagate, 2026-10-29, including "does not exactly match" for the state sentence and "Trustee
+  information sent to CAMS does not exactly match a trustee in CAMS." when one candidate differs in
+  no compared field.
+- `trustee-identity-verification.workflow-state.json` advanced to Slice 4.
+
+## Dev seed realism (after Tasks 1-4)
+
+Expanding an identity task in Azure dev crashed the accordion in `buildTrusteeComparison` for tasks
+with no `findings`: 8 retired seed tasks from before PR #3202 and 12 tasks the DXTR sync wrote
+before Slice 2. All 20 were deleted from dev. Every other environment must run
+`npm run unseed:local` before `npm run seed:local` once this branch merges.
+
+Seed changes, each covered by `dev-tools/db_scripts/scenarios/trustee-match-all-scenarios.test.ts`
+or `scenarios.test.ts`:
+
+- `trustee-match-all-scenarios.ts` seeds one pending task per explanation-sentence shape, adding
+  `oneCandidateStateDiffers`, `oneCandidateNameAddressEmailDiffer`, `oneCandidateExactName` and
+  `oneCandidateNothingDiffers`.
+- Every pending task has a surrogate `CASE_APPOINTMENT` for its own case in both
+  `case-trustee-appointments` and `trustee-case-appointments`, as the sync writes. Without one,
+  approval skipped the division check and remapped nothing.
+- No identity task, `affectedCaseIds` snapshot or surrogate is on a `dxtr-historical-trustees` case
+  (`091-99-86706`, `091-99-87899`, `091-99-99943`, `091-99-97816`, `091-99-98483`); the sync never
+  raises a task for a case whose trustee it resolved. The multi-case bundle and its approved
+  snapshot use `091-99-25850`, `091-99-26681`, `091-99-26914`; the approved no-surrogate task uses
+  `091-99-28263`. `trustee-data.ts`'s task moved to `091-99-16994`.
+
+Multi-case coverage: no code path branches on candidate count and case count together, so the seeded
+multi-case tasks (one candidate each) exercise the same paths a 0- or 2+-candidate multi-case task
+would. The one multi-case behavior no seed reaches is `TrusteeSearchModal`'s coverage check (Confirm
+disabled when the searched trustee does not cover every affected case,
+`TrusteeSearchModal.tsx:206-219`), which is unit-tested only with a single case.
