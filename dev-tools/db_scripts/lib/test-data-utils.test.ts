@@ -24,6 +24,7 @@ function validFindingsDoc(): FindingsDoc & {
       sourceRaw: {
         legacy: {
           address1: '1 Main St',
+          cityStateZipCountry: 'New York NY 10001',
           phone: '212-555-0100',
           parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
         },
@@ -1298,6 +1299,23 @@ describe('validators', () => {
     test('throws when a state comparison is recorded but the candidate has no address', () => {
       const doc = validFindingsDoc();
       delete doc.findings.candidates[0].camsRaw.address;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
+        'records doesCityMatch but the source record or candidate has no city, state or zip to compare',
+      );
+    });
+
+    test('passes when a zipless city line was compared, though the sync could not parse it', () => {
+      // The pipeline recovers "CITY ST" without a zip; the sync's strict parser records null.
+      const doc = validFindingsDoc();
+      doc.findings.sourceRaw!.legacy!.cityStateZipCountry = 'Texarkana TX';
+      doc.findings.sourceRaw!.legacy!.parsedCityStateZip = null;
+      expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).not.toThrow();
+    });
+
+    test('throws when a city comparison is recorded but the source record has no city line', () => {
+      const doc = validFindingsDoc();
+      delete doc.findings.sourceRaw!.legacy!.cityStateZipCountry;
+      delete doc.findings.sourceRaw!.legacy!.parsedCityStateZip;
       expect(() => validators.assertTrusteeMatchFindingsValid(doc, 'Test')).toThrow(
         'records doesCityMatch but the source record or candidate has no city, state or zip to compare',
       );

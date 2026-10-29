@@ -1,4 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
+import MockData from '@common/cams/test-utilities/mock-data.js';
+import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { generate } from './trustee-match-all-scenarios.js';
 
@@ -17,13 +19,97 @@ function surrogatesFor(ops: SeedOperation[], collectionOrTable: string) {
   return ops.filter((o) => o.collectionOrTable === collectionOrTable).flatMap((o) => o.data);
 }
 
+// Slice 3's explanation sentences differ by which fields a single candidate mismatches; these
+// scenarios give each sentence shape a pending task in the dev data for demos and UX sign-off.
+describe('trustee-match-all-scenarios (CAMS-953 explanation sentence scenarios)', () => {
+  test.each([
+    'oneCandidateStateDiffers',
+    'oneCandidateNameAddressEmailDiffer',
+    'oneCandidateExactName',
+    'oneCandidateNothingDiffers',
+  ] as const)(
+    'should seed a pending task with the %s findings and its candidate trustee',
+    async (key) => {
+      const ops = await generate(context());
+      const findings = MockData.getTrusteeMatchScenarioFindings(key);
+
+      const task = ops
+        .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+        .flatMap((o) => o.data)
+        .find((d) => JSON.stringify(d.findings) === JSON.stringify(findings));
+      expect(task?.status).toBe('pending');
+
+      const trusteeIds = ops
+        .filter((o) => o.collectionOrTable === 'trustees')
+        .flatMap((o) => o.data)
+        .map((d) => d.trusteeId);
+      for (const trustee of TRUSTEE_MATCH_FINDINGS_SCENARIOS[key].trustees) {
+        expect(trusteeIds).toContain(trustee.trusteeId);
+      }
+    },
+  );
+});
+
+// The DXTR sync writes a surrogate CASE_APPOINTMENT for every case it raises a task for, and
+// approval derives the cases to check and remap from those surrogates alone.
+describe('trustee-match-all-scenarios (pending tasks look like sync output)', () => {
+  function pendingTasks(ops: SeedOperation[]) {
+    return ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data)
+      .filter((d) => d.status === 'pending');
+  }
+
+  test('should give every pending task a surrogate for its own case in both partitions', async () => {
+    const ops = await generate(context());
+
+    for (const task of pendingTasks(ops)) {
+      for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+        const surrogateCaseIds = surrogatesFor(ops, table)
+          .filter((s) => s.trusteeId === task.fingerprint && s.isSurrogate === true)
+          .map((s) => s.caseId);
+        expect(surrogateCaseIds).toContain(task.caseId);
+      }
+    }
+  });
+
+  test('should not seed two pending tasks on the same case', async () => {
+    const ops = await generate(context());
+    const caseIds = pendingTasks(ops).map((task) => task.caseId);
+
+    expect(new Set(caseIds).size).toBe(caseIds.length);
+  });
+
+  // dxtr-historical-trustees gives these cases real trustee appointments, and the sync never
+  // raises a task for a case whose trustee it resolved.
+  test('should not put identity tasks or surrogates on dxtr-historical-trustees cases', async () => {
+    const historicalCaseIds = [
+      '091-99-86706',
+      '091-99-87899',
+      '091-99-99943',
+      '091-99-97816',
+      '091-99-98483',
+    ];
+    const ops = await generate(context());
+    const tasks = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data);
+    const caseIds = [
+      ...tasks.flatMap((task) => [task.caseId, ...((task.affectedCaseIds as string[]) ?? [])]),
+      ...surrogatesFor(ops, 'case-trustee-appointments').map((s) => s.caseId),
+    ] as string[];
+
+    expect(caseIds.filter((caseId) => historicalCaseIds.includes(caseId))).toEqual([]);
+  });
+});
+
 // These cover only the CAMS-871 additions (multi-case mismatches) — the rest of this scenario
 // file has no dedicated test coverage beyond the generic data-quality checks in
 // all-scenarios.validation.test.ts.
 describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
   test('pending multi-case mismatch: surrogates in both partitions share the verification fingerprint', async () => {
     const ops = await generate(context());
-    const verification = findVerification(ops, 'seed-match-multicase-091-99-86706');
+    const verification = findVerification(ops, 'seed-match-multicase-091-99-25850');
 
     expect(verification).toBeDefined();
     expect(verification?.status).toBe('pending');
@@ -41,7 +127,7 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
         expect(surrogate.unassignedOn).toBeUndefined();
       }
       const caseIds = forThisFingerprint.map((s) => s.caseId).sort();
-      expect(caseIds).toEqual(['091-99-86706', '091-99-98483', '091-99-99943']);
+      expect(caseIds).toEqual(['091-99-25850', '091-99-26681', '091-99-26914']);
     }
   });
 
@@ -94,7 +180,7 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
 
   test('already-approved mismatch has no surviving surrogate rows for its fingerprint', async () => {
     const ops = await generate(context());
-    const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-97816');
+    const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-28263');
 
     expect(verification).toBeDefined();
     expect(verification?.status).toBe('approved');
@@ -112,16 +198,16 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
 
   test('already-approved multi-case mismatch has a populated affectedCaseIds snapshot and no surviving surrogate rows', async () => {
     const ops = await generate(context());
-    const verification = findVerification(ops, 'seed-match-resolved-with-snapshot-091-99-86706');
+    const verification = findVerification(ops, 'seed-match-resolved-with-snapshot-091-99-25850');
 
     expect(verification).toBeDefined();
     expect(verification?.status).toBe('approved');
     expect(verification?.resolvedTrusteeId).toBeTruthy();
     expect(verification?.resolvedTrusteeName).toBeTruthy();
     expect([...((verification?.affectedCaseIds as string[] | undefined) ?? [])].sort()).toEqual([
-      '091-99-86706',
-      '091-99-98483',
-      '091-99-99943',
+      '091-99-25850',
+      '091-99-26681',
+      '091-99-26914',
     ]);
 
     for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
