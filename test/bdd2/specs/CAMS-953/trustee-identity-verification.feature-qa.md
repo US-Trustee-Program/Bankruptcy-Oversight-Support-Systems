@@ -183,3 +183,16 @@ A: Yes. Track the slices in beads for handoff.
   design must cover adapting a DXTR source record (`DxtrTrusteeParty`) to `ProjectedTrustee`.
 - MVVM refactor of the accordion (per the #3187 technical notes): decide in Slice 2 whether to do it
   then or incrementally.
+
+## Slice 4 scope change (2026-10-29)
+
+### Q: Does the trustee-match-verification screen flag cases a trustee's appointments do not cover?
+
+A: **No.** The prototypes no longer highlight uncovered cases on this screen; the new case
+appointment verification screen handles that edge case. Slice 4 drops the "Covers these cases" row,
+the preview endpoint, the gate A blocking list and disabled buttons. The search modal's coverage
+check is removed too. Backend gate A in `approveVerification` stays until CAMS-956 (#3190).
+
+### Q: Is "{caseId} (Not yet in CAMS)" built in Slice 4?
+
+A: **No.** A forthcoming dataflow produces it.
