@@ -356,11 +356,11 @@ describe('trustee-data scenario', () => {
     return generateTrusteeData(singleIdContext(CASE_IDS));
   }
 
-  test('returns 9 operations: 2 DXTR and 7 Cosmos', async () => {
+  test('returns 11 operations: 2 DXTR and 9 Cosmos', async () => {
     const ops = await operations();
-    expect(ops).toHaveLength(9);
+    expect(ops).toHaveLength(11);
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(2);
-    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(7);
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(9);
   });
 
   test('DXTR operations use compound primary keys and insertOnly flag', async () => {
@@ -475,7 +475,7 @@ describe('trustee-data scenario', () => {
     expect(verification?.data[0]).toMatchObject({
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       taskType: 'trustee-match',
-      caseId: '091-99-87899',
+      caseId: '091-99-16994',
       status: 'pending',
       mismatchReason: 'ambiguous',
       source: 'DXTR',
@@ -493,7 +493,31 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
-    expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-091-99-87899');
+    expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-091-99-16994');
+  });
+
+  // The sync raises a task only for a case it could not resolve, and writes a surrogate for it;
+  // 091-99-87899 carries other scenarios' case appointments, so the task has a case of its own.
+  test('pending match verification has a surrogate for its own case in both partitions', async () => {
+    const ops = await operations();
+    const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification')
+      ?.data[0];
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = ops
+        .filter((o) => o.collectionOrTable === table)
+        .flatMap((o) => o.data)
+        .filter((d) => d.trusteeId === verification?.fingerprint);
+      expect(surrogates).toEqual([
+        expect.objectContaining({
+          documentType: 'CASE_APPOINTMENT',
+          caseId: '091-99-16994',
+          isSurrogate: true,
+          chapter: '12',
+          courtDivisionCode: '091',
+        }),
+      ]);
+    }
   });
 });
 

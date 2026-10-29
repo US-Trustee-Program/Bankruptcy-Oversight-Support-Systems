@@ -15,6 +15,11 @@
  *   2. Ambiguous, 2 candidates that tie on every resolver (multipleCandidates).
  *   3. No match, 1 candidate whose name, address and phone differ
  *      (oneCandidateAddressAndPhoneDiffer).
+ *   3a-3d. No match, 1 candidate, one per remaining explanation-sentence shape
+ *      (oneCandidateStateDiffers, oneCandidateNameAddressEmailDiffer, oneCandidateExactName,
+ *      oneCandidateNothingDiffers).
+ *   Each single-case task has one surrogate CASE_APPOINTMENT for its case, as the sync writes, so
+ *   approving it runs the same division check and remap as a real task.
  *
  *   - Multi-case scenarios. For a pending task, affectedCaseCount/affectedCaseIds are derived
  *     live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows sharing the
@@ -37,6 +42,7 @@
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
 
+import type { TrusteeMatchScenarioKey } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createTrusteeBase } from '../lib/test-data-utils.js';
 import {
@@ -46,10 +52,66 @@ import {
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-// Existing DXTR cases (Buffalo district)
-const CASE_NO_MATCH = '091-99-87899'; // Ch 11 (Kassulke Group)
-const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch 11
-const CASE_SINGLE_CANDIDATE = '091-99-92748'; // Ch 12 (Botsford LLC)
+// Existing DXTR cases (Buffalo district) for the single-case pending tasks. Each task has its case
+// to itself and no other scenario seeds an appointment on it: the sync only raises a task for a
+// case whose trustee it could not resolve.
+const SINGLE_CASE_TASKS = [
+  {
+    slug: 'no-match',
+    key: 'noCandidates',
+    caseId: '091-99-10249',
+    chapter: '11',
+    taskDate: '2011-07-08T00:00:00.000Z',
+  },
+  {
+    slug: 'multiple',
+    key: 'multipleCandidates',
+    caseId: '091-99-00874',
+    chapter: '11',
+    taskDate: '2015-02-19T00:00:00.000Z',
+  },
+  {
+    slug: 'imperfect',
+    key: 'oneCandidateAddressAndPhoneDiffer',
+    caseId: '091-99-92748', // Botsford LLC
+    chapter: '12',
+    taskDate: '2019-11-30T00:00:00.000Z',
+  },
+  {
+    slug: 'state-differs',
+    key: 'oneCandidateStateDiffers',
+    caseId: '091-99-11333',
+    chapter: '11',
+    taskDate: '2012-04-16T00:00:00.000Z',
+  },
+  {
+    slug: 'name-address-email',
+    key: 'oneCandidateNameAddressEmailDiffer',
+    caseId: '091-99-14442',
+    chapter: '11',
+    taskDate: '2016-09-02T00:00:00.000Z',
+  },
+  {
+    slug: 'exact-name',
+    key: 'oneCandidateExactName',
+    caseId: '091-99-16370',
+    chapter: '11',
+    taskDate: '2020-03-11T00:00:00.000Z',
+  },
+  {
+    slug: 'nothing-differs',
+    key: 'oneCandidateNothingDiffers',
+    caseId: '091-99-00711',
+    chapter: '12',
+    taskDate: '2021-08-24T00:00:00.000Z',
+  },
+] as const satisfies readonly {
+  slug: string;
+  key: TrusteeMatchScenarioKey;
+  caseId: string;
+  chapter: string;
+  taskDate: string;
+}[];
 
 // Multi-case scenarios (3 distinct cases)
 const CASE_MULTI_A = '091-99-86706';
@@ -80,6 +142,32 @@ const TRUSTEE_RESOLVED = createTrusteeBase({
 const DIVISION_MISMATCH_TRUSTEE_ID = 'seed-trustee-match-divisionmismatch';
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+  const singleCaseTasks = SINGLE_CASE_TASKS.map(({ slug, key, caseId, taskDate }) => ({
+    id: `seed-match-${slug}-${caseId}`,
+    ...identityTaskFields(key),
+    caseId,
+    courtId: '0208',
+    status: 'pending',
+    taskDate,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+  const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) => ({
+    id: `seed-surrogate-${slug}-${caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId,
+    trusteeId: singleCaseTasks[index].fingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter,
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+
   // Surrogates shared by the multi-case pending task below. Computed up front (rather than
   // inline in the array) so the fingerprint on the surrogates and the task can never drift apart.
   const multiCaseTask = identityTaskFields('multiCase');
@@ -139,6 +227,10 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         ...scenarioTrusteeDocuments(
           'multipleCandidates',
           'oneCandidateAddressAndPhoneDiffer',
+          'oneCandidateStateDiffers',
+          'oneCandidateNameAddressEmailDiffer',
+          'oneCandidateExactName',
+          'oneCandidateNothingDiffers',
           'multiCase',
           'divisionMismatch',
         ),
@@ -172,49 +264,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Identity tasks ───────────────────────────────────────────────
+    // ── Cosmos: Single-case identity tasks ──────────────────────────────────
+    // 1-3d. One pending task per scenario, each with the surrogate the sync writes for its case,
+    // dual-written to both partitions like the multi-case bundles below.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: singleCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: singleCaseSurrogates,
+    },
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
-      data: [
-        // 1. No match, no candidates.
-        {
-          id: `seed-match-no-match-${CASE_NO_MATCH}`,
-          ...identityTaskFields('noCandidates'),
-          caseId: CASE_NO_MATCH,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2011-07-08T00:00:00.000Z',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-
-        // 2. Ambiguous, 2 candidates. Both share the source's city, state and zip but not its
-        // street or phone, so their Street and Phone cells get the warning marker.
-        {
-          id: `seed-match-multiple-${CASE_MULTIPLE_MATCH}`,
-          ...identityTaskFields('multipleCandidates'),
-          caseId: CASE_MULTIPLE_MATCH,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2015-02-19T00:00:00.000Z',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-
-        // 3. No match, 1 candidate. The surname is misspelled (a 'weak' name), and the street,
-        // city, zip and phone all differ; the state agrees.
-        {
-          id: `seed-match-imperfect-${CASE_SINGLE_CANDIDATE}`,
-          ...identityTaskFields('oneCandidateAddressAndPhoneDiffer'),
-          caseId: CASE_SINGLE_CANDIDATE,
-          courtId: '0208',
-          status: 'pending',
-          taskDate: '2019-11-30T00:00:00.000Z',
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
+      data: singleCaseTasks,
     },
 
     // 4. Pending multi-case task: 3 surrogate CASE_APPOINTMENTs sharing one fingerprint,

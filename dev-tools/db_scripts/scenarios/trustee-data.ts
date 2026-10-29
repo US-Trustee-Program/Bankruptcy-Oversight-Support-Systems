@@ -9,8 +9,11 @@
  *   - One inactive trustee (Pat Seedtrustee) — appears on the trustees list
  *   - One matched appointment (active trustee, active status, chapter 7)
  *   - One mismatched appointment (active trustee, mismatched status, chapter 13)
- *   - One pending trustee match verification against case 091-99-87899: Samuel Seedtrustee, an
- *     ambiguous task with both Seedtrustees as candidates (fixture scenario seedTrusteeNickname)
+ *   - One pending trustee match verification against case 091-99-16994: Samuel Seedtrustee, an
+ *     ambiguous task with both Seedtrustees as candidates (fixture scenario seedTrusteeNickname),
+ *     with the surrogate case appointment the sync writes for it. The task has its own case
+ *     because 091-99-87899 carries other scenarios' case appointments, and the sync only raises a
+ *     task for a case whose trustee it could not resolve.
  *
  * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
@@ -27,12 +30,30 @@ import {
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const NO_EMAIL_TRUSTEE_ID = 'seed-trustee-nocontact-001';
 
-// Existing DXTR case in Buffalo (091)
+// Existing DXTR cases in Buffalo (091)
 const CASE_ID = '091-99-87899';
+const MATCH_VERIFICATION_CASE_ID = '091-99-16994'; // Ch 12
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  const matchVerificationTask = identityTaskFields('seedTrusteeNickname');
+  const matchVerificationSurrogate = {
+    id: `seed-surrogate-trustee-match-verification-${MATCH_VERIFICATION_CASE_ID}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId: MATCH_VERIFICATION_CASE_ID,
+    trusteeId: matchVerificationTask.fingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter: '12',
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  };
+
   // Ensure case exists in DXTR (guard against accidental deletion)
   const { operations: dxtrOps } = await ensureDxtrCase(ctx, {
     divisionCode: '091',
@@ -178,16 +199,27 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustee-match-verification',
       data: [
         {
-          id: `seed-trustee-match-verification-${CASE_ID}`,
-          caseId: CASE_ID,
+          id: `seed-trustee-match-verification-${MATCH_VERIFICATION_CASE_ID}`,
+          caseId: MATCH_VERIFICATION_CASE_ID,
           courtId: '0208',
           status: 'pending',
           taskDate: '2025-03-01T00:00:00.000Z',
-          ...identityTaskFields('seedTrusteeNickname'),
+          ...matchVerificationTask,
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
+    },
+    // Dual-written to both partitions, as TrusteeCaseAppointmentsMongoRepository does.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: [matchVerificationSurrogate],
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: [matchVerificationSurrogate],
     },
   ];
 }
