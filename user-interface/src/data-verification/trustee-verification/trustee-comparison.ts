@@ -69,7 +69,7 @@ function isStreetExact(scores: ScoreByScorer): boolean {
 
 /** Which rows differ, read from the stored scores. A scorer that wrote no record found nothing to
  * compare (see ScoreByScorer), so its row does not differ. */
-function differingRows(scores: ScoreByScorer): Record<ComparisonRowKey, boolean> {
+export function differingRows(scores: ScoreByScorer): Record<ComparisonRowKey, boolean> {
   return {
     name: !isExactGrade(scores, 'doesNameMatch'),
     phone: !isExactGrade(scores, 'doesPhoneMatch'),

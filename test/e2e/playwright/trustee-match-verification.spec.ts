@@ -7,8 +7,10 @@ const timeoutOption = { timeout: 60000 };
 
 // Seeded identity tasks (test/e2e/fixtures/mongo-fixture.json). Each source record is name-only,
 // so the name is the one comparison the pipeline could make, and it differs for every candidate.
-const AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-pending-1'; // candidates 1 and 2
+const AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-pending-1'; // Taylor and Tyler Multimatch
+const ADDRESS_PHONE_TASK_ID = 'e2e-trustee-match-verification-pending-2'; // Jordan Imperfectmach, weak name
 const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
+const STATE_DIFFERS_TASK_ID = 'e2e-trustee-match-verification-pending-4'; // Morgan Stateline, exact name
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
 
 async function expandTask(page: Page, id: string) {
@@ -80,8 +82,8 @@ test.describe('Trustee Identity Verification', () => {
     await expect(table.getByRole('columnheader')).toHaveText([
       'Field',
       'Source record (DXTR)',
-      'E2E Trustee 1',
-      'E2E Trustee 2',
+      'Taylor Multimatch',
+      'Tyler Multimatch',
     ]);
     // Body rows only: a pending task's footer adds a screen-reader-only 'Action' row header.
     await expect(table.locator('tbody').getByRole('rowheader')).toHaveText([
@@ -95,22 +97,23 @@ test.describe('Trustee Identity Verification', () => {
       'Found by',
     ]);
 
-    // Only the name was compared; both candidates' names differ from the source record.
+    // "T" is only an initial, and neither candidate shares the source's street or phone; the city,
+    // state and zip agree and no email was sent, so those rows carry no marker.
     const nameRow = table
       .getByRole('row')
       .filter({ has: page.getByRole('rowheader', { name: 'Name' }) });
     await expect(nameRow.getByLabel('Name differs from the source record')).toHaveCount(2);
-    await expect(table.getByLabel(/differs from the source record/)).toHaveCount(2);
+    await expect(table.getByLabel(/differs from the source record/)).toHaveCount(6);
   });
 
   test('opens the confirmation modal for the chosen candidate', async ({ page }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
-    await content.getByTestId('approve-candidate-e2e-trustee-candidate-2').click();
+    await content.getByTestId('approve-candidate-seed-trustee-match-multi-b').click();
 
     const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}`);
     await expect(modal).toBeVisible(timeoutOption);
-    await expect(modal).toContainText('E2E Trustee 2');
+    await expect(modal).toContainText('Tyler Multimatch');
     await page.locator(`#trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}-cancel-button`).click();
     await expect(modal).toBeHidden(timeoutOption);
   });
@@ -143,5 +146,42 @@ test.describe('Trustee Identity Verification', () => {
     const resolvedStatement = content.getByTestId('resolved-statement');
     await expect(resolvedStatement).toBeVisible(timeoutOption);
     await expect(resolvedStatement).toContainText('was appointed to case');
+  });
+
+  test('shows the right "Why CAMS needs you" sentence for each kind of pending task', async ({
+    page,
+  }) => {
+    await expect(await expandTask(page, NO_CANDIDATES_TASK_ID)).toContainText(
+      'Trustee information sent to CAMS does not match any trustee in CAMS. Affects 1 case:',
+    );
+    await expect(await expandTask(page, AMBIGUOUS_TASK_ID)).toContainText(
+      'Trustee information sent to CAMS matches multiple trustees in CAMS. Affects 1 case:',
+    );
+    await expect(await expandTask(page, STATE_DIFFERS_TASK_ID)).toContainText(
+      'Trustee state sent to CAMS does not exactly match a trustee in CAMS. Affects 1 case:',
+    );
+    await expect(await expandTask(page, ADDRESS_PHONE_TASK_ID)).toContainText(
+      'Trustee name, address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 1 case:',
+    );
+  });
+
+  test('shows "How CAMS read this name" only for the one-candidate, non-exact-name task', async ({
+    page,
+  }) => {
+    const nonExactName = await expandTask(page, ADDRESS_PHONE_TASK_ID);
+    const nameSection = nonExactName.getByTestId('name-interpretation');
+    await expect(nameSection).toBeVisible(timeoutOption);
+    await expect(nameSection.locator('h3')).toHaveText('How CAMS read this name');
+    await expect(nameSection).toContainText('Jordan Imperfectmach');
+
+    await expect(
+      (await expandTask(page, STATE_DIFFERS_TASK_ID)).getByTestId('name-interpretation'),
+    ).toHaveCount(0);
+    await expect(
+      (await expandTask(page, AMBIGUOUS_TASK_ID)).getByTestId('name-interpretation'),
+    ).toHaveCount(0);
+    await expect(
+      (await expandTask(page, NO_CANDIDATES_TASK_ID)).getByTestId('name-interpretation'),
+    ).toHaveCount(0);
   });
 });

@@ -63,6 +63,8 @@ import {
   TrusteeSerializedState,
 } from '../trustee-match-pipeline';
 import { TrusteeMatchVerification } from '../trustee-match-verification';
+import { TrusteeMatchScenarioKey } from './trustee-match-findings.scenarios';
+import generatedTrusteeMatchFindings from './trustee-match-findings.generated.json';
 
 const { getIsoDate, getTodaysIsoDate, sortDates, nowInSeconds } = DateHelper;
 
@@ -1195,6 +1197,15 @@ function getTrusteeMatchFindings(
   };
 }
 
+/** The real pipeline's findings for a fixture scenario (see trustee-match-findings.scenarios.ts). */
+function getTrusteeMatchScenarioFindings(key: TrusteeMatchScenarioKey): TrusteeSerializedState {
+  const findings = generatedTrusteeMatchFindings as Record<
+    TrusteeMatchScenarioKey,
+    TrusteeSerializedState
+  >;
+  return structuredClone(findings[key]);
+}
+
 /** A pending DXTR identity task whose findings carry the given candidates (none by default). */
 function getTrusteeMatchVerification(
   override: Partial<TrusteeMatchVerification> = {},
@@ -1226,6 +1237,7 @@ function getTrusteeMatchVerification(
 const MockData = {
   getTrusteeMatchCandidate,
   getTrusteeMatchFindings,
+  getTrusteeMatchScenarioFindings,
   getTrusteeMatchVerification,
   addAction,
   randomAlphaNumeric,
