@@ -12,15 +12,18 @@ import {
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { getCaseNumber, getCaseIdParts, CaseSummary } from '@common/cams/cases';
+import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchConfirmationModal, {
-  ConfirmationCandidate,
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
-import { buildTrusteeComparison, ComparisonCandidate } from './trustee-comparison';
+import {
+  buildTrusteeComparison,
+  SelectedTrustee,
+  selectedTrusteeFromSearch,
+} from './trustee-comparison';
 import { buildTrusteeExplanation } from './trustee-explanation';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
@@ -56,17 +59,6 @@ function TrusteeSearchLink({
   );
 }
 
-function toConfirmationCandidate(candidate: ComparisonCandidate): ConfirmationCandidate {
-  const { camsRaw } = candidate;
-  return {
-    trusteeId: candidate.trusteeId,
-    trusteeName: candidate.trusteeName,
-    address: camsRaw.address,
-    phone: camsRaw.phone,
-    email: camsRaw.email,
-  };
-}
-
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerificationListItem;
   statusType: Map<string, string>;
@@ -97,7 +89,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
-  const [affectedCaseSummaries, setAffectedCaseSummaries] = useState<CaseSummary[]>([]);
+  const [originatingCaseChapter, setOriginatingCaseChapter] = useState<string | undefined>();
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
   // isProcessing (state) drives the disabled/spinner UI but only takes effect once React commits
@@ -194,12 +186,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     );
   }
 
-  async function handleApprove(candidate: ConfirmationCandidate) {
+  async function handleApprove(selected: SelectedTrustee) {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setIsProcessing(true);
     try {
-      await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
+      await approveTrustee({ trusteeId: selected.trusteeId, trusteeName: selected.trusteeName });
     } catch (error) {
       onOrderUpdate(
         {
@@ -216,33 +208,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
-  function openConfirmation(candidate: ComparisonCandidate) {
-    confirmationModalRef.current?.show(toConfirmationCandidate(candidate));
+  function openConfirmation(selected: SelectedTrustee) {
+    confirmationModalRef.current?.show(selected);
   }
 
   function openSearch() {
     searchModalRef.current?.show();
   }
 
-  async function handleManualMatch(result: TrusteeSearchResult) {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsProcessing(true);
-    try {
-      await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
-    } catch (error) {
-      onOrderUpdate(
-        {
-          message: error instanceof Error ? error.message : 'Failed to confirm trustee match.',
-          type: UswdsAlertStyle.Error,
-          timeOut: 8,
-        },
-        order,
-      );
-    } finally {
-      searchModalRef.current?.hide();
-      setIsProcessing(false);
-      isSubmittingRef.current = false;
+  function handleSearchSelection(result: TrusteeSearchResult) {
+    searchModalRef.current?.hide();
+    if (comparison) {
+      openConfirmation(selectedTrusteeFromSearch(result, comparison.candidates));
     }
   }
 
@@ -267,42 +244,25 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // header never claims fewer cases than it lists.
   const headerCaseCount = Math.max(affectedCaseCount, 1);
 
-  // Fetched for the manual search modal, which narrows its results to trustees whose
-  // appointments cover the task's cases. Gated on detail having loaded: affectedCaseIds is only
-  // the real bundle once detail has loaded (pre-expand it's just [order.caseId]).
-  // DataVerificationScreen mounts every accordion up front (hidden rows included, filtered via a
-  // `hidden` prop rather than conditional rendering), so without this gate every pending
-  // verification on the screen would fire this fetch on page load whether or not the row is
-  // ever expanded. Also skipped for already-approved orders, matching handleExpand's guard.
-  const affectedCaseIdsKey = affectedCaseIds.join(',');
+  // The originating case's chapter narrows the manual search modal's results. Fetched only once
+  // detail has loaded: DataVerificationScreen mounts every accordion up front (hidden rows
+  // included), so an ungated fetch would fire for every pending task on page load whether or
+  // not its row is ever expanded. Also skipped for approved tasks, matching handleExpand's guard.
   const hasDetail = !!detail;
   useEffect(() => {
     if (order.status === 'approved' || !hasDetail) return;
     let cancelled = false;
-    // allSettled rather than all: a single rejected lookup (a closed case, one not yet synced,
-    // a moved case) would otherwise reject the whole chain and discard every summary that DID
-    // load. The backend's approval check remains the authoritative coverage gate regardless.
-    Promise.allSettled(
-      affectedCaseIdsKey.split(',').map((caseId) => Api2.getCaseSummary(caseId)),
-    ).then((results) => {
-      if (cancelled) return;
-      const loaded = results
-        .filter(
-          (result): result is PromiseFulfilledResult<ResponseBody<CaseSummary>> =>
-            result.status === 'fulfilled',
-        )
-        .map((result) => result.value.data);
-      setAffectedCaseSummaries(loaded);
-    });
+    Api2.getCaseSummary(order.caseId)
+      .then((response) => {
+        if (!cancelled) setOriginatingCaseChapter(response.data.chapter);
+      })
+      .catch(() => {
+        // Search falls back to district-only filtering without the chapter.
+      });
     return () => {
       cancelled = true;
     };
-  }, [affectedCaseIdsKey, order.status, hasDetail]);
-
-  // Scoped to the originating case only (order.caseId) -- used solely to narrow the manual
-  // search modal's results list, which stays a heuristic regardless (see TrusteeSearchModal's
-  // own doc comment).
-  const originatingCaseSummary = affectedCaseSummaries.find((c) => c.caseId === order.caseId);
+  }, [order.caseId, order.status, hasDetail]);
 
   const singleCaseLink = (
     <NewTabLink
@@ -486,12 +446,17 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           )}
         </section>
       </Accordion>
-      <TrusteeMatchConfirmationModal
-        ref={confirmationModalRef}
-        id={order.id}
-        onConfirm={handleApprove}
-        isProcessing={isProcessing}
-      />
+      {comparison && (
+        <TrusteeMatchConfirmationModal
+          ref={confirmationModalRef}
+          id={order.id}
+          rows={comparison.rows}
+          source={comparison.source}
+          caseCount={headerCaseCount}
+          onConfirm={handleApprove}
+          isProcessing={isProcessing}
+        />
+      )}
       <TrusteeSearchModal
         ref={searchModalRef}
         id={order.id}
@@ -501,10 +466,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         dxtrTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
         divisionCode={divisionCode}
-        chapter={originatingCaseSummary?.chapter}
-        affectedCases={affectedCaseSummaries}
-        onConfirm={handleManualMatch}
-        isProcessing={isProcessing}
+        chapter={originatingCaseChapter}
+        onConfirm={handleSearchSelection}
       />
     </>
   );

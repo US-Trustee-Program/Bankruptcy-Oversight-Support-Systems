@@ -6,12 +6,13 @@ import {
   TrusteeSerializedState,
 } from '@common/cams/trustee-match-pipeline';
 import { TrusteeMatchSource } from '@common/cams/trustee-match-verification';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 
 export type ComparisonRowKey =
   'name' | 'phone' | 'street' | 'city' | 'state' | 'zip' | 'email' | 'foundBy';
 
-type ComparisonRow = { key: ComparisonRowKey; label: string };
+export type ComparisonRow = { key: ComparisonRowKey; label: string };
 
 /** A candidate's value for one row; differs is true only when the stored findings show the field
  * was compared and did not match exactly. A field the pipeline could not compare never differs. */
@@ -23,6 +24,9 @@ export type ComparisonCandidate = {
   camsRaw: ProjectedTrustee;
   cells: Record<ComparisonRowKey, ComparisonCell>;
 };
+
+/** The trustee a verifier is about to match, with the cells the comparison table shows for it. */
+export type SelectedTrustee = Pick<ComparisonCandidate, 'trusteeId' | 'trusteeName' | 'cells'>;
 
 export type TrusteeComparison = {
   rows: ComparisonRow[];
@@ -82,24 +86,58 @@ export function differingRows(scores: ScoreByScorer): Record<ComparisonRowKey, b
   };
 }
 
-function toCandidate(candidate: SerializedCandidate<ProjectedTrustee>): ComparisonCandidate {
-  const { camsRaw, scores, origin } = candidate;
-  const address = camsRaw.address;
+type TrusteeContact = Pick<ProjectedTrustee, 'name' | 'address' | 'phone' | 'email'>;
+
+function toCells(
+  trustee: TrusteeContact,
+  foundBy: string | undefined,
+  differs: Record<ComparisonRowKey, boolean>,
+): Record<ComparisonRowKey, ComparisonCell> {
+  const { address } = trustee;
   const values: Record<ComparisonRowKey, string | undefined> = {
-    name: camsRaw.name,
-    phone: formatPhoneWithExtension(camsRaw.phone),
+    name: trustee.name,
+    phone: formatPhoneWithExtension(trustee.phone),
     street: joinStreet([address?.address1, address?.address2, address?.address3]),
     city: address?.city,
     state: address?.state,
     zip: address?.zipCode,
-    email: camsRaw.email,
-    foundBy: FOUND_BY_LABELS[origin] ?? origin,
+    email: trustee.email,
+    foundBy,
   };
-  const differs = differingRows(scores);
-  const cells = Object.fromEntries(
+  return Object.fromEntries(
     ROWS.map(({ key }) => [key, { value: values[key], differs: differs[key] }]),
   ) as Record<ComparisonRowKey, ComparisonCell>;
+}
+
+function toCandidate(candidate: SerializedCandidate<ProjectedTrustee>): ComparisonCandidate {
+  const { camsRaw, scores, origin } = candidate;
+  const cells = toCells(camsRaw, FOUND_BY_LABELS[origin] ?? origin, differingRows(scores));
   return { trusteeId: camsRaw.trusteeId, trusteeName: camsRaw.name, camsRaw, cells };
+}
+
+const NOTHING_DIFFERS = Object.fromEntries(ROWS.map(({ key }) => [key, false])) as Record<
+  ComparisonRowKey,
+  boolean
+>;
+
+/**
+ * The trustee a verifier picked from search. A candidate keeps its stored cells so its markers
+ * match the table; any other trustee was never scored, so nothing is marked as differing.
+ */
+export function selectedTrusteeFromSearch(
+  result: TrusteeSearchResult,
+  candidates: ComparisonCandidate[],
+): SelectedTrustee {
+  const candidate = candidates.find((c) => c.trusteeId === result.trusteeId);
+  if (candidate) {
+    const { trusteeId, trusteeName, cells } = candidate;
+    return { trusteeId, trusteeName, cells };
+  }
+  return {
+    trusteeId: result.trusteeId,
+    trusteeName: result.name,
+    cells: toCells(result, undefined, NOTHING_DIFFERS),
+  };
 }
 
 /**

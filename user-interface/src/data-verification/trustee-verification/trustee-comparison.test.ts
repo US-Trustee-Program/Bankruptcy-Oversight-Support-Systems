@@ -4,7 +4,12 @@ import {
   SerializedCandidate,
   TrusteeSerializedState,
 } from '@common/cams/trustee-match-pipeline';
-import { buildTrusteeComparison, ComparisonRowKey } from './trustee-comparison';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import {
+  buildTrusteeComparison,
+  ComparisonRowKey,
+  selectedTrusteeFromSearch,
+} from './trustee-comparison';
 
 function candidate(
   trusteeId: string,
@@ -258,5 +263,76 @@ describe('buildTrusteeComparison', () => {
       undefined,
       undefined,
     ]);
+  });
+});
+
+describe('selectedTrusteeFromSearch', () => {
+  const searchResult: TrusteeSearchResult = {
+    trusteeId: 'searched-1',
+    name: 'Sam Searched',
+    address: {
+      address1: '9 Elm St',
+      address2: 'Floor 3',
+      city: 'Utica',
+      state: 'NY',
+      zipCode: '13501',
+      countryCode: 'US',
+    },
+    phone: { number: '315-555-0100', extension: '12' },
+    email: 'sam@example.com',
+    appointments: [],
+    matchType: 'exact',
+  };
+
+  test("reuses a candidate's stored cells when the searched trustee is a candidate", () => {
+    const { candidates } = buildTrusteeComparison(
+      findings([candidate('t1', { ...allExact, doesStateMatch: { pass: false } })]),
+      'DXTR',
+    );
+
+    const selected = selectedTrusteeFromSearch(
+      { ...searchResult, trusteeId: 't1', name: 'Trustee t1' },
+      candidates,
+    );
+
+    expect(selected).toEqual({
+      trusteeId: 't1',
+      trusteeName: 'Trustee t1',
+      cells: candidates[0].cells,
+    });
+  });
+
+  test("shows a trustee the pipeline never scored with the search result's values and no differences", () => {
+    const selected = selectedTrusteeFromSearch(searchResult, []);
+
+    expect(selected.trusteeId).toBe('searched-1');
+    expect(selected.trusteeName).toBe('Sam Searched');
+    expect(selected.cells).toEqual({
+      name: { value: 'Sam Searched', differs: false },
+      phone: { value: '315-555-0100 x12', differs: false },
+      street: { value: '9 Elm St, Floor 3', differs: false },
+      city: { value: 'Utica', differs: false },
+      state: { value: 'NY', differs: false },
+      zip: { value: '13501', differs: false },
+      email: { value: 'sam@example.com', differs: false },
+      foundBy: { value: undefined, differs: false },
+    });
+  });
+
+  test('leaves missing search result values undefined', () => {
+    const selected = selectedTrusteeFromSearch(
+      { trusteeId: 'searched-2', name: 'Pat Sparse', appointments: [], matchType: 'phonetic' },
+      [],
+    );
+
+    const { cells } = selected;
+    expect([
+      cells.phone.value,
+      cells.street.value,
+      cells.city.value,
+      cells.state.value,
+      cells.zip.value,
+      cells.email.value,
+    ]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
   });
 });

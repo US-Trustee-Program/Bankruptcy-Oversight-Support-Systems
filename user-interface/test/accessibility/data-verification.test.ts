@@ -144,10 +144,48 @@ test.describe('Data Verification', () => {
     await page.locator('[data-testid="approve-candidate-seed-trustee-match-multi-b"]').click();
     const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
     await expect(cancelButton).toBeVisible();
+    await expect(page.locator('[data-testid="confirm-match-selected"]')).toBeVisible();
     // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
     await page.waitForTimeout(ANALYZE_DELAY);
 
     accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await cancelButton.click();
+    await expect(cancelButton).toBeHidden();
+  });
+
+  test('should not have accessibility issues in Confirm Trustee Match for a searched trustee', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    // The fake API's trustee search returns Riley Searchable (mock-api2.ts trusteeSearchResults),
+    // who is not one of this task's candidates.
+    const taskId = 'e8c1f0a2-identity-task-multimatch';
+    const comboBoxId = `trustee-search-combobox-${taskId}`;
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await page.locator('#task-type-filter .input-container').click();
+    await page.locator('[id="option-transfer"]').click();
+    await page.locator('[id="option-consolidation"]').click();
+    await page.keyboard.press('Escape');
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    await page.getByRole('button', { name: 'Search for a trustee' }).click();
+    await page.locator(`#${comboBoxId}-expand`).click();
+    await page.locator(`#${comboBoxId}-combo-box-input`).fill('Riley');
+    await page.locator(`[data-testid="${comboBoxId}-option-item-0"]`).click();
+    await page.locator(`[id="trustee-search-modal-${taskId}-submit-button"]`).click();
+
+    const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
+    await expect(cancelButton).toBeVisible();
+    await expect(page.locator('[data-testid="confirm-match-selected"]')).toContainText(
+      'Riley Searchable',
+    );
+    // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
     await cancelButton.click();
