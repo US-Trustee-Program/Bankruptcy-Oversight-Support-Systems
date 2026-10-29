@@ -137,6 +137,13 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
 
 ## Open work
 
+- [#3211](https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/issues/3211)
+  (`cams-usehy`) tracks closing two paths from repository write access to Azure access: `-branch`
+  identities with subscription-scope roles (`infrastructure-deploy-branch`, `e2e-branch`,
+  `deploy-code-branch`, `endpoint-test-branch`, `dast-branch`), and branch YAML selecting a `*-main`
+  environment, none of which has a deployment branch policy. It also covers narrowing the `-main`
+  identities and removing `Main-Gov`'s policy entry for the deleted
+  `CAMS-760-least-privilege-gha-permissions` branch.
 - `deploy-main` keeps subscription-scope Contributor because main deploys create resource groups.
   Narrowing it is tracked in `cams-y8s2`.
 - `deploy-branch`'s Contributor on `rg-analytics` and `bankruptcy-oversight-support-systems` covers
@@ -147,7 +154,8 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
   [Grants not made by a runbook](#grants-not-made-by-a-runbook); `cams-y8s2`).
 - `remove-branch`'s subscription-scope Contributor could be narrowed to the fixed-name resource
   groups that branch cleanup touches, following the same grant, revoke, verify procedure as the
-  `deploy-branch` cutover. Its runbook comment still gives the old per-commit reason.
+  `deploy-branch` cutover. Its runbook comment still gives the old per-commit reason. Tracked in
+  `cams-q0dq4`.
 - The `dora-metrics` identity, its GitHub environment, and the `deploy-dora-metrics-storage.yml`
   credential had not been provisioned as of 2026-10-29, and `dora-metrics.yml` has no publish job
   yet. Setup steps are in
