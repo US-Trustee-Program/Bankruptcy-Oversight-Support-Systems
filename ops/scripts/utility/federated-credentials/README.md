@@ -9,8 +9,10 @@ this page in the same PR that adds a runbook or changes a grant.
 
 ## Provisioning
 
-Run `setup-all-federated-credentials.sh` to provision every identity, or one
-`setup-*-federated-credential.sh` runbook to provision one. Each runbook lists its required
+Run `setup-all-federated-credentials.sh` to provision every runbook-managed identity, or one
+`setup-*-federated-credential.sh` runbook to provision one. Neither creates the hand-made federated
+credentials listed under [Grants not made by a runbook](#grants-not-made-by-a-runbook); create those
+separately when bootstrapping or recreating an app registration. Each runbook lists its required
 environment variables in its header. The runbooks only grant: none of them revokes a role, so
 narrowing an identity requires a manual revoke (see [Revocations](#revocations)).
 
@@ -71,8 +73,11 @@ secrets `AZ_SECURITY_SCAN_RG` and `AZ_SECURITY_SCAN_STORAGE_NAME`.
 `security-scan`, `dora-metrics` and `deploy-branch` are bounded by scope as well as by role. Every
 other identity's primary role is assigned at subscription scope, so its bound is the role.
 
-`remove-branch` keeps subscription scope because it finds and deletes branch resource groups by tag,
-and their names are not known in advance.
+`remove-branch` still holds Contributor at subscription scope. Its runbook's reason, finding and
+deleting per-commit branch resource groups by tag, no longer applies: `azure-remove-branch.yml` now
+passes `--unmanage-action=deleteResources`, which deletes tagged deployment stacks inside the
+shared, fixed-name branch resource groups and keeps the groups. Narrowing it is listed under
+[Open work](#open-work).
 
 ### Key Vault access
 
@@ -94,8 +99,8 @@ All three roles are created by `setup-deploy-federated-credential.sh` or
 
 ## Grants not made by a runbook
 
-Checked against live Azure on 2026-10-28. Every other identity's role assignments matched its
-runbook.
+Checked against live Azure on 2026-10-28. Apart from the grants listed below, every identity's role
+assignments matched its runbook.
 
 - `deploy-main` holds **Role Based Access Control Administrator** on `rg-analytics`, granted out of
   band. It is not load-bearing for main deploys: no template creates a role assignment in
@@ -140,6 +145,9 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
   not the end state (`cams-y8s2`).
 - `deploy-main`'s grants not made by a runbook need a decision and, where unneeded, a revoke (see
   [Grants not made by a runbook](#grants-not-made-by-a-runbook); `cams-y8s2`).
+- `remove-branch`'s subscription-scope Contributor could be narrowed to the fixed-name resource
+  groups that branch cleanup touches, following the same grant, revoke, verify procedure as the
+  `deploy-branch` cutover. Its runbook comment still gives the old per-commit reason.
 - The `dora-metrics` identity, its GitHub environment, and the `deploy-dora-metrics-storage.yml`
   credential had not been provisioned as of 2026-10-29, and `dora-metrics.yml` has no publish job
   yet. Setup steps are in

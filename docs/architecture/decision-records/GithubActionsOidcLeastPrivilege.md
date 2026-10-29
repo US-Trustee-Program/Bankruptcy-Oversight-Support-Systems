@@ -80,7 +80,7 @@ Because the template expects an `environment` claim, `id-token: write` should be
 
 Each reusable workflow that requires Azure access is assigned a dedicated GitHub environment. Environment names follow the convention `<workflow-purpose>-<target>` where target is `main` for production and `branch` for non-production. Which workflow uses which environment is listed in the [OIDC identity inventory](../../../ops/scripts/utility/federated-credentials/README.md).
 
-These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope.
+These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope. `security-scan` is the exception: its environment holds nothing, and its workflows read the repository-level `AZ_SECURITY_SCAN_CLIENT_ID` instead.
 
 ### Azure Federated Credentials
 
@@ -98,7 +98,7 @@ The current identities, their roles and scopes, grants made outside the runbooks
 
 Contributor does not include `Microsoft.Authorization/roleAssignments/write`. Any Bicep module that creates a role assignment therefore requires the identity deploying it to hold that permission **at the scope of the assignment being created**, granted separately from Contributor.
 
-That permission is granted through a custom role holding only the role-assignment actions, assigned on the exact *resource* the Bicep assignment targets — deliberately narrower than User Access Administrator, and narrower than the resource group, to limit privilege-escalation surface. A Bicep module that creates a role assignment at any **other** scope will fail at deploy time until the deploy identity is granted `roleAssignments/write` there as well. This failure surfaces only during deployment; nothing at commit time detects it.
+That permission is granted through a custom role holding only the role-assignment actions, assigned on the exact *resource* the Bicep assignment targets — deliberately narrower than User Access Administrator, and narrower than the resource group, to limit privilege-escalation surface. A Bicep module that creates a role assignment at any **other** scope will fail at deploy time until the deploy identity is granted `roleAssignments/write` there as well. This failure surfaces only during deployment; nothing at commit time detects it. This is the intended pattern; any broader role-assignment grant an identity holds outside it is an exception until revoked, and is listed in the [OIDC identity inventory](../../../ops/scripts/utility/federated-credentials/README.md).
 
 Which side owns the grant depends on whose identity it is for:
 
