@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { identityTaskFields, scenarioTrusteeDocuments } from './trustee-match-scenario-seeds.js';
-import { computeFingerprint } from './compute-fingerprint.js';
+import { buildVariant, computeFingerprint } from './compute-fingerprint.js';
 import { generateSearchTokens } from './phonetic-tokens.js';
 import { validators } from './test-data-utils.js';
 
@@ -16,7 +16,8 @@ describe('identityTaskFields', () => {
     });
     expect(task.findings.candidates).toHaveLength(2);
     expect(task.dxtrTrustee).toEqual(task.findings.sourceRaw);
-    expect(task.fingerprint).toBe(computeFingerprint(task.findings.sourceRaw));
+    expect(task.variant).toBe(buildVariant(task.findings.sourceRaw));
+    expect(task.fingerprint).toBe(computeFingerprint(task.variant));
   });
 
   test.each(['noCandidates', 'oneCandidateStateDiffers'] as const)(

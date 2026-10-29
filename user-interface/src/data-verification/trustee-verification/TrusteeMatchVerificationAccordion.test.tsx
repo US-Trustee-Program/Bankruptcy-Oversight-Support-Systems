@@ -466,6 +466,25 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(
         screen.getByText('Failed to load candidate details. Please try again later.'),
       ).toBeInTheDocument();
+      expect(screen.queryByTestId('affected-cases-loading')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toHaveAttribute(
+        'href',
+        `/case-detail/${sampleOrder.caseId}`,
+      );
+    });
+
+    test('shows the multi-case count from the list response when loading the task details fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockRejectedValue(
+        new Error('Network error'),
+      );
+      renderWithProps({ order: { ...sampleOrder, affectedCaseCount: 3 } });
+
+      await expandAccordion(sampleOrder.id);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('affected-cases').textContent).toBe('3 cases');
+      });
+      expect(screen.queryByTestId('affected-cases-loading')).not.toBeInTheDocument();
     });
   });
 

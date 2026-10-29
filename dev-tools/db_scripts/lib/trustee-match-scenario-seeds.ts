@@ -9,17 +9,19 @@ import {
   TRUSTEE_MATCH_FINDINGS_SCENARIOS,
   type TrusteeMatchScenarioKey,
 } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
-import { computeFingerprint } from './compute-fingerprint.js';
+import { buildVariant, computeFingerprint } from './compute-fingerprint.js';
 import { generateSearchTokens } from './phonetic-tokens.js';
 
 /** The identity-task fields the DXTR sync derives from one unresolved pipeline run. */
 export function identityTaskFields(key: TrusteeMatchScenarioKey) {
   const findings = MockData.getTrusteeMatchScenarioFindings(key);
+  const variant = buildVariant(findings.sourceRaw);
   return {
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
     taskType: 'trustee-match',
     source: 'DXTR',
-    fingerprint: computeFingerprint(findings.sourceRaw),
+    fingerprint: computeFingerprint(variant),
+    variant,
     dxtrTrustee: findings.sourceRaw,
     mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
     findings,

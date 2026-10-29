@@ -313,26 +313,24 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const sortedAffectedCaseIds = [...affectedCaseIds].sort();
 
-  // While the snapshotted count is loading, avoid flashing the (potentially stale or "0
-  // cases") live-derived list-view count before it's replaced by the detail's count.
-  const caseLink = isLoadingDetail ? (
-    <span data-testid="affected-cases-loading">Loading&hellip;</span>
-  ) : affectedCaseCount > 1 ? (
-    <span data-testid="affected-cases">
-      {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
-      {hasFullCaseList && (
-        <span className="affected-cases-list">
-          {sortedAffectedCaseIds.map((caseId) => (
-            <span key={caseId} className="affected-case-item">
-              <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-            </span>
-          ))}
-        </span>
-      )}
-    </span>
-  ) : (
-    singleCaseLink
-  );
+  // Without the full case list (detail failed to load), a multi-case task shows only its count.
+  const caseLink =
+    affectedCaseCount > 1 ? (
+      <span data-testid="affected-cases">
+        {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
+        {hasFullCaseList && (
+          <span className="affected-cases-list">
+            {sortedAffectedCaseIds.map((caseId) => (
+              <span key={caseId} className="affected-case-item">
+                <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
+    ) : (
+      singleCaseLink
+    );
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -470,29 +468,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
                 </span>
               </div>
-              {explanation ? (
+              {explanation || detailLoadError ? (
                 <p className="problem-statement">
-                  <span>{explanation.sentence} Affects </span>
-                  {affectedCaseCount > 1 ? (
-                    <span data-testid="affected-cases">
-                      {affectedCaseCount} cases:
-                      <span className="affected-cases-list">
-                        {sortedAffectedCaseIds.map((caseId) => (
-                          <span key={caseId} className="affected-case-item">
-                            <NewTabLink
-                              to={`/case-detail/${caseId}`}
-                              label={getCaseNumber(caseId)}
-                            />
-                          </span>
-                        ))}
-                      </span>
-                    </span>
-                  ) : (
-                    <>
-                      <span>1 case: </span>
-                      {singleCaseLink}
-                    </>
-                  )}
+                  <span>
+                    {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
+                    {affectedCaseCount > 1 ? '' : '1 case: '}
+                  </span>
+                  {caseLink}
                 </p>
               ) : (
                 <p className="problem-statement" data-testid="affected-cases-loading">
