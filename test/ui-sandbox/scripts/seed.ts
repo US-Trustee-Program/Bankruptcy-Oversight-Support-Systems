@@ -7,8 +7,10 @@
  * wired to any other suite, so there's nothing else to keep in sync when you extend it.
  *
  * The trustee identity task fixture below is just the first example seeded here - useful on its
- * own (a candidate that differs from the source record on nearly every field, so the Data
- * Verification comparison table shows its warning markers), but not the sandbox's scope.
+ * own (a candidate whose name, address and phone differ from the source record, so the Data
+ * Verification comparison table shows its warning markers), but not the sandbox's scope. Its
+ * findings are the real pipeline's output for a fixture scenario
+ * (common/src/cams/test-utilities/trustee-match-findings.scenarios.ts).
  *
  * Requires MongoDB reachable at MONGO_CONNECTION_STRING (default: localhost via
  * ./start-services.sh) and writes into the `cams-sandbox` database - the safety check below
@@ -19,24 +21,19 @@
  * Usage: npx tsx scripts/seed.ts
  */
 import { MongoClient } from 'mongodb';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/trustee-match-findings.scenarios';
+import {
+  buildVariant,
+  computeFingerprint,
+} from '../../../backend/lib/use-cases/dataflows/trustee-variant.helpers';
+import { generateSearchTokens } from '../../../backend/lib/adapters/utils/phonetic-helper';
 
 const CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-sandbox?retrywrites=false';
 const DB_NAME = process.env.COSMOS_DATABASE_NAME || 'cams-sandbox';
 
-// The DXTR source record the identity task below was opened for (matches its `variant`).
-const SANDBOX_SOURCE = {
-  firstName: 'Sandbox',
-  lastName: 'Dxtr Trustee',
-  fullName: 'Sandbox Dxtr Trustee',
-  legacy: {
-    address1: '999 Court Filed Rd',
-    cityStateZipCountry: 'Albany, NY 12201',
-    phone: '555-999-8888',
-    email: 'court-sent@example.com',
-    parsedCityStateZip: { city: 'Albany', state: 'NY', zipCode: '12201' },
-  },
-};
+const SANDBOX_SCENARIO = 'oneCandidateAddressAndPhoneDiffer';
 
 async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
   const now = new Date().toISOString();
@@ -71,34 +68,22 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
     { upsert: true },
   );
 
-  await db.collection('trustees').updateOne(
-    { id: 'sandbox-trustee-candidate' },
-    {
-      $set: {
-        id: 'sandbox-trustee-candidate',
-        documentType: 'TRUSTEE',
-        name: 'Sandbox Trustee Candidate',
-        public: {
-          address: {
-            address1: '123 Candidate Ave',
-            city: 'Poughkeepsie',
-            state: 'NY',
-            zipCode: '12601',
-            countryCode: 'US',
-          },
-          phone: { number: '555-000-1111' },
-          email: 'candidate@example.com',
+  for (const trustee of TRUSTEE_MATCH_FINDINGS_SCENARIOS[SANDBOX_SCENARIO].trustees) {
+    await db.collection('trustees').updateOne(
+      { id: trustee.id },
+      {
+        $set: {
+          ...trustee,
+          documentType: 'TRUSTEE',
+          phoneticTokens: generateSearchTokens(trustee.name),
         },
-        status: 'active',
-        districts: [{ courtDivisionCode: '081' }],
-        chapters: ['7'],
-        updatedOn: now,
-        updatedBy: systemActor,
       },
-    },
-    { upsert: true },
-  );
+      { upsert: true },
+    );
+  }
 
+  const findings = MockData.getTrusteeMatchScenarioFindings(SANDBOX_SCENARIO);
+  const variant = buildVariant(findings.sourceRaw);
   await db.collection('trustee-match-verification').updateOne(
     { id: 'sandbox-trustee-match-mismatch' },
     {
@@ -110,63 +95,10 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
         status: 'pending',
         mismatchReason: 'no match',
         source: 'DXTR',
-        dxtrTrustee: SANDBOX_SOURCE,
-        // The pipeline's stored state, scored by hand from the scorer rules against the records
-        // above: only the state agrees (geography 1 point, no street points), and the name,
-        // city, zip, phone (7 digits off) and email all differ.
-        findings: {
-          sourceRaw: SANDBOX_SOURCE,
-          sourceNormalized: {},
-          memo: {},
-          candidates: [
-            {
-              camsRaw: {
-                trusteeId: 'sandbox-trustee-candidate',
-                firstName: 'Sandbox',
-                lastName: 'Trustee Candidate',
-                name: 'Sandbox Trustee Candidate',
-                address: {
-                  address1: '123 Candidate Ave',
-                  city: 'Poughkeepsie',
-                  state: 'NY',
-                  zipCode: '12601',
-                  countryCode: 'US',
-                },
-                phone: { number: '555-000-1111' },
-                email: 'candidate@example.com',
-              },
-              camsNormalized: {},
-              memo: {},
-              scores: {
-                doesNameMatch: { pass: false },
-                doesCityMatch: { pass: false },
-                doesStateMatch: { pass: true },
-                doesZipCodeMatch: { pass: false },
-                doesAddressMatch: { pass: true, quality: 'weak', points: 1, streetCloseness: 0 },
-                doesPhoneMatch: { pass: false, phoneDigitDistance: 7 },
-                doesEmailMatch: { pass: false },
-              },
-              origin: 'recallByTokenIntersection',
-            },
-          ],
-          match: null,
-          skip: false,
-          error: null,
-        },
-        fingerprint: 'sandbox-fingerprint-mismatch',
-        variant: JSON.stringify({
-          firstName: 'sandbox',
-          middleName: '',
-          lastName: 'dxtr trustee',
-          generation: '',
-          address1: '999 Court Filed Rd',
-          address2: '',
-          address3: '',
-          cityStateZipCountry: 'Albany, NY 12201',
-          phone: '555-999-8888',
-          fax: '',
-          email: 'court-sent@example.com',
-        }),
+        dxtrTrustee: findings.sourceRaw,
+        findings,
+        fingerprint: computeFingerprint(variant),
+        variant,
         updatedOn: now,
         updatedBy: systemActor,
         createdOn: now,

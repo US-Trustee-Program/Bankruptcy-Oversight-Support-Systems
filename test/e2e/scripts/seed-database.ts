@@ -20,6 +20,16 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { faker } from '@faker-js/faker';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import {
+  TRUSTEE_MATCH_FINDINGS_SCENARIOS,
+  TrusteeMatchScenarioKey,
+} from '../../../common/src/cams/test-utilities/trustee-match-findings.scenarios';
+import {
+  buildVariant,
+  computeFingerprint,
+} from '../../../backend/lib/use-cases/dataflows/trustee-variant.helpers';
+import { generateSearchTokens } from '../../../backend/lib/adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'SEED-MONGO-E2E';
 
@@ -186,6 +196,41 @@ function applyFakerPii(collectionName: string, docs: MongoDocument[]): MongoDocu
   }
 }
 
+/**
+ * Identity tasks name a trustee-match fixture scenario (findingsScenario) instead of carrying
+ * findings: the scenario's generated findings are the real pipeline's output. Fills findings and
+ * every field that must agree with them, as the DXTR sync writes them, and removes the key.
+ * Returns the scenarios' CAMS trustees too, since the candidates must exist in CAMS.
+ */
+function resolveFindingsScenarios(tasks: MongoDocument[]): {
+  tasks: MongoDocument[];
+  trustees: MongoDocument[];
+} {
+  const trustees = new Map<string, MongoDocument>();
+  const resolved = tasks.map(({ findingsScenario, ...task }) => {
+    if (!findingsScenario) return task;
+    const key = findingsScenario as TrusteeMatchScenarioKey;
+    const findings = MockData.getTrusteeMatchScenarioFindings(key);
+    const variant = buildVariant(findings.sourceRaw);
+    for (const trustee of TRUSTEE_MATCH_FINDINGS_SCENARIOS[key].trustees) {
+      trustees.set(trustee.trusteeId, {
+        ...trustee,
+        documentType: 'TRUSTEE',
+        phoneticTokens: generateSearchTokens(trustee.name),
+      });
+    }
+    return {
+      ...task,
+      dxtrTrustee: findings.sourceRaw,
+      findings,
+      mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
+      variant,
+      fingerprint: computeFingerprint(variant),
+    };
+  });
+  return { tasks: resolved, trustees: [...trustees.values()] };
+}
+
 // Restore MongoDB _id fields: fixture stores them as strings, MongoClient needs ObjectId
 function restoreIds(docs: MongoDocument[]): MongoDocument[] {
   return docs.map((doc) => {
@@ -233,17 +278,26 @@ async function main() {
     }
     console.log(`[${MODULE_NAME}] ✓ Collections cleared`);
 
+    const scenarios = resolveFindingsScenarios(
+      fixture.collections['trustee-match-verification'] ?? [],
+    );
+    // Scenario trustees are fictional fixture data, so they skip the PII regeneration.
+    const seededDocs = (collName: string): MongoDocument[] => {
+      if (collName === 'trustee-match-verification') return scenarios.tasks;
+      const docs = applyFakerPii(collName, fixture.collections[collName] ?? []);
+      return collName === 'trustees' ? [...docs, ...scenarios.trustees] : docs;
+    };
+
     console.log(`[${MODULE_NAME}] Seeding collections...`);
     for (const collName of COLLECTIONS) {
-      const rawDocs = fixture.collections[collName];
+      const rawDocs = seededDocs(collName);
       if (!rawDocs || rawDocs.length === 0) {
         console.log(`  ${collName}... SKIP (not in fixture)`);
         continue;
       }
 
       process.stdout.write(`  ${collName}... `);
-      const docsWithPii = applyFakerPii(collName, rawDocs);
-      const docs = restoreIds(docsWithPii);
+      const docs = restoreIds(rawDocs);
       await db.collection(collName).insertMany(docs);
       console.log(`${docs.length} documents`);
     }

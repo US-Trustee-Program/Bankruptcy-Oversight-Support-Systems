@@ -121,9 +121,9 @@ test.describe('Data Verification', () => {
     page,
   }) => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
-    // The fake API serves one ambiguous DXTR identity task with two candidates, one of which
-    // differs from the source record (mock-api2.ts trusteeMatchVerificationDetail).
-    const taskId = 'e8c1f0a2-identity-task-smith';
+    // The fake API serves one ambiguous DXTR identity task with two candidates whose street and
+    // phone differ from the source record (mock-api2.ts trusteeMatchVerificationDetail).
+    const taskId = 'e8c1f0a2-identity-task-multimatch';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
     // Narrow the type filter to trustee identity tasks only
@@ -141,7 +141,7 @@ test.describe('Data Verification', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
 
     // Open the confirmation modal for the second candidate
-    await page.locator('[data-testid="approve-candidate-trustee-002"]').click();
+    await page.locator('[data-testid="approve-candidate-seed-trustee-match-multi-b"]').click();
     const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
     await expect(cancelButton).toBeVisible();
     // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
@@ -152,5 +152,36 @@ test.describe('Data Verification', () => {
 
     await cancelButton.click();
     await expect(cancelButton).toBeHidden();
+  });
+
+  test('should not have accessibility issues with the "How CAMS read this name" section expanded', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    // The fake API serves a one-candidate DXTR identity task whose name did not score exact
+    // (mock-api2.ts trusteeMatchVerificationDetailNonExactName), so expanding it renders the
+    // "How CAMS read this name" section beside "Potential Matches".
+    const taskId = 'f3b2c1d0-identity-task-name-nonexact';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await page.locator('#task-type-filter .input-container').click();
+    await page.locator('[id="option-transfer"]').click();
+    await page.locator('[id="option-consolidation"]').click();
+    await page.keyboard.press('Escape');
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const nameSection = page.locator('[data-testid="name-interpretation"]');
+    await expect(nameSection).toBeVisible();
+    await expect(nameSection.locator('h3')).toHaveText('How CAMS read this name');
+
+    // The new heading sits directly before "Potential Matches" - both must be h3s at the same
+    // level under the candidate section, with no skipped heading level between them.
+    const headings = page.locator(
+      '[data-testid="candidate-info"] h1, [data-testid="candidate-info"] h2, [data-testid="candidate-info"] h3, [data-testid="candidate-info"] h4',
+    );
+    await expect(headings).toHaveText(['How CAMS read this name', 'Potential Matches']);
+
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 });

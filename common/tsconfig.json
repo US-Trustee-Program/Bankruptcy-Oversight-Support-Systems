@@ -15,10 +15,6 @@
     "skipLibCheck": true,
     "types": ["vitest/globals"]
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "../node_modules",
-    "vitest.config.ts"
-  ]
+  "include": ["**/*", "src/**/*.json"],
+  "exclude": ["dist", "node_modules", "../node_modules", "vitest.config.ts"]
 }

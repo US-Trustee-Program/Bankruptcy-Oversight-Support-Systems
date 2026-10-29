@@ -249,6 +249,8 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  // The trustee-match findings generator (trustee-match-findings.generator.test.ts) mirrors the
+  // four name/id lookups below in memory; change it with them.
   async findTrusteesByName(name: string): Promise<Trustee[]> {
     try {
       const normalized = normalizeName(name);
