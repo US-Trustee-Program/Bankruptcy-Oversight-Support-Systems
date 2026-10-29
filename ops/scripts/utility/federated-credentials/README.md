@@ -32,12 +32,19 @@ the runbooks expect, and lists grants that should be revoked or must be kept.
 | `reusable-endpoint-test.yml`                                | `endpoint-test-main`, `endpoint-test-branch`                 |
 | `sub-security-scan.yml`, `deploy-security-scan-storage.yml` | `security-scan`                                              |
 | `azure-remove-branch.yml`                                   | `remove-branch`                                              |
+| `dora-metrics.yml`                                          | `dora-metrics`                                               |
+| `deploy-dora-metrics-storage.yml`                           | `infrastructure-deploy-main`                                 |
 
 Reusable workflows pick `*-main` when called for `Main-Gov` and `*-branch` otherwise.
 
-`deploy-sql-hub.yml` uses the `cams-infrastructure-deploy-main-oidc` app registration through its
-own federated credential. That credential is created by hand, not by a runbook; see
-[SQL Private Link Hub](../../../../docs/operations/deployment.md#identity-and-permissions).
+`deploy-sql-hub.yml` and `deploy-dora-metrics-storage.yml` use the
+`cams-infrastructure-deploy-main-oidc` app registration, each through its own federated credential.
+Those credentials are created by hand, not by a runbook; see
+[SQL Private Link Hub](../../../../docs/operations/deployment.md#identity-and-permissions) and
+[DORA Metrics Storage](../../../../docs/operations/deployment.md#dora-metrics-storage).
+
+`dora-metrics.yml`'s report jobs need no Azure access. The `dora-metrics` environment is for its
+publish job, which uploads the reports to the DORA metrics storage account.
 
 Each runbook stores the identity's client ID as the `AZ_CLIENT_ID` secret in its GitHub environment,
 except `security-scan`: its runbook sets the repository secret `AZ_SECURITY_SCAN_CLIENT_ID`, which
@@ -59,9 +66,10 @@ secrets `AZ_SECURITY_SCAN_RG` and `AZ_SECURITY_SCAN_STORAGE_NAME`.
 | `e2e-*`                   | `cams-e2e-{main,branch}-oidc`                   | `setup-e2e-federated-credential.sh`                   | Contributor                                 | Subscription                                                                                                     |
 | `remove-branch`           | `cams-remove-branch-oidc`                       | `setup-remove-branch-federated-credential.sh`         | Contributor                                 | Subscription                                                                                                     |
 | `security-scan`           | `cams-security-scan-oidc`                       | `setup-security-scan-federated-credential.sh`         | Storage Blob Data Contributor               | Security-scan storage account                                                                                    |
+| `dora-metrics`            | `cams-dora-metrics-oidc`                        | `setup-dora-metrics-federated-credential.sh`          | Storage Blob Data Contributor               | `dora-metrics` container in the DORA metrics storage account                                                     |
 
-`security-scan` and `deploy-branch` are bounded by scope as well as by role. Every other identity's
-primary role is assigned at subscription scope, so its bound is the role.
+`security-scan`, `dora-metrics` and `deploy-branch` are bounded by scope as well as by role. Every
+other identity's primary role is assigned at subscription scope, so its bound is the role.
 
 `remove-branch` keeps subscription scope because it finds and deletes branch resource groups by tag,
 and their names are not known in advance.
@@ -69,9 +77,9 @@ and their names are not known in advance.
 ### Key Vault access
 
 Each identity holds Key Vault Secrets User on each secret listed in its runbook's `KV_SECRETS`
-array, never on a whole vault. `*-main` identities and `security-scan` read `kv-ustp-cams`;
-`*-branch` identities and `remove-branch` read `kv-ustp-cams-dev`. Many secrets (`AZ-APP-RG`,
-`SLOT-NAME`) are granted to several identities.
+array, never on a whole vault. `*-main` identities, `security-scan` and `dora-metrics` read
+`kv-ustp-cams`; `*-branch` identities and `remove-branch` read `kv-ustp-cams-dev`. Many secrets
+(`AZ-APP-RG`, `SLOT-NAME`) are granted to several identities.
 
 ### Additional custom roles
 
@@ -105,7 +113,8 @@ runbook.
   must-not-revoke: remove it only after a branch deploy succeeds with the narrower
   `CAMS Analytics Role Assignment Operator` grant alone. Its provenance and replacement are tracked
   in `cams-y8s2`.
-- The `deploy-sql-hub.yml` federated credential on `cams-infrastructure-deploy-main-oidc` (see
+- The `deploy-sql-hub.yml` and `deploy-dora-metrics-storage.yml` federated credentials on
+  `cams-infrastructure-deploy-main-oidc` (see
   [Workflows and GitHub environments](#workflows-and-github-environments)).
 
 ## Revocations
@@ -131,6 +140,10 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
   not the end state (`cams-y8s2`).
 - `deploy-main`'s grants not made by a runbook need a decision and, where unneeded, a revoke (see
   [Grants not made by a runbook](#grants-not-made-by-a-runbook); `cams-y8s2`).
+- The `dora-metrics` identity, its GitHub environment, and the `deploy-dora-metrics-storage.yml`
+  credential had not been provisioned as of 2026-10-29, and `dora-metrics.yml` has no publish job
+  yet. Setup steps are in
+  [DORA Metrics Storage](../../../../docs/operations/deployment.md#dora-metrics-storage).
 - The `deploy-branch-narrow-test` GitHub environment and the `cams-deploy-branch-narrow-test-oidc`
   app registration, left from testing the cutover, still existed on 2026-10-28 and can be deleted
   (`cams-v4ngd`).
