@@ -21,6 +21,7 @@ import TrusteeMatchConfirmationModal, {
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
 import { buildTrusteeComparison, ComparisonCandidate } from './trustee-comparison';
+import { buildTrusteeExplanation } from './trustee-explanation';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -114,6 +115,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
   const comparison = useMemo(
     () => (detail ? buildTrusteeComparison(detail.findings, detail.source) : null),
+    [detail],
+  );
+  const explanation = useMemo(
+    () => (detail ? buildTrusteeExplanation(detail.findings) : null),
     [detail],
   );
 
@@ -308,26 +313,24 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const sortedAffectedCaseIds = [...affectedCaseIds].sort();
 
-  // While the snapshotted count is loading, avoid flashing the (potentially stale or "0
-  // cases") live-derived list-view count before it's replaced by the detail's count.
-  const caseLink = isLoadingDetail ? (
-    <span data-testid="affected-cases-loading">Loading&hellip;</span>
-  ) : affectedCaseCount > 1 ? (
-    <span data-testid="affected-cases">
-      {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
-      {hasFullCaseList && (
-        <span className="affected-cases-list">
-          {sortedAffectedCaseIds.map((caseId) => (
-            <span key={caseId} className="affected-case-item">
-              <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-            </span>
-          ))}
-        </span>
-      )}
-    </span>
-  ) : (
-    singleCaseLink
-  );
+  // Without the full case list (detail failed to load), a multi-case task shows only its count.
+  const caseLink =
+    affectedCaseCount > 1 ? (
+      <span data-testid="affected-cases">
+        {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
+        {hasFullCaseList && (
+          <span className="affected-cases-list">
+            {sortedAffectedCaseIds.map((caseId) => (
+              <span key={caseId} className="affected-case-item">
+                <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
+    ) : (
+      singleCaseLink
+    );
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -343,6 +346,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     const hasCandidates = comparison.candidates.length > 0;
     return (
       <div className="trustee-match-candidate-section" data-testid="candidate-info">
+        {explanation?.showNameInterpretation && (
+          <div data-testid="name-interpretation">
+            <h3>How CAMS read this name</h3>
+            <p>{detail?.findings.sourceRaw.fullName}</p>
+          </div>
+        )}
         <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
         <p className="other-matches-subtext">
           Results are ordered from strongest to weakest match. A{' '}
@@ -459,13 +468,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
                 </span>
               </div>
-              <p className="problem-statement">
-                <span>
-                  Trustee sent from the court does not match a CAMS Trustee for{' '}
-                  {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
-                </span>
-                {caseLink}
-              </p>
+              {explanation || detailLoadError ? (
+                <p className="problem-statement">
+                  <span>
+                    {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
+                    {affectedCaseCount > 1 ? '' : '1 case: '}
+                  </span>
+                  {caseLink}
+                </p>
+              ) : (
+                <p className="problem-statement" data-testid="affected-cases-loading">
+                  Loading&hellip;
+                </p>
+              )}
               {renderDetailSection()}
             </>
           )}

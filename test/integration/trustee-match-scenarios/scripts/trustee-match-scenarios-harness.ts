@@ -975,13 +975,57 @@ function assertResolvedAppointment(
   }
 }
 
+type StoredScoreRecord = { pass?: boolean; quality?: unknown };
+type StoredCandidate = {
+  camsRaw?: { trusteeId?: string; address?: { state?: string } };
+  scores?: Record<string, StoredScoreRecord>;
+};
+type StoredFindings = {
+  sourceNormalized?: { address?: { state?: string } };
+  candidates?: StoredCandidate[];
+};
+
 type StoredIdentityTask = {
   status?: string;
   mismatchReason?: string;
   source?: string;
   matchCandidates?: unknown;
-  findings?: { candidates?: { camsRaw?: { trusteeId?: string } }[] };
+  findings?: StoredFindings;
 } | null;
+
+/**
+ * Confirms a resolved candidate's stored scores carry what the identity-task UI reads directly
+ * (CAMS-953 Slice 3's explanation sentence and comparison table): a graded name score always, and
+ * - when both the source and the candidate have a state - a doesStateMatch record. Proves real
+ * sync output carries what the UI depends on, rather than only what hand-written seeds carried.
+ */
+function assertCandidateScoresForUi(label: string, task: StoredIdentityTask) {
+  const sourceState = task?.findings?.sourceNormalized?.address?.state;
+  for (const candidate of task?.findings?.candidates ?? []) {
+    const trusteeId = candidate.camsRaw?.trusteeId ?? 'unknown';
+    const nameScore = candidate.scores?.doesNameMatch;
+    if (nameScore?.pass === true && typeof nameScore.quality === 'string') {
+      pass(
+        `${label}: candidate ${trusteeId} doesNameMatch is a graded pass (quality ${nameScore.quality})`,
+      );
+    } else {
+      fail(
+        `${label}: candidate ${trusteeId} doesNameMatch missing or ungraded: ${JSON.stringify(nameScore)}`,
+      );
+    }
+
+    if (sourceState && candidate.camsRaw?.address?.state) {
+      const stateScore = candidate.scores?.doesStateMatch;
+      if (stateScore && typeof stateScore.pass === 'boolean') {
+        pass(`${label}: candidate ${trusteeId} doesStateMatch recorded (pass ${stateScore.pass})`);
+      } else {
+        fail(
+          `${label}: candidate ${trusteeId} doesStateMatch missing though both sides have a state: ${JSON.stringify(stateScore)}`,
+        );
+      }
+    }
+  }
+}
 
 /** An unresolved scenario: a pending DXTR identity task carrying the pipeline's findings. */
 function assertIdentityTask(
@@ -1165,7 +1209,10 @@ async function runScenarios() {
     await assertNoTask('5. no-appointments', CASES.imperfectMatch.caseId);
 
     // 6. no-match: the name matches no CAMS trustee.
-    assertIdentityTask('6. no-match', await taskFor(CASES.noMatch.caseId), 'no match', []);
+    const task6 = await taskFor(CASES.noMatch.caseId);
+    assertIdentityTask('6. no-match', task6, 'no match', []);
+    // No candidates, so this is a vacuous pass - included for parity with scenario 8 below.
+    assertCandidateScoresForUi('6. no-match', task6);
 
     // 7. multiple-match-high-confidence: a name collision the pipeline settles on demographics.
     assertResolvedAppointment(
@@ -1180,12 +1227,12 @@ async function runScenarios() {
     );
 
     // 8. multiple-match-no-winner: two identically-named trustees, nothing separates them.
-    assertIdentityTask(
-      '8. multiple-match-no-winner',
-      await taskFor(CASES.multipleMatchNoWinner.caseId),
-      'ambiguous',
-      [TRUSTEES.ambiguousTie1.id, TRUSTEES.ambiguousTie2.id],
-    );
+    const task8 = await taskFor(CASES.multipleMatchNoWinner.caseId);
+    assertIdentityTask('8. multiple-match-no-winner', task8, 'ambiguous', [
+      TRUSTEES.ambiguousTie1.id,
+      TRUSTEES.ambiguousTie2.id,
+    ]);
+    assertCandidateScoresForUi('8. multiple-match-no-winner', task8);
 
     // 9. case-not-yet-synced: no verification, no appointment (already asserted via
     //    notYetSyncedEvents above).

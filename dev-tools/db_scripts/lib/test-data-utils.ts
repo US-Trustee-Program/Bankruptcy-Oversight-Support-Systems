@@ -477,6 +477,7 @@ type TrusteeMatchVerificationLike = {
         address1?: string;
         phone?: string;
         email?: string;
+        cityStateZipCountry?: string;
         parsedCityStateZip?: unknown;
       };
     };
@@ -699,7 +700,9 @@ export const validators = {
       phone: !!legacy?.phone,
       email: !!legacy?.email,
       street: !!legacy?.address1,
-      'city, state or zip': !!legacy?.parsedCityStateZip,
+      // The raw line, not parsedCityStateZip: the pipeline also recovers a zipless "CITY ST" line
+      // that the sync's strict parser records as null.
+      'city, state or zip': !!legacy?.cityStateZipCountry,
     };
     const comparedField: Record<string, string> = {
       doesPhoneMatch: 'phone',

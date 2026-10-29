@@ -92,25 +92,23 @@ Feature: Trustee identity verification on matching-pipeline findings
     When I expand the task
     Then I see "<sentence>"
 
+    # A one-candidate sentence names the fields the comparison table marks as differing, read from
+    # the stored scores, grouped and ordered name / address (street, city, zip) / state / phone / email.
     Examples:
-      | pattern                               | sentence                                                                                                  |
-      | no candidates                         | Trustee information sent to CAMS does not match any trustee in CAMS. Affects 2 cases:                     |
-      | one candidate, fields differ/missing  | Trustee address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 2 cases:           |
-      | one candidate, state differs          | Trustee state sent to CAMS does not match a trustee in CAMS. Affects 2 cases:                             |
-      | several candidates                    | Trustee information sent to CAMS matches multiple trustees in CAMS. Affects 2 cases:                      |
+      | pattern                                       | sentence                                                                                                  |
+      | no candidates                                 | Trustee information sent to CAMS does not match any trustee in CAMS. Affects 2 cases:                     |
+      | one candidate, address and phone differ       | Trustee address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 2 cases:           |
+      | one candidate, only state differs             | Trustee state sent to CAMS does not exactly match a trustee in CAMS. Affects 2 cases:                     |
+      | one candidate, name, zip and email differ     | Trustee name, address and email sent to CAMS do not exactly match a trustee in CAMS. Affects 2 cases:     |
+      | one candidate, no field marked                | Trustee information sent to CAMS does not exactly match a trustee in CAMS. Affects 2 cases:               |
+      | several candidates                            | Trustee information sent to CAMS matches multiple trustees in CAMS. Affects 2 cases:                      |
 
-  Scenario: Interpreted name shown only when it differs from the raw name
-    Given a pending identity task whose normalized source name differs from the raw source name
+  Scenario: Interpreted name shown only for one candidate whose name did not score exact
+    Given a pending identity task with one candidate whose stored name match is not "exact"
     When I expand the task
-    Then I see a "How CAMS read this name" section
-    But a task whose normalized name equals the raw name shows no such section
-
-  Scenario: Header shows the ACMS professional id and flags possible duplicates
-    Given a pending identity task that carries ACMS professional id "NY-00063"
-    And two of its candidates may be the same CAMS trustee
-    When I expand the task
-    Then the header shows "NY-00063"
-    And the candidates are flagged as possible duplicates, with no merge link
+    Then I see a "How CAMS read this name" section showing the raw source name
+    But a one-candidate task whose name scored "exact" shows no such section
+    And a task with no candidates or several candidates shows no such section
 
   # SLICE 4: Case coverage and approval preview
   # Dependencies: Slice 3
