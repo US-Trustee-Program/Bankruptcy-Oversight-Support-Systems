@@ -132,6 +132,20 @@ describe('buildTrusteeComparison', () => {
     expect(comparison.source).toMatchObject({ city: 'Troy', state: 'NY', zip: '12180' });
   });
 
+  test('leaves city, state and zip undefined when neither the pipeline nor the legacy parse supplied them', () => {
+    const comparison = buildTrusteeComparison(
+      findings([], {
+        sourceRaw: {
+          fullName: 'Jane Q. Doe',
+          legacy: { address1: '1 Main St', phone: '518-555-0100' },
+        },
+      }),
+      'DXTR',
+    );
+
+    expect(comparison.source).toMatchObject({ city: undefined, state: undefined, zip: undefined });
+  });
+
   test('reads each candidate column from the stored CAMS record', () => {
     const comparison = buildTrusteeComparison(
       findings([

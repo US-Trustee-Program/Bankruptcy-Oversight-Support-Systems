@@ -48,6 +48,7 @@ type RenderOptions = {
   caseCount?: number;
   isProcessing?: boolean;
   onCancel?: () => void;
+  source?: Record<ComparisonRowKey, string | undefined>;
 };
 
 describe('TrusteeMatchConfirmationModal', () => {
@@ -60,7 +61,7 @@ describe('TrusteeMatchConfirmationModal', () => {
           ref={modalRef}
           id={modalId}
           rows={options.rows ?? dxtrRows}
-          source={source}
+          source={options.source ?? source}
           caseCount={options.caseCount ?? 3}
           onConfirm={onConfirm}
           onCancel={options.onCancel}
@@ -155,19 +156,7 @@ describe('TrusteeMatchConfirmationModal', () => {
   });
 
   test('shows Not Provided in the source column for a missing source value', () => {
-    const sourceWithoutPhone = { ...source, phone: undefined };
-    render(
-      <BrowserRouter>
-        <TrusteeMatchConfirmationModal
-          ref={modalRef}
-          id={modalId}
-          rows={dxtrRows}
-          source={sourceWithoutPhone}
-          caseCount={3}
-          onConfirm={vi.fn()}
-        />
-      </BrowserRouter>,
-    );
+    renderModal({ source: { ...source, phone: undefined } });
     showSelected();
 
     expect(within(sourceColumn()).getByText('Not Provided')).toBeInTheDocument();

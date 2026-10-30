@@ -148,11 +148,17 @@ describe('TrusteeComparisonTable', () => {
 
     const row = within(candidateRow('Jane Doe'));
     const phoneCell = row.getAllByRole('cell')[1];
-    const icon = within(phoneCell).getByLabelText('Phone differs from the source record');
-    expect(icon).toBeInTheDocument();
-    // The icon is the first child of the cell's value wrapper, i.e. to the left of the text.
-    const valueWrapper = phoneCell.querySelector('.comparison-cell-value')!;
-    expect(valueWrapper.children[0]).toBe(icon.closest('.difference-icon'));
+    const icon = within(phoneCell).getByRole('img', {
+      name: 'Phone differs from the source record',
+    });
+    // Walk up from the icon itself (not a specific wrapper class) to find its containing
+    // element's siblings, and confirm the value is one of the later ones.
+    const iconContainer = icon.parentElement!;
+    const siblings = Array.from(iconContainer.parentElement!.childNodes);
+    const textAfterIcon = siblings
+      .slice(siblings.indexOf(iconContainer) + 1)
+      .some((node) => node.textContent?.includes('518-555-0199'));
+    expect(textAfterIcon).toBe(true);
   });
 
   test('marks the whole Address cell with one icon when any of its parts differs', () => {
@@ -193,6 +199,26 @@ describe('TrusteeComparisonTable', () => {
     const emailCell = row.getAllByRole('cell')[2];
     expect(emailCell).toHaveTextContent('Not Provided');
     expect(emailCell.querySelector('svg')).toBeNull();
+  });
+
+  test('shows "Not Provided" in the Address cell when street, city, state and zip are all missing', () => {
+    const withNoAddress = {
+      ...comparison,
+      candidates: [
+        candidate('t1', 'Jane Doe', {
+          street: { value: undefined },
+          city: { value: undefined },
+          state: { value: undefined },
+          zip: { value: undefined },
+        }),
+      ],
+    };
+    renderTable({ comparison: withNoAddress });
+
+    const row = within(candidateRow('Jane Doe'));
+    const addressCell = row.getAllByRole('cell')[0];
+    expect(addressCell).toHaveTextContent('Not Provided');
+    expect(addressCell.querySelector('svg')).toBeNull();
   });
 
   test('offers Match Trustee for each candidate and reports the chosen one', () => {
