@@ -337,6 +337,10 @@ describe('Cases repository', () => {
     };
 
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
+    // arrayContaining is a subset check; pin the count so an extra condition fails too.
+    const matchStage3 = (findSpy.mock.calls[0][0] as Pipeline)
+      .stages[0] as unknown as Conjunction<SyncedCase>;
+    expect(matchStage3.values).toHaveLength(3);
 
     expect(result).toEqual(expectedSyncedCaseArray);
   });
@@ -389,6 +393,10 @@ describe('Cases repository', () => {
       ],
     };
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
+    // arrayContaining is a subset check; pin the count so an extra condition fails too.
+    const matchStage4 = (findSpy.mock.calls[0][0] as Pipeline)
+      .stages[0] as unknown as Conjunction<SyncedCase>;
+    expect(matchStage4.values).toHaveLength(4);
 
     expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
@@ -446,6 +454,10 @@ describe('Cases repository', () => {
     };
 
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
+    // arrayContaining is a subset check; pin the count so an extra condition fails too.
+    const matchStage5 = (findSpy.mock.calls[0][0] as Pipeline)
+      .stages[0] as unknown as Conjunction<SyncedCase>;
+    expect(matchStage5.values).toHaveLength(5);
 
     expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
