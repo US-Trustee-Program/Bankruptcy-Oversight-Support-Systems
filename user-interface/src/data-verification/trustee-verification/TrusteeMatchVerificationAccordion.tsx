@@ -166,9 +166,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
     justApprovedRef.current = true;
     const approvalMessage =
-      affectedCaseCount > 1
-        ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
-        : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
+      affectedCaseCount === 0
+        ? `Trustee ${trusteeName} appointed. No cases affected.`
+        : affectedCaseCount > 1
+          ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
+          : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
     onOrderUpdate(
       {
         message: approvalMessage,

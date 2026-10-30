@@ -863,6 +863,29 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('reports no cases affected in the success message for a caseless task', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      const order = { ...sampleOrder, caseId: undefined, courtId: undefined };
+      renderWithProps({ order, onOrderUpdate });
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        caseId: undefined,
+        courtId: undefined,
+        affectedCaseIds: [],
+      });
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(confirmModalSubmit()!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Trustee Jane Smith appointed. No cases affected.' }),
+          expect.objectContaining({ status: 'approved' }),
+        );
+      });
+    });
+
     test('calls onOrderUpdate with the specific error message on failure', async () => {
       // Surfacing the caught error's own message is what lets a backend coverage rejection show
       // the user something actionable.
