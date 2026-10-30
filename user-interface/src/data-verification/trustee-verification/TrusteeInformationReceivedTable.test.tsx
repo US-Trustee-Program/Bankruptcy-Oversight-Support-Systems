@@ -73,4 +73,35 @@ describe('TrusteeInformationReceivedTable', () => {
     const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
     expect(row).toHaveTextContent('Not Provided');
   });
+
+  test('shows "Not Provided" for phone when it is missing', () => {
+    render(
+      <TrusteeInformationReceivedTable
+        comparison={{ ...comparison, source: { ...comparison.source, phone: undefined } }}
+      />,
+    );
+
+    const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
+    expect(row).toHaveTextContent('Not Provided');
+  });
+
+  test('shows "Not Provided" for the Address cell when street, city, state and zip are all missing', () => {
+    render(
+      <TrusteeInformationReceivedTable
+        comparison={{
+          ...comparison,
+          source: {
+            ...comparison.source,
+            street: undefined,
+            city: undefined,
+            state: undefined,
+            zip: undefined,
+          },
+        }}
+      />,
+    );
+
+    const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
+    expect(row).toHaveTextContent('Not Provided');
+  });
 });
