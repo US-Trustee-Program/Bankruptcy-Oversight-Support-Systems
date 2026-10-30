@@ -216,6 +216,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   function handleSearchSelection(result: TrusteeSearchResult) {
     searchModalRef.current?.hide();
+    // The Search for a trustee button (the only way to reach this handler) only renders once
+    // comparison is truthy (see renderDetailSection's `if (!comparison) return null`), and
+    // comparison never reverts to null afterward - this check only satisfies TS narrowing.
     if (comparison) {
       openConfirmation(selectedTrusteeFromSearch(result, comparison.candidates), {
         openModalButtonRef: searchButtonRef,

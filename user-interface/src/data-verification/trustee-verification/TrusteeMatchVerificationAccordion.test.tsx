@@ -21,6 +21,7 @@ import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 const fieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
 
@@ -225,12 +226,6 @@ async function mockDetailAndExpand(detail: EnrichedTrusteeMatchVerification = sa
   await expandAccordion(detail.id);
 }
 
-function columnHeaders() {
-  return within(screen.getByTestId('trustee-comparison-table'))
-    .getAllByRole('columnheader', { hidden: true })
-    .map((th) => th.textContent);
-}
-
 function candidateRowHeaders() {
   return within(screen.getByTestId('trustee-comparison-table'))
     .queryAllByRole('rowheader', { hidden: true })
@@ -340,18 +335,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(receivedTable).toHaveTextContent('212-555-0100');
     });
 
-    test('shows one row per candidate in the Potential Matches table, in pipeline rank order', async () => {
+    // Column rendering and per-candidate difference markers are TrusteeComparisonTable's own
+    // concern, covered by its own test suite; this only confirms the accordion hands it the
+    // pipeline-ranked candidate data.
+    test('passes the pipeline-ranked candidates through to the comparison table', async () => {
       renderWithProps();
       await mockDetailAndExpand();
 
       expect(candidateRowHeaders()).toEqual(['Jane Smith', 'Janet Smith']);
-    });
-
-    test('has Name, Address, Phone, Email and Action columns for a pending task', async () => {
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      expect(columnHeaders()).toEqual(['Name', 'Address', 'Phone', 'Email', 'Action']);
     });
 
     test('no longer shows the "Sent By Court" heading', async () => {
@@ -360,23 +351,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
       expect(content.textContent).not.toContain('Sent By Court');
-    });
-
-    test('marks the fields where a candidate differs from the source record', async () => {
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      const table = screen.getByTestId('trustee-comparison-table');
-      const differences = within(table)
-        .getAllByLabelText(/differs from the source record/, { selector: 'svg' })
-        .map((icon) => icon.getAttribute('aria-label'));
-      // Janet Smith's name is a "strong" (not exact) match and her state fails to match; the
-      // table combines street/city/state/zip into one Address cell, so the state difference
-      // surfaces as a single Address marker rather than a State marker.
-      expect(differences).toEqual([
-        'Name differs from the source record',
-        'Address differs from the source record',
-      ]);
     });
 
     test('gives the comparison table an accessible name via the Potential Matches heading', async () => {
@@ -949,6 +923,34 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand();
 
       await openSearchModal();
+    });
+
+    test('passes the courts-matched courtId, not order.courtId, to the search modal', async () => {
+      // courtDivisionCode matches sampleOrder.caseId's division ('081'); courtId deliberately
+      // differs from sampleOrder.courtId ('0881') so the assertion can tell which one won.
+      const matchedCourt: CourtDivisionDetails = {
+        courtId: 'matched-court-id',
+        courtName: 'Matched District Court',
+        officeName: '',
+        officeCode: '',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
+      };
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [matchedCourt] } as never);
+      renderWithProps({ courts: [matchedCourt] });
+      await mockDetailAndExpand();
+
+      await openSearchModal();
+
+      await waitFor(() => {
+        const input = document.getElementById(
+          `trustee-district-combobox-${sampleOrder.id}-combo-box-input`,
+        ) as HTMLInputElement;
+        expect(input.value).toBe('Matched District Court');
+      });
     });
 
     // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court

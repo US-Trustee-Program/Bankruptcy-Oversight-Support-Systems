@@ -98,6 +98,16 @@ describe('TrusteeInformationReceivedTable', () => {
     expect(addressCell).toHaveTextContent('Not Provided');
   });
 
+  test('shows "Not Provided" for the name when it is missing', () => {
+    render(
+      <TrusteeInformationReceivedTable
+        comparison={{ ...comparison, source: { ...comparison.source, name: undefined } }}
+      />,
+    );
+
+    expect(screen.getByRole('rowheader', { name: 'Not Provided' })).toBeInTheDocument();
+  });
+
   test('takes its accessible name from the heading it is labelled by', () => {
     render(
       <>

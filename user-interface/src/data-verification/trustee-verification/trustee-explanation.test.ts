@@ -98,6 +98,26 @@ describe('buildTrusteeExplanation', () => {
     );
   });
 
+  test('one candidate, only street differs: reads "address"', () => {
+    const explanation = buildTrusteeExplanation(
+      findings([
+        candidate({ ...EXACT_NAME, doesAddressMatch: { pass: false, streetCloseness: 0.5 } }),
+      ]),
+    );
+    expect(explanation.sentence).toBe(
+      'Trustee address sent to CAMS does not exactly match a trustee in CAMS.',
+    );
+  });
+
+  test('one candidate, only zip differs: reads "address"', () => {
+    const explanation = buildTrusteeExplanation(
+      findings([candidate({ ...EXACT_NAME, doesZipCodeMatch: { pass: false } })]),
+    );
+    expect(explanation.sentence).toBe(
+      'Trustee address sent to CAMS does not exactly match a trustee in CAMS.',
+    );
+  });
+
   test('one candidate, address and phone differ: plural verb, fixed order', () => {
     const explanation = buildTrusteeExplanation(
       findings([
