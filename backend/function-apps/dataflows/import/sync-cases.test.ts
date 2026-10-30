@@ -2,6 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
+import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
@@ -142,6 +144,121 @@ describe('sync-cases handlePage', () => {
     await expect(handlePage(message, invocationContext)).rejects.toThrow(
       'Database connection failed',
     );
+  });
+});
+
+describe('sync-cases handleStart', () => {
+  beforeEach(() => {
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+  });
+
+  async function setupMocks(eventCount = 2) {
+    const events = Array.from({ length: eventCount }, (_, index) =>
+      makeCaseSyncEvent(`001-25-${String(index + 1).padStart(5, '0')}`),
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    vi.spyOn(SyncCases, 'getCaseIds').mockResolvedValue({
+      events,
+      lastCasesSyncDate: '2026-10-01T00:00:00Z',
+      lastTransactionsSyncDate: '2026-10-02T00:00:00Z',
+    });
+    const storeRuntimeStateSpy = vi
+      .spyOn(CasesRuntimeState, 'storeRuntimeState')
+      .mockResolvedValue(undefined);
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+    return { events, mockSendMessage, storeRuntimeStateSpy };
+  }
+
+  function getDlqOutput(invocationContext: InvocationContext) {
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    return outputs.find(([key]) => key.queueName?.includes('dlq'));
+  }
+
+  function getSentPages(mockSendMessage: { mock: { calls: unknown[][] } }) {
+    return mockSendMessage.mock.calls.map(
+      ([body]) => JSON.parse(body as string) as { events: CaseSyncEvent[] },
+    );
+  }
+
+  test('should send pages to the page queue and store runtime state', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+    const { events, mockSendMessage, storeRuntimeStateSpy } = await setupMocks();
+
+    await handleStart({}, invocationContext);
+
+    expect(getSentPages(mockSendMessage)).toEqual([{ events }]);
+    expect(getDlqOutput(invocationContext)).toBeUndefined();
+    expect(storeRuntimeStateSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2026-10-01T00:00:00Z',
+      '2026-10-02T00:00:00Z',
+    );
+  });
+
+  test('should report success false and route to DLQ when storing runtime state fails after all pages are queued', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+    const { events, mockSendMessage, storeRuntimeStateSpy } = await setupMocks();
+    storeRuntimeStateSpy.mockRejectedValue(new Error('watermark upsert failed'));
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    expect(getSentPages(mockSendMessage)).toEqual([{ events }]);
+    expect(getDlqOutput(invocationContext)).toBeDefined();
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('should split 201 events into pages of at most 100 and deliver each event exactly once', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+    const { events, mockSendMessage, storeRuntimeStateSpy } = await setupMocks(201);
+
+    await handleStart({}, invocationContext);
+
+    const pages = getSentPages(mockSendMessage);
+    expect(Math.max(...pages.map((page) => page.events.length))).toBeLessThanOrEqual(100);
+    const deliveredCaseIds = pages.flatMap((page) => page.events.map((event) => event.caseId));
+    expect(deliveredCaseIds.sort()).toEqual(events.map((event) => event.caseId).sort());
+    expect(storeRuntimeStateSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2026-10-01T00:00:00Z',
+      '2026-10-02T00:00:00Z',
+    );
+  });
+
+  test('should stop at the first failed page, never send later pages, and not store runtime state', async () => {
+    const { handleStart } = await import('./sync-cases');
+    const invocationContext = makeInvocationContext();
+    const { events, mockSendMessage, storeRuntimeStateSpy } = await setupMocks(201);
+    mockSendMessage
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('queue unavailable'));
+
+    await handleStart({}, invocationContext);
+
+    expect(storeRuntimeStateSpy).not.toHaveBeenCalled();
+    expect(getDlqOutput(invocationContext)).toBeDefined();
+    const page3CaseIds = events.slice(200).map((event) => event.caseId);
+    const sentCaseIds = getSentPages(mockSendMessage).flatMap((page) =>
+      page.events.map((event) => event.caseId),
+    );
+    expect(sentCaseIds.some((caseId) => page3CaseIds.includes(caseId))).toBe(false);
   });
 });
 

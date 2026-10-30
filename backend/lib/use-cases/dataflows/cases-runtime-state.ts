@@ -26,6 +26,7 @@ async function storeRuntimeState(
       'Failed while storing the case sync runtime state.',
     );
     context.logger.camsError(error);
+    throw error;
   }
 }
 

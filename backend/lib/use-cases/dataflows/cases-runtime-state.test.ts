@@ -2,8 +2,8 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { CasesSyncState } from '../gateways.types';
 import CasesRuntimeState from './cases-runtime-state';
+import { CamsError } from '../../common-errors/cams-error';
 
 describe('storeRuntimeState tests', () => {
   let context: ApplicationContext;
@@ -22,8 +22,8 @@ describe('storeRuntimeState tests', () => {
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(undefined);
 
-    const lastCasesSyncDate = new Date().toISOString();
-    const lastTransactionsSyncDate = new Date().toISOString();
+    const lastCasesSyncDate = '2026-01-01T00:00:00.000Z';
+    const lastTransactionsSyncDate = '2026-02-01T00:00:00.000Z';
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
     await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
@@ -40,20 +40,16 @@ describe('storeRuntimeState tests', () => {
     );
   });
 
-  test('should log CamsError', async () => {
-    const original: CasesSyncState = {
-      documentType: 'CASES_SYNC_STATE',
-      lastCasesSyncDate: '1000',
-      lastTransactionsSyncDate: '1000',
-    };
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+  test('should log and rethrow upsert failures as CamsError without logging success', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('some error'));
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
-    await expect(
-      CasesRuntimeState.storeRuntimeState(context, '1001', '1001'),
-    ).resolves.toBeUndefined();
-    expect(errorLogSpy).toHaveBeenCalled();
+    const thrown = await CasesRuntimeState.storeRuntimeState(context, '1001', '1001').catch(
+      (error: unknown) => error,
+    );
+    expect(thrown).toBeInstanceOf(CamsError);
+    expect((thrown as CamsError).message).toBe('Failed while storing the case sync runtime state.');
+    expect(errorLogSpy).toHaveBeenCalledWith(thrown);
     expect(infoLogSpy).not.toHaveBeenCalledWith(
       expect.any(String),
       expect.stringContaining('Wrote runtime state: '),
