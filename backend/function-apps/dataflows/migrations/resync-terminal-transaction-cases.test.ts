@@ -136,8 +136,14 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.anything(),
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: 10, error: expect.anything() }),
+      ]),
     );
+    const [, dlqPayload] = (
+      extraOutputsSetSpy.mock.calls as unknown as [{ queueName: string }, unknown][]
+    ).find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqPayload).toHaveLength(1);
   });
 
   test('should re-throw on non-429 error', async () => {

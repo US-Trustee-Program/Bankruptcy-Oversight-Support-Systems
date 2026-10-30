@@ -144,8 +144,14 @@ describe('migrate-cases handlePage', () => {
 
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.anything(),
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: 10, error: expect.anything() }),
+      ]),
     );
+    const [, dlqPayload] = (
+      extraOutputsSetSpy.mock.calls as unknown as [{ queueName: string }, unknown][]
+    ).find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqPayload).toHaveLength(1);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
