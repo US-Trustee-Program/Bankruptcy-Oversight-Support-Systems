@@ -13,6 +13,12 @@
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-main
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-branch
 #
+# The main identity is also used by standalone workflow_dispatch workflows that
+# declare the infrastructure-deploy-main environment. A standalone workflow reports
+# its own name in the subject, so each one gets its own credential on the main app:
+#   repo:ORG/REPO:workflow:Deploy SQL Private Link Hub:environment:infrastructure-deploy-main
+#   repo:ORG/REPO:workflow:Deploy DORA Metrics Storage:environment:infrastructure-deploy-main
+#
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
 #   - The Azure subscription already exists
@@ -89,6 +95,19 @@ provision_identity() {
 
   echo "==> Updating federated identity credential..."
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
+
+  # Standalone workflows (deploy-sql-hub.yml, deploy-dora-metrics-storage.yml) — main only
+  if [[ "$GITHUB_ENVIRONMENT" == "infrastructure-deploy-main" ]]; then
+    upsert_federated_credential \
+      "$APP_ID" \
+      "gha-deploy-sql-hub" \
+      "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Deploy SQL Private Link Hub:environment:${GITHUB_ENVIRONMENT}"
+
+    upsert_federated_credential \
+      "$APP_ID" \
+      "gha-deploy-dora-metrics-storage" \
+      "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Deploy DORA Metrics Storage:environment:${GITHUB_ENVIRONMENT}"
+  fi
 
   # ---------------------------------------------------------------------------
   # Role assignments
