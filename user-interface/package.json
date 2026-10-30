@@ -62,7 +62,7 @@
     "@tiptap/pm": "3.32.0",
     "@tiptap/react": "3.32.0",
     "@types/jsdom": "30.0.0",
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@uswds/uswds": "3.14.0",
