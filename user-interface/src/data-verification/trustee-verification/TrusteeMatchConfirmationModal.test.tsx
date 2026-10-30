@@ -1,236 +1,305 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteeMatchConfirmationModal, {
-  ConfirmationCandidate,
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
-import MockData from '@common/cams/test-utilities/mock-data';
+import { ComparisonRow, ComparisonRowKey, SelectedTrustee } from './trustee-comparison';
 
 const modalId = 'test-order-id';
 
-const sampleCandidate: ConfirmationCandidate = {
+const dxtrRows: ComparisonRow[] = [
+  { key: 'name', label: 'Name' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'street', label: 'Street' },
+  { key: 'city', label: 'City' },
+  { key: 'state', label: 'State' },
+  { key: 'zip', label: 'Zip' },
+  { key: 'email', label: 'Email' },
+  { key: 'foundBy', label: 'Found by' },
+];
+const acmsRows = dxtrRows.filter((row) => row.key !== 'email');
+
+const source: Record<ComparisonRowKey, string | undefined> = {
+  name: 'Jane A. Smith',
+  phone: '555-0000',
+  street: '1 Court St',
+  city: 'New York',
+  state: 'NY',
+  zip: '10001',
+  email: 'jane@court.example',
+  foundBy: undefined,
+};
+
+const selected: SelectedTrustee = {
   trusteeId: 'trustee-1',
   trusteeName: 'Jane Smith',
-  address: {
-    address1: '123 Main St',
-    address2: 'Suite 200',
-    city: 'New York',
-    state: 'NY',
-    zipCode: '10001',
-    countryCode: 'US',
+  cells: {
+    name: { value: 'Jane Smith', differs: true },
+    phone: { value: '555-1234 x99', differs: true },
+    street: { value: '123 Main St, Suite 200', differs: false },
+    city: { value: 'New York', differs: false },
+    state: { value: 'NY', differs: false },
+    zip: { value: undefined, differs: true },
+    email: { value: 'jane@example.com', differs: false },
+    foundBy: { value: 'Exact surname', differs: false },
   },
-  phone: { number: '555-1234', extension: '99' },
-  email: 'jane@example.com',
-  appointments: [
-    MockData.getTrusteeAppointment({
-      courtName: 'Southern District',
-      courtDivisionName: 'Manhattan',
-    }),
-  ],
+};
+
+type RenderOptions = {
+  rows?: ComparisonRow[];
+  caseCount?: number;
+  isProcessing?: boolean;
+  onCancel?: () => void;
 };
 
 describe('TrusteeMatchConfirmationModal', () => {
   const modalRef = React.createRef<TrusteeMatchConfirmationModalImperative>();
 
-  function renderWithProps(onConfirm = vi.fn(), onCancel = vi.fn()) {
-    render(
+  function modalTree(options: RenderOptions, onConfirm: (selected: SelectedTrustee) => void) {
+    return (
       <BrowserRouter>
         <TrusteeMatchConfirmationModal
           ref={modalRef}
           id={modalId}
+          rows={options.rows ?? dxtrRows}
+          source={source}
+          caseCount={options.caseCount ?? 3}
           onConfirm={onConfirm}
-          onCancel={onCancel}
+          onCancel={options.onCancel}
+          isProcessing={options.isProcessing}
         />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
-    return { onConfirm, onCancel };
   }
+
+  function renderModal(options: RenderOptions = {}) {
+    const onConfirm = vi.fn();
+    const { rerender } = render(modalTree(options, onConfirm));
+    return {
+      onConfirm,
+      rerender: (next: RenderOptions) => rerender(modalTree(next, onConfirm)),
+    };
+  }
+
+  function showSelected() {
+    act(() => modalRef.current?.show(selected));
+  }
+
+  const sourceColumn = () => screen.getByTestId('confirm-match-source');
+  const selectedColumn = () => screen.getByTestId('confirm-match-selected');
+  const submitButton = () =>
+    screen.getByTestId(`button-trustee-confirmation-modal-${modalId}-submit-button`);
+  const cancelButton = () =>
+    screen.getByTestId(`button-trustee-confirmation-modal-${modalId}-cancel-button`);
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('renders without candidate content before show() is called', () => {
-    renderWithProps();
-    expect(screen.queryByText(/Are you sure you want to confirm/)).not.toBeInTheDocument();
+  test('renders no trustee content before show() is called', () => {
+    renderModal();
+    expect(screen.queryByTestId('confirm-match-selected')).not.toBeInTheDocument();
   });
 
-  test('shows heading and candidate name after show() is called', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('asks whether the selected trustee is the same trustee sent to CAMS', () => {
+    renderModal();
+    showSelected();
 
-    await waitFor(() => {
-      expect(document.querySelector('.usa-modal__heading')).toHaveTextContent('Confirm Trustee');
-      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    });
-  });
-
-  test('shows candidate address, phone, and email after show() is called', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
-
-    await waitFor(() => {
-      const content = document.querySelector('.usa-modal__main');
-      expect(content?.textContent).toContain('123 Main St');
-      expect(content?.textContent).toContain('Suite 200');
-      expect(content?.textContent).toContain('New York, NY 10001');
-      expect(content?.textContent).toContain('555-1234 x99');
-      expect(content?.textContent).toContain('jane@example.com');
-    });
-  });
-
-  test('shows candidate appointments after show() is called', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
-
-    await waitFor(() => {
-      const content = document.querySelector('.usa-modal__main');
-      expect(content?.textContent).toContain('Southern District');
-    });
-  });
-
-  test('calls onConfirm with the candidate when Confirm Appointment is clicked', async () => {
-    const { onConfirm } = renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
-
-    const submitButton = screen.getByTestId(
-      `button-trustee-confirmation-modal-${modalId}-submit-button`,
+    expect(document.querySelector('.usa-modal__heading')).toHaveTextContent(
+      'Confirm Trustee Match',
     );
-    await waitFor(() => expect(submitButton).toBeEnabled());
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(sampleCandidate);
-    });
+    expect(
+      screen.getByText('Is this the same trustee as the information sent to CAMS?'),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceColumn()).getByRole('heading', { level: 3, name: 'Information Sent to CAMS' }),
+    ).toBeInTheDocument();
+    expect(
+      within(selectedColumn()).getByRole('heading', { level: 3, name: 'Selected CAMS Trustee' }),
+    ).toBeInTheDocument();
   });
 
-  test('calls onCancel when Cancel button is clicked', async () => {
-    const { onCancel } = renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('shows every row but Found by in both columns, with the trustee name linked', () => {
+    renderModal();
+    showSelected();
 
-    const cancelButton = screen.getByTestId(
-      `button-trustee-confirmation-modal-${modalId}-cancel-button`,
+    const sourceText = sourceColumn().textContent;
+    ['Jane A. Smith', '555-0000', '1 Court St', 'New York', 'NY', '10001'].forEach((value) =>
+      expect(sourceText).toContain(value),
     );
-    await waitFor(() => expect(cancelButton).toBeEnabled());
-    fireEvent.click(cancelButton);
+    expect(sourceText).toContain('jane@court.example');
 
-    await waitFor(() => {
-      expect(onCancel).toHaveBeenCalled();
-    });
-  });
-
-  test('shows candidate without address or phone when those fields are absent', async () => {
-    const minimalCandidate: ConfirmationCandidate = {
-      trusteeId: 'trustee-2',
-      trusteeName: 'Bob Jones',
-    };
-    renderWithProps();
-    act(() => modalRef.current?.show(minimalCandidate));
-
-    await waitFor(() => {
-      expect(screen.getByText('Bob Jones')).toBeInTheDocument();
-    });
-  });
-
-  test('shows phone number without extension when extension is absent', async () => {
-    const candidateNoExtension: ConfirmationCandidate = {
-      ...sampleCandidate,
-      phone: { number: '555-9999' },
-    };
-    renderWithProps();
-    act(() => modalRef.current?.show(candidateNoExtension));
-
-    await waitFor(() => {
-      const content = document.querySelector('.usa-modal__main');
-      expect(content?.textContent).toContain('555-9999');
-      expect(content?.textContent).not.toContain(' x');
-    });
-  });
-
-  test('does not call onConfirm when confirm is clicked before show() is called', async () => {
-    const { onConfirm } = renderWithProps();
-
-    const submitButton = screen.getByTestId(
-      `button-trustee-confirmation-modal-${modalId}-submit-button`,
+    const selectedText = selectedColumn().textContent;
+    ['555-1234 x99', '123 Main St, Suite 200', 'jane@example.com'].forEach((value) =>
+      expect(selectedText).toContain(value),
     );
-    fireEvent.click(submitButton);
+    expect(within(selectedColumn()).getByRole('link', { name: /Jane Smith/ })).toHaveAttribute(
+      'href',
+      '/trustees/trustee-1',
+    );
+    expect(screen.queryByText('Exact surname')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Found by/)).not.toBeInTheDocument();
+  });
+
+  test('omits Email when the rows exclude it', () => {
+    renderModal({ rows: acmsRows });
+    showSelected();
+
+    expect(sourceColumn().textContent).not.toContain('jane@court.example');
+    expect(selectedColumn().textContent).not.toContain('jane@example.com');
+  });
+
+  test('shows Not Provided for a missing value', () => {
+    renderModal();
+    showSelected();
+
+    expect(within(selectedColumn()).getByText('Not Provided')).toBeInTheDocument();
+  });
+
+  test('shows Not Provided in the source column for a missing source value', () => {
+    const sourceWithoutPhone = { ...source, phone: undefined };
+    render(
+      <BrowserRouter>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          rows={dxtrRows}
+          source={sourceWithoutPhone}
+          caseCount={3}
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    showSelected();
+
+    expect(within(sourceColumn()).getByText('Not Provided')).toBeInTheDocument();
+  });
+
+  test('marks only the selected trustee fields that differ and have a value', () => {
+    renderModal();
+    showSelected();
+
+    expect(
+      within(selectedColumn()).getByRole('img', { name: 'Name differs from the source record' }),
+    ).toBeInTheDocument();
+    expect(
+      within(selectedColumn()).getByRole('img', { name: 'Phone differs from the source record' }),
+    ).toBeInTheDocument();
+    expect(within(selectedColumn()).getAllByRole('img', { name: /differs/ })).toHaveLength(2);
+    expect(within(sourceColumn()).queryAllByRole('img', { name: /differs/ })).toHaveLength(0);
+  });
+
+  test('says how many cases will be assigned to the trustee', () => {
+    renderModal({ caseCount: 3 });
+    showSelected();
+
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'What Happens Next' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('3 cases will be assigned to Jane Smith.')).toBeInTheDocument();
+  });
+
+  test('uses the singular for one case', () => {
+    renderModal({ caseCount: 1 });
+    showSelected();
+
+    expect(screen.getByText('1 case will be assigned to Jane Smith.')).toBeInTheDocument();
+  });
+
+  test('calls onConfirm with the selected trustee when Match Trustee is clicked', async () => {
+    const { onConfirm } = renderModal();
+    showSelected();
+
+    expect(submitButton()).toHaveTextContent('Match Trustee');
+    await waitFor(() => expect(submitButton()).toBeEnabled());
+    fireEvent.click(submitButton());
+
+    expect(onConfirm).toHaveBeenCalledWith(selected);
+  });
+
+  test('does not call onConfirm when Match Trustee is clicked before show()', () => {
+    const { onConfirm } = renderModal();
+
+    fireEvent.click(submitButton());
 
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
-    const onConfirm = vi.fn();
-    render(
-      <BrowserRouter>
-        <TrusteeMatchConfirmationModal
-          ref={modalRef}
-          id={modalId}
-          onConfirm={onConfirm}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('reads Matching Trustee... and disables both buttons while processing', async () => {
+    renderModal({ isProcessing: true });
+    showSelected();
 
-    await waitFor(() => {
-      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
-      const submitButton = screen.getByTestId(
-        `button-trustee-confirmation-modal-${modalId}-submit-button`,
-      );
-      expect(submitButton).toBeDisabled();
-    });
+    await waitFor(() => expect(submitButton()).toHaveTextContent('Matching Trustee...'));
+    expect(submitButton()).toBeDisabled();
+    expect(cancelButton()).toBeDisabled();
   });
 
-  test('disables Cancel when isProcessing is true', async () => {
-    render(
-      <BrowserRouter>
-        <TrusteeMatchConfirmationModal
-          ref={modalRef}
-          id={modalId}
-          onConfirm={vi.fn()}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('keeps the preview open on Escape, overlay click, or X while processing', () => {
+    renderModal({ isProcessing: true });
+    showSelected();
 
-    await waitFor(() => {
-      const cancelButton = screen.getByTestId(
-        `button-trustee-confirmation-modal-${modalId}-cancel-button`,
-      );
-      expect(cancelButton).toBeDisabled();
+    const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
+    expect(wrapper).toHaveClass('is-visible');
+
+    fireEvent.keyDown(screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`), {
+      key: 'Escape',
     });
+    expect(wrapper).toHaveClass('is-visible');
+
+    fireEvent.click(screen.getByTestId(`modal-overlay-trustee-confirmation-modal-${modalId}`));
+    expect(wrapper).toHaveClass('is-visible');
+
+    expect(
+      screen.queryByTestId(`modal-x-button-trustee-confirmation-modal-${modalId}`),
+    ).not.toBeInTheDocument();
   });
 
-  test('does not show a loading spinner when isProcessing is omitted', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('keeps one status region mounted so Matching trustee... is announced when processing starts', () => {
+    const { rerender } = renderModal();
+    showSelected();
 
-    await waitFor(() => {
-      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
+    const status = screen.getByRole('status');
+    rerender({ isProcessing: true });
+
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toHaveTextContent('Matching trustee...');
   });
 
-  test('hides modal when Cancel is clicked and no onCancel prop is provided', async () => {
-    const onConfirm = vi.fn();
-    render(
-      <BrowserRouter>
-        <TrusteeMatchConfirmationModal ref={modalRef} id={modalId} onConfirm={onConfirm} />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show(sampleCandidate));
+  test('moves focus into the dialog when processing starts, since the submit button is disabled', async () => {
+    const { rerender } = renderModal();
+    showSelected();
+    await waitFor(() => expect(submitButton()).toBeEnabled());
 
-    const cancelButton = screen.getByTestId(
-      `button-trustee-confirmation-modal-${modalId}-cancel-button`,
-    );
-    await waitFor(() => expect(cancelButton).toBeEnabled());
-    fireEvent.click(cancelButton);
+    submitButton().focus();
+    fireEvent.click(submitButton());
+    rerender({ isProcessing: true });
 
-    await waitFor(() => {
-      const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
-      expect(wrapper).toHaveClass('is-hidden');
-    });
+    expect(screen.getByRole('status')).toHaveFocus();
+    expect(submitButton()).not.toHaveFocus();
+  });
+
+  test('announces Matching trustee... in the status region while processing', async () => {
+    renderModal({ isProcessing: true });
+    showSelected();
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Matching trustee...');
+  });
+
+  test('calls onCancel and hides when Cancel is clicked', async () => {
+    const onCancel = vi.fn();
+    renderModal({ onCancel });
+    showSelected();
+
+    await waitFor(() => expect(cancelButton()).toBeEnabled());
+    fireEvent.click(cancelButton());
+
+    expect(onCancel).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`)).toHaveClass(
+        'is-hidden',
+      ),
+    );
   });
 });

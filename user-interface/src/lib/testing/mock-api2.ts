@@ -2500,13 +2500,32 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
+const trusteeSearchResults: TrusteeSearchResult[] = [
+  {
+    trusteeId: 'fake-search-trustee-1',
+    name: 'Riley Searchable',
+    address: {
+      address1: '200 Court Plaza',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10007',
+      countryCode: 'US',
+    },
+    phone: { number: '212-555-0142' },
+    email: 'riley.searchable@example.com',
+    appointments: [],
+    matchType: 'exact',
+  },
+];
+
 async function searchTrustees(
-  _name: string,
+  name: string,
   _courtId?: string,
   _divisionCode?: string,
   _chapter?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
-  return { data: [] };
+  const term = name.toLowerCase();
+  return { data: trusteeSearchResults.filter((t) => t.name.toLowerCase().includes(term)) };
 }
 
 async function getTrusteeMatchVerifications(_params?: {

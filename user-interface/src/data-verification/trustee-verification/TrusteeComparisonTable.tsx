@@ -9,7 +9,7 @@ type DifferenceIconProps = { label: string };
  * accessible name so a screen reader announces it on hover/touch exploration as well as in a
  * full read, and the meaning never rests on color alone (WCAG 1.4.1).
  */
-function DifferenceIcon({ label }: DifferenceIconProps) {
+export function DifferenceIcon({ label }: DifferenceIconProps) {
   const description = `${label} differs from the source record`;
   return (
     <span className="difference-icon" title={description}>

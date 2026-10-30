@@ -480,7 +480,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('calls onConfirm with selected trustee when Confirm is clicked', async () => {
+  test('hands the selected trustee to onConfirm when Select Trustee is clicked', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
     const { onConfirm } = renderWithProps();
 
@@ -497,6 +497,7 @@ describe('TrusteeSearchModal', () => {
     await userEvent.click(firstItem);
 
     const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
+    expect(submitButton).toHaveTextContent('Select Trustee');
     await waitFor(() => expect(submitButton).toBeEnabled());
     await userEvent.click(submitButton);
 
@@ -505,19 +506,15 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('disables Confirm and explains why when the selected trustee does not cover every affected case', async () => {
+  test('lets a trustee with no appointment for the task be selected', async () => {
     const resultWithAppointment: TrusteeSearchResult = {
       ...sampleResults[0],
       appointments: [
-        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '12' }),
       ],
     };
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
-    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), {
-      affectedCases: [
-        { caseId: '081-22-11111', courtId: '081', courtDivisionCode: '081', chapter: '12' },
-      ],
-    });
+    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), { chapter: '7' });
 
     act(() => modalRef.current?.show());
 
@@ -527,13 +524,12 @@ describe('TrusteeSearchModal', () => {
     });
     await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
 
-    const message = await screen.findByTestId('search-uncovered-cases-message');
-    expect(message.textContent).toContain('22-11111');
-    expect(message.textContent).toContain('Chapter 12');
-
     const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
-    expect(submitButton).toBeDisabled();
-    expect(onConfirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    expect(screen.queryByText(/Does not have an appointment/)).not.toBeInTheDocument();
+    await userEvent.click(submitButton);
+
+    expect(onConfirm).toHaveBeenCalledWith(resultWithAppointment);
   });
 
   test('calls onCancel when Cancel is clicked', async () => {
@@ -772,7 +768,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('clears selected trustee and disables Confirm button when selection is removed', async () => {
+  test('clears selected trustee and disables Select Trustee when selection is removed', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -803,7 +799,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('disables Confirm button when no trustee is selected', async () => {
+  test('disables Select Trustee when no trustee is selected', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());
 
@@ -845,62 +841,6 @@ describe('TrusteeSearchModal', () => {
         `button-trustee-search-modal-${modalId}-submit-button`,
       );
       expect(submitButton).toBeDisabled();
-    });
-  });
-
-  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
-    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
-
-    render(
-      <BrowserRouter>
-        <TrusteeSearchModal
-          ref={modalRef}
-          id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          onConfirm={vi.fn()}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
-      const submitButton = screen.getByTestId(
-        `button-trustee-search-modal-${modalId}-submit-button`,
-      );
-      expect(submitButton).toBeDisabled();
-    });
-  });
-
-  test('disables Cancel when isProcessing is true', async () => {
-    render(
-      <BrowserRouter>
-        <TrusteeSearchModal
-          ref={modalRef}
-          id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          onConfirm={vi.fn()}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      const cancelButton = screen.getByTestId(
-        `button-trustee-search-modal-${modalId}-cancel-button`,
-      );
-      expect(cancelButton).toBeDisabled();
-    });
-  });
-
-  test('does not show a loading spinner when isProcessing is omitted', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
     });
   });
 

@@ -252,8 +252,8 @@ function confirmModalSubmit(orderId = sampleOrder.id) {
 describe('TrusteeMatchVerificationAccordion', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    // Default: no case summaries available. Tests that care about the search modal's coverage
-    // filtering override this with their own getCaseSummary mock.
+    // Default: no case summary available. Tests that care about the search modal's chapter
+    // filter override this with their own getCaseSummary mock.
     vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not mocked in this test'));
   });
 
@@ -651,20 +651,43 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
     });
+
+    test('fetches the case summary for the originating case only', async () => {
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({ override: { caseId: sampleOrder.caseId } }),
+      });
+
+      renderWithProps();
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        affectedCaseIds: [sampleOrder.caseId, '081-22-22222', '081-22-33333'],
+      });
+
+      await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
+      expect(caseSummarySpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('approval', () => {
-    test('Match Trustee shows the candidate from the stored findings in the confirmation modal', async () => {
+    test('Match Trustee opens the confirmation for the chosen candidate with the affected case count', async () => {
+      // Wiring only: the modal's rendering of these props is covered by its own tests.
       renderWithProps();
-      await mockDetailAndExpand();
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      });
 
-      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
 
-      const modal = screen.getByTestId(`modal-trustee-confirmation-modal-${sampleOrder.id}`);
-      await waitFor(() => expect(modal.textContent).toContain('Jane Smith'));
-      expect(modal.textContent).toContain('123 Main St');
-      expect(modal.textContent).toContain('212-555-0100 x7');
-      expect(modal.textContent).toContain('trustee-1@example.com');
+      const selected = within(screen.getByTestId('confirm-match-selected'));
+      expect(selected.getByRole('link', { name: /Janet Smith/ })).toHaveAttribute(
+        'href',
+        '/trustees/trustee-2',
+      );
+      expect(selected.getAllByRole('img', { name: /differs/ })).toHaveLength(2);
+      expect(
+        screen.getByTestId(`modal-trustee-confirmation-modal-${sampleOrder.id}`),
+      ).toHaveTextContent('3 cases will be assigned');
     });
 
     test('confirming calls patchTrusteeVerificationOrderApproval with the chosen candidate', async () => {
@@ -681,6 +704,28 @@ describe('TrusteeMatchVerificationAccordion', () => {
           'trustee-2',
           'Janet Smith',
         );
+      });
+    });
+
+    test('approves the most recently previewed trustee after a cancelled preview', async () => {
+      // Regression guard: a cancelled preview for one candidate must not leak into the next
+      // approval, which should carry the id and name of the candidate chosen last.
+      const approvalSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+        .mockResolvedValue(undefined);
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
+      fireEvent.click(confirmModalSubmit()!);
+
+      await waitFor(() => {
+        expect(approvalSpy).toHaveBeenCalledTimes(1);
+        expect(approvalSpy).toHaveBeenCalledWith(sampleOrder.id, 'trustee-2', 'Janet Smith');
       });
     });
 
@@ -757,6 +802,25 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
     });
 
+    test('returns focus to the Match Trustee button that opened the preview after Cancel', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const approveButton = screen.getByTestId('approve-candidate-trustee-1');
+      approveButton.focus();
+      fireEvent.click(approveButton);
+      await waitFor(() =>
+        expect(
+          document.getElementById(`trustee-confirmation-modal-${sampleOrder.id}-wrapper`),
+        ).toHaveClass('is-visible'),
+      );
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+
+      await waitFor(() => expect(approveButton).toHaveFocus());
+    });
+
     test('reports every affected case in the success message', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
@@ -787,8 +851,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const onOrderUpdate = vi.fn();
       renderWithProps({ onOrderUpdate });
       await mockDetailAndExpand();
+      const confirmationWrapper = () =>
+        document.getElementById(`trustee-confirmation-modal-${sampleOrder.id}-wrapper`);
 
       fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      await waitFor(() => expect(confirmationWrapper()).toHaveClass('is-visible'));
       fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => {
@@ -797,6 +864,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
           sampleOrder,
         );
       });
+      await waitFor(() => expect(confirmationWrapper()).toHaveClass('is-hidden'));
     });
 
     test('falls back to a generic message when the rejection is not an Error instance', async () => {
@@ -822,9 +890,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       { trusteeId: 'manual-trustee-1', name: 'Manual Match', appointments: [], matchType: 'exact' },
     ];
 
-    function setupSearchMocks() {
-      // The search modal's Confirm button gates on bundle-wide coverage (getUncoveredCases), so
-      // the default fixture is a trustee who genuinely covers the affected case.
+    function setupSearchMocks(results: TrusteeSearchResult[] = manualSearchMockData) {
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
         data: MockData.getCaseSummary({
           override: {
@@ -835,16 +901,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
           },
         }),
       });
-      return vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
-        data: [
-          {
-            ...manualSearchMockData[0],
-            appointments: [
-              MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
-            ],
-          },
-        ],
-      });
+      return vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: results });
     }
 
     function searchButton() {
@@ -876,6 +933,13 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
       await waitFor(() => expect(submitButton).toBeEnabled());
       return submitButton;
+    }
+
+    /** Selects the first search result and hands it to Confirm Trustee Match. */
+    async function selectTrusteeFromSearch() {
+      await openSearchModal();
+      fireEvent.click(await selectFirstSearchResult());
+      await waitFor(() => expect(screen.getByTestId('confirm-match-selected')).toBeVisible());
     }
 
     test('offers search as a button, not a link', async () => {
@@ -952,15 +1016,73 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     );
 
-    test('confirming a search result calls the approval API and reports success', async () => {
+    test('selecting a search result closes search and opens Confirm Trustee Match for that trustee', async () => {
+      const approvalSpy = vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval');
+      setupSearchMocks();
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      await selectTrusteeFromSearch();
+
+      expect(
+        within(screen.getByTestId('confirm-match-selected')).getByRole('link', {
+          name: /Manual Match/,
+        }),
+      ).toHaveAttribute('href', '/trustees/manual-trustee-1');
+      await waitFor(() =>
+        expect(
+          document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`),
+        ).toHaveClass('is-hidden'),
+      );
+      expect(approvalSpy).not.toHaveBeenCalled();
+    });
+
+    test('a trustee whose appointments cover none of the cases can still be selected', async () => {
+      setupSearchMocks([
+        {
+          ...manualSearchMockData[0],
+          appointments: [
+            MockData.getTrusteeAppointment({ courtId: '999', divisionCode: '999', chapter: '13' }),
+          ],
+        },
+      ]);
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      await selectTrusteeFromSearch();
+
+      expect(
+        within(screen.getByTestId('confirm-match-selected')).getByRole('link', {
+          name: /Manual Match/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test("a searched trustee who is also a candidate keeps that candidate's stored markers", async () => {
+      setupSearchMocks([
+        { trusteeId: 'trustee-2', name: 'Janet Smith', appointments: [], matchType: 'exact' },
+      ]);
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      await selectTrusteeFromSearch();
+
+      expect(
+        within(screen.getByTestId('confirm-match-selected')).getAllByRole('img', {
+          name: /differs/,
+        }),
+      ).toHaveLength(2);
+    });
+
+    test('confirming a searched trustee calls the approval API and reports success', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       setupSearchMocks();
       const onOrderUpdate = vi.fn();
       renderWithProps({ onOrderUpdate });
       await mockDetailAndExpand();
 
-      await openSearchModal();
-      fireEvent.click(await selectFirstSearchResult());
+      await selectTrusteeFromSearch();
+      fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => {
         expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
@@ -979,14 +1101,43 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('keeps focus in the preview when a search result opens it', async () => {
+      setupSearchMocks();
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      searchButton().focus();
+      await selectTrusteeFromSearch();
+
+      const preview = document.getElementById(
+        `trustee-confirmation-modal-${sampleOrder.id}-wrapper`,
+      );
+      await waitFor(() => expect(preview?.contains(document.activeElement)).toBe(true));
+      expect(searchButton()).not.toHaveFocus();
+    });
+
+    test('returns focus to Search for a trustee when the search-selected preview is cancelled', async () => {
+      setupSearchMocks();
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      searchButton().focus();
+      await selectTrusteeFromSearch();
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+
+      await waitFor(() => expect(searchButton()).toHaveFocus());
+    });
+
     test('moves focus to the resolved statement after a manual-match approval', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       setupSearchMocks();
       renderWithParentState();
       await mockDetailAndExpand();
 
-      await openSearchModal();
-      fireEvent.click(await selectFirstSearchResult());
+      await selectTrusteeFromSearch();
+      fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
     });
@@ -1000,8 +1151,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps();
       await mockDetailAndExpand();
 
-      await openSearchModal();
-      clickTwiceInSameBatch(await selectFirstSearchResult());
+      await selectTrusteeFromSearch();
+      clickTwiceInSameBatch(confirmModalSubmit());
 
       expect(approvalSpy).toHaveBeenCalledTimes(1);
       resolveApproval();
@@ -1017,8 +1168,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps({ onOrderUpdate });
       await mockDetailAndExpand();
 
-      await openSearchModal();
-      fireEvent.click(await selectFirstSearchResult());
+      await selectTrusteeFromSearch();
+      fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
@@ -1035,8 +1186,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps({ onOrderUpdate });
       await mockDetailAndExpand();
 
-      await openSearchModal();
-      fireEvent.click(await selectFirstSearchResult());
+      await selectTrusteeFromSearch();
+      fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
