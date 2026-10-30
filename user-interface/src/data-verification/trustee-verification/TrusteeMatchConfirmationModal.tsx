@@ -24,6 +24,9 @@ export type TrusteeMatchConfirmationModalImperative = {
 };
 
 function caseAssignmentSentence(caseCount: number, trusteeName: string): string {
+  if (caseCount === 0) {
+    return `No cases are affected yet. Future cases sent with this information will be matched to ${trusteeName} automatically.`;
+  }
   const cases = caseCount === 1 ? '1 case' : `${caseCount} cases`;
   return `${cases} will be assigned to ${trusteeName}.`;
 }

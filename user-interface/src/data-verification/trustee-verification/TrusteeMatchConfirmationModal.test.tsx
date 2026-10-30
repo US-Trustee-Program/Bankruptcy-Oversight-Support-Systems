@@ -191,6 +191,17 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(screen.getByText('1 case will be assigned to Jane Smith.')).toBeInTheDocument();
   });
 
+  test('says no cases are affected yet when the case count is zero', () => {
+    renderModal({ caseCount: 0 });
+    showSelected();
+
+    expect(
+      screen.getByText(
+        'No cases are affected yet. Future cases sent with this information will be matched to Jane Smith automatically.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   test('calls onConfirm with the selected trustee when Match Trustee is clicked', async () => {
     const { onConfirm } = renderModal();
     showSelected();
