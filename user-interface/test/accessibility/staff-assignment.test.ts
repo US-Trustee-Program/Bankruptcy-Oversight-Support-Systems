@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { createAxeBuilder, getUrl } from './test-constants';
+import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Staff Assignment', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -13,6 +13,9 @@ test.describe('Staff Assignment', () => {
 
     await page.locator('[data-testid="open-modal-button_0"]').click();
     await expect(page.getByRole('dialog')).toBeVisible();
+    // Wait for the modal's opacity transition to finish before scanning,
+    // otherwise axe can measure colors mid-fade and report false contrast violations.
+    await page.waitForTimeout(ANALYZE_DELAY);
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

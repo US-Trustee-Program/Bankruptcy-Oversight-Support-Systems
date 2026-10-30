@@ -53,7 +53,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
           className="appointment-accordion-header"
           data-testid={`appointment-accordion-header-${appointment.id}`}
         >
-          <span className="appointment-accordion-heading-text">{visibleHeaderText}</span>
+          <span className="appointment-accordion-heading-text">{visibleHeaderText}, </span>
           <Tag
             uswdsStyle={isActive ? UswdsTagStyle.Success : UswdsTagStyle.InactiveGray}
             id={`appointment-status-tag-${appointment.id}`}
