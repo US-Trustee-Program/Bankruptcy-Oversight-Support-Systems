@@ -6,7 +6,8 @@ import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 export type UpdatedCaseIds = {
   caseIds: string[];
   latestCasesSyncDate: string;
-  latestTransactionsSyncDate: string;
+  latestTransactionsSyncDate: string; // kept for rollback safety; see cleanup ticket cams-qg4jq
+  latestTransactionsTxId: number;
 };
 
 export type TrusteeAppointmentsResult = {
@@ -36,7 +37,8 @@ export interface CasesInterface {
   getUpdatedCaseIds(
     applicationContext: ApplicationContext,
     casesStart: string,
-    transactionsStart: string,
+    lastTransactionsTxId: number,
+    lastTransactionsSyncDate: string,
   ): Promise<UpdatedCaseIds>;
 
   getCasesWithTerminalTransactionBlindSpot(

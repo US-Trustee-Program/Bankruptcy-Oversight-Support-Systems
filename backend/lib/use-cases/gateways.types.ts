@@ -800,7 +800,8 @@ export type LegacyCasesSyncState = RuntimeState & {
 export type CasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
   lastCasesSyncDate: string;
-  lastTransactionsSyncDate: string;
+  lastTransactionsSyncDate: string; // kept for rollback safety; see cleanup ticket cams-qg4jq
+  lastTransactionsTxId?: number;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {

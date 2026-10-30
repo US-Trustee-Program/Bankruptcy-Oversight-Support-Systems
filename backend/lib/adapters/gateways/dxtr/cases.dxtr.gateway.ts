@@ -76,6 +76,7 @@ type PartyCode = DebtorPartyCode | 'tr';
 const NOT_FOUND = -1;
 
 type CaseIdRecord = { caseId: string; latestSyncDate: string };
+type TransactionIdRecord = { caseId: string; txId: number; txDate: string };
 
 type TrusteeAppointmentEventRecord = {
   caseId: string;
@@ -347,7 +348,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
     const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
     const { results } = await this.executeQuery(context, query);
-    return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
+    return results['recordset'][0]?.['MAX_TX_ID'] ?? undefined;
   }
 
   private async bisectBound(
@@ -608,22 +609,36 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     );
   }
 
-  /**
-   * getUpdatedCaseIds
-   *
-   * Gets the case ids for all cases with updates in either AO_CS or AO_TX tables.
-   *
-   * @param {ApplicationContext} context
-   * @param {string} casesStart The date and time to begin checking for LAST_UPDATE_DATE values in AO_CS.
-   * @param {string} transactionsStart The date and time to begin checking for TX_DATE values in AO_TX.
-   * @returns {{ caseIds: string[], latestCasesSyncDate: string, latestTransactionsSyncDate: string }} Case ids and latest sync dates.
-   */
+  private async fetchTransactionIdRecords(
+    context: ApplicationContext,
+    sql: string,
+    params: DbTableFieldSpec[],
+  ): Promise<TransactionIdRecord[]> {
+    const result = await this.executeQuery(context, sql, params);
+    return handleQueryResult<TransactionIdRecord[]>(
+      context,
+      result,
+      MODULE_NAME,
+      this.getTransactionIdRecordsCallback,
+    );
+  }
+
+  getTransactionIdRecordsCallback(
+    applicationContext: ApplicationContext,
+    queryResult: QueryResults,
+  ): TransactionIdRecord[] {
+    applicationContext.logger.debug(MODULE_NAME, `Transaction ID results received from DXTR`);
+    return (queryResult.results as mssql.IResult<TransactionIdRecord[]>).recordset;
+  }
+
   async getUpdatedCaseIds(
     context: ApplicationContext,
     casesStart: string,
-    transactionsStart: string,
+    lastTransactionsTxId: number,
+    lastTransactionsSyncDate: string,
   ): Promise<UpdatedCaseIds> {
-    // Query 1: Get cases updated in AO_CS
+    // Query 1: Get cases updated in AO_CS (unchanged — LAST_UPDATE_DATE is a system
+    // timestamp and does not have the backdating problem that TX_DATE has)
     const casesParams: DbTableFieldSpec[] = [
       {
         name: 'casesStart',
@@ -642,51 +657,80 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
-    // Query 2: Get cases with terminal transactions in AO_TX
+    // Query 2: Get cases with terminal transactions in AO_TX.
+    // Uses TX_ID instead of TX_DATE as the cursor. TX_ID is an auto-incrementing integer
+    // assigned at insert time — it always increases regardless of the business TX_DATE,
+    // so backdated transactions inserted recently are always caught.
     const transactionsParams: DbTableFieldSpec[] = [
       {
-        name: 'transactionsStart',
-        type: mssql.DateTime,
-        value: transactionsStart,
+        name: 'lastTransactionsTxId',
+        type: mssql.BigInt,
+        value: lastTransactionsTxId,
       },
     ];
 
     const transactionsQuery = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
-        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate
+        TX.TX_ID AS txId,
+        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS txDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE > @transactionsStart
-      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
+        AND TX.TX_ID > @lastTransactionsTxId
+      ORDER BY TX.TX_ID DESC, TX.CS_CASEID DESC
     `;
 
-    const casesResults = await this.fetchCaseIdRecords(context, casesQuery, casesParams);
-    const transactionsResults = await this.fetchCaseIdRecords(
-      context,
-      transactionsQuery,
-      transactionsParams,
-    );
+    // Query 3: Global max TX_ID across all transaction types.
+    // Advancing the cursor to the global max (not just the highest terminal TX_ID) means
+    // the next run only scans truly new rows, preventing unbounded scan growth when many
+    // non-terminal rows are inserted between runs.
+    const globalMaxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+
+    const [casesResults, transactionsResults, globalMaxResult] = await Promise.all([
+      this.fetchCaseIdRecords(context, casesQuery, casesParams),
+      this.fetchTransactionIdRecords(context, transactionsQuery, transactionsParams),
+      this.executeQuery(context, globalMaxQuery),
+    ]);
 
     // Consolidate case IDs using Set
     const caseIdSet = new Set<string>();
     casesResults.forEach((record) => caseIdSet.add(record.caseId));
     transactionsResults.forEach((record) => caseIdSet.add(record.caseId));
 
-    // Determine latest sync dates
+    // Advance AO_CS date cursor
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
 
+    // Advance TX_ID cursor to the higher of the highest terminal TX_ID and the global max.
+    // Using global max ensures non-terminal rows inserted between runs don't accumulate
+    // into the next scan window. mssql returns BIGINT/INT columns as strings for large
+    // values — coerce explicitly so the stored cursor is always a number.
+    const terminalMaxTxId =
+      transactionsResults.length > 0
+        ? Number.parseInt(String(transactionsResults[0].txId), 10)
+        : lastTransactionsTxId;
+    const globalMaxTxId =
+      globalMaxResult.success && globalMaxResult.results?.['recordset']?.[0]?.['MAX_TX_ID']
+        ? Number.parseInt(String(globalMaxResult.results['recordset'][0]['MAX_TX_ID']), 10)
+        : lastTransactionsTxId;
+    const latestTransactionsTxId = Math.max(terminalMaxTxId, globalMaxTxId);
+
+    // latestTransactionsSyncDate kept for rollback safety — old code reads this field.
+    // Use the actual TX_DATE of the latest terminal transaction so a rollback to date-based
+    // sync covers the same window. Fall back to the prior cursor (not casesStart) so a
+    // no-results run does not corrupt the rollback field with the unrelated AO_CS cursor.
+    // See cleanup ticket cams-qg4jq.
     const latestTransactionsSyncDate =
-      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : transactionsStart;
+      transactionsResults.length > 0 ? transactionsResults[0].txDate : lastTransactionsSyncDate;
 
     return {
       caseIds: Array.from(caseIdSet),
       latestCasesSyncDate,
       latestTransactionsSyncDate,
+      latestTransactionsTxId,
     };
   }
 
