@@ -69,30 +69,30 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         data-testid={`accordion-heading-${order.id}`}
       >
         <div
-          className="accordion-header-field grid-col-6 text-no-wrap"
-          aria-label={`${fieldHeaders[0]} – ${order.courtName}.`}
+          className="accordion-header-field grid-col-2 order-type text-no-wrap"
           data-cell={fieldHeaders[0]}
+        >
+          <span
+            className="event-type-label"
+            aria-label={`${fieldHeaders[0]} - ${taskType.get(order.taskType)}.`}
+          >
+            {taskType.get(order.taskType)}
+          </span>
+        </div>
+        <div
+          className="accordion-header-field grid-col-6 text-no-wrap"
+          aria-label={`${fieldHeaders[1]} – ${order.courtName}.`}
+          data-cell={fieldHeaders[1]}
         >
           {order.courtName}
         </div>
         <div
           className="accordion-header-field grid-col-2 text-no-wrap"
           title="Event date"
-          aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate)}.`}
-          data-cell={fieldHeaders[1]}
-        >
-          {formatDate(order.taskDate)}
-        </div>
-        <div
-          className="accordion-header-field grid-col-2 order-type text-no-wrap"
+          aria-label={`${fieldHeaders[2]} on ${formatDate(order.taskDate)}.`}
           data-cell={fieldHeaders[2]}
         >
-          <span
-            className="event-type-label"
-            aria-label={`${fieldHeaders[2]} - ${taskType.get(order.taskType)}.`}
-          >
-            {taskType.get(order.taskType)}
-          </span>
+          {formatDate(order.taskDate)}
         </div>
         <div
           className="accordion-header-field grid-col-2 order-status text-no-wrap"

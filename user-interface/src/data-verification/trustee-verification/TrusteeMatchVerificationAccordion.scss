@@ -5,18 +5,6 @@
 }
 
 .trustee-match-content {
-  .identity-task-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-
-    .identity-task-reason {
-      font-weight: bold;
-    }
-  }
-
   p.problem-statement,
   p.resolved-statement {
     margin: 1.5rem 0;
@@ -28,6 +16,11 @@
 
   p.other-matches-subtext {
     margin: 1rem 0;
+  }
+
+  p.match-count {
+    font-weight: bold;
+    margin: 0 0 0.5rem;
   }
 
   .affected-cases-list {
@@ -45,8 +38,15 @@
   .trustee-comparison-table {
     margin-top: 0;
 
+    // USWDS gives every cell 1rem of left padding; the first column's content should instead
+    // start flush with the heading and body text above the table, so it's zeroed out here.
+    th:first-child,
+    td:first-child {
+      padding-left: 0;
+    }
+
     th[scope='row'] {
-      font-weight: bold;
+      font-weight: normal;
       white-space: nowrap;
     }
 
@@ -66,6 +66,14 @@
     }
   }
 
+  // The source record is a single row of known data, not a ranked list to scan - it doesn't
+  // need the full table width the Potential Matches comparison table uses. Chained with
+  // .trustee-comparison-table (rather than relying on cascade order) so this reliably outranks
+  // the app-wide ".cams-content table { width: 100% }" rule.
+  .trustee-comparison-table.trustee-information-received-table {
+    width: auto;
+  }
+
   // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). Every field,
   // State included, uses the same neutral marker; the icon carries its own accessible name, so
   // meaning never rests on color alone.
@@ -77,8 +85,17 @@
   .difference-icon-symbol {
     width: 1.1rem;
     height: 1.1rem;
-    vertical-align: text-bottom;
-    fill: colors.$ink;
+    vertical-align: middle;
+    fill: colors.$gold;
+  }
+
+  // vertical-align: middle centers the icon on the text's x-height, which still reads as
+  // slightly low next to full-height words like "icon marks" - nudge it up to compensate.
+  // (Icons inside .difference-icon, the table's hover/row markers, are flex-centered instead
+  // and unaffected by this.)
+  .subtext-icon {
+    position: relative;
+    top: -0.15em;
   }
 
   .no-candidates-message {

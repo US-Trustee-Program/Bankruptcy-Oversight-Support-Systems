@@ -13,7 +13,7 @@ export default function TrusteeInformationReceivedTable({
   return (
     <div className="trustee-comparison-table-container">
       <table
-        className="usa-table usa-table--borderless trustee-comparison-table"
+        className="usa-table usa-table--borderless trustee-comparison-table trustee-information-received-table"
         data-testid="trustee-information-received-table"
       >
         <thead>
