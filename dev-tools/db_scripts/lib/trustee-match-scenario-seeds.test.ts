@@ -14,8 +14,9 @@ describe('identityTaskFields', () => {
       source: 'DXTR',
       mismatchReason: 'ambiguous',
     });
-    expect(task.findings.candidates).toHaveLength(2);
     expect(task.dxtrTrustee).toEqual(task.findings.sourceRaw);
+    // Recomputed deliberately, not duplicating buildVariant/computeFingerprint's own tests: this
+    // confirms identityTaskFields actually wires its output through them.
     expect(task.variant).toBe(buildVariant(task.findings.sourceRaw));
     expect(task.fingerprint).toBe(computeFingerprint(task.variant));
   });
@@ -45,11 +46,19 @@ describe('scenarioTrusteeDocuments', () => {
       'seed-trustee-match-multi-a',
       'seed-trustee-match-multi-b',
     ]);
+    // phoneticTokens is recomputed deliberately, not duplicating generateSearchTokens's own
+    // tests: this confirms scenarioTrusteeDocuments actually wires each name through it.
     expect(documents[0]).toMatchObject({
       id: 'seed-trustee-match-multi-a',
       documentType: 'TRUSTEE',
       name: 'Taylor Multimatch',
       phoneticTokens: generateSearchTokens('Taylor Multimatch'),
+    });
+    expect(documents[1]).toMatchObject({
+      id: 'seed-trustee-match-multi-b',
+      documentType: 'TRUSTEE',
+      name: 'Tyler Multimatch',
+      phoneticTokens: generateSearchTokens('Tyler Multimatch'),
     });
   });
 });

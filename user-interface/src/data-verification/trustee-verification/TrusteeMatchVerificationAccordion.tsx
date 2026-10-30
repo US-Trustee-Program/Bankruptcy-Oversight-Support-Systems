@@ -349,7 +349,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         {explanation?.showNameInterpretation && (
           <div data-testid="name-interpretation">
             <h3>How CAMS read this name</h3>
-            <p>{detail?.findings.sourceRaw.fullName}</p>
+            {/* comparison is non-null here only when detail loaded (see the useMemo above). */}
+            <p>{detail!.findings.sourceRaw.fullName}</p>
           </div>
         )}
         <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>

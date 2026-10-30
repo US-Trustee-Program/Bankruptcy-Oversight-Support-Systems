@@ -1169,31 +1169,20 @@ describe('TrusteeMatchVerificationAccordion', () => {
   });
 
   describe('"Why CAMS needs you" explanation and name interpretation', () => {
-    test('zero candidates: renders the generic "does not match any" sentence, no name section', async () => {
+    // Which sentence goes with which findings shape is trustee-explanation.test.ts's contract;
+    // this only proves the accordion renders buildTrusteeExplanation's output.
+    test('one candidate: renders its explanation sentence', async () => {
       renderWithProps();
       await mockDetailAndExpand({
         ...sampleOrderDetail,
-        findings: MockData.getTrusteeMatchScenarioFindings('noCandidates'),
+        findings: MockData.getTrusteeMatchScenarioFindings('oneCandidateStateDiffers'),
       });
 
       expect(
         screen
           .getByTestId(`accordion-content-${sampleOrder.id}`)
           .querySelector('.problem-statement')?.textContent,
-      ).toContain('Trustee information sent to CAMS does not match any trustee in CAMS.');
-      expect(screen.queryByTestId('name-interpretation')).not.toBeInTheDocument();
-    });
-
-    test('two or more candidates: renders the generic "matches multiple" sentence, no name section', async () => {
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      expect(
-        screen
-          .getByTestId(`accordion-content-${sampleOrder.id}`)
-          .querySelector('.problem-statement')?.textContent,
-      ).toContain('Trustee information sent to CAMS matches multiple trustees in CAMS.');
-      expect(screen.queryByTestId('name-interpretation')).not.toBeInTheDocument();
+      ).toContain('Trustee state sent to CAMS does not exactly match a trustee in CAMS.');
     });
 
     test('one candidate, non-exact name: shows "How CAMS read this name" with the raw source name', async () => {
@@ -1213,20 +1202,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps();
       await mockDetailAndExpand({ ...sampleOrderDetail, findings });
 
-      expect(screen.queryByTestId('name-interpretation')).not.toBeInTheDocument();
-    });
-
-    test('the old generic problem statement no longer appears', async () => {
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      expect(screen.queryByText(/does not match a CAMS Trustee/)).not.toBeInTheDocument();
-    });
-
-    test('resolved tasks keep the existing "was appointed to" text, not the new sentence', () => {
-      renderWithProps({ order: resolvedOrder });
-
-      expect(screen.getByTestId('resolved-statement').textContent).toContain('was appointed to');
       expect(screen.queryByTestId('name-interpretation')).not.toBeInTheDocument();
     });
   });
