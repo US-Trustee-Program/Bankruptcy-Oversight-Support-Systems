@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { describe, test, expect, vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data.js';
 import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
@@ -19,10 +20,21 @@ function surrogatesFor(ops: SeedOperation[], collectionOrTable: string) {
   return ops.filter((o) => o.collectionOrTable === collectionOrTable).flatMap((o) => o.data);
 }
 
+/** No surrogate CASE_APPOINTMENT survives, in either partition, for the given fingerprint. */
+function expectNoSurrogates(ops: SeedOperation[], fingerprint: unknown) {
+  for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+    const forThisFingerprint = surrogatesFor(ops, table).filter((s) => s.trusteeId === fingerprint);
+    expect(forThisFingerprint).toHaveLength(0);
+  }
+}
+
 // Slice 3's explanation sentences differ by which fields a single candidate mismatches; these
 // scenarios give each sentence shape a pending task in the dev data for demos and UX sign-off.
 describe('trustee-match-all-scenarios (CAMS-953 explanation sentence scenarios)', () => {
   test.each([
+    'noCandidates',
+    'multipleCandidates',
+    'oneCandidateAddressAndPhoneDiffer',
     'oneCandidateStateDiffers',
     'oneCandidateNameAddressEmailDiffer',
     'oneCandidateExactName',
@@ -36,7 +48,7 @@ describe('trustee-match-all-scenarios (CAMS-953 explanation sentence scenarios)'
       const task = ops
         .filter((o) => o.collectionOrTable === 'trustee-match-verification')
         .flatMap((o) => o.data)
-        .find((d) => JSON.stringify(d.findings) === JSON.stringify(findings));
+        .find((d) => isDeepStrictEqual(d.findings, findings));
       expect(task?.status).toBe('pending');
 
       const trusteeIds = ops
@@ -63,6 +75,9 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
   test('should give every pending task a surrogate for its own case in both partitions', async () => {
     const ops = await generate(context());
 
+    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 7
+    // single-case tasks + 1 multi-case + 1 division-mismatch task.
+    expect(pendingTasks(ops)).toHaveLength(9);
     for (const task of pendingTasks(ops)) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
@@ -77,6 +92,8 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
     const ops = await generate(context());
     const caseIds = pendingTasks(ops).map((task) => task.caseId);
 
+    // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
+    expect(caseIds.length).toBe(9);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
@@ -103,11 +120,12 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
   });
 });
 
-// These cover only the CAMS-871 additions (multi-case mismatches) — the rest of this scenario
-// file has no dedicated test coverage beyond the generic data-quality checks in
+// These cover the CAMS-871 additions (multi-case mismatches) and the division-mismatch scenario.
+// The single-case scenarios are covered by the sentence-shape test.each above; anything not
+// covered by a dedicated test here still gets the generic data-quality checks in
 // all-scenarios.validation.test.ts.
 describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
-  test('pending multi-case mismatch: surrogates in both partitions share the verification fingerprint', async () => {
+  test('should share the verification fingerprint across both partitions for a pending multi-case mismatch', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-multicase-091-99-25850');
 
@@ -131,7 +149,7 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     }
   });
 
-  test('pending division-mismatch multi-case mismatch: candidate covers two cases but not the third', async () => {
+  test('should let a candidate cover two cases but not the third for a pending division-mismatch task', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-divisionmismatch-091-99-40761');
 
@@ -152,14 +170,6 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
       }
       const caseIds = forThisFingerprint.map((s) => s.caseId).sort();
       expect(caseIds).toEqual(['081-23-10005', '091-99-11079', '091-99-40761']);
-      // The whole point of this fixture: two cases share one division, the third is in a
-      // genuinely different court+division the candidate has no appointment for.
-      const divisionsByCaseId = Object.fromEntries(
-        forThisFingerprint.map((s) => [s.caseId, s.courtDivisionCode]),
-      );
-      expect(divisionsByCaseId['091-99-40761']).toBe('091');
-      expect(divisionsByCaseId['091-99-11079']).toBe('091');
-      expect(divisionsByCaseId['081-23-10005']).toBe('081');
     }
 
     const candidates = (
@@ -173,12 +183,24 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
       .flatMap((o) => o.data)
       .filter((a) => a.trusteeId === candidateTrusteeId);
     expect(appointments).toHaveLength(1);
-    expect(appointments[0].courtId).toBe('0209');
-    expect(appointments[0].divisionCodes).toEqual(['091']);
-    expect(appointments[0].chapter).toBe('11');
+    const [appointment] = appointments;
+    expect(appointment.chapter).toBe('11');
+
+    // The whole point of this fixture: two of the three cases share a division the candidate is
+    // appointed in; the third is a genuinely different court+division the candidate is not.
+    const surrogates = surrogatesFor(ops, 'case-trustee-appointments').filter(
+      (s) => s.trusteeId === verification?.fingerprint,
+    );
+    const divisionsByCaseId = Object.fromEntries(
+      surrogates.map((s) => [s.caseId, s.courtDivisionCode]),
+    );
+    expect(divisionsByCaseId['091-99-40761']).toBe(divisionsByCaseId['091-99-11079']);
+    expect(divisionsByCaseId['081-23-10005']).not.toBe(divisionsByCaseId['091-99-40761']);
+    expect(appointment.divisionCodes).toContain(divisionsByCaseId['091-99-40761']);
+    expect(appointment.divisionCodes).not.toContain(divisionsByCaseId['081-23-10005']);
   });
 
-  test('already-approved mismatch has no surviving surrogate rows for its fingerprint', async () => {
+  test('should have no surviving surrogate rows for an already-approved mismatch', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-28263');
 
@@ -186,17 +208,14 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.status).toBe('approved');
     expect(verification?.resolvedTrusteeId).toBeTruthy();
     expect(verification?.resolvedTrusteeName).toBeTruthy();
+    // Without this, an undefined fingerprint would match undefined surrogate trusteeIds and
+    // expectNoSurrogates below would pass vacuously.
+    expect(verification?.fingerprint).toBeTruthy();
 
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(0);
-    }
+    expectNoSurrogates(ops, verification?.fingerprint);
   });
 
-  test('already-approved multi-case mismatch has a populated affectedCaseIds snapshot and no surviving surrogate rows', async () => {
+  test('should have a populated affectedCaseIds snapshot and no surviving surrogate rows for an already-approved multi-case mismatch', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-resolved-with-snapshot-091-99-25850');
 
@@ -204,18 +223,13 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.status).toBe('approved');
     expect(verification?.resolvedTrusteeId).toBeTruthy();
     expect(verification?.resolvedTrusteeName).toBeTruthy();
+    expect(verification?.fingerprint).toBeTruthy();
     expect([...((verification?.affectedCaseIds as string[] | undefined) ?? [])].sort()).toEqual([
       '091-99-25850',
       '091-99-26681',
       '091-99-26914',
     ]);
 
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(0);
-    }
+    expectNoSurrogates(ops, verification?.fingerprint);
   });
 });
