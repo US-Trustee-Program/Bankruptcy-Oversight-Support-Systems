@@ -224,17 +224,11 @@ zones with this name in the subscription, and the CLI will not disambiguate for 
 > workflow reports its **own** name; only reusable workflows invoked from Continuous Deployment
 > report the caller's name. Reusing an environment is therefore not sufficient on its own.
 
-The credential already exists (`gha-deploy-sql-hub` on `cams-infrastructure-deploy-main-oidc`). Any
-future standalone workflow needs its own, created like this:
-
-```bash
-az ad app federated-credential create --id <app-object-id> --parameters '{
-  "name": "gha-<workflow-slug>",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:<Workflow Name>:environment:<environment>",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
-```
+The credential is `gha-deploy-sql-hub` on `cams-infrastructure-deploy-main-oidc`, created by
+`ops/scripts/utility/federated-credentials/setup-infrastructure-deploy-federated-credential.sh` when
+run with `TARGET=main` (or the default `all`). Any future standalone workflow that uses this
+environment needs its own credential: add an `upsert_federated_credential` call for it in that
+script, next to the existing ones, and re-run the script.
 
 ### Migrating a consumer onto the hub
 
@@ -287,9 +281,8 @@ or overwritten blobs, and a deleted container, stay recoverable for 30 days.
 In this order:
 
 1. Create the provisioning workflow's federated credential, `gha-deploy-dora-metrics-storage`, on
-   `cams-infrastructure-deploy-main-oidc` using the `az ad app federated-credential create` snippet
-   under [SQL Private Link Hub](#identity-and-permissions), with workflow name
-   `Deploy DORA Metrics Storage` and environment `infrastructure-deploy-main`.
+   `cams-infrastructure-deploy-main-oidc` by exporting `AZ_MAIN_KV_RG` and running
+   `TARGET=main ops/scripts/utility/federated-credentials/setup-infrastructure-deploy-federated-credential.sh`.
 2. Run **Deploy DORA Metrics Storage** with `mode: what-if`, review, then re-run with
    `mode: deploy`.
 3. Add the account name to `kv-ustp-cams` as `AZ-DORA-METRICS-STORAGE-NAME`.
