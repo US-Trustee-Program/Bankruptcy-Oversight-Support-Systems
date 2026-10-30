@@ -31,7 +31,7 @@ export default function AppointmentBasicFields(props: Readonly<AppointmentBasicF
           title="Edit trustee appointment"
           onClick={openEditTrustee}
         >
-          <IconLabel icon="edit" label="Edit Appointment" />
+          <IconLabel icon="edit" label="Edit" />
         </Button>
       )}
     </div>
