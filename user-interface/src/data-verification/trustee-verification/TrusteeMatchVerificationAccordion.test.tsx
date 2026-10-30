@@ -691,7 +691,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
   describe('approval', () => {
     test('Match Trustee opens the confirmation for the chosen candidate with the affected case count', async () => {
-      // Wiring only: the modal's rendering of these props is covered by its own tests.
+      // Wiring only: the modal's own rendering (hrefs, markers, sentence wording) is covered by
+      // its own tests. This proves the accordion passed the chosen candidate and case count.
       renderWithProps();
       await mockDetailAndExpand({
         ...sampleOrderDetail,
@@ -700,15 +701,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
 
-      const selected = within(screen.getByTestId('confirm-match-selected'));
-      expect(selected.getByRole('link', { name: /Janet Smith/ })).toHaveAttribute(
-        'href',
-        '/trustees/trustee-2',
-      );
-      expect(selected.getAllByRole('img', { name: /differs/ })).toHaveLength(2);
+      expect(
+        within(screen.getByTestId('confirm-match-selected')).getByText('Janet Smith'),
+      ).toBeInTheDocument();
       expect(
         screen.getByTestId(`modal-trustee-confirmation-modal-${sampleOrder.id}`),
-      ).toHaveTextContent('3 cases will be assigned');
+      ).toHaveTextContent('3');
     });
 
     test('confirming calls patchTrusteeVerificationOrderApproval with the chosen candidate', async () => {
@@ -1045,11 +1043,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await selectTrusteeFromSearch();
 
+      // Wiring only: this proves the selected search result (not some other trustee) reached the
+      // modal. The modal's own href rendering is covered by TrusteeMatchConfirmationModal.test.tsx.
       expect(
-        within(screen.getByTestId('confirm-match-selected')).getByRole('link', {
-          name: /Manual Match/,
-        }),
-      ).toHaveAttribute('href', '/trustees/manual-trustee-1');
+        within(screen.getByTestId('confirm-match-selected')).getByText('Manual Match'),
+      ).toBeInTheDocument();
       await waitFor(() =>
         expect(
           document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`),
@@ -1073,9 +1071,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await selectTrusteeFromSearch();
 
       expect(
-        within(screen.getByTestId('confirm-match-selected')).getByRole('link', {
-          name: /Manual Match/,
-        }),
+        within(screen.getByTestId('confirm-match-selected')).getByText('Manual Match'),
       ).toBeInTheDocument();
     });
 
@@ -1088,11 +1084,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await selectTrusteeFromSearch();
 
+      // Wiring only: that selectedTrusteeFromSearch reuses the candidate's stored cells (so the
+      // markers match) is proven in trustee-comparison.test.ts; the modal's own rendering of
+      // markers is proven in TrusteeMatchConfirmationModal.test.tsx.
       expect(
-        within(screen.getByTestId('confirm-match-selected')).getAllByRole('img', {
-          name: /differs/,
-        }),
-      ).toHaveLength(2);
+        within(screen.getByTestId('confirm-match-selected')).getByText('Janet Smith'),
+      ).toBeInTheDocument();
     });
 
     test('confirming a searched trustee calls the approval API and reports success', async () => {
