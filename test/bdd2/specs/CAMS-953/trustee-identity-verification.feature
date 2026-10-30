@@ -110,32 +110,24 @@ Feature: Trustee identity verification on matching-pipeline findings
     But a one-candidate task whose name scored "exact" shows no such section
     And a task with no candidates or several candidates shows no such section
 
-  # SLICE 4: Case coverage and approval preview
+  # SLICE 4: Approval preview (Confirm Trustee Match)
   # Dependencies: Slice 3
-  # User Value: The verifier sees what approving does before committing
-  Scenario: Comparison table shows which cases each candidate covers
+  # User Value: The verifier confirms the chosen trustee and sees what approving does before committing
+  # Scope change 2026-10-29: no case coverage on this screen (the case appointment verification
+  # screen handles uncovered cases); "(Not yet in CAMS)" comes from a forthcoming dataflow.
+  Scenario: Approval preview for a candidate
     Given a pending identity task with 3 cases
-    When I expand the task
-    Then the comparison table includes a "Covers these cases" row for each candidate
-
-  Scenario: Approval preview for a candidate that covers every case
-    Given a candidate whose active appointments cover all of the task's cases
-    When I choose that candidate
+    When I choose candidate "Henry Green"
     Then the "Confirm Trustee Match" modal asks "Is this the same trustee as the information sent to CAMS?"
     And it shows "Information Sent to CAMS" beside "Selected CAMS Trustee", with a warning icon on each differing field
     And "What Happens Next" says "3 cases will be assigned to Henry Green."
-    And the submit button shows "Matching Trustee..." while the request is in flight
+    And the "Match Trustee" button shows "Matching Trustee..." while the request is in flight
 
-  Scenario: Approval preview blocks a candidate that covers only part of the cases (CAMS-905 gate A)
-    Given a candidate whose active appointments cover 2 of the task's 3 cases
-    When I choose that candidate
-    Then the preview lists the uncovered case as blocking
-    And "Match Trustee" and "Confirm Appointment" stay disabled for that candidate
-
-  Scenario: Case not yet loaded in CAMS
-    Given a task case that CAMS has not loaded yet
-    When I expand the task
-    Then the case shows as "{caseId} (Not yet in CAMS)" without a link
+  Scenario: Approval preview for a trustee found by search
+    Given a pending identity task
+    When I search for a trustee and select one
+    Then the "Confirm Trustee Match" modal opens for that trustee
+    And trustee search does not block the selection for appointment coverage
 
   # SLICE 5: Identity tasks with no case
   # Dependencies: Slice 4

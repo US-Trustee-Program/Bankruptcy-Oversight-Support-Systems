@@ -1,0 +1,37 @@
+{
+  "ticketNumber": "CAMS-953",
+  "featureName": "trustee-identity-verification",
+  "currentPhase": 3,
+  "currentSlice": 4,
+  "totalSlices": 7,
+  "status": "waiting-for-implementation",
+  "lastUpdated": "2026-10-29T17:00:00",
+  "nextSteps": "Implement Slice 4 from trustee-identity-verification.slice-4-prompts.md (Task 1 Confirm Trustee Match modal; Task 2 search opens the same modal, coverage check removed) in a fresh session, then write slice-4-implementation-notes.md.",
+  "notes": "Sources: GitHub #3187, beads cams-c45pn (incl. UX mock notes 2026-10-26), bd memory professional-id-never-multi-linked (drop 'multiple linked trustees' reason). claude.ai artifact Gqe7YYhv9riCHPFAhtLjE8 was not readable; user chose to proceed without it. Phase 1 complete 2026-10-27. Beads: parent cams-c45pn; slices 1-7 = cams-c45pn.1, .5, .6, .7, .8, .9, .10 (chained blocked-by). Decisions recorded in feature-qa.md. 2026-10-27: All CAMS-953 planning artifacts live in the CAMS repo at test/bdd2/specs/CAMS-953/ (trustee-identity-verification.feature, .feature-qa.md, and this file, trustee-identity-verification.workflow-state.json). Write slice designs, prompts and implementation notes there as trustee-identity-verification.slice-N-*.md. 2026-10-28: Slice 2 implemented (S2.1-S2.8), notes in trustee-identity-verification.slice-2-implementation-notes.md. 2026-10-28: Slice 3 design Q&A: UI reads stored scores only; one-candidate sentence built from grouped differing fields; name section only for one candidate whose doesNameMatch is not exact; ACMS professional id NOT in any header; no possible-duplicate flag (overrides decision 3); seed generator first. Phase 2+3 done 2026-10-28: professional id displayed nowhere; name section shows sourceRaw.fullName verbatim; generator is a backend Vitest file-snapshot test writing common/src/cams/test-utilities/trustee-match-findings.generated.json (dev-tools cannot import backend). 2026-10-29: Slice 3 complete. Unit, a11y, integration and e2e pass; sentence wording approved by Kelly Diabagate. Dev seeds now mirror sync output (one surrogate per pending task case, no tasks on dxtr-historical-trustees cases); every environment must unseed before reseeding. 2026-10-29: Slice 4 Phase 2 drafted. Scope change: no case coverage on this screen (case appointment verification screen handles it); Covers row, preview endpoint, gate A blocking list and (Not yet in CAMS) dropped; search modal coverage check removed; backend gate A untouched until CAMS-956. Slice 4 = Confirm Trustee Match modal (submit \"Match Trustee\"), used for candidates and search results. 2026-10-29: All CAMS-953 spec files moved to test/bdd2/specs/CAMS-953/. 2026-10-29: Slice 4 design approved; Phase 3 prompts written (2 tasks). Phase 3 defaults: search modal submit \"Select Trustee\"; preview Cancel closes (search stays closed); e2e does not submit approval (gate A rejects fixture trustees) and asserts the singular case sentence (no multi-case e2e task); getUncoveredCases kept (CAMS-956 reuses it). Approval e2e specs (candidate approve, search approve, uncovered-case approve) deferred to CAMS-956 / cams-n9937; listed at the end of slice-4-prompts.md.",
+  "testDataScripts": [
+    {
+      "script": "existing seeds (trustee-match-all-scenarios.ts, test/e2e/scripts/seed-database.ts, test/ui-sandbox/scripts/seed.ts)",
+      "target": "none new",
+      "slice": 1,
+      "populationPath": "direct seed, unchanged"
+    },
+    {
+      "script": "dev-tools/db_scripts/scenarios/trustee-match-all-scenarios.ts, dev-tools/db_scripts/scenarios/trustee-data.ts, test/e2e/fixtures/mongo-fixture.json, test/ui-sandbox/scripts/seed.ts, user-interface/src/lib/testing/mock-api2.ts",
+      "target": "trustee-match-verification (source + findings)",
+      "slice": 2,
+      "populationPath": "direct seed, rewritten; purge and reseed every environment"
+    },
+    {
+      "script": "new seed generator (dev-tools/db_scripts, cams-c45pn.6.1) regenerating every Slice 2 identity-task seed",
+      "target": "trustee-match-verification (findings from the real pipeline)",
+      "slice": 3,
+      "populationPath": "direct seed, generated; purge and reseed every environment"
+    },
+    {
+      "script": "none new (existing multi-case and single-case pending tasks)",
+      "target": "trustee-match-verification",
+      "slice": 4,
+      "populationPath": "existing seeds; e2e fixture may gain a multi-case pending task from an existing findingsScenario"
+    }
+  ]
+}

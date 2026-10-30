@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import OpenModalButton from './OpenModalButton';
@@ -287,13 +287,14 @@ describe('Test Modal component', () => {
     const outsideButton = document.createElement('button');
     outsideButton.textContent = 'Outside';
     document.body.appendChild(outsideButton);
-    outsideButton.focus();
-
-    await vi.waitFor(() => {
-      expect(firstModalFirstElement).toHaveFocus();
-    });
-
-    document.body.removeChild(outsideButton);
+    try {
+      outsideButton.focus();
+      await vi.waitFor(() => {
+        expect(firstModalFirstElement).toHaveFocus();
+      });
+    } finally {
+      document.body.removeChild(outsideButton);
+    }
   });
 
   test('should redirect focus back into the modal when focus lands outside of it', async () => {
@@ -661,5 +662,213 @@ describe('Test Modal component with force action set to true', () => {
 
     expect(modal).not.toHaveClass('is-hidden');
     expect(modal).toHaveClass('is-visible');
+  });
+});
+
+describe('Test Modal focus return and forceAction changes while open', () => {
+  const outsideTriggerId = 'outside-trigger';
+
+  /** Opened imperatively via ref, the way modals opened with show() and no openModalButtonRef are. */
+  function ShowHarness({
+    modalId,
+    modalRef,
+    forceAction,
+    triggerId = outsideTriggerId,
+    withTrigger = true,
+  }: {
+    modalId: string;
+    modalRef: React.RefObject<ModalRefType | null>;
+    forceAction?: boolean;
+    triggerId?: string;
+    withTrigger?: boolean;
+  }) {
+    return (
+      <>
+        {withTrigger && (
+          <button type="button" data-testid={triggerId}>
+            Outside trigger
+          </button>
+        )}
+        <Modal
+          modalId={modalId}
+          ref={modalRef}
+          heading="Harness Heading"
+          content={<div>Harness Content</div>}
+          forceAction={forceAction}
+          actionButtonGroup={{
+            modalId,
+            modalRef,
+            submitButton: { label: 'Submit' },
+            cancelButton: { label: 'Cancel' },
+          }}
+        />
+      </>
+    );
+  }
+
+  test('returns focus to the element focused before show() after Cancel when no openModalButtonRef is given', async () => {
+    const modalRef = React.createRef<ModalRefType>();
+    render(<ShowHarness modalId="focus-cancel-modal" modalRef={modalRef} />);
+
+    const trigger = screen.getByTestId(outsideTriggerId);
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+    expect(screen.getByTestId('modal-focus-cancel-modal')).toHaveClass('is-visible');
+
+    fireEvent.click(screen.getByTestId('button-focus-cancel-modal-cancel-button'));
+
+    await vi.waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  test('returns focus to the element focused before show() after Escape when no openModalButtonRef is given', async () => {
+    const modalRef = React.createRef<ModalRefType>();
+    render(<ShowHarness modalId="focus-escape-modal" modalRef={modalRef} />);
+
+    const trigger = screen.getByTestId(outsideTriggerId);
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+
+    fireEvent.keyDown(screen.getByTestId('modal-content-focus-escape-modal'), { key: 'Escape' });
+
+    await vi.waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  test('prefers an explicit openModalButtonRef over the element focused before show()', async () => {
+    const openButtonRef = React.createRef<OpenModalButtonRef>();
+    const { modalId, modalRef, openButton } = renderModal({
+      modalId: 'explicit-ref-modal',
+      openButtonIndex: 'explicit-ref',
+      openButtonRef,
+    });
+
+    const elsewhere = document.createElement('button');
+    document.body.appendChild(elsewhere);
+    try {
+      elsewhere.focus();
+      act(() => modalRef.current?.show({ openModalButtonRef: openButtonRef }));
+      fireEvent.click(screen.getByTestId(`modal-x-button-${modalId}`));
+
+      await vi.waitFor(() => expect(openButton).toHaveFocus());
+    } finally {
+      document.body.removeChild(elsewhere);
+    }
+  });
+
+  test('stops Escape from closing once forceAction turns true, and closes on Escape again once it turns false', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'force-escape-modal';
+    const { rerender } = render(<ShowHarness modalId={modalId} modalRef={modalRef} />);
+
+    act(() => modalRef.current?.show({}));
+    const modal = screen.getByTestId(`modal-${modalId}`);
+    const content = screen.getByTestId(`modal-content-${modalId}`);
+
+    rerender(<ShowHarness modalId={modalId} modalRef={modalRef} forceAction />);
+    fireEvent.keyDown(content, { key: 'Escape' });
+    expect(modal).toHaveClass('is-visible');
+
+    rerender(<ShowHarness modalId={modalId} modalRef={modalRef} forceAction={false} />);
+    fireEvent.keyDown(content, { key: 'Escape' });
+    expect(modal).toHaveClass('is-hidden');
+  });
+
+  test('removes the X and ignores overlay clicks once forceAction turns true while open', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'force-x-modal';
+    const { rerender } = render(<ShowHarness modalId={modalId} modalRef={modalRef} />);
+
+    act(() => modalRef.current?.show({}));
+    rerender(<ShowHarness modalId={modalId} modalRef={modalRef} forceAction />);
+
+    expect(screen.queryByTestId(`modal-x-button-${modalId}`)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`modal-overlay-${modalId}`));
+    expect(screen.getByTestId(`modal-${modalId}`)).toHaveClass('is-visible');
+  });
+
+  test('does not force focus onto an element that was removed before the modal closed', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'removed-target-modal';
+    const { rerender } = render(<ShowHarness modalId={modalId} modalRef={modalRef} />);
+
+    const trigger = screen.getByTestId(outsideTriggerId);
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+    const focusSpy = vi.spyOn(trigger, 'focus');
+
+    rerender(<ShowHarness modalId={modalId} modalRef={modalRef} withTrigger={false} />);
+    fireEvent.click(screen.getByTestId(`button-${modalId}-cancel-button`));
+
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
+  test('records no return target when show() runs with focus on body, even after an earlier show', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'body-focus-modal';
+    render(<ShowHarness modalId={modalId} modalRef={modalRef} />);
+    const trigger = screen.getByTestId(outsideTriggerId);
+
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+    fireEvent.click(screen.getByTestId(`button-${modalId}-cancel-button`));
+    expect(trigger).toHaveFocus();
+
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    const focusSpy = vi.spyOn(trigger, 'focus');
+
+    act(() => modalRef.current?.show({}));
+    fireEvent.click(screen.getByTestId(`button-${modalId}-cancel-button`));
+
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
+  test('does not pull focus back to an earlier opener while another modal is open', () => {
+    const refA = React.createRef<ModalRefType>();
+    const refB = React.createRef<ModalRefType>();
+    render(
+      <>
+        <ShowHarness modalId="stack-a" modalRef={refA} triggerId="trigger-a" />
+        <ShowHarness modalId="stack-b" modalRef={refB} triggerId="trigger-b" />
+      </>,
+    );
+
+    const triggerA = screen.getByTestId('trigger-a');
+    triggerA.focus();
+    act(() => refA.current?.show({}));
+    act(() => refB.current?.show({}));
+    const focusSpy = vi.spyOn(triggerA, 'focus');
+
+    act(() => refA.current?.hide());
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('modal-stack-b')).toHaveClass('is-visible');
+  });
+
+  test('keeps the return target recorded when the modal opened if show() is called again while open', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const modalId = 'reshow-modal';
+    render(<ShowHarness modalId={modalId} modalRef={modalRef} />);
+    const trigger = screen.getByTestId(outsideTriggerId);
+
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+    // Focus is now inside the modal, so a second recording would point at an element that is hidden on close.
+    act(() => modalRef.current?.show({}));
+    fireEvent.click(screen.getByTestId(`button-${modalId}-cancel-button`));
+
+    expect(trigger).toHaveFocus();
+  });
+
+  test('unmounting while open does not throw or move focus', () => {
+    const modalRef = React.createRef<ModalRefType>();
+    const { unmount } = render(<ShowHarness modalId="unmount-open-modal" modalRef={modalRef} />);
+    const trigger = screen.getByTestId(outsideTriggerId);
+
+    trigger.focus();
+    act(() => modalRef.current?.show({}));
+    const focusSpy = vi.spyOn(trigger, 'focus');
+
+    expect(() => unmount()).not.toThrow();
+    expect(focusSpy).not.toHaveBeenCalled();
   });
 });

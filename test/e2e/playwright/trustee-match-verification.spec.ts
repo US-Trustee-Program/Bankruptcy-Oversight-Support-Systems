@@ -106,14 +106,30 @@ test.describe('Trustee Identity Verification', () => {
     await expect(table.getByLabel(/differs from the source record/)).toHaveCount(6);
   });
 
-  test('opens the confirmation modal for the chosen candidate', async ({ page }) => {
+  test('previews the chosen candidate in Confirm Trustee Match', async ({ page }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
     await content.getByTestId('approve-candidate-seed-trustee-match-multi-b').click();
 
     const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}`);
     await expect(modal).toBeVisible(timeoutOption);
-    await expect(modal).toContainText('Tyler Multimatch');
+    await expect(modal.getByRole('heading', { name: 'Confirm Trustee Match' })).toBeVisible();
+    await expect(modal).toContainText('Is this the same trustee as the information sent to CAMS?');
+    await expect(modal.getByRole('heading', { name: 'Information Sent to CAMS' })).toBeVisible();
+
+    // The same stored differences the table marks for this candidate: name, phone and street.
+    const selected = modal.getByTestId('confirm-match-selected');
+    await expect(selected.getByRole('heading', { name: 'Selected CAMS Trustee' })).toBeVisible();
+    await expect(selected.getByRole('link', { name: /Tyler Multimatch/ })).toBeVisible();
+    await expect(selected.getByLabel('Name differs from the source record')).toBeVisible();
+    await expect(selected.getByLabel('Phone differs from the source record')).toBeVisible();
+    await expect(selected.getByLabel('Street differs from the source record')).toBeVisible();
+    await expect(selected.getByLabel(/differs from the source record/)).toHaveCount(3);
+    await expect(modal.getByTestId('confirm-match-source').getByRole('img')).toHaveCount(0);
+
+    await expect(modal).toContainText('1 case will be assigned to Tyler Multimatch.');
+
+    // Approval is not submitted here: see the CAMS-956 deferred specs in the Slice 4 prompts.
     await page.locator(`#trustee-confirmation-modal-${AMBIGUOUS_TASK_ID}-cancel-button`).click();
     await expect(modal).toBeHidden(timeoutOption);
   });

@@ -683,6 +683,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateIfPending(..._ignore: any[]): Promise<boolean> {
+    throw new Error('Method not implemented.');
+  }
+
   getByAppointmentId(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }

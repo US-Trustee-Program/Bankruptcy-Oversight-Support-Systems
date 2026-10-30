@@ -158,8 +158,8 @@ A task's other fields must agree with its findings:
 5. Delete helpers that only existed to hand-build scores, e.g. `candidate()` and `findings()` in
    `trustee-match-all-scenarios.ts`, and the score constants. Run knip.
 6. Update the docs:
-   - `test/bdd2/specs/trustee-identity-verification.test-data.md`: the Seed Scripts table, plus a
-     line saying findings are generated (Task 1) and how to regenerate them.
+   - `test/bdd2/specs/CAMS-953/trustee-identity-verification.test-data.md`: the Seed Scripts table,
+     plus a line saying findings are generated (Task 1) and how to regenerate them.
    - `docs/operations/test-data-catalog.md`: the matching entries.
 
 ### Acceptance Criteria
@@ -330,7 +330,8 @@ Test suites:
 - [ ] Tasks 1-4 complete; `cams-c45pn.6.1` closed after Task 1
 - [ ] Every acceptance criterion met; unit, e2e, a11y and integration all pass
 - [ ] No regressions to Slices 1-2 (queue labels, comparison table, approval)
-- [ ] `test/bdd2/specs/trustee-identity-verification.slice-3-implementation-notes.md` written
+- [ ] `test/bdd2/specs/CAMS-953/trustee-identity-verification.slice-3-implementation-notes.md`
+      written
 - [ ] `trustee-identity-verification.workflow-state.json` advanced to Slice 4, Phase 2
 - [ ] UX sign-off requested from the mock designer (Brian Posey) on the generated sentences, which
       differ from the mock's copy: "does not _exactly_ match" for state, plus new field combinations

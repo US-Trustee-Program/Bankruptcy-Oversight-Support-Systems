@@ -12,11 +12,31 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
 
-type ModalShowOptions = {
-  openModalButtonRef?: RefObject<OpenModalButtonRef | null>;
+export type ModalShowOptions = {
+  /** Focused when the modal closes. Wins over the element that had focus when show() was called. */
+  openModalButtonRef?: RefObject<Pick<OpenModalButtonRef, 'focus'> | null>;
 };
 
 const visibleModalIds: string[] = [];
+
+type ReturnFocus = () => void;
+
+function resolveReturnFocus(options: ModalShowOptions): ReturnFocus | undefined {
+  if (options.openModalButtonRef) {
+    const openRef = options.openModalButtonRef;
+    return () => openRef.current?.focus();
+  }
+
+  const opener = document.activeElement;
+  if (!(opener instanceof HTMLElement) || opener === document.body) {
+    return undefined;
+  }
+  return () => {
+    if (opener.isConnected && !opener.matches(':disabled')) {
+      opener.focus();
+    }
+  };
+}
 
 interface ModalProps {
   modalId: string;
@@ -39,22 +59,15 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
   const headingTooltip = props.headingTooltip ?? undefined;
-  const [openModalButtonRef, setOpenModalButtonRef] =
-    useState<React.RefObject<OpenModalButtonRef | null> | null>(null);
   const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
 
   const modalShellRef = useRef<HTMLInputElement | null>(null);
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
+  const returnFocusRef = useRef<ReturnFocus | null>(null);
 
   if (props.forceAction) {
     data['data-force-action'] = true;
   }
-
-  const handleKeyDown = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
-    if (!props.forceAction && ev.key === 'Escape') {
-      close(ev);
-    }
-  };
 
   const handleTab = (
     ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
@@ -122,9 +135,9 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (props.onOpen) {
       props.onOpen();
     }
-    if ('openModalButtonRef' in options) {
-      const openRef = options.openModalButtonRef as React.RefObject<OpenModalButtonRef | null>;
-      setOpenModalButtonRef(openRef);
+    // A show() while already open must not replace the target recorded when the modal opened.
+    if (!isVisible) {
+      returnFocusRef.current = resolveReturnFocus(options) ?? null;
     }
     show();
   }
@@ -141,6 +154,9 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
     hide();
   }
+
+  const closeRef = useRef(close);
+  closeRef.current = close;
 
   useImperativeHandle(ref, () => ({
     hide: closeModal,
@@ -208,20 +224,29 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
         firstEl.focus();
       }
 
-      const keyDownEventHandler = (ev: KeyboardEvent) => {
-        handleKeyDown(ev);
-      };
-
-      document.addEventListener('keydown', keyDownEventHandler);
-
       return () => {
         for (const el of interactiveElements) {
           (el as HTMLElement).onkeydown = null;
         }
-        document.removeEventListener('keydown', keyDownEventHandler);
       };
     }
   }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    // Depends on forceAction so a change while open is seen by the next Escape press.
+    const keyDownEventHandler = (ev: KeyboardEvent) => {
+      if (!props.forceAction && ev.key === 'Escape') {
+        closeRef.current(ev);
+      }
+    };
+    document.addEventListener('keydown', keyDownEventHandler);
+    return () => {
+      document.removeEventListener('keydown', keyDownEventHandler);
+    };
+  }, [isVisible, props.forceAction]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -260,8 +285,14 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (isVisible) {
       return;
     }
-    openModalButtonRef?.current?.focus();
-  }, [isVisible, openModalButtonRef]);
+    const returnFocus = returnFocusRef.current;
+    returnFocusRef.current = null;
+    // Skipped while another modal is open, so a modal that closes as another opens (for example a
+    // search modal handing off to a preview) does not pull focus away from the newer modal.
+    if (returnFocus && !document.querySelector('.usa-modal-wrapper.is-visible')) {
+      returnFocus();
+    }
+  }, [isVisible]);
 
   return (
     <div
