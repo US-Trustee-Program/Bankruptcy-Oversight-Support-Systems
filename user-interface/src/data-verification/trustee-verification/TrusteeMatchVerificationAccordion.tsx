@@ -420,13 +420,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           ) : (
             <>
               {explanation || detailLoadError ? (
-                <p className="problem-statement">
-                  <span>
-                    {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
-                    {affectedCaseCount > 1 ? '' : '1 case: '}
-                  </span>
-                  {caseLink}
-                </p>
+                affectedCaseCount === 0 ? (
+                  <p className="problem-statement">
+                    {explanation ? `${explanation.sentence} ` : ''}No cases affected yet.
+                  </p>
+                ) : (
+                  <p className="problem-statement">
+                    <span>
+                      {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
+                      {affectedCaseCount > 1 ? '' : '1 case: '}
+                    </span>
+                    {caseLink}
+                  </p>
+                )
               ) : (
                 <p className="problem-statement" data-testid="affected-cases-loading">
                   Loading&hellip;

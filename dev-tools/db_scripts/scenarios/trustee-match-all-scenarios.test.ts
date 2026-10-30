@@ -76,9 +76,15 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
     const ops = await generate(context());
 
     // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 7
-    // single-case tasks + 1 multi-case + 1 division-mismatch task.
-    expect(pendingTasks(ops)).toHaveLength(9);
-    for (const task of pendingTasks(ops)) {
+    // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task.
+    expect(pendingTasks(ops)).toHaveLength(10);
+    // seed-match-no-cases-* is the deliberate exception (CAMS-953 "No cases affected yet"): it has
+    // no surrogate anywhere, including for its own originating case. See the dedicated test below.
+    const tasksExpectingASurrogate = pendingTasks(ops).filter(
+      (task) => !(task.id as string).startsWith('seed-match-no-cases-'),
+    );
+    expect(tasksExpectingASurrogate).toHaveLength(9);
+    for (const task of tasksExpectingASurrogate) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
           .filter((s) => s.trusteeId === task.fingerprint && s.isSurrogate === true)
@@ -93,7 +99,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
     const caseIds = pendingTasks(ops).map((task) => task.caseId);
 
     // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
-    expect(caseIds.length).toBe(9);
+    expect(caseIds.length).toBe(10);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
@@ -198,6 +204,26 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(divisionsByCaseId['081-23-10005']).not.toBe(divisionsByCaseId['091-99-40761']);
     expect(appointment.divisionCodes).toContain(divisionsByCaseId['091-99-40761']);
     expect(appointment.divisionCodes).not.toContain(divisionsByCaseId['081-23-10005']);
+  });
+
+  test('should have no surrogate rows for a pending no-cases mismatch, including its own case', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-no-cases-091-99-05433');
+
+    expect(verification).toBeDefined();
+    expect(verification?.status).toBe('pending');
+    expect(verification?.fingerprint).toBeTruthy();
+    expect(
+      (verification?.findings as { candidates: unknown[] } | undefined)?.candidates,
+    ).toHaveLength(2);
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = surrogatesFor(ops, table);
+      const forThisFingerprint = surrogates.filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(0);
+    }
   });
 
   test('should have no surviving surrogate rows for an already-approved mismatch', async () => {

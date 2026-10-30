@@ -1233,14 +1233,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('falls back to the originating case link when the detail has zero affected cases', async () => {
+    test('shows "No cases affected yet." and no case link when the live count is zero', async () => {
       renderWithProps();
       await mockDetailAndExpand({ ...sampleOrderDetail, affectedCaseIds: [] });
 
-      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toHaveAttribute(
-        'href',
-        `/case-detail/${sampleOrder.caseId}`,
-      );
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain('No cases affected yet.');
+      expect(problemStatement?.textContent).not.toContain('Affects');
+      expect(
+        screen.queryByRole('link', { name: /22-11111/, hidden: true }),
+      ).not.toBeInTheDocument();
     });
 
     test('shows no case count or links before expansion (the sentence needs findings)', () => {
