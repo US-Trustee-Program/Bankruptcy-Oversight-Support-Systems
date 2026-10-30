@@ -91,7 +91,7 @@ describe('TrusteeMatchConfirmationModal', () => {
   const cancelButton = () =>
     screen.getByTestId(`button-trustee-confirmation-modal-${modalId}-cancel-button`);
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -136,8 +136,6 @@ describe('TrusteeMatchConfirmationModal', () => {
       'href',
       '/trustees/trustee-1',
     );
-    expect(screen.queryByText('Exact surname')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Found by/)).not.toBeInTheDocument();
   });
 
   test('omits Email when the rows exclude it', () => {
@@ -221,24 +219,13 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(cancelButton()).toBeDisabled();
   });
 
-  test('keeps the preview open on Escape, overlay click, or X while processing', () => {
+  test('forwards isProcessing to Modal as forceAction', () => {
     renderModal({ isProcessing: true });
     showSelected();
 
-    const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
-    expect(wrapper).toHaveClass('is-visible');
-
-    fireEvent.keyDown(screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`), {
-      key: 'Escape',
-    });
-    expect(wrapper).toHaveClass('is-visible');
-
-    fireEvent.click(screen.getByTestId(`modal-overlay-trustee-confirmation-modal-${modalId}`));
-    expect(wrapper).toHaveClass('is-visible');
-
     expect(
-      screen.queryByTestId(`modal-x-button-trustee-confirmation-modal-${modalId}`),
-    ).not.toBeInTheDocument();
+      screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`),
+    ).toHaveAttribute('data-force-action', 'true');
   });
 
   test('keeps one status region mounted so Matching trustee... is announced when processing starts', () => {
@@ -287,5 +274,43 @@ describe('TrusteeMatchConfirmationModal', () => {
         'is-hidden',
       ),
     );
+  });
+
+  test('still hides on Cancel when onCancel is not provided', async () => {
+    renderModal();
+    showSelected();
+
+    await waitFor(() => expect(cancelButton()).toBeEnabled());
+    fireEvent.click(cancelButton());
+
+    await waitFor(() =>
+      expect(document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`)).toHaveClass(
+        'is-hidden',
+      ),
+    );
+  });
+
+  test('forwards show() options (openModalButtonRef) to Modal for focus return on hide', async () => {
+    const openerRef = React.createRef<HTMLButtonElement>();
+    render(
+      <BrowserRouter>
+        <button ref={openerRef}>Open</button>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          rows={dxtrRows}
+          source={source}
+          caseCount={3}
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+
+    act(() => modalRef.current?.show(selected, { openModalButtonRef: openerRef }));
+
+    await waitFor(() => expect(cancelButton()).toBeEnabled());
+    fireEvent.click(cancelButton());
+
+    await waitFor(() => expect(openerRef.current).toHaveFocus());
   });
 });

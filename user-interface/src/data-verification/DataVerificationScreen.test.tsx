@@ -31,6 +31,40 @@ describe('Review Orders screen', () => {
     });
   }
 
+  /**
+   * Mocks an order-list accordion component so that, once mounted, it fires onOrderUpdate with
+   * the args getUpdateArgs returns for its order (or does nothing when getUpdateArgs returns
+   * undefined) - mirroring how a real accordion raises onOrderUpdate from its own update
+   * handlers, without re-implementing each accordion's own effect/mock boilerplate per test.
+   */
+  function mockAccordionOnOrderUpdate<
+    P extends {
+      onOrderUpdate: (...args: never[]) => void;
+      order: { id?: string; status: string };
+    },
+  >(
+    accordionModule: object,
+    componentName: string,
+    testIdPrefix: string,
+    getUpdateArgs: (order: P['order']) => Parameters<P['onOrderUpdate']> | undefined,
+  ) {
+    const spy = vi.spyOn(accordionModule as never, componentName as never) as unknown as {
+      mockImplementation: (impl: (props: P) => React.ReactElement) => void;
+    };
+    spy.mockImplementation((props: P) => {
+      const { onOrderUpdate, order } = props;
+      const updateArgs = getUpdateArgs(order);
+      React.useEffect(() => {
+        if (updateArgs) {
+          (onOrderUpdate as (...args: unknown[]) => void)(...updateArgs);
+        }
+        // `updateArgs` is derived once, from the order this mock instance mounted with.
+        // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+      }, []);
+      return <div data-testid={`${testIdPrefix}-${order.id}-${order.status}`}></div>;
+    });
+  }
+
   beforeEach(async () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
@@ -598,18 +632,11 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
 
-    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
-      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          onOrderUpdate({
-            message: mockAlertMessage,
-            type: UswdsAlertStyle.Error,
-            timeOut: 8,
-          });
-        }, [onOrderUpdate]);
-        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
-      },
+    mockAccordionOnOrderUpdate<transferOrderAccordionModule.TransferOrderAccordionProps>(
+      transferOrderAccordionModule,
+      'TransferOrderAccordion',
+      'mock-transfer-order',
+      () => [{ message: mockAlertMessage, type: UswdsAlertStyle.Error, timeOut: 8 }],
     );
 
     sessionStorage.setItem(
@@ -642,19 +669,17 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
 
-    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
-      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          if (order.status === 'pending') {
-            onOrderUpdate(
+    mockAccordionOnOrderUpdate<transferOrderAccordionModule.TransferOrderAccordionProps>(
+      transferOrderAccordionModule,
+      'TransferOrderAccordion',
+      'mock-transfer-order',
+      (order) =>
+        order.status === 'pending'
+          ? [
               { message: 'Transfer order updated.', type: UswdsAlertStyle.Success, timeOut: 8 },
               updatedOrder,
-            );
-          }
-        }, [onOrderUpdate, order.status]);
-        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
-      },
+            ]
+          : undefined,
     );
 
     render(
@@ -681,19 +706,17 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder, otherOrder] });
 
-    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
-      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          if (order.id === mockOrder.id && order.status === 'pending') {
-            onOrderUpdate(
+    mockAccordionOnOrderUpdate<transferOrderAccordionModule.TransferOrderAccordionProps>(
+      transferOrderAccordionModule,
+      'TransferOrderAccordion',
+      'mock-transfer-order',
+      (order) =>
+        order.id === mockOrder.id && order.status === 'pending'
+          ? [
               { message: 'Transfer order updated.', type: UswdsAlertStyle.Success, timeOut: 8 },
               updatedOrder,
-            );
-          }
-        }, [onOrderUpdate, order.id, order.status]);
-        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
-      },
+            ]
+          : undefined,
     );
 
     render(
@@ -909,20 +932,14 @@ describe('Review Orders screen', () => {
       status: 'approved',
     };
 
-    vi.spyOn(
+    mockAccordionOnOrderUpdate<trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps>(
       trusteeVerificationAccordionModule,
       'TrusteeMatchVerificationAccordion',
-    ).mockImplementation(
-      (props: trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          onOrderUpdate(
-            { message: mockAlertMessage, type: UswdsAlertStyle.Success, timeOut: 8 },
-            updatedOrder,
-          );
-        }, [onOrderUpdate]);
-        return <div data-testid={`mock-trustee-verification-${order.id}-${order.status}`}></div>;
-      },
+      'mock-trustee-verification',
+      () => [
+        { message: mockAlertMessage, type: UswdsAlertStyle.Success, timeOut: 8 },
+        updatedOrder,
+      ],
     );
 
     sessionStorage.setItem(
@@ -966,22 +983,17 @@ describe('Review Orders screen', () => {
       data: [sampleVerificationOrder, otherVerification],
     });
 
-    vi.spyOn(
+    mockAccordionOnOrderUpdate<trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps>(
       trusteeVerificationAccordionModule,
       'TrusteeMatchVerificationAccordion',
-    ).mockImplementation(
-      (props: trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          if (order.id === sampleVerificationOrder.id) {
-            onOrderUpdate(
+      'mock-trustee-verification',
+      (order) =>
+        order.id === sampleVerificationOrder.id
+          ? [
               { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
               updatedOrder,
-            );
-          }
-        }, [onOrderUpdate, order.id]);
-        return <div data-testid={`mock-trustee-verification-${order.id}-${order.status}`}></div>;
-      },
+            ]
+          : undefined,
     );
 
     sessionStorage.setItem(
@@ -1016,12 +1028,13 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [deletedOrder] });
 
-    vi.spyOn(consolidationOrderAccordionModule, 'ConsolidationOrderAccordion').mockImplementation(
-      (props: consolidationOrderAccordionModule.ConsolidationOrderAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          if (order.id === deletedOrder.id) {
-            onOrderUpdate(
+    mockAccordionOnOrderUpdate<consolidationOrderAccordionModule.ConsolidationOrderAccordionProps>(
+      consolidationOrderAccordionModule,
+      'ConsolidationOrderAccordion',
+      'mock-consolidation-order',
+      (order) =>
+        order.id === deletedOrder.id
+          ? [
               {
                 message: 'Consolidation order updated.',
                 type: UswdsAlertStyle.Success,
@@ -1029,11 +1042,8 @@ describe('Review Orders screen', () => {
               },
               [newOrder],
               deletedOrder,
-            );
-          }
-        }, [onOrderUpdate, order.id]);
-        return <div data-testid={`mock-consolidation-order-${order.id}`}></div>;
-      },
+            ]
+          : undefined,
     );
 
     render(
@@ -1044,9 +1054,11 @@ describe('Review Orders screen', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId(`mock-consolidation-order-${deletedOrder.id}`),
+        screen.queryByTestId(`mock-consolidation-order-${deletedOrder.id}-pending`),
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId(`mock-consolidation-order-${newOrder.id}`)).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-consolidation-order-${newOrder.id}-approved`),
+      ).toBeInTheDocument();
     });
   });
 
@@ -1059,18 +1071,11 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [existingOrder] });
 
-    vi.spyOn(consolidationOrderAccordionModule, 'ConsolidationOrderAccordion').mockImplementation(
-      (props: consolidationOrderAccordionModule.ConsolidationOrderAccordionProps) => {
-        const { onOrderUpdate, order } = props;
-        React.useEffect(() => {
-          onOrderUpdate({
-            message: mockAlertMessage,
-            type: UswdsAlertStyle.Error,
-            timeOut: 8,
-          });
-        }, [onOrderUpdate]);
-        return <div data-testid={`mock-consolidation-order-${order.id}-${order.status}`}></div>;
-      },
+    mockAccordionOnOrderUpdate<consolidationOrderAccordionModule.ConsolidationOrderAccordionProps>(
+      consolidationOrderAccordionModule,
+      'ConsolidationOrderAccordion',
+      'mock-consolidation-order',
+      () => [{ message: mockAlertMessage, type: UswdsAlertStyle.Error, timeOut: 8 }],
     );
 
     render(
