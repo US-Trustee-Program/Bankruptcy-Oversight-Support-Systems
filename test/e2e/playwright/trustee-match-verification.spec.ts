@@ -12,6 +12,7 @@ const ADDRESS_PHONE_TASK_ID = 'e2e-trustee-match-verification-pending-2'; // Jor
 const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
 const STATE_DIFFERS_TASK_ID = 'e2e-trustee-match-verification-pending-4'; // Morgan Stateline, exact name
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
+const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and Carter Caselessmatch, no caseId/courtId
 
 async function expandTask(page: Page, id: string) {
   await page.getByTestId(`accordion-button-order-list-${id}`).click();
@@ -186,6 +187,30 @@ test.describe('Trustee Identity Verification', () => {
     await expect(await expandTask(page, ADDRESS_PHONE_TASK_ID)).toContainText(
       'Trustee name, address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 1 case:',
     );
+  });
+
+  test('shows "No cases yet" for a caseless task, and the modal\'s zero-case sentence', async ({
+    page,
+  }) => {
+    const content = await expandTask(page, CASELESS_TASK_ID);
+
+    await expect(content.locator('.problem-statement')).toContainText(
+      'No cases yet. Cases attach as appointments sync.',
+      timeoutOption,
+    );
+    await expect(content.locator('.problem-statement a.new-tab-link')).toHaveCount(0);
+
+    await content.getByTestId('approve-candidate-seed-trustee-match-caseless-b').click();
+
+    const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${CASELESS_TASK_ID}`);
+    await expect(modal).toBeVisible(timeoutOption);
+    await expect(modal).toContainText(
+      'No cases are affected yet. Future cases sent with this information will be matched to Carter Caselessmatch automatically.',
+    );
+
+    // Approval is not submitted here: see the CAMS-956 deferred specs in the Slice 4 prompts.
+    await page.locator(`#trustee-confirmation-modal-${CASELESS_TASK_ID}-cancel-button`).click();
+    await expect(modal).toBeHidden(timeoutOption);
   });
 
   test('shows "How CAMS read this name" only for the one-candidate, non-exact-name task', async ({

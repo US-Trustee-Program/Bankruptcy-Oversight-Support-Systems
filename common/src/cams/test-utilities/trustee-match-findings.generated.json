@@ -1176,6 +1176,203 @@
     "skip": false,
     "error": null
   },
+  "multipleCandidatesCaseless": {
+    "sourceRaw": {
+      "firstName": "C",
+      "lastName": "Caselessmatch",
+      "fullName": "C Caselessmatch",
+      "legacy": {
+        "address1": "1 Source Pl",
+        "cityStateZipCountry": "New York NY 10011",
+        "phone": "212-555-9997",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10011"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "c",
+      "middleName": "",
+      "lastName": "caselessmatch",
+      "legacy": {
+        "address1": "1 Source Pl",
+        "cityStateZipCountry": "New York NY 10011",
+        "phone": "212-555-9997",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10011"
+        }
+      },
+      "fullName": "C Caselessmatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-caseless-a",
+          "firstName": "Casey",
+          "lastName": "Caselessmatch",
+          "name": "Casey Caselessmatch",
+          "address": {
+            "address1": "502 Caseless Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10011",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9101"
+          },
+          "email": "casey.caselessmatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "casey",
+          "middleName": "",
+          "lastName": "caselessmatch",
+          "phone": {
+            "number": "212-555-9101"
+          },
+          "email": "casey.caselessmatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "casey caselessmatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "c caselessmatch|casey caselessmatch",
+              "value": 0.827
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "c caselessmatch|casey caselessmatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-caseless-b",
+          "firstName": "Carter",
+          "lastName": "Caselessmatch",
+          "name": "Carter Caselessmatch",
+          "address": {
+            "address1": "503 Caseless Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10011",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9102"
+          },
+          "email": "carter.caselessmatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "carter",
+          "middleName": "",
+          "lastName": "caselessmatch",
+          "phone": {
+            "number": "212-555-9102"
+          },
+          "email": "carter.caselessmatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "carter caselessmatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "c caselessmatch|carter caselessmatch",
+              "value": 0.805
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "c caselessmatch|carter caselessmatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "resolvedNoSurrogates": {
     "sourceRaw": {
       "firstName": "Riley",

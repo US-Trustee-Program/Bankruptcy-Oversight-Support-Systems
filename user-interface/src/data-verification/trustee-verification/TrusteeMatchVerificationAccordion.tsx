@@ -135,7 +135,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await fetchDetail();
   }
 
-  const { divisionCode } = getCaseIdParts(order.caseId);
+  const divisionCode = order.caseId ? getCaseIdParts(order.caseId).divisionCode : undefined;
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const taskTypeLabel = taskType.get(order.taskType);
   const isResolved = order.status === 'approved';
@@ -166,9 +166,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
     justApprovedRef.current = true;
     const approvalMessage =
-      affectedCaseCount > 1
-        ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
-        : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
+      affectedCaseCount === 0
+        ? `Trustee ${trusteeName} appointed. No cases affected.`
+        : affectedCaseCount > 1
+          ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
+          : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
     onOrderUpdate(
       {
         message: approvalMessage,
@@ -233,19 +235,17 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // The resolved view sources affectedCaseIds straight from the list response (already the
   // complete, snapshotted/derived array - see getVerifications), so it never needs detail.
   // Pending tasks use the list response until detail loads, then the detail's live list.
+  // Resolved: affectedCaseCount and order.affectedCaseIds both come from the same server-side
+  // snapshot, so they can't disagree - an empty snapshot is always rendered by the
+  // affectedCaseCount === 0 branch below, never by this array.
   const affectedCaseIds = isResolved
-    ? order.affectedCaseIds.length
-      ? order.affectedCaseIds
-      : [order.caseId]
+    ? order.affectedCaseIds
     : detail?.affectedCaseIds?.length
       ? detail.affectedCaseIds
       : [order.caseId];
   const affectedCaseCount =
     isResolved || !detail ? order.affectedCaseCount : detail.affectedCaseIds.length;
   const hasFullCaseList = isResolved || !!detail;
-  // A task always renders at least its originating case link (see affectedCaseIds), so the
-  // header never claims fewer cases than it lists.
-  const headerCaseCount = Math.max(affectedCaseCount, 1);
 
   // The originating case's chapter narrows the manual search modal's results. Fetched only once
   // detail has loaded: DataVerificationScreen mounts every accordion up front (hidden rows
@@ -253,7 +253,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // not its row is ever expanded. Also skipped for approved tasks, matching handleExpand's guard.
   const hasDetail = !!detail;
   useEffect(() => {
-    if (order.status === 'approved' || !hasDetail) return;
+    if (order.status === 'approved' || !hasDetail || !order.caseId) return;
     let cancelled = false;
     Api2.getCaseSummary(order.caseId)
       .then((response) => {
@@ -411,22 +411,38 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           data-testid={`accordion-content-${order.id}`}
         >
           {isResolved ? (
-            <p
-              className="resolved-statement"
-              data-testid="resolved-statement"
-              ref={resolvedStatementRef}
-              tabIndex={-1}
-            >
-              <span>
-                Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {affectedCaseCount > 1 ? '' : 'case: '}
-              </span>
-              {caseLink}
-            </p>
+            affectedCaseCount === 0 ? (
+              <p
+                className="resolved-statement"
+                data-testid="resolved-statement"
+                ref={resolvedStatementRef}
+                tabIndex={-1}
+              >
+                Trustee {getResolvedTrusteeDisplayName()} was approved. No cases affected.
+              </p>
+            ) : (
+              <p
+                className="resolved-statement"
+                data-testid="resolved-statement"
+                ref={resolvedStatementRef}
+                tabIndex={-1}
+              >
+                <span>
+                  Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
+                  {affectedCaseCount > 1 ? '' : 'case: '}
+                </span>
+                {caseLink}
+              </p>
+            )
           ) : (
             <>
               {explanation || detailLoadError ? (
-                affectedCaseCount === 0 ? (
+                !order.caseId ? (
+                  <p className="problem-statement">
+                    {explanation ? `${explanation.sentence} ` : ''}No cases yet. Cases attach as
+                    appointments sync.
+                  </p>
+                ) : affectedCaseCount === 0 ? (
                   <p className="problem-statement">
                     {explanation ? `${explanation.sentence} ` : ''}No cases affected yet.
                   </p>
@@ -455,7 +471,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           id={order.id}
           rows={comparison.rows}
           source={comparison.source}
-          caseCount={headerCaseCount}
+          caseCount={affectedCaseCount}
           onConfirm={handleApprove}
           isProcessing={isProcessing}
         />

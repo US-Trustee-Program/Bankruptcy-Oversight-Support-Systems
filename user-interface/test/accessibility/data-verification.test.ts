@@ -192,4 +192,39 @@ test.describe('Data Verification', () => {
     await cancelButton.click();
     await expect(cancelButton).toBeHidden();
   });
+
+  test('should not have accessibility issues on a caseless identity task', async ({ page }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    // The fake API serves one caseless ambiguous DXTR identity task (mock-api2.ts
+    // trusteeMatchVerificationCaselessDetail) - no caseId/courtId, no affected cases (CAMS-953
+    // Slice 5).
+    const taskId = 'e8c1f0a2-identity-task-caseless';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await narrowToTrusteeIdentityTasks(page);
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const content = page.locator(`[data-testid="accordion-content-${taskId}"]`);
+    await expect(content.locator('.problem-statement')).toContainText(
+      'No cases yet. Cases attach as appointments sync.',
+    );
+
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await page.locator('[data-testid="approve-candidate-seed-trustee-match-caseless-b"]').click();
+    const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
+    await expect(cancelButton).toBeVisible();
+    await expect(page.locator('[data-testid="confirm-match-selected"]')).toContainText(
+      'Carter Caselessmatch',
+    );
+    // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await cancelButton.click();
+    await expect(cancelButton).toBeHidden();
+  });
 });

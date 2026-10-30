@@ -838,6 +838,29 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
+// One caseless ambiguous DXTR identity task (CAMS-953 Slice 5): no caseId/courtId at all, no
+// affected cases. Its findings are the real pipeline's output for the multipleCandidatesCaseless
+// fixture scenario, imported as plain JSON for the same reason as trusteeMatchFindings above.
+const trusteeMatchCaselessFindings =
+  generatedTrusteeMatchFindings.multipleCandidatesCaseless as TrusteeSerializedState;
+
+const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-caseless',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchCaselessFindings.sourceRaw,
+  findings: trusteeMatchCaselessFindings,
+  fingerprint: 'mock-fingerprint-caseless',
+  variant: 'c caselessmatch',
+  taskDate: '2026-01-20T10:00:00.000Z',
+  updatedOn: '2026-01-20T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: [],
+};
+
 function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerificationListItem {
   return {
     id: detail.id,
@@ -849,7 +872,7 @@ function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerif
     mismatchReason: detail.mismatchReason,
     source: detail.source,
     dxtrTrustee: detail.dxtrTrustee,
-    affectedCaseCount: 1,
+    affectedCaseCount: detail.affectedCaseIds.length,
     affectedCaseIds: detail.affectedCaseIds,
     taskDate: detail.taskDate,
   };
@@ -857,10 +880,12 @@ function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerif
 
 const trusteeMatchVerificationDetailsById: Record<string, EnrichedTrusteeMatchVerification> = {
   [trusteeMatchVerificationDetail.id]: trusteeMatchVerificationDetail,
+  [trusteeMatchVerificationCaselessDetail.id]: trusteeMatchVerificationCaselessDetail,
 };
 
 const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   toListItem(trusteeMatchVerificationDetail),
+  toListItem(trusteeMatchVerificationCaselessDetail),
 ];
 
 const orders = [
