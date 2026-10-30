@@ -1588,6 +1588,48 @@ describe('Cases repository', () => {
         [],
       );
     });
+
+    test('should include a caseId-exclusion filter when excludeCaseId is passed', async () => {
+      const dxtrId = '12345';
+      const courtId = '081';
+      const excludeCaseId = '081-24-11111';
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repo.findSyncedCaseByDxtrId(dxtrId, courtId, excludeCaseId);
+
+      expect(findSpy).toHaveBeenCalled();
+      const actualQuery = findSpy.mock.calls[0][0];
+      const doc = using<SyncedCase>();
+      const expectedQuery = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('dxtrId').equals(dxtrId),
+        doc('courtId').equals(courtId),
+        doc('movedToCaseId').notExists(),
+        doc('caseId').notEqual(excludeCaseId),
+      );
+      expect(actualQuery).toEqual(expectedQuery);
+    });
+
+    test('should not include a caseId-exclusion filter when excludeCaseId is omitted', async () => {
+      const dxtrId = '12345';
+      const courtId = '081';
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repo.findSyncedCaseByDxtrId(dxtrId, courtId);
+
+      expect(findSpy).toHaveBeenCalled();
+      const actualQuery = findSpy.mock.calls[0][0];
+      const doc = using<SyncedCase>();
+      const expectedQuery = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('dxtrId').equals(dxtrId),
+        doc('courtId').equals(courtId),
+        doc('movedToCaseId').notExists(),
+      );
+      expect(actualQuery).toEqual(expectedQuery);
+    });
   });
 
   describe('getAllCaseHistory', () => {

@@ -6,6 +6,8 @@ import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
@@ -258,7 +260,26 @@ export async function handleRetry(event: CaseSyncEvent, invocationContext: Invoc
 
   logger.info(MODULE_NAME, `Retry attempt ${event.retryCount} for ${event.caseId}`);
 
-  const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  let processed: CaseSyncEvent;
+  try {
+    [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  } catch (transientError) {
+    if (!isTransientInfraError(transientError)) {
+      throw transientError;
+    }
+    // Route through the same DLQ/handleError/RETRY path a captured event.error would take,
+    // rather than handleRateLimitRetry's own counter, so it doesn't collide with this handler's
+    // manual retryCount/RETRY_LIMIT bookkeeping above.
+    event.error = getCamsError(transientError, MODULE_NAME, `Failed to sync case ${event.caseId}.`);
+    invocationContext.extraOutputs.set(DLQ, [event]);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'retry-failed', retryCount: String(event.retryCount) },
+    });
+    return;
+  }
 
   if (processed.error) {
     invocationContext.extraOutputs.set(DLQ, [processed]);

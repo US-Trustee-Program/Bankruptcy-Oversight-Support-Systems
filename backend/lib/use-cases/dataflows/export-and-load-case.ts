@@ -10,6 +10,7 @@ import { CaseDenormalizedFields } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 import factory from '../../factory';
 import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
@@ -39,7 +40,11 @@ async function detectDivisionChange(
   repo: CasesRepository,
   syncedCase: DxtrCase,
 ): Promise<OrphanedCaseMessage | null> {
-  const existing = await repo.findSyncedCaseByDxtrId(syncedCase.dxtrId, syncedCase.courtId);
+  const existing = await repo.findSyncedCaseByDxtrId(
+    syncedCase.dxtrId,
+    syncedCase.courtId,
+    syncedCase.caseId,
+  );
 
   if (!existing || existing.caseId === syncedCase.caseId) {
     return null;
@@ -133,6 +138,9 @@ async function exportAndLoad(
           );
         }
       } catch (detectionError) {
+        if (isTransientInfraError(detectionError)) {
+          throw detectionError;
+        }
         context.logger.error(
           MODULE_NAME,
           `Division change detection failed for case ${event.caseId} dxtrId=${syncedCase.dxtrId}: ${detectionError}`,
@@ -144,13 +152,15 @@ async function exportAndLoad(
       try {
         const existing = await casesRepo.getSyncedCase(event.caseId);
         existingCase = existing;
-      } catch {
+      } catch (getSyncedCaseError) {
+        if (isTransientInfraError(getSyncedCaseError)) {
+          throw getSyncedCaseError;
+        }
         // Case doesn't exist yet, that's ok
       }
 
-      await casesRepo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
-
-      // After sync succeeds, check if denormalized fields changed and update appointments
+      // Patch runs before sync so a replay after a transient error below still sees the real
+      // pre-sync diff: existingCase reflects pre-sync state until syncDxtrCase actually succeeds.
       const fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
       if (fieldsToUpdate) {
         try {
@@ -161,6 +171,9 @@ async function exportAndLoad(
             fieldsToUpdate,
           );
         } catch (apptError) {
+          if (isTransientInfraError(apptError)) {
+            throw apptError;
+          }
           context.logger.warn(
             MODULE_NAME,
             `Appointment field patch failed for ${event.caseId} — sync succeeded, will retry on next sync.`,
@@ -168,7 +181,12 @@ async function exportAndLoad(
           );
         }
       }
+
+      await casesRepo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {
+      if (isTransientInfraError(originalError)) {
+        throw originalError;
+      }
       if (isNotFoundError(originalError)) {
         try {
           const existing = await casesRepo.getSyncedCase(event.caseId);
@@ -190,6 +208,9 @@ async function exportAndLoad(
             continue;
           }
         } catch (lookupError) {
+          if (isTransientInfraError(lookupError)) {
+            throw lookupError;
+          }
           context.logger.warn(
             MODULE_NAME,
             `Division-change lookup failed for orphaned case ${event.caseId}: ${lookupError}`,

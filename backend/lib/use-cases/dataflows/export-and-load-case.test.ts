@@ -6,6 +6,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
@@ -363,7 +365,7 @@ describe('Export and Load Case Tests', () => {
 
       const result = await ExportAndLoadCase.exportAndLoad(context, events);
 
-      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId, newCase.caseId);
       expect(syncSpy).toHaveBeenCalledTimes(1);
       expect(result[0].divisionChange).toEqual({
         orphanedCaseId: existingCase.caseId,
@@ -391,7 +393,7 @@ describe('Export and Load Case Tests', () => {
 
       const result = await ExportAndLoadCase.exportAndLoad(context, events);
 
-      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId, newCase.caseId);
       expect(syncSpy).toHaveBeenCalledTimes(1);
       expect(result[0].divisionChange).toBeUndefined();
       expect(result[0].error).toBeUndefined();
@@ -424,7 +426,7 @@ describe('Export and Load Case Tests', () => {
 
       const result = await ExportAndLoadCase.exportAndLoad(context, events);
 
-      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId, newCase.caseId);
       expect(syncSpy).toHaveBeenCalledTimes(1);
       expect(result[0].divisionChange).toBeUndefined();
       expect(result[0].error).toBeUndefined();
@@ -451,7 +453,7 @@ describe('Export and Load Case Tests', () => {
 
       const result = await ExportAndLoadCase.exportAndLoad(context, events);
 
-      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId, newCase.caseId);
       expect(logSpy).toHaveBeenCalledWith(
         'EXPORT-AND-LOAD',
         expect.stringContaining('Division change detection failed'),
@@ -1041,6 +1043,269 @@ describe('Export and Load Case Tests', () => {
         expect.stringContaining('updateCaseFields transient failure'),
         { error: transientError },
       );
+    });
+  });
+
+  describe('exportAndLoad - transient infra error propagation', () => {
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])('rethrows when getCaseDetail throws a $label', async ({ build }) => {
+      const event = mockCaseSyncEvent();
+      const transientError = build();
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(transientError);
+
+      await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+        transientError,
+      );
+    });
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])('rethrows when division-change detection throws a $label', async ({ build }) => {
+      const newCase = MockData.getCaseDetail({
+        override: { caseId: '081-24-67890', dxtrId: '081-1234567', courtId: '081' },
+      });
+      const event = mockCaseSyncEvent({ caseId: newCase.caseId });
+      const transientError = build();
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      vi.spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId').mockRejectedValue(
+        transientError,
+      );
+
+      await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+        transientError,
+      );
+    });
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])('rethrows when the pre-sync getSyncedCase lookup throws a $label', async ({ build }) => {
+      const newCase = MockData.getCaseDetail();
+      const event = mockCaseSyncEvent({ caseId: newCase.caseId });
+      const transientError = build();
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      vi.spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId').mockResolvedValue(
+        undefined,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(transientError);
+
+      await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+        transientError,
+      );
+    });
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])('rethrows when syncDxtrCase throws a $label', async ({ build }) => {
+      const newCase = MockData.getCaseDetail();
+      const event = mockCaseSyncEvent({ caseId: newCase.caseId });
+      const transientError = build();
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      vi.spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId').mockResolvedValue(
+        undefined,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(
+        new Error('not found'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockRejectedValue(transientError);
+
+      await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+        transientError,
+      );
+    });
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])(
+      'rethrows when the appointment-field patch fails with a $label on both attempts',
+      async ({ build }) => {
+        const originalCase = MockData.getDxtrCase({
+          override: {
+            caseId: '081-24-12345',
+            dateFiled: '2023-01-01',
+            chapter: '7',
+            courtDivisionCode: 'DIV001',
+            closedDate: undefined,
+            reopenedDate: undefined,
+            debtor: { name: 'Test Debtor' },
+            dxtrId: '12345',
+            courtId: '001',
+          } satisfies Partial<DxtrCase>,
+        });
+        const updatedCase = MockData.getDxtrCase({
+          override: {
+            caseId: '081-24-12345',
+            dateFiled: '2024-01-01',
+            chapter: '7',
+            courtDivisionCode: 'DIV001',
+            closedDate: undefined,
+            reopenedDate: undefined,
+            debtor: { name: 'Test Debtor' },
+            dxtrId: '12345',
+            courtId: '001',
+          } satisfies Partial<DxtrCase>,
+        });
+        const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+        const transientError = build();
+
+        vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+          updatedCase as unknown as CaseDetail,
+        );
+        vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+        const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+        vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(
+          transientError,
+        );
+
+        await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+          transientError,
+        );
+        // Patch runs before sync, so a transient patch failure must prevent sync this attempt.
+        expect(syncSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])(
+      'rethrows when the not-found division-change lookup throws a $label from getSyncedCase',
+      async ({ build }) => {
+        const event = mockCaseSyncEvent();
+        const transientError = build();
+
+        vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+          new NotFoundError('TEST'),
+        );
+        vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(transientError);
+
+        await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+          transientError,
+        );
+      },
+    );
+
+    test.each([
+      { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+      { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+    ])(
+      'rethrows when the not-found division-change lookup throws a $label from searchCases',
+      async ({ build }) => {
+        const caseId = '121-26-13490';
+        const dxtrId = '121-1234567';
+        const courtId = '121';
+        const syncedCase = MockData.getSyncedCase({ override: { caseId, dxtrId, courtId } });
+        const event = mockCaseSyncEvent({ caseId });
+        const transientError = build();
+
+        vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+          new NotFoundError('TEST'),
+        );
+        vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+        vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockRejectedValue(transientError);
+
+        await expect(ExportAndLoadCase.exportAndLoad(context, [event])).rejects.toThrow(
+          transientError,
+        );
+      },
+    );
+  });
+
+  describe('exportAndLoad - appointment-field patch runs before sync', () => {
+    function buildFieldChangeCases() {
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+      const updatedCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '11',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+      return { originalCase, updatedCase };
+    }
+
+    test('calls updateCaseFields before syncDxtrCase when fields changed', async () => {
+      const { originalCase, updatedCase } = buildFieldChangeCases();
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        updatedCase as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).toHaveBeenCalledTimes(1);
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+      expect(updateCaseFieldsSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        syncSpy.mock.invocationCallOrder[0],
+      );
+    });
+
+    test('replaying after a transient sync failure still recomputes and reapplies the correct diff', async () => {
+      const { originalCase, updatedCase } = buildFieldChangeCases();
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        updatedCase as unknown as CaseDetail,
+      );
+      // existingCase never changes because syncDxtrCase never actually succeeds until the replay.
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+      const syncSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'syncDxtrCase')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce();
+
+      await expect(ExportAndLoadCase.exportAndLoad(context, [{ ...event }])).rejects.toThrow();
+      expect(updateCaseFieldsSpy).toHaveBeenCalledTimes(1);
+      expect(updateCaseFieldsSpy).toHaveBeenNthCalledWith(
+        1,
+        '081-24-12345',
+        expect.objectContaining({ chapter: '11' }),
+      );
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+
+      await ExportAndLoadCase.exportAndLoad(context, [{ ...event }]);
+      expect(updateCaseFieldsSpy).toHaveBeenCalledTimes(2);
+      expect(updateCaseFieldsSpy).toHaveBeenNthCalledWith(
+        2,
+        '081-24-12345',
+        expect.objectContaining({ chapter: '11' }),
+      );
+      expect(syncSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

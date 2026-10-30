@@ -3,6 +3,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { archiveCaseAndRelatedDocuments } from './archive-case-documents';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 // archive-case-documents calls repos in this sequence:
 //   1. ordersRepo.findByCaseId    (upfront — populates orders step)
@@ -243,6 +245,26 @@ describe('ArchiveCaseDocuments use case', () => {
     expect(result.caseId).toBe(caseId);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0].type).toBe('case-documents');
+  });
+
+  test.each([
+    { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+    { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+  ])('rethrows a $label from a step instead of capturing it', async ({ build }) => {
+    const transientError = build();
+    const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockRejectedValueOnce(transientError) // cases step throws transiently
+      .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
+    vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
+
+    await expect(archiveCaseAndRelatedDocuments(context, caseId)).rejects.toThrow(transientError);
+    // The finally block's repo.release() calls still run even though the step rethrows.
+    expect(releaseSpy).toHaveBeenCalled();
   });
 
   test('should handle case with no related documents', async () => {

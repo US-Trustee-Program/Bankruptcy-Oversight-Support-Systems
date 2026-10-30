@@ -463,7 +463,11 @@ export interface CasesRepository extends Releasable {
   findDuplicateSyncedCases(): Promise<
     Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
   >;
-  findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined>;
+  findSyncedCaseByDxtrId(
+    dxtrId: string,
+    courtId: string,
+    excludeCaseId?: string,
+  ): Promise<SyncedCase | undefined>;
 }
 
 export interface OfficesRepository
