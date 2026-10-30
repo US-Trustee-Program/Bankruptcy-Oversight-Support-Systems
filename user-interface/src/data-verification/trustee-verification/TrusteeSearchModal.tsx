@@ -1,7 +1,7 @@
 import './TrusteeSearchModal.scss';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import useDebounce from '@/lib/hooks/UseDebounce';
-import Modal from '@/lib/components/uswds/modal/Modal';
+import Modal, { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
@@ -37,7 +37,7 @@ function fieldOrPlaceholder(label: string, value?: string): string {
 }
 
 export type TrusteeSearchModalImperative = {
-  show: () => void;
+  show: (options?: ModalShowOptions) => void;
   hide: () => void;
 };
 
@@ -81,12 +81,12 @@ function TrusteeSearchModal_(
       });
   }, []);
 
-  function show() {
+  function show(options?: ModalShowOptions) {
     setSearchResults([]);
     setSelectedTrustee(null);
     setSelectedCourtId(courtId);
     trusteeNameComboBoxRef.current?.clearSelections();
-    modalRef.current?.show({});
+    modalRef.current?.show(options ?? {});
   }
 
   function hide() {

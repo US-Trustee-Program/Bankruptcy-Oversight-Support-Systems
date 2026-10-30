@@ -56,9 +56,8 @@ type RenderOptions = {
 describe('TrusteeMatchConfirmationModal', () => {
   const modalRef = React.createRef<TrusteeMatchConfirmationModalImperative>();
 
-  function renderModal(options: RenderOptions = {}) {
-    const onConfirm = vi.fn();
-    render(
+  function modalTree(options: RenderOptions, onConfirm: (selected: SelectedTrustee) => void) {
+    return (
       <BrowserRouter>
         <TrusteeMatchConfirmationModal
           ref={modalRef}
@@ -70,9 +69,17 @@ describe('TrusteeMatchConfirmationModal', () => {
           onCancel={options.onCancel}
           isProcessing={options.isProcessing}
         />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
-    return { onConfirm };
+  }
+
+  function renderModal(options: RenderOptions = {}) {
+    const onConfirm = vi.fn();
+    const { rerender } = render(modalTree(options, onConfirm));
+    return {
+      onConfirm,
+      rerender: (next: RenderOptions) => rerender(modalTree(next, onConfirm)),
+    };
   }
 
   function showSelected() {
@@ -150,6 +157,25 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(within(selectedColumn()).getByText('Not Provided')).toBeInTheDocument();
   });
 
+  test('shows Not Provided in the source column for a missing source value', () => {
+    const sourceWithoutPhone = { ...source, phone: undefined };
+    render(
+      <BrowserRouter>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          rows={dxtrRows}
+          source={sourceWithoutPhone}
+          caseCount={3}
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    showSelected();
+
+    expect(within(sourceColumn()).getByText('Not Provided')).toBeInTheDocument();
+  });
+
   test('marks only the selected trustee fields that differ and have a value', () => {
     renderModal();
     showSelected();
@@ -207,6 +233,58 @@ describe('TrusteeMatchConfirmationModal', () => {
     await waitFor(() => expect(submitButton()).toHaveTextContent('Matching Trustee...'));
     expect(submitButton()).toBeDisabled();
     expect(cancelButton()).toBeDisabled();
+  });
+
+  test('keeps the preview open on Escape, overlay click, or X while processing', () => {
+    renderModal({ isProcessing: true });
+    showSelected();
+
+    const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
+    expect(wrapper).toHaveClass('is-visible');
+
+    fireEvent.keyDown(screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`), {
+      key: 'Escape',
+    });
+    expect(wrapper).toHaveClass('is-visible');
+
+    fireEvent.click(screen.getByTestId(`modal-overlay-trustee-confirmation-modal-${modalId}`));
+    expect(wrapper).toHaveClass('is-visible');
+
+    expect(
+      screen.queryByTestId(`modal-x-button-trustee-confirmation-modal-${modalId}`),
+    ).not.toBeInTheDocument();
+  });
+
+  test('keeps one status region mounted so Matching trustee... is announced when processing starts', () => {
+    const { rerender } = renderModal();
+    showSelected();
+
+    const status = screen.getByRole('status');
+    rerender({ isProcessing: true });
+
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toHaveTextContent('Matching trustee...');
+  });
+
+  test('moves focus into the dialog when processing starts, since the submit button is disabled', async () => {
+    const { rerender } = renderModal();
+    showSelected();
+    await waitFor(() => expect(submitButton()).toBeEnabled());
+
+    submitButton().focus();
+    fireEvent.click(submitButton());
+    rerender({ isProcessing: true });
+
+    expect(screen.getByRole('status')).toHaveFocus();
+    expect(submitButton()).not.toHaveFocus();
+  });
+
+  test('announces Matching trustee... in the status region while processing', async () => {
+    renderModal({ isProcessing: true });
+    showSelected();
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Matching trustee...');
   });
 
   test('calls onCancel and hides when Cancel is clicked', async () => {

@@ -39,6 +39,12 @@ type VerificationListParams = {
   statusParam?: string;
 };
 
+function pendingVerificationNotFound(id: string): NotFoundError {
+  return new NotFoundError(MODULE_NAME, {
+    message: `Pending verification ${id} not found.`,
+  });
+}
+
 export class TrusteeMatchVerificationUseCase {
   async getVerifications(
     context: ApplicationContext,
@@ -186,9 +192,7 @@ export class TrusteeMatchVerificationUseCase {
       // 1. Find the pending verification
       const verification = await repo.findById(id);
       if (verification.status !== 'pending') {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Pending verification ${id} not found.`,
-        });
+        throw pendingVerificationNotFound(id);
       }
 
       const resolutionMs = verification.createdOn
@@ -298,7 +302,9 @@ export class TrusteeMatchVerificationUseCase {
       // remap. The snapshot is the durable record we most need to protect: if this write
       // throws, the verification stays 'pending' and retryable, and no remap message has
       // gone out yet, so nothing downstream has acted on stale data.
-      await repo.update(id, {
+      // The write is a compare-and-set from 'pending': if a concurrent approval already won, no
+      // document matches, the remap below is never enqueued, and this approval is rejected.
+      const approvedNow = await repo.updateIfPending(id, {
         status: 'approved',
         resolvedTrusteeId,
         resolvedTrusteeName,
@@ -307,6 +313,9 @@ export class TrusteeMatchVerificationUseCase {
         updatedBy: userRef,
         updatedOn: now,
       });
+      if (!approvedNow) {
+        throw pendingVerificationNotFound(id);
+      }
 
       // 6. Enqueue the async batch remap now that the approval is durably recorded. Every
       // surrogate CaseAppointment sharing this fingerprint (not just verification.caseId)

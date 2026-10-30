@@ -268,6 +268,25 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
+  /**
+   * Compare-and-set from 'pending': the status:'pending' filter makes the write apply only if the
+   * stored document has not yet left 'pending', so two concurrent approvals of the same task cannot
+   * both succeed. Returns false when no pending document matched.
+   */
+  async updateIfPending(id: string, updates: Partial<TrusteeMatchVerification>): Promise<boolean> {
+    try {
+      const query = this.verificationQuery({ id, status: 'pending' });
+      const updated = await this.getAdapter<TrusteeMatchVerification>().findOneAndUpdate(query, {
+        $set: updates,
+      });
+      return updated !== null;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to conditionally update trustee match verification ${id}.`,
+      });
+    }
+  }
+
   async findVerificationsMissingTaskDate(
     lastId: string | null,
     limit: number,

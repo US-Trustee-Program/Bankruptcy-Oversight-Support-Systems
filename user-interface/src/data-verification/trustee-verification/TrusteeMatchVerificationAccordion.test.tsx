@@ -707,6 +707,28 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('approves the most recently previewed trustee after a cancelled preview', async () => {
+      // Regression guard: a cancelled preview for one candidate must not leak into the next
+      // approval, which should carry the id and name of the candidate chosen last.
+      const approvalSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+        .mockResolvedValue(undefined);
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
+      fireEvent.click(confirmModalSubmit()!);
+
+      await waitFor(() => {
+        expect(approvalSpy).toHaveBeenCalledTimes(1);
+        expect(approvalSpy).toHaveBeenCalledWith(sampleOrder.id, 'trustee-2', 'Janet Smith');
+      });
+    });
+
     test('threads isProcessing=true into the confirmation modal while approval is in flight', async () => {
       // Wiring only: the modal's own rendering of isProcessing is covered by its own tests.
       let resolveApproval: () => void = () => {};
@@ -780,6 +802,25 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await waitFor(() => expect(screen.getByTestId('resolved-statement')).toHaveFocus());
     });
 
+    test('returns focus to the Match Trustee button that opened the preview after Cancel', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const approveButton = screen.getByTestId('approve-candidate-trustee-1');
+      approveButton.focus();
+      fireEvent.click(approveButton);
+      await waitFor(() =>
+        expect(
+          document.getElementById(`trustee-confirmation-modal-${sampleOrder.id}-wrapper`),
+        ).toHaveClass('is-visible'),
+      );
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+
+      await waitFor(() => expect(approveButton).toHaveFocus());
+    });
+
     test('reports every affected case in the success message', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
@@ -810,8 +851,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const onOrderUpdate = vi.fn();
       renderWithProps({ onOrderUpdate });
       await mockDetailAndExpand();
+      const confirmationWrapper = () =>
+        document.getElementById(`trustee-confirmation-modal-${sampleOrder.id}-wrapper`);
 
       fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      await waitFor(() => expect(confirmationWrapper()).toHaveClass('is-visible'));
       fireEvent.click(confirmModalSubmit()!);
 
       await waitFor(() => {
@@ -820,6 +864,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
           sampleOrder,
         );
       });
+      await waitFor(() => expect(confirmationWrapper()).toHaveClass('is-hidden'));
     });
 
     test('falls back to a generic message when the rejection is not an Error instance', async () => {
@@ -1054,6 +1099,35 @@ describe('TrusteeMatchVerificationAccordion', () => {
           }),
         );
       });
+    });
+
+    test('keeps focus in the preview when a search result opens it', async () => {
+      setupSearchMocks();
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      searchButton().focus();
+      await selectTrusteeFromSearch();
+
+      const preview = document.getElementById(
+        `trustee-confirmation-modal-${sampleOrder.id}-wrapper`,
+      );
+      await waitFor(() => expect(preview?.contains(document.activeElement)).toBe(true));
+      expect(searchButton()).not.toHaveFocus();
+    });
+
+    test('returns focus to Search for a trustee when the search-selected preview is cancelled', async () => {
+      setupSearchMocks();
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      searchButton().focus();
+      await selectTrusteeFromSearch();
+      fireEvent.click(
+        screen.getByTestId(`button-trustee-confirmation-modal-${sampleOrder.id}-cancel-button`),
+      );
+
+      await waitFor(() => expect(searchButton()).toHaveFocus());
     });
 
     test('moves focus to the resolved statement after a manual-match approval', async () => {

@@ -301,6 +301,69 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('updateIfPending', () => {
+    const pendingQueryForId = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE_MATCH_VERIFICATION',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'id' },
+          rightOperand: 'verification-1',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'status' },
+          rightOperand: 'pending',
+        },
+      ],
+    };
+    const approval: Partial<TrusteeMatchVerification> = {
+      status: 'approved',
+      resolvedTrusteeId: 'trustee-new',
+    };
+
+    test('applies the update and returns true when the stored document is still pending', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(
+        sampleVerification,
+      );
+
+      const applied = await repository.updateIfPending('verification-1', approval);
+
+      expect(applied).toBe(true);
+      expect(MongoCollectionAdapter.prototype.findOneAndUpdate).toHaveBeenCalledWith(
+        pendingQueryForId,
+        { $set: approval },
+      );
+    });
+
+    test('returns false when the stored document has already left pending, because the status filter matches nothing', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const applied = await repository.updateIfPending('verification-1', approval);
+
+      expect(applied).toBe(false);
+      expect(MongoCollectionAdapter.prototype.findOneAndUpdate).toHaveBeenCalledWith(
+        pendingQueryForId,
+        { $set: approval },
+      );
+    });
+
+    test('should wrap unexpected errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.updateIfPending('verification-1', approval)).rejects.toThrow(
+        'Failed to conditionally update trustee match verification verification-1.',
+      );
+    });
+  });
+
   describe('search', () => {
     test('should return documents sorted by taskDate ascending with projection', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);

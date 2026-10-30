@@ -18,6 +18,7 @@ import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
+import { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
 import {
   buildTrusteeComparison,
@@ -38,6 +39,7 @@ type TrusteeSearchLinkProps = {
   linkLabel: string;
   linkMessage?: string;
   className?: string;
+  buttonRef?: React.RefObject<HTMLButtonElement | null>;
   onClick: () => void;
 };
 
@@ -45,13 +47,14 @@ function TrusteeSearchLink({
   linkLabel,
   linkMessage,
   className,
+  buttonRef,
   onClick,
 }: Readonly<TrusteeSearchLinkProps>) {
   const classes = ['search-link-container', className].filter(Boolean).join(' ');
   return (
     <div className={classes}>
       {linkMessage && <span className="link-message">{linkMessage}</span>}
-      <button type="button" onClick={onClick} className="search-trustee-link">
+      <button type="button" ref={buttonRef} onClick={onClick} className="search-trustee-link">
         <Icon name="search" />
         {linkLabel}
       </button>
@@ -92,6 +95,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [originatingCaseChapter, setOriginatingCaseChapter] = useState<string | undefined>();
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
+  // The Search for a trustee button. Named explicitly as the return target of both the search
+  // modal and any preview opened from its results, so focus comes back here on Cancel.
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
   // isProcessing (state) drives the disabled/spinner UI but only takes effect once React commits
   // a re-render - it can't stop a second invocation that reaches a handler before that commit
   // (e.g. a rapid repeat event, or two calls in the same tick). This ref is mutated synchronously
@@ -208,18 +214,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
-  function openConfirmation(selected: SelectedTrustee) {
-    confirmationModalRef.current?.show(selected);
+  function openConfirmation(selected: SelectedTrustee, options?: ModalShowOptions) {
+    confirmationModalRef.current?.show(selected, options);
   }
 
   function openSearch() {
-    searchModalRef.current?.show();
+    searchModalRef.current?.show({ openModalButtonRef: searchButtonRef });
   }
 
   function handleSearchSelection(result: TrusteeSearchResult) {
     searchModalRef.current?.hide();
     if (comparison) {
-      openConfirmation(selectedTrusteeFromSearch(result, comparison.candidates));
+      openConfirmation(selectedTrusteeFromSearch(result, comparison.candidates), {
+        openModalButtonRef: searchButtonRef,
+      });
     }
   }
 
@@ -338,6 +346,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               : 'There are no suggested matches in CAMS.'
           }
           linkLabel="Search for a trustee"
+          buttonRef={searchButtonRef}
           onClick={openSearch}
         />
       </div>

@@ -1,6 +1,6 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './TrusteeMatchConfirmationModal.scss';
-import Modal from '@/lib/components/uswds/modal/Modal';
+import Modal, { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
@@ -20,7 +20,7 @@ interface TrusteeMatchConfirmationModalProps {
 }
 
 export type TrusteeMatchConfirmationModalImperative = {
-  show: (selected: SelectedTrustee) => void;
+  show: (selected: SelectedTrustee, options?: ModalShowOptions) => void;
   hide: () => void;
 };
 
@@ -36,11 +36,19 @@ function TrusteeMatchConfirmationModal_(
   const { id, rows, source, caseCount, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [selected, setSelected] = useState<SelectedTrustee | null>(null);
+  const processingRef = useRef<HTMLDivElement>(null);
 
-  function show(trustee: SelectedTrustee) {
+  function show(trustee: SelectedTrustee, options?: ModalShowOptions) {
     setSelected(trustee);
-    modalRef.current?.show({});
+    modalRef.current?.show(options ?? {});
   }
+
+  // Disabling the submit button drops focus, so move it to the processing status instead.
+  useEffect(() => {
+    if (isProcessing) {
+      processingRef.current?.focus();
+    }
+  }, [isProcessing]);
 
   function hide() {
     modalRef.current?.hide();
@@ -79,6 +87,7 @@ function TrusteeMatchConfirmationModal_(
       ref={modalRef}
       modalId={`trustee-confirmation-modal-${id}`}
       className="confirm-trustee-match-modal"
+      forceAction={isProcessing}
       heading="Confirm Trustee Match"
       data-testid={`trustee-confirmation-modal-${id}`}
       content={
@@ -119,7 +128,16 @@ function TrusteeMatchConfirmationModal_(
           </>
         ) : null
       }
-      footerContent={isProcessing && <LoadingSpinner />}
+      footerContent={
+        <div role="status" ref={processingRef} tabIndex={-1}>
+          {isProcessing && (
+            <>
+              <LoadingSpinner aria-hidden="true" />
+              <span>Matching trustee...</span>
+            </>
+          )}
+        </div>
+      }
       actionButtonGroup={actionButtonGroup}
     />
   );
