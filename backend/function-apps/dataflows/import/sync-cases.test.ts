@@ -206,12 +206,13 @@ describe('sync-cases handleStart', () => {
   test('should report success false and route to DLQ when storing runtime state fails after all pages are queued', async () => {
     const { handleStart } = await import('./sync-cases');
     const invocationContext = makeInvocationContext();
-    const { storeRuntimeStateSpy } = await setupMocks();
+    const { events, mockSendMessage, storeRuntimeStateSpy } = await setupMocks();
     storeRuntimeStateSpy.mockRejectedValue(new Error('watermark upsert failed'));
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleStart({}, invocationContext);
 
+    expect(getSentPages(mockSendMessage)).toEqual([{ events }]);
     expect(getDlqOutput(invocationContext)).toBeDefined();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -239,18 +240,6 @@ describe('sync-cases handleStart', () => {
       '2026-10-01T00:00:00Z',
       '2026-10-02T00:00:00Z',
     );
-  });
-
-  test('should not store runtime state when a page fails to queue', async () => {
-    const { handleStart } = await import('./sync-cases');
-    const invocationContext = makeInvocationContext();
-    const { mockSendMessage, storeRuntimeStateSpy } = await setupMocks();
-    mockSendMessage.mockRejectedValue(new Error('queue unavailable'));
-
-    await handleStart({}, invocationContext);
-
-    expect(storeRuntimeStateSpy).not.toHaveBeenCalled();
-    expect(getDlqOutput(invocationContext)).toBeDefined();
   });
 
   test('should stop at the first failed page, never send later pages, and not store runtime state', async () => {

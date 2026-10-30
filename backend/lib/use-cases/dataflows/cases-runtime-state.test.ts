@@ -22,8 +22,8 @@ describe('storeRuntimeState tests', () => {
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(undefined);
 
-    const lastCasesSyncDate = new Date().toISOString();
-    const lastTransactionsSyncDate = new Date().toISOString();
+    const lastCasesSyncDate = '2026-01-01T00:00:00.000Z';
+    const lastTransactionsSyncDate = '2026-02-01T00:00:00.000Z';
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
     await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
