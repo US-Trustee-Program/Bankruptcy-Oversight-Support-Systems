@@ -161,7 +161,19 @@ async function exportAndLoad(
 
       // Patch runs before sync so a replay after a transient error below still sees the real
       // pre-sync diff: existingCase reflects pre-sync state until syncDxtrCase actually succeeds.
-      const fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
+      // This detection is synchronous and has no I/O, so its own catch cannot see a transient
+      // infra error — only a non-transient failure (e.g. an unrecognized DXTR chapter), which
+      // should skip the patch rather than aborting the sync itself.
+      let fieldsToUpdate: CaseDenormalizedFields | null = null;
+      try {
+        fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
+      } catch (fieldsError) {
+        event.error = getCamsError(
+          fieldsError,
+          MODULE_NAME,
+          `Failed to detect denormalized field changes for case ${event.caseId}.`,
+        );
+      }
       if (fieldsToUpdate) {
         try {
           await updateAppointmentFieldsWithRetry(

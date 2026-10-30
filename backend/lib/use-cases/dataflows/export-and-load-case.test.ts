@@ -685,7 +685,7 @@ describe('Export and Load Case Tests', () => {
         updatedCase as unknown as CaseDetail,
       );
       vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
-      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
       const updateCaseFieldsSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
         .mockResolvedValue();
@@ -693,6 +693,7 @@ describe('Export and Load Case Tests', () => {
       const [resultEvent] = await ExportAndLoadCase.exportAndLoad(context, [event]);
 
       expect(updateCaseFieldsSpy).not.toHaveBeenCalled();
+      expect(syncSpy).toHaveBeenCalled();
       expect(resultEvent.error).toBeDefined();
       expect((resultEvent.error as CamsError).message).toContain('Invalid DXTR chapter value');
       expect((resultEvent.error as CamsError).status).toBe(HttpStatusCodes.BAD_REQUEST);
