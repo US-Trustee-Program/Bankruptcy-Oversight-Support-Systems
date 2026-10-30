@@ -416,14 +416,21 @@ async function getCaseIdsToMigrate(
 /**
  * storeRuntimeState
  *
- * Wrapper for CasesRuntimeState.storeRuntimeState
+ * Wrapper for CasesRuntimeState.storeRuntimeState that swallows failures. The shared function
+ * already logged the error. Rethrowing here would stop handleStart before the PAGE output is
+ * delivered, and the queue retry would return early because the migration table is already
+ * loaded, stalling the migration.
  *
  * @param appContext
  * @param syncDate
  * @returns
  */
 async function storeRuntimeState(appContext: ApplicationContext, syncDate: string) {
-  return CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
+  try {
+    await CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
+  } catch {
+    // Already logged by CasesRuntimeState.storeRuntimeState.
+  }
 }
 
 function setup() {

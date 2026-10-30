@@ -18,6 +18,7 @@ import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
@@ -67,6 +68,10 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (!connectionString) {
+      throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+    }
     const context = await ContextCreator.getApplicationContext({
       invocationContext,
       observability,
@@ -94,7 +99,17 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       end += PAGE_SIZE;
       pages.push({ events: events.slice(start, end) });
     }
-    invocationContext.extraOutputs.set(PAGE, pages);
+
+    // Send pages directly rather than through the PAGE output binding, which is only
+    // delivered after this function returns. The sync dates must not be stored until
+    // every page is on the queue, or a failed delivery would skip these cases for good.
+    const queueClient = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      PAGE.queueName,
+    );
+    for (const page of pages) {
+      await queueClient.sendMessage(JSON.stringify(page));
+    }
 
     await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -242,7 +257,7 @@ function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
     queueName: START.queueName,
-    extraOutputs: [DLQ, PAGE],
+    extraOutputs: [DLQ],
     handler: handleStart,
   });
 
@@ -267,7 +282,7 @@ function setup() {
   });
 }
 
-export { handlePage, handlePagePoison };
+export { handleStart, handlePage, handlePagePoison };
 export default {
   MODULE_NAME,
   setup,
