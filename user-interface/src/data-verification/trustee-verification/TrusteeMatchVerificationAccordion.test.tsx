@@ -22,7 +22,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 
-const fieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
+const fieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
 
 const exactScores: ScoreByScorer = {
   doesNameMatch: { pass: true, quality: 'exact' },
@@ -326,43 +326,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  describe('identity task header', () => {
-    test('shows the reason label, a DXTR source badge, and the case count', () => {
-      renderWithProps();
-
-      const header = screen.getByTestId('identity-task-header');
-      expect(within(header).getByTestId('identity-task-reason')).toHaveTextContent(
-        'Multiple matches',
-      );
-      expect(within(header).getByText('DXTR')).toHaveClass('usa-tag');
-      expect(within(header).getByTestId('identity-task-case-count')).toHaveTextContent('1 case');
-    });
-
-    test('labels a no-match task "No match"', () => {
-      renderWithProps({ order: { ...sampleOrder, mismatchReason: 'no match' } });
-
-      expect(screen.getByTestId('identity-task-reason')).toHaveTextContent('No match');
-    });
-
-    test('counts every affected case', () => {
-      renderWithProps({
-        order: {
-          ...sampleOrder,
-          affectedCaseCount: 3,
-          affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
-        },
-      });
-
-      expect(screen.getByTestId('identity-task-case-count')).toHaveTextContent('3 cases');
-    });
-
-    test('is not shown for a resolved task', () => {
-      renderWithProps({ order: resolvedOrder });
-
-      expect(screen.queryByTestId('identity-task-header')).not.toBeInTheDocument();
-    });
-  });
-
   describe('comparison table', () => {
     test('shows a "Trustee Information Received" table with the source record', async () => {
       renderWithProps();
@@ -446,10 +409,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps();
       await mockDetailAndExpand({ ...sampleOrderDetail, findings: findings([]) });
 
-      expect(candidateRowHeaders()).toEqual([]);
+      expect(screen.queryByTestId('trustee-comparison-table')).not.toBeInTheDocument();
       expect(screen.getByTestId('trustee-information-received-table')).toHaveTextContent(
         'John Doe',
       );
+      expect(screen.queryByRole('heading', { name: 'Potential Matches' })).not.toBeInTheDocument();
       const searchButton = screen.getByRole('button', {
         name: /Search for a trustee/,
         hidden: true,
@@ -1337,7 +1301,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  describe('"Why CAMS needs you" explanation and name interpretation', () => {
+  describe('"Why CAMS needs you" explanation', () => {
     // Which sentence goes with which findings shape is trustee-explanation.test.ts's contract;
     // this only proves the accordion renders buildTrusteeExplanation's output.
     test('one candidate: renders its explanation sentence', async () => {
@@ -1352,26 +1316,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
           .getByTestId(`accordion-content-${sampleOrder.id}`)
           .querySelector('.problem-statement')?.textContent,
       ).toContain('Trustee state sent to CAMS does not exactly match a trustee in CAMS.');
-    });
-
-    test('one candidate, non-exact name: shows "How CAMS read this name" with the raw source name', async () => {
-      const findings = MockData.getTrusteeMatchScenarioFindings(
-        'oneCandidateAddressAndPhoneDiffer',
-      );
-      renderWithProps();
-      await mockDetailAndExpand({ ...sampleOrderDetail, findings });
-
-      const nameSection = screen.getByTestId('name-interpretation');
-      expect(nameSection.querySelector('h3')?.textContent).toBe('How CAMS read this name');
-      expect(nameSection.textContent).toContain(findings.sourceRaw.fullName);
-    });
-
-    test('one candidate, exact name: does not show "How CAMS read this name"', async () => {
-      const findings = MockData.getTrusteeMatchScenarioFindings('oneCandidateExactName');
-      renderWithProps();
-      await mockDetailAndExpand({ ...sampleOrderDetail, findings });
-
-      expect(screen.queryByTestId('name-interpretation')).not.toBeInTheDocument();
     });
   });
 });

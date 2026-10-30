@@ -1114,7 +1114,7 @@ describe('Review Orders screen', () => {
     expect(srOnlyHeading.textContent).not.toMatch(/Region/i);
   });
 
-  test('should render "Subject" as the first column header', async () => {
+  test('should render "Task Type" as the first column header and "Subject" (not "Court District")', async () => {
     setupFeatureFlags();
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [MockData.getTransferOrder()] });
 
@@ -1128,6 +1128,7 @@ describe('Review Orders screen', () => {
       const header = screen.getByTestId('orders-header');
       expect(header.textContent).toContain('Subject');
       expect(header.textContent).not.toContain('Court District');
+      expect(header.textContent?.indexOf('Task Type')).toBe(0);
     });
   });
 
