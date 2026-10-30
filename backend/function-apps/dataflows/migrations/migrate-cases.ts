@@ -13,6 +13,7 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -153,6 +154,11 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  * @param invocationContext
  */
 async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
@@ -164,7 +170,57 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
     const trace = appContext.observability.startTrace(appContext.invocationId);
     const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, appContext);
 
-    const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+    let processedEvents: CaseSyncEvent[];
+    try {
+      processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+    } catch (error) {
+      const rateLimitRetryStatus = await handleRateLimitRetry({
+        error,
+        message: range,
+        checkQueueName: PAGE.queueName,
+        dlqOutput: DLQ,
+        context: appContext,
+        moduleName: MODULE_NAME,
+        activityName: 'handlePage',
+        connectionString,
+      });
+
+      if (rateLimitRetryStatus === 'retried') {
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handlePage',
+          appContext.logger,
+          {
+            documentsWritten: 0,
+            documentsFailed: 0,
+            success: false,
+            error: 'rate-limited-requeued',
+          },
+        );
+        return;
+      }
+
+      if (rateLimitRetryStatus === 'exhausted') {
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handlePage',
+          appContext.logger,
+          {
+            documentsWritten: 0,
+            documentsFailed: 1,
+            success: false,
+            error: 'rate-limit-retry-exhausted',
+          },
+        );
+        return;
+      }
+
+      throw error;
+    }
 
     const failedEvents = processedEvents.filter((event) => !!event.error);
     appContext.extraOutputs.set(DLQ, failedEvents);
@@ -456,6 +512,7 @@ function setup() {
   });
 }
 
+export { handleStart, handlePage, handleError, handleRetry };
 export default {
   MODULE_NAME,
   setup,

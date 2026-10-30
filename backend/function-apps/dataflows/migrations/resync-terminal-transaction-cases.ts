@@ -6,9 +6,12 @@ import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-co
 import ResyncTerminalTransactionCases from '../../../lib/use-cases/dataflows/resync-terminal-transaction-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'RESYNC-TERMINAL-TRANSACTION-CASES';
 const PAGE_SIZE = 100;
@@ -16,6 +19,12 @@ const PAGE_SIZE = 100;
 // Message type with optional cutoffDate parameter
 type ResyncStartMessage = StartMessage & {
   cutoffDate?: string; // Defaults to '2018-01-01'
+};
+
+type ResyncTerminalPageMessage = {
+  events: CaseSyncEvent[];
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 // Queues
@@ -86,9 +95,9 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
   }
 
   // Paginate events in-memory
-  const pages: CaseSyncEvent[][] = [];
+  const pages: ResyncTerminalPageMessage[] = [];
   for (let i = 0; i < events.length; i += PAGE_SIZE) {
-    pages.push(events.slice(i, i + PAGE_SIZE));
+    pages.push({ events: events.slice(i, i + PAGE_SIZE) });
   }
 
   logger.info(MODULE_NAME, `Created ${pages.length} pages for processing`);
@@ -100,13 +109,48 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
  *
  * Process a batch of case sync events via ExportAndLoadCase.
  */
-async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
+async function handlePage(
+  message: ResyncTerminalPageMessage | CaseSyncEvent[],
+  invocationContext: InvocationContext,
+) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = appContext;
 
+  // A page message queued by a pre-deploy version of this function is a bare CaseSyncEvent[];
+  // normalize it to the current wrapped shape so a stale queued message doesn't throw instead
+  // of being processed.
+  const normalizedMessage: ResyncTerminalPageMessage = Array.isArray(message)
+    ? { events: message }
+    : message;
+  const { events } = normalizedMessage;
   logger.info(MODULE_NAME, `Processing page with ${events.length} events`);
 
-  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+  let processedEvents: CaseSyncEvent[];
+  try {
+    processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message: normalizedMessage,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried' || rateLimitRetryStatus === 'exhausted') {
+      return;
+    }
+
+    throw error;
+  }
 
   // Send failed events to DLQ
   const failedEvents = processedEvents.filter((event) => !!event.error);
@@ -187,7 +231,24 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
   );
 
   // Reuse the same export + load pipeline as handlePage
-  const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  let processed: CaseSyncEvent;
+  try {
+    [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  } catch (transientError) {
+    if (!isTransientInfraError(transientError)) {
+      throw transientError;
+    }
+    // A transient error here is routed through the same DLQ/handleError/RETRY path a captured
+    // event.error would take, rather than handleRateLimitRetry's own counter, so it doesn't
+    // collide with this handler's manual retryCount/RETRY_LIMIT bookkeeping above.
+    event.error = getCamsError(transientError, MODULE_NAME, `Failed to sync case ${event.caseId}.`);
+    logger.warn(
+      MODULE_NAME,
+      `Transient error retrying sync for ${filterToExtendedAscii(event.caseId)}; routed to DLQ.`,
+    );
+    invocationContext.extraOutputs.set(DLQ, [event]);
+    return;
+  }
 
   if (processed.error) {
     // Route failure to DLQ and keep error attached
@@ -233,6 +294,7 @@ function setup() {
   });
 }
 
+export { handleStart, handlePage, handleError, handleRetry };
 export default {
   MODULE_NAME,
   setup,
