@@ -49,7 +49,7 @@ export default function DocketEntryDocumentList(props: DocketEntryDocumentListPr
                 href={linkInfo.fileUri}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`Link for document number ${docketEntry?.documentNumber ?? ''} ${formatDateForVoiceOver(docketEntry?.dateFiled ?? '')} ${docketEntry?.summaryText}`}
+                aria-label={`${generateDocketFilenameDisplay(linkInfo)}. Link for document number ${docketEntry?.documentNumber ?? ''} ${formatDateForVoiceOver(docketEntry?.dateFiled ?? '')} ${docketEntry?.summaryText}`}
               >
                 {generateDocketFilenameDisplay(linkInfo)}
                 <Icon className="link-icon" name="launch"></Icon>
