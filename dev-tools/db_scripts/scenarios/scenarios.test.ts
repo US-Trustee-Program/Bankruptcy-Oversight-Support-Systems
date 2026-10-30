@@ -363,6 +363,11 @@ describe('trustee-data scenario', () => {
     expect(ops.filter((o) => o.db === 'cams')).toHaveLength(9);
   });
 
+  test('seeds 3 trustee documents', async () => {
+    const ops = await operations();
+    expect(ops.filter((o) => o.collectionOrTable === 'trustees')).toHaveLength(3);
+  });
+
   test('DXTR operations use compound primary keys and insertOnly flag', async () => {
     const ops = await operations();
     const dxtrOps = ops.filter((o) => o.db === 'dxtr');
@@ -385,7 +390,6 @@ describe('trustee-data scenario', () => {
       (o) => o.collectionOrTable === 'cases' && o.data[0]?.documentType === 'SYNCED_CASE',
     );
 
-    expect(syncedCase?.data[0]).toBeDefined();
     expect(syncedCase?.data[0]).toMatchObject({
       documentType: 'SYNCED_CASE',
       caseId: '091-99-87899',
@@ -398,7 +402,6 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const trustees = ops.filter((o) => o.collectionOrTable === 'trustees');
 
-    expect(trustees).toHaveLength(3);
     const active = trustees.find((o) => o.data[0]?.id === 'seed-trustee-active-001');
     expect(active?.data[0]).toMatchObject({
       documentType: 'TRUSTEE',
@@ -471,7 +474,6 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
-    expect(verification?.data[0]).toBeDefined();
     expect(verification?.data[0]).toMatchObject({
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       taskType: 'trustee-match',

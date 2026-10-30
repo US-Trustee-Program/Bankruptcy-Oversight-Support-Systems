@@ -1,4 +1,4 @@
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import {
   ANALYZE_DELAY,
   COMPLEX_TEST_TIMEOUT,
@@ -6,6 +6,14 @@ import {
   createAxeBuilder,
   getUrl,
 } from './test-constants';
+
+/** Narrows the Task Type filter to trustee identity tasks only. */
+async function narrowToTrusteeIdentityTasks(page: Page) {
+  await page.locator('#task-type-filter .input-container').click();
+  await page.locator('[id="option-transfer"]').click();
+  await page.locator('[id="option-consolidation"]').click();
+  await page.keyboard.press('Escape');
+}
 
 test.describe('Data Verification', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -126,11 +134,7 @@ test.describe('Data Verification', () => {
     const taskId = 'e8c1f0a2-identity-task-multimatch';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
-    // Narrow the type filter to trustee identity tasks only
-    await page.locator('#task-type-filter .input-container').click();
-    await page.locator('[id="option-transfer"]').click();
-    await page.locator('[id="option-consolidation"]').click();
-    await page.keyboard.press('Escape');
+    await narrowToTrusteeIdentityTasks(page);
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     const table = page.locator('[data-testid="trustee-comparison-table"]');
@@ -149,9 +153,6 @@ test.describe('Data Verification', () => {
 
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
-
-    await cancelButton.click();
-    await expect(cancelButton).toBeHidden();
   });
 
   test('should not have accessibility issues with the "How CAMS read this name" section expanded', async ({
@@ -164,10 +165,7 @@ test.describe('Data Verification', () => {
     const taskId = 'f3b2c1d0-identity-task-name-nonexact';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
-    await page.locator('#task-type-filter .input-container').click();
-    await page.locator('[id="option-transfer"]').click();
-    await page.locator('[id="option-consolidation"]').click();
-    await page.keyboard.press('Escape');
+    await narrowToTrusteeIdentityTasks(page);
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     const nameSection = page.locator('[data-testid="name-interpretation"]');
@@ -175,11 +173,14 @@ test.describe('Data Verification', () => {
     await expect(nameSection.locator('h3')).toHaveText('How CAMS read this name');
 
     // The new heading sits directly before "Potential Matches" - both must be h3s at the same
-    // level under the candidate section, with no skipped heading level between them.
-    const headings = page.locator(
-      '[data-testid="candidate-info"] h1, [data-testid="candidate-info"] h2, [data-testid="candidate-info"] h3, [data-testid="candidate-info"] h4',
+    // level under the candidate section, with no skipped heading level between them. Querying h3
+    // specifically (not h1-h4 together) means this fails if either heading's level changes.
+    const h3Headings = page.locator('[data-testid="candidate-info"] h3');
+    await expect(h3Headings).toHaveText(['How CAMS read this name', 'Potential Matches']);
+    const otherHeadingLevels = page.locator(
+      '[data-testid="candidate-info"] h1, [data-testid="candidate-info"] h2, [data-testid="candidate-info"] h4',
     );
-    await expect(headings).toHaveText(['How CAMS read this name', 'Potential Matches']);
+    await expect(otherHeadingLevels).toHaveCount(0);
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
