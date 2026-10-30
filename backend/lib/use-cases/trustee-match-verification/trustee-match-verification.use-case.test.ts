@@ -253,6 +253,50 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBeUndefined();
     });
 
+    test('resolves courtName by courtId alone when caseId is absent (caseless task)', async () => {
+      mockSearch.mockResolvedValue([{ ...sampleVerification, caseId: undefined, courtId: '081' }]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '081',
+          courtId: '081',
+          courtName: 'Test Court',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Test Division',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Test Court - Test Division');
+    });
+
+    test('resolves courtName to undefined when both caseId and courtId are absent or unmatched', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: undefined, courtId: undefined, courtName: undefined },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '999',
+          courtId: '999',
+          courtName: 'Unrelated Court',
+          courtDivisionCode: '999',
+          courtDivisionName: 'Unrelated Division',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBeUndefined();
+    });
+
     test('computes affectedCaseCount/affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
@@ -506,6 +550,15 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
       expect('selectedCandidateRank' in eventBody.properties).toBe(false);
+    });
+
+    test('omits caseId from telemetry for a caseless verification, without throwing', async () => {
+      mockFindById.mockResolvedValue({ ...sampleVerification, caseId: undefined });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-a');
+
+      const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
+      expect('caseId' in eventBody.properties).toBe(false);
     });
 
     test('emits failed telemetry when approveVerification throws', async () => {
