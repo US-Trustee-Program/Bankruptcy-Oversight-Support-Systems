@@ -2,10 +2,12 @@ import { sourceAddress, TrusteeComparison } from './trustee-comparison';
 
 export type TrusteeInformationReceivedTableProps = {
   comparison: TrusteeComparison;
+  labelledBy?: string;
 };
 
 export default function TrusteeInformationReceivedTable({
   comparison,
+  labelledBy,
 }: Readonly<TrusteeInformationReceivedTableProps>) {
   const { source, rows } = comparison;
   const showEmail = rows.some((row) => row.key === 'email');
@@ -15,6 +17,7 @@ export default function TrusteeInformationReceivedTable({
       <table
         className="usa-table usa-table--borderless trustee-comparison-table trustee-information-received-table"
         data-testid="trustee-information-received-table"
+        aria-labelledby={labelledBy}
       >
         <thead>
           <tr>

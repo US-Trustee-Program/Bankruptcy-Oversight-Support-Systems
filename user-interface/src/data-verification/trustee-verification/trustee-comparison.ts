@@ -159,8 +159,9 @@ export function selectedTrusteeFromSearch(
 }
 
 /**
- * Maps an identity task's stored findings to the comparison table: the source record, then one
- * column per candidate in pipeline rank order. Reads only stored facts - nothing is re-matched.
+ * Maps an identity task's stored findings to the comparison: the source record (rendered on its own
+ * in the Trustee Information Received table), then one row per candidate in pipeline rank order
+ * (the Potential Matches table). Reads only stored facts - nothing is re-matched.
  */
 export function buildTrusteeComparison(
   findings: TrusteeSerializedState,

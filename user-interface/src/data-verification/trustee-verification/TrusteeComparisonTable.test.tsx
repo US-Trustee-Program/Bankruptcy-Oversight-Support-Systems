@@ -175,10 +175,14 @@ describe('TrusteeComparisonTable', () => {
     ).toBeInTheDocument();
   });
 
-  test('does not mark a candidate name as differing when it matches', () => {
-    renderTable();
+  test('shows no marker on a cell that does not differ', () => {
+    const withNoDiffs = {
+      ...comparison,
+      candidates: [candidate('t3', 'Jane Q. Doe')],
+    };
+    renderTable({ comparison: withNoDiffs });
 
-    const row = within(candidateRow('Janet Doe'));
+    const row = within(candidateRow('Jane Q. Doe'));
     expect(row.queryByLabelText(/differs/)).not.toBeInTheDocument();
   });
 
