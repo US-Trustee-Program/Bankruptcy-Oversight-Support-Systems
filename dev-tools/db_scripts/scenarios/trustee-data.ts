@@ -1,6 +1,6 @@
 /**
  * Scenario: trustee-data
- * Database: cams only
+ * Database: cams, plus DXTR (AO_CS/AO_PY) if case 091-99-87899 isn't already there
  *
  * Seeds trustee data using existing DXTR case 091-99-87899 to exercise
  * trustee routes and the trustee match verification workflow:
@@ -15,7 +15,7 @@
  *     because 091-99-87899 carries other scenarios' case appointments, and the sync only raises a
  *     task for a case whose trustee it could not resolve.
  *
- * NOTE: Uses existing DXTR case - no DXTR seeding required.
+ * NOTE: Seeds case 091-99-87899 into DXTR via ensureDxtrCase only if it isn't already there.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';

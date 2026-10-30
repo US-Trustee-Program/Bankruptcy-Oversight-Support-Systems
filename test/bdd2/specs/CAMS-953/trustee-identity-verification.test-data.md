@@ -45,6 +45,7 @@ no data on one side.
 | —        | none                                          | 1     | —                                                                                                                  |
 | 1        | Purge and reseed `trustee-match-verification` | 2     | No migration: the DXTR sync never ran in production and staging is purged; documents in the old shape are not read |
 | 2        | Purge and reseed `trustee-match-verification` | 3     | Seeds now use generated findings and new fixture trustees                                                          |
+| —        | none                                          | 4     | No new seeds; existing multi-case (3 cases) and single-case pending tasks cover the Confirm Trustee Match preview  |
 
 ## Environment Notes
 
