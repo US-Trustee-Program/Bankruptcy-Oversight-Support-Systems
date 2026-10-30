@@ -231,6 +231,12 @@ function columnHeaders() {
     .map((th) => th.textContent);
 }
 
+function candidateRowHeaders() {
+  return within(screen.getByTestId('trustee-comparison-table'))
+    .queryAllByRole('rowheader', { hidden: true })
+    .map((th) => th.textContent);
+}
+
 /**
  * Clicks the given button twice inside one act() call so React doesn't get a chance to commit
  * the first click's isProcessing update (and thus disable the button) before the second fires -
@@ -358,16 +364,31 @@ describe('TrusteeMatchVerificationAccordion', () => {
   });
 
   describe('comparison table', () => {
-    test('shows the source record first, then one column per candidate in pipeline rank order', async () => {
+    test('shows a "Trustee Information Received" table with the source record', async () => {
       renderWithProps();
       await mockDetailAndExpand();
 
-      expect(columnHeaders()).toEqual([
-        'Field',
-        'Source record (DXTR)',
-        'Jane Smith',
-        'Janet Smith',
-      ]);
+      expect(
+        screen.getByRole('heading', { name: 'Trustee Information Received' }),
+      ).toBeInTheDocument();
+      const receivedTable = screen.getByTestId('trustee-information-received-table');
+      expect(receivedTable).toHaveTextContent('John Doe');
+      expect(receivedTable).toHaveTextContent('123 Main St');
+      expect(receivedTable).toHaveTextContent('212-555-0100');
+    });
+
+    test('shows one row per candidate in the Potential Matches table, in pipeline rank order', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      expect(candidateRowHeaders()).toEqual(['Jane Smith', 'Janet Smith']);
+    });
+
+    test('has Name, Address, Phone, Email and Action columns for a pending task', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      expect(columnHeaders()).toEqual(['Name', 'Address', 'Phone', 'Email', 'Action']);
     });
 
     test('no longer shows the "Sent By Court" heading', async () => {
@@ -386,9 +407,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const differences = within(table)
         .getAllByLabelText(/differs from the source record/, { selector: 'svg' })
         .map((icon) => icon.getAttribute('aria-label'));
+      // Janet Smith's name is a "strong" (not exact) match and her state fails to match; the
+      // table combines street/city/state/zip into one Address cell, so the state difference
+      // surfaces as a single Address marker rather than a State marker.
       expect(differences).toEqual([
         'Name differs from the source record',
-        'State differs from the source record',
+        'Address differs from the source record',
       ]);
     });
 
@@ -415,20 +439,17 @@ describe('TrusteeMatchVerificationAccordion', () => {
         findings: findings(candidates),
       });
 
-      expect(columnHeaders()).toEqual([
-        'Field',
-        'Source record (DXTR)',
-        'Jane Smith',
-        'Janet Smith',
-        'June Smith',
-      ]);
+      expect(candidateRowHeaders()).toEqual(['Jane Smith', 'Janet Smith', 'June Smith']);
     });
 
     test('shows only the source record and a search link when there are no candidates', async () => {
       renderWithProps();
       await mockDetailAndExpand({ ...sampleOrderDetail, findings: findings([]) });
 
-      expect(columnHeaders()).toEqual(['Field', 'Source record (DXTR)']);
+      expect(candidateRowHeaders()).toEqual([]);
+      expect(screen.getByTestId('trustee-information-received-table')).toHaveTextContent(
+        'John Doe',
+      );
       const searchButton = screen.getByRole('button', {
         name: /Search for a trustee/,
         hidden: true,
