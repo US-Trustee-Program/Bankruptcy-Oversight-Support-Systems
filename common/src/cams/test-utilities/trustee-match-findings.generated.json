@@ -979,6 +979,203 @@
     "skip": false,
     "error": null
   },
+  "multipleCandidatesNoCases": {
+    "sourceRaw": {
+      "firstName": "J",
+      "lastName": "Nocasematch",
+      "fullName": "J Nocasematch",
+      "legacy": {
+        "address1": "1 Source Way",
+        "cityStateZipCountry": "New York NY 10009",
+        "phone": "212-555-9998",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10009"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "j",
+      "middleName": "",
+      "lastName": "nocasematch",
+      "legacy": {
+        "address1": "1 Source Way",
+        "cityStateZipCountry": "New York NY 10009",
+        "phone": "212-555-9998",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10009"
+        }
+      },
+      "fullName": "J Nocasematch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-nocases-a",
+          "firstName": "Jamie",
+          "lastName": "Nocasematch",
+          "name": "Jamie Nocasematch",
+          "address": {
+            "address1": "500 Nocase Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10009",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9001"
+          },
+          "email": "jamie.nocasematch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "jamie",
+          "middleName": "",
+          "lastName": "nocasematch",
+          "phone": {
+            "number": "212-555-9001"
+          },
+          "email": "jamie.nocasematch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "jamie nocasematch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "j nocasematch|jamie nocasematch",
+              "value": 0.826
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "j nocasematch|jamie nocasematch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-nocases-b",
+          "firstName": "Jesse",
+          "lastName": "Nocasematch",
+          "name": "Jesse Nocasematch",
+          "address": {
+            "address1": "501 Nocase Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10009",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9002"
+          },
+          "email": "jesse.nocasematch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "jesse",
+          "middleName": "",
+          "lastName": "nocasematch",
+          "phone": {
+            "number": "212-555-9002"
+          },
+          "email": "jesse.nocasematch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "jesse nocasematch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "j nocasematch|jesse nocasematch",
+              "value": 0.849
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "j nocasematch|jesse nocasematch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "resolvedNoSurrogates": {
     "sourceRaw": {
       "firstName": "Riley",

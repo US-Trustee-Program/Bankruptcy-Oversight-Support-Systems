@@ -838,30 +838,6 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
-// One-candidate DXTR identity task whose name did not score exact, so the accordion shows the
-// "How CAMS read this name" section - the a11y suite needs this fake-API task to cover it.
-const oneCandidateNonExactNameFindings =
-  generatedTrusteeMatchFindings.oneCandidateAddressAndPhoneDiffer as TrusteeSerializedState;
-
-const trusteeMatchVerificationDetailNonExactName: EnrichedTrusteeMatchVerification = {
-  id: 'f3b2c1d0-identity-task-name-nonexact',
-  documentType: 'TRUSTEE_MATCH_VERIFICATION',
-  taskType: 'trustee-match',
-  caseId: '081-33-22222',
-  courtId: '0881',
-  status: 'pending',
-  mismatchReason: 'no match',
-  source: 'DXTR',
-  dxtrTrustee: oneCandidateNonExactNameFindings.sourceRaw,
-  findings: oneCandidateNonExactNameFindings,
-  fingerprint: 'mock-fingerprint-2',
-  variant: 'jordan imperfectmach',
-  taskDate: '2026-01-15T10:00:00.000Z',
-  updatedOn: '2026-01-15T10:00:00.000Z',
-  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-  affectedCaseIds: ['081-33-22222'],
-};
-
 function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerificationListItem {
   return {
     id: detail.id,
@@ -881,12 +857,10 @@ function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerif
 
 const trusteeMatchVerificationDetailsById: Record<string, EnrichedTrusteeMatchVerification> = {
   [trusteeMatchVerificationDetail.id]: trusteeMatchVerificationDetail,
-  [trusteeMatchVerificationDetailNonExactName.id]: trusteeMatchVerificationDetailNonExactName,
 };
 
 const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   toListItem(trusteeMatchVerificationDetail),
-  toListItem(trusteeMatchVerificationDetailNonExactName),
 ];
 
 const orders = [

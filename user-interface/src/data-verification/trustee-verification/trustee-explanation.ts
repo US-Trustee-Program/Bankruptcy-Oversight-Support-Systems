@@ -3,7 +3,6 @@ import { differingRows } from './trustee-comparison';
 
 export type TrusteeExplanation = {
   sentence: string;
-  showNameInterpretation: boolean;
 };
 
 type FieldGroup = 'name' | 'address' | 'state' | 'phone' | 'email';
@@ -35,27 +34,23 @@ function oneCandidateExplanation(scores: ScoreByScorer): TrusteeExplanation {
   const verb = groups.length >= 2 ? 'do' : 'does';
   return {
     sentence: `Trustee ${joinFields(groups)} sent to CAMS ${verb} not exactly match a trustee in CAMS.`,
-    showNameInterpretation: differs.name,
   };
 }
 
 /**
- * Maps an identity task's stored findings to its "Why CAMS needs you" sentence and whether to show
- * the "How CAMS read this name" section. Reads only the pipeline's stored scores - nothing here
- * re-matches or recomputes a comparison.
+ * Maps an identity task's stored findings to its "Why CAMS needs you" sentence. Reads only the
+ * pipeline's stored scores - nothing here re-matches or recomputes a comparison.
  */
 export function buildTrusteeExplanation(findings: TrusteeSerializedState): TrusteeExplanation {
   const { candidates } = findings;
   if (candidates.length === 0) {
     return {
       sentence: 'Trustee information sent to CAMS does not match any trustee in CAMS.',
-      showNameInterpretation: false,
     };
   }
   if (candidates.length >= 2) {
     return {
       sentence: 'Trustee information sent to CAMS matches multiple trustees in CAMS.',
-      showNameInterpretation: false,
     };
   }
   return oneCandidateExplanation(candidates[0].scores);
