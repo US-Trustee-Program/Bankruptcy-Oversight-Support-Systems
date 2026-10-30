@@ -388,6 +388,15 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(heading).toHaveAttribute('id', table.getAttribute('aria-labelledby'));
     });
 
+    test('names the legend warning icon "warning" so screen readers do not announce "warning icon icon"', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const legend = document.querySelector('.other-matches-subtext') as HTMLElement;
+      expect(legend).not.toBeNull();
+      expect(within(legend).getByRole('img', { name: 'warning' })).toBeInTheDocument();
+    });
+
     test('shows every candidate for a no-match task', async () => {
       const candidates = [
         candidate('trustee-1', 'Jane Smith', exactScores),
