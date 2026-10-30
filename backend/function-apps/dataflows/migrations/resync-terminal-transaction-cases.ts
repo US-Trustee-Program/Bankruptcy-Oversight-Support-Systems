@@ -236,6 +236,10 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     // event.error would take, rather than handleRateLimitRetry's own counter, so it doesn't
     // collide with this handler's manual retryCount/RETRY_LIMIT bookkeeping above.
     event.error = getCamsError(transientError, MODULE_NAME, `Failed to sync case ${event.caseId}.`);
+    logger.warn(
+      MODULE_NAME,
+      `Transient error retrying sync for ${filterToExtendedAscii(event.caseId)}; routed to DLQ.`,
+    );
     invocationContext.extraOutputs.set(DLQ, [event]);
     return;
   }

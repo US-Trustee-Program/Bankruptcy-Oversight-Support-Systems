@@ -156,9 +156,9 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
       const invocationContext = makeInvocationContext();
 
       vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(build());
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-        await createMockApplicationContext(),
-      );
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const warnSpy = vi.spyOn(mockContext.logger, 'warn');
 
       await handleRetry(event, invocationContext);
 
@@ -172,6 +172,10 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
       const [dlqEvent] = dlqOutput?.[1] as CaseSyncEvent[];
       expect(dlqEvent.error).toBeDefined();
       expect(dlqEvent.retryCount).toBe(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'RESYNC-TERMINAL-TRANSACTION-CASES',
+        expect.stringContaining(event.caseId),
+      );
     },
   );
 
