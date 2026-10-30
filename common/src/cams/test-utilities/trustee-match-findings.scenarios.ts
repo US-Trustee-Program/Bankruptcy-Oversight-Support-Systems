@@ -305,6 +305,41 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     expectedCandidateCount: 1,
   },
 
+  // trustee-match-all-scenarios: same tie-at-every-resolver shape as multipleCandidates, for a
+  // pending task the seed gives zero surrogate case appointments (a genuinely zero affected-case
+  // count, not merely an unloaded one).
+  multipleCandidatesNoCases: {
+    source: {
+      firstName: 'J',
+      lastName: 'Nocasematch',
+      fullName: 'J Nocasematch',
+      legacy: {
+        address1: '1 Source Way',
+        cityStateZipCountry: 'New York NY 10009',
+        phone: '212-555-9998',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-nocases-a',
+        firstName: 'Jamie',
+        lastName: 'Nocasematch',
+        address: { address1: '500 Nocase Ave', city: 'New York', state: 'NY', zipCode: '10009' },
+        phone: '212-555-9001',
+        email: 'jamie.nocasematch@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-nocases-b',
+        firstName: 'Jesse',
+        lastName: 'Nocasematch',
+        address: { address1: '501 Nocase Ave', city: 'New York', state: 'NY', zipCode: '10009' },
+        phone: '212-555-9002',
+        email: 'jesse.nocasematch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
+
   // trustee-match-all-scenarios: approved tasks whose pipeline run found no candidate.
   resolvedNoSurrogates: {
     source: { firstName: 'Riley', lastName: 'Resolvedmatch', fullName: 'Riley Resolvedmatch' },
