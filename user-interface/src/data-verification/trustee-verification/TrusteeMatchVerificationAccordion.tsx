@@ -20,6 +20,7 @@ import TrusteeMatchConfirmationModal, {
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
+import TrusteeInformationReceivedTable from './TrusteeInformationReceivedTable';
 import {
   buildTrusteeComparison,
   SelectedTrustee,
@@ -321,6 +322,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <p>{detail!.findings.sourceRaw.fullName}</p>
           </div>
         )}
+        <h3 id={`information-received-heading-${order.id}`}>Trustee Information Received</h3>
+        <TrusteeInformationReceivedTable comparison={comparison} />
         <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
         <p className="other-matches-subtext">
           Results are ordered from strongest to weakest match. A{' '}
@@ -334,7 +337,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         </p>
         <TrusteeComparisonTable
           comparison={comparison}
-          sourceLabel={`Source record (${source})`}
           onApprove={canApprove ? openConfirmation : undefined}
           isProcessing={isProcessing}
           labelledBy={`potential-matches-heading-${order.id}`}

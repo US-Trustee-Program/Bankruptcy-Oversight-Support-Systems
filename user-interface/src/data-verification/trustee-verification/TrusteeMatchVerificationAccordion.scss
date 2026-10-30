@@ -59,6 +59,11 @@
       align-items: center;
       gap: 0.25rem;
     }
+
+    .address-lines {
+      display: inline-flex;
+      flex-direction: column;
+    }
   }
 
   // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). Every field,
