@@ -31,9 +31,12 @@ export type TrusteeMatchVerification = Auditable & {
    * <fingerprint> (the surrogate rows written while the mismatch is pending) — never from
    * caseId. Once approved, the surrogate rows are gone (remap deletes them), so case
    * membership comes from the affectedCaseIds snapshot below instead.
+   *
+   * Absent entirely for a task with no case attached yet (e.g. an ACMS-sourced task created
+   * before any case has synced) — not every producer of this document has a case to name.
    */
-  caseId: string;
-  courtId: string;
+  caseId?: string;
+  courtId?: string;
   dxtrTrustee: DxtrTrusteeParty;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted
