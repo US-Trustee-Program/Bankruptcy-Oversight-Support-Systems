@@ -497,13 +497,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
-    test('falls back to the originating case with no snapshot and no surviving surrogates', () => {
+    test('shows no case link for a resolved task with an empty affectedCaseIds snapshot', () => {
       renderWithProps({ order: { ...resolvedOrder, affectedCaseCount: 0, affectedCaseIds: [] } });
 
-      expect(screen.getByTestId('resolved-statement').textContent).toContain('case:');
-      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toHaveAttribute(
-        'href',
-        `/case-detail/${sampleOrder.caseId}`,
+      expect(screen.getByTestId('resolved-statement').textContent).toBe(
+        'Trustee Jane Smith was approved. No cases affected.',
+      );
+      expect(
+        screen.queryByRole('link', { name: /22-11111/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows the same empty-snapshot statement for a caseless resolved task', () => {
+      renderWithProps({
+        order: {
+          ...resolvedOrder,
+          caseId: undefined,
+          courtId: undefined,
+          affectedCaseCount: 0,
+          affectedCaseIds: [],
+        },
+      });
+
+      expect(screen.getByTestId('resolved-statement').textContent).toBe(
+        'Trustee Jane Smith was approved. No cases affected.',
       );
     });
 
@@ -674,6 +691,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(
         screen.getByTestId(`modal-trustee-confirmation-modal-${sampleOrder.id}`),
       ).toHaveTextContent('3');
+    });
+
+    test('passes a zero case count to the confirmation modal for a caseless task', async () => {
+      // Wiring only: confirms the accordion no longer floors the case count to 1 before passing
+      // it down. The modal's own zero-case sentence text is covered by its own tests.
+      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        caseId: undefined,
+        courtId: undefined,
+        affectedCaseIds: [],
+      });
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
+
+      expect(
+        screen.getByTestId(`modal-trustee-confirmation-modal-${sampleOrder.id}`),
+      ).toHaveTextContent('No cases are affected yet.');
     });
 
     test('confirming calls patchTrusteeVerificationOrderApproval with the chosen candidate', async () => {
@@ -1285,6 +1320,27 @@ describe('TrusteeMatchVerificationAccordion', () => {
         .querySelector('.problem-statement');
       expect(problemStatement?.textContent).toContain('No cases affected yet.');
       expect(problemStatement?.textContent).not.toContain('Affects');
+      expect(
+        screen.queryByRole('link', { name: /22-11111/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows "No cases yet. Cases attach as appointments sync." for a caseless task', async () => {
+      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        caseId: undefined,
+        courtId: undefined,
+        affectedCaseIds: [],
+      });
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain(
+        'No cases yet. Cases attach as appointments sync.',
+      );
+      expect(problemStatement?.textContent).not.toContain('No cases affected yet.');
       expect(
         screen.queryByRole('link', { name: /22-11111/, hidden: true }),
       ).not.toBeInTheDocument();
