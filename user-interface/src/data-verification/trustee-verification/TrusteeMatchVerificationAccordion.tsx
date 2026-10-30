@@ -135,7 +135,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await fetchDetail();
   }
 
-  const { divisionCode } = getCaseIdParts(order.caseId);
+  const divisionCode = order.caseId ? getCaseIdParts(order.caseId).divisionCode : undefined;
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const taskTypeLabel = taskType.get(order.taskType);
   const isResolved = order.status === 'approved';
@@ -253,7 +253,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // not its row is ever expanded. Also skipped for approved tasks, matching handleExpand's guard.
   const hasDetail = !!detail;
   useEffect(() => {
-    if (order.status === 'approved' || !hasDetail) return;
+    if (order.status === 'approved' || !hasDetail || !order.caseId) return;
     let cancelled = false;
     Api2.getCaseSummary(order.caseId)
       .then((response) => {

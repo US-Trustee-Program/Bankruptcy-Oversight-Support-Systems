@@ -319,6 +319,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       expect(screen.getByTestId(`accordion-heading-${sampleOrder.id}`)).not.toBeVisible();
     });
+
+    test('renders without throwing for a caseless order (no caseId or courtId)', () => {
+      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
+
+      expect(screen.getByTestId(`accordion-heading-${sampleOrder.id}`)).toBeInTheDocument();
+    });
   });
 
   describe('comparison table', () => {
@@ -628,11 +634,25 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps();
       await mockDetailAndExpand({
         ...sampleOrderDetail,
-        affectedCaseIds: [sampleOrder.caseId, '081-22-22222', '081-22-33333'],
+        affectedCaseIds: [sampleOrder.caseId!, '081-22-22222', '081-22-33333'],
       });
 
       await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
       expect(caseSummarySpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not fetch a case summary for a caseless pending task, even when expanded', async () => {
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+
+      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        caseId: undefined,
+        courtId: undefined,
+        affectedCaseIds: [],
+      });
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -921,6 +941,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
     test('clicking search opens the TrusteeSearchModal', async () => {
       renderWithProps();
       await mockDetailAndExpand();
+
+      await openSearchModal();
+    });
+
+    test('opens the search modal without throwing for a caseless pending task', async () => {
+      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
+      await mockDetailAndExpand({
+        ...sampleOrderDetail,
+        caseId: undefined,
+        courtId: undefined,
+        affectedCaseIds: [],
+      });
 
       await openSearchModal();
     });
