@@ -7,8 +7,11 @@ import {
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import {
   buildTrusteeComparison,
+  candidateAddress,
   ComparisonRowKey,
+  formatAddress,
   selectedTrusteeFromSearch,
+  sourceAddress,
 } from './trustee-comparison';
 
 function candidate(
@@ -84,7 +87,7 @@ function differingRows(scores: ScoreByScorer): ComparisonRowKey[] {
 }
 
 describe('buildTrusteeComparison', () => {
-  test('lists the rows Name, Phone, Street, City, State, Zip, Email, Found by for a DXTR source', () => {
+  test('lists the rows Name, Phone, Street, City, State, Zip, Email for a DXTR source', () => {
     const comparison = buildTrusteeComparison(findings([]), 'DXTR');
 
     expect(comparison.rows.map((row) => row.label)).toEqual([
@@ -95,7 +98,6 @@ describe('buildTrusteeComparison', () => {
       'State',
       'Zip',
       'Email',
-      'Found by',
     ]);
   });
 
@@ -116,7 +118,6 @@ describe('buildTrusteeComparison', () => {
       state: 'NY',
       zip: '12207',
       email: 'jane@example.com',
-      foundBy: undefined,
     });
   });
 
@@ -160,7 +161,6 @@ describe('buildTrusteeComparison', () => {
       state: 'NY',
       zip: '12180',
       email: 't1@example.com',
-      foundBy: 'Exact surname',
     });
   });
 
@@ -199,10 +199,6 @@ describe('buildTrusteeComparison', () => {
     ).toEqual([]);
   });
 
-  test('never marks Found by as differing', () => {
-    expect(differingRows({ doesNameMatch: { pass: false } })).not.toContain('foundBy');
-  });
-
   test('orders candidates by address points, then name quality', () => {
     const comparison = buildTrusteeComparison(
       findings([
@@ -226,25 +222,6 @@ describe('buildTrusteeComparison', () => {
       'exact-name',
       'weak-name',
       'far',
-    ]);
-  });
-
-  test('labels each recall stage in Found by, falling back to the stage name', () => {
-    const comparison = buildTrusteeComparison(
-      findings([
-        candidate('a', allExact, {}, 'recallByName'),
-        candidate('b', allExact, {}, 'recallByTokenIntersection'),
-        candidate('c', allExact, {}, 'recallByAnchoredLevenshtein'),
-        candidate('d', allExact, {}, 'someFutureStage'),
-      ]),
-      'DXTR',
-    );
-
-    expect(comparison.candidates.map((c) => c.cells.foundBy.value)).toEqual([
-      'Name',
-      'Name words',
-      'Similar spelling',
-      'someFutureStage',
     ]);
   });
 
@@ -315,7 +292,6 @@ describe('selectedTrusteeFromSearch', () => {
       state: { value: 'NY', differs: false },
       zip: { value: '13501', differs: false },
       email: { value: 'sam@example.com', differs: false },
-      foundBy: { value: undefined, differs: false },
     });
   });
 
@@ -334,5 +310,75 @@ describe('selectedTrusteeFromSearch', () => {
       cells.zip.value,
       cells.email.value,
     ]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
+  });
+});
+
+describe('formatAddress', () => {
+  test('puts the street on its own line and city/state/zip on a second line', () => {
+    expect(formatAddress('1 Main St', 'Albany', 'NY', '12207')).toEqual([
+      '1 Main St',
+      'Albany, NY 12207',
+    ]);
+  });
+
+  test('omits a missing street line entirely', () => {
+    expect(formatAddress(undefined, 'Albany', 'NY', '12207')).toEqual(['Albany, NY 12207']);
+  });
+
+  test('omits the city/state/zip line when all three are missing', () => {
+    expect(formatAddress('1 Main St', undefined, undefined, undefined)).toEqual(['1 Main St']);
+  });
+
+  test('still joins city and state when zip is missing', () => {
+    expect(formatAddress('1 Main St', 'Albany', 'NY', undefined)).toEqual([
+      '1 Main St',
+      'Albany, NY',
+    ]);
+  });
+
+  test('returns no lines when every part is missing', () => {
+    expect(formatAddress(undefined, undefined, undefined, undefined)).toEqual([]);
+  });
+});
+
+describe('sourceAddress', () => {
+  test('formats the source record street and city/state/zip', () => {
+    const comparison = buildTrusteeComparison(findings([]), 'DXTR');
+
+    expect(sourceAddress(comparison.source)).toEqual(['1 Main St, Suite 2', 'Albany, NY 12207']);
+  });
+});
+
+describe('candidateAddress', () => {
+  test('formats a candidate street and city/state/zip and is not marked as differing by default', () => {
+    const comparison = buildTrusteeComparison(findings([candidate('t1', allExact)]), 'DXTR');
+
+    expect(candidateAddress(comparison.candidates[0].cells)).toEqual({
+      lines: ['1 Main St', 'Albany, NY 12207'],
+      differs: false,
+    });
+  });
+
+  test('marks the address as differing when the street does not match', () => {
+    const comparison = buildTrusteeComparison(
+      findings([
+        candidate('t1', {
+          ...allExact,
+          doesAddressMatch: { pass: true, quality: 'strong', points: 5, streetCloseness: 0.5 },
+        }),
+      ]),
+      'DXTR',
+    );
+
+    expect(candidateAddress(comparison.candidates[0].cells).differs).toBe(true);
+  });
+
+  test('marks the address as differing when only the zip does not match', () => {
+    const comparison = buildTrusteeComparison(
+      findings([candidate('t1', { ...allExact, doesZipCodeMatch: { pass: false } })]),
+      'DXTR',
+    );
+
+    expect(candidateAddress(comparison.candidates[0].cells).differs).toBe(true);
   });
 });

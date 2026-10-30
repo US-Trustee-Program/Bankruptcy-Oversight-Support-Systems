@@ -16,7 +16,6 @@ const dxtrRows: ComparisonRow[] = [
   { key: 'state', label: 'State' },
   { key: 'zip', label: 'Zip' },
   { key: 'email', label: 'Email' },
-  { key: 'foundBy', label: 'Found by' },
 ];
 const acmsRows = dxtrRows.filter((row) => row.key !== 'email');
 
@@ -28,7 +27,6 @@ const source: Record<ComparisonRowKey, string | undefined> = {
   state: 'NY',
   zip: '10001',
   email: 'jane@court.example',
-  foundBy: undefined,
 };
 
 const selected: SelectedTrustee = {
@@ -42,7 +40,6 @@ const selected: SelectedTrustee = {
     state: { value: 'NY', differs: false },
     zip: { value: undefined, differs: true },
     email: { value: 'jane@example.com', differs: false },
-    foundBy: { value: 'Exact surname', differs: false },
   },
 };
 
@@ -120,7 +117,7 @@ describe('TrusteeMatchConfirmationModal', () => {
     ).toBeInTheDocument();
   });
 
-  test('shows every row but Found by in both columns, with the trustee name linked', () => {
+  test('shows every row in both columns, with the trustee name linked', () => {
     renderModal();
     showSelected();
 
