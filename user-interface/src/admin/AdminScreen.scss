@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .routing-email-additional {
   margin-top: 20px;
 }
@@ -23,6 +25,19 @@
       h2 {
         margin-top: 0;
         margin-bottom: 0;
+      }
+    }
+
+    // Mobile: stack the side nav above the content, as on the trustee detail screen
+    @media screen and (max-width: #{device-screens.$tablet-screen-extra-small}) {
+      row-gap: 1.5rem;
+
+      .left-navigation-pane-container {
+        width: 100%;
+      }
+
+      .main-content-area {
+        flex: 0 0 100%;
       }
     }
   }

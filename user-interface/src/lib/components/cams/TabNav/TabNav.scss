@@ -1,0 +1,51 @@
+@use 'styles/abstracts/colors' as colors;
+
+// Tabs show a 4px bar under the label, drawn the same way as the current link
+// in the site header: base-darkest when selected, primary blue on hover.
+.tab-nav {
+  .tab-nav__list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tab-nav__link {
+    display: inline-block;
+    position: relative;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+    color: colors.$primary;
+    text-decoration: none;
+
+    &::after {
+      content: '';
+      display: none;
+      position: absolute;
+      left: 1rem;
+      right: 1rem;
+      bottom: 0;
+      height: 0.25rem;
+    }
+
+    &:hover {
+      text-decoration: none;
+
+      &::after {
+        display: block;
+        background-color: colors.$primary;
+      }
+    }
+  }
+
+  .tab-nav__link--current,
+  .tab-nav__link--current:hover {
+    color: colors.$ink;
+
+    &::after {
+      display: block;
+      background-color: colors.$ink;
+    }
+  }
+}

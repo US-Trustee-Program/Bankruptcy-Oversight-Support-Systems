@@ -1,0 +1,71 @@
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use 'styles/abstracts/device-screens' as device-screens;
+
+.office-division-setup-admin-panel {
+  // Tablet: keep tables stacked, since the side nav leaves too little width for columns
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+    .cams-table--responsive {
+      @include cams-table.cams-table-stacked;
+    }
+  }
+
+  // Desktop: column layout
+  @media screen and (min-width: #{device-screens.$tablet-screen-small}) {
+    .cams-table--responsive {
+      @include cams-table.cams-table-flex-row;
+
+      // Top-align cells so the Edit Offices button lines up with the first line of text.
+      .cams-table__header-row,
+      .cams-table__row {
+        align-items: flex-start;
+      }
+    }
+
+    .cams-table__cell.region-column {
+      flex: 0 0 10%;
+      min-width: 5.5rem;
+    }
+
+    .cams-table__cell.office-column {
+      flex: 0 0 25%;
+    }
+  }
+}
+
+.office-division-setup-admin-panel .tab-nav {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.office-division-setup-offices .region-office-filter {
+  max-width: 20rem;
+  margin-bottom: 1.5rem;
+
+  .usa-form-group {
+    margin-top: 0;
+  }
+}
+
+.office-division-setup-offices {
+  @media screen and (min-width: #{device-screens.$tablet-screen-small}) {
+    .cams-table__cell.actions-column {
+      flex: 0 0 9.5rem;
+      white-space: nowrap;
+    }
+
+    // The stacked layout's spacing above unlabeled cells doesn't apply to columns.
+    .cams-table__body .cams-table__cell.actions-column[data-cell=''] {
+      margin-top: 0;
+    }
+
+    .cams-table__body .cams-icon-label {
+      top: 0;
+    }
+  }
+}
+
+.edit-divisions-modal {
+  .edit-divisions-modal__pills {
+    margin-top: 1rem;
+  }
+}

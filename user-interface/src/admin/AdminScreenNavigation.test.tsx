@@ -14,6 +14,24 @@ const NAV_LINKS = [
     navState: AdminNavState.PRIVILEGED_IDENTITY,
   },
   {
+    name: 'Permissions',
+    testId: 'permissions-nav-link',
+    href: '/admin/permissions',
+    navState: AdminNavState.PERMISSIONS,
+  },
+  {
+    name: 'Trustee Task Regions',
+    testId: 'trustee-task-regions-nav-link',
+    href: '/admin/trustee-task-regions',
+    navState: AdminNavState.TRUSTEE_TASK_REGIONS,
+  },
+  {
+    name: 'Office & Division Setup',
+    testId: 'office-division-setup-nav-link',
+    href: '/admin/office-division-setup',
+    navState: AdminNavState.OFFICE_DIVISION_SETUP,
+  },
+  {
     name: 'Bankruptcy Software',
     testId: 'bankruptcy-software-nav-link',
     href: '/admin/bankruptcy-software',

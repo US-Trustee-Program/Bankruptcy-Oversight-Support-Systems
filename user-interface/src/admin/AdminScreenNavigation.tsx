@@ -12,6 +12,9 @@ export enum AdminNavState {
   CASE_RELOAD,
   BANKS,
   NOTIFICATION_ROUTING,
+  OFFICE_DIVISION_SETUP,
+  PERMISSIONS,
+  TRUSTEE_TASK_REGIONS,
 }
 
 function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -29,6 +32,18 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
 
   function handleNavPrivilegedIdentity() {
     setActiveNav(AdminNavState.PRIVILEGED_IDENTITY);
+  }
+
+  function handleNavPermissions() {
+    setActiveNav(AdminNavState.PERMISSIONS);
+  }
+
+  function handleNavTrusteeTaskRegions() {
+    setActiveNav(AdminNavState.TRUSTEE_TASK_REGIONS);
+  }
+
+  function handleNavOfficeDivisionSetup() {
+    setActiveNav(AdminNavState.OFFICE_DIVISION_SETUP);
   }
 
   function handleNavBankruptcySoftware() {
@@ -65,6 +80,43 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           </li>
         )}
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/permissions"
+            data-testid="permissions-nav-link"
+            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PERMISSIONS)}
+            onClick={handleNavPermissions}
+            title="Manage permissions"
+          >
+            Permissions
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/trustee-task-regions"
+            data-testid="trustee-task-regions-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.TRUSTEE_TASK_REGIONS)
+            }
+            onClick={handleNavTrusteeTaskRegions}
+            title="Manage trustee task regions"
+          >
+            Trustee Task Regions
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/office-division-setup"
+            data-testid="office-division-setup-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.OFFICE_DIVISION_SETUP)
+            }
+            onClick={handleNavOfficeDivisionSetup}
+            title="Manage which court divisions each office oversees"
+          >
+            Office &amp; Division Setup
+          </NavLink>
+        </li>
         <li className="usa-sidenav__item">
           <NavLink
             to={`/admin/bankruptcy-software`}

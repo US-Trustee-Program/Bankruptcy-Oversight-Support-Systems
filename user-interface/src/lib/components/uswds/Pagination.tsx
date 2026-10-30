@@ -113,7 +113,8 @@ export function Pagination<P extends SearchPredicate>({
             {lastPage! > 1 && renderLeftSidePageButton(2, currentPage)}
             {lastPage! > 2 && renderLeftSidePageButton(3, currentPage)}
             {lastPage! > 3 && renderLeftSidePageButton(4, currentPage)}
-            {lastPage! > 4 && renderLeftSidePageButton(5, currentPage)}
+            {/* With exactly 5 pages, page 5 is the last page and is rendered below. */}
+            {lastPage! > 5 && renderLeftSidePageButton(5, currentPage)}
           </>
         )}
         {lastPage! > 6 && renderEllipsis()}
@@ -128,7 +129,8 @@ export function Pagination<P extends SearchPredicate>({
         )}
         {currentPage > 4 && currentPage >= lastPage - 3 && (
           <>
-            {renderRightSidePageButton(4)}
+            {/* With exactly 5 pages, this would repeat page 1. */}
+            {lastPage > 5 && renderRightSidePageButton(4)}
             {renderRightSidePageButton(3)}
             {renderRightSidePageButton(2)}
             {renderRightSidePageButton(1)}

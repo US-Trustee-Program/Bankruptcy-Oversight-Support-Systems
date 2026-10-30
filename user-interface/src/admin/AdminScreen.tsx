@@ -12,6 +12,7 @@ import { CaseReload } from './case-reload/CaseReload';
 import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
 import { NotificationRouting } from './notification-routing/NotificationRouting';
+import { OfficeDivisionSetup } from './office-division-setup/OfficeDivisionSetup';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, {
@@ -41,6 +42,15 @@ export function AdminScreen() {
     }
     if (location.pathname.includes('/admin/notification-routing')) {
       return AdminNavState.NOTIFICATION_ROUTING;
+    }
+    if (location.pathname.includes('/admin/permissions')) {
+      return AdminNavState.PERMISSIONS;
+    }
+    if (location.pathname.includes('/admin/trustee-task-regions')) {
+      return AdminNavState.TRUSTEE_TASK_REGIONS;
+    }
+    if (location.pathname.includes('/admin/office-division-setup')) {
+      return AdminNavState.OFFICE_DIVISION_SETUP;
     }
     return AdminNavState.UNKNOWN;
   };
@@ -77,6 +87,7 @@ export function AdminScreen() {
                       {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
                         <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                       )}
+                      <Route path="office-division-setup/*" element={<OfficeDivisionSetup />} />
                       <Route path="banks" element={<Banks />} />
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
