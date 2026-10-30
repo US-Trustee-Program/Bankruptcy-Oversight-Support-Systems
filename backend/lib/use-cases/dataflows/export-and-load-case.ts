@@ -188,7 +188,7 @@ async function exportAndLoad(
           }
           context.logger.warn(
             MODULE_NAME,
-            `Appointment field patch failed for ${event.caseId} — sync succeeded, will retry on next sync.`,
+            `Appointment field patch failed for ${event.caseId}; continuing with case sync.`,
             { error: apptError },
           );
         }
