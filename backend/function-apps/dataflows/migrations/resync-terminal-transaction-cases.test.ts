@@ -108,7 +108,17 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     } as unknown as StorageQueueHumbleObject);
 
     await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
-    expect(mockSendMessage).toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [sentBody, visibilityTimeout] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(sentBody)).toEqual(
+      expect.objectContaining({
+        events,
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      }),
+    );
+    expect(visibilityTimeout).toBeGreaterThan(0);
+    expect(visibilityTimeout).toBeLessThanOrEqual(600);
   });
 
   test('should route to DLQ instead of throwing when retry limit exhausted', async () => {

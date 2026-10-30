@@ -95,7 +95,18 @@ describe('migrate-cases handlePage', () => {
 
     await handlePage(range, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [sentBody, visibilityTimeout] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(sentBody)).toEqual(
+      expect.objectContaining({
+        start: 1,
+        end: 100,
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      }),
+    );
+    expect(visibilityTimeout).toBeGreaterThan(0);
+    expect(visibilityTimeout).toBeLessThanOrEqual(600);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
