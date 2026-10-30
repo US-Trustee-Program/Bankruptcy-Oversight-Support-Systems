@@ -320,7 +320,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 name="warning"
                 className="difference-icon-symbol subtext-icon"
                 decorative={false}
-                tooltip="warning icon"
+                tooltip="warning"
               />{' '}
               icon marks information that differs from what was sent.
             </p>

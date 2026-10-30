@@ -8,6 +8,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     restoreMocks: true,
+    // Set before setupTests.ts runs dotenv.config(), which never overrides existing
+    // process.env values, so a local .env with CAMS_USE_FAKE_API=false cannot leak in.
+    env: { CAMS_USE_FAKE_API: 'true' },
     setupFiles: './src/setupTests.ts',
     exclude: [
       '**/node_modules/**',
