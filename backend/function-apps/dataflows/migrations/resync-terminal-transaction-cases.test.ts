@@ -75,6 +75,21 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     expect(dlqOutput?.[1]).toEqual([failedEvent]);
   });
 
+  test('accepts a bare CaseSyncEvent[] queued by a pre-deploy version of this function', async () => {
+    const { handlePage } = await import('./resync-terminal-transaction-cases');
+    const events: CaseSyncEvent[] = [{ type: 'MIGRATION', caseId: '001-25-00001' }];
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([events[0]]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handlePage(events, invocationContext);
+
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
+
   test('should re-enqueue with backoff on a transient error instead of throwing', async () => {
     const { handlePage } = await import('./resync-terminal-transaction-cases');
     const events: CaseSyncEvent[] = [{ type: 'MIGRATION', caseId: '001-25-00001' }];

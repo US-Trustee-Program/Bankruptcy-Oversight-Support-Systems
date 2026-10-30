@@ -110,7 +110,7 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
  * Process a batch of case sync events via ExportAndLoadCase.
  */
 async function handlePage(
-  message: ResyncTerminalPageMessage,
+  message: ResyncTerminalPageMessage | CaseSyncEvent[],
   invocationContext: InvocationContext,
 ) {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
@@ -121,7 +121,13 @@ async function handlePage(
   const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = appContext;
 
-  const { events } = message;
+  // A page message queued by a pre-deploy version of this function is a bare CaseSyncEvent[];
+  // normalize it to the current wrapped shape so a stale queued message doesn't throw instead
+  // of being processed.
+  const normalizedMessage: ResyncTerminalPageMessage = Array.isArray(message)
+    ? { events: message }
+    : message;
+  const { events } = normalizedMessage;
   logger.info(MODULE_NAME, `Processing page with ${events.length} events`);
 
   let processedEvents: CaseSyncEvent[];
@@ -130,7 +136,7 @@ async function handlePage(
   } catch (error) {
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
-      message,
+      message: normalizedMessage,
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context: appContext,
