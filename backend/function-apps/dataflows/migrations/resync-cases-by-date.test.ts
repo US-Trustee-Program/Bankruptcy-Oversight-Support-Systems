@@ -23,7 +23,6 @@ type PageMessage = { events: CaseSyncEvent[]; retryCount?: number };
 
 describe('resync-cases-by-date handleStart', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
@@ -86,7 +85,6 @@ describe('resync-cases-by-date handleStart', () => {
 
 describe('resync-cases-by-date handlePage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
@@ -187,10 +185,6 @@ describe('resync-cases-by-date handlePage', () => {
 });
 
 describe('resync-cases-by-date handleError', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./resync-cases-by-date');
     const event: CaseSyncEvent = {
@@ -237,10 +231,6 @@ describe('resync-cases-by-date handleError', () => {
 });
 
 describe('resync-cases-by-date handleRetry', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test.each([
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },

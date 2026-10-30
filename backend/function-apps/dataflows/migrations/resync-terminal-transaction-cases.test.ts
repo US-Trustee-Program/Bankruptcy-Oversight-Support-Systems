@@ -22,10 +22,6 @@ const makeInvocationContext = (): InvocationContext =>
 type PageMessage = { events: CaseSyncEvent[]; retryCount?: number };
 
 describe('resync-terminal-transaction-cases handleStart', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('should queue pages wrapped with an events property', async () => {
     const { handleStart } = (await import('./resync-terminal-transaction-cases')) as unknown as {
       handleStart: (message: { cutoffDate?: string }, context: InvocationContext) => Promise<void>;
@@ -54,7 +50,6 @@ describe('resync-terminal-transaction-cases handleStart', () => {
 
 describe('resync-terminal-transaction-cases handlePage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
@@ -141,10 +136,6 @@ describe('resync-terminal-transaction-cases handlePage', () => {
 });
 
 describe('resync-terminal-transaction-cases handleRetry', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test.each([
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
@@ -259,10 +250,6 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
 });
 
 describe('resync-terminal-transaction-cases handleError', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./resync-terminal-transaction-cases');
     const event: CaseSyncEvent = {

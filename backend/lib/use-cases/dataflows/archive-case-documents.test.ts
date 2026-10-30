@@ -73,7 +73,6 @@ describe('ArchiveCaseDocuments use case', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    vi.restoreAllMocks();
     repos = wireFakeRepos();
   });
 

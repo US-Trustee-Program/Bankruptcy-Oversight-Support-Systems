@@ -23,7 +23,6 @@ const makeInvocationContext = (): InvocationContext =>
 
 describe('migrate-cases handlePage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
@@ -250,10 +249,6 @@ describe('migrate-cases handlePage', () => {
 });
 
 describe('migrate-cases handleStart', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('queues pages and stores runtime state when the migration table is empty and has cases', async () => {
     const { handleStart } = await import('./migrate-cases');
     const invocationContext = makeInvocationContext();
@@ -336,10 +331,6 @@ describe('migrate-cases handleStart', () => {
 });
 
 describe('migrate-cases handleError', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./migrate-cases');
     const event: CaseSyncEvent = {
@@ -382,10 +373,6 @@ describe('migrate-cases handleError', () => {
 });
 
 describe('migrate-cases handleRetry', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('routes to HARD_STOP without calling exportCase once the retry limit is exceeded', async () => {
     const { handleRetry } = await import('./migrate-cases');
     const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001', retryCount: 3 };

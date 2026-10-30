@@ -27,10 +27,6 @@ type CursorMessage = {
 };
 
 describe('resync-remaining-cases handleStart', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('queues an initial cursor when cutoffDate is present', async () => {
     const { handleStart } = await import('./resync-remaining-cases');
     const invocationContext = makeInvocationContext();
@@ -62,7 +58,6 @@ describe('resync-remaining-cases handleStart', () => {
 
 describe('resync-remaining-cases handlePage', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
@@ -245,10 +240,6 @@ describe('resync-remaining-cases handlePage', () => {
 });
 
 describe('resync-remaining-cases handleError', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./resync-remaining-cases');
     const event: CaseSyncEvent = {
@@ -289,10 +280,6 @@ describe('resync-remaining-cases handleError', () => {
 });
 
 describe('resync-remaining-cases handleRetry', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test.each([
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
