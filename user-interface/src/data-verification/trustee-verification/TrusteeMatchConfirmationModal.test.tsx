@@ -16,7 +16,6 @@ const dxtrRows: ComparisonRow[] = [
   { key: 'state', label: 'State' },
   { key: 'zip', label: 'Zip' },
   { key: 'email', label: 'Email' },
-  { key: 'foundBy', label: 'Found by' },
 ];
 const acmsRows = dxtrRows.filter((row) => row.key !== 'email');
 
@@ -28,7 +27,6 @@ const source: Record<ComparisonRowKey, string | undefined> = {
   state: 'NY',
   zip: '10001',
   email: 'jane@court.example',
-  foundBy: undefined,
 };
 
 const selected: SelectedTrustee = {
@@ -42,7 +40,6 @@ const selected: SelectedTrustee = {
     state: { value: 'NY', differs: false },
     zip: { value: undefined, differs: true },
     email: { value: 'jane@example.com', differs: false },
-    foundBy: { value: 'Exact surname', differs: false },
   },
 };
 
@@ -51,6 +48,7 @@ type RenderOptions = {
   caseCount?: number;
   isProcessing?: boolean;
   onCancel?: () => void;
+  source?: Record<ComparisonRowKey, string | undefined>;
 };
 
 describe('TrusteeMatchConfirmationModal', () => {
@@ -63,7 +61,7 @@ describe('TrusteeMatchConfirmationModal', () => {
           ref={modalRef}
           id={modalId}
           rows={options.rows ?? dxtrRows}
-          source={source}
+          source={options.source ?? source}
           caseCount={options.caseCount ?? 3}
           onConfirm={onConfirm}
           onCancel={options.onCancel}
@@ -93,7 +91,7 @@ describe('TrusteeMatchConfirmationModal', () => {
   const cancelButton = () =>
     screen.getByTestId(`button-trustee-confirmation-modal-${modalId}-cancel-button`);
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -120,7 +118,7 @@ describe('TrusteeMatchConfirmationModal', () => {
     ).toBeInTheDocument();
   });
 
-  test('shows every row but Found by in both columns, with the trustee name linked', () => {
+  test('shows every row in both columns, with the trustee name linked', () => {
     renderModal();
     showSelected();
 
@@ -138,8 +136,6 @@ describe('TrusteeMatchConfirmationModal', () => {
       'href',
       '/trustees/trustee-1',
     );
-    expect(screen.queryByText('Exact surname')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Found by/)).not.toBeInTheDocument();
   });
 
   test('omits Email when the rows exclude it', () => {
@@ -158,19 +154,7 @@ describe('TrusteeMatchConfirmationModal', () => {
   });
 
   test('shows Not Provided in the source column for a missing source value', () => {
-    const sourceWithoutPhone = { ...source, phone: undefined };
-    render(
-      <BrowserRouter>
-        <TrusteeMatchConfirmationModal
-          ref={modalRef}
-          id={modalId}
-          rows={dxtrRows}
-          source={sourceWithoutPhone}
-          caseCount={3}
-          onConfirm={vi.fn()}
-        />
-      </BrowserRouter>,
-    );
+    renderModal({ source: { ...source, phone: undefined } });
     showSelected();
 
     expect(within(sourceColumn()).getByText('Not Provided')).toBeInTheDocument();
@@ -235,24 +219,13 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(cancelButton()).toBeDisabled();
   });
 
-  test('keeps the preview open on Escape, overlay click, or X while processing', () => {
+  test('forwards isProcessing to Modal as forceAction', () => {
     renderModal({ isProcessing: true });
     showSelected();
 
-    const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
-    expect(wrapper).toHaveClass('is-visible');
-
-    fireEvent.keyDown(screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`), {
-      key: 'Escape',
-    });
-    expect(wrapper).toHaveClass('is-visible');
-
-    fireEvent.click(screen.getByTestId(`modal-overlay-trustee-confirmation-modal-${modalId}`));
-    expect(wrapper).toHaveClass('is-visible');
-
     expect(
-      screen.queryByTestId(`modal-x-button-trustee-confirmation-modal-${modalId}`),
-    ).not.toBeInTheDocument();
+      screen.getByTestId(`modal-content-trustee-confirmation-modal-${modalId}`),
+    ).toHaveAttribute('data-force-action', 'true');
   });
 
   test('keeps one status region mounted so Matching trustee... is announced when processing starts', () => {
@@ -301,5 +274,43 @@ describe('TrusteeMatchConfirmationModal', () => {
         'is-hidden',
       ),
     );
+  });
+
+  test('still hides on Cancel when onCancel is not provided', async () => {
+    renderModal();
+    showSelected();
+
+    await waitFor(() => expect(cancelButton()).toBeEnabled());
+    fireEvent.click(cancelButton());
+
+    await waitFor(() =>
+      expect(document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`)).toHaveClass(
+        'is-hidden',
+      ),
+    );
+  });
+
+  test('forwards show() options (openModalButtonRef) to Modal for focus return on hide', async () => {
+    const openerRef = React.createRef<HTMLButtonElement>();
+    render(
+      <BrowserRouter>
+        <button ref={openerRef}>Open</button>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          rows={dxtrRows}
+          source={source}
+          caseCount={3}
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+
+    act(() => modalRef.current?.show(selected, { openModalButtonRef: openerRef }));
+
+    await waitFor(() => expect(cancelButton()).toBeEnabled());
+    fireEvent.click(cancelButton());
+
+    await waitFor(() => expect(openerRef.current).toHaveFocus());
   });
 });

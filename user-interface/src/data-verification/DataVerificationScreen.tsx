@@ -74,8 +74,9 @@ export default function DataVerificationScreen() {
   // Shared top header row and the trustee-identity accordion both use "Subject" — a trustee
   // task's subject is the trustee, not a court. Transfer/consolidation orders keep "Court
   // District" for their own row-level aria-labels, since their first column is still a court.
-  const accordionFieldHeaders = ['Subject', 'Order Filed', 'Task Type', 'Task Status'];
-  const orderAccordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+  // Column order mirrors the Figma task list: Task Type, Subject, Task Created, Task Status.
+  const accordionFieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
+  const orderAccordionFieldHeaders = ['Task Type', 'Court District', 'Task Created', 'Task Status'];
 
   function getTaskTypeOptions(flags: FeatureFlagSet): ComboOption[] {
     return [
@@ -404,10 +405,10 @@ export default function DataVerificationScreen() {
                   <>
                     <div className="data-verification-accordion-header" data-testid="orders-header">
                       <div className="grid-row grid-gap-lg">
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[0]}</h3>
                         <div className="grid-col-6 text-no-wrap">
-                          <h3>{accordionFieldHeaders[0]}</h3>
+                          <h3>{accordionFieldHeaders[1]}</h3>
                         </div>
-                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[1]}</h3>
                         <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[2]}</h3>
                         <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[3]}</h3>
                       </div>

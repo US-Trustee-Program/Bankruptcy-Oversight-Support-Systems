@@ -9,8 +9,7 @@ import { TrusteeMatchSource } from '@common/cams/trustee-match-verification';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 
-export type ComparisonRowKey =
-  'name' | 'phone' | 'street' | 'city' | 'state' | 'zip' | 'email' | 'foundBy';
+export type ComparisonRowKey = 'name' | 'phone' | 'street' | 'city' | 'state' | 'zip' | 'email';
 
 export type ComparisonRow = { key: ComparisonRowKey; label: string };
 
@@ -42,18 +41,40 @@ const ROWS: ComparisonRow[] = [
   { key: 'state', label: 'State' },
   { key: 'zip', label: 'Zip' },
   { key: 'email', label: 'Email' },
-  { key: 'foundBy', label: 'Found by' },
 ];
-
-const FOUND_BY_LABELS: Record<string, string> = {
-  recallBySurnameExact: 'Exact surname',
-  recallByName: 'Name',
-  recallByTokenIntersection: 'Name words',
-  recallByAnchoredLevenshtein: 'Similar spelling',
-};
 
 function joinStreet(lines: (string | undefined)[]): string | undefined {
   return lines.filter(Boolean).join(', ') || undefined;
+}
+
+/** The street on its own line, then city/state/zip on a second line. Either line - or both - is
+ * omitted when it has nothing to show, so the table never renders an empty line. */
+export function formatAddress(
+  street?: string,
+  city?: string,
+  state?: string,
+  zip?: string,
+): string[] {
+  const cityStateZip = [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return [street, cityStateZip].filter((line): line is string => Boolean(line));
+}
+
+/** The sent record's address, for the "Trustee Information Received" table. */
+export function sourceAddress(source: Record<ComparisonRowKey, string | undefined>): string[] {
+  return formatAddress(source.street, source.city, source.state, source.zip);
+}
+
+/** A candidate's address, combined from its street/city/state/zip cells for the Potential
+ * Matches table. Differs if any of those four fields differs from the source record. */
+export function candidateAddress(cells: Record<ComparisonRowKey, ComparisonCell>): {
+  lines: string[];
+  differs: boolean;
+} {
+  const { street, city, state, zip } = cells;
+  return {
+    lines: formatAddress(street.value, city.value, state.value, zip.value),
+    differs: street.differs || city.differs || state.differs || zip.differs,
+  };
 }
 
 function isExactGrade(scores: ScoreByScorer, scorer: string): boolean {
@@ -82,7 +103,6 @@ export function differingRows(scores: ScoreByScorer): Record<ComparisonRowKey, b
     state: !isPass(scores, 'doesStateMatch'),
     zip: !isPass(scores, 'doesZipCodeMatch'),
     email: !isPass(scores, 'doesEmailMatch'),
-    foundBy: false,
   };
 }
 
@@ -90,7 +110,6 @@ type TrusteeContact = Pick<ProjectedTrustee, 'name' | 'address' | 'phone' | 'ema
 
 function toCells(
   trustee: TrusteeContact,
-  foundBy: string | undefined,
   differs: Record<ComparisonRowKey, boolean>,
 ): Record<ComparisonRowKey, ComparisonCell> {
   const { address } = trustee;
@@ -102,7 +121,6 @@ function toCells(
     state: address?.state,
     zip: address?.zipCode,
     email: trustee.email,
-    foundBy,
   };
   return Object.fromEntries(
     ROWS.map(({ key }) => [key, { value: values[key], differs: differs[key] }]),
@@ -110,8 +128,8 @@ function toCells(
 }
 
 function toCandidate(candidate: SerializedCandidate<ProjectedTrustee>): ComparisonCandidate {
-  const { camsRaw, scores, origin } = candidate;
-  const cells = toCells(camsRaw, FOUND_BY_LABELS[origin] ?? origin, differingRows(scores));
+  const { camsRaw, scores } = candidate;
+  const cells = toCells(camsRaw, differingRows(scores));
   return { trusteeId: camsRaw.trusteeId, trusteeName: camsRaw.name, camsRaw, cells };
 }
 
@@ -136,13 +154,14 @@ export function selectedTrusteeFromSearch(
   return {
     trusteeId: result.trusteeId,
     trusteeName: result.name,
-    cells: toCells(result, undefined, NOTHING_DIFFERS),
+    cells: toCells(result, NOTHING_DIFFERS),
   };
 }
 
 /**
- * Maps an identity task's stored findings to the comparison table: the source record, then one
- * column per candidate in pipeline rank order. Reads only stored facts - nothing is re-matched.
+ * Maps an identity task's stored findings to the comparison: the source record (rendered on its own
+ * in the Trustee Information Received table), then one row per candidate in pipeline rank order
+ * (the Potential Matches table). Reads only stored facts - nothing is re-matched.
  */
 export function buildTrusteeComparison(
   findings: TrusteeSerializedState,
@@ -164,7 +183,6 @@ export function buildTrusteeComparison(
       state: parsed?.state ?? undefined,
       zip: parsed?.zipCode,
       email: legacy?.email,
-      foundBy: undefined,
     },
     candidates: rankCandidates(findings.candidates).map(toCandidate),
   };

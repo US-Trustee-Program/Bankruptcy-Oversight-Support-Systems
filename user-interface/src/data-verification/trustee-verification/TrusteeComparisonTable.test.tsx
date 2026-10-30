@@ -14,7 +14,6 @@ function cells(
     state: { value: 'NY', differs: false },
     zip: { value: '12207', differs: false },
     email: { value: 'jane@example.com', differs: false },
-    foundBy: { value: 'Exact surname', differs: false },
   };
   for (const [key, cell] of Object.entries(overrides)) {
     base[key as keyof typeof base] = { ...base[key as keyof typeof base], ...cell };
@@ -44,7 +43,6 @@ const comparison: TrusteeComparison = {
     { key: 'state', label: 'State' },
     { key: 'zip', label: 'Zip' },
     { key: 'email', label: 'Email' },
-    { key: 'foundBy', label: 'Found by' },
   ],
   source: {
     name: 'Jane Q. Doe',
@@ -54,7 +52,6 @@ const comparison: TrusteeComparison = {
     state: 'NY',
     zip: '12207',
     email: undefined,
-    foundBy: undefined,
   },
   candidates: [
     candidate('t1', 'Jane Doe', {
@@ -68,102 +65,164 @@ const comparison: TrusteeComparison = {
 function renderTable(props: Partial<Parameters<typeof TrusteeComparisonTable>[0]> = {}) {
   return render(
     <BrowserRouter>
-      <TrusteeComparisonTable
-        comparison={comparison}
-        sourceLabel="Source record (DXTR)"
-        {...props}
-      />
+      <TrusteeComparisonTable comparison={comparison} {...props} />
     </BrowserRouter>,
   );
 }
 
-function rowCells(label: string) {
-  const header = screen.getByRole('rowheader', { name: label });
-  return within(header.closest('tr')!).getAllByRole('cell');
+function candidateRow(trusteeName: string) {
+  const header = screen.getByRole('rowheader', { name: new RegExp(trusteeName) });
+  return header.closest('tr')!;
 }
 
 describe('TrusteeComparisonTable', () => {
-  test('puts the source record first, then one column per candidate in the given order', () => {
-    renderTable();
+  test('has one column per field, Name first and Action last, when approval is offered', () => {
+    renderTable({ onApprove: vi.fn() });
 
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
-    expect(headers).toEqual(['Field', 'Source record (DXTR)', 'Jane Doe', 'Janet Doe']);
+    expect(headers).toEqual(['Name', 'Address', 'Phone', 'Email', 'Action']);
     for (const th of screen.getAllByRole('columnheader')) {
       expect(th).toHaveAttribute('scope', 'col');
     }
   });
 
-  test('links each candidate column header to the CAMS trustee', () => {
-    renderTable();
+  test('omits the Email column when the comparison has no email row', () => {
+    renderTable({
+      comparison: { ...comparison, rows: comparison.rows.filter((r) => r.key !== 'email') },
+    });
 
-    expect(screen.getByRole('link', { name: /Janet Doe/ })).toHaveAttribute('href', '/trustees/t2');
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Name',
+      'Address',
+      'Phone',
+    ]);
   });
 
-  test('renders one row header per comparison row', () => {
+  test('omits the Action column when approval is not offered', () => {
+    renderTable();
+
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Name',
+      'Address',
+      'Phone',
+      'Email',
+    ]);
+  });
+
+  test('renders one row per candidate, in the given order', () => {
     renderTable();
 
     const rowHeaders = screen.getAllByRole('rowheader');
-    expect(rowHeaders.map((th) => th.textContent)).toEqual([
-      'Name',
-      'Phone',
-      'Street',
-      'City',
-      'State',
-      'Zip',
-      'Email',
-      'Found by',
-    ]);
+    expect(rowHeaders).toHaveLength(2);
+    expect(rowHeaders[0]).toHaveTextContent('Jane Doe');
+    expect(rowHeaders[1]).toHaveTextContent('Janet Doe');
     for (const th of rowHeaders) {
       expect(th).toHaveAttribute('scope', 'row');
     }
   });
 
-  test('shows the source value and each candidate value in a row', () => {
+  test('links each candidate name to the CAMS trustee', () => {
     renderTable();
 
-    expect(rowCells('Phone').map((td) => td.textContent)).toEqual([
-      '518-555-0100',
-      '518-555-0199',
-      '518-555-0100',
-    ]);
+    expect(screen.getByRole('link', { name: /Janet Doe/ })).toHaveAttribute('href', '/trustees/t2');
   });
 
-  test('marks a differing cell with a warning icon that has an accessible name', () => {
+  test('shows each candidate value in its row', () => {
     renderTable();
 
-    const [, janeDoePhone, janetDoePhone] = rowCells('Phone');
+    const row = within(candidateRow('Jane Doe'));
+    expect(row.getAllByRole('cell')[1]).toHaveTextContent('518-555-0199');
+  });
+
+  test('combines street, city, state and zip into one Address cell', () => {
+    renderTable();
+
+    const row = within(candidateRow('Janet Doe'));
+    const addressCell = row.getAllByRole('cell')[0];
+    expect(addressCell).toHaveTextContent('1 Main St');
+    expect(addressCell).toHaveTextContent('Albany, NY 12207');
+  });
+
+  test('marks a differing field with a warning icon placed before its value', () => {
+    renderTable();
+
+    const row = within(candidateRow('Jane Doe'));
+    const phoneCell = row.getAllByRole('cell')[1];
+    const icon = within(phoneCell).getByRole('img', {
+      name: 'Phone differs from the source record',
+    });
+    // Walk up from the icon itself (not a specific wrapper class) to find its containing
+    // element's siblings, and confirm the value is one of the later ones.
+    const iconContainer = icon.parentElement!;
+    const siblings = Array.from(iconContainer.parentElement!.childNodes);
+    const textAfterIcon = siblings
+      .slice(siblings.indexOf(iconContainer) + 1)
+      .some((node) => node.textContent?.includes('518-555-0199'));
+    expect(textAfterIcon).toBe(true);
+  });
+
+  test('marks the whole Address cell with one icon when any of its parts differs', () => {
+    const withAddressDiff = {
+      ...comparison,
+      candidates: [candidate('t1', 'Jane Doe', { street: { value: '2 Oak St', differs: true } })],
+    };
+    renderTable({ comparison: withAddressDiff });
+
+    const row = within(candidateRow('Jane Doe'));
+    const addressCell = row.getAllByRole('cell')[0];
     expect(
-      within(janeDoePhone).getByLabelText('Phone differs from the source record'),
+      within(addressCell).getByLabelText('Address differs from the source record'),
     ).toBeInTheDocument();
-    expect(within(janetDoePhone).queryByLabelText(/differs/)).not.toBeInTheDocument();
   });
 
-  test('marks a State difference with the same warning icon as any other field', () => {
-    renderTable();
+  test('shows no marker on a cell that does not differ', () => {
+    const withNoDiffs = {
+      ...comparison,
+      candidates: [candidate('t3', 'Jane Q. Doe')],
+    };
+    renderTable({ comparison: withNoDiffs });
 
-    const [, janeDoeState] = rowCells('State');
-    const [, janeDoePhone] = rowCells('Phone');
-    const stateIcon = within(janeDoeState).getByLabelText('State differs from the source record');
-    const phoneIcon = within(janeDoePhone).getByLabelText('Phone differs from the source record');
-    expect(stateIcon.getAttribute('class')).toBe(phoneIcon.getAttribute('class'));
-    expect(janeDoeState.className).toBe(janeDoePhone.className);
+    const row = within(candidateRow('Jane Q. Doe'));
+    expect(row.queryByLabelText(/differs/)).not.toBeInTheDocument();
+  });
+
+  test('marks a differing candidate name', () => {
+    const withNameDiff = {
+      ...comparison,
+      candidates: [candidate('t1', 'Jane Doe', { name: { value: 'Jane Doe', differs: true } })],
+    };
+    renderTable({ comparison: withNameDiff });
+
+    expect(screen.getByLabelText('Name differs from the source record')).toBeInTheDocument();
   });
 
   test('shows "Not Provided" without a marker for a missing value', () => {
     renderTable();
 
-    const [sourceEmail, , janetDoeEmail] = rowCells('Email');
-    expect(sourceEmail).toHaveTextContent('Not Provided');
-    expect(janetDoeEmail).toHaveTextContent('Not Provided');
-    expect(janetDoeEmail.querySelector('svg')).toBeNull();
+    const row = within(candidateRow('Janet Doe'));
+    const emailCell = row.getAllByRole('cell')[2];
+    expect(emailCell).toHaveTextContent('Not Provided');
+    expect(emailCell.querySelector('svg')).toBeNull();
   });
 
-  test('leaves the source record Found by cell empty', () => {
-    renderTable();
+  test('shows "Not Provided" in the Address cell when street, city, state and zip are all missing', () => {
+    const withNoAddress = {
+      ...comparison,
+      candidates: [
+        candidate('t1', 'Jane Doe', {
+          street: { value: undefined },
+          city: { value: undefined },
+          state: { value: undefined },
+          zip: { value: undefined },
+        }),
+      ],
+    };
+    renderTable({ comparison: withNoAddress });
 
-    const [sourceFoundBy, janeDoeFoundBy] = rowCells('Found by');
-    expect(sourceFoundBy).toHaveTextContent('');
-    expect(janeDoeFoundBy).toHaveTextContent('Exact surname');
+    const row = within(candidateRow('Jane Doe'));
+    const addressCell = row.getAllByRole('cell')[0];
+    expect(addressCell).toHaveTextContent('Not Provided');
+    expect(addressCell.querySelector('svg')).toBeNull();
   });
 
   test('offers Match Trustee for each candidate and reports the chosen one', () => {
@@ -197,12 +256,9 @@ describe('TrusteeComparisonTable', () => {
     expect(screen.queryByRole('button', { name: /Match Trustee/ })).not.toBeInTheDocument();
   });
 
-  test('shows only the source column when there are no candidates', () => {
+  test('renders no candidate rows when there are no candidates', () => {
     renderTable({ comparison: { ...comparison, candidates: [] } });
 
-    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-      'Field',
-      'Source record (DXTR)',
-    ]);
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
   });
 });

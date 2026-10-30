@@ -82,31 +82,31 @@ export function ConsolidationOrderAccordionView(
         data-testid={`accordion-heading-${viewModel.order.id}`}
       >
         <div
-          className="accordion-header-field grid-col-6 text-no-wrap"
-          aria-label={`${viewModel.accordionFieldHeaders[0]} - ${viewModel.order.courtName}.`}
+          className="accordion-header-field grid-col-2 order-type text-no-wrap"
           data-cell={viewModel.accordionFieldHeaders[0]}
+        >
+          <span
+            className="event-type-label"
+            aria-label={`${viewModel.accordionFieldHeaders[0]} - ${viewModel.taskType.get(viewModel.order.taskType)}.`}
+            data-cell={viewModel.accordionFieldHeaders[0]}
+          >
+            {viewModel.taskType.get(viewModel.order.taskType)}
+          </span>
+        </div>
+        <div
+          className="accordion-header-field grid-col-6 text-no-wrap"
+          aria-label={`${viewModel.accordionFieldHeaders[1]} - ${viewModel.order.courtName}.`}
+          data-cell={viewModel.accordionFieldHeaders[1]}
         >
           {viewModel.order.courtName}
         </div>
         <div
           className="accordion-header-field grid-col-2 text-no-wrap"
-          title={viewModel.accordionFieldHeaders[1]}
-          aria-label={`${viewModel.accordionFieldHeaders[1]} on ${viewModel.formattedOrderFiledDate}.`}
-          data-cell={viewModel.accordionFieldHeaders[1]}
-        >
-          {viewModel.formattedOrderFiledDate}
-        </div>
-        <div
-          className="accordion-header-field grid-col-2 order-type text-no-wrap"
+          title={viewModel.accordionFieldHeaders[2]}
+          aria-label={`${viewModel.accordionFieldHeaders[2]} on ${viewModel.formattedOrderFiledDate}.`}
           data-cell={viewModel.accordionFieldHeaders[2]}
         >
-          <span
-            className="event-type-label"
-            aria-label={`${viewModel.accordionFieldHeaders[2]} - ${viewModel.taskType.get(viewModel.order.taskType)}.`}
-            data-cell={viewModel.accordionFieldHeaders[2]}
-          >
-            {viewModel.taskType.get(viewModel.order.taskType)}
-          </span>
+          {viewModel.formattedOrderFiledDate}
         </div>
         <div
           className="accordion-header-field grid-col-2 order-status text-no-wrap"
