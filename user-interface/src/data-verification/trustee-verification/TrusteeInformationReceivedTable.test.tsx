@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import TrusteeInformationReceivedTable from './TrusteeInformationReceivedTable';
 import { TrusteeComparison } from './trustee-comparison';
 
@@ -71,21 +71,13 @@ describe('TrusteeInformationReceivedTable', () => {
     );
 
     const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
-    expect(row).toHaveTextContent('Not Provided');
+    const [addressCell, , emailCell] = within(row).getAllByRole('cell');
+    expect(addressCell).toHaveTextContent('Albany, NY 12207');
+    expect(addressCell).not.toHaveTextContent('1 Main St');
+    expect(emailCell).toHaveTextContent('Not Provided');
   });
 
-  test('shows "Not Provided" for phone when it is missing', () => {
-    render(
-      <TrusteeInformationReceivedTable
-        comparison={{ ...comparison, source: { ...comparison.source, phone: undefined } }}
-      />,
-    );
-
-    const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
-    expect(row).toHaveTextContent('Not Provided');
-  });
-
-  test('shows "Not Provided" for the Address cell when street, city, state and zip are all missing', () => {
+  test('shows "Not Provided" for the address when every part is missing', () => {
     render(
       <TrusteeInformationReceivedTable
         comparison={{
@@ -102,6 +94,30 @@ describe('TrusteeInformationReceivedTable', () => {
     );
 
     const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
-    expect(row).toHaveTextContent('Not Provided');
+    const [addressCell] = within(row).getAllByRole('cell');
+    expect(addressCell).toHaveTextContent('Not Provided');
+  });
+
+  test('takes its accessible name from the heading it is labelled by', () => {
+    render(
+      <>
+        <h3 id="received-heading">Trustee Information Received</h3>
+        <TrusteeInformationReceivedTable comparison={comparison} labelledBy="received-heading" />
+      </>,
+    );
+
+    expect(screen.getByRole('table', { name: 'Trustee Information Received' })).toBeInTheDocument();
+  });
+
+  test('shows "Not Provided" for phone when it is missing', () => {
+    render(
+      <TrusteeInformationReceivedTable
+        comparison={{ ...comparison, source: { ...comparison.source, phone: undefined } }}
+      />,
+    );
+
+    const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
+    const phoneCell = within(row).getAllByRole('cell')[1];
+    expect(phoneCell).toHaveTextContent('Not Provided');
   });
 });

@@ -307,7 +307,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return (
       <div className="trustee-match-candidate-section" data-testid="candidate-info">
         <h3 id={`information-received-heading-${order.id}`}>Trustee Information Received</h3>
-        <TrusteeInformationReceivedTable comparison={comparison} />
+        <TrusteeInformationReceivedTable
+          comparison={comparison}
+          labelledBy={`information-received-heading-${order.id}`}
+        />
         {hasCandidates && (
           <>
             <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
