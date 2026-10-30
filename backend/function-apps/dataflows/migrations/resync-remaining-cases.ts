@@ -444,7 +444,7 @@ function setup() {
   });
 }
 
-export { handleRetry };
+export { handleStart, handleError, handleRetry };
 export default {
   MODULE_NAME,
   setup,

@@ -512,7 +512,7 @@ function setup() {
   });
 }
 
-export { handlePage };
+export { handleStart, handlePage, handleError, handleRetry };
 export default {
   MODULE_NAME,
   setup,

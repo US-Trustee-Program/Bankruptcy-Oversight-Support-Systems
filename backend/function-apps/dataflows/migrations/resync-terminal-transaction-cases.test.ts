@@ -2,6 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../../lib/common-errors/gateway-timeout';
+import { NotFoundError } from '../../../lib/common-errors/not-found-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import ApplicationContextCreator from '../../azure/application-context-creator';
@@ -143,7 +145,10 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
     vi.restoreAllMocks();
   });
 
-  test.each([{ label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') }])(
+  test.each([
+    { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+    { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+  ])(
     'routes a $label to DLQ instead of throwing, preserving the manual retryCount',
     async ({ build }) => {
       const { handleRetry } = await import('./resync-terminal-transaction-cases');
@@ -170,6 +175,71 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
     },
   );
 
+  test('routes the event to DLQ when exportAndLoad resolves with a captured (non-transient) event.error, without throwing', async () => {
+    const { handleRetry } = await import('./resync-terminal-transaction-cases');
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
+    const invocationContext = makeInvocationContext();
+    const camsError = new CamsError('TEST', { message: 'case sync failed' });
+
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([
+      { ...event, error: camsError },
+    ]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleRetry(event, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput).toBeDefined();
+    const [dlqEvent] = dlqOutput?.[1] as CaseSyncEvent[];
+    expect(dlqEvent.error).toBe(camsError);
+  });
+
+  test('routes to HARD_STOP without calling exportAndLoad once the retry limit is exceeded', async () => {
+    const { handleRetry } = await import('./resync-terminal-transaction-cases');
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001', retryCount: 3 };
+    const invocationContext = makeInvocationContext();
+
+    const exportAndLoadSpy = vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleRetry(event, invocationContext);
+
+    expect(exportAndLoadSpy).not.toHaveBeenCalled();
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const hardStopOutput = outputs.find(([key]) => key.queueName?.includes('hard-stop'));
+    expect(hardStopOutput).toBeDefined();
+    const [hardStopEvent] = hardStopOutput?.[1] as CaseSyncEvent[];
+    expect(hardStopEvent.retryCount).toBe(4);
+  });
+
+  test('logs success and sets no outputs when the retry succeeds', async () => {
+    const { handleRetry } = await import('./resync-terminal-transaction-cases');
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([{ ...event }]);
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const infoSpy = vi.spyOn(mockContext.logger, 'info');
+
+    await handleRetry(event, invocationContext);
+
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+    expect(infoSpy).toHaveBeenCalledWith(
+      'RESYNC-TERMINAL-TRANSACTION-CASES',
+      expect.stringContaining('Successfully retried'),
+    );
+  });
+
   test('re-throws a non-transient error', async () => {
     const { handleRetry } = await import('./resync-terminal-transaction-cases');
     const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
@@ -181,5 +251,49 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
     );
 
     await expect(handleRetry(event, invocationContext)).rejects.toThrow('boom');
+  });
+});
+
+describe('resync-terminal-transaction-cases handleError', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
+    const { handleError } = await import('./resync-terminal-transaction-cases');
+    const event: CaseSyncEvent = {
+      type: 'MIGRATION',
+      caseId: '001-25-00001',
+      error: new NotFoundError('TEST'),
+    };
+    const invocationContext = makeInvocationContext();
+
+    await handleError(event, invocationContext);
+
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+    expect(invocationContext.log).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.stringContaining('Abandoning attempt')]),
+    );
+  });
+
+  test('clears the error and queues the event for retry when the error is not a NotFoundError', async () => {
+    const { handleError } = await import('./resync-terminal-transaction-cases');
+    const event: CaseSyncEvent = {
+      type: 'MIGRATION',
+      caseId: '001-25-00001',
+      error: new CamsError('TEST', { message: 'transient failure' }),
+    };
+    const invocationContext = makeInvocationContext();
+
+    await handleError(event, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
+    expect(retryOutput).toBeDefined();
+    const [retryEvent] = retryOutput?.[1] as CaseSyncEvent[];
+    expect(retryEvent.error).toBeUndefined();
+    expect(retryEvent.caseId).toBe(event.caseId);
   });
 });
