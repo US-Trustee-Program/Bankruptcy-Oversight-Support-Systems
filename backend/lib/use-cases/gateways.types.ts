@@ -984,6 +984,12 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
+  /**
+   * Applies `updates` only if the stored document with `id` is still 'pending'. Resolves false
+   * when no pending document matched, which is how a concurrent approval that already won the
+   * transition is detected.
+   */
+  updateIfPending(id: string, updates: Partial<TrusteeMatchVerification>): Promise<boolean>;
   findVerificationsMissingTaskDate(
     lastId: string | null,
     limit: number,

@@ -50,7 +50,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
   };
 
   let mockFindById: ReturnType<typeof vi.fn>;
-  let mockUpdate: ReturnType<typeof vi.fn>;
+  let mockUpdateIfPending: ReturnType<typeof vi.fn>;
   let mockFindVariationByFingerprint: ReturnType<typeof vi.fn>;
   let mockCreateVariation: ReturnType<typeof vi.fn>;
   let mockQueueTrusteeVerificationRemap: Mock<
@@ -68,7 +68,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     useCase = new TrusteeMatchVerificationUseCase();
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
-    mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
+    mockUpdateIfPending = vi.fn().mockResolvedValue(true);
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
@@ -88,7 +88,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
-        update: mockUpdate,
+        updateIfPending: mockUpdateIfPending,
       }),
     );
     vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
@@ -113,7 +113,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           findById: mockFindById,
-          update: mockUpdate,
+          updateIfPending: mockUpdateIfPending,
           search: mockSearch,
         }),
       );
@@ -357,7 +357,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           trusteeId: 'trustee-new',
         }),
       );
-      expect(mockUpdate).toHaveBeenCalledWith(
+      expect(mockUpdateIfPending).toHaveBeenCalledWith(
         'verification-1',
         expect.objectContaining({
           status: 'approved',
@@ -560,7 +560,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       // The approval and its affectedCaseIds snapshot are the durable record we protect --
       // they're written before the enqueue, so a failed send doesn't lose them. The error
       // still propagates so a failure to notify the remap job is never silently swallowed.
-      expect(mockUpdate).toHaveBeenCalledWith(
+      expect(mockUpdateIfPending).toHaveBeenCalledWith(
         'verification-1',
         expect.objectContaining({ status: 'approved' }),
       );
@@ -582,7 +582,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
-      expect(mockUpdate).toHaveBeenCalledWith(
+      expect(mockUpdateIfPending).toHaveBeenCalledWith(
         'verification-1',
         expect.objectContaining({
           status: 'approved',
@@ -596,7 +596,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
-      expect(mockUpdate).toHaveBeenCalledWith(
+      expect(mockUpdateIfPending).toHaveBeenCalledWith(
         'verification-1',
         expect.objectContaining({ affectedCaseIds: [] }),
       );
@@ -612,9 +612,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
         callOrder.push('getSurrogatesByFingerprints');
         return [];
       });
-      mockUpdate.mockImplementation(async () => {
-        callOrder.push('update');
-        return { ...sampleVerification, status: 'approved' };
+      mockUpdateIfPending.mockImplementation(async () => {
+        callOrder.push('updateIfPending');
+        return true;
       });
       mockQueueTrusteeVerificationRemap.mockImplementation(async () => {
         callOrder.push('queueTrusteeVerificationRemap');
@@ -624,9 +624,21 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(callOrder).toEqual([
         'getSurrogatesByFingerprints',
-        'update',
+        'updateIfPending',
         'queueTrusteeVerificationRemap',
       ]);
+    });
+
+    test('throws NotFoundError and does not enqueue the remap when a concurrent approval already won the pending transition', async () => {
+      const repo = Object.assign(new MockMongoRepository(), { findById: mockFindById });
+      vi.spyOn(repo, 'updateIfPending').mockResolvedValue(false);
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(repo);
+
+      const attempt = useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      await expect(attempt).rejects.toThrow(NotFoundError);
+      await expect(attempt).rejects.toThrow('Pending verification verification-1 not found.');
+      expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
     describe('division enforcement', () => {
@@ -654,7 +666,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
-        expect(mockUpdate).toHaveBeenCalledWith(
+        expect(mockUpdateIfPending).toHaveBeenCalledWith(
           'verification-1',
           expect.objectContaining({ status: 'approved' }),
         );
@@ -674,7 +686,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         ).rejects.toThrow(BadRequestError);
 
         expect(mockCreateVariation).not.toHaveBeenCalled();
-        expect(mockUpdate).not.toHaveBeenCalled();
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
         expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
       });
 
@@ -731,7 +743,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
         ).rejects.toThrow(/case-002/);
 
-        expect(mockUpdate).not.toHaveBeenCalled();
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
 
       test('rejects when the division matches but the chapter does not', async () => {
@@ -771,7 +783,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
         expect(error).not.toBeInstanceOf(BadRequestError);
         expect((error as Error).message).toContain('case-002');
-        expect(mockUpdate).not.toHaveBeenCalled();
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
 
       test('skips the division check entirely (and never fetches trustee appointments) when there are no affected cases', async () => {
@@ -780,7 +792,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
         expect(mockGetTrusteeAppointments).not.toHaveBeenCalled();
-        expect(mockUpdate).toHaveBeenCalledWith(
+        expect(mockUpdateIfPending).toHaveBeenCalledWith(
           'verification-1',
           expect.objectContaining({ status: 'approved' }),
         );
