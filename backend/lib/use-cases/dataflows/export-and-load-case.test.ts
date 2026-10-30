@@ -1177,7 +1177,11 @@ describe('Export and Load Case Tests', () => {
       );
     });
 
-    test('replaying after a transient sync failure still recomputes and reapplies the correct diff', async () => {
+    // This replay was already safe before this PR — a failed sync means nothing was written,
+    // so recomputing from scratch has no staleness risk. The hazard this reorder actually fixes
+    // (sync succeeds, the patch fails, and a naive replay sees no diff) is guarded separately by
+    // the `syncSpy.not.toHaveBeenCalled()` assertion a few tests above.
+    test('applies the patch before a failing sync and reapplies it on replay', async () => {
       const { originalCase, updatedCase } = buildFieldChangeCases();
       const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
 
