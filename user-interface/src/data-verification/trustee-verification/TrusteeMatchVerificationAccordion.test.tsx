@@ -1082,6 +1082,38 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('falls back to order.courtId when no court matches by division', async () => {
+      // No court in the accordion's own `courts` list matches sampleOrder.caseId's division
+      // ('081'), so courtDetails is undefined and the accordion must fall back to
+      // order.courtId ('0881'). The search modal does its own Api2.getCourts fetch to label
+      // whatever courtId it's handed, so that fetch is mocked here with an entry matching
+      // order.courtId - if the accordion wrongly passed undefined instead, this modal would
+      // find no match and show no selection at all.
+      const fallbackCourt: CourtDivisionDetails = {
+        courtId: sampleOrder.courtId!,
+        courtName: 'Fallback District Court',
+        officeName: '',
+        officeCode: '',
+        courtDivisionCode: 'unrelated-division',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
+      };
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [fallbackCourt] } as never);
+      renderWithProps({ courts: [] });
+      await mockDetailAndExpand();
+
+      await openSearchModal();
+
+      await waitFor(() => {
+        const input = document.getElementById(
+          `trustee-district-combobox-${sampleOrder.id}-combo-box-input`,
+        ) as HTMLInputElement;
+        expect(input.value).toBe('Fallback District Court');
+      });
+    });
+
     // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court
     // column. Only asserts on real forwarded values (the accordion's own contract) - not on
     // TrusteeSearchModal's placeholder wording for missing fields, which is that component's own
