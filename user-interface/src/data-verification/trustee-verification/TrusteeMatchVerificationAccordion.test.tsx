@@ -481,6 +481,27 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.getByTestId('resolved-statement').textContent).toContain('trustee-1');
     });
 
+    // Both fields are optional on the type (TrusteeMatchVerification carries no status-linked
+    // discriminated union), but approveVerification's resolvedTrusteeId parameter is a required
+    // string, so every order this backend use case approves has at least one of the two set.
+    // This state is reachable only if some other, currently nonexistent producer wrote an
+    // "approved" document without it.
+    test('renders an empty trustee name when both resolvedTrusteeName and resolvedTrusteeId are absent', () => {
+      renderWithProps({
+        order: {
+          ...resolvedOrder,
+          resolvedTrusteeName: undefined,
+          resolvedTrusteeId: undefined,
+          affectedCaseCount: 0,
+          affectedCaseIds: [],
+        },
+      });
+
+      expect(screen.getByTestId('resolved-statement').textContent).toBe(
+        'Trustee  was approved. No cases affected.',
+      );
+    });
+
     test('shows case numbers from the list response without fetching detail', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       renderWithProps({
@@ -641,6 +662,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand();
 
       await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
+    });
+
+    test('does not refetch detail on collapse and re-expand once it has already loaded', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+      renderWithProps();
+      await mockDetailAndExpand();
+      expect(detailSpy).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'false'),
+      );
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+
+      expect(detailSpy).toHaveBeenCalledTimes(1);
     });
 
     test('fetches the case summary for the originating case only', async () => {
@@ -1043,8 +1082,42 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('falls back to order.courtId when no court matches by division', async () => {
+      // No court in the accordion's own `courts` list matches sampleOrder.caseId's division
+      // ('081'), so courtDetails is undefined and the accordion must fall back to
+      // order.courtId ('0881'). The search modal does its own Api2.getCourts fetch to label
+      // whatever courtId it's handed, so that fetch is mocked here with an entry matching
+      // order.courtId - if the accordion wrongly passed undefined instead, this modal would
+      // find no match and show no selection at all.
+      const fallbackCourt: CourtDivisionDetails = {
+        courtId: sampleOrder.courtId!,
+        courtName: 'Fallback District Court',
+        officeName: '',
+        officeCode: '',
+        courtDivisionCode: 'unrelated-division',
+        courtDivisionName: '',
+        groupDesignator: '',
+        regionId: '',
+        regionName: '',
+      };
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [fallbackCourt] } as never);
+      renderWithProps({ courts: [] });
+      await mockDetailAndExpand();
+
+      await openSearchModal();
+
+      await waitFor(() => {
+        const input = document.getElementById(
+          `trustee-district-combobox-${sampleOrder.id}-combo-box-input`,
+        ) as HTMLInputElement;
+        expect(input.value).toBe('Fallback District Court');
+      });
+    });
+
     // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court
-    // column; TrusteeSearchModal.test.tsx covers the placeholder rendering itself.
+    // column. Only asserts on real forwarded values (the accordion's own contract) - not on
+    // TrusteeSearchModal's placeholder wording for missing fields, which is that component's own
+    // concern and is already covered by TrusteeSearchModal.test.tsx.
     test.each([
       {
         label: 'full legacy contact info',
@@ -1063,42 +1136,38 @@ describe('TrusteeMatchVerificationAccordion', () => {
           '555-1234',
           'john@example.com',
         ],
-        expectNotContains: [] as string[],
-      },
-      {
-        label: 'no legacy contact fields',
-        legacy: undefined,
-        expectContains: ['Address not provided', 'Phone not provided', 'Email not provided'],
-        expectNotContains: [] as string[],
       },
       {
         label: 'partial legacy info (address only)',
         legacy: { address1: '123 Main St', cityStateZipCountry: 'New York, NY 10001' },
-        expectContains: [
-          '123 Main St',
-          'New York, NY 10001',
-          'Phone not provided',
-          'Email not provided',
-        ],
-        expectNotContains: ['Address not provided'],
+        expectContains: ['123 Main St', 'New York, NY 10001'],
       },
-    ])(
-      "the search modal's court column shows $label",
-      async ({ legacy, expectContains, expectNotContains }) => {
-        renderWithProps({
-          order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
-        });
-        await mockDetailAndExpand();
+    ])("the search modal's court column shows $label", async ({ legacy, expectContains }) => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
+      });
+      await mockDetailAndExpand();
 
-        fireEvent.click(searchButton());
+      fireEvent.click(searchButton());
 
-        await waitFor(() => {
-          const details = document.querySelector('.court-trustee-details');
-          expectContains.forEach((text) => expect(details?.textContent).toContain(text));
-          expectNotContains.forEach((text) => expect(details?.textContent).not.toContain(text));
-        });
-      },
-    );
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expectContains.forEach((text) => expect(details?.textContent).toContain(text));
+      });
+    });
+
+    test('does not crash the search modal when the order has no legacy contact fields', async () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy: undefined } },
+      });
+      await mockDetailAndExpand();
+
+      fireEvent.click(searchButton());
+
+      await waitFor(() => {
+        expect(document.querySelector('.court-trustee-details')).toBeInTheDocument();
+      });
+    });
 
     test('selecting a search result closes search and opens Confirm Trustee Match for that trustee', async () => {
       const approvalSpy = vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval');
