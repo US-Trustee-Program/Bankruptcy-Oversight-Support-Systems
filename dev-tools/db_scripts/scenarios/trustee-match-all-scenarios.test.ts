@@ -20,6 +20,13 @@ function surrogatesFor(ops: SeedOperation[], collectionOrTable: string) {
   return ops.filter((o) => o.collectionOrTable === collectionOrTable).flatMap((o) => o.data);
 }
 
+function findTrustee(ops: SeedOperation[], trusteeId: unknown) {
+  return ops
+    .filter((o) => o.collectionOrTable === 'trustees')
+    .flatMap((o) => o.data)
+    .find((d) => d.trusteeId === trusteeId);
+}
+
 /** No surrogate CASE_APPOINTMENT survives, in either partition, for the given fingerprint. */
 function expectNoSurrogates(ops: SeedOperation[], fingerprint: unknown) {
   for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
@@ -265,6 +272,10 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     // expectNoSurrogates below would pass vacuously.
     expect(verification?.fingerprint).toBeTruthy();
 
+    const resolvedTrustee = findTrustee(ops, verification?.resolvedTrusteeId);
+    expect(resolvedTrustee).toBeDefined();
+    expect(resolvedTrustee?.name).toBe(verification?.resolvedTrusteeName);
+
     expectNoSurrogates(ops, verification?.fingerprint);
   });
 
@@ -277,6 +288,11 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.resolvedTrusteeId).toBeTruthy();
     expect(verification?.resolvedTrusteeName).toBeTruthy();
     expect(verification?.fingerprint).toBeTruthy();
+
+    const resolvedTrustee = findTrustee(ops, verification?.resolvedTrusteeId);
+    expect(resolvedTrustee).toBeDefined();
+    expect(resolvedTrustee?.name).toBe(verification?.resolvedTrusteeName);
+
     expect([...((verification?.affectedCaseIds as string[] | undefined) ?? [])].sort()).toEqual([
       '091-99-25850',
       '091-99-26681',

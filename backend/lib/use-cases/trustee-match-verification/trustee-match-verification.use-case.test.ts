@@ -467,6 +467,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
             caseId: 'case-001',
             mismatchReason: 'ambiguous',
             wasPreselectedConfirmed: 'true',
+            resolutionPath: 'accepted',
           }),
           measurements: expect.objectContaining({
             resolutionMs: expect.any(Number),
@@ -485,7 +486,10 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.anything(),
         'TrusteeMatchVerificationResolved',
         expect.objectContaining({
-          properties: expect.objectContaining({ wasPreselectedConfirmed: 'false' }),
+          properties: expect.objectContaining({
+            wasPreselectedConfirmed: 'false',
+            resolutionPath: 'manual-search',
+          }),
         }),
         expect.anything(),
         context.logger,
@@ -533,6 +537,22 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
+    test('reports resolutionMs as 0 when the verification has no createdOn', async () => {
+      mockFindById.mockResolvedValue({ ...sampleVerification, createdOn: undefined });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-a');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          measurements: expect.objectContaining({ resolutionMs: 0 }),
+        }),
+        expect.anything(),
+        context.logger,
+      );
+    });
+
     test("includes the resolved trustee's 1-based rank as selectedCandidateRank", async () => {
       mockFindById.mockResolvedValue({
         ...sampleVerification,
@@ -561,28 +581,38 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect('caseId' in eventBody.properties).toBe(false);
     });
 
-    test('emits failed telemetry when approveVerification throws', async () => {
-      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+    describe('when the verification lookup fails', () => {
+      beforeEach(() => {
+        mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+      });
 
-      await expect(
-        useCase.approveVerification(context, 'missing-id', 'trustee-new'),
-      ).rejects.toThrow();
+      test('emits failed telemetry when approveVerification throws', async () => {
+        await expect(
+          useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+        ).rejects.toThrow();
 
-      expect(mockCompleteTrace).toHaveBeenCalledWith(
-        expect.anything(),
-        'TrusteeMatchVerificationResolved',
-        expect.objectContaining({ success: false, properties: { action: 'approve' } }),
-        undefined,
-        context.logger,
-      );
-    });
+        expect(mockCompleteTrace).toHaveBeenCalledWith(
+          expect.anything(),
+          'TrusteeMatchVerificationResolved',
+          expect.objectContaining({ success: false, properties: { action: 'approve' } }),
+          undefined,
+          context.logger,
+        );
+      });
 
-    test('throws NotFoundError when document does not exist', async () => {
-      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+      test('throws NotFoundError when document does not exist', async () => {
+        await expect(
+          useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+        ).rejects.toThrow(NotFoundError);
+      });
 
-      await expect(
-        useCase.approveVerification(context, 'missing-id', 'trustee-new'),
-      ).rejects.toThrow(NotFoundError);
+      test('does not enqueue a remap when the verification lookup fails', async () => {
+        await expect(
+          useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+        ).rejects.toThrow();
+
+        expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
+      });
     });
 
     test('throws NotFoundError when verification exists but is not pending', async () => {
@@ -591,16 +621,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       await expect(
         useCase.approveVerification(context, 'verification-1', 'trustee-new'),
       ).rejects.toThrow(NotFoundError);
-    });
-
-    test('does not enqueue a remap when the verification lookup fails', async () => {
-      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
-
-      await expect(
-        useCase.approveVerification(context, 'missing-id', 'trustee-new'),
-      ).rejects.toThrow();
-
-      expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
     test('persists the approval and snapshot even when the remap enqueue fails afterward', async () => {
@@ -695,10 +715,16 @@ describe('TrusteeMatchVerificationUseCase', () => {
     });
 
     describe('division enforcement', () => {
-      const oneAffectedCase = [{ caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true }];
+      // Realistic 3-segment case IDs (not 'case-001'), so these tests exercise getCaseNumber's
+      // real division-prefix-stripping logic rather than its no-op 2-segment passthrough. Error
+      // messages built from these go through getCaseNumber, so they show the stripped 'yy-nnnnn'
+      // form (e.g. '24-00001'), not the full case ID.
+      const oneAffectedCase = [
+        { caseId: '081-24-00001', trusteeId: 'fp-abc123', isSurrogate: true },
+      ];
       const twoAffectedCases = [
-        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
-        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: '081-24-00001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: '081-24-00002', trusteeId: 'fp-abc123', isSurrogate: true },
       ];
 
       function mockCaseSummaries(byId: Record<string, Partial<CaseSummary>>) {
@@ -713,8 +739,8 @@ describe('TrusteeMatchVerificationUseCase', () => {
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
         ]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-          'case-002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
         });
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-new');
@@ -731,7 +757,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['082'] },
         ]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
         await expect(
@@ -747,25 +773,25 @@ describe('TrusteeMatchVerificationUseCase', () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
         mockGetTrusteeAppointments.mockResolvedValue([]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(/case-001/);
+        ).rejects.toThrow(/24-00001/);
       });
 
       test('rejection names the resolved trustee by name and gives next-step guidance, rather than a raw ID', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
         mockGetTrusteeAppointments.mockResolvedValue([]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new', 'Jane Doe'),
         ).rejects.toThrow(
-          'Jane Doe is not assigned to the division(s) for case(s): case-001. Choose a different candidate or search for a trustee whose appointments cover these cases.',
+          'Jane Doe is not assigned to the division(s) for case(s): 24-00001. Choose a different candidate or search for a trustee whose appointments cover these cases.',
         );
       });
 
@@ -773,7 +799,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
         mockGetTrusteeAppointments.mockResolvedValue([]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
         await expect(
@@ -783,18 +809,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       test('rejects a multi-case verification when only one of several affected cases is uncovered', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
-        // Covers case-001's division (081) but not case-002's (082).
+        // Covers 081-24-00001's division (081) but not 081-24-00002's (082).
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
         ]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-          'case-002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
         });
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(/case-002/);
+        ).rejects.toThrow(/24-00002/);
 
         expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
@@ -805,7 +831,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           { status: 'active', courtId: '081', chapter: '11', divisionCodes: ['081'] },
         ]);
         mockCaseSummaries({
-          'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
+          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
         await expect(
@@ -820,7 +846,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         ]);
         vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
           async (_context, caseId) => {
-            if (caseId === 'case-002') throw new Error('gateway timeout');
+            if (caseId === '081-24-00002') throw new Error('gateway timeout');
             return {
               caseId,
               courtId: '081',
@@ -835,7 +861,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         );
 
         expect(error).not.toBeInstanceOf(BadRequestError);
-        expect((error as Error).message).toContain('case-002');
+        expect((error as Error).message).toContain('081-24-00002');
         expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
 
@@ -893,7 +919,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   describe('getEnrichedVerification', () => {
     let mockTrusteeRead: ReturnType<typeof vi.fn>;
-    let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
 
     const makeTrustee = (trusteeId: string) => ({
       trusteeId,
@@ -909,15 +934,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
       mockTrusteeRead = vi
         .fn()
         .mockImplementation((trusteeId: string) => Promise.resolve(makeTrustee(trusteeId)));
-      mockGetTrusteeAppointments = vi.fn().mockResolvedValue([]);
 
       vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), { read: mockTrusteeRead }),
-      );
-      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-        Object.assign(new MockMongoRepository(), {
-          getTrusteeAppointments: mockGetTrusteeAppointments,
-        }),
       );
     });
 
