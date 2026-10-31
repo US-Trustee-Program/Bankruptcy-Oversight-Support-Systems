@@ -481,6 +481,27 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.getByTestId('resolved-statement').textContent).toContain('trustee-1');
     });
 
+    // Both fields are optional on the type (TrusteeMatchVerification carries no status-linked
+    // discriminated union), but approveVerification's resolvedTrusteeId parameter is a required
+    // string, so every order this backend use case approves has at least one of the two set.
+    // This state is reachable only if some other, currently nonexistent producer wrote an
+    // "approved" document without it.
+    test('renders an empty trustee name when both resolvedTrusteeName and resolvedTrusteeId are absent', () => {
+      renderWithProps({
+        order: {
+          ...resolvedOrder,
+          resolvedTrusteeName: undefined,
+          resolvedTrusteeId: undefined,
+          affectedCaseCount: 0,
+          affectedCaseIds: [],
+        },
+      });
+
+      expect(screen.getByTestId('resolved-statement').textContent).toBe(
+        'Trustee  was approved. No cases affected.',
+      );
+    });
+
     test('shows case numbers from the list response without fetching detail', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       renderWithProps({
@@ -641,6 +662,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand();
 
       await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
+    });
+
+    test('does not refetch detail on collapse and re-expand once it has already loaded', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+      renderWithProps();
+      await mockDetailAndExpand();
+      expect(detailSpy).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'false'),
+      );
+      fireEvent.click(accordionButton(sampleOrder.id));
+      await waitFor(() =>
+        expect(accordionButton(sampleOrder.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+
+      expect(detailSpy).toHaveBeenCalledTimes(1);
     });
 
     test('fetches the case summary for the originating case only', async () => {

@@ -301,6 +301,25 @@ describe('TrusteeMatchConfirmationModal', () => {
     );
   });
 
+  test('hides when the imperative handle hide() is called directly, as the real approval caller does', async () => {
+    renderModal();
+    showSelected();
+
+    await waitFor(() =>
+      expect(
+        document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`),
+      ).not.toHaveClass('is-hidden'),
+    );
+
+    act(() => modalRef.current?.hide());
+
+    await waitFor(() =>
+      expect(document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`)).toHaveClass(
+        'is-hidden',
+      ),
+    );
+  });
+
   test('forwards show() options (openModalButtonRef) to Modal for focus return on hide', async () => {
     const openerRef = React.createRef<HTMLButtonElement>();
     render(

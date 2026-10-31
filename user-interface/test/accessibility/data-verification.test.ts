@@ -15,6 +15,16 @@ async function narrowToTrusteeIdentityTasks(page: Page) {
   await page.keyboard.press('Escape');
 }
 
+// This suite does not scan: the Forbidden / No Office Assigned Stop panels (gated on
+// hasValidPermissions/hasOffices in DataVerificationScreen.tsx - would need a differently
+// permissioned auth fixture, which the fake-API harness this suite runs against doesn't have),
+// the loading spinner (a transient state, not realistically freezable for a scan), or the
+// 'no-pending-orders'/'too-many-filters' empty-state Alerts (DataVerificationScreen.tsx ~382-403)
+// - the fake-API fixtures always include pending orders, and pendingItemCount there is computed
+// over the whole unfiltered list, not the active filter selection, so 'no-pending-orders' can't
+// be reached by filter clicks alone; reaching 'too-many-filters' would need a type+status
+// combination with zero matching fixture orders, and none exists today. Deliberate omissions, not
+// oversights.
 test.describe('Data Verification', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
@@ -24,20 +34,22 @@ test.describe('Data Verification', () => {
     await page.goto(getUrl('/data-verification/'));
   });
 
-  test('should not have accessibility issues with filters, accordions, and modals', async ({
-    page,
-  }) => {
-    test.setTimeout(COMPLEX_TEST_TIMEOUT);
-    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
-
-    // Select status filters to make all orders visible
+  /** Selects pending/approved/rejected in the Task Status filter, making all orders visible. */
+  async function selectAllStatuses(page: Page) {
     await page.locator('#task-status-filter .input-container').click();
     await page.locator('[id="option-pending"]').click();
     await page.locator('[id="option-approved"]').click();
     await page.locator('[id="option-rejected"]').click();
     await page.keyboard.press('Escape');
+  }
 
-    // Open first accordion and interact with it
+  test('approve and reject modals for the first task have no accessibility issues', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+    await selectAllStatuses(page);
+
     await page.locator('[data-testid="accordion-button-order-list-guid-0"]').click();
     await expect(
       page.locator('[data-testid="button-radio-suggested-cases-checkbox-0-click-target"]'),
@@ -69,61 +81,44 @@ test.describe('Data Verification', () => {
       page.locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]'),
     ).toBeHidden();
 
-    // Check accessibility for first accordion
-    let accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Test accordion navigation - open second accordion
-    await page.locator('[data-testid="accordion-button-order-list-guid-1"]').click();
-    await expect(page.locator('[data-testid="accordion-content-guid-0"]')).toBeHidden();
-    await expect(page.locator('[data-testid="accordion-content-guid-1"]')).toBeVisible();
-
-    // Check accessibility for second accordion
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Open third accordion
-    await page.locator('[data-testid="accordion-button-order-list-guid-2"]').click();
-    await expect(page.locator('[data-testid="accordion-content-guid-1"]')).toBeHidden();
-    await expect(page.locator('[data-testid="accordion-content-guid-2"]')).toBeVisible();
-
-    // Check accessibility for third accordion
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Narrow type filter to consolidation orders only (deselect transfer and trustee-match)
-    await page.locator('#task-type-filter .input-container').click();
-    await page.locator('[id="option-transfer"]').click();
-    await page.locator('[id="option-trustee-match"]').click();
-    await page.keyboard.press('Escape');
-
-    // Continue accordion navigation - fourth accordion
-    await page.locator('[data-testid="accordion-button-order-list-guid-3"]').click();
-    await expect(page.locator('[data-testid="accordion-content-guid-2"]')).toBeHidden();
-    await expect(page.locator('[data-testid="accordion-content-guid-3"]')).toBeVisible();
-
-    // Check accessibility for fourth accordion
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Fifth accordion
-    await page.locator('[data-testid="accordion-button-order-list-guid-4"]').click();
-    await expect(page.locator('[data-testid="accordion-content-guid-3"]')).toBeHidden();
-    await expect(page.locator('[data-testid="accordion-content-guid-4"]')).toBeVisible();
-
-    // Check accessibility for fifth accordion
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Sixth accordion
-    await page.locator('[data-testid="accordion-button-order-list-guid-5"]').click();
-    await expect(page.locator('[data-testid="accordion-content-guid-4"]')).toBeHidden();
-    await expect(page.locator('[data-testid="accordion-content-guid-5"]')).toBeVisible();
-
-    // Check accessibility for sixth accordion
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
+
+  // guid-0/1/2 are transfer orders, guid-3/4/5 are consolidation orders (see mock-api2.ts
+  // `orders`) - narrowing the type filter to consolidation only isn't required for guid-3/4/5 to
+  // render (the default, unfiltered type selection already shows every type), but it exercises
+  // the Task Type ComboBox's own filter-interaction accessibility, matching this suite's original
+  // coverage.
+  const ACCORDIONS = [
+    { index: 0 },
+    { index: 1 },
+    { index: 2 },
+    { index: 3, narrowToConsolidation: true },
+    { index: 4 },
+    { index: 5 },
+  ];
+
+  for (const { index, narrowToConsolidation } of ACCORDIONS) {
+    test(`accordion ${index} has no accessibility issues when expanded`, async ({ page }) => {
+      test.setTimeout(COMPLEX_TEST_TIMEOUT);
+      await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+      await selectAllStatuses(page);
+
+      if (narrowToConsolidation) {
+        await page.locator('#task-type-filter .input-container').click();
+        await page.locator('[id="option-transfer"]').click();
+        await page.locator('[id="option-trustee-match"]').click();
+        await page.keyboard.press('Escape');
+      }
+
+      await page.locator(`[data-testid="accordion-button-order-list-guid-${index}"]`).click();
+      await expect(page.locator(`[data-testid="accordion-content-guid-${index}"]`)).toBeVisible();
+
+      const accessibilityScanResults = await createAxeBuilder(page).analyze();
+      expect(accessibilityScanResults.violations).toEqual([]);
+    });
+  }
 
   test('should not have accessibility issues in the trustee identity comparison table and confirmation modal', async ({
     page,
