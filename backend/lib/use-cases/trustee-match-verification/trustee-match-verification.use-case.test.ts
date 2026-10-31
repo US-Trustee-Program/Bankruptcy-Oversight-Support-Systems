@@ -14,6 +14,11 @@ import { CaseSummary } from '@common/cams/cases';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import MockData from '@common/cams/test-utilities/mock-data';
 
+/** A fresh MockMongoRepository with the given methods overridden by mocks. */
+function mockRepo<T extends object>(overrides: T) {
+  return Object.assign(new MockMongoRepository(), overrides);
+}
+
 describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
   let useCase: TrusteeMatchVerificationUseCase;
@@ -76,23 +81,23 @@ describe('TrusteeMatchVerificationUseCase', () => {
     mockGetTrusteeAppointments = vi.fn().mockResolvedValue([]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
+      mockRepo({
         getSurrogatesByFingerprints: mockGetSurrogatesByFingerprints,
       }),
     );
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
+      mockRepo({
         getTrusteeAppointments: mockGetTrusteeAppointments,
       }),
     );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
+      mockRepo({
         findById: mockFindById,
         updateIfPending: mockUpdateIfPending,
       }),
     );
     vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
+      mockRepo({
         findByFingerprint: mockFindVariationByFingerprint,
         createVariation: mockCreateVariation,
       }),
@@ -111,7 +116,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     beforeEach(() => {
       mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
-        Object.assign(new MockMongoRepository(), {
+        mockRepo({
           findById: mockFindById,
           updateIfPending: mockUpdateIfPending,
           search: mockSearch,
@@ -675,35 +680,17 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    // Ordering matters here, not just outcome: surrogates must be read while still live
-    // (before the remap job can delete them), and the approval + snapshot must be durably
-    // persisted before the remap is enqueued, so a failed enqueue never loses the record of
-    // what was approved or what cases it affected.
-    test('derives affectedCaseIds, then persists the approval, then enqueues the remap message', async () => {
-      const callOrder: string[] = [];
-      mockGetSurrogatesByFingerprints.mockImplementation(async () => {
-        callOrder.push('getSurrogatesByFingerprints');
-        return [];
-      });
-      mockUpdateIfPending.mockImplementation(async () => {
-        callOrder.push('updateIfPending');
-        return true;
-      });
-      mockQueueTrusteeVerificationRemap.mockImplementation(async () => {
-        callOrder.push('queueTrusteeVerificationRemap');
-      });
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(callOrder).toEqual([
-        'getSurrogatesByFingerprints',
-        'updateIfPending',
-        'queueTrusteeVerificationRemap',
-      ]);
-    });
+    // Ordering matters here, not just outcome: surrogates must be read while still live (before
+    // the remap job can delete them) and the approval + snapshot must be durably persisted before
+    // the remap is enqueued, so a failed enqueue never loses the record of what was approved or
+    // what cases it affected. Proven above by outcome rather than instrumented call order:
+    // 'snapshots affectedCaseIds onto the same update call that sets status approved' shows the
+    // surrogate-derived values reach the persisted update, and 'persists the approval and
+    // snapshot even when the remap enqueue fails afterward' shows the persist already completed
+    // by the time a failing enqueue is reached.
 
     test('throws NotFoundError and does not enqueue the remap when a concurrent approval already won the pending transition', async () => {
-      const repo = Object.assign(new MockMongoRepository(), { findById: mockFindById });
+      const repo = mockRepo({ findById: mockFindById });
       vi.spyOn(repo, 'updateIfPending').mockResolvedValue(false);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(repo);
 
@@ -936,7 +923,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         .mockImplementation((trusteeId: string) => Promise.resolve(makeTrustee(trusteeId)));
 
       vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
-        Object.assign(new MockMongoRepository(), { read: mockTrusteeRead }),
+        mockRepo({ read: mockTrusteeRead }),
       );
     });
 

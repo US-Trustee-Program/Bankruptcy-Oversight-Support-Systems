@@ -52,7 +52,7 @@ type RenderOptions = {
 };
 
 describe('TrusteeMatchConfirmationModal', () => {
-  const modalRef = React.createRef<TrusteeMatchConfirmationModalImperative>();
+  let modalRef: React.RefObject<TrusteeMatchConfirmationModalImperative | null>;
 
   function modalTree(options: RenderOptions, onConfirm: (selected: SelectedTrustee) => void) {
     return (
@@ -93,11 +93,19 @@ describe('TrusteeMatchConfirmationModal', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    modalRef = React.createRef<TrusteeMatchConfirmationModalImperative>();
   });
 
   test('renders no trustee content before show() is called', () => {
     renderModal();
     expect(screen.queryByTestId('confirm-match-selected')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('confirm-match-source')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Is this the same trustee as the information sent to CAMS?'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 3, name: 'What Happens Next' }),
+    ).not.toBeInTheDocument();
   });
 
   test('asks whether the selected trustee is the same trustee sent to CAMS', () => {
@@ -174,33 +182,26 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(within(sourceColumn()).queryAllByRole('img', { name: /differs/ })).toHaveLength(0);
   });
 
-  test('says how many cases will be assigned to the trustee', () => {
-    renderModal({ caseCount: 3 });
-    showSelected();
-
-    expect(
-      screen.getByRole('heading', { level: 3, name: 'What Happens Next' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('3 cases will be assigned to Jane Smith.')).toBeInTheDocument();
-  });
-
-  test('uses the singular for one case', () => {
-    renderModal({ caseCount: 1 });
-    showSelected();
-
-    expect(screen.getByText('1 case will be assigned to Jane Smith.')).toBeInTheDocument();
-  });
-
-  test('says no cases are affected yet when the case count is zero', () => {
-    renderModal({ caseCount: 0 });
-    showSelected();
-
-    expect(
-      screen.getByText(
+  test.each([
+    { caseCount: 3, expected: '3 cases will be assigned to Jane Smith.' },
+    { caseCount: 1, expected: '1 case will be assigned to Jane Smith.' },
+    {
+      caseCount: 0,
+      expected:
         'No cases are affected yet. Future cases sent with this information will be matched to Jane Smith automatically.',
-      ),
-    ).toBeInTheDocument();
-  });
+    },
+  ])(
+    'shows the correct case-assignment sentence for caseCount=$caseCount',
+    ({ caseCount, expected }) => {
+      renderModal({ caseCount });
+      showSelected();
+
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'What Happens Next' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(expected)).toBeInTheDocument();
+    },
+  );
 
   test('calls onConfirm with the selected trustee when Match Trustee is clicked', async () => {
     const { onConfirm } = renderModal();
