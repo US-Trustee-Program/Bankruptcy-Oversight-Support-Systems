@@ -1083,7 +1083,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court
-    // column; TrusteeSearchModal.test.tsx covers the placeholder rendering itself.
+    // column. Only asserts on real forwarded values (the accordion's own contract) - not on
+    // TrusteeSearchModal's placeholder wording for missing fields, which is that component's own
+    // concern and is already covered by TrusteeSearchModal.test.tsx.
     test.each([
       {
         label: 'full legacy contact info',
@@ -1102,42 +1104,38 @@ describe('TrusteeMatchVerificationAccordion', () => {
           '555-1234',
           'john@example.com',
         ],
-        expectNotContains: [] as string[],
-      },
-      {
-        label: 'no legacy contact fields',
-        legacy: undefined,
-        expectContains: ['Address not provided', 'Phone not provided', 'Email not provided'],
-        expectNotContains: [] as string[],
       },
       {
         label: 'partial legacy info (address only)',
         legacy: { address1: '123 Main St', cityStateZipCountry: 'New York, NY 10001' },
-        expectContains: [
-          '123 Main St',
-          'New York, NY 10001',
-          'Phone not provided',
-          'Email not provided',
-        ],
-        expectNotContains: ['Address not provided'],
+        expectContains: ['123 Main St', 'New York, NY 10001'],
       },
-    ])(
-      "the search modal's court column shows $label",
-      async ({ legacy, expectContains, expectNotContains }) => {
-        renderWithProps({
-          order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
-        });
-        await mockDetailAndExpand();
+    ])("the search modal's court column shows $label", async ({ legacy, expectContains }) => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
+      });
+      await mockDetailAndExpand();
 
-        fireEvent.click(searchButton());
+      fireEvent.click(searchButton());
 
-        await waitFor(() => {
-          const details = document.querySelector('.court-trustee-details');
-          expectContains.forEach((text) => expect(details?.textContent).toContain(text));
-          expectNotContains.forEach((text) => expect(details?.textContent).not.toContain(text));
-        });
-      },
-    );
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expectContains.forEach((text) => expect(details?.textContent).toContain(text));
+      });
+    });
+
+    test('does not crash the search modal when the order has no legacy contact fields', async () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy: undefined } },
+      });
+      await mockDetailAndExpand();
+
+      fireEvent.click(searchButton());
+
+      await waitFor(() => {
+        expect(document.querySelector('.court-trustee-details')).toBeInTheDocument();
+      });
+    });
 
     test('selecting a search result closes search and opens Confirm Trustee Match for that trustee', async () => {
       const approvalSpy = vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval');
