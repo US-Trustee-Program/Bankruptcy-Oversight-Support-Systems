@@ -3,10 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
-import Tag from '@/lib/components/uswds/Tag';
 import {
   EnrichedTrusteeMatchVerification,
-  IdentityMismatchReason,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -20,6 +18,7 @@ import TrusteeMatchConfirmationModal, {
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import TrusteeComparisonTable from './TrusteeComparisonTable';
+import TrusteeInformationReceivedTable from './TrusteeInformationReceivedTable';
 import {
   buildTrusteeComparison,
   SelectedTrustee,
@@ -29,11 +28,6 @@ import { buildTrusteeExplanation } from './trustee-explanation';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-
-const REASON_LABELS: Record<IdentityMismatchReason, string> = {
-  ambiguous: 'Multiple matches',
-  'no match': 'No match',
-};
 
 type TrusteeSearchLinkProps = {
   linkLabel: string;
@@ -109,7 +103,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const justApprovedRef = useRef(false);
   const resolvedStatementRef = useRef<HTMLParagraphElement>(null);
 
-  const { source } = order;
   // Facts come from the findings stored at match time (decision 6) - nothing is re-matched here.
   const comparison = useMemo(
     () => (detail ? buildTrusteeComparison(detail.findings, detail.source) : null),
@@ -142,10 +135,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await fetchDetail();
   }
 
-  const { divisionCode } = getCaseIdParts(order.caseId);
+  const divisionCode = order.caseId ? getCaseIdParts(order.caseId).divisionCode : undefined;
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const taskTypeLabel = taskType.get(order.taskType);
-  const reasonLabel = REASON_LABELS[order.mismatchReason];
   const isResolved = order.status === 'approved';
   const canApprove = order.status === 'pending';
 
@@ -174,9 +166,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
     justApprovedRef.current = true;
     const approvalMessage =
-      affectedCaseCount > 1
-        ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
-        : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
+      affectedCaseCount === 0
+        ? `Trustee ${trusteeName} appointed. No cases affected.`
+        : affectedCaseCount > 1
+          ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
+          : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
     onOrderUpdate(
       {
         message: approvalMessage,
@@ -224,11 +218,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   function handleSearchSelection(result: TrusteeSearchResult) {
     searchModalRef.current?.hide();
-    if (comparison) {
-      openConfirmation(selectedTrusteeFromSearch(result, comparison.candidates), {
-        openModalButtonRef: searchButtonRef,
-      });
-    }
+    // The Search for a trustee button (the only way to reach this handler) only renders once
+    // comparison is truthy (see renderDetailSection's `if (!comparison) return null`), and
+    // comparison never reverts to null afterward.
+    openConfirmation(selectedTrusteeFromSearch(result, comparison!.candidates), {
+      openModalButtonRef: searchButtonRef,
+    });
   }
 
   function getResolvedTrusteeDisplayName(): string {
@@ -238,19 +233,17 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // The resolved view sources affectedCaseIds straight from the list response (already the
   // complete, snapshotted/derived array - see getVerifications), so it never needs detail.
   // Pending tasks use the list response until detail loads, then the detail's live list.
+  // Resolved: affectedCaseCount and order.affectedCaseIds both come from the same server-side
+  // snapshot, so they can't disagree - an empty snapshot is always rendered by the
+  // affectedCaseCount === 0 branch below, never by this array.
   const affectedCaseIds = isResolved
-    ? order.affectedCaseIds.length
-      ? order.affectedCaseIds
-      : [order.caseId]
+    ? order.affectedCaseIds
     : detail?.affectedCaseIds?.length
       ? detail.affectedCaseIds
       : [order.caseId];
   const affectedCaseCount =
     isResolved || !detail ? order.affectedCaseCount : detail.affectedCaseIds.length;
   const hasFullCaseList = isResolved || !!detail;
-  // A task always renders at least its originating case link (see affectedCaseIds), so the
-  // header never claims fewer cases than it lists.
-  const headerCaseCount = Math.max(affectedCaseCount, 1);
 
   // The originating case's chapter narrows the manual search modal's results. Fetched only once
   // detail has loaded: DataVerificationScreen mounts every accordion up front (hidden rows
@@ -258,7 +251,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // not its row is ever expanded. Also skipped for approved tasks, matching handleExpand's guard.
   const hasDetail = !!detail;
   useEffect(() => {
-    if (order.status === 'approved' || !hasDetail) return;
+    if (order.status === 'approved' || !hasDetail || !order.caseId) return;
     let cancelled = false;
     Api2.getCaseSummary(order.caseId)
       .then((response) => {
@@ -314,36 +307,41 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     const hasCandidates = comparison.candidates.length > 0;
     return (
       <div className="trustee-match-candidate-section" data-testid="candidate-info">
-        {explanation?.showNameInterpretation && (
-          <div data-testid="name-interpretation">
-            <h3>How CAMS read this name</h3>
-            {/* comparison is non-null here only when detail loaded (see the useMemo above). */}
-            <p>{detail!.findings.sourceRaw.fullName}</p>
-          </div>
-        )}
-        <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
-        <p className="other-matches-subtext">
-          Results are ordered from strongest to weakest match. A{' '}
-          <Icon
-            name="warning"
-            className="difference-icon-symbol"
-            decorative={false}
-            tooltip="warning icon"
-          />{' '}
-          marks information that differs from what was sent.
-        </p>
-        <TrusteeComparisonTable
+        <h3 id={`information-received-heading-${order.id}`}>Trustee Information Received</h3>
+        <TrusteeInformationReceivedTable
           comparison={comparison}
-          sourceLabel={`Source record (${source})`}
-          onApprove={canApprove ? openConfirmation : undefined}
-          isProcessing={isProcessing}
-          labelledBy={`potential-matches-heading-${order.id}`}
+          labelledBy={`information-received-heading-${order.id}`}
         />
+        {hasCandidates && (
+          <>
+            <h3 id={`potential-matches-heading-${order.id}`}>Potential Matches</h3>
+            <p className="other-matches-subtext">
+              A{' '}
+              <Icon
+                name="warning"
+                className="difference-icon-symbol subtext-icon"
+                decorative={false}
+                tooltip="warning"
+              />{' '}
+              icon marks information that differs from what was sent.
+            </p>
+            <p className="match-count">
+              {comparison.candidates.length}{' '}
+              {comparison.candidates.length === 1 ? 'match' : 'matches'}
+            </p>
+            <TrusteeComparisonTable
+              comparison={comparison}
+              onApprove={canApprove ? openConfirmation : undefined}
+              isProcessing={isProcessing}
+              labelledBy={`potential-matches-heading-${order.id}`}
+            />
+          </>
+        )}
         <TrusteeSearchLink
           className={hasCandidates ? undefined : 'no-candidates-message'}
           linkMessage={
             hasCandidates
-              ? "If you don't find the trustee you're looking for,"
+              ? 'There are no other suggested matches in CAMS.'
               : 'There are no suggested matches in CAMS.'
           }
           linkLabel="Search for a trustee"
@@ -369,30 +367,30 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           data-testid={`accordion-heading-${order.id}`}
         >
           <div
-            className="accordion-header-field grid-col-6 text-no-wrap"
-            aria-label={`${fieldHeaders[0]} – ${order.dxtrTrustee.fullName}.`}
+            className="accordion-header-field grid-col-2 order-type text-no-wrap"
             data-cell={fieldHeaders[0]}
+          >
+            <span
+              className="event-type-label"
+              aria-label={`${fieldHeaders[0]} - ${taskTypeLabel}.`}
+            >
+              {taskTypeLabel}
+            </span>
+          </div>
+          <div
+            className="accordion-header-field grid-col-6 text-no-wrap"
+            aria-label={`${fieldHeaders[1]} – ${order.dxtrTrustee.fullName}.`}
+            data-cell={fieldHeaders[1]}
           >
             {order.dxtrTrustee.fullName}
           </div>
           <div
             className="accordion-header-field grid-col-2 text-no-wrap"
             title="Event date"
-            aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate)}.`}
-            data-cell={fieldHeaders[1]}
-          >
-            {formatDate(order.taskDate)}
-          </div>
-          <div
-            className="accordion-header-field grid-col-2 order-type text-no-wrap"
+            aria-label={`${fieldHeaders[2]} on ${formatDate(order.taskDate)}.`}
             data-cell={fieldHeaders[2]}
           >
-            <span
-              className="event-type-label"
-              aria-label={`${fieldHeaders[2]} - ${taskTypeLabel}.`}
-            >
-              {taskTypeLabel}
-            </span>
+            {formatDate(order.taskDate)}
           </div>
           <div
             className="accordion-header-field grid-col-2 order-status text-no-wrap"
@@ -411,41 +409,50 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           data-testid={`accordion-content-${order.id}`}
         >
           {isResolved ? (
-            <p
-              className="resolved-statement"
-              data-testid="resolved-statement"
-              ref={resolvedStatementRef}
-              tabIndex={-1}
-            >
-              <span>
-                Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {affectedCaseCount > 1 ? '' : 'case: '}
-              </span>
-              {caseLink}
-            </p>
+            affectedCaseCount === 0 ? (
+              <p
+                className="resolved-statement"
+                data-testid="resolved-statement"
+                ref={resolvedStatementRef}
+                tabIndex={-1}
+              >
+                Trustee {getResolvedTrusteeDisplayName()} was approved. No cases affected.
+              </p>
+            ) : (
+              <p
+                className="resolved-statement"
+                data-testid="resolved-statement"
+                ref={resolvedStatementRef}
+                tabIndex={-1}
+              >
+                <span>
+                  Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
+                  {affectedCaseCount > 1 ? '' : 'case: '}
+                </span>
+                {caseLink}
+              </p>
+            )
           ) : (
             <>
-              <div className="identity-task-header" data-testid="identity-task-header">
-                {reasonLabel && (
-                  <span className="identity-task-reason" data-testid="identity-task-reason">
-                    {reasonLabel}
-                  </span>
-                )}
-                <Tag id={`identity-task-source-${order.id}`} title={`Source: ${source}`}>
-                  {source}
-                </Tag>
-                <span className="identity-task-case-count" data-testid="identity-task-case-count">
-                  {headerCaseCount === 1 ? '1 case' : `${headerCaseCount} cases`}
-                </span>
-              </div>
               {explanation || detailLoadError ? (
-                <p className="problem-statement">
-                  <span>
-                    {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
-                    {affectedCaseCount > 1 ? '' : '1 case: '}
-                  </span>
-                  {caseLink}
-                </p>
+                !order.caseId ? (
+                  <p className="problem-statement">
+                    {explanation ? `${explanation.sentence} ` : ''}No cases yet. Cases attach as
+                    appointments sync.
+                  </p>
+                ) : affectedCaseCount === 0 ? (
+                  <p className="problem-statement">
+                    {explanation ? `${explanation.sentence} ` : ''}No cases affected yet.
+                  </p>
+                ) : (
+                  <p className="problem-statement">
+                    <span>
+                      {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
+                      {affectedCaseCount > 1 ? '' : '1 case: '}
+                    </span>
+                    {caseLink}
+                  </p>
+                )
               ) : (
                 <p className="problem-statement" data-testid="affected-cases-loading">
                   Loading&hellip;
@@ -462,7 +469,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           id={order.id}
           rows={comparison.rows}
           source={comparison.source}
-          caseCount={headerCaseCount}
+          caseCount={affectedCaseCount}
           onConfirm={handleApprove}
           isProcessing={isProcessing}
         />

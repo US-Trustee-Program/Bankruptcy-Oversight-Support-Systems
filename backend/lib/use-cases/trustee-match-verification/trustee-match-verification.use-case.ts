@@ -161,22 +161,26 @@ export class TrusteeMatchVerificationUseCase {
     verification: TrusteeMatchVerificationSearchResult,
     courts: CourtDivisionDetails[],
   ): string | undefined {
-    try {
-      const { divisionCode } = getCaseIdParts(verification.caseId);
-      const court = courts.find(
-        (c) => c.courtDivisionCode === divisionCode || c.courtId === verification.courtId,
-      );
-      if (!court) return undefined;
-      return court.courtDivisionName
-        ? `${court.courtName} - ${court.courtDivisionName}`
-        : court.courtName;
-    } catch {
-      const court = courts.find((c) => c.courtId === verification.courtId);
-      if (!court) return undefined;
-      return court.courtDivisionName
-        ? `${court.courtName} - ${court.courtDivisionName}`
-        : court.courtName;
+    const findByCourtIdOnly = () => courts.find((c) => c.courtId === verification.courtId);
+
+    let court: CourtDivisionDetails | undefined;
+    if (verification.caseId) {
+      try {
+        const { divisionCode } = getCaseIdParts(verification.caseId);
+        court = courts.find(
+          (c) => c.courtDivisionCode === divisionCode || c.courtId === verification.courtId,
+        );
+      } catch {
+        court = findByCourtIdOnly();
+      }
+    } else {
+      court = findByCourtIdOnly();
     }
+
+    if (!court) return undefined;
+    return court.courtDivisionName
+      ? `${court.courtName} - ${court.courtDivisionName}`
+      : court.courtName;
   }
 
   async approveVerification(
@@ -342,7 +346,7 @@ export class TrusteeMatchVerificationUseCase {
           success: true,
           properties: {
             action: 'approve',
-            caseId: verification.caseId,
+            ...(verification.caseId !== undefined ? { caseId: verification.caseId } : {}),
             mismatchReason: verification.mismatchReason,
             wasPreselectedConfirmed: String(wasPreselectedConfirmed),
             resolutionPath,

@@ -46,7 +46,6 @@ describe('buildTrusteeExplanation', () => {
     expect(explanation.sentence).toBe(
       'Trustee information sent to CAMS does not match any trustee in CAMS.',
     );
-    expect(explanation.showNameInterpretation).toBe(false);
   });
 
   test('two or more candidates: generic "matches multiple" sentence', () => {
@@ -56,15 +55,13 @@ describe('buildTrusteeExplanation', () => {
     expect(explanation.sentence).toBe(
       'Trustee information sent to CAMS matches multiple trustees in CAMS.',
     );
-    expect(explanation.showNameInterpretation).toBe(false);
   });
 
-  test('one candidate, nothing differs: falls back to "information", singular verb, no name interpretation', () => {
+  test('one candidate, nothing differs: falls back to "information", singular verb', () => {
     const explanation = buildTrusteeExplanation(findings([candidate(EXACT_NAME)]));
     expect(explanation.sentence).toBe(
       'Trustee information sent to CAMS does not exactly match a trustee in CAMS.',
     );
-    expect(explanation.showNameInterpretation).toBe(false);
   });
 
   test('one candidate, only state differs', () => {
@@ -101,6 +98,26 @@ describe('buildTrusteeExplanation', () => {
     );
   });
 
+  test('one candidate, only street differs: reads "address"', () => {
+    const explanation = buildTrusteeExplanation(
+      findings([
+        candidate({ ...EXACT_NAME, doesAddressMatch: { pass: false, streetCloseness: 0.5 } }),
+      ]),
+    );
+    expect(explanation.sentence).toBe(
+      'Trustee address sent to CAMS does not exactly match a trustee in CAMS.',
+    );
+  });
+
+  test('one candidate, only zip differs: reads "address"', () => {
+    const explanation = buildTrusteeExplanation(
+      findings([candidate({ ...EXACT_NAME, doesZipCodeMatch: { pass: false } })]),
+    );
+    expect(explanation.sentence).toBe(
+      'Trustee address sent to CAMS does not exactly match a trustee in CAMS.',
+    );
+  });
+
   test('one candidate, address and phone differ: plural verb, fixed order', () => {
     const explanation = buildTrusteeExplanation(
       findings([
@@ -131,28 +148,6 @@ describe('buildTrusteeExplanation', () => {
     );
   });
 
-  test('one candidate, non-exact name: shows the name interpretation', () => {
-    const explanation = buildTrusteeExplanation(
-      findings([candidate({ doesNameMatch: { pass: true, quality: 'weak' } })]),
-    );
-    expect(explanation.showNameInterpretation).toBe(true);
-  });
-
-  test('one candidate, failed name match: shows the name interpretation', () => {
-    const explanation = buildTrusteeExplanation(
-      findings([candidate({ doesNameMatch: { pass: false } })]),
-    );
-    expect(explanation.showNameInterpretation).toBe(true);
-  });
-
-  test('one candidate, no doesNameMatch record: reuses differs.name, so no interpretation', () => {
-    // The pipeline always scores name (it drives recall), so this never happens with real
-    // findings. differingRows treats a missing scorer as neutral/not-differing for every other
-    // field, and the mapper reuses that same flag for name, so it stays consistent here too.
-    const explanation = buildTrusteeExplanation(findings([candidate({})]));
-    expect(explanation.showNameInterpretation).toBe(false);
-  });
-
   describe('against pipeline-generated scenarios', () => {
     test('oneCandidateStateDiffers reads "state"', () => {
       const scenario = MockData.getTrusteeMatchScenarioFindings('oneCandidateStateDiffers');
@@ -160,24 +155,16 @@ describe('buildTrusteeExplanation', () => {
       expect(explanation.sentence).toBe(
         'Trustee state sent to CAMS does not exactly match a trustee in CAMS.',
       );
-      expect(explanation.showNameInterpretation).toBe(false);
     });
 
-    test('oneCandidateAddressAndPhoneDiffer reads a non-exact name and shows the name section', () => {
+    test('oneCandidateAddressAndPhoneDiffer reads a non-exact name', () => {
       const scenario = MockData.getTrusteeMatchScenarioFindings(
         'oneCandidateAddressAndPhoneDiffer',
       );
       const explanation = buildTrusteeExplanation(scenario);
-      expect(explanation.showNameInterpretation).toBe(true);
       expect(explanation.sentence).toBe(
         'Trustee name, address and phone sent to CAMS do not exactly match a trustee in CAMS.',
       );
-    });
-
-    test('oneCandidateExactName does not show the name section', () => {
-      const scenario = MockData.getTrusteeMatchScenarioFindings('oneCandidateExactName');
-      const explanation = buildTrusteeExplanation(scenario);
-      expect(explanation.showNameInterpretation).toBe(false);
     });
 
     test('multipleCandidates reads the generic multiple-match sentence', () => {

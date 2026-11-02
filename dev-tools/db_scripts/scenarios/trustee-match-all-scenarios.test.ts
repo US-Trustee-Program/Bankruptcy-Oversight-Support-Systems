@@ -4,6 +4,7 @@ import MockData from '@common/cams/test-utilities/mock-data.js';
 import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { generate } from './trustee-match-all-scenarios.js';
+import { HISTORICAL_CASE_IDS } from './dxtr-historical-trustees.js';
 
 function context(): SeedContext {
   return { generateCaseId: vi.fn() };
@@ -20,12 +21,27 @@ function surrogatesFor(ops: SeedOperation[], collectionOrTable: string) {
   return ops.filter((o) => o.collectionOrTable === collectionOrTable).flatMap((o) => o.data);
 }
 
+function findTrustee(ops: SeedOperation[], trusteeId: unknown) {
+  return ops
+    .filter((o) => o.collectionOrTable === 'trustees')
+    .flatMap((o) => o.data)
+    .find((d) => d.trusteeId === trusteeId);
+}
+
 /** No surrogate CASE_APPOINTMENT survives, in either partition, for the given fingerprint. */
 function expectNoSurrogates(ops: SeedOperation[], fingerprint: unknown) {
   for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
     const forThisFingerprint = surrogatesFor(ops, table).filter((s) => s.trusteeId === fingerprint);
     expect(forThisFingerprint).toHaveLength(0);
   }
+}
+
+/** The surrogate CASE_APPOINTMENT rows for the given fingerprint, in each partition table. */
+function surrogateSetsForFingerprint(ops: SeedOperation[], fingerprint: unknown) {
+  return ['case-trustee-appointments', 'trustee-case-appointments'].map((table) => ({
+    table,
+    surrogates: surrogatesFor(ops, table).filter((s) => s.trusteeId === fingerprint),
+  }));
 }
 
 // Slice 3's explanation sentences differ by which fields a single candidate mismatches; these
@@ -76,9 +92,19 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
     const ops = await generate(context());
 
     // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 7
-    // single-case tasks + 1 multi-case + 1 division-mismatch task.
-    expect(pendingTasks(ops)).toHaveLength(9);
-    for (const task of pendingTasks(ops)) {
+    // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 1 caseless task.
+    expect(pendingTasks(ops)).toHaveLength(11);
+    // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and seed-match-caseless (CAMS-953
+    // Slice 5, no case at all) are the deliberate exceptions: neither has a surrogate anywhere,
+    // including for its own originating case (the caseless task has no originating case to begin
+    // with). See the dedicated tests below.
+    const tasksExpectingASurrogate = pendingTasks(ops).filter(
+      (task) =>
+        !(task.id as string).startsWith('seed-match-no-cases-') &&
+        task.id !== 'seed-match-caseless',
+    );
+    expect(tasksExpectingASurrogate).toHaveLength(9);
+    for (const task of tasksExpectingASurrogate) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
           .filter((s) => s.trusteeId === task.fingerprint && s.isSurrogate === true)
@@ -90,23 +116,20 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
 
   test('should not seed two pending tasks on the same case', async () => {
     const ops = await generate(context());
-    const caseIds = pendingTasks(ops).map((task) => task.caseId);
+    // The caseless task's caseId is undefined; excluded here since this test is about distinct
+    // real case IDs, not about counting how many pending tasks have no case at all.
+    const caseIds = pendingTasks(ops)
+      .map((task) => task.caseId)
+      .filter((caseId): caseId is string => caseId !== undefined);
 
     // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
-    expect(caseIds.length).toBe(9);
+    expect(caseIds.length).toBe(10);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
   // dxtr-historical-trustees gives these cases real trustee appointments, and the sync never
   // raises a task for a case whose trustee it resolved.
   test('should not put identity tasks or surrogates on dxtr-historical-trustees cases', async () => {
-    const historicalCaseIds = [
-      '091-99-86706',
-      '091-99-87899',
-      '091-99-99943',
-      '091-99-97816',
-      '091-99-98483',
-    ];
     const ops = await generate(context());
     const tasks = ops
       .filter((o) => o.collectionOrTable === 'trustee-match-verification')
@@ -116,7 +139,9 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
       ...surrogatesFor(ops, 'case-trustee-appointments').map((s) => s.caseId),
     ] as string[];
 
-    expect(caseIds.filter((caseId) => historicalCaseIds.includes(caseId))).toEqual([]);
+    expect(
+      caseIds.filter((caseId) => (HISTORICAL_CASE_IDS as readonly string[]).includes(caseId)),
+    ).toEqual([]);
   });
 });
 
@@ -133,18 +158,14 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.status).toBe('pending');
     expect(verification?.fingerprint).toBeTruthy();
 
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(3);
-      for (const surrogate of forThisFingerprint) {
+    for (const { surrogates } of surrogateSetsForFingerprint(ops, verification?.fingerprint)) {
+      expect(surrogates).toHaveLength(3);
+      for (const surrogate of surrogates) {
         expect(surrogate.documentType).toBe('CASE_APPOINTMENT');
         expect(surrogate.isSurrogate).toBe(true);
         expect(surrogate.unassignedOn).toBeUndefined();
       }
-      const caseIds = forThisFingerprint.map((s) => s.caseId).sort();
+      const caseIds = surrogates.map((s) => s.caseId).sort();
       expect(caseIds).toEqual(['091-99-25850', '091-99-26681', '091-99-26914']);
     }
   });
@@ -157,18 +178,14 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.status).toBe('pending');
     expect(verification?.fingerprint).toBeTruthy();
 
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(3);
-      for (const surrogate of forThisFingerprint) {
+    for (const { surrogates } of surrogateSetsForFingerprint(ops, verification?.fingerprint)) {
+      expect(surrogates).toHaveLength(3);
+      for (const surrogate of surrogates) {
         expect(surrogate.documentType).toBe('CASE_APPOINTMENT');
         expect(surrogate.isSurrogate).toBe(true);
         expect(surrogate.chapter).toBe('11');
       }
-      const caseIds = forThisFingerprint.map((s) => s.caseId).sort();
+      const caseIds = surrogates.map((s) => s.caseId).sort();
       expect(caseIds).toEqual(['081-23-10005', '091-99-11079', '091-99-40761']);
     }
 
@@ -200,6 +217,45 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(appointment.divisionCodes).not.toContain(divisionsByCaseId['081-23-10005']);
   });
 
+  test('should have no surrogate rows for a pending no-cases mismatch, including its own case', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-no-cases-091-99-05433');
+
+    expect(verification).toBeDefined();
+    expect(verification?.status).toBe('pending');
+    expect(verification?.fingerprint).toBeTruthy();
+    expect(
+      (verification?.findings as { candidates: unknown[] } | undefined)?.candidates,
+    ).toHaveLength(2);
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = surrogatesFor(ops, table);
+      const forThisFingerprint = surrogates.filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(0);
+    }
+  });
+
+  test('should have no caseId/courtId and no surrogate rows for a pending caseless mismatch', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-caseless');
+
+    expect(verification).toBeDefined();
+    expect(verification?.status).toBe('pending');
+    expect(verification?.fingerprint).toBeTruthy();
+    expect('caseId' in (verification ?? {})).toBe(false);
+    expect('courtId' in (verification ?? {})).toBe(false);
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = surrogatesFor(ops, table);
+      const forThisFingerprint = surrogates.filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(0);
+    }
+  });
+
   test('should have no surviving surrogate rows for an already-approved mismatch', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-28263');
@@ -211,6 +267,10 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     // Without this, an undefined fingerprint would match undefined surrogate trusteeIds and
     // expectNoSurrogates below would pass vacuously.
     expect(verification?.fingerprint).toBeTruthy();
+
+    const resolvedTrustee = findTrustee(ops, verification?.resolvedTrusteeId);
+    expect(resolvedTrustee).toBeDefined();
+    expect(resolvedTrustee?.name).toBe(verification?.resolvedTrusteeName);
 
     expectNoSurrogates(ops, verification?.fingerprint);
   });
@@ -224,6 +284,11 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(verification?.resolvedTrusteeId).toBeTruthy();
     expect(verification?.resolvedTrusteeName).toBeTruthy();
     expect(verification?.fingerprint).toBeTruthy();
+
+    const resolvedTrustee = findTrustee(ops, verification?.resolvedTrusteeId);
+    expect(resolvedTrustee).toBeDefined();
+    expect(resolvedTrustee?.name).toBe(verification?.resolvedTrusteeName);
+
     expect([...((verification?.affectedCaseIds as string[] | undefined) ?? [])].sort()).toEqual([
       '091-99-25850',
       '091-99-26681',

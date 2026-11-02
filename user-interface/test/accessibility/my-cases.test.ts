@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { createAxeBuilder, getUrl } from './test-constants';
+import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('My Cases', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -16,6 +16,8 @@ test.describe('My Cases', () => {
     await page.locator('[data-testid="open-modal-button"]').click();
     await expect(page.locator('#info-modal-heading')).toBeVisible();
     await expect(page.locator('#info-modal-cancel-button')).toBeVisible();
+    // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
+    await page.waitForTimeout(ANALYZE_DELAY);
 
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

@@ -10,7 +10,6 @@ import { ComparisonRow, ComparisonRowKey, SelectedTrustee } from './trustee-comp
 
 interface TrusteeMatchConfirmationModalProps {
   id: string;
-  /** The comparison table's rows; Found by is about recall, not identity, so it is not shown. */
   rows: ComparisonRow[];
   source: Record<ComparisonRowKey, string | undefined>;
   caseCount: number;
@@ -25,6 +24,9 @@ export type TrusteeMatchConfirmationModalImperative = {
 };
 
 function caseAssignmentSentence(caseCount: number, trusteeName: string): string {
+  if (caseCount === 0) {
+    return `No cases are affected yet. Future cases sent with this information will be matched to ${trusteeName} automatically.`;
+  }
   const cases = caseCount === 1 ? '1 case' : `${caseCount} cases`;
   return `${cases} will be assigned to ${trusteeName}.`;
 }
@@ -55,8 +57,6 @@ function TrusteeMatchConfirmationModal_(
   }
 
   useImperativeHandle(ref, () => ({ show, hide }));
-
-  const identityRows = rows.filter((row) => row.key !== 'foundBy');
 
   const actionButtonGroup = {
     modalId: `trustee-confirmation-modal-${id}`,
@@ -97,7 +97,7 @@ function TrusteeMatchConfirmationModal_(
             <div className="confirm-match-comparison">
               <section className="confirm-match-column" data-testid="confirm-match-source">
                 <h3>Information Sent to CAMS</h3>
-                {identityRows.map(({ key, label }) => (
+                {rows.map(({ key, label }) => (
                   <AccessibleFieldValue key={key} label={label}>
                     {source[key] ?? 'Not Provided'}
                   </AccessibleFieldValue>
@@ -105,7 +105,7 @@ function TrusteeMatchConfirmationModal_(
               </section>
               <section className="confirm-match-column" data-testid="confirm-match-selected">
                 <h3>Selected CAMS Trustee</h3>
-                {identityRows.map(({ key, label }) => {
+                {rows.map(({ key, label }) => {
                   const { value, differs } = selected.cells[key];
                   return (
                     <AccessibleFieldValue key={key} label={label} className="confirm-match-field">

@@ -12,6 +12,7 @@ const ADDRESS_PHONE_TASK_ID = 'e2e-trustee-match-verification-pending-2'; // Jor
 const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
 const STATE_DIFFERS_TASK_ID = 'e2e-trustee-match-verification-pending-4'; // Morgan Stateline, exact name
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
+const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and Carter Caselessmatch, no caseId/courtId
 
 async function expandTask(page: Page, id: string) {
   await page.getByTestId(`accordion-button-order-list-${id}`).click();
@@ -62,47 +63,50 @@ test.describe('Trustee Identity Verification', () => {
     }
   });
 
-  test('shows the reason, DXTR source badge and case count in the expanded header', async ({
+  test('explains why the task needs review', async ({ page }) => {
+    const content = await expandTask(page, AMBIGUOUS_TASK_ID);
+
+    await expect(content.locator('.problem-statement')).toContainText(
+      'Trustee information sent to CAMS matches multiple trustees in CAMS.',
+      timeoutOption,
+    );
+    await expect(content).not.toContainText('Sent By Court');
+  });
+
+  test('shows the information received, then each candidate as a row in rank order', async ({
     page,
   }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
-    const header = content.getByTestId('identity-task-header');
-    await expect(header.getByTestId('identity-task-reason')).toHaveText('Multiple matches');
-    await expect(header.locator('.usa-tag')).toHaveText('DXTR');
-    await expect(header.getByTestId('identity-task-case-count')).toHaveText('1 case');
-    await expect(content).not.toContainText('Sent By Court');
-  });
-
-  test('compares the source record with each candidate in rank order', async ({ page }) => {
-    const content = await expandTask(page, AMBIGUOUS_TASK_ID);
+    const received = content.getByTestId('trustee-information-received-table');
+    await expect(received).toBeVisible(timeoutOption);
+    await expect(received.getByRole('columnheader')).toHaveText([
+      'Name',
+      'Address',
+      'Phone',
+      'Email',
+    ]);
+    await expect(received.locator('tbody tr')).toHaveCount(1);
 
     const table = content.getByTestId('trustee-comparison-table');
     await expect(table).toBeVisible(timeoutOption);
     await expect(table.getByRole('columnheader')).toHaveText([
-      'Field',
-      'Source record (DXTR)',
+      'Name',
+      'Address',
+      'Phone',
+      'Email',
+      'Action',
+    ]);
+    await expect(table.locator('tbody').getByRole('rowheader')).toHaveText([
       'Taylor Multimatch',
       'Tyler Multimatch',
     ]);
-    // Body rows only: a pending task's footer adds a screen-reader-only 'Action' row header.
-    await expect(table.locator('tbody').getByRole('rowheader')).toHaveText([
-      'Name',
-      'Phone',
-      'Street',
-      'City',
-      'State',
-      'Zip',
-      'Email',
-      'Found by',
-    ]);
 
-    // "T" is only an initial, and neither candidate shares the source's street or phone; the city,
-    // state and zip agree and no email was sent, so those rows carry no marker.
-    const nameRow = table
-      .getByRole('row')
-      .filter({ has: page.getByRole('rowheader', { name: 'Name' }) });
-    await expect(nameRow.getByLabel('Name differs from the source record')).toHaveCount(2);
+    // "T" is only an initial, and neither candidate shares the source's street or phone, so each
+    // row marks its name, address and phone; no email was sent, so Email carries no marker.
+    await expect(table.getByLabel('Name differs from the source record')).toHaveCount(2);
+    await expect(table.getByLabel('Address differs from the source record')).toHaveCount(2);
+    await expect(table.getByLabel('Phone differs from the source record')).toHaveCount(2);
     await expect(table.getByLabel(/differs from the source record/)).toHaveCount(6);
   });
 
@@ -139,10 +143,14 @@ test.describe('Trustee Identity Verification', () => {
   }) => {
     const content = await expandTask(page, NO_CANDIDATES_TASK_ID);
 
-    await expect(content.getByTestId('identity-task-reason')).toHaveText('No match');
+    await expect(content.locator('.problem-statement')).toContainText(
+      'Trustee information sent to CAMS does not match any trustee in CAMS.',
+      timeoutOption,
+    );
     await expect(
-      content.getByTestId('trustee-comparison-table').getByRole('columnheader'),
-    ).toHaveText(['Field', 'Source record (DXTR)']);
+      content.getByTestId('trustee-information-received-table').getByRole('columnheader'),
+    ).toHaveText(['Name', 'Address', 'Phone', 'Email']);
+    await expect(content.getByTestId('trustee-comparison-table')).toHaveCount(0);
     await expect(content).toContainText('There are no suggested matches in CAMS.');
     await expect(content.getByRole('button', { name: /Search for a trustee/ })).toBeVisible();
   });
@@ -179,6 +187,30 @@ test.describe('Trustee Identity Verification', () => {
     await expect(await expandTask(page, ADDRESS_PHONE_TASK_ID)).toContainText(
       'Trustee name, address and phone sent to CAMS do not exactly match a trustee in CAMS. Affects 1 case:',
     );
+  });
+
+  test('shows "No cases yet" for a caseless task, and the modal\'s zero-case sentence', async ({
+    page,
+  }) => {
+    const content = await expandTask(page, CASELESS_TASK_ID);
+
+    await expect(content.locator('.problem-statement')).toContainText(
+      'No cases yet. Cases attach as appointments sync.',
+      timeoutOption,
+    );
+    await expect(content.locator('.problem-statement a.new-tab-link')).toHaveCount(0);
+
+    await content.getByTestId('approve-candidate-seed-trustee-match-caseless-b').click();
+
+    const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${CASELESS_TASK_ID}`);
+    await expect(modal).toBeVisible(timeoutOption);
+    await expect(modal).toContainText(
+      'No cases are affected yet. Future cases sent with this information will be matched to Carter Caselessmatch automatically.',
+    );
+
+    // Approval is not submitted here: see the CAMS-956 deferred specs in the Slice 4 prompts.
+    await page.locator(`#trustee-confirmation-modal-${CASELESS_TASK_ID}-cancel-button`).click();
+    await expect(modal).toBeHidden(timeoutOption);
   });
 
   test('shows "How CAMS read this name" only for the one-candidate, non-exact-name task', async ({

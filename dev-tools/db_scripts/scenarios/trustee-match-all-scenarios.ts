@@ -35,6 +35,11 @@
  *     7. Pending, 3 affected cases, all Chapter 11, but one case is in a different court the
  *        candidate has no appointment in at all (court+division mismatch rather than chapter
  *        mismatch), isolating the other half of isAppointmentMatch. See CAMS-905 PR #3090.
+ *     8. Pending, ambiguous (2 candidates, multipleCandidatesNoCases), but NO surrogate
+ *        CASE_APPOINTMENT is seeded for its fingerprint - a genuinely zero live affected-case
+ *        count (CAMS-953 "No cases affected yet").
+ *     9. Pending, ambiguous (2 candidates, multipleCandidatesCaseless), with NO caseId/courtId at
+ *        all - a task that never had an originating case (CAMS-953 Slice 5 "No cases yet").
  *
  * Inactive-trustee/appointment variations are not identity tasks (an appointment concern, see
  * CAMS-956), so this scenario no longer seeds them.
@@ -120,6 +125,7 @@ const CASE_MULTI_A = '091-99-25850';
 const CASE_MULTI_B = '091-99-26681';
 const CASE_MULTI_C = '091-99-26914';
 const CASE_RESOLVED_NO_SURROGATES = '091-99-28263';
+const CASE_NO_CASES = '091-99-05433';
 
 // Multi-case DIVISION-mismatch scenario (3 distinct cases, all Chapter 11): two share a
 // court+division the candidate is appointed in, the third is a genuinely different court the
@@ -235,6 +241,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           'oneCandidateNothingDiffers',
           'multiCase',
           'divisionMismatch',
+          'multipleCandidatesNoCases',
+          'multipleCandidatesCaseless',
         ),
         TRUSTEE_RESOLVED,
       ],
@@ -340,6 +348,45 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0209',
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // 8. Pending ambiguous task with NO surrogate CASE_APPOINTMENT for its fingerprint, unlike
+    // every task above: getAffectedCaseIdsByFingerprint returns an empty array live, so this
+    // task's affected-case count is genuinely zero, not merely unloaded.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-no-cases-${CASE_NO_CASES}`,
+          ...identityTaskFields('multipleCandidatesNoCases'),
+          caseId: CASE_NO_CASES,
+          courtId: '0209',
+          status: 'pending',
+          taskDate: '2022-05-04T00:00:00.000Z',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // 9. Pending ambiguous task with no caseId/courtId at all (CAMS-953 Slice 5): unlike the
+    // no-cases task above, this task never had an originating case to begin with - there is no
+    // case to seed a surrogate against. The producer that creates these in practice (the ACMS
+    // sync, CAMS-954) doesn't exist yet, so only this seed creates one, for local/staging viewing.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: 'seed-match-caseless',
+          ...identityTaskFields('multipleCandidatesCaseless'),
+          status: 'pending',
+          taskDate: '2023-01-10T00:00:00.000Z',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

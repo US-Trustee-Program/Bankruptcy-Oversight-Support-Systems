@@ -305,6 +305,75 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     expectedCandidateCount: 1,
   },
 
+  // trustee-match-all-scenarios: same tie-at-every-resolver shape as multipleCandidates, for a
+  // pending task the seed gives zero surrogate case appointments (a genuinely zero affected-case
+  // count, not merely an unloaded one).
+  multipleCandidatesNoCases: {
+    source: {
+      firstName: 'J',
+      lastName: 'Nocasematch',
+      fullName: 'J Nocasematch',
+      legacy: {
+        address1: '1 Source Way',
+        cityStateZipCountry: 'New York NY 10009',
+        phone: '212-555-9998',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-nocases-a',
+        firstName: 'Jamie',
+        lastName: 'Nocasematch',
+        address: { address1: '500 Nocase Ave', city: 'New York', state: 'NY', zipCode: '10009' },
+        phone: '212-555-9001',
+        email: 'jamie.nocasematch@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-nocases-b',
+        firstName: 'Jesse',
+        lastName: 'Nocasematch',
+        address: { address1: '501 Nocase Ave', city: 'New York', state: 'NY', zipCode: '10009' },
+        phone: '212-555-9002',
+        email: 'jesse.nocasematch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
+
+  // trustee-match-all-scenarios: same tie-at-every-resolver shape as multipleCandidates, for a
+  // pending task that never had an originating case at all (CAMS-953 Slice 5, no caseId/courtId).
+  multipleCandidatesCaseless: {
+    source: {
+      firstName: 'C',
+      lastName: 'Caselessmatch',
+      fullName: 'C Caselessmatch',
+      legacy: {
+        address1: '1 Source Pl',
+        cityStateZipCountry: 'New York NY 10011',
+        phone: '212-555-9997',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-caseless-a',
+        firstName: 'Casey',
+        lastName: 'Caselessmatch',
+        address: { address1: '502 Caseless Ave', city: 'New York', state: 'NY', zipCode: '10011' },
+        phone: '212-555-9101',
+        email: 'casey.caselessmatch@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-caseless-b',
+        firstName: 'Carter',
+        lastName: 'Caselessmatch',
+        address: { address1: '503 Caseless Ave', city: 'New York', state: 'NY', zipCode: '10011' },
+        phone: '212-555-9102',
+        email: 'carter.caselessmatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
+
   // trustee-match-all-scenarios: approved tasks whose pipeline run found no candidate.
   resolvedNoSurrogates: {
     source: { firstName: 'Riley', lastName: 'Resolvedmatch', fullName: 'Riley Resolvedmatch' },
