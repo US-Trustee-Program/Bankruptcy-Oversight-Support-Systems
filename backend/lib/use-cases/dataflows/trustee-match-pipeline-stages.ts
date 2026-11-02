@@ -2,8 +2,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import {
+  AddressMatchQuality,
   compareByAddressPointsThenNameQuality,
   compareByNameQuality,
+  NameMatchQuality,
 } from '@common/cams/trustee-match-pipeline';
 import factory from '../../factory';
 import {
@@ -126,11 +128,10 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  * matchName's graded verdict, present only on a pass: 'exact' when every compared field matched
  * literally; 'strong' when the surname matched but a given name was relaxed (initial, nickname,
  * swap); 'weak' when the surname itself only matched fuzzily.
+ *
+ * firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
+ * or a known nickname), which resolveByStateOnly does not accept without a contact signal.
  */
-type NameMatchQuality = 'exact' | 'strong' | 'weak';
-
-/** firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
- * or a known nickname), which resolveByStateOnly does not accept without a contact signal. */
 type NameMatchVerdict =
   { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
 
@@ -1044,8 +1045,6 @@ function geoPoints(scores: ScoreByScorer): number | null {
   const matches = [city, state, zip].filter((match) => match === true).length;
   return dominant ? GEO_POINTS : matches;
 }
-
-type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
 
 type AddressMatchScore =
   | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
