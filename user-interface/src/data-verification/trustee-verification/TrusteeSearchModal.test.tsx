@@ -314,6 +314,85 @@ describe('TrusteeSearchModal', () => {
     expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
+  test('omits the coverage checkbox when chapter is missing, since the backend would not filter', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    expect(
+      screen.queryByRole('checkbox', {
+        name: 'Show trustees without confirmed coverage for this case',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('reruns the last search with the new filter when the coverage checkbox is toggled after typing', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', '0208', '7');
+    });
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'Show trustees without confirmed coverage for this case',
+    });
+    await userEvent.click(checkbox);
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', undefined, undefined);
+    });
+
+    await userEvent.click(checkbox);
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', '0208', '7');
+    });
+  });
+
+  test('discards a search response that resolves after the modal is shown again', async () => {
+    let resolveSearch: (value: { data: TrusteeSearchResult[] }) => void = () => {};
+    vi.spyOn(Api2, 'searchTrustees').mockReturnValue(
+      new Promise((resolve) => {
+        resolveSearch = resolve;
+      }),
+    );
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+
+    act(() => modalRef.current?.show());
+    await act(async () => {
+      resolveSearch({ data: sampleResults });
+    });
+
+    expect(screen.queryByText('John Smith')).not.toBeInTheDocument();
+  });
+
   test('normalizes courtDivisionCode to courtId when searching', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 

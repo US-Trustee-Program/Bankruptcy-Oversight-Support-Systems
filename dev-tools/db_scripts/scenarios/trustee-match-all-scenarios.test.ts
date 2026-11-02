@@ -353,3 +353,32 @@ describe('trustee-match-all-scenarios (CAMS-953 Slice 7 candidate pagination)', 
     expect(candidates).toHaveLength(7);
   });
 });
+
+// Every scenario this generator seeds a pending task for. A scenario's trustees must also be
+// seeded, or the task's candidate links and approvals point at trustees that don't exist.
+const SEEDED_SCENARIO_KEYS = [
+  'multipleCandidates',
+  'oneCandidateAddressAndPhoneDiffer',
+  'oneCandidateStateDiffers',
+  'oneCandidateNameAddressEmailDiffer',
+  'oneCandidateExactName',
+  'oneCandidateNothingDiffers',
+  'multiCase',
+  'divisionMismatch',
+  'multipleCandidatesNoCases',
+  'multipleCandidatesCaseless',
+  'manyCandidates',
+] as const;
+
+describe('trustee-match-all-scenarios (seeded scenario trustees)', () => {
+  test.each(SEEDED_SCENARIO_KEYS)(
+    'should seed every %s scenario trustee into the trustees collection',
+    async (key) => {
+      const ops = await generate(context());
+
+      for (const trustee of TRUSTEE_MATCH_FINDINGS_SCENARIOS[key].trustees) {
+        expect(findTrustee(ops, trustee.trusteeId)).toBeDefined();
+      }
+    },
+  );
+});
