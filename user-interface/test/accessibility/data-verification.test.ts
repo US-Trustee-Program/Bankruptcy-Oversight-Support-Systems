@@ -254,7 +254,7 @@ test.describe('Data Verification', () => {
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    await page.locator('#page-2-results').click();
+    await page.getByRole('button', { name: 'Page 2' }).click();
     await expect(table.getByRole('rowheader')).toHaveCount(2);
 
     accessibilityScanResults = await createAxeBuilder(page).analyze();
