@@ -172,9 +172,14 @@ test.describe('Data Verification', () => {
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     await page.getByRole('button', { name: 'Search for a trustee' }).click();
+    await expect(page.locator(`#trustee-search-show-without-coverage-${taskId}`)).toBeVisible();
     await page.locator(`#${comboBoxId}-expand`).click();
     await page.locator(`#${comboBoxId}-combo-box-input`).fill('Riley');
     await page.locator(`[data-testid="${comboBoxId}-option-item-0"]`).click();
+    // Scan while the search modal and its coverage checkbox are visible; let the fade-in finish.
+    await page.waitForTimeout(ANALYZE_DELAY);
+    const searchModalScan = await createAxeBuilder(page).analyze();
+    expect(searchModalScan.violations).toEqual([]);
     await page.locator(`[id="trustee-search-modal-${taskId}-submit-button"]`).click();
 
     const cancelButton = page.locator(`[id="trustee-confirmation-modal-${taskId}-cancel-button"]`);
@@ -247,7 +252,7 @@ test.describe('Data Verification', () => {
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Page 2' }).click();
+    await page.locator('#page-2-results').click();
     await expect(table.getByRole('rowheader')).toHaveCount(2);
 
     accessibilityScanResults = await createAxeBuilder(page).analyze();

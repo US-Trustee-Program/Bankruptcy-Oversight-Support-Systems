@@ -268,8 +268,8 @@ describe('TrusteeComparisonTable', () => {
     );
     const manyComparison: TrusteeComparison = { ...comparison, candidates: manyCandidates };
 
-    test('shows no pagination control when there are 5 or fewer candidates', () => {
-      renderTable();
+    test.each([2, 5])('shows no pagination control with %i candidates', (n) => {
+      renderTable({ comparison: { ...comparison, candidates: manyCandidates.slice(0, n) } });
 
       expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
     });
