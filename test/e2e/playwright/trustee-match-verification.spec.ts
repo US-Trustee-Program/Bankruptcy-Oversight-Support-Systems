@@ -13,6 +13,9 @@ const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
 const STATE_DIFFERS_TASK_ID = 'e2e-trustee-match-verification-pending-4'; // Morgan Stateline, exact name
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
 const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and Carter Caselessmatch, no caseId/courtId
+// Q Lakeshore, caseless, carries an ACMS professional id. The only task approved here, so it is
+// left out of every other test.
+const ACMS_LINK_TASK_ID = 'e2e-trustee-match-verification-acms-link';
 
 async function expandTask(page: Page, id: string) {
   await page.getByTestId(`accordion-button-order-list-${id}`).click();
@@ -231,5 +234,31 @@ test.describe('Trustee Identity Verification', () => {
     await expect(
       (await expandTask(page, NO_CANDIDATES_TASK_ID)).getByTestId('name-interpretation'),
     ).toHaveCount(0);
+  });
+
+  test('approves a task that carries an ACMS professional id', async ({ page }) => {
+    const content = await expandTask(page, ACMS_LINK_TASK_ID);
+
+    await content.getByTestId('approve-candidate-seed-trustee-match-lakeshore').click();
+    const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${ACMS_LINK_TASK_ID}`);
+    await expect(modal).toBeVisible(timeoutOption);
+
+    const approval = page.waitForResponse(
+      (response) =>
+        response.url().includes(`api/trustee-match-verification/${ACMS_LINK_TASK_ID}`) &&
+        response.request().method() === 'PATCH',
+      timeoutOption,
+    );
+    await page.locator(`#trustee-confirmation-modal-${ACMS_LINK_TASK_ID}-submit-button`).click();
+    expect((await approval).ok()).toBe(true);
+
+    await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
+      'Trustee Quinn Lakeshore appointed. No cases affected.',
+      timeoutOption,
+    );
+    await expect(content.getByTestId('resolved-statement')).toContainText(
+      'Trustee Quinn Lakeshore was approved. No cases affected.',
+      timeoutOption,
+    );
   });
 });

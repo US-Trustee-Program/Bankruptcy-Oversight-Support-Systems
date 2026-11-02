@@ -5,6 +5,7 @@ import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/tr
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { generate } from './trustee-match-all-scenarios.js';
 import { HISTORICAL_CASE_IDS } from './dxtr-historical-trustees.js';
+import { isAppointmentMatch, TrusteeAppointment } from '@common/cams/trustee-appointments.js';
 
 function context(): SeedContext {
   return { generateCaseId: vi.fn() };
@@ -296,5 +297,41 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     ]);
 
     expectNoSurrogates(ops, verification?.fingerprint);
+  });
+});
+
+describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', () => {
+  test('should seed one approvable pending task carrying an ACMS professional id', async () => {
+    const ops = await generate(context());
+    const tasks = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data)
+      .filter((d) => d.acmsProfessionalId);
+
+    expect(tasks).toHaveLength(1);
+    const [task] = tasks;
+    expect(task.status).toBe('pending');
+
+    // Approvable: the candidate's appointments cover the task's case, so gate A lets the
+    // approval through to the professional-id link instead of rejecting it.
+    const candidates = (task.findings as { candidates: { camsRaw: { trusteeId: string } }[] })
+      .candidates;
+    expect(candidates).toHaveLength(1);
+    const appointments = ops
+      .filter((o) => o.collectionOrTable === 'trustee-appointments')
+      .flatMap((o) => o.data)
+      .filter((a) => a.trusteeId === candidates[0].camsRaw.trusteeId) as TrusteeAppointment[];
+    const [surrogate] = surrogatesFor(ops, 'trustee-case-appointments').filter(
+      (s) => s.trusteeId === task.fingerprint,
+    );
+    expect(surrogate).toBeDefined();
+    expect(
+      isAppointmentMatch(
+        appointments,
+        task.courtId as string,
+        surrogate.courtDivisionCode as string,
+        surrogate.chapter as string,
+      ),
+    ).toBe(true);
   });
 });
