@@ -653,7 +653,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
 
     const transactionsQuery = `
       SELECT
-        CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID

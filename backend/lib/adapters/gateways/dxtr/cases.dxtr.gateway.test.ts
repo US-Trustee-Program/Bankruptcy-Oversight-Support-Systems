@@ -1495,6 +1495,18 @@ describe('Test DXTR Gateway', () => {
         expect(result.latestTransactionsSyncDate).toEqual(expectedLatestTransactionsSyncDate);
       },
     );
+
+    test('should build transaction case ids from CASE_ID, joining AO_TX on the composite key', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', '2024-01-01');
+
+      const transactionsQuery = querySpy.mock.calls[1][1];
+      expect(transactionsQuery).toContain("CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId");
+      expect(transactionsQuery).toContain(
+        'TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID',
+      );
+    });
   });
 
   describe('getCasesWithTerminalTransactionBlindSpot', () => {

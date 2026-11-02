@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { createAxeBuilder, getUrl } from './test-constants';
+import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('My Cases', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -16,6 +16,9 @@ test.describe('My Cases', () => {
     await page.locator('[data-testid="open-modal-button"]').click();
     await expect(page.locator('#info-modal-heading')).toBeVisible();
     await expect(page.locator('#info-modal-cancel-button')).toBeVisible();
+    // Wait for the modal's opacity transition to finish before scanning,
+    // otherwise axe can measure colors mid-fade and report false contrast violations.
+    await page.waitForTimeout(ANALYZE_DELAY);
 
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
