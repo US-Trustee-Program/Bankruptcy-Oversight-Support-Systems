@@ -86,6 +86,25 @@ const TYLER_MULTIMATCH = camsTrustee({
   email: 'tyler.multimatch@example.com',
 });
 
+const SEVENWAY_TRUSTEES = [
+  { trusteeId: 'seed-trustee-sevenway-a', firstName: 'Sam', street: '310 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-b', firstName: 'Sara', street: '311 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-c', firstName: 'Scott', street: '312 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-d', firstName: 'Sean', street: '313 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-e', firstName: 'Stacy', street: '314 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-f', firstName: 'Steve', street: '315 Pageway St' },
+  { trusteeId: 'seed-trustee-sevenway-g', firstName: 'Sue', street: '316 Pageway St' },
+].map(({ trusteeId, firstName, street }, i) =>
+  camsTrustee({
+    trusteeId,
+    firstName,
+    lastName: 'Sevenway',
+    address: { address1: street, city: 'New York', state: 'NY', zipCode: '10003' },
+    phone: `212-555-32${String(i).padStart(2, '0')}`,
+    email: `${firstName.toLowerCase()}.sevenway@example.com`,
+  }),
+);
+
 const SAM_SEEDTRUSTEE = camsTrustee({
   trusteeId: 'seed-trustee-active-001',
   firstName: 'Sam',
@@ -139,6 +158,23 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     },
     trustees: [TAYLOR_MULTIMATCH, TYLER_MULTIMATCH],
     expectedCandidateCount: 2,
+  },
+
+  // "S" is an initial of all seven given names, and all seven share the source's city, state and
+  // zip but not its street, so all seven tie at every resolver (CAMS-953 Slice 7 pagination).
+  manyCandidates: {
+    source: {
+      firstName: 'S',
+      lastName: 'Sevenway',
+      fullName: 'S Sevenway',
+      legacy: {
+        address1: '1 Source St',
+        cityStateZipCountry: 'New York NY 10003',
+        phone: '212-555-3299',
+      },
+    },
+    trustees: SEVENWAY_TRUSTEES,
+    expectedCandidateCount: 7,
   },
 
   // Exact name and city; the source sends no zip, street, phone or email, so the state is the only

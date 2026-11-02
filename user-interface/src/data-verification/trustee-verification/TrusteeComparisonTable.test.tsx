@@ -261,4 +261,63 @@ describe('TrusteeComparisonTable', () => {
 
     expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
   });
+
+  describe('pagination', () => {
+    const manyCandidates = Array.from({ length: 7 }, (_, i) =>
+      candidate(`t${i + 1}`, `Candidate ${i + 1}`),
+    );
+    const manyComparison: TrusteeComparison = { ...comparison, candidates: manyCandidates };
+
+    test.each([2, 5])('shows no pagination control with %i candidates', (n) => {
+      renderTable({ comparison: { ...comparison, candidates: manyCandidates.slice(0, n) } });
+
+      expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
+    });
+
+    test('shows only the first 5 candidates, in order, when there are more than 5', () => {
+      renderTable({ comparison: manyComparison });
+
+      expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+        'Candidate 1',
+        'Candidate 2',
+        'Candidate 3',
+        'Candidate 4',
+        'Candidate 5',
+      ]);
+    });
+
+    test('shows the remaining candidates, still in order, on page 2', () => {
+      renderTable({ comparison: manyComparison });
+
+      fireEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+
+      expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+        'Candidate 6',
+        'Candidate 7',
+      ]);
+    });
+
+    test('resets to page 1 when the candidate list changes', () => {
+      const { rerender } = renderTable({ comparison: manyComparison });
+      fireEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      expect(screen.getAllByRole('rowheader')).toHaveLength(2);
+
+      const otherCandidates = Array.from({ length: 7 }, (_, i) =>
+        candidate(`u${i + 1}`, `Other ${i + 1}`),
+      );
+      rerender(
+        <BrowserRouter>
+          <TrusteeComparisonTable comparison={{ ...comparison, candidates: otherCandidates }} />
+        </BrowserRouter>,
+      );
+
+      expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
+        'Other 1',
+        'Other 2',
+        'Other 3',
+        'Other 4',
+        'Other 5',
+      ]);
+    });
+  });
 });

@@ -1,11 +1,16 @@
+import { useMemo, useState } from 'react';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
+import { Pagination } from '@/lib/components/uswds/Pagination';
+import { Pagination as PaginationModel } from '@common/api/pagination';
 import {
   candidateAddress,
   ComparisonCandidate,
   ComparisonCell,
   TrusteeComparison,
 } from './trustee-comparison';
+
+const CANDIDATES_PAGE_SIZE = 5;
 
 type DifferenceIconProps = { label: string };
 
@@ -116,6 +121,31 @@ export default function TrusteeComparisonTable({
 }: Readonly<TrusteeComparisonTableProps>) {
   const { rows, candidates } = comparison;
   const showEmail = rows.some((row) => row.key === 'email');
+  const [offset, setOffset] = useState(0);
+  // Reset to page 1 when a new candidate list arrives.
+  const [prevCandidates, setPrevCandidates] = useState(candidates);
+  if (candidates !== prevCandidates) {
+    setPrevCandidates(candidates);
+    setOffset(0);
+  }
+
+  const pagedCandidates = useMemo(
+    () => candidates.slice(offset, offset + CANDIDATES_PAGE_SIZE),
+    [candidates, offset],
+  );
+
+  const paginationValues = useMemo((): PaginationModel => {
+    return {
+      count: pagedCandidates.length,
+      limit: CANDIDATES_PAGE_SIZE,
+      currentPage: Math.floor(offset / CANDIDATES_PAGE_SIZE) + 1,
+      totalPages: Math.ceil(candidates.length / CANDIDATES_PAGE_SIZE),
+      totalCount: candidates.length,
+    };
+  }, [pagedCandidates, candidates, offset]);
+
+  const hasMultiplePages = candidates.length > CANDIDATES_PAGE_SIZE;
+
   return (
     <div className="trustee-comparison-table-container">
       <table
@@ -133,7 +163,7 @@ export default function TrusteeComparisonTable({
           </tr>
         </thead>
         <tbody>
-          {candidates.map((candidate) => (
+          {pagedCandidates.map((candidate) => (
             <CandidateRow
               key={candidate.trusteeId}
               candidate={candidate}
@@ -144,6 +174,13 @@ export default function TrusteeComparisonTable({
           ))}
         </tbody>
       </table>
+      {hasMultiplePages && (
+        <Pagination<{ limit: number; offset: number }>
+          paginationValues={paginationValues}
+          searchPredicate={{ limit: CANDIDATES_PAGE_SIZE, offset }}
+          retrievePage={(predicate) => setOffset(predicate.offset ?? 0)}
+        />
+      )}
     </div>
   );
 }
