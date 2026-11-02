@@ -541,6 +541,52 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
+  describe('deleteLink', () => {
+    const camsTrusteeId = 'trustee-1';
+    const acmsProfessionalId = 'NY-00063';
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'camsTrusteeId' },
+          rightOperand: camsTrusteeId,
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'acmsProfessionalId' },
+          rightOperand: acmsProfessionalId,
+        },
+      ],
+    };
+
+    test('should delete by documentType, trustee, and ACMS ID and return count', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(1);
+
+      const result = await repository.deleteLink(camsTrusteeId, acmsProfessionalId);
+
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toBe(1);
+    });
+
+    test('should handle database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.deleteLink(camsTrusteeId, acmsProfessionalId)).rejects.toThrow(
+        `Failed to delete professional ID link for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+      );
+    });
+  });
+
   describe('deleteAll', () => {
     const expectedQuery = {
       condition: 'EQUALS',

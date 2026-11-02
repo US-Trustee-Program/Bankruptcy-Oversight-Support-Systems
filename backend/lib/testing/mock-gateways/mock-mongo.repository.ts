@@ -755,6 +755,11 @@ export class MockMongoRepository
     return Promise.resolve(count);
   }
 
+  deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {
+    const deleted = this.professionalIds.delete(`${camsTrusteeId}:${acmsProfessionalId}`);
+    return Promise.resolve(deleted ? 1 : 0);
+  }
+
   deleteAllBySource(..._ignore: any[]): Promise<{ deletedCount: number }> {
     throw new Error('Method not implemented.');
   }

@@ -20,6 +20,9 @@
  *      oneCandidateNothingDiffers).
  *   Each single-case task has one surrogate CASE_APPOINTMENT for its case, as the sync writes, so
  *   approving it runs the same division check and remap as a real task.
+ *   3d also carries an acmsProfessionalId, and its candidate has an appointment covering its case,
+ *   so approving it passes the division check and links the ACMS professional id to the
+ *   candidate (CAMS-953 Slice 6).
  *
  *   - Multi-case scenarios. For a pending task, affectedCaseCount/affectedCaseIds are derived
  *     live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows sharing the
@@ -109,6 +112,7 @@ const SINGLE_CASE_TASKS = [
     caseId: '091-99-00711',
     chapter: '12',
     taskDate: '2021-08-24T00:00:00.000Z',
+    acmsProfessionalId: 'SEED-ACMS-00711',
   },
 ] as const satisfies readonly {
   slug: string;
@@ -116,6 +120,7 @@ const SINGLE_CASE_TASKS = [
   caseId: string;
   chapter: string;
   taskDate: string;
+  acmsProfessionalId?: string;
 }[];
 
 // Multi-case scenarios (3 distinct cases, all Chapter 11, Buffalo). None of these cases carries
@@ -148,15 +153,19 @@ const TRUSTEE_RESOLVED = createTrusteeBase({
   email: 'alex.highconfidence@example.com',
 });
 const DIVISION_MISMATCH_TRUSTEE_ID = 'seed-trustee-match-divisionmismatch';
+// The nothing-differs task's sole candidate: appointed in Buffalo (091) Chapter 12, covering that
+// task's case.
+const ACMS_LINK_CANDIDATE_TRUSTEE_ID = 'seed-trustee-match-unlisted';
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
-  const singleCaseTasks = SINGLE_CASE_TASKS.map(({ slug, key, caseId, taskDate }) => ({
-    id: `seed-match-${slug}-${caseId}`,
-    ...identityTaskFields(key),
-    caseId,
+  const singleCaseTasks = SINGLE_CASE_TASKS.map((task) => ({
+    id: `seed-match-${task.slug}-${task.caseId}`,
+    ...identityTaskFields(task.key),
+    ...('acmsProfessionalId' in task ? { acmsProfessionalId: task.acmsProfessionalId } : {}),
+    caseId: task.caseId,
     courtId: '0209',
     status: 'pending',
-    taskDate,
+    taskDate: task.taskDate,
     updatedOn: '2025-03-01T00:00:00.000Z',
     updatedBy: SEEDER,
   }));
@@ -250,7 +259,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
 
     // Single active appointment for the division-mismatch candidate -- Buffalo (091) only, no
     // Manhattan (081) appointment. Chapter 11 everywhere, so this isolates the court+division
-    // half of isAppointmentMatch from the chapter half CASE_MULTI_A/B/C already covers.
+    // half of isAppointmentMatch from the chapter half CASE_MULTI_A/B/C already covers. Then the
+    // nothing-differs candidate's covering appointment, so that task is approvable.
     {
       db: 'cams',
       collectionOrTable: 'trustee-appointments',
@@ -261,6 +271,22 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: DIVISION_MISMATCH_TRUSTEE_ID,
           chapter: '11',
           appointmentType: 'case-by-case',
+          courtId: '0209',
+          divisionCodes: ['091'],
+          appointedDate: '2020-01-01',
+          status: 'active',
+          effectiveDate: '2020-01-01',
+          courtName: 'U.S. Bankruptcy Court Western District of New York',
+          courtDivisionName: 'Buffalo',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+        {
+          id: 'seed-appointment-acms-link',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: ACMS_LINK_CANDIDATE_TRUSTEE_ID,
+          chapter: '12',
+          appointmentType: 'standing',
           courtId: '0209',
           divisionCodes: ['091'],
           appointedDate: '2020-01-01',

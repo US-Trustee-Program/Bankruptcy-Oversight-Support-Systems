@@ -1,5 +1,6 @@
--- DXTR DDL: creates the tables read by CasesDxtrGateway.getTrusteeAppointments and
--- getTrusteePetitionEvents. Run against DXTR_INT database (created by seed-schema command).
+-- DXTR DDL: creates the tables read by CasesDxtrGateway.getTrusteeAppointments,
+-- getTrusteePetitionEvents, and (for Stage 10's gate A check) getCaseSummary. Run against
+-- DXTR_INT database (created by seed-schema command).
 --
 -- This is a hand-crafted subset of the real DXTR schema (no authoritative DDL for DXTR
 -- exists in this repo) covering only the columns those two queries actually select or
@@ -7,6 +8,27 @@
 -- AO_PY.md) for the full column reference this was derived from.
 
 IF OBJECT_ID('dbo.AO_TX', 'U') IS NOT NULL DROP TABLE dbo.AO_TX;
+GO
+
+IF OBJECT_ID('dbo.AO_ALIAS', 'U') IS NOT NULL DROP TABLE dbo.AO_ALIAS;
+GO
+
+IF OBJECT_ID('dbo.AO_SSN', 'U') IS NOT NULL DROP TABLE dbo.AO_SSN;
+GO
+
+IF OBJECT_ID('dbo.AO_TAXID', 'U') IS NOT NULL DROP TABLE dbo.AO_TAXID;
+GO
+
+IF OBJECT_ID('dbo.AO_OFFICE', 'U') IS NOT NULL DROP TABLE dbo.AO_OFFICE;
+GO
+
+IF OBJECT_ID('dbo.AO_COURT', 'U') IS NOT NULL DROP TABLE dbo.AO_COURT;
+GO
+
+IF OBJECT_ID('dbo.AO_GRP_DES', 'U') IS NOT NULL DROP TABLE dbo.AO_GRP_DES;
+GO
+
+IF OBJECT_ID('dbo.AO_REGION', 'U') IS NOT NULL DROP TABLE dbo.AO_REGION;
 GO
 
 IF OBJECT_ID('dbo.AO_PY', 'U') IS NOT NULL DROP TABLE dbo.AO_PY;
@@ -25,6 +47,7 @@ CREATE TABLE dbo.AO_CS_DIV (
   GRP_DES     VARCHAR(2) NOT NULL,
   COURT_ID    VARCHAR(4) NULL,
   CS_DIV_ACMS VARCHAR(3) NULL,
+  OFFICE_CODE CHAR(1)    NULL, -- joins AO_OFFICE in getCaseSummary
   PRIMARY KEY (CS_DIV, GRP_DES)
 );
 GO
@@ -40,6 +63,12 @@ CREATE TABLE dbo.AO_CS (
   CS_DIV      VARCHAR(3)   NOT NULL,
   CS_CHAPTER  VARCHAR(3)   NULL,
   GRP_DES     VARCHAR(2)   NULL,
+  -- Read only by getCaseSummary (Stage 10); null for every other scenario.
+  CS_SHORT_TITLE VARCHAR(80) NULL,
+  CS_DATE_FILED  DATETIME2   NULL,
+  JD_FIRST_NAME  VARCHAR(30) NULL,
+  JD_MIDDLE_NAME VARCHAR(25) NULL,
+  JD_LAST_NAME   VARCHAR(30) NULL,
   PRIMARY KEY (CS_CASEID, COURT_ID)
 );
 GO
@@ -63,6 +92,8 @@ CREATE TABLE dbo.AO_PY (
   PY_PHONENO     VARCHAR(30) NULL,
   PY_FAX_PHONE   VARCHAR(20) NULL,
   PY_E_MAIL      VARCHAR(60) NULL,
+  PY_TAXID       VARCHAR(10) NULL, -- read by getCaseSummary's debtor query
+  PY_SSN         VARCHAR(11) NULL, -- read by getCaseSummary's debtor query
   PRIMARY KEY (CS_CASEID, COURT_ID, PY_ROLE)
 );
 GO
@@ -83,5 +114,67 @@ CREATE TABLE dbo.AO_TX (
   TX_CODE   VARCHAR(3)   NOT NULL,
   TX_DATE   DATETIME2    NOT NULL,
   REC       VARCHAR(237) NOT NULL
+);
+GO
+
+-- Reference tables joined by getCaseSummary's case query (Stage 10's gate A check), and the
+-- party-identifier tables its debtor query unions over (left empty). Same shapes as
+-- ../../sync-acms-professional-ids/seed/00-seed-dxtr-offices-schema.sql.
+CREATE TABLE dbo.AO_OFFICE (
+  COURT_ID             VARCHAR(4)   NOT NULL,
+  OFFICE_CODE          CHAR(1)      NOT NULL,
+  OFFICE_NAME          VARCHAR(110) NULL,
+  OFFICE_NAME_DISPLAY  VARCHAR(110) NULL,
+  PRIMARY KEY (COURT_ID, OFFICE_CODE)
+);
+GO
+
+CREATE TABLE dbo.AO_COURT (
+  COURT_ID    VARCHAR(4)  NOT NULL,
+  COURT_NAME  VARCHAR(40) NULL,
+  PRIMARY KEY (COURT_ID)
+);
+GO
+
+CREATE TABLE dbo.AO_GRP_DES (
+  GRP_DES    VARCHAR(2) NOT NULL,
+  REGION_ID  VARCHAR(2) NOT NULL,
+  PRIMARY KEY (GRP_DES)
+);
+GO
+
+CREATE TABLE dbo.AO_REGION (
+  REGION_ID    VARCHAR(2)  NOT NULL,
+  REGION_NAME  VARCHAR(20) NULL,
+  PRIMARY KEY (REGION_ID)
+);
+GO
+
+CREATE TABLE dbo.AO_ALIAS (
+  CS_CASEID      VARCHAR(9)   NOT NULL,
+  COURT_ID       VARCHAR(4)   NOT NULL,
+  PY_ROLE        VARCHAR(2)   NOT NULL,
+  PY_FIRST_NAME  VARCHAR(30)  NULL,
+  PY_MIDDLE_NAME VARCHAR(25)  NULL,
+  PY_LAST_NAME   VARCHAR(200) NULL,
+  PY_GENERATION  VARCHAR(9)   NULL
+);
+GO
+
+CREATE TABLE dbo.AO_SSN (
+  CS_CASEID   VARCHAR(9)  NOT NULL,
+  COURT_ID    VARCHAR(4)  NOT NULL,
+  PY_ROLE     VARCHAR(2)  NOT NULL,
+  PY_SSN      VARCHAR(11) NULL,
+  PY_SSN_SEQ  INT         NOT NULL
+);
+GO
+
+CREATE TABLE dbo.AO_TAXID (
+  CS_CASEID     VARCHAR(9)  NOT NULL,
+  COURT_ID      VARCHAR(4)  NOT NULL,
+  PY_ROLE       VARCHAR(2)  NOT NULL,
+  PY_TAXID      VARCHAR(10) NULL,
+  PY_TAXID_SEQ  INT         NOT NULL
 );
 GO
