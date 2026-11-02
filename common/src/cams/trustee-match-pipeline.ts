@@ -109,10 +109,16 @@ export type NameMatchQuality = 'exact' | 'strong' | 'weak';
  * NameMatchQuality above. */
 export type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
 
-type NameMatchScore =
+/** matchName's verdict as written to candidate.scores.doesNameMatch. The backend scorer
+ * (trustee-match-pipeline-stages.ts) imports this instead of declaring its own copy - a field
+ * rename here breaks the build in both the writer (backend) and every reader, instead of the
+ * writer compiling fine while a reader's `as` cast silently returns undefined. */
+export type NameMatchScore =
   { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
 
-type AddressMatchScore =
+/** doesAddressMatch's verdict as written to candidate.scores.doesAddressMatch. Same
+ * single-source-of-truth relationship with the backend scorer as NameMatchScore above. */
+export type AddressMatchScore =
   | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
   | { pass: false; points: number; streetCloseness?: number };
 
