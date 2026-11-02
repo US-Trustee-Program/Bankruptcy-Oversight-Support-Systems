@@ -13,6 +13,7 @@ import { formatChapterType } from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -63,6 +64,7 @@ function TrusteeSearchModal_(
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string | undefined>(courtId);
+  const [showWithoutCoverage, setShowWithoutCoverage] = useState(false);
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -85,6 +87,7 @@ function TrusteeSearchModal_(
     setSearchResults([]);
     setSelectedTrustee(null);
     setSelectedCourtId(courtId);
+    setShowWithoutCoverage(false);
     trusteeNameComboBoxRef.current?.clearSelections();
     modalRef.current?.show(options ?? {});
   }
@@ -113,15 +116,16 @@ function TrusteeSearchModal_(
     // with, divisionCode belongs to a different court than the one now being searched --
     // applying it would filter search results against the wrong court's divisions. Falling
     // back to district-only filtering here is safe: it can only ever show MORE candidates,
-    // never admit one the backend's own approval check would reject.
-    const isOriginatingCourt = selectedCourtId === courtId;
+    // never admit one the backend's own approval check would reject. The "show without
+    // coverage" checkbox is a second, independent opt-out of the same filter.
+    const applyCoverageFilter = selectedCourtId === courtId && !showWithoutCoverage;
     debounce(async () => {
       try {
         const response = await Api2.searchTrustees(
           value,
           selectedCourtEntry?.courtId,
-          isOriginatingCourt ? divisionCode : undefined,
-          isOriginatingCourt ? chapter : undefined,
+          applyCoverageFilter ? divisionCode : undefined,
+          applyCoverageFilter ? chapter : undefined,
         );
         setSearchResults(response.data);
       } catch {
@@ -238,6 +242,15 @@ function TrusteeSearchModal_(
             placeholder="- Search Trustee name -"
             disableFiltering={true}
           />
+          {(divisionCode || chapter) && (
+            <Checkbox
+              id={`trustee-search-show-without-coverage-${id}`}
+              label="Show trustees without confirmed coverage for this case"
+              value="show-without-coverage"
+              checked={showWithoutCoverage}
+              onChange={(ev) => setShowWithoutCoverage(ev.target.checked)}
+            />
+          )}
           <div className="trustee-comparison">
             <div className="court-trustee-details">
               <h4>Information sent by court</h4>

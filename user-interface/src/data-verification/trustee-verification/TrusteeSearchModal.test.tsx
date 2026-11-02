@@ -215,6 +215,105 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('omits the coverage checkbox when neither divisionCode nor chapter is provided', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    expect(
+      screen.queryByRole('checkbox', {
+        name: 'Show trustees without confirmed coverage for this case',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('omits divisionCode and chapter once the coverage checkbox is checked, even on the originating court', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'Show trustees without confirmed coverage for this case',
+    });
+    await userEvent.click(checkbox);
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', undefined, undefined);
+    });
+  });
+
+  test('restores divisionCode and chapter once the coverage checkbox is unchecked again', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'Show trustees without confirmed coverage for this case',
+    });
+    await userEvent.click(checkbox);
+    await userEvent.click(checkbox);
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', '0208', '7');
+    });
+  });
+
+  test('resets the coverage checkbox each time the modal is shown', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'Show trustees without confirmed coverage for this case',
+    });
+    await userEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+
+    act(() => modalRef.current?.show());
+
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+  });
+
   test('normalizes courtDivisionCode to courtId when searching', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 

@@ -226,4 +226,31 @@ test.describe('Data Verification', () => {
     await cancelButton.click();
     await expect(cancelButton).toBeHidden();
   });
+
+  test('should not have accessibility issues on an identity task with more than 5 candidates', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    // The fake API serves one ambiguous DXTR identity task with 7 candidates (mock-api2.ts
+    // trusteeMatchVerificationManyCandidatesDetail), exercising the comparison table's
+    // pagination past the first 5 (CAMS-953 Slice 7).
+    const taskId = 'e8c1f0a2-identity-task-manycandidates';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await narrowToTrusteeIdentityTasks(page);
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const table = page.locator('[data-testid="trustee-comparison-table"]');
+    await expect(table).toBeVisible();
+    await expect(table.getByRole('rowheader')).toHaveCount(5);
+
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await page.getByRole('button', { name: 'Page 2' }).click();
+    await expect(table.getByRole('rowheader')).toHaveCount(2);
+
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
 });

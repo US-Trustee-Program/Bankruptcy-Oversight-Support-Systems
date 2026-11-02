@@ -92,9 +92,9 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
   test('should give every pending task a surrogate for its own case in both partitions', async () => {
     const ops = await generate(context());
 
-    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 7
+    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 8
     // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 1 caseless task.
-    expect(pendingTasks(ops)).toHaveLength(11);
+    expect(pendingTasks(ops)).toHaveLength(12);
     // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and seed-match-caseless (CAMS-953
     // Slice 5, no case at all) are the deliberate exceptions: neither has a surrogate anywhere,
     // including for its own originating case (the caseless task has no originating case to begin
@@ -104,7 +104,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
         !(task.id as string).startsWith('seed-match-no-cases-') &&
         task.id !== 'seed-match-caseless',
     );
-    expect(tasksExpectingASurrogate).toHaveLength(9);
+    expect(tasksExpectingASurrogate).toHaveLength(10);
     for (const task of tasksExpectingASurrogate) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
@@ -124,7 +124,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
       .filter((caseId): caseId is string => caseId !== undefined);
 
     // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
-    expect(caseIds.length).toBe(10);
+    expect(caseIds.length).toBe(11);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
@@ -333,5 +333,23 @@ describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', 
         surrogate.chapter as string,
       ),
     ).toBe(true);
+  });
+});
+
+describe('trustee-match-all-scenarios (CAMS-953 Slice 7 candidate pagination)', () => {
+  test('should seed one pending task with more than 5 candidates', async () => {
+    const ops = await generate(context());
+    const tasks = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data)
+      .filter((d) => d.id === 'seed-match-many-candidates-091-99-21596');
+
+    expect(tasks).toHaveLength(1);
+    const [task] = tasks;
+    expect(task.status).toBe('pending');
+
+    const candidates = (task.findings as { candidates: unknown[] }).candidates;
+    expect(candidates.length).toBeGreaterThan(5);
+    expect(candidates).toHaveLength(7);
   });
 });

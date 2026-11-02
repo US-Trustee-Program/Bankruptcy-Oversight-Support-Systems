@@ -23,6 +23,8 @@
  *   3d also carries an acmsProfessionalId, and its candidate has an appointment covering its case,
  *   so approving it passes the division check and links the ACMS professional id to the
  *   candidate (CAMS-953 Slice 6).
+ *   3e. Ambiguous, 7 candidates that all tie on every resolver (manyCandidates) - exercises the
+ *       comparison table's pagination past the first 5 (CAMS-953 Slice 7).
  *
  *   - Multi-case scenarios. For a pending task, affectedCaseCount/affectedCaseIds are derived
  *     live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows sharing the
@@ -113,6 +115,15 @@ const SINGLE_CASE_TASKS = [
     chapter: '12',
     taskDate: '2021-08-24T00:00:00.000Z',
     acmsProfessionalId: 'SEED-ACMS-00711',
+  },
+  {
+    // Reuses a real Buffalo case from cases-fuzzy-search.ts (Patrick O'Brien, Ch 11) not claimed
+    // by any other task in this file - no new DXTR case needed.
+    slug: 'many-candidates',
+    key: 'manyCandidates',
+    caseId: '091-99-21596',
+    chapter: '11',
+    taskDate: '2022-05-17T00:00:00.000Z',
   },
 ] as const satisfies readonly {
   slug: string;
@@ -252,6 +263,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           'divisionMismatch',
           'multipleCandidatesNoCases',
           'multipleCandidatesCaseless',
+          'manyCandidates',
         ),
         TRUSTEE_RESOLVED,
       ],

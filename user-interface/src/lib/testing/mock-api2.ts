@@ -861,6 +861,32 @@ const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification =
   affectedCaseIds: [],
 };
 
+// One ambiguous DXTR identity task with 7 candidates (CAMS-953 Slice 7): exercises the comparison
+// table's pagination past the first 5. Its findings are the real pipeline's output for the
+// manyCandidates fixture scenario, imported as plain JSON for the same reason as
+// trusteeMatchFindings above.
+const trusteeMatchManyCandidatesFindings =
+  generatedTrusteeMatchFindings.manyCandidates as TrusteeSerializedState;
+
+const trusteeMatchVerificationManyCandidatesDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-manycandidates',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  caseId: '091-99-21596',
+  courtId: '0209',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchManyCandidatesFindings.sourceRaw,
+  findings: trusteeMatchManyCandidatesFindings,
+  fingerprint: 'mock-fingerprint-manycandidates',
+  variant: 's sevenway',
+  taskDate: '2026-01-25T10:00:00.000Z',
+  updatedOn: '2026-01-25T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: ['091-99-21596'],
+};
+
 function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerificationListItem {
   return {
     id: detail.id,
@@ -881,11 +907,13 @@ function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerif
 const trusteeMatchVerificationDetailsById: Record<string, EnrichedTrusteeMatchVerification> = {
   [trusteeMatchVerificationDetail.id]: trusteeMatchVerificationDetail,
   [trusteeMatchVerificationCaselessDetail.id]: trusteeMatchVerificationCaselessDetail,
+  [trusteeMatchVerificationManyCandidatesDetail.id]: trusteeMatchVerificationManyCandidatesDetail,
 };
 
 const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   toListItem(trusteeMatchVerificationDetail),
   toListItem(trusteeMatchVerificationCaselessDetail),
+  toListItem(trusteeMatchVerificationManyCandidatesDetail),
 ];
 
 const orders = [
