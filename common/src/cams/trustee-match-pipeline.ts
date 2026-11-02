@@ -100,13 +100,14 @@ export type SerializedState<TSource, TCandidate> = {
 
 export type TrusteeSerializedState = SerializedState<CanonicalTrusteeSource, ProjectedTrustee>;
 
-/** doesNameMatch's grade, mirroring the backend scorer's NameMatchQuality (not itself shared,
- * since it's backend-internal) - kept in sync by hand. */
+/** doesNameMatch's grade. The single source of truth: the backend scorer
+ * (trustee-match-pipeline-stages.ts) imports this instead of declaring its own copy, so the two
+ * can never drift out of sync. */
 export type NameMatchQuality = 'exact' | 'strong' | 'weak';
 
-/** doesAddressMatch's grade - see trustee-match-pipeline-stages.ts's AddressMatchQuality. Not
- * exported: no current reader needs the grade itself, only points/streetCloseness. */
-type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
+/** doesAddressMatch's grade. Same single-source-of-truth relationship with the backend scorer as
+ * NameMatchQuality above. */
+export type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
 
 type NameMatchScore =
   { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
