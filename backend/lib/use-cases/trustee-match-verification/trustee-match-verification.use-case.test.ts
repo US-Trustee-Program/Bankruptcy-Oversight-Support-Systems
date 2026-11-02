@@ -909,7 +909,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
       let professionalIdsRepo: MockMongoRepository;
 
-      function seedProfessionalId(camsTrusteeId: string, disposition: 'linked' | 'no-match') {
+      function seedProfessionalId(camsTrusteeId: string, disposition: 'linked') {
         return professionalIdsRepo.upsertProfessionalId(
           {
             documentType: 'TRUSTEE_PROFESSIONAL_ID',
@@ -957,11 +957,14 @@ describe('TrusteeMatchVerificationUseCase', () => {
       });
 
       test('removes the fingerprint-keyed unresolved records', async () => {
-        const deleteByCamsTrusteeIdSpy = vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId');
+        await seedProfessionalId(sampleVerification.fingerprint, 'linked');
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');
 
-        expect(deleteByCamsTrusteeIdSpy).toHaveBeenCalledWith(sampleVerification.fingerprint);
+        const remaining = await professionalIdsRepo.findByCamsTrusteeId(
+          sampleVerification.fingerprint,
+        );
+        expect(remaining).toEqual([]);
       });
 
       test('moves an existing link on a different trustee to the approved trustee', async () => {
@@ -1025,11 +1028,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
         vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId').mockRejectedValue(
           new Error('delete failed'),
         );
-        const loggerErrorSpy = vi.spyOn(context.logger, 'error');
+        const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');
 
-        expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
           expect.any(String),
           expect.stringContaining(sampleVerification.fingerprint),
           expect.any(Error),

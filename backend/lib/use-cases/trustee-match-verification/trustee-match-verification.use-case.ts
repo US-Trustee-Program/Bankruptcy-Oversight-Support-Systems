@@ -230,7 +230,7 @@ export class TrusteeMatchVerificationUseCase {
     try {
       await professionalIdsRepo.deleteByCamsTrusteeId(verification.fingerprint);
     } catch (originalError) {
-      context.logger.error(
+      context.logger.warn(
         MODULE_NAME,
         `Failed to delete fingerprint-keyed professional-id records for fingerprint ${verification.fingerprint} after manually linking ACMS ID ${acmsProfessionalId} to trustee ${resolvedTrusteeId}.`,
         originalError,

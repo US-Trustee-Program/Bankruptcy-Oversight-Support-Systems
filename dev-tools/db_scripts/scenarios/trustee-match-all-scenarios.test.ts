@@ -324,6 +324,7 @@ describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', 
     const [surrogate] = surrogatesFor(ops, 'trustee-case-appointments').filter(
       (s) => s.trusteeId === task.fingerprint,
     );
+    expect(surrogate).toBeDefined();
     expect(
       isAppointmentMatch(
         appointments,
