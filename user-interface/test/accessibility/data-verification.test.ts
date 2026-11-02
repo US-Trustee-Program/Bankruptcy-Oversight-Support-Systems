@@ -63,6 +63,10 @@ test.describe('Data Verification', () => {
     await expect(
       page.locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]'),
     ).toBeVisible();
+    // Let the modal's fade-in finish so axe doesn't read its text at partial opacity.
+    await page.waitForTimeout(ANALYZE_DELAY);
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
     await page
       .locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]')
       .click();
@@ -74,15 +78,15 @@ test.describe('Data Verification', () => {
     await expect(
       page.locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]'),
     ).toBeVisible();
+    await page.waitForTimeout(ANALYZE_DELAY);
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
     await page
       .locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]')
       .click();
     await expect(
       page.locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]'),
     ).toBeHidden();
-
-    const accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
   });
 
   // guid-0/1/2 are transfer orders, guid-3/4/5 are consolidation orders (see mock-api2.ts
