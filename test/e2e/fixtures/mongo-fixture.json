@@ -2255,6 +2255,27 @@
         "taskType": "trustee-match"
       },
       {
+        "_id": "69c3f5c935071a9817e23cf6",
+        "id": "e2e-trustee-match-verification-acms-link",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "status": "pending",
+        "source": "DXTR",
+        "acmsProfessionalId": "E2E-ACMS-00001",
+        "findingsScenario": "oneCandidateNameAddressEmailDiffer",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
+      },
+      {
         "_id": "69c3f5c935071a9817e23cf3",
         "id": "e2e-trustee-match-verification-approved",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",

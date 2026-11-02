@@ -76,6 +76,15 @@
  *     that isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against
  *     real query results rather than a hand-built mock event.
  *
+ *   Stage 10 (manual professional-id link on approval) - calls the real
+ *     TrusteeMatchVerificationUseCase.approveVerification() on a pending identity task carrying
+ *     an acmsProfessionalId, against scenario 3's DXTR case and covering trustee so gate A
+ *     passes, and asserts the trustee-professional-ids collection afterward: the manual link
+ *     exists, a stale link to another trustee is gone while that trustee's other ACMS id
+ *     survives (deleteLink's pair scoping), and the fingerprint-keyed records are gone. The remap
+ *     enqueue is replaced with a recording stub: this harness runs no Azurite, and the queue path
+ *     belongs to ../../trustee-verification-remap.
+ *
  * This is a one-shot script - NOT a Vitest test.
  *
  * Two environments via INTEGRATION_ENV:
@@ -132,7 +141,14 @@ import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { TrusteeCaseAppointmentsMongoRepository } from '../../../../backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
-import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
+import factory from '../../../../backend/lib/factory';
+import { TrusteeMatchVerificationUseCase } from '../../../../backend/lib/use-cases/trustee-match-verification/trustee-match-verification.use-case';
+import { deriveNameMatchCount } from '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types';
+import {
+  TrusteeAppointmentSyncEvent,
+  TrusteeVerificationRemapMessage,
+} from '../../../../common/src/cams/dataflow-events';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   standUpEphemeralCosmosDatabase,
   tearDownEphemeralCosmosDatabase,
@@ -273,6 +289,23 @@ const STAGE_9_CASE_IDS = [
   SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
   SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
   NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
+];
+
+// Stage 10: manual professional-id link on approval. Reuses scenario 3's DXTR case and its
+// covering trustee (perfectName, active in COURT_ID/DIV/CHAPTER) so gate A genuinely passes,
+// with a fingerprint distinct from every DXTR-driven scenario. Runs last, after scenario 3's own
+// assertions, so the extra surrogate it seeds on that case affects nothing else. The stale
+// trustee id is only ever a camsTrusteeId on trustee-professional-ids rows - no trustee doc.
+const MANUAL_LINK_CASE_ID = CASES.perfectMatchByName.caseId;
+const MANUAL_LINK_TRUSTEE = TRUSTEES.perfectName;
+const MANUAL_LINK_STALE_TRUSTEE_ID = 'ms-trustee-manual-link-stale';
+const MANUAL_LINK_FINGERPRINT = 'stage-10-manual-link-fingerprint';
+const MANUAL_LINK_VARIANT = '{"firstName":"manual","lastName":"link"}';
+const MANUAL_LINK_ACMS_ID = 'INT-ACMS-MANUAL-LINK';
+const MANUAL_LINK_OTHER_ACMS_ID = 'INT-ACMS-MANUAL-LINK-OTHER';
+const STAGE_10_PROFESSIONAL_ID_CAMS_TRUSTEE_IDS = [
+  MANUAL_LINK_STALE_TRUSTEE_ID,
+  MANUAL_LINK_FINGERPRINT,
 ];
 
 // ---------------------------------------------------------------------------
@@ -897,7 +930,7 @@ async function clean() {
     pass(`Deleted ${r3.deletedCount} TrusteeAppointment(s)`);
 
     const r4 = await db.collection('trustee-professional-ids').deleteMany({
-      camsTrusteeId: { $in: allTrusteeIds },
+      camsTrusteeId: { $in: [...allTrusteeIds, ...STAGE_10_PROFESSIONAL_ID_CAMS_TRUSTEE_IDS] },
     });
     pass(`Deleted ${r4.deletedCount} TrusteeProfessionalId(s)`);
 
@@ -1478,6 +1511,9 @@ async function runScenarios() {
 
   // ── Stage 9: sentinel professional code skip rule ─────────────────────────
   await runSentinelProfCodeStage(deps);
+
+  // ── Stage 10: manual professional-id link on approval ─────────────────────
+  await runManualProfessionalIdLinkStage(context);
 }
 
 // ---------------------------------------------------------------------------
@@ -2113,6 +2149,185 @@ async function runSentinelProfCodeStage(
     }
   } finally {
     await verifyClient.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 10 — manual professional-id link on approval
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves approveVerification's professional-id link (CAMS-953 Slice 6) against real Mongo:
+ * mocked unit tests can only show which repository calls were made, not that the stale link and
+ * the fingerprint-keyed rows are actually gone afterward while an unrelated link on the same
+ * stale trustee survives. Seeds directly (no DXTR sync pass): a surrogate on scenario 3's case
+ * under a fresh fingerprint (so gate A has a real case to check), a pending identity task
+ * carrying an ACMS professional id, and three trustee-professional-ids rows through the real
+ * repository.
+ */
+async function runManualProfessionalIdLinkStage(
+  context: Awaited<ReturnType<typeof getAppContext>>,
+) {
+  console.log(
+    '\nStage 10: manual professional-id link on approval — real approveVerification, real Mongo\n',
+  );
+
+  context.session = MockData.getCamsSession({
+    user: { id: 'integration-harness', name: 'Integration Harness' },
+  });
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const findings = MockData.getTrusteeMatchFindings({
+    candidates: [
+      MockData.getTrusteeMatchCandidate({
+        trusteeId: MANUAL_LINK_TRUSTEE.id,
+        name: MANUAL_LINK_TRUSTEE.name,
+      }),
+    ],
+  });
+  const verification = MockData.getTrusteeMatchVerification({
+    caseId: MANUAL_LINK_CASE_ID,
+    courtId: COURT_ID,
+    findings,
+    fingerprint: MANUAL_LINK_FINGERPRINT,
+    variant: MANUAL_LINK_VARIANT,
+    acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+  });
+
+  const { client, db } = await getMongoDb();
+  try {
+    await db.collection('trustee-match-verification').insertOne({ ...verification });
+    // getSurrogatesByFingerprints reads the trustee partition only.
+    await db.collection('trustee-case-appointments').insertOne({
+      id: randomUUID(),
+      documentType: 'CASE_APPOINTMENT',
+      caseId: MANUAL_LINK_CASE_ID,
+      trusteeId: MANUAL_LINK_FINGERPRINT,
+      isSurrogate: true,
+      variant: MANUAL_LINK_VARIANT,
+      assignedOn: '2026-01-14',
+      appointedDate: '2026-01-14',
+      dateFiled: '2026-01-01',
+      chapter: CHAPTER,
+      courtDivisionCode: DIV,
+    });
+
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    const seedRow = (
+      camsTrusteeId: string,
+      acmsProfessionalId: string,
+      disposition: 'linked' | 'no-match',
+    ) =>
+      professionalIdsRepo.upsertProfessionalId(
+        {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId,
+          acmsProfessionalId,
+          disposition,
+          ...(disposition === 'linked' ? { linkMethod: 'auto' as const } : {}),
+          nameMatchCount: 0,
+          evidence: MockData.getTrusteeMatchFindings(),
+        },
+        systemUser,
+      );
+    await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_ACMS_ID, 'linked');
+    await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_OTHER_ACMS_ID, 'linked');
+    await seedRow(MANUAL_LINK_FINGERPRINT, MANUAL_LINK_ACMS_ID, 'no-match');
+    pass(
+      'Seeded pending identity task with acmsProfessionalId, one covering-case surrogate, and 3 trustee-professional-ids rows',
+    );
+
+    const queuedRemaps: TrusteeVerificationRemapMessage[] = [];
+    const realGetApiToDataflowsGateway = factory.getApiToDataflowsGateway;
+    factory.getApiToDataflowsGateway = () => ({
+      queueTrusteeVerificationRemap: async (message) => {
+        queuedRemaps.push(message);
+      },
+      queueCaseAssignmentEvent: async () => {},
+      queueCaseReload: async () => {},
+      queueTrusteeChangeNotification: async () => {},
+    });
+    try {
+      await new TrusteeMatchVerificationUseCase().approveVerification(
+        context,
+        verification.id,
+        MANUAL_LINK_TRUSTEE.id,
+        MANUAL_LINK_TRUSTEE.name,
+      );
+      pass('10. approveVerification succeeded (gate A passed against the real DXTR case)');
+    } catch (error) {
+      fail(`10. approveVerification threw: ${error instanceof Error ? error.message : error}`);
+      return;
+    } finally {
+      factory.getApiToDataflowsGateway = realGetApiToDataflowsGateway;
+    }
+
+    const rows = db.collection('trustee-professional-ids');
+    const manualLink = await rows.findOne({
+      camsTrusteeId: MANUAL_LINK_TRUSTEE.id,
+      acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+    });
+    if (
+      manualLink?.disposition === 'linked' &&
+      manualLink?.linkMethod === 'manual' &&
+      manualLink?.nameMatchCount === deriveNameMatchCount(findings) &&
+      manualLink?.evidence?.match?.resolvedBy === 'manualApproval' &&
+      manualLink?.evidence?.variant === MANUAL_LINK_VARIANT &&
+      manualLink?.createdBy?.id === 'integration-harness'
+    ) {
+      pass('10. manual link written: linked/manual, real findings as evidence, approver as author');
+    } else {
+      fail(`10. manual link missing or wrong shape: ${JSON.stringify(manualLink)}`);
+    }
+
+    const linkedCount = await rows.countDocuments({
+      acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+      disposition: 'linked',
+    });
+    if (linkedCount === 1) {
+      pass('10. ACMS professional id is linked to exactly one trustee');
+    } else {
+      fail(`10. expected 1 'linked' row for ${MANUAL_LINK_ACMS_ID}, found ${linkedCount}`);
+    }
+
+    const staleLink = await rows.findOne({
+      camsTrusteeId: MANUAL_LINK_STALE_TRUSTEE_ID,
+      acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+    });
+    const unrelatedLink = await rows.findOne({
+      camsTrusteeId: MANUAL_LINK_STALE_TRUSTEE_ID,
+      acmsProfessionalId: MANUAL_LINK_OTHER_ACMS_ID,
+    });
+    if (!staleLink && unrelatedLink) {
+      pass("10. stale link deleted; the stale trustee's other ACMS id link survived");
+    } else {
+      fail(
+        `10. expected stale link gone and unrelated link kept, got stale=${JSON.stringify(staleLink)} unrelated=${JSON.stringify(unrelatedLink)}`,
+      );
+    }
+
+    const fingerprintRows = await rows.countDocuments({ camsTrusteeId: MANUAL_LINK_FINGERPRINT });
+    if (fingerprintRows === 0) {
+      pass('10. fingerprint-keyed trustee-professional-ids rows deleted');
+    } else {
+      fail(`10. expected 0 fingerprint-keyed rows, found ${fingerprintRows}`);
+    }
+
+    const approved = await db
+      .collection('trustee-match-verification')
+      .findOne({ id: verification.id });
+    if (
+      approved?.status === 'approved' &&
+      queuedRemaps.length === 1 &&
+      queuedRemaps[0].fingerprint === MANUAL_LINK_FINGERPRINT
+    ) {
+      pass('10. verification approved and one remap message queued for the fingerprint');
+    } else {
+      fail(
+        `10. expected approved + 1 remap, got status=${approved?.status} remaps=${JSON.stringify(queuedRemaps)}`,
+      );
+    }
+  } finally {
+    await client.close();
   }
 }
 

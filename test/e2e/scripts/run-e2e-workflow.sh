@@ -293,7 +293,7 @@ start_pod_and_wait_for_backend() {
         --pod "${POD_NAME}" \
         --name cams-azurite-e2e \
         "${IMAGE_AZURITE}" \
-        azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data \
+        azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --skipApiVersionCheck \
         || { echo -e "${RED}❌ Failed to start cams-azurite-e2e${NC}"; return 1; }
 
     # Start backend in the pod (waits for DBs, seeds, starts Functions host)

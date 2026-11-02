@@ -98,6 +98,16 @@ directly into Cosmos (no DXTR row involved):
   test cannot provide. Seeds two Cosmos `SYNCED_CASE` fixtures (one for each of the two cases that
   reach matching) directly in the stage itself rather than joining the shared 12-scenario fixture
   set.
+- **Stage 10 (manual professional-id link on approval, CAMS-953 Slice 6)** — calls the real
+  `TrusteeMatchVerificationUseCase.approveVerification()` on a pending identity task carrying an
+  `acmsProfessionalId`, against scenario 3's DXTR case (`083-26-88902`) and its covering trustee, so
+  gate A's real `getCaseSummary` + `isAppointmentMatch` check passes. Asserts in
+  `trustee-professional-ids`: the `linkMethod: 'manual'` link exists, a stale link to another
+  trustee is gone while that trustee's other ACMS id link survives (`deleteLink`'s pair scoping),
+  and the fingerprint-keyed rows are gone. `getCaseSummary` is why the DXTR schema also creates
+  `AO_COURT`/`AO_OFFICE`/`AO_GRP_DES`/`AO_REGION` (+ empty `AO_ALIAS`/`AO_SSN`/`AO_TAXID`); their
+  rows are inserted only if absent and never cleaned. The remap enqueue is swapped for a recording
+  stub, since this harness runs no Azurite; the queue path is `../trustee-verification-remap`'s job.
 
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient
 soft-close-failure path (`TooManyRequestsError`/`GatewayTimeoutError` aborting before create). That

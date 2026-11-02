@@ -198,6 +198,22 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
+  async deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {
+    try {
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
+        doc('camsTrusteeId').equals(camsTrusteeId),
+        doc('acmsProfessionalId').equals(acmsProfessionalId),
+      );
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to delete professional ID link for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+      });
+    }
+  }
+
   async deleteAll(): Promise<number> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
