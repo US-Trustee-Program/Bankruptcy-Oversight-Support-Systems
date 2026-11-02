@@ -236,6 +236,600 @@
     "skip": false,
     "error": null
   },
+  "manyCandidates": {
+    "sourceRaw": {
+      "firstName": "S",
+      "lastName": "Sevenway",
+      "fullName": "S Sevenway",
+      "legacy": {
+        "address1": "1 Source St",
+        "cityStateZipCountry": "New York NY 10003",
+        "phone": "212-555-3299",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10003"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "s",
+      "middleName": "",
+      "lastName": "sevenway",
+      "legacy": {
+        "address1": "1 Source St",
+        "cityStateZipCountry": "New York NY 10003",
+        "phone": "212-555-3299",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10003"
+        }
+      },
+      "fullName": "S Sevenway",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-a",
+          "firstName": "Sam",
+          "lastName": "Sevenway",
+          "name": "Sam Sevenway",
+          "address": {
+            "address1": "310 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3200"
+          },
+          "email": "sam.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "sam",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3200"
+          },
+          "email": "sam.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sam sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|sam sevenway",
+              "value": 0.95
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|sam sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-b",
+          "firstName": "Sara",
+          "lastName": "Sevenway",
+          "name": "Sara Sevenway",
+          "address": {
+            "address1": "311 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3201"
+          },
+          "email": "sara.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "sara",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3201"
+          },
+          "email": "sara.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sara sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|sara sevenway",
+              "value": 0.811
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|sara sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-c",
+          "firstName": "Scott",
+          "lastName": "Sevenway",
+          "name": "Scott Sevenway",
+          "address": {
+            "address1": "312 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3202"
+          },
+          "email": "scott.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "scott",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3202"
+          },
+          "email": "scott.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "scott sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|scott sevenway",
+              "value": 0.914
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|scott sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-d",
+          "firstName": "Sean",
+          "lastName": "Sevenway",
+          "name": "Sean Sevenway",
+          "address": {
+            "address1": "313 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3203"
+          },
+          "email": "sean.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "sean",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3203"
+          },
+          "email": "sean.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sean sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|sean sevenway",
+              "value": 0.856
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|sean sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-e",
+          "firstName": "Stacy",
+          "lastName": "Sevenway",
+          "name": "Stacy Sevenway",
+          "address": {
+            "address1": "314 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3204"
+          },
+          "email": "stacy.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "stacy",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3204"
+          },
+          "email": "stacy.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "stacy sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|stacy sevenway",
+              "value": 0.794
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|stacy sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-f",
+          "firstName": "Steve",
+          "lastName": "Sevenway",
+          "name": "Steve Sevenway",
+          "address": {
+            "address1": "315 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3205"
+          },
+          "email": "steve.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "steve",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3205"
+          },
+          "email": "steve.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "steve sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|steve sevenway",
+              "value": 0.854
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|steve sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-sevenway-g",
+          "firstName": "Sue",
+          "lastName": "Sevenway",
+          "name": "Sue Sevenway",
+          "address": {
+            "address1": "316 Pageway St",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10003",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3206"
+          },
+          "email": "sue.sevenway@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "sue",
+          "middleName": "",
+          "lastName": "sevenway",
+          "phone": {
+            "number": "212-555-3206"
+          },
+          "email": "sue.sevenway@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "sue sevenway"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "s sevenway|sue sevenway",
+              "value": 0.875
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "s sevenway|sue sevenway",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0.333
+          },
+          "doesPhoneMatch": {
+            "pass": true,
+            "quality": "strong",
+            "phoneDigitDistance": 2
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "oneCandidateStateDiffers": {
     "sourceRaw": {
       "firstName": "Morgan",

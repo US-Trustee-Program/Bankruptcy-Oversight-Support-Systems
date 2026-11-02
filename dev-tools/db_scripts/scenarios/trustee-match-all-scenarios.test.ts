@@ -1,7 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { describe, test, expect, vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data.js';
-import { TRUSTEE_MATCH_FINDINGS_SCENARIOS } from '@common/cams/test-utilities/trustee-match-findings.scenarios.js';
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { generate } from './trustee-match-all-scenarios.js';
 import { HISTORICAL_CASE_IDS } from './dxtr-historical-trustees.js';
@@ -67,14 +66,6 @@ describe('trustee-match-all-scenarios (CAMS-953 explanation sentence scenarios)'
         .flatMap((o) => o.data)
         .find((d) => isDeepStrictEqual(d.findings, findings));
       expect(task?.status).toBe('pending');
-
-      const trusteeIds = ops
-        .filter((o) => o.collectionOrTable === 'trustees')
-        .flatMap((o) => o.data)
-        .map((d) => d.trusteeId);
-      for (const trustee of TRUSTEE_MATCH_FINDINGS_SCENARIOS[key].trustees) {
-        expect(trusteeIds).toContain(trustee.trusteeId);
-      }
     },
   );
 });
@@ -92,9 +83,9 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
   test('should give every pending task a surrogate for its own case in both partitions', async () => {
     const ops = await generate(context());
 
-    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 7
+    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 8
     // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 1 caseless task.
-    expect(pendingTasks(ops)).toHaveLength(11);
+    expect(pendingTasks(ops)).toHaveLength(12);
     // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and seed-match-caseless (CAMS-953
     // Slice 5, no case at all) are the deliberate exceptions: neither has a surrogate anywhere,
     // including for its own originating case (the caseless task has no originating case to begin
@@ -104,7 +95,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
         !(task.id as string).startsWith('seed-match-no-cases-') &&
         task.id !== 'seed-match-caseless',
     );
-    expect(tasksExpectingASurrogate).toHaveLength(9);
+    expect(tasksExpectingASurrogate).toHaveLength(10);
     for (const task of tasksExpectingASurrogate) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
@@ -124,7 +115,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
       .filter((caseId): caseId is string => caseId !== undefined);
 
     // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
-    expect(caseIds.length).toBe(10);
+    expect(caseIds.length).toBe(11);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
@@ -333,5 +324,43 @@ describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', 
         surrogate.chapter as string,
       ),
     ).toBe(true);
+  });
+});
+
+describe('trustee-match-all-scenarios (CAMS-953 Slice 7 candidate pagination)', () => {
+  test('should seed one pending task with more than 5 candidates', async () => {
+    const ops = await generate(context());
+    const tasks = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data)
+      .filter((d) => d.id === 'seed-match-many-candidates-091-99-21596');
+
+    expect(tasks).toHaveLength(1);
+    const [task] = tasks;
+    expect(task.status).toBe('pending');
+
+    const candidates = (task.findings as { candidates: unknown[] }).candidates;
+    expect(candidates.length).toBeGreaterThan(5);
+    expect(candidates).toHaveLength(7);
+  });
+});
+
+// A task whose candidates aren't in the trustees collection has candidate links and approvals
+// that point at trustees that don't exist, so derive the check from the tasks themselves.
+describe('trustee-match-all-scenarios (seeded candidate trustees)', () => {
+  test('should seed every candidate of every trustee-match-verification task as a trustee', async () => {
+    const ops = await generate(context());
+    const tasks = surrogatesFor(ops, 'trustee-match-verification');
+    const candidateIds = tasks.flatMap((task) =>
+      (task.findings as { candidates: { camsRaw: { trusteeId: string } }[] }).candidates.map(
+        (candidate) => candidate.camsRaw.trusteeId,
+      ),
+    );
+
+    // Guards against passing vacuously if the candidate shape or the tasks ever change.
+    expect(candidateIds.length).toBeGreaterThan(0);
+    for (const trusteeId of candidateIds) {
+      expect(findTrustee(ops, trusteeId), `candidate ${trusteeId}`).toBeDefined();
+    }
   });
 });
