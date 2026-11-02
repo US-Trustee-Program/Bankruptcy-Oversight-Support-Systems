@@ -1,4 +1,5 @@
 import {
+  addressMatchStreetCloseness,
   ProjectedTrustee,
   rankCandidates,
   ScoreByScorer,
@@ -88,7 +89,7 @@ function isPass(scores: ScoreByScorer, scorer: string): boolean {
 }
 
 function isStreetExact(scores: ScoreByScorer): boolean {
-  const closeness = scores.doesAddressMatch?.streetCloseness as number | undefined;
+  const closeness = addressMatchStreetCloseness(scores);
   return closeness === undefined || closeness === 1;
 }
 
