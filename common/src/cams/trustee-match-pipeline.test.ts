@@ -48,6 +48,15 @@ describe('trustee-match-pipeline ranking', () => {
     expect(ranked.map((s) => s.doesNameMatch.quality)).toEqual(['exact', 'weak']);
   });
 
+  test('compareByNameQuality ranks a passing but unrecognized grade after weak', () => {
+    const unrecognized: ScoreByScorer = { doesNameMatch: { pass: true, quality: 'fuzzy' } };
+    const exact = scores('exact');
+    const weak = scores('weak');
+    const ranked = [unrecognized, weak, exact].sort(compareByNameQuality);
+
+    expect(ranked).toEqual([exact, weak, unrecognized]);
+  });
+
   test('a tie on both address points and name quality compares equal', () => {
     expect(compareByAddressPointsThenNameQuality(scores('strong', 3), scores('strong', 3))).toBe(0);
   });
@@ -80,6 +89,10 @@ describe('typed scorer accessors', () => {
     expect(nameMatchQuality(scores('exact'))).toBe('exact');
     expect(nameMatchQuality(scores('strong'))).toBe('strong');
     expect(nameMatchQuality(scores('weak'))).toBe('weak');
+  });
+
+  test('nameMatchQuality returns undefined for a passing grade it does not recognize', () => {
+    expect(nameMatchQuality({ doesNameMatch: { pass: true, quality: 'fuzzy' } })).toBeUndefined();
   });
 
   test('nameMatchQuality returns undefined when doesNameMatch failed or is absent', () => {

@@ -116,12 +116,18 @@ type AddressMatchScore =
   | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
   | { pass: false; points: number; streetCloseness?: number };
 
-/** doesNameMatch's quality grade, or undefined if the name didn't match or wasn't scored. The one
- * place this scorer's shape is asserted - every other reader goes through this accessor instead of
- * its own `as` cast, so a scorer field rename only needs fixing here. */
+const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
+
+/** doesNameMatch's quality grade, or undefined if the name didn't match, wasn't scored, or passed
+ * with a grade outside NameMatchQuality (treated as no match, so it ranks after every known grade).
+ * The one place this scorer's shape is asserted - every other reader goes through this accessor
+ * instead of its own `as` cast, so a scorer field rename only needs fixing here. */
 export function nameMatchQuality(scores: ScoreByScorer): NameMatchQuality | undefined {
   const score = scores.doesNameMatch as NameMatchScore | undefined;
-  return score?.pass ? score.quality : undefined;
+  if (!score?.pass || !Object.prototype.hasOwnProperty.call(NAME_QUALITY_RANK, score.quality)) {
+    return undefined;
+  }
+  return score.quality;
 }
 
 /** doesAddressMatch's points, or 0 if the address wasn't scored. */
@@ -135,8 +141,6 @@ export function addressMatchStreetCloseness(scores: ScoreByScorer): number | und
   const score = scores.doesAddressMatch as AddressMatchScore | undefined;
   return score?.streetCloseness;
 }
-
-const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
 
 function nameQualityRank(scores: ScoreByScorer): number {
   const quality = nameMatchQuality(scores);
