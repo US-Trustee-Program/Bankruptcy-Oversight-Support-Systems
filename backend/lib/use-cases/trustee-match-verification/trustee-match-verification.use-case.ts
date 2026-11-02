@@ -5,8 +5,10 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
+import { CamsUserReference } from '@common/cams/users';
 import {
   EnrichedTrusteeMatchVerification,
+  TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
@@ -21,6 +23,7 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 import { isAppointmentMatch } from '@common/cams/trustee-appointments';
+import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -183,6 +186,58 @@ export class TrusteeMatchVerificationUseCase {
       : court.courtName;
   }
 
+  /**
+   * Links acmsProfessionalId to resolvedTrusteeId with linkMethod 'manual'. camsTrusteeId is the
+   * shard key and part of the unique index, so moving a link is always upsert-new + delete-old:
+   * - A link on a different trustee is deleted first; a failure there fails the approval, since
+   *   writing the new link anyway would leave the ACMS id linked to two trustees.
+   * - The fingerprint-keyed unresolved records are deleted after the new link is written, best
+   *   effort: a leftover record is inert, and the upsert-first order never loses the link.
+   */
+  private async linkAcmsProfessionalId(
+    context: ApplicationContext,
+    verification: TrusteeMatchVerification,
+    acmsProfessionalId: string,
+    resolvedTrusteeId: string,
+    userRef: CamsUserReference,
+  ): Promise<void> {
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+    const existingLinks = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+    for (const link of existingLinks) {
+      if (link.camsTrusteeId !== resolvedTrusteeId) {
+        await professionalIdsRepo.deleteLink(link.camsTrusteeId, acmsProfessionalId);
+      }
+    }
+
+    await professionalIdsRepo.upsertProfessionalId(
+      {
+        documentType: 'TRUSTEE_PROFESSIONAL_ID',
+        camsTrusteeId: resolvedTrusteeId,
+        acmsProfessionalId,
+        disposition: 'linked',
+        linkMethod: 'manual',
+        nameMatchCount: deriveNameMatchCount(verification.findings),
+        evidence: {
+          ...verification.findings,
+          match: { trusteeId: resolvedTrusteeId, score: {}, resolvedBy: 'manualApproval' },
+          variant: verification.variant,
+        },
+      },
+      userRef,
+    );
+
+    try {
+      await professionalIdsRepo.deleteByCamsTrusteeId(verification.fingerprint);
+    } catch (originalError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to delete fingerprint-keyed professional-id records for fingerprint ${verification.fingerprint} after manually linking ACMS ID ${acmsProfessionalId} to trustee ${resolvedTrusteeId}.`,
+        originalError,
+      );
+    }
+  }
+
   async approveVerification(
     context: ApplicationContext,
     id: string,
@@ -299,6 +354,18 @@ export class TrusteeMatchVerificationUseCase {
             },
             userRef,
           ),
+        );
+      }
+
+      // 4b. When the task carries an ACMS professional id, record the verifier's link so future
+      // ACMS syncs recognize it.
+      if (verification.acmsProfessionalId) {
+        await this.linkAcmsProfessionalId(
+          context,
+          verification,
+          verification.acmsProfessionalId,
+          resolvedTrusteeId,
+          userRef,
         );
       }
 

@@ -6,6 +6,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { ObservabilityGateway } from '../../use-cases/gateways.types';
 import { CourtsUseCase } from '../courts/courts';
@@ -900,6 +901,158 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
         expect(maxInFlight).toBeGreaterThan(0);
         expect(maxInFlight).toBeLessThanOrEqual(10);
+      });
+    });
+
+    describe('ACMS professional id linking', () => {
+      const acmsProfessionalId = 'NY-00063';
+      const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+      let professionalIdsRepo: MockMongoRepository;
+
+      function seedProfessionalId(camsTrusteeId: string, disposition: 'linked' | 'no-match') {
+        return professionalIdsRepo.upsertProfessionalId(
+          {
+            documentType: 'TRUSTEE_PROFESSIONAL_ID',
+            camsTrusteeId,
+            acmsProfessionalId,
+            disposition,
+            nameMatchCount: 0,
+            evidence: MockData.getTrusteeMatchFindings(),
+          },
+          systemUser,
+        );
+      }
+
+      beforeEach(() => {
+        professionalIdsRepo = new MockMongoRepository();
+        vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+          professionalIdsRepo,
+        );
+        mockFindById.mockResolvedValue({ ...sampleVerification, acmsProfessionalId });
+      });
+
+      test('links the ACMS professional id to the approved trustee with the reviewed findings as evidence', async () => {
+        const upsertSpy = vi.spyOn(professionalIdsRepo, 'upsertProfessionalId');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        expect(upsertSpy).toHaveBeenCalledWith(
+          {
+            documentType: 'TRUSTEE_PROFESSIONAL_ID',
+            camsTrusteeId: 'trustee-b',
+            acmsProfessionalId,
+            disposition: 'linked',
+            linkMethod: 'manual',
+            nameMatchCount: 2,
+            evidence: {
+              ...sampleVerification.findings,
+              match: { trusteeId: 'trustee-b', score: {}, resolvedBy: 'manualApproval' },
+              variant: sampleVerification.variant,
+            },
+          },
+          expect.objectContaining({ id: expect.any(String) }),
+        );
+        const links = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+        expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-b']);
+      });
+
+      test('removes the fingerprint-keyed unresolved records', async () => {
+        const deleteByCamsTrusteeIdSpy = vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        expect(deleteByCamsTrusteeIdSpy).toHaveBeenCalledWith(sampleVerification.fingerprint);
+      });
+
+      test('moves an existing link on a different trustee to the approved trustee', async () => {
+        await seedProfessionalId('trustee-old', 'linked');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        const links = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+        expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-b']);
+      });
+
+      test('keeps an existing link that is already on the approved trustee', async () => {
+        await seedProfessionalId('trustee-b', 'linked');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        const links = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+        expect(links).toEqual([
+          expect.objectContaining({ camsTrusteeId: 'trustee-b', createdBy: systemUser }),
+        ]);
+      });
+
+      test.each([
+        { method: 'findByAcmsProfessionalId' as const },
+        { method: 'deleteLink' as const },
+      ])(
+        'fails the approval without writing the new link when $method throws',
+        async ({ method }) => {
+          await seedProfessionalId('trustee-old', 'linked');
+          vi.spyOn(professionalIdsRepo, method).mockRejectedValue(
+            new CamsError('TEST', { message: 'write failed' }),
+          );
+          const upsertSpy = vi.spyOn(professionalIdsRepo, 'upsertProfessionalId');
+
+          await expect(
+            useCase.approveVerification(context, 'verification-1', 'trustee-b'),
+          ).rejects.toThrow('write failed');
+
+          expect(upsertSpy).not.toHaveBeenCalled();
+          const links = await professionalIdsRepo.findByCamsTrusteeId('trustee-old');
+          expect(links).toHaveLength(1);
+          expect(mockUpdateIfPending).not.toHaveBeenCalled();
+        },
+      );
+
+      test('fails the approval and keeps the fingerprint-keyed records when writing the new link throws', async () => {
+        vi.spyOn(professionalIdsRepo, 'upsertProfessionalId').mockRejectedValue(
+          new CamsError('TEST', { message: 'write failed' }),
+        );
+        const deleteByCamsTrusteeIdSpy = vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId');
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-b'),
+        ).rejects.toThrow('write failed');
+
+        expect(deleteByCamsTrusteeIdSpy).not.toHaveBeenCalled();
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
+      });
+
+      test('still approves and logs when the fingerprint-keyed cleanup throws', async () => {
+        vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId').mockRejectedValue(
+          new Error('delete failed'),
+        );
+        const loggerErrorSpy = vi.spyOn(context.logger, 'error');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        expect(loggerErrorSpy).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.stringContaining(sampleVerification.fingerprint),
+          expect.any(Error),
+        );
+        expect(mockUpdateIfPending).toHaveBeenCalled();
+        expect(mockQueueTrusteeVerificationRemap).toHaveBeenCalled();
+        const links = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+        expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-b']);
+      });
+
+      test('makes no professional-id calls when the verification has no ACMS professional id', async () => {
+        mockFindById.mockResolvedValue(sampleVerification);
+        const spies = [
+          vi.spyOn(professionalIdsRepo, 'findByAcmsProfessionalId'),
+          vi.spyOn(professionalIdsRepo, 'deleteLink'),
+          vi.spyOn(professionalIdsRepo, 'upsertProfessionalId'),
+          vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId'),
+        ];
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
+        expect(mockUpdateIfPending).toHaveBeenCalled();
       });
     });
   });
