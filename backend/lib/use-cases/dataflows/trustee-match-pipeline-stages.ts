@@ -3,9 +3,10 @@ import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import {
   AddressMatchQuality,
+  AddressMatchScore,
   compareByAddressPointsThenNameQuality,
   compareByNameQuality,
-  NameMatchQuality,
+  NameMatchScore,
 } from '@common/cams/trustee-match-pipeline';
 import factory from '../../factory';
 import {
@@ -131,11 +132,12 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  *
  * firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
  * or a known nickname), which resolveByStateOnly does not accept without a contact signal.
+ *
+ * Shape is NameMatchScore (common/src/cams/trustee-match-pipeline.ts), imported rather than
+ * redeclared so this function's output always matches what every reader of
+ * candidate.scores.doesNameMatch expects.
  */
-type NameMatchVerdict =
-  { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
-
-const NO_MATCH: NameMatchVerdict = { pass: false };
+const NO_MATCH: NameMatchScore = { pass: false };
 
 /** The best quality any given-name variant reaches - firstName, or a parenthetical alias recorded
  * alongside it (see NormalizedTrustee.firstNameAlternates). Only the primary can be 'exact'; an
@@ -190,7 +192,7 @@ function matchName(
   memo: NormalizedMemo,
   sourceNormalized: NormalizedTrustee,
   camsNormalized: NormalizedTrustee,
-): NameMatchVerdict {
+): NameMatchScore {
   const sourceLast = sourceNormalized.lastName ?? '';
   const camsLast = camsNormalized.lastName ?? '';
   const sourceFirst = sourceNormalized.firstName ?? '';
@@ -672,12 +674,6 @@ function normalizeCandidateNameFields(
   return candidate;
 }
 
-/** matchName's verdict as it is stored on a candidate - quality is present only on a pass, so a
- * reader cannot mistake a failed match's quality for a real one. */
-type NameMatchScore =
-  | (ScoreRecord & { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true })
-  | { pass: false };
-
 /**
  * A candidate's name verdict, always present by RESOLVE: a candidate whose scoring threw sets
  * state.error, which halts the pipeline first.
@@ -1045,10 +1041,6 @@ function geoPoints(scores: ScoreByScorer): number | null {
   const matches = [city, state, zip].filter((match) => match === true).length;
   return dominant ? GEO_POINTS : matches;
 }
-
-type AddressMatchScore =
-  | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
-  | { pass: false; points: number; streetCloseness?: number };
 
 function gradeAddress(points: number): AddressMatchQuality | undefined {
   if (points >= GEO_POINTS + STREET_POINTS) return 'exact';

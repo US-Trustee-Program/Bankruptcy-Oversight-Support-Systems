@@ -1,5 +1,6 @@
 import {
   addressMatchStreetCloseness,
+  nameMatchQuality,
   ProjectedTrustee,
   rankCandidates,
   ScoreByScorer,
@@ -83,6 +84,15 @@ function isExactGrade(scores: ScoreByScorer, scorer: string): boolean {
   return !score || (score.pass && score.quality === 'exact');
 }
 
+/** Like isExactGrade, but for doesNameMatch specifically: goes through the typed accessor instead
+ * of reading `.quality` off the untyped ScoreRecord, so a scorer field rename fails to compile
+ * here instead of this row silently always differing. A missing record (no name score written)
+ * still counts as exact/non-differing, same as isExactGrade - nameMatchQuality can't distinguish
+ * that case from a scored-but-failed name, since both return undefined. */
+function isExactNameGrade(scores: ScoreByScorer): boolean {
+  return !scores.doesNameMatch || nameMatchQuality(scores) === 'exact';
+}
+
 function isPass(scores: ScoreByScorer, scorer: string): boolean {
   const score = scores[scorer];
   return !score || score.pass;
@@ -97,7 +107,7 @@ function isStreetExact(scores: ScoreByScorer): boolean {
  * compare (see ScoreByScorer), so its row does not differ. */
 export function differingRows(scores: ScoreByScorer): Record<ComparisonRowKey, boolean> {
   return {
-    name: !isExactGrade(scores, 'doesNameMatch'),
+    name: !isExactNameGrade(scores),
     phone: !isExactGrade(scores, 'doesPhoneMatch'),
     street: !isStreetExact(scores),
     city: !isPass(scores, 'doesCityMatch'),
