@@ -244,6 +244,20 @@ function restoreIds(docs: MongoDocument[]): MongoDocument[] {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Mirrors the Cosmos-only unique index from cosmos-collections.bicep
+ * (trusteeMatchVerificationCollection) on this plain MongoDB fixture DB, so
+ * upsertVerification's duplicate-key protection (trustee-match-verification.
+ * mongo.repository.ts) is actually exercised in e2e, not silently absent
+ * (CAMS-953 cams-c45pn.12). createIndex is idempotent against an existing
+ * identical index.
+ */
+async function ensureTrusteeMatchVerificationIndex(db: ReturnType<MongoClient['db']>) {
+  await db
+    .collection('trustee-match-verification')
+    .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
+}
+
 async function main() {
   const fixturePath = resolve(__dirname, '../fixtures/mongo-fixture.json');
 
@@ -277,6 +291,8 @@ async function main() {
       await db.collection(collName).deleteMany({});
     }
     console.log(`[${MODULE_NAME}] ✓ Collections cleared`);
+
+    await ensureTrusteeMatchVerificationIndex(db);
 
     const scenarios = resolveFindingsScenarios(
       fixture.collections['trustee-match-verification'] ?? [],

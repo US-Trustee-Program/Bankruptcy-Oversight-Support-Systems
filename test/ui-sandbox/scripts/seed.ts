@@ -113,6 +113,20 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
   console.log('Seeded sandbox-trustee-match-mismatch, a no-match identity task with findings.');
 }
 
+/**
+ * Mirrors the Cosmos-only unique index from cosmos-collections.bicep
+ * (trusteeMatchVerificationCollection) on this plain MongoDB sandbox DB, so
+ * upsertVerification's duplicate-key protection (trustee-match-verification.
+ * mongo.repository.ts) is actually exercised here, not silently absent
+ * (CAMS-953 cams-c45pn.12). createIndex is idempotent against an existing
+ * identical index.
+ */
+async function ensureTrusteeMatchVerificationIndex(db: ReturnType<MongoClient['db']>) {
+  await db
+    .collection('trustee-match-verification')
+    .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
+}
+
 async function main() {
   if (!DB_NAME.toLowerCase().includes('sandbox')) {
     throw new Error(`Safety check failed: DB_NAME must contain "sandbox". Got: ${DB_NAME}`);
@@ -121,6 +135,8 @@ async function main() {
   const client = await MongoClient.connect(CONNECTION_STRING);
   try {
     const db = client.db(DB_NAME);
+
+    await ensureTrusteeMatchVerificationIndex(db);
 
     // Call whatever fixture-seeding functions you need here - add a new one for a different
     // screen/scenario rather than editing this one to do double duty.

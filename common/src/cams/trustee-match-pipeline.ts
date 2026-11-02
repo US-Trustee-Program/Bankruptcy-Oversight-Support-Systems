@@ -100,16 +100,46 @@ export type SerializedState<TSource, TCandidate> = {
 
 export type TrusteeSerializedState = SerializedState<CanonicalTrusteeSource, ProjectedTrustee>;
 
-const NAME_QUALITY_RANK: Record<string, number> = { exact: 0, strong: 1, weak: 2 };
+/** doesNameMatch's grade, mirroring the backend scorer's NameMatchQuality (not itself shared,
+ * since it's backend-internal) - kept in sync by hand. */
+export type NameMatchQuality = 'exact' | 'strong' | 'weak';
 
-function nameQualityRank(scores: ScoreByScorer): number {
-  const score = scores.doesNameMatch;
-  if (!score?.pass) return Number.MAX_SAFE_INTEGER;
-  return NAME_QUALITY_RANK[score.quality as string] ?? Number.MAX_SAFE_INTEGER;
+/** doesAddressMatch's grade - see trustee-match-pipeline-stages.ts's AddressMatchQuality. Not
+ * exported: no current reader needs the grade itself, only points/streetCloseness. */
+type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
+
+type NameMatchScore =
+  { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
+
+type AddressMatchScore =
+  | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
+  | { pass: false; points: number; streetCloseness?: number };
+
+/** doesNameMatch's quality grade, or undefined if the name didn't match or wasn't scored. The one
+ * place this scorer's shape is asserted - every other reader goes through this accessor instead of
+ * its own `as` cast, so a scorer field rename only needs fixing here. */
+export function nameMatchQuality(scores: ScoreByScorer): NameMatchQuality | undefined {
+  const score = scores.doesNameMatch as NameMatchScore | undefined;
+  return score?.pass ? score.quality : undefined;
 }
 
-function addressPoints(scores: ScoreByScorer): number {
-  return (scores.doesAddressMatch?.points as number | undefined) ?? 0;
+/** doesAddressMatch's points, or 0 if the address wasn't scored. */
+export function addressMatchPoints(scores: ScoreByScorer): number {
+  const score = scores.doesAddressMatch as AddressMatchScore | undefined;
+  return score?.points ?? 0;
+}
+
+/** doesAddressMatch's street-line closeness (0-1), or undefined if no street was comparable. */
+export function addressMatchStreetCloseness(scores: ScoreByScorer): number | undefined {
+  const score = scores.doesAddressMatch as AddressMatchScore | undefined;
+  return score?.streetCloseness;
+}
+
+const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
+
+function nameQualityRank(scores: ScoreByScorer): number {
+  const quality = nameMatchQuality(scores);
+  return quality ? NAME_QUALITY_RANK[quality] : Number.MAX_SAFE_INTEGER;
 }
 
 /** Sort comparator: the better doesNameMatch grade first (exact, strong, weak, then a failure). */
@@ -120,7 +150,7 @@ export function compareByNameQuality(a: ScoreByScorer, b: ScoreByScorer): number
 /** Sort comparator: the pipeline's ranking - more doesAddressMatch points first, ties broken by
  * compareByNameQuality. Shared so the pipeline and the identity task UI agree on rank order. */
 export function compareByAddressPointsThenNameQuality(a: ScoreByScorer, b: ScoreByScorer): number {
-  return addressPoints(b) - addressPoints(a) || compareByNameQuality(a, b);
+  return addressMatchPoints(b) - addressMatchPoints(a) || compareByNameQuality(a, b);
 }
 
 /** A copy of the candidates in pipeline rank order (compareByAddressPointsThenNameQuality); a

@@ -1,6 +1,9 @@
 import {
+  addressMatchPoints,
+  addressMatchStreetCloseness,
   compareByAddressPointsThenNameQuality,
   compareByNameQuality,
+  nameMatchQuality,
   rankCandidates,
   ScoreByScorer,
 } from './trustee-match-pipeline';
@@ -69,5 +72,39 @@ describe('trustee-match-pipeline ranking', () => {
       'tie-second',
     ]);
     expect(discovered.map((c) => c.camsRaw.id)).toEqual(['tie-first', 'best', 'tie-second']);
+  });
+});
+
+describe('typed scorer accessors', () => {
+  test('nameMatchQuality returns the quality when doesNameMatch passed', () => {
+    expect(nameMatchQuality(scores('exact'))).toBe('exact');
+    expect(nameMatchQuality(scores('strong'))).toBe('strong');
+    expect(nameMatchQuality(scores('weak'))).toBe('weak');
+  });
+
+  test('nameMatchQuality returns undefined when doesNameMatch failed or is absent', () => {
+    expect(nameMatchQuality(scores(null))).toBeUndefined();
+    expect(nameMatchQuality({})).toBeUndefined();
+  });
+
+  test('addressMatchPoints returns the recorded points', () => {
+    expect(addressMatchPoints(scores('exact', 4))).toBe(4);
+  });
+
+  test('addressMatchPoints returns 0 when doesAddressMatch is absent', () => {
+    expect(addressMatchPoints(scores('exact'))).toBe(0);
+  });
+
+  test('addressMatchStreetCloseness returns the recorded closeness when present', () => {
+    const withCloseness: ScoreByScorer = {
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesAddressMatch: { pass: true, points: 3, streetCloseness: 0.75 },
+    };
+    expect(addressMatchStreetCloseness(withCloseness)).toBe(0.75);
+  });
+
+  test('addressMatchStreetCloseness returns undefined when not recorded', () => {
+    expect(addressMatchStreetCloseness(scores('exact', 3))).toBeUndefined();
+    expect(addressMatchStreetCloseness({})).toBeUndefined();
   });
 });
