@@ -481,11 +481,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.getByTestId('resolved-statement').textContent).toContain('trustee-1');
     });
 
-    // Both fields are optional on the type (TrusteeMatchVerification carries no status-linked
-    // discriminated union), but approveVerification's resolvedTrusteeId parameter is a required
-    // string, so every order this backend use case approves has at least one of the two set.
-    // This state is reachable only if some other, currently nonexistent producer wrote an
-    // "approved" document without it.
+    // The invariant that one of these fields is set doesn't hold at the DB layer, regardless of today's producers.
     test('renders an empty trustee name when both resolvedTrusteeName and resolvedTrusteeId are absent', () => {
       renderWithProps({
         order: {
