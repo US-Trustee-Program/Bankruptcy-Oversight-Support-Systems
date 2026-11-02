@@ -37,7 +37,8 @@ the runbooks expect, and lists grants that should be revoked or must be kept.
 | `dora-metrics.yml`                                          | `dora-metrics`                                               |
 | `deploy-dora-metrics-storage.yml`                           | `infrastructure-deploy-main`                                 |
 
-Reusable workflows pick `*-main` when called for `Main-Gov` and `*-branch` otherwise.
+Reusable workflows pick `*-main` when called for `Main-Gov` (the production GitHub environment) and
+`*-branch` otherwise.
 
 `deploy-sql-hub.yml` and `deploy-dora-metrics-storage.yml` use the
 `cams-infrastructure-deploy-main-oidc` app registration, each through its own federated credential.
@@ -137,6 +138,8 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
 
 ## Open work
 
+`cams-xxxx` IDs are beads; run `bd show <id>` to read one.
+
 - [#3211](https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/issues/3211)
   (`cams-usehy`) tracks closing two paths from repository write access to Azure access: `-branch`
   identities with subscription-scope roles (`infrastructure-deploy-branch`, `e2e-branch`,
@@ -148,8 +151,8 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
   Narrowing it is tracked in `cams-y8s2`.
 - `deploy-branch`'s Contributor on `rg-analytics` and `bankruptcy-oversight-support-systems` covers
   resource groups shared with main, including main's Key Vault and Log Analytics workspace. Every
-  branch deploy writes into both groups, so the grants are needed today, but resource-group scope is
-  not the end state (`cams-y8s2`).
+  branch deploy writes into both groups, so the grants are needed, but resource-group scope is not
+  the end state (`cams-y8s2`).
 - `deploy-main`'s grants not made by a runbook need a decision and, where unneeded, a revoke (see
   [Grants not made by a runbook](#grants-not-made-by-a-runbook); `cams-y8s2`).
 - `remove-branch`'s subscription-scope Contributor could be narrowed to the fixed-name resource
@@ -161,5 +164,6 @@ these grants from `deploy-branch` and was validated by a full branch deploy (`ca
   yet. Setup steps are in
   [DORA Metrics Storage](../../../../docs/operations/deployment.md#dora-metrics-storage).
 - The `deploy-branch-narrow-test` GitHub environment and the `cams-deploy-branch-narrow-test-oidc`
-  app registration, left from testing the cutover, still existed on 2026-10-28 and can be deleted
-  (`cams-v4ngd`).
+  app registration, left from testing the cutover, still existed on 2026-11-02. The environment has
+  no deployment branch policy, and the app registration still holds Contributor on four resource
+  groups shared with main. Deleting both is tracked in `cams-8mu2p`.

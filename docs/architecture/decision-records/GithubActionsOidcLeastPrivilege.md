@@ -133,10 +133,10 @@ Accepted
 - Long-lived `AZURE_CREDENTIALS` secrets are eliminated from all workflows
 - Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; where that role is assigned at subscription scope, the bound is the role, not the scope
 - Narrowing an existing identity's scope is a two-part operation, and only the first part can be automated: the runbooks grant but never revoke, so a narrowed grant has no effect until the broader one is revoked manually. Until that revocation lands, the runbook's scope is a statement of intent, not of effective privilege
-- GitHub environments contain no secrets or variables; all environment-specific configuration lives in Azure Key Vault
+- GitHub environments hold no variables and no secret other than `AZ_CLIENT_ID` (`security-scan`'s holds nothing); all other environment-specific configuration lives in Azure Key Vault
 - Two Key Vaults are maintained (main and branch) with identical secret names; any change to a vault secret is a two-step operation — update main vault, then branch vault
 - A compromise of one vault cannot affect the other environment
-- Adding a new workflow that requires Azure access requires: creating a GitHub environment (no values), creating an Azure app registration with a federated credential, granting the narrowest Azure role that covers its work, and granting Key Vault Secrets User access to the specific secrets needed in each vault
+- Adding a new workflow that requires Azure access requires: creating a GitHub environment holding only `AZ_CLIENT_ID`, creating an Azure app registration with a federated credential, granting the narrowest Azure role that covers its work, and granting Key Vault Secrets User access to the specific secrets needed in each vault
 - Adding a Bicep module that creates a role assignment additionally requires granting the deploying identity `roleAssignments/write` at that assignment's scope; omitting it fails at deploy time with no earlier signal
 - The `PGP_SIGNING_PASSPHRASE` encrypted-input pattern is no longer needed once Key Vault migration is complete
 - Non-deployment workflows (security scan, DAST) that previously had no GitHub environment can now be given stable OIDC subjects without branch constraints
