@@ -122,8 +122,7 @@ export default function TrusteeComparisonTable({
   const { rows, candidates } = comparison;
   const showEmail = rows.some((row) => row.key === 'email');
   const [offset, setOffset] = useState(0);
-  // Resets pagination when the candidate list itself changes (a new task opened), following
-  // React's documented pattern for adjusting state during render rather than in an effect.
+  // Reset to page 1 when a new candidate list arrives.
   const [prevCandidates, setPrevCandidates] = useState(candidates);
   if (candidates !== prevCandidates) {
     setPrevCandidates(candidates);
@@ -145,7 +144,7 @@ export default function TrusteeComparisonTable({
     };
   }, [pagedCandidates, candidates, offset]);
 
-  const hasMultiplePages = (paginationValues.totalPages ?? 0) > 1;
+  const hasMultiplePages = candidates.length > CANDIDATES_PAGE_SIZE;
 
   return (
     <div className="trustee-comparison-table-container">
