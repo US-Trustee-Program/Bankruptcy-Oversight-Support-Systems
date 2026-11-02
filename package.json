@@ -85,7 +85,7 @@
     "body-parser": "2.3.0",
     "semver": "7.8.4",
     "@babel/runtime": "7.29.7",
-    "node-forge": "1.4.0",
+    "node-forge": "1.4.2",
     "path-to-regexp": "8.4.2",
     "@opentelemetry/core": "2.8.0",
     "@opentelemetry/exporter-prometheus": "0.218.0",

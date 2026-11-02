@@ -39,28 +39,6 @@ ignore:
           controlled config files here (okta config-loader.js, cosmiconfig
           build tooling), so exploitability is low in the interim.
         expires: 2026-08-24T00:00:00.000Z
-  SNYK-JS-NODEFORGE-19635204:
-    - '*':
-        reason: >-
-          Transitive dependency via @okta/okta-sdk-nodejs@8.2.0, which
-          hard-depends on node-jose for its own package.json (every
-          node-jose version, 0.9.0 through latest, requires node-forge,
-          so no version swap avoids this). CVE-2026-85393 is an RSA
-          signature-verification bypass, but our only reachable node-jose
-          call is JWS.createSign for outbound DPoP proof signing
-          (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. Re-verified 2026-10-28: node-forge
-          1.4.1 (published 2026-10-27, fixes CVE-2026-85393 per
-          digitalbazaar/forge CHANGELOG.md) and 1.4.2 (published
-          2026-10-27, unrelated PEM-decode regression fix on top of 1.4.1)
-          are now available upstream; PR #1152 itself was closed/superseded,
-          but the fix landed directly as commit c7f42614 ("Verify
-          certificate signatures with the child's scheme"). Bumping is
-          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
-          min-release-age=14) until 2026-11-10. Bump the root package.json
-          node-forge override from 1.4.0 to 1.4.2 and remove this ignore
-          once the embargo lifts.
-        expires: 2026-11-11T00:00:00.000Z
   SNYK-JS-SPRINTFJS-20532016:
     - '*':
         reason: >-
