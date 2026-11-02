@@ -172,7 +172,9 @@ test.describe('Data Verification', () => {
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     await page.getByRole('button', { name: 'Search for a trustee' }).click();
-    await expect(page.locator(`#trustee-search-show-without-coverage-${taskId}`)).toBeVisible();
+    await expect(
+      page.locator(`#checkbox-trustee-search-show-without-coverage-${taskId}-click-target`),
+    ).toBeVisible();
     await page.locator(`#${comboBoxId}-expand`).click();
     await page.locator(`#${comboBoxId}-combo-box-input`).fill('Riley');
     await page.locator(`[data-testid="${comboBoxId}-option-item-0"]`).click();

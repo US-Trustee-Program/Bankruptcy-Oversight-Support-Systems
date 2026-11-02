@@ -289,7 +289,7 @@ describe('TrusteeComparisonTable', () => {
     test('shows the remaining candidates, still in order, on page 2', () => {
       renderTable({ comparison: manyComparison });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Page 2' }));
+      fireEvent.click(screen.getByTestId('pagination-button-page-2-results'));
 
       expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
         'Candidate 6',
@@ -299,7 +299,7 @@ describe('TrusteeComparisonTable', () => {
 
     test('resets to page 1 when the candidate list changes', () => {
       const { rerender } = renderTable({ comparison: manyComparison });
-      fireEvent.click(screen.getByRole('button', { name: 'Page 2' }));
+      fireEvent.click(screen.getByTestId('pagination-button-page-2-results'));
       expect(screen.getAllByRole('rowheader')).toHaveLength(2);
 
       const otherCandidates = Array.from({ length: 7 }, (_, i) =>
