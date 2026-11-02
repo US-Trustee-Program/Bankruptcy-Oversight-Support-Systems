@@ -152,6 +152,16 @@ function TrusteeSearchModal_(
     }, 300);
   }
 
+  // The case's chapter arrives asynchronously. A search typed before it did was unfiltered, yet
+  // the checkbox (unchecked) now appears to promise filtered results, so rerun the query.
+  useEffect(() => {
+    if (coverageContextAvailable && lastQueryRef.current.length >= 2) {
+      searchTrustees(lastQueryRef.current, showWithoutCoverage);
+    }
+    // Only a change in coverage availability should rerun the search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+  }, [coverageContextAvailable]);
+
   function handleFilterChange(value: string) {
     lastQueryRef.current = value;
     searchTrustees(value, showWithoutCoverage);
@@ -170,6 +180,9 @@ function TrusteeSearchModal_(
   }
 
   function handleSelection(options: ComboOption[]) {
+    // The ComboBox clears its filter text on selection and on clear-all without notifying
+    // onUpdateFilter, so the remembered query no longer matches what the input shows.
+    lastQueryRef.current = '';
     if (options.length > 0) {
       // ComboBox only ever emits a value drawn from the options list this component itself
       // gave it (comboOptions, built from searchResults), so `selected` should never
