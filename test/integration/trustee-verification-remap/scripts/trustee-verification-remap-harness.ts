@@ -348,6 +348,19 @@ async function seedPendingVerification(
 
   const context = await getAppContext();
 
+  // Mirrors the cosmos-collections.bicep unique index on the local mongo container only;
+  // Azure Cosmos already has it from bicep, so no DDL is issued there.
+  if (IS_LOCAL) {
+    const { client, db } = await getMongo();
+    try {
+      await db
+        .collection(VERIFICATION_COLLECTION)
+        .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
+    } finally {
+      await client.close();
+    }
+  }
+
   const verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
   const verificationDoc = createAuditRecord<TrusteeMatchVerification>({
     documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
