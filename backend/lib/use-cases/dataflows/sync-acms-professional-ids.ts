@@ -13,6 +13,7 @@ import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
 import { serializeState, TrusteeSerializedState } from './trustee-match-pipeline';
 import {
@@ -57,8 +58,9 @@ async function getGroupDesignators(deps: SyncAcmsProfessionalIdsDeps): Promise<s
  * Resolves a single group's UST_PROF_CODE bookmark out of the shared per-group map document.
  * `purge` forces a fresh zero bookmark for this group regardless of persisted state
  * (first-run-style full backfill for this group only — other groups' bookmarks are untouched);
- * otherwise falls back to a fresh zero bookmark only when no state has been persisted yet, the
- * read fails, or this group has no entry yet in the map.
+ * otherwise falls back to a fresh zero bookmark only when no state has been persisted yet
+ * (NotFoundError) or this group has no entry yet in the map. Any other read failure rethrows —
+ * a transient error must fail the run rather than silently restart the group from the beginning.
  */
 async function resolveSyncState(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -81,8 +83,11 @@ async function resolveSyncState(
         [groupDesignator]: persisted.lastUstProfCodeByGroup[groupDesignator] ?? 0,
       },
     };
-  } catch (_error) {
-    return freshState;
+  } catch (originalError) {
+    if (originalError instanceof NotFoundError) {
+      return freshState;
+    }
+    throw originalError;
   }
 }
 

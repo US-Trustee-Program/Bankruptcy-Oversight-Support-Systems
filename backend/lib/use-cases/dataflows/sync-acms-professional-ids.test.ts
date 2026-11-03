@@ -15,6 +15,7 @@ import * as trusteeMatchPipelineOrchestrator from './trustee-match-pipeline-orch
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('SyncAcmsProfessionalIds', () => {
   let context: ApplicationContext;
@@ -130,12 +131,23 @@ describe('SyncAcmsProfessionalIds', () => {
     });
 
     test('should return a fresh zero bookmark for the group when no persisted state exists', async () => {
-      vi.spyOn(deps.runtimeStateRepo, 'read').mockRejectedValue(new Error('not found'));
+      vi.spyOn(deps.runtimeStateRepo, 'read').mockRejectedValue(
+        new NotFoundError('RUNTIME-STATE-MONGO-REPOSITORY'),
+      );
 
       const state = await SyncAcmsProfessionalIds.resolveSyncState(deps, 'NY');
 
       expect(state.documentType).toBe('ACMS_PROFESSIONAL_ID_SYNC_STATE');
       expect(state.lastUstProfCodeByGroup).toEqual({ NY: 0 });
+    });
+
+    test('should rethrow any other read error rather than resetting the bookmark', async () => {
+      const originalError = new Error('transient connection failure');
+      vi.spyOn(deps.runtimeStateRepo, 'read').mockRejectedValue(originalError);
+
+      await expect(SyncAcmsProfessionalIds.resolveSyncState(deps, 'NY')).rejects.toThrow(
+        originalError,
+      );
     });
 
     test('should read the single shared document, not a group-specific one', async () => {
