@@ -206,7 +206,7 @@ export class TrusteeMatchVerificationMongoRepository
         'caseId',
         'courtId',
         'courtName',
-        'dxtrTrustee',
+        'sourceTrustee',
         'mismatchReason',
         'status',
         'resolvedTrusteeId',

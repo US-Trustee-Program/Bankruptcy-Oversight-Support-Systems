@@ -62,7 +62,7 @@ test.describe('Trustee Identity Verification', () => {
     for (const item of pending) {
       const heading = page.getByTestId(`accordion-heading-${item.id}`);
       await expect(heading).toBeVisible(timeoutOption);
-      await expect(heading).toContainText(item.dxtrTrustee.fullName);
+      await expect(heading).toContainText(item.sourceTrustee.fullName);
     }
   });
 

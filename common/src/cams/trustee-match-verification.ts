@@ -1,5 +1,5 @@
 import { Auditable } from './auditable';
-import { DxtrTrusteeParty } from './dataflow-events';
+import { CanonicalTrusteeSource } from './dataflow-events';
 import { OrderStatus } from './orders';
 import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
@@ -37,7 +37,7 @@ export type TrusteeMatchVerification = Auditable & {
    */
   caseId?: string;
   courtId?: string;
-  dxtrTrustee: DxtrTrusteeParty;
+  sourceTrustee: CanonicalTrusteeSource;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted
    * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") — informational/diagnostic only, never
@@ -125,7 +125,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'caseId'
   | 'courtId'
   | 'courtName'
-  | 'dxtrTrustee'
+  | 'sourceTrustee'
   | 'mismatchReason'
   | 'status'
   | 'resolvedTrusteeId'

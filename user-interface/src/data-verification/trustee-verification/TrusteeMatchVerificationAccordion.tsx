@@ -148,7 +148,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }, [isResolved]);
 
-  const { legacy } = order.dxtrTrustee;
+  const { legacy } = order.sourceTrustee;
   const addressLines = [
     legacy?.address1,
     legacy?.address2,
@@ -379,10 +379,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           </div>
           <div
             className="accordion-header-field grid-col-6 text-no-wrap"
-            aria-label={`${fieldHeaders[1]} – ${order.dxtrTrustee.fullName}.`}
+            aria-label={`${fieldHeaders[1]} – ${order.sourceTrustee.fullName}.`}
             data-cell={fieldHeaders[1]}
           >
-            {order.dxtrTrustee.fullName}
+            {order.sourceTrustee.fullName}
           </div>
           <div
             className="accordion-header-field grid-col-2 text-no-wrap"
@@ -477,10 +477,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       <TrusteeSearchModal
         ref={searchModalRef}
         id={order.id}
-        dxtrTrusteeName={order.dxtrTrustee.fullName}
-        dxtrTrusteeAddressLines={addressLines}
-        dxtrTrusteePhone={legacy?.phone}
-        dxtrTrusteeEmail={legacy?.email}
+        sourceTrusteeName={order.sourceTrustee.fullName}
+        sourceTrusteeAddressLines={addressLines}
+        sourceTrusteePhone={legacy?.phone}
+        sourceTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
         divisionCode={divisionCode}
         chapter={originatingCaseChapter}

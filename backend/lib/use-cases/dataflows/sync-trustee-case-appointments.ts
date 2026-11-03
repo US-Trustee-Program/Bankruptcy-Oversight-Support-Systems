@@ -625,7 +625,7 @@ async function upsertIdentityTask(
         documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
         caseId: event.caseId,
         courtId: event.courtId,
-        dxtrTrustee: event.dxtrTrustee,
+        sourceTrustee: event.dxtrTrustee,
         mismatchReason,
         source: 'DXTR',
         findings,

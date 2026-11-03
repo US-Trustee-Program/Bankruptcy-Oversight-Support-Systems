@@ -38,7 +38,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
     caseId: 'case-001',
     courtId: '081',
-    dxtrTrustee: { fullName: 'John Doe' },
+    sourceTrustee: { fullName: 'John Doe' },
     mismatchReason: 'ambiguous',
     source: 'DXTR',
     // Alice ranks first (more address points); Bob second.

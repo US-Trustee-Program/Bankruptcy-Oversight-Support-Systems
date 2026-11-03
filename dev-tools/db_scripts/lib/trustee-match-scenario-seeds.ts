@@ -22,7 +22,7 @@ export function identityTaskFields(key: TrusteeMatchScenarioKey) {
     source: 'DXTR',
     fingerprint: computeFingerprint(variant),
     variant,
-    dxtrTrustee: findings.sourceRaw,
+    sourceTrustee: findings.sourceRaw,
     mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
     findings,
   };

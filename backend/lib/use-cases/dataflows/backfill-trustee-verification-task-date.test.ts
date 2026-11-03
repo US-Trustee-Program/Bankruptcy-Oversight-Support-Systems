@@ -14,7 +14,7 @@ function makeVerification(override: Partial<TrusteeMatchVerification> = {}): Bac
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
     caseId: '081-25-12345',
     courtId: '081',
-    dxtrTrustee: { fullName: 'Test Trustee' },
+    sourceTrustee: { fullName: 'Test Trustee' },
     source: 'DXTR',
     mismatchReason: 'no match',
     findings: MockData.getTrusteeMatchFindings(),

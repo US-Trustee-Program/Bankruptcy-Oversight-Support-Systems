@@ -14,7 +14,7 @@ describe('identityTaskFields', () => {
       source: 'DXTR',
       mismatchReason: 'ambiguous',
     });
-    expect(task.dxtrTrustee).toEqual(task.findings.sourceRaw);
+    expect(task.sourceTrustee).toEqual(task.findings.sourceRaw);
     // Recomputed deliberately, not duplicating buildVariant/computeFingerprint's own tests: this
     // confirms identityTaskFields actually wires its output through them.
     expect(task.variant).toBe(buildVariant(task.findings.sourceRaw));
