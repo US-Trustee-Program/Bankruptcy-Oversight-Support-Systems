@@ -120,7 +120,6 @@ export const EditDivisionsModal = forwardRef<EditDivisionsModalRef, EditDivision
           id={`${modalId}-division-pills`}
           className="edit-divisions-modal__pills"
           ariaLabelPrefix="Division"
-          wrapPills={true}
           selections={selections.map((option) => ({
             value: option.value,
             label: option.selectedLabel ?? option.label,
