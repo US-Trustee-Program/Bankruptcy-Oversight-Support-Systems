@@ -11,6 +11,7 @@ export interface FeatureFlagSet {
 }
 
 export const testFeatureFlags: FeatureFlagSet = {
+  'cams-native-user-roles': true,
   'case-search-landing-page': true,
   'chapter-eleven-enabled': true,
   'chapter-twelve-enabled': true,

@@ -34,6 +34,7 @@ export * from './cams/trustees';
 export * from './cams/contact-validators';
 export * from './cams/trustees-validators';
 export * from './cams/us-states';
+export * from './cams/user-access';
 export * from './cams/users';
 export * from './cams/utilities';
 export * from './cams/validation';

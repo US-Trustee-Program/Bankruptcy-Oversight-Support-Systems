@@ -1,3 +1,4 @@
+import { UserRoleAssignment } from '@common/cams/user-access';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SyncedCase } from '@common/cams/cases';
 import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@common/cams/events';
@@ -30,7 +31,9 @@ import {
   TrusteeProfessionalIdsRepository,
   TrusteeVariationRepository,
   UpdateResult,
+  RoleAssignmentAuditRepository,
   UserGroupsRepository,
+  UserRoleAssignmentRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
@@ -80,7 +83,9 @@ export class MockMongoRepository
     ListsRepository,
     NotificationRoutingRepository,
     EmailNotificationArchiveRepository,
-    UserGroupsRepository
+    UserGroupsRepository,
+    UserRoleAssignmentRepository,
+    RoleAssignmentAuditRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private trusteeVariations: TrusteeVariation[] = [];
@@ -287,6 +292,10 @@ export class MockMongoRepository
 
   searchCasesWithPhoneticTokens(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
+  }
+
+  findActiveByUserIds(_userIds: string[]): Promise<UserRoleAssignment[]> {
+    return Promise.resolve([]);
   }
 
   create(..._ignore): Promise<any> {

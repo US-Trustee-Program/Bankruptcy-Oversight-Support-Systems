@@ -32,6 +32,7 @@ import { CourtsController } from '../lib/controllers/courts/courts.controller';
 import { StaffController } from '../lib/controllers/staff/staff.controller';
 import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
+import { UserAccessController } from '../lib/controllers/user-access/user-access.controller';
 import { NotificationRoutingController } from '../lib/controllers/admin/notification-routing.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
@@ -556,6 +557,20 @@ export function createApp(): Application {
   app.put('/api/dev-tools/privileged-identity/:resourceId', handlePrivilegedIdentityAdmin);
   app.delete('/api/dev-tools/privileged-identity', handlePrivilegedIdentityAdmin);
   app.delete('/api/dev-tools/privileged-identity/:resourceId', handlePrivilegedIdentityAdmin);
+
+  const handleUserAccess = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new UserAccessController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/user-access/:resource', handleUserAccess);
+  app.post('/api/user-access/:resource', handleUserAccess);
 
   const handleNotificationRouting = async (req: Request, res: Response, next: NextFunction) => {
     try {

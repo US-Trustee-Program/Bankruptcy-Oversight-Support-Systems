@@ -25,4 +25,8 @@ describe('map get', () => {
     const key = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
     expect(key).toEqual('USTP CAMS Privileged Identity Management');
   });
+
+  test('should return the name of the Okta group that lists every CAMS user', () => {
+    expect(LocalStorageGateway.getCamsUsersGroupName()).toEqual('USTP Cams Users');
+  });
 });

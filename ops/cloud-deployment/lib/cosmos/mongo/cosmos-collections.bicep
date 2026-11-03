@@ -903,3 +903,83 @@ resource emailNotificationArchiveCollection 'Microsoft.DocumentDB/databaseAccoun
     }
   }
 }
+
+// CAMS-managed permissions. The unique {userId, activeKey} index rejects exact duplicate active
+// assignments; it must exist before the first write because Cosmos only adds a unique index to an
+// empty collection.
+resource userRoleAssignmentsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'user-role-assignments'
+  properties: {
+    resource: {
+      id: 'user-role-assignments'
+      shardKey: {
+        userId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['userId']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'userId'
+              'activeKey'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+      ]
+    }
+  }
+}
+
+// Append-only audit trail for user-role-assignments.
+resource roleAssignmentAuditCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'role-assignment-audit'
+  properties: {
+    resource: {
+      id: 'role-assignment-audit'
+      shardKey: {
+        userId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['userId']
+          }
+        }
+        {
+          key: {
+            keys: ['assignmentId']
+          }
+        }
+      ]
+    }
+  }
+}

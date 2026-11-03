@@ -16,6 +16,15 @@ export const CamsRole = {
 
 export type CamsRoleType = (typeof CamsRole)[keyof typeof CamsRole];
 
+/**
+ * The roles a CAMS permission (role assignment) can grant: every unique CamsRole value except
+ * PrivilegedIdentityUser, which is managed separately. The Oversight* keys alias other values and
+ * drop out.
+ */
+export const CamsRoles: CamsRoleType[] = [...new Set(Object.values(CamsRole))].filter(
+  (role) => role !== CamsRole.PrivilegedIdentityUser,
+);
+
 export const AssignableRole = {
   TrialAttorney: CamsRole.TrialAttorney,
   LeadTrialAttorney: CamsRole.LeadTrialAttorney,

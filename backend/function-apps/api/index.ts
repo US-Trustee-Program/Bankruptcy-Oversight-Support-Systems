@@ -40,5 +40,6 @@ import './trustee-notes/trustee-notes.function';
 import './trustee-upcoming-key-dates/trustee-upcoming-key-dates.function';
 import './trustee-search/trustee-search.function';
 import './trustees/trustees.function';
+import './user-access/user-access.function';
 
 // All functions are now registered via their app.http() calls

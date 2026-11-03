@@ -1,3 +1,4 @@
+import { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
@@ -1038,6 +1039,18 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
 export interface TrusteeVariationRepository extends Releasable {
   findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
   createVariation(doc: Creatable<TrusteeVariation>): Promise<TrusteeVariation>;
+}
+
+export interface UserRoleAssignmentRepository extends Releasable {
+  create(assignment: UserRoleAssignment): Promise<UserRoleAssignment>;
+  findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
+}
+
+/**
+ * Role assignment audit records are append-only: there are no update or delete methods.
+ */
+export interface RoleAssignmentAuditRepository extends Releasable {
+  create(entry: RoleAssignmentAuditEntry): Promise<void>;
 }
 
 export type ObjectStorageGateway = {
