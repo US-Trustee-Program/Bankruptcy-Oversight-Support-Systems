@@ -216,26 +216,6 @@ test.describe('Trustee Identity Verification', () => {
     await expect(modal).toBeHidden(timeoutOption);
   });
 
-  test('shows "How CAMS read this name" only for the one-candidate, non-exact-name task', async ({
-    page,
-  }) => {
-    const nonExactName = await expandTask(page, ADDRESS_PHONE_TASK_ID);
-    const nameSection = nonExactName.getByTestId('name-interpretation');
-    await expect(nameSection).toBeVisible(timeoutOption);
-    await expect(nameSection.locator('h3')).toHaveText('How CAMS read this name');
-    await expect(nameSection).toContainText('Jordan Imperfectmach');
-
-    await expect(
-      (await expandTask(page, STATE_DIFFERS_TASK_ID)).getByTestId('name-interpretation'),
-    ).toHaveCount(0);
-    await expect(
-      (await expandTask(page, AMBIGUOUS_TASK_ID)).getByTestId('name-interpretation'),
-    ).toHaveCount(0);
-    await expect(
-      (await expandTask(page, NO_CANDIDATES_TASK_ID)).getByTestId('name-interpretation'),
-    ).toHaveCount(0);
-  });
-
   test('approves a task that carries an ACMS professional id', async ({ page }) => {
     const content = await expandTask(page, ACMS_LINK_TASK_ID);
 

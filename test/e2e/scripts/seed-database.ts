@@ -205,8 +205,10 @@ function applyFakerPii(collectionName: string, docs: MongoDocument[]): MongoDocu
 function resolveFindingsScenarios(tasks: MongoDocument[]): {
   tasks: MongoDocument[];
   trustees: MongoDocument[];
+  surrogates: MongoDocument[];
 } {
   const trustees = new Map<string, MongoDocument>();
+  const surrogates: MongoDocument[] = [];
   const resolved = tasks.map(({ findingsScenario, ...task }) => {
     if (!findingsScenario) return task;
     const key = findingsScenario as TrusteeMatchScenarioKey;
@@ -219,16 +221,39 @@ function resolveFindingsScenarios(tasks: MongoDocument[]): {
         phoneticTokens: generateSearchTokens(trustee.name),
       });
     }
+    const fingerprint = computeFingerprint(variant);
+    // The sync writes one surrogate case appointment per affected case while a task is pending;
+    // the list and detail views count affected cases only from live surrogates. An approved task
+    // reads its affectedCaseIds snapshot instead, which approval records before the remap.
+    const caseId = task.caseId as string | undefined;
+    if (caseId && task.status === 'pending') {
+      surrogates.push({
+        id: `e2e-surrogate-${task.id}`,
+        documentType: 'CASE_APPOINTMENT',
+        caseId,
+        trusteeId: fingerprint,
+        assignedOn: '2018-01-01T00:00:00.000Z',
+        appointedDate: '2018-01-01',
+        isSurrogate: true,
+        chapter: '11',
+        courtDivisionCode: '081',
+        createdOn: task.createdOn,
+        createdBy: task.createdBy,
+        updatedOn: task.updatedOn,
+        updatedBy: task.updatedBy,
+      });
+    }
     return {
       ...task,
+      ...(caseId && task.status === 'approved' ? { affectedCaseIds: [caseId] } : {}),
       dxtrTrustee: findings.sourceRaw,
       findings,
       mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
       variant,
-      fingerprint: computeFingerprint(variant),
+      fingerprint,
     };
   });
-  return { tasks: resolved, trustees: [...trustees.values()] };
+  return { tasks: resolved, trustees: [...trustees.values()], surrogates };
 }
 
 // Restore MongoDB _id fields: fixture stores them as strings, MongoClient needs ObjectId
@@ -301,7 +326,9 @@ async function main() {
     const seededDocs = (collName: string): MongoDocument[] => {
       if (collName === 'trustee-match-verification') return scenarios.tasks;
       const docs = applyFakerPii(collName, fixture.collections[collName] ?? []);
-      return collName === 'trustees' ? [...docs, ...scenarios.trustees] : docs;
+      if (collName === 'trustees') return [...docs, ...scenarios.trustees];
+      if (collName === 'trustee-case-appointments') return [...docs, ...scenarios.surrogates];
+      return docs;
     };
 
     console.log(`[${MODULE_NAME}] Seeding collections...`);
