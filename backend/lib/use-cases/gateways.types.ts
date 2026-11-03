@@ -1028,9 +1028,8 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
    * (heal-sentinel-case-appointments.ts) that distinguishes "never linked" from "conflict".
    */
   hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   /** Deletes only the (camsTrusteeId, acmsProfessionalId) record, leaving the trustee's other
-   * ACMS id records in place - unlike deleteByCamsTrusteeId. */
+   * ACMS id records in place. */
   deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

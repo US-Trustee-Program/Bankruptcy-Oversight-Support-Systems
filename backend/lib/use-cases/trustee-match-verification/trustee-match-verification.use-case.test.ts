@@ -956,7 +956,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-b']);
       });
 
-      test('removes the fingerprint-keyed unresolved records', async () => {
+      test("removes this ACMS id's fingerprint-keyed unresolved record", async () => {
         await seedProfessionalId(sampleVerification.fingerprint, 'linked');
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');
@@ -965,6 +965,28 @@ describe('TrusteeMatchVerificationUseCase', () => {
           sampleVerification.fingerprint,
         );
         expect(remaining).toEqual([]);
+      });
+
+      test('keeps the unresolved records of other ACMS ids that share the fingerprint', async () => {
+        await seedProfessionalId(sampleVerification.fingerprint, 'linked');
+        await professionalIdsRepo.upsertProfessionalId(
+          {
+            documentType: 'TRUSTEE_PROFESSIONAL_ID',
+            camsTrusteeId: sampleVerification.fingerprint,
+            acmsProfessionalId: 'UT-05321',
+            disposition: 'linked',
+            nameMatchCount: 0,
+            evidence: MockData.getTrusteeMatchFindings(),
+          },
+          systemUser,
+        );
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        const remaining = await professionalIdsRepo.findByCamsTrusteeId(
+          sampleVerification.fingerprint,
+        );
+        expect(remaining.map((record) => record.acmsProfessionalId)).toEqual(['UT-05321']);
       });
 
       test('moves an existing link on a different trustee to the approved trustee', async () => {
@@ -1014,20 +1036,21 @@ describe('TrusteeMatchVerificationUseCase', () => {
         vi.spyOn(professionalIdsRepo, 'upsertProfessionalId').mockRejectedValue(
           new CamsError('TEST', { message: 'write failed' }),
         );
-        const deleteByCamsTrusteeIdSpy = vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId');
+        const deleteLinkSpy = vi.spyOn(professionalIdsRepo, 'deleteLink');
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-b'),
         ).rejects.toThrow('write failed');
 
-        expect(deleteByCamsTrusteeIdSpy).not.toHaveBeenCalled();
+        expect(deleteLinkSpy).not.toHaveBeenCalledWith(
+          sampleVerification.fingerprint,
+          acmsProfessionalId,
+        );
         expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
 
       test('still approves and logs when the fingerprint-keyed cleanup throws', async () => {
-        vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId').mockRejectedValue(
-          new Error('delete failed'),
-        );
+        vi.spyOn(professionalIdsRepo, 'deleteLink').mockRejectedValue(new Error('delete failed'));
         const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');
@@ -1049,7 +1072,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
           vi.spyOn(professionalIdsRepo, 'findByAcmsProfessionalId'),
           vi.spyOn(professionalIdsRepo, 'deleteLink'),
           vi.spyOn(professionalIdsRepo, 'upsertProfessionalId'),
-          vi.spyOn(professionalIdsRepo, 'deleteByCamsTrusteeId'),
         ];
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');

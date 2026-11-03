@@ -56,6 +56,10 @@ async function findVerificationBucketEntry(
  * true when the existing task has already been resolved or dismissed, which callers report as a
  * re-verification for match accuracy tracking. Omits caseId/courtId/appointedDate when undefined
  * rather than persisting them — a caseless (e.g. ACMS-sourced) task has none of these.
+ *
+ * The existing-task check and the write are not atomic, so under concurrent writers the returned
+ * flag is best-effort telemetry: a task created or resolved between the check and the write can be
+ * reported as pending. The repository's unique index prevents duplicates.
  */
 export async function upsertIdentityTask(
   verificationRepo: TrusteeMatchVerificationRepository,

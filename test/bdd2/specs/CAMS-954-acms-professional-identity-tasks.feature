@@ -24,11 +24,11 @@ Feature: Unresolved ACMS professionals become Data Verification identity tasks
 
   # The sync pages each group by UST_PROF_CODE, so a professional is reprocessed only on a
   # page retry, a bookmark reset, or a purge run
-  Scenario: Reprocessing a professional merges into the existing pending task
+  Scenario: Reprocessing a professional leaves the existing pending task untouched
     Given a pending ACMS identity task exists for "NY-00063"
     When the ACMS professional-id sync processes "NY-00063" again
     Then there is still exactly one identity task for "NY-00063"
-    And its findings reflect the latest pipeline run
+    And the task is unchanged
 
   Scenario: The sync does not change a resolved task
     Given the identity task for "NY-00063" was approved
