@@ -53,6 +53,7 @@ describe('upsertIdentityTask', () => {
   });
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
   });
@@ -108,22 +109,77 @@ describe('upsertIdentityTask', () => {
   });
 
   test('merges into an existing pending task rather than creating a second one', async () => {
-    const existing = makeExisting();
+    const existing = makeExisting({ mismatchReason: 'no-match', source: 'DXTR' });
+    const newFindings = { ...findings, sourceRaw: { fullName: 'Jane Q Doe' } };
     vi.spyOn(verificationRepo, 'findByFingerprint').mockResolvedValue([existing]);
     const upsertSpy = vi
       .spyOn(verificationRepo, 'upsertVerification')
       .mockResolvedValue(undefined as never);
 
-    const isReVerification = await upsertIdentityTask(verificationRepo, baseInput);
+    const isReVerification = await upsertIdentityTask(verificationRepo, {
+      ...baseInput,
+      findings: newFindings,
+      appointedDate: '2025-03-01T00:00:00.000Z',
+    });
 
     expect(isReVerification).toBe(false);
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'existing-id',
         source: 'ACMS',
         mismatchReason: 'ambiguous',
+        findings: newFindings,
+        appointedDate: '2025-03-01T00:00:00.000Z',
+        acmsProfessionalId: 'NY-00123',
+        updatedOn: expect.not.stringMatching(existing.updatedOn),
       }),
     );
+  });
+
+  test('keeps the existing task caseId and courtId when merging, ignoring the input values', async () => {
+    const existing = makeExisting({ caseId: '081-22-11111', courtId: '0881' });
+    vi.spyOn(verificationRepo, 'findByFingerprint').mockResolvedValue([existing]);
+    const upsertSpy = vi
+      .spyOn(verificationRepo, 'upsertVerification')
+      .mockResolvedValue(undefined as never);
+
+    await upsertIdentityTask(verificationRepo, {
+      ...baseInput,
+      caseId: '999-99-99999',
+      courtId: '0999',
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: '081-22-11111', courtId: '0881' }),
+    );
+  });
+
+  test('matches on the exact variant within a multi-entry fingerprint bucket', async () => {
+    const collision = makeExisting({ id: 'collision-id', variant: '{"fullName":"someone else"}' });
+    const match = makeExisting({ id: 'match-id' });
+    vi.spyOn(verificationRepo, 'findByFingerprint').mockResolvedValue([collision, match]);
+    const upsertSpy = vi
+      .spyOn(verificationRepo, 'upsertVerification')
+      .mockResolvedValue(undefined as never);
+
+    await upsertIdentityTask(verificationRepo, baseInput);
+
+    expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-id' }));
+  });
+
+  test('creates a new task when the bucket holds only non-matching variants', async () => {
+    const collision = makeExisting({ id: 'collision-id', variant: '{"fullName":"someone else"}' });
+    vi.spyOn(verificationRepo, 'findByFingerprint').mockResolvedValue([collision]);
+    const upsertSpy = vi
+      .spyOn(verificationRepo, 'upsertVerification')
+      .mockResolvedValue(undefined as never);
+
+    await upsertIdentityTask(verificationRepo, baseInput);
+
+    const written = upsertSpy.mock.calls[0][0];
+    expect(written.id).not.toBe('collision-id');
+    expect(written).toMatchObject({ variant: baseInput.variant, status: 'pending' });
   });
 
   test('leaves a resolved task untouched and reports a re-verification', async () => {

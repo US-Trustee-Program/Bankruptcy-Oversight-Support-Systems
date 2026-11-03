@@ -89,6 +89,44 @@ describe('identifyTrustee', () => {
     expect(pipelineSpy).not.toHaveBeenCalled();
   });
 
+  test('ignores non-matching variants in the fingerprint bucket and falls through to the pipeline', async () => {
+    vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([
+      makeVariation({ variant: 'a-different-variant', trusteeId: 'trustee-collision' }),
+    ]);
+    const pipelineSpy = vi
+      .spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline')
+      .mockResolvedValue({
+        sourceRaw: source,
+        sourceNormalized: {},
+        memo: new Map(),
+        candidates: new Map(),
+        match: null,
+        skip: false,
+        error: null,
+      } as never);
+
+    const result = await identifyTrustee(deps, source, acmsProfessionalId, fingerprint, variant);
+
+    expect(result.kind).toBe('unresolved');
+    expect(pipelineSpy).toHaveBeenCalled();
+  });
+
+  test('picks the exact-variant entry from a multi-entry fingerprint bucket', async () => {
+    vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([
+      makeVariation({ variant: 'a-different-variant', trusteeId: 'trustee-collision' }),
+      makeVariation({ trusteeId: 'trustee-exact' }),
+    ]);
+    vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([]);
+
+    const result = await identifyTrustee(deps, source, acmsProfessionalId, fingerprint, variant);
+
+    expect(result).toMatchObject({
+      kind: 'linked',
+      via: 'fingerprint',
+      trusteeId: 'trustee-exact',
+    });
+  });
+
   test('returns conflict via fingerprint when the matched trustee is linked to a different ACMS id record', async () => {
     vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([makeVariation()]);
     vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
