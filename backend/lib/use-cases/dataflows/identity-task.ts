@@ -49,12 +49,13 @@ async function findVerificationBucketEntry(
 }
 
 /**
- * Upserts a TrusteeMatchVerification identity task for an unresolved (ambiguous or no-match)
- * pipeline outcome, from either legacy source (ACMS or DXTR). Skips the write if the existing
- * document has already been resolved or dismissed (the repository's merge-upsert enforces the
- * same rule again at the DB layer; this pre-check avoids even attempting the write and lets the
- * caller report a re-verification). Omits caseId/courtId/appointedDate when undefined rather than
- * persisting them — a caseless (e.g. ACMS-sourced) task has none of these.
+ * Writes a TrusteeMatchVerification identity task for an unresolved (ambiguous or no-match)
+ * pipeline outcome, from either legacy source (ACMS or DXTR), unless a task already exists for
+ * the same fingerprint and variant. An existing task is never modified, whatever its source:
+ * the fingerprint and variant exist for future matching, so the existing record stands. Returns
+ * true when the existing task has already been resolved or dismissed, which callers report as a
+ * re-verification for match accuracy tracking. Omits caseId/courtId/appointedDate when undefined
+ * rather than persisting them — a caseless (e.g. ACMS-sourced) task has none of these.
  */
 export async function upsertIdentityTask(
   verificationRepo: TrusteeMatchVerificationRepository,
@@ -62,41 +63,28 @@ export async function upsertIdentityTask(
 ): Promise<boolean> {
   const { fingerprint, variant } = input;
   const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
-  if (existing && existing.status !== 'pending') {
-    return true; // Already resolved — signals a re-verification for match accuracy tracking
-  }
   if (existing) {
-    await verificationRepo.upsertVerification({
-      ...existing,
+    return existing.status !== 'pending';
+  }
+  const doc = createAuditRecord<TrusteeMatchVerification>(
+    {
+      documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+      caseId: input.caseId,
+      courtId: input.courtId,
+      sourceTrustee: input.sourceTrustee,
       mismatchReason: input.mismatchReason,
       source: input.source,
       findings: input.findings,
       appointedDate: input.appointedDate,
       acmsProfessionalId: input.acmsProfessionalId,
-      updatedOn: new Date().toISOString(),
-      updatedBy: SYSTEM_USER_REFERENCE,
-    });
-  } else {
-    const doc = createAuditRecord<TrusteeMatchVerification>(
-      {
-        documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-        caseId: input.caseId,
-        courtId: input.courtId,
-        sourceTrustee: input.sourceTrustee,
-        mismatchReason: input.mismatchReason,
-        source: input.source,
-        findings: input.findings,
-        appointedDate: input.appointedDate,
-        acmsProfessionalId: input.acmsProfessionalId,
-        taskType: 'trustee-match',
-        status: 'pending',
-        taskDate: new Date().toISOString(),
-        fingerprint,
-        variant,
-      },
-      SYSTEM_USER_REFERENCE,
-    );
-    await verificationRepo.upsertVerification(doc);
-  }
+      taskType: 'trustee-match',
+      status: 'pending',
+      taskDate: new Date().toISOString(),
+      fingerprint,
+      variant,
+    },
+    SYSTEM_USER_REFERENCE,
+  );
+  await verificationRepo.upsertVerification(doc);
   return false;
 }
