@@ -32,10 +32,10 @@ test.describe('Transfer Orders', () => {
     // Wait for the order list to load before interacting with filters
     await officesRequestPromise;
 
-    // Deselect Consolidation and Trustee Mismatch, leaving only Transfer selected
+    // Deselect Consolidation and Trustee Identity, leaving only Transfer selected
     await page.locator('#task-type-filter-expand').click();
-    await page.getByTestId('task-type-filter-option-item-1').click();
-    await page.getByTestId('task-type-filter-option-item-2').click();
+    await page.locator('[id="option-consolidation"]').click();
+    await page.locator('[id="option-trustee-match"]').click();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;

@@ -27,8 +27,8 @@ test.describe('Consolidation Orders', () => {
 
     // Select only the Consolidation task type filter to make items visible
     await page.locator('#task-type-filter-expand').click(timeoutOption);
-    await page.getByTestId('task-type-filter-option-item-0').click(timeoutOption);
-    await page.getByTestId('task-type-filter-option-item-2').click(timeoutOption);
+    await page.locator('[id="option-transfer"]').click(timeoutOption);
+    await page.locator('[id="option-trustee-match"]').click(timeoutOption);
     await expect(page.getByTestId('accordion-group')).toBeVisible(timeoutOption);
 
     const orderResponse = await orderResponsePromise;
