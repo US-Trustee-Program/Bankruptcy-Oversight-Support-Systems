@@ -62,7 +62,7 @@ describe('OfficeDivisionSetupOffices', () => {
     );
   });
 
-  test('should list each office with its divisions and an Edit Offices button', () => {
+  test('should list each office with its divisions and an Edit Divisions button', () => {
     renderOffices();
 
     const cells = getCells(getBodyRows()[1]);
@@ -70,7 +70,7 @@ describe('OfficeDivisionSetupOffices', () => {
     expect(cells[1]).toHaveTextContent(PROTOTYPE_OFFICES[0].officeName);
     expect(cells[2]).toHaveTextContent('District of Massachusetts (Boston)');
     expect(
-      within(cells[3]).getByRole('button', { name: 'Edit Offices: Boston (Region 1)' }),
+      within(cells[3]).getByRole('button', { name: 'Edit Divisions for Boston (Region 1)' }),
     ).toBeInTheDocument();
   });
 

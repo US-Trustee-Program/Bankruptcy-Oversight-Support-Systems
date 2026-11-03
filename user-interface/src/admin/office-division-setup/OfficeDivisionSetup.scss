@@ -14,7 +14,7 @@
     .cams-table--responsive {
       @include cams-table.cams-table-flex-row;
 
-      // Top-align cells so the Edit Offices button lines up with the first line of text.
+      // Top-align cells so the Edit Divisions button lines up with the first line of text.
       .cams-table__header-row,
       .cams-table__row {
         align-items: flex-start;

@@ -130,12 +130,12 @@ export function OfficeDivisionSetupOffices({
               <CamsTableCell className="actions-column" data-cell="">
                 {office && (
                   <Button
-                    id={`edit-offices-${key}`}
+                    id={`edit-divisions-${key}`}
                     uswdsStyle={UswdsButtonStyle.Unstyled}
-                    aria-label={`Edit Offices: ${formatOffice(office)}`}
+                    aria-label={`Edit Divisions for ${formatOffice(office)}`}
                     onClick={() => editModalRef.current?.show(office)}
                   >
-                    <IconLabel icon="edit" label="Edit Offices" />
+                    <IconLabel icon="edit" label="Edit Divisions" />
                   </Button>
                 )}
               </CamsTableCell>

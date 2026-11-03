@@ -58,7 +58,9 @@ describe('OfficeDivisionSetup', () => {
   }
 
   async function openEditFor(officeLabel: string) {
-    await userEvent.click(screen.getByRole('button', { name: `Edit Offices: ${officeLabel}` }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `Edit Divisions for ${officeLabel}` }),
+    );
   }
 
   test('should move a division from another office when the user saves', async () => {
