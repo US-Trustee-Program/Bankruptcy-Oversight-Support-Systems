@@ -13,6 +13,7 @@ import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { identifyTrustee, IdentifyTrusteeOutcome } from './identify-trustee';
+import { upsertIdentityTask } from './identity-task';
 import {
   deriveDisposition,
   deriveNameMatchCount,
@@ -30,6 +31,7 @@ function createDeps(context: ApplicationContext) {
     trusteesRepo: factory.getTrusteesRepository(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
     professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
+    verificationRepo: factory.getTrusteeMatchVerificationRepository(context),
     runtimeStateRepo: factory.getRuntimeStateRepository<AcmsProfessionalIdSyncState>(context),
   };
 }
@@ -221,23 +223,44 @@ async function purgeAll(deps: SyncAcmsProfessionalIdsDeps): Promise<void> {
 
 type GateOutcome = 'skipped' | 'written';
 
+/**
+ * Outcome kinds are counted by name in the dataflow's completion trace; keep them stable.
+ * - 'manual-preserved': an existing manual link was found, so nothing was identified or written.
+ * - 'ambiguous-task-pending': the ambiguous professional's identity task is pending after this
+ *   run, whether newly created or already present (an existing task is never modified).
+ * - 'ambiguous-already-resolved': the identity task for this fingerprint and variant was already
+ *   resolved or dismissed and was left unchanged.
+ * - 'ambiguous' with gated 'skipped': ambiguous, but no active appointment, so no record or task.
+ */
 type ProcessOneRecordOutcome =
   | { kind: 'auto-linked'; via: 'fingerprint' | 'name' }
   | { kind: 'conflict'; via: 'fingerprint' | 'name' }
+  | { kind: 'manual-preserved' }
+  | { kind: 'ambiguous-task-pending' }
+  | { kind: 'ambiguous-already-resolved' }
+  | { kind: 'ambiguous'; gated: 'skipped' }
   | {
-      kind: 'no-match' | 'ambiguous' | 'error' | 'skipped-not-a-person';
+      kind: 'no-match' | 'error' | 'skipped-not-a-person';
       gated: GateOutcome;
     };
 
 /**
- * Per-record order: identifyTrustee's fingerprint lookup, then the matching pipeline, then a
- * conflict check on any resolved match. A conflict bypasses the active-appointment gate; every
- * other unresolved outcome goes through applyActiveAppointmentGate.
+ * Per-record order: manual-link guard, identifyTrustee's fingerprint lookup, then the matching
+ * pipeline, then a conflict check on any resolved match. A conflict bypasses the
+ * active-appointment gate; every other unresolved outcome goes through
+ * applyActiveAppointmentGate. An ambiguous record the gate wrote also gets an identity task.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<ProcessOneRecordOutcome> {
+  const existingLinks = await deps.professionalIdsRepo.findByAcmsProfessionalId(
+    record.acmsProfessionalId,
+  );
+  if (existingLinks.some((link) => link.linkMethod === 'manual')) {
+    return { kind: 'manual-preserved' };
+  }
+
   const variant = buildAcmsVariant(record);
   const fingerprint = computeFingerprint(variant);
 
@@ -274,7 +297,19 @@ async function processOneRecord(
   }
   const disposition = deriveDisposition(state);
   if (disposition === 'ambiguous') {
-    return { kind: 'ambiguous', gated };
+    if (gated === 'skipped') {
+      return { kind: 'ambiguous', gated };
+    }
+    const isAlreadyResolved = await upsertIdentityTask(deps.verificationRepo, {
+      source: 'ACMS',
+      sourceTrustee: toAcmsTrusteeProfessional(record),
+      mismatchReason: 'ambiguous',
+      findings: state,
+      fingerprint,
+      variant,
+      acmsProfessionalId: record.acmsProfessionalId,
+    });
+    return { kind: isAlreadyResolved ? 'ambiguous-already-resolved' : 'ambiguous-task-pending' };
   }
   return { kind: 'no-match', gated };
 }
