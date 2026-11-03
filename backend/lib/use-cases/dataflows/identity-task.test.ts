@@ -109,7 +109,7 @@ describe('upsertIdentityTask', () => {
   });
 
   test('merges into an existing pending task rather than creating a second one', async () => {
-    const existing = makeExisting({ mismatchReason: 'no-match', source: 'DXTR' });
+    const existing = makeExisting({ mismatchReason: 'no match', source: 'DXTR' });
     const newFindings = { ...findings, sourceRaw: { fullName: 'Jane Q Doe' } };
     vi.spyOn(verificationRepo, 'findByFingerprint').mockResolvedValue([existing]);
     const upsertSpy = vi
