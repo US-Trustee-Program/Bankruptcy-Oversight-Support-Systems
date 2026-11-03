@@ -1,6 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
+import {
+  AddressMatchQuality,
+  AddressMatchScore,
+  compareByAddressPointsThenNameQuality,
+  compareByNameQuality,
+  NameMatchScore,
+} from '@common/cams/trustee-match-pipeline';
 import factory from '../../factory';
 import {
   firstLastNameToken,
@@ -122,15 +129,15 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  * matchName's graded verdict, present only on a pass: 'exact' when every compared field matched
  * literally; 'strong' when the surname matched but a given name was relaxed (initial, nickname,
  * swap); 'weak' when the surname itself only matched fuzzily.
+ *
+ * firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
+ * or a known nickname), which resolveByStateOnly does not accept without a contact signal.
+ *
+ * Shape is NameMatchScore (common/src/cams/trustee-match-pipeline.ts), imported rather than
+ * redeclared so this function's output always matches what every reader of
+ * candidate.scores.doesNameMatch expects.
  */
-type NameMatchQuality = 'exact' | 'strong' | 'weak';
-
-/** firstNameBySpellingOnly: the first name matched only by Jaro-Winkler distance (not an initial
- * or a known nickname), which resolveByStateOnly does not accept without a contact signal. */
-type NameMatchVerdict =
-  { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true } | { pass: false };
-
-const NO_MATCH: NameMatchVerdict = { pass: false };
+const NO_MATCH: NameMatchScore = { pass: false };
 
 /** The best quality any given-name variant reaches - firstName, or a parenthetical alias recorded
  * alongside it (see NormalizedTrustee.firstNameAlternates). Only the primary can be 'exact'; an
@@ -185,7 +192,7 @@ function matchName(
   memo: NormalizedMemo,
   sourceNormalized: NormalizedTrustee,
   camsNormalized: NormalizedTrustee,
-): NameMatchVerdict {
+): NameMatchScore {
   const sourceLast = sourceNormalized.lastName ?? '';
   const camsLast = camsNormalized.lastName ?? '';
   const sourceFirst = sourceNormalized.firstName ?? '';
@@ -431,7 +438,7 @@ export function recallByName(context: ApplicationContext): Stage {
       result.kind === 'resolved'
         ? [result.trusteeId]
         : result.kind === 'ambiguous'
-          ? result.matchCandidates.map((c) => c.trusteeId)
+          ? result.trusteeIds
           : [];
     if (trusteeIds.length === 0) return state;
 
@@ -666,12 +673,6 @@ function normalizeCandidateNameFields(
   candidate.camsNormalized.lastNameAlternates = lastNameAlternates;
   return candidate;
 }
-
-/** matchName's verdict as it is stored on a candidate - quality is present only on a pass, so a
- * reader cannot mistake a failed match's quality for a real one. */
-type NameMatchScore =
-  | (ScoreRecord & { pass: true; quality: NameMatchQuality; firstNameBySpellingOnly?: true })
-  | { pass: false };
 
 /**
  * A candidate's name verdict, always present by RESOLVE: a candidate whose scoring threw sets
@@ -1041,12 +1042,6 @@ function geoPoints(scores: ScoreByScorer): number | null {
   return dominant ? GEO_POINTS : matches;
 }
 
-type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
-
-type AddressMatchScore =
-  | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
-  | { pass: false; points: number; streetCloseness?: number };
-
 function gradeAddress(points: number): AddressMatchQuality | undefined {
   if (points >= GEO_POINTS + STREET_POINTS) return 'exact';
   if (points > GEO_POINTS) return 'strong';
@@ -1188,19 +1183,12 @@ function addAndScoreCandidate(
   }
 }
 
-const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
-
-function nameQualityRank(candidate: PipelineCandidate): number {
-  const score = nameMatch(candidate);
-  return score.pass ? NAME_QUALITY_RANK[score.quality] : Number.MAX_SAFE_INTEGER;
-}
-
 type Ranking = (a: PipelineCandidate, b: PipelineCandidate) => number;
 
-const byNameQuality: Ranking = (a, b) => nameQualityRank(a) - nameQualityRank(b);
+const byNameQuality: Ranking = (a, b) => compareByNameQuality(a.scores, b.scores);
 
 const byAddressPointsThenNameQuality: Ranking = (a, b) =>
-  (addressMatch(b)?.points ?? 0) - (addressMatch(a)?.points ?? 0) || byNameQuality(a, b);
+  compareByAddressPointsThenNameQuality(a.scores, b.scores);
 
 /** The single best-ranked survivor, or undefined when there are none or the top rank is a tie. */
 function uniqueBest(

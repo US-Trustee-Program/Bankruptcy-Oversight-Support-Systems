@@ -1,7 +1,7 @@
 import './TrusteeSearchModal.scss';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import useDebounce from '@/lib/hooks/UseDebounce';
-import Modal from '@/lib/components/uswds/modal/Modal';
+import Modal, { ModalShowOptions } from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
@@ -10,15 +10,10 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
-import {
-  formatAppointmentStatus,
-  getUncoveredCases,
-  AppointmentCoverageCase,
-} from '@common/cams/trustee-appointments';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
-import { getCaseNumber } from '@common/cams/cases';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -28,22 +23,14 @@ interface TrusteeSearchModalProps {
   dxtrTrusteeEmail?: string;
   courtId?: string;
   // When both are provided, search results are filtered server-side to trustees with an
-  // active appointment covering this court+chapter+division (isAppointmentMatch's rule) --
-  // so a user can't pick a trustee the backend would reject on approval anyway. Omitting
-  // either preserves the original district-only filtering, for any other caller of this
-  // same modal that doesn't have case context to provide.
+  // active appointment covering this court+chapter+division (isAppointmentMatch's rule).
+  // Omitting either keeps district-only filtering, for any caller of this modal that has no
+  // case context to provide.
   divisionCode?: string;
   chapter?: string;
-  // Every case this verification affects, not just the originating one -- used to disable
-  // Confirm and explain why when the selected trustee doesn't cover all of them (see
-  // getUncoveredCases). The divisionCode/chapter filter above only narrows results against the
-  // single originating case; this is the hard, bundle-wide gate, mirroring what the backend's
-  // approval endpoint is guaranteed to enforce. Omitted (or empty) disables this check entirely
-  // -- e.g. any other caller of this modal with no case-bundle context to provide.
-  affectedCases?: AppointmentCoverageCase[];
+  /** Receives the chosen trustee; the caller decides what selecting it means. */
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
-  isProcessing?: boolean;
 }
 
 function fieldOrPlaceholder(label: string, value?: string): string {
@@ -51,7 +38,7 @@ function fieldOrPlaceholder(label: string, value?: string): string {
 }
 
 export type TrusteeSearchModalImperative = {
-  show: () => void;
+  show: (options?: ModalShowOptions) => void;
   hide: () => void;
 };
 
@@ -68,10 +55,8 @@ function TrusteeSearchModal_(
     courtId,
     divisionCode,
     chapter,
-    affectedCases,
     onConfirm,
     onCancel,
-    isProcessing,
   } = props;
   const modalRef = useRef<ModalRefType>(null);
   const trusteeNameComboBoxRef = useRef<ComboBoxRef>(null);
@@ -79,6 +64,9 @@ function TrusteeSearchModal_(
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string | undefined>(courtId);
+  const [showWithoutCoverage, setShowWithoutCoverage] = useState(false);
+  const lastQueryRef = useRef('');
+  const searchTicketRef = useRef(0);
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -97,12 +85,15 @@ function TrusteeSearchModal_(
       });
   }, []);
 
-  function show() {
+  function show(options?: ModalShowOptions) {
+    invalidateSearches();
+    lastQueryRef.current = '';
     setSearchResults([]);
     setSelectedTrustee(null);
     setSelectedCourtId(courtId);
+    setShowWithoutCoverage(false);
     trusteeNameComboBoxRef.current?.clearSelections();
-    modalRef.current?.show({});
+    modalRef.current?.show(options ?? {});
   }
 
   function hide() {
@@ -118,40 +109,80 @@ function TrusteeSearchModal_(
       courts.find((c) => c.courtDivisionCode === selectedCourtId))
     : undefined;
 
-  function handleFilterChange(value: string) {
+  // divisionCode/chapter describe the case that opened this modal, which is only a valid
+  // filter while the search is still scoped to that case's own court. If the user has
+  // switched the "Trustee District" dropdown away from the court this modal was opened
+  // with, divisionCode belongs to a different court than the one now being searched --
+  // applying it would filter search results against the wrong court's divisions. Falling
+  // back to district-only filtering there is safe: it can only ever show MORE candidates,
+  // never admit one the backend's own approval check would reject. This mirrors the
+  // backend, which filters only when court, division and chapter are all present.
+  const coverageContextAvailable =
+    Boolean(courtId && divisionCode && chapter) && selectedCourtId === courtId;
+
+  // Each search takes a ticket; anything that invalidates in-flight or armed searches
+  // (new query, filter change, court change, modal reopen) bumps it so late responses
+  // are discarded instead of overwriting results for the current query and filter state.
+  function invalidateSearches(): number {
+    searchTicketRef.current += 1;
+    return searchTicketRef.current;
+  }
+
+  function searchTrustees(value: string, includeWithoutCoverage: boolean) {
+    const ticket = invalidateSearches();
     if (!value || value.length < 2) {
       setSearchResults([]);
       return;
     }
-    // divisionCode/chapter describe the case that opened this modal, which is only a valid
-    // filter while the search is still scoped to that case's own court. If the user has
-    // switched the "Trustee District" dropdown away from the court this modal was opened
-    // with, divisionCode belongs to a different court than the one now being searched --
-    // applying it would filter search results against the wrong court's divisions. Falling
-    // back to district-only filtering here is safe: it can only ever show MORE candidates,
-    // never admit one the backend's own approval check would reject.
-    const isOriginatingCourt = selectedCourtId === courtId;
+    const applyCoverageFilter = coverageContextAvailable && !includeWithoutCoverage;
     debounce(async () => {
+      let results: TrusteeSearchResult[] = [];
       try {
         const response = await Api2.searchTrustees(
           value,
           selectedCourtEntry?.courtId,
-          isOriginatingCourt ? divisionCode : undefined,
-          isOriginatingCourt ? chapter : undefined,
+          applyCoverageFilter ? divisionCode : undefined,
+          applyCoverageFilter ? chapter : undefined,
         );
-        setSearchResults(response.data);
+        results = response.data;
       } catch {
-        setSearchResults([]);
+        // an unavailable search shows no candidates
       }
+      if (ticket === searchTicketRef.current) setSearchResults(results);
     }, 300);
   }
 
+  // The case's chapter arrives asynchronously. A search typed before it did was unfiltered, yet
+  // the checkbox (unchecked) now appears to promise filtered results, so rerun the query.
+  useEffect(() => {
+    if (coverageContextAvailable && lastQueryRef.current.length >= 2) {
+      searchTrustees(lastQueryRef.current, showWithoutCoverage);
+    }
+    // Only a change in coverage availability should rerun the search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+  }, [coverageContextAvailable]);
+
+  function handleFilterChange(value: string) {
+    lastQueryRef.current = value;
+    searchTrustees(value, showWithoutCoverage);
+  }
+
+  function handleCoverageToggle(checked: boolean) {
+    setShowWithoutCoverage(checked);
+    searchTrustees(lastQueryRef.current, checked);
+  }
+
   function handleCourtSelection(options: ComboOption[]) {
+    invalidateSearches();
     setSelectedCourtId(options.length > 0 ? options[0].value : undefined);
+    setShowWithoutCoverage(false);
     setSearchResults([]);
   }
 
   function handleSelection(options: ComboOption[]) {
+    // The ComboBox clears its filter text on selection and on clear-all without notifying
+    // onUpdateFilter, so the remembered query no longer matches what the input shows.
+    lastQueryRef.current = '';
     if (options.length > 0) {
       // ComboBox only ever emits a value drawn from the options list this component itself
       // gave it (comboOptions, built from searchResults), so `selected` should never
@@ -203,20 +234,13 @@ function TrusteeSearchModal_(
       return `${courtName}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
     }) ?? [];
 
-  // Hard, bundle-wide coverage gate (see affectedCases' doc comment above) -- computed only
-  // once a trustee is selected, since there's nothing to warn about otherwise.
-  const uncoveredCases = selectedTrustee
-    ? getUncoveredCases(selectedTrustee.appointments, affectedCases ?? [])
-    : [];
-  const hasUncoveredCases = uncoveredCases.length > 0;
-
   const actionButtonGroup = {
     modalId: `trustee-search-modal-${id}`,
     modalRef,
     submitButton: {
-      label: 'Confirm Appointment',
-      disabled: !selectedTrustee || isProcessing || hasUncoveredCases,
-      // Without this, Modal closes itself on click by default, before isProcessing can render.
+      label: 'Select Trustee',
+      disabled: !selectedTrustee,
+      // The caller hides this modal once it has taken the selection.
       closeOnClick: false,
       onClick: () => {
         if (selectedTrustee) {
@@ -226,7 +250,6 @@ function TrusteeSearchModal_(
     },
     cancelButton: {
       label: 'Cancel',
-      disabled: isProcessing,
       onClick: () => {
         if (onCancel) onCancel();
         hide();
@@ -262,6 +285,15 @@ function TrusteeSearchModal_(
             placeholder="- Search Trustee name -"
             disableFiltering={true}
           />
+          {coverageContextAvailable && (
+            <Checkbox
+              id={`trustee-search-show-without-coverage-${id}`}
+              label="Show trustees without confirmed coverage for this case"
+              value="show-without-coverage"
+              checked={showWithoutCoverage}
+              onChange={(ev) => handleCoverageToggle(ev.target.checked)}
+            />
+          )}
           <div className="trustee-comparison">
             <div className="court-trustee-details">
               <h4>Information sent by court</h4>
@@ -306,18 +338,6 @@ function TrusteeSearchModal_(
                   {appointmentLines.map((line, i) => (
                     <div key={i}>{line}</div>
                   ))}
-                  {hasUncoveredCases && (
-                    <p
-                      className="usa-error-message uncovered-cases-message"
-                      data-testid="search-uncovered-cases-message"
-                    >
-                      Does not have an appointment covering case(s){' '}
-                      {uncoveredCases
-                        .map((c) => `${getCaseNumber(c.caseId)} (Chapter ${c.chapter})`)
-                        .join(', ')}
-                      . This match cannot be approved until those cases are resolved separately.
-                    </p>
-                  )}
                 </>
               ) : (
                 <div>No Trustee selected</div>
@@ -326,7 +346,6 @@ function TrusteeSearchModal_(
           </div>
         </>
       }
-      footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
       actionButtonGroup={actionButtonGroup}
     />
   );

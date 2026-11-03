@@ -683,6 +683,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateIfPending(..._ignore: any[]): Promise<boolean> {
+    throw new Error('Method not implemented.');
+  }
+
   getByAppointmentId(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
@@ -749,6 +753,11 @@ export class MockMongoRepository
       }
     }
     return Promise.resolve(count);
+  }
+
+  deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {
+    const deleted = this.professionalIds.delete(`${camsTrusteeId}:${acmsProfessionalId}`);
+    return Promise.resolve(deleted ? 1 : 0);
   }
 
   deleteAllBySource(..._ignore: any[]): Promise<{ deletedCount: number }> {

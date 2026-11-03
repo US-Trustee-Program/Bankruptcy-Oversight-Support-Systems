@@ -1,6 +1,7 @@
 import { Auditable } from '@common/cams/auditable';
 import { Identifiable } from '@common/cams/document';
 import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
+import { nameMatchQuality } from '@common/cams/trustee-match-pipeline';
 import { SerializedCandidate, TrusteeSerializedState } from './trustee-match-pipeline';
 import { normalizeAddressLine } from './trustee-match.helpers';
 
@@ -99,8 +100,7 @@ function hasSuspectDuplicateCamsTrustee<
 /** True when the name match is exact, or when the ACMS source has any contact data
  * (doesAcmsTrusteeHaveAddressAndPhone not failed). */
 function isGenuineAmbiguousEvidence(candidate: SerializedCandidate<unknown>): boolean {
-  const nameMatch = candidate.scores.doesNameMatch;
-  if (nameMatch?.pass === true && nameMatch.quality === 'exact') return true;
+  if (nameMatchQuality(candidate.scores) === 'exact') return true;
   return candidate.scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
 }
 

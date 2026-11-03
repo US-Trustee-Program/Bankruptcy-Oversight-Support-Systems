@@ -1,17 +1,29 @@
 import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
+import {
+  KleeneBoolean,
+  MemoEntry,
+  NormalizedTrustee,
+  PipelineMatch,
+  ProjectedTrustee,
+  ScoreByScorer,
+  ScoreRecord,
+  SerializedState,
+} from '@common/cams/trustee-match-pipeline';
+import { SerializedCamsError } from '@common/cams/serialized-cams-error';
 import { CamsError } from '../../common-errors/cams-error';
 
-/** The only Trustee-shaped type pipeline internals read or write. Pick rather than Omit so a new
- * Trustee field doesn't silently widen this back to the full shape. */
-export type ProjectedTrustee = Pick<
-  Trustee,
-  'trusteeId' | 'firstName' | 'middleName' | 'lastName' | 'name'
-> & {
-  address?: Trustee['public']['address'];
-  phone?: Trustee['public']['phone'];
-  email?: Trustee['public']['email'];
-};
+export type {
+  KleeneBoolean,
+  MemoEntry,
+  NormalizedTrustee,
+  ProjectedTrustee,
+  ScoreByScorer,
+  ScoreRecord,
+  SerializedCandidate,
+  SerializedState,
+  TrusteeSerializedState,
+} from '@common/cams/trustee-match-pipeline';
 
 /** The sole conversion point from a full Trustee to a ProjectedTrustee. */
 export function projectTrustee(trustee: Trustee): ProjectedTrustee {
@@ -28,12 +40,6 @@ export function projectTrustee(trustee: Trustee): ProjectedTrustee {
 }
 
 /**
- * Three-valued (Kleene K3) logic: true = agrees, false = conflicts, null = neutral (the question
- * was considered and there was nothing to compare, e.g. one side has no data).
- */
-export type KleeneBoolean = boolean | null;
-
-/**
  * Runs exactly one of three lambdas, selected by the value. Preferred over `if (!value)`, which
  * treats a recorded conflict (`false`) the same as neutral (`null`).
  */
@@ -46,53 +52,6 @@ export function foldKleene<T>(
   if (value === null) return onNeutral();
   return value ? onAgreement() : onConflict();
 }
-
-/**
- * One scorer's contribution to a candidate's evaluation history. `pass` is the whole record for a
- * scorer whose comparison is a plain yes/no; one with more to say extends it (e.g. doesNameMatch's
- * quality, doesAddressMatch's points).
- */
-export type ScoreRecord = { pass: boolean } & Record<string, unknown>;
-
-/**
- * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer whose
- * comparison is neutral writes no record, so a missing key means neutral and `pass` never has to
- * mean "unknown".
- */
-export type ScoreByScorer = Record<string, ScoreRecord>;
-
-/**
- * The normalized shape of either side of a match, under ProjectedTrustee's field names. Partial
- * since a normalizer populates only the fields it derives; omits trusteeId since a source record
- * has no CAMS identity.
- *
- * - lastNameAlternates: other plausible surname reductions beyond `lastName` ("DE BRUCE WOLFF" ->
- *   "de bruce", alternate "wolff").
- * - firstNameAlternates: a parenthetical recorded alongside the first name. An office code there is
- *   harmless; it never matches anything on the other side.
- * - middleNameAlternates: the individual tokens of a multi-token middle name, which `middleName`
- *   stores glued together ("L. Pry" -> "lpry"). Empty unless there is more than one token.
- */
-type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
-  address?: Partial<NonNullable<ProjectedTrustee['address']>>;
-  firstNameAlternates?: string[];
-  middleNameAlternates?: string[];
-  lastNameAlternates?: string[];
-};
-
-/**
- * Processing state carried alongside a normalized record, not normalization output: raw
- * passthroughs a later stage reads (legacy, fullName) and cached computations
- * (acmsHasNoContactData).
- */
-type TrusteeNormalizationCache = {
-  legacy?: NonNullable<CanonicalTrusteeSource['legacy']>;
-  fullName?: string;
-  acmsHasNoContactData?: boolean;
-};
-
-/** Either side of a match after normalization, plus its processing cache. */
-export type NormalizedTrustee = NormalizedTrusteeFields & TrusteeNormalizationCache;
 
 /**
  * One candidate under consideration, plus its evaluation history. camsRaw never changes; origin is
@@ -112,14 +71,6 @@ export function candidatePool<TSource, TCandidate>(
 ): PipelineCandidate<TCandidate>[] {
   return [...state.candidates.values()];
 }
-
-/** A confirmed match, with the matched candidate's scores and the name of the RESOLVE stage that
- * chose it. */
-type PipelineMatch = {
-  trusteeId: string;
-  score: ScoreByScorer;
-  resolvedBy: string;
-};
 
 /**
  * The state every pipeline stage reads and returns (see
@@ -213,9 +164,6 @@ export function addScore<TCandidate>(
   candidate.scores[scorer] = score;
 }
 
-/** One cached call; `key` fingerprints its input(s), e.g. `"John Doe|Jon Doe"`. */
-export type MemoEntry = { key: string; value: unknown };
-
 /** A per-side memo (source record or one candidate) of cached calls, keyed by function name. */
 export type NormalizedMemo = Map<string, MemoEntry[]>;
 
@@ -256,27 +204,6 @@ export async function runPipeline<TSource, TCandidate>(
   return state;
 }
 
-/** JSON-serializable PipelineCandidate: memo becomes a plain object. */
-export type SerializedCandidate<TCandidate> = {
-  camsRaw: TCandidate;
-  camsNormalized: NormalizedTrustee;
-  memo: Record<string, MemoEntry[]>;
-  scores: ScoreByScorer;
-  origin: string;
-};
-
-/** JSON-serializable PipelineState: memo becomes a plain object and candidates an array in
- * discovery order. */
-export type SerializedState<TSource, TCandidate> = {
-  sourceRaw: TSource;
-  sourceNormalized: NormalizedTrustee;
-  memo: Record<string, MemoEntry[]>;
-  candidates: SerializedCandidate<TCandidate>[];
-  match: PipelineMatch | null;
-  skip: boolean;
-  error: CamsError | null;
-};
-
 /** Converts a PipelineState to its SerializedState. */
 export function serializeState<TSource, TCandidate>(
   state: PipelineState<TSource, TCandidate>,
@@ -294,7 +221,18 @@ export function serializeState<TSource, TCandidate>(
     })),
     match: state.match,
     skip: state.skip,
-    error: state.error,
+    error: state.error && serializeError(state.error),
+  };
+}
+
+/** Copies only the persistable fields, dropping camsStack and isCamsError. */
+function serializeError(error: CamsError): SerializedCamsError {
+  return {
+    message: error.message,
+    module: error.module,
+    status: error.status,
+    originalError: error.originalError,
+    data: error.data,
   };
 }
 
@@ -302,7 +240,6 @@ export function serializeState<TSource, TCandidate>(
 export type TrusteePipelineCandidate = PipelineCandidate<ProjectedTrustee>;
 export type TrusteePipelineState = PipelineState<CanonicalTrusteeSource, ProjectedTrustee>;
 export type TrusteeStage = Stage<CanonicalTrusteeSource, ProjectedTrustee>;
-export type TrusteeSerializedState = SerializedState<CanonicalTrusteeSource, ProjectedTrustee>;
 
 /** Creates the initial trustee pipeline state for one source record. */
 export function createTrusteeInitialState(sourceRaw: CanonicalTrusteeSource): TrusteePipelineState {

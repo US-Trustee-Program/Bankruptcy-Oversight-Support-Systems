@@ -23,6 +23,7 @@ import {
   Order,
 } from '@common/cams/orders';
 import {
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
@@ -57,6 +58,8 @@ import {
   NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { TrusteeSerializedState } from '@common/cams/trustee-match-pipeline';
+import generatedTrusteeMatchFindings from '@common/cams/test-utilities/trustee-match-findings.generated.json';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 // Helper to generate a random ID
@@ -809,30 +812,108 @@ const consolidationLeadCase = {
   _actions: [],
 };
 
+// One ambiguous DXTR identity task: two CAMS candidates whose street and phone differ from the
+// source record, so the comparison table shows warning markers on fake-API runs. Its findings are
+// the real pipeline's output for the multipleCandidates fixture scenario, imported as plain JSON:
+// MockData would pull faker into the app bundle.
+const trusteeMatchFindings =
+  generatedTrusteeMatchFindings.multipleCandidates as TrusteeSerializedState;
+
+const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-multimatch',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  caseId: '081-22-11111',
+  courtId: '0881',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchFindings.sourceRaw,
+  findings: trusteeMatchFindings,
+  fingerprint: 'mock-fingerprint',
+  variant: 't multimatch',
+  taskDate: '2026-01-15T10:00:00.000Z',
+  updatedOn: '2026-01-15T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: ['081-22-11111'],
+};
+
+// One caseless ambiguous DXTR identity task (CAMS-953 Slice 5): no caseId/courtId at all, no
+// affected cases. Its findings are the real pipeline's output for the multipleCandidatesCaseless
+// fixture scenario, imported as plain JSON for the same reason as trusteeMatchFindings above.
+const trusteeMatchCaselessFindings =
+  generatedTrusteeMatchFindings.multipleCandidatesCaseless as TrusteeSerializedState;
+
+const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-caseless',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchCaselessFindings.sourceRaw,
+  findings: trusteeMatchCaselessFindings,
+  fingerprint: 'mock-fingerprint-caseless',
+  variant: 'c caselessmatch',
+  taskDate: '2026-01-20T10:00:00.000Z',
+  updatedOn: '2026-01-20T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: [],
+};
+
+// One ambiguous DXTR identity task with 7 candidates (CAMS-953 Slice 7): exercises the comparison
+// table's pagination past the first 5. Its findings are the real pipeline's output for the
+// manyCandidates fixture scenario, imported as plain JSON for the same reason as
+// trusteeMatchFindings above.
+const trusteeMatchManyCandidatesFindings =
+  generatedTrusteeMatchFindings.manyCandidates as TrusteeSerializedState;
+
+const trusteeMatchVerificationManyCandidatesDetail: EnrichedTrusteeMatchVerification = {
+  id: 'e8c1f0a2-identity-task-manycandidates',
+  documentType: 'TRUSTEE_MATCH_VERIFICATION',
+  taskType: 'trustee-match',
+  caseId: '091-99-21596',
+  courtId: '0209',
+  status: 'pending',
+  mismatchReason: 'ambiguous',
+  source: 'DXTR',
+  dxtrTrustee: trusteeMatchManyCandidatesFindings.sourceRaw,
+  findings: trusteeMatchManyCandidatesFindings,
+  fingerprint: 'mock-fingerprint-manycandidates',
+  variant: 's sevenway',
+  taskDate: '2026-01-25T10:00:00.000Z',
+  updatedOn: '2026-01-25T10:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  affectedCaseIds: ['091-99-21596'],
+};
+
+function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerificationListItem {
+  return {
+    id: detail.id,
+    documentType: detail.documentType,
+    taskType: detail.taskType,
+    caseId: detail.caseId,
+    courtId: detail.courtId,
+    status: detail.status,
+    mismatchReason: detail.mismatchReason,
+    source: detail.source,
+    dxtrTrustee: detail.dxtrTrustee,
+    affectedCaseCount: detail.affectedCaseIds.length,
+    affectedCaseIds: detail.affectedCaseIds,
+    taskDate: detail.taskDate,
+  };
+}
+
+const trusteeMatchVerificationDetailsById: Record<string, EnrichedTrusteeMatchVerification> = {
+  [trusteeMatchVerificationDetail.id]: trusteeMatchVerificationDetail,
+  [trusteeMatchVerificationCaselessDetail.id]: trusteeMatchVerificationCaselessDetail,
+  [trusteeMatchVerificationManyCandidatesDetail.id]: trusteeMatchVerificationManyCandidatesDetail,
+};
+
 const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
-  {
-    id: '081-22-11111:Smith John',
-    documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    taskType: 'trustee-match',
-    caseId: '081-22-11111',
-    courtId: '0881',
-    status: 'pending',
-    mismatchReason: 'IMPERFECT_MATCH',
-    dxtrTrustee: {
-      fullName: 'Smith John',
-      legacy: {
-        cityStateZipCountry: 'New York, NY 10001',
-      },
-    },
-    preselectedCandidate: {
-      trusteeId: 'trustee-001',
-      trusteeName: 'John Smith',
-    },
-    candidateCount: 1,
-    affectedCaseCount: 1,
-    affectedCaseIds: ['081-22-11111'],
-    taskDate: '2026-01-15T10:00:00.000Z',
-  },
+  toListItem(trusteeMatchVerificationDetail),
+  toListItem(trusteeMatchVerificationCaselessDetail),
+  toListItem(trusteeMatchVerificationManyCandidatesDetail),
 ];
 
 const orders = [
@@ -1851,6 +1932,11 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
+  } else if (path.match(/\/trustee-match-verification\/(.+)/)) {
+    const id = path.match(/\/trustee-match-verification\/(.+)/)![1];
+    response = {
+      data: trusteeMatchVerificationDetailsById[id] ?? trusteeMatchVerificationDetail,
+    };
   } else if (path.match(/\/trustee-match-verification/)) {
     response = {
       data: trusteeMatchVerificationOrders,
@@ -2441,13 +2527,32 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
+const trusteeSearchResults: TrusteeSearchResult[] = [
+  {
+    trusteeId: 'fake-search-trustee-1',
+    name: 'Riley Searchable',
+    address: {
+      address1: '200 Court Plaza',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10007',
+      countryCode: 'US',
+    },
+    phone: { number: '212-555-0142' },
+    email: 'riley.searchable@example.com',
+    appointments: [],
+    matchType: 'exact',
+  },
+];
+
 async function searchTrustees(
-  _name: string,
+  name: string,
   _courtId?: string,
   _divisionCode?: string,
   _chapter?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
-  return { data: [] };
+  const term = name.toLowerCase();
+  return { data: trusteeSearchResults.filter((t) => t.name.toLowerCase().includes(term)) };
 }
 
 async function getTrusteeMatchVerifications(_params?: {

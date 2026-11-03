@@ -20,9 +20,22 @@ GO
 DELETE FROM dbo.AO_CS_DIV WHERE CS_DIV = '083' AND GRP_DES = 'MS';
 GO
 
-INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, CS_DIV_ACMS)
+INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, CS_DIV_ACMS, OFFICE_CODE)
 VALUES
-  ('083', 'MS', '0210', '083');
+  ('083', 'MS', '0210', '083', '1');
+GO
+
+-- Reference rows getCaseSummary joins through (Stage 10). Guarded rather than deleted/re-inserted
+-- so a DXTR that already has real rows for these keys keeps them; clean() leaves them alone.
+IF NOT EXISTS (SELECT 1 FROM dbo.AO_COURT WHERE COURT_ID = '0210')
+  INSERT INTO dbo.AO_COURT (COURT_ID, COURT_NAME) VALUES ('0210', 'Integration Test Court');
+IF NOT EXISTS (SELECT 1 FROM dbo.AO_OFFICE WHERE COURT_ID = '0210' AND OFFICE_CODE = '1')
+  INSERT INTO dbo.AO_OFFICE (COURT_ID, OFFICE_CODE, OFFICE_NAME, OFFICE_NAME_DISPLAY)
+  VALUES ('0210', '1', 'Matching Scenarios Division', 'Matching Scenarios Division');
+IF NOT EXISTS (SELECT 1 FROM dbo.AO_GRP_DES WHERE GRP_DES = 'MS')
+  INSERT INTO dbo.AO_GRP_DES (GRP_DES, REGION_ID) VALUES ('MS', '02');
+IF NOT EXISTS (SELECT 1 FROM dbo.AO_REGION WHERE REGION_ID = '02')
+  INSERT INTO dbo.AO_REGION (REGION_ID, REGION_NAME) VALUES ('02', 'Region 2');
 GO
 
 INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES)
@@ -69,6 +82,17 @@ INSERT INTO dbo.AO_PY (
   '2 Perfect Name Rd', '', '', 'Scenario City', 'SC', '11111', 'USA',
   '555-100-0002', '', 'perfect.byname@example.com'
 );
+GO
+
+-- 3 (Stage 10). Case-summary fields and a debtor so getCaseSummary returns this case for
+-- approveVerification's gate A check.
+UPDATE dbo.AO_CS
+SET CS_SHORT_TITLE = 'Scenario Debtor 2', CS_DATE_FILED = '2026-01-01T00:00:00'
+WHERE CS_CASEID = '999999402' AND COURT_ID = '0210';
+GO
+
+INSERT INTO dbo.AO_PY (CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_LAST_NAME)
+VALUES ('999999402', '0210', 'db', 'Scenario', 'Debtor');
 GO
 
 -- 4. perfect-match-inactive-status — resolves via FP; trustee's only matching appointment
