@@ -68,7 +68,7 @@ async function openPermissionsAs(
   flagOn = true,
 ) {
   const view = await TestSetup.forUser(session)
-    .withFeatureFlag('cams-native-user-roles', flagOn)
+    .withFeatureFlag('cams-role-assignments', flagOn)
     .withOffices([SEATTLE, MANHATTAN, BUFFALO])
     .withCamsUsers([SARAH, ALEX])
     .withRoleAssignments(assignments)
@@ -330,7 +330,7 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
    */
   test('should not offer Permissions to a user without the SuperUser role', async () => {
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('cams-native-user-roles')
+      .withFeatureFlag('cams-role-assignments')
       .renderAt(PERMISSIONS_ROUTE);
     await waitForAppLoad();
 
@@ -341,7 +341,7 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  test('should not offer Permissions while cams-native-user-roles is off', async () => {
+  test('should not offer Permissions while cams-role-assignments is off', async () => {
     await openPermissionsAs(TestSessions.superUser(), [], false);
 
     expect(await screen.findByRole('heading', { name: 'Administration' })).toBeInTheDocument();

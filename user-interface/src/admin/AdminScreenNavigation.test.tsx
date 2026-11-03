@@ -3,10 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import {
-  CAMS_NATIVE_USER_ROLES,
-  PRIVILEGED_IDENTITY_MANAGEMENT,
-} from '@/lib/hooks/UseFeatureFlags';
+import { CAMS_ROLE_ASSIGNMENTS, PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 
 const NAV_LINKS = [
@@ -122,10 +119,10 @@ describe('Admin screen navigation tests', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(NAV_LINKS.length - 1);
   });
 
-  test('should not display the Permissions nav link when the cams-native-user-roles flag is off', () => {
+  test('should not display the Permissions nav link when the cams-role-assignments flag is off', () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       ...testFeatureFlags,
-      [CAMS_NATIVE_USER_ROLES]: false,
+      [CAMS_ROLE_ASSIGNMENTS]: false,
     });
 
     renderNav();

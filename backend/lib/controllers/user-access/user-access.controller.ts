@@ -62,7 +62,7 @@ export class UserAccessController implements CamsController {
 
   private requireAccess(context: ApplicationContext) {
     if (
-      !context.featureFlags['cams-native-user-roles'] ||
+      !context.featureFlags['cams-role-assignments'] ||
       !context.session.user.roles?.includes(CamsRole.SuperUser)
     ) {
       throw new ForbiddenError(MODULE_NAME);

@@ -16,7 +16,7 @@ import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Permissions } from './permissions/Permissions';
 import useFeatureFlags, {
-  CAMS_NATIVE_USER_ROLES,
+  CAMS_ROLE_ASSIGNMENTS,
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
 } from '../lib/hooks/UseFeatureFlags';
@@ -82,7 +82,7 @@ export function AdminScreen() {
                       {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
                         <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                       )}
-                      {isFlagEnabled(flags, CAMS_NATIVE_USER_ROLES) && (
+                      {isFlagEnabled(flags, CAMS_ROLE_ASSIGNMENTS) && (
                         <Route path="permissions/*" element={<Permissions />} />
                       )}
                       <Route path="banks" element={<Banks />} />

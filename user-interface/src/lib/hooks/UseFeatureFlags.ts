@@ -4,7 +4,7 @@ import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfigur
 import getAppConfiguration from '@/configuration/appConfiguration';
 
 // Gates the CAMS-managed permissions (role assignments) admin screen and API.
-export const CAMS_NATIVE_USER_ROLES = 'cams-native-user-roles';
+export const CAMS_ROLE_ASSIGNMENTS = 'cams-role-assignments';
 export const CASE_SEARCH_LANDING_PAGE = 'case-search-landing-page';
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';

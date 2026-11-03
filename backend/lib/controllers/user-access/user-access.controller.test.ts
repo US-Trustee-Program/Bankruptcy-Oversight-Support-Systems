@@ -24,7 +24,7 @@ describe('UserAccessController', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-    context.featureFlags['cams-native-user-roles'] = true;
+    context.featureFlags['cams-role-assignments'] = true;
     context.session.user.roles = [CamsRole.SuperUser];
     context.request.method = 'GET';
     context.request.params = { resource: 'users' };
@@ -39,8 +39,8 @@ describe('UserAccessController', () => {
   describe('access', () => {
     test.each([
       {
-        case: 'the cams-native-user-roles flag is off',
-        setup: () => (context.featureFlags['cams-native-user-roles'] = false),
+        case: 'the cams-role-assignments flag is off',
+        setup: () => (context.featureFlags['cams-role-assignments'] = false),
       },
       {
         case: 'the user is not a SuperUser',

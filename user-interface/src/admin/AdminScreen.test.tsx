@@ -6,16 +6,13 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import {
-  CAMS_NATIVE_USER_ROLES,
-  PRIVILEGED_IDENTITY_MANAGEMENT,
-} from '@/lib/hooks/UseFeatureFlags';
+import { CAMS_ROLE_ASSIGNMENTS, PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
-  CAMS_NATIVE_USER_ROLES: 'cams-native-user-roles',
+  CAMS_ROLE_ASSIGNMENTS: 'cams-role-assignments',
 }));
 
 vi.mock('./permissions/Permissions', () => ({
@@ -161,10 +158,10 @@ describe('Admin screen tests', () => {
     expect(screen.getByTestId('mocked-permissions')).toBeInTheDocument();
   });
 
-  test('should not render Permissions or its nav link when the cams-native-user-roles flag is off', () => {
+  test('should not render Permissions or its nav link when the cams-role-assignments flag is off', () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       ...testFeatureFlags,
-      [CAMS_NATIVE_USER_ROLES]: false,
+      [CAMS_ROLE_ASSIGNMENTS]: false,
     });
     renderAtPath('/admin/permissions/cams-users');
     expect(screen.queryByTestId('mocked-permissions')).not.toBeInTheDocument();

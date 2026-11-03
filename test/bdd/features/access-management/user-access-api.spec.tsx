@@ -74,7 +74,7 @@ function api(session: CamsSession, path: string, init: RequestInit = {}) {
 
 function setupFor(session: CamsSession) {
   return TestSetup.forUser(session)
-    .withFeatureFlag('cams-native-user-roles')
+    .withFeatureFlag('cams-role-assignments')
     .withOffices([MANHATTAN, BUFFALO, SEATTLE]);
 }
 
@@ -238,7 +238,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
    *
    * GIVEN John Davis is signed in without the SuperUser role
    * THEN any request John makes to the permissions API is rejected with 403
-   * (and the API is closed to everyone while cams-native-user-roles is off)
+   * (and the API is closed to everyone while cams-role-assignments is off)
    */
   test.each([
     {
@@ -247,14 +247,14 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       flag: true,
     },
     {
-      case: 'a SuperUser while cams-native-user-roles is off',
+      case: 'a SuperUser while cams-role-assignments is off',
       session: () => TestSessions.superUser(),
       flag: false,
     },
   ])('should reject every permissions request from $case with 403', async ({ session, flag }) => {
     const user = session();
     const state = await TestSetup.forUser(user)
-      .withFeatureFlag('cams-native-user-roles', flag)
+      .withFeatureFlag('cams-role-assignments', flag)
       .withOffices([MANHATTAN])
       .withCamsUsers([SARAH])
       .setUpBackend();

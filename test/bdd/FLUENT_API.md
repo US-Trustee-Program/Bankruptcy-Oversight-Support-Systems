@@ -326,7 +326,7 @@ the active assignments for the requested users, and audit records written by
 **Example:**
 ```typescript
 const state = await TestSetup.forUser(TestSessions.superUser())
-  .withFeatureFlag('cams-native-user-roles')
+  .withFeatureFlag('cams-role-assignments')
   .withOffices([MANHATTAN])
   .withCamsUsers([{ id: 'okta-sarah', name: 'Sarah Williams' }])
   .withRoleAssignments([])

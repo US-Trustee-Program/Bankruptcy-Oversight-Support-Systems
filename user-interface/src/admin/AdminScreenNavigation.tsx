@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import useFeatureFlags, {
-  CAMS_NATIVE_USER_ROLES,
+  CAMS_ROLE_ASSIGNMENTS,
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -71,7 +71,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           </li>
         )}
-        {isFlagEnabled(flags, CAMS_NATIVE_USER_ROLES) && (
+        {isFlagEnabled(flags, CAMS_ROLE_ASSIGNMENTS) && (
           <li className="usa-sidenav__item">
             <NavLink
               to="/admin/permissions"

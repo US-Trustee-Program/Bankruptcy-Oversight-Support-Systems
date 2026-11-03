@@ -353,7 +353,7 @@ export class TestSetup {
    * ```typescript
    * await TestSetup
    *   .forUser(TestSessions.superUser())
-   *   .withFeatureFlag('cams-native-user-roles')
+   *   .withFeatureFlag('cams-role-assignments')
    *   .withCamsUsers([{ id: 'user-1', name: 'Sarah Williams', email: 'sarah@example.com' }])
    *   .renderAt('/admin/permissions/cams-users');
    * ```
