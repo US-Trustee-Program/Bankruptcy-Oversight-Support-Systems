@@ -235,7 +235,7 @@ describe('resync-cases-by-date handleRetry', () => {
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
   ])(
-    'routes a $label to DLQ instead of throwing, preserving the manual retryCount',
+    'requeues a $label with backoff instead of routing to DLQ, preserving the manual retryCount',
     async ({ build }) => {
       const { handleRetry } = await import('./resync-cases-by-date');
       const event: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
@@ -246,6 +246,11 @@ describe('resync-cases-by-date handleRetry', () => {
         await createMockApplicationContext(),
       );
 
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      const fromConnectionStringSpy = vi
+        .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+        .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
       await handleRetry(event, invocationContext);
 
       const outputs = Array.from(
@@ -254,10 +259,18 @@ describe('resync-cases-by-date handleRetry', () => {
         ).entries(),
       );
       const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-      expect(dlqOutput).toBeDefined();
-      const [dlqEvent] = dlqOutput?.[1] as CaseSyncEvent[];
-      expect(dlqEvent.error).toBeDefined();
-      expect(dlqEvent.retryCount).toBe(1);
+      expect(dlqOutput).toBeUndefined();
+
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('retry'),
+      );
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
+      const retryEvent = JSON.parse(body) as CaseSyncEvent;
+      expect(retryEvent.error).toBeUndefined();
+      expect(retryEvent.retryCount).toBe(1);
+      expect(visibilityTimeout).toBeGreaterThan(0);
     },
   );
 

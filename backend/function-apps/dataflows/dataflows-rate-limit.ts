@@ -131,3 +131,25 @@ export async function handleRateLimitRetry<
 
   return 'retried';
 }
+
+/**
+ * Requeues a single-event retry message with an exponential, jittered backoff delay instead of
+ * an immediate requeue. The migration handlers that still track their own retryCount/RETRY_LIMIT
+ * bookkeeping (see handleRetry in migrate-cases.ts and the three resync-*.ts migrations) looped
+ * their DLQ->handleError->RETRY->handleRetry cycle with no delay between attempts: Azure
+ * redelivers a requeued storage-queue message almost immediately, so all 3 attempts could burn
+ * through in seconds under sustained throttling. This reuses the event's own retryCount (already
+ * tracked for the retry-limit check) as the backoff exponent, rather than introducing a second
+ * counter that could collide with it.
+ */
+export async function requeueSingleEventWithBackoff<TMessage extends { retryCount?: number }>(
+  message: TMessage,
+  queueName: string,
+  connectionString: string,
+): Promise<void> {
+  const nextRetryCount = (message.retryCount ?? 0) + 1;
+  const visibilityTimeout = computeBackoffSecondsWithJitter(nextRetryCount);
+
+  const queueClient = StorageQueueHumbleObject.fromConnectionString(connectionString, queueName);
+  await queueClient.sendMessage(JSON.stringify(message), visibilityTimeout);
+}
