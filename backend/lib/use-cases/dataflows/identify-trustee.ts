@@ -6,6 +6,7 @@ import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
 import { serializeState, TrusteeSerializedState } from './trustee-match-pipeline';
 import { TrusteeProfessionalIdsRepository, TrusteeVariationRepository } from '../gateways.types';
 import { createLinkedStateWithoutEvidence } from './trustee-professional-ids.types';
+import { findByVariant } from './identity-task';
 
 export type IdentifyTrusteeDeps = {
   context: ApplicationContext;
@@ -27,16 +28,6 @@ export type IdentifyTrusteeOutcome =
       state: TrusteeSerializedState;
     }
   | { kind: 'unresolved'; state: TrusteeSerializedState };
-
-/**
- * Finds the exact-variant match within an already-fetched fingerprint bucket. A fingerprint
- * (sha256 digest) is never trusted as a unique key on its own — a bucket can hold more than one
- * document, so every lookup must verify by comparing the full variant string for exact equality
- * ("bucket+verify").
- */
-function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
-  return bucket.find((v) => v.variant === variant);
-}
 
 /**
  * Returns the camsTrusteeId of an existing linked record for this ACMS id that belongs to a

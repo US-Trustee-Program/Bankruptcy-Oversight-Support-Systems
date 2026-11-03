@@ -22,7 +22,7 @@ import { parseCityStateZip, normalizeName } from './trustee-match.helpers';
 import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
 import { serializeState, candidatePool } from './trustee-match-pipeline';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
-import { upsertIdentityTask } from './identity-task';
+import { findByVariant, upsertIdentityTask } from './identity-task';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import {
   CaseAppointment,
@@ -540,17 +540,6 @@ async function autoLinkTrustee(
   audit.matchedTrusteeId = trusteeId;
   audit.appointmentStatus = checks.matchedTrusteeAppointment ? 'active' : 'uncovered';
   return softCloseFailure;
-}
-
-/**
- * Finds the exact-variant match within an already-fetched fingerprint bucket. A fingerprint
- * (sha256 digest) is never trusted as a unique key on its own — a bucket can hold more than one
- * document, so every lookup must verify by comparing the full variant string for exact equality
- * ("bucket+verify"). Shared by both the TRUSTEE_VARIATION and TrusteeMatchVerification bucket
- * lookups below, which differ only in what they do with the matched entry.
- */
-function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
-  return bucket.find((v) => v.variant === variant);
 }
 
 /**

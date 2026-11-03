@@ -28,7 +28,10 @@ export type UpsertIdentityTaskInput = {
  * document, so every lookup must verify by comparing the full variant string for exact equality
  * ("bucket+verify").
  */
-function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
+export function findByVariant<T extends { variant: string }>(
+  bucket: T[],
+  variant: string,
+): T | undefined {
   return bucket.find((v) => v.variant === variant);
 }
 
