@@ -367,11 +367,20 @@ describe('sync-cases handleStart', () => {
     const invocationContext = makeInvocationContext();
     const { events, pageSend, storeRuntimeStateSpy } = await setupMocks(201);
     pageSend.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('queue unavailable'));
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleStart({}, invocationContext);
 
     expect(storeRuntimeStateSpy).not.toHaveBeenCalled();
     expect(getDlqOutput(invocationContext)).toBeDefined();
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
     const page3CaseIds = events.slice(200).map((event) => event.caseId);
     const sentCaseIds = sentBodies(pageSend).flatMap((page: { events: CaseSyncEvent[] }) =>
       page.events.map((event) => event.caseId),
