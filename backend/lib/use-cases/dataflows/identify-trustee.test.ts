@@ -142,6 +142,22 @@ describe('identifyTrustee', () => {
     });
   });
 
+  test('returns conflict naming the other trustee when existing links include the matched trustee and another', async () => {
+    vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([makeVariation()]);
+    vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+      linkedProfessionalId({ camsTrusteeId: 'trustee-1' }),
+      linkedProfessionalId({ id: 'prof-id-2', camsTrusteeId: 'trustee-other' }),
+    ]);
+
+    const result = await identifyTrustee(deps, source, acmsProfessionalId, fingerprint, variant);
+
+    expect(result).toMatchObject({
+      kind: 'conflict',
+      via: 'fingerprint',
+      existingTrusteeId: 'trustee-other',
+    });
+  });
+
   test('returns linked via name on a pipeline match when there is no fingerprint hit', async () => {
     vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
     vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([]);
