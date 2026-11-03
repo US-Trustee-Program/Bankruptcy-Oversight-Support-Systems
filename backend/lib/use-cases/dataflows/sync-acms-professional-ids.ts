@@ -11,7 +11,7 @@ import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers'
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 import { TrusteeSerializedState } from './trustee-match-pipeline';
 import { identifyTrustee } from './identify-trustee';
 import {
@@ -81,7 +81,7 @@ async function resolveSyncState(
       },
     };
   } catch (originalError) {
-    if (originalError instanceof NotFoundError) {
+    if (isNotFoundError(originalError)) {
       return freshState;
     }
     throw originalError;
