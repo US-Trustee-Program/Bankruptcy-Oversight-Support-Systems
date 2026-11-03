@@ -12,8 +12,7 @@ import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { TrusteeSerializedState } from './trustee-match-pipeline';
-import { identifyTrustee } from './identify-trustee';
+import { identifyTrustee, IdentifyTrusteeOutcome } from './identify-trustee';
 import {
   deriveDisposition,
   deriveNameMatchCount,
@@ -179,7 +178,7 @@ async function hasActiveAppointments(
 
 /**
  * Upserts one TrusteeProfessionalId keyed by the matched trusteeId, else the variant fingerprint.
- * A non-empty conflictingTrusteeId forces disposition 'conflict'. suspectDuplicateCamsTrustee is
+ * A 'conflict' identification forces disposition 'conflict'. suspectDuplicateCamsTrustee is
  * computed only for 'ambiguous'.
  */
 async function writeProfessionalId(
@@ -187,9 +186,11 @@ async function writeProfessionalId(
   record: AcmsTrusteeProfessionalDetailRecord,
   fingerprint: string,
   variant: string,
-  state: TrusteeSerializedState,
-  conflictingTrusteeId?: string,
+  identification: IdentifyTrusteeOutcome,
 ): Promise<TrusteeProfessionalId> {
+  const { state } = identification;
+  const conflictingTrusteeId =
+    identification.kind === 'conflict' ? identification.existingTrusteeId : undefined;
   const disposition = conflictingTrusteeId ? 'conflict' : deriveDisposition(state);
   const camsTrusteeId = state.match?.trusteeId ?? fingerprint;
 
@@ -248,24 +249,22 @@ async function processOneRecord(
     variant,
   );
 
-  if (identification.kind === 'linked') {
-    await writeProfessionalId(deps, record, fingerprint, variant, identification.state);
-    return { kind: 'auto-linked', via: identification.via };
-  }
-  if (identification.kind === 'conflict') {
-    await writeProfessionalId(
-      deps,
-      record,
-      fingerprint,
-      variant,
-      identification.state,
-      identification.existingTrusteeId,
-    );
-    return { kind: 'conflict', via: identification.via };
+  if (identification.kind !== 'unresolved') {
+    await writeProfessionalId(deps, record, fingerprint, variant, identification);
+    return {
+      kind: identification.kind === 'linked' ? 'auto-linked' : 'conflict',
+      via: identification.via,
+    };
   }
 
   const state = identification.state;
-  const gated = await applyActiveAppointmentGate(deps, record, fingerprint, variant, state);
+  const gated = await applyActiveAppointmentGate(
+    deps,
+    record,
+    fingerprint,
+    variant,
+    identification,
+  );
 
   if (state.skip) {
     return { kind: 'skipped-not-a-person', gated };
@@ -289,14 +288,14 @@ async function applyActiveAppointmentGate(
   record: AcmsTrusteeProfessionalDetailRecord,
   fingerprint: string,
   variant: string,
-  state: TrusteeSerializedState,
+  identification: IdentifyTrusteeOutcome,
 ): Promise<GateOutcome> {
   const groupDesignator = record.acmsProfessionalId.split('-')[0];
   const active = await hasActiveAppointments(deps, groupDesignator, record.ustProfCode);
   if (!active) {
     return 'skipped';
   }
-  await writeProfessionalId(deps, record, fingerprint, variant, state);
+  await writeProfessionalId(deps, record, fingerprint, variant, identification);
   return 'written';
 }
 
