@@ -140,6 +140,9 @@ const LEADING_ZERO_ACMS_ID = 'NY-00071';
 const AMBIGUOUS_ACMS_ID = 'NY-00072';
 const SKIPPED_ACMS_ID = 'NY-00073';
 const CONFLICT_ACMS_ID = 'NY-00074';
+const MANUAL_LINK_ACMS_ID = 'NY-00075';
+
+const VERIFICATION_COLLECTION = 'trustee-match-verification';
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -471,7 +474,9 @@ async function seedCosmos() {
 
     // Trustee for the fingerprint-match scenario (UST_PROF_CODE 63)
     // documentType must be 'TRUSTEE' — findTrusteesByName/findByFingerprint's
-    // callers only query that value (see trustees.mongo.repository.ts).
+    // callers only query that value (see trustees.mongo.repository.ts). Every trustee carries
+    // firstName/middleName/lastName as well as name: the pipeline's doesNameMatch compares the
+    // structured name parts, so a name-only trustee never passes the name check.
     await db.collection('trustees').updateOne(
       { documentType: 'TRUSTEE', trusteeId: FINGERPRINT_TRUSTEE_ID },
       {
@@ -479,6 +484,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: FINGERPRINT_TRUSTEE_ID,
           name: 'Iris F Fingerprint',
+          firstName: 'Iris',
+          middleName: 'F',
+          lastName: 'Fingerprint',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -491,7 +499,8 @@ async function seedCosmos() {
     // The fingerprint variant — built to match buildAcmsVariant's shape for
     // UST_PROF_CODE 63's demographics in seed/01-seed-cmmpr.sql exactly. PROF_ZIP is seeded there
     // as the raw numeric 627010000; buildAcmsVariant formats it via formatAcmsZip into
-    // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run.
+    // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run. PROF_FAX_NBR 0
+    // reaches the variant as the string "0".
     const fingerprintVariant = JSON.stringify({
       firstName: 'Iris',
       middleName: 'F',
@@ -502,7 +511,7 @@ async function seedCosmos() {
       address3: '',
       cityStateZipCountry: 'Springfield IL 62701-0000',
       phone: '2175550100',
-      fax: '',
+      fax: '0',
       email: '',
     });
     const crypto = await import('crypto');
@@ -526,7 +535,8 @@ async function seedCosmos() {
     pass(`Seeded TRUSTEE_VARIATION for ${FINGERPRINT_TRUSTEE_ID}`);
 
     // Trustee for the name-match scenario (UST_PROF_CODE 64) — unique name,
-    // no fingerprint variant on file, so matchTrusteeByName resolves it.
+    // no fingerprint variant on file, so the matching pipeline resolves it. Its contact data
+    // matches the CMMPR row: a sole exact-name candidate with no contact data stays unresolved.
     // Name must match CMMPR's PROF_FIRST_NAME/PROF_MI/PROF_LAST_NAME for
     // UST_PROF_CODE 64 in seed/01-seed-cmmpr.sql exactly ("Norman N Namematch").
     await db.collection('trustees').updateOne(
@@ -536,8 +546,20 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: NAME_TRUSTEE_ID,
           name: 'Norman N Namematch',
+          firstName: 'Norman',
+          middleName: 'N',
+          lastName: 'Namematch',
           status: 'active',
-          public: {},
+          public: {
+            address: {
+              address1: '600 Unique Ave',
+              city: 'Albany',
+              state: 'NY',
+              zipCode: '12207',
+              countryCode: 'US',
+            },
+            phone: { number: '518-555-0200' },
+          },
           updatedOn: now,
         },
         $setOnInsert: { createdOn: now },
@@ -555,8 +577,20 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: UT_TRUSTEE_ID,
           name: 'Ulysses U Utahmatch',
+          firstName: 'Ulysses',
+          middleName: 'U',
+          lastName: 'Utahmatch',
           status: 'active',
-          public: {},
+          public: {
+            address: {
+              address1: '900 Beehive Blvd',
+              city: 'Salt Lake City',
+              state: 'UT',
+              zipCode: '84111',
+              countryCode: 'US',
+            },
+            phone: { number: '801-555-0500' },
+          },
           updatedOn: now,
         },
         $setOnInsert: { createdOn: now },
@@ -573,6 +607,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: LEADING_ZERO_TRUSTEE_ID,
           name: 'Lena L Leadingzero',
+          firstName: 'Lena',
+          middleName: 'L',
+          lastName: 'Leadingzero',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -597,7 +634,7 @@ async function seedCosmos() {
       address3: '',
       cityStateZipCountry: 'New Haven CT 06511-0000',
       phone: '2035550800',
-      fax: '',
+      fax: '0',
       email: '',
     });
     const leadingZeroFingerprint = crypto
@@ -637,6 +674,9 @@ async function seedCosmos() {
             documentType: 'TRUSTEE',
             trusteeId,
             name: 'Chris M Ambiguous',
+            firstName: 'Chris',
+            middleName: 'M',
+            lastName: 'Ambiguous',
             status: 'active',
             public: {},
             updatedOn: now,
@@ -660,6 +700,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
           name: 'Priorly Linked Trustee',
+          firstName: 'Priorly',
+          middleName: '',
+          lastName: 'Trustee',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -705,6 +748,43 @@ async function seedCosmos() {
     pass(
       `Pre-linked ${CONFLICT_ACMS_ID} to ${CONFLICT_EXISTING_TRUSTEE_ID} for the conflict scenario`,
     );
+
+    // A person already linked MANUAL_LINK_ACMS_ID (UST_PROF_CODE 75) to one of the two
+    // same-named trustees. Without this link the record would end ambiguous and get an identity
+    // task; the sync must leave a manual link alone.
+    await db.collection('trustee-professional-ids').updateOne(
+      {
+        documentType: 'TRUSTEE_PROFESSIONAL_ID',
+        camsTrusteeId: AMBIGUOUS_TRUSTEE_ID_B,
+        acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+      },
+      {
+        $set: {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: AMBIGUOUS_TRUSTEE_ID_B,
+          acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+          disposition: 'linked',
+          linkMethod: 'manual',
+          nameMatchCount: 2,
+          evidence: {
+            sourceRaw: { fullName: 'Chris M Ambiguous' },
+            sourceNormalized: {},
+            memo: {},
+            candidates: [],
+            match: null,
+            skip: false,
+            error: null,
+          },
+          updatedOn: now,
+          updatedBy: { id: 'HARNESS', name: 'HARNESS' },
+        },
+        $setOnInsert: { createdOn: now, createdBy: { id: 'HARNESS', name: 'HARNESS' } },
+      },
+      { upsert: true },
+    );
+    pass(
+      `Manually linked ${MANUAL_LINK_ACMS_ID} to ${AMBIGUOUS_TRUSTEE_ID_B} for the manual-link scenario`,
+    );
   } finally {
     await client.close();
   }
@@ -731,10 +811,20 @@ async function clean() {
           AMBIGUOUS_ACMS_ID,
           SKIPPED_ACMS_ID,
           CONFLICT_ACMS_ID,
+          MANUAL_LINK_ACMS_ID,
         ],
       },
     });
     pass(`Deleted ${r1.deletedCount} trustee-professional-ids doc(s)`);
+
+    // ACMS identity tasks are keyed by fingerprint+variant; a pending task left over from a
+    // previous run would be found and left untouched, so the run would not prove a fresh write.
+    const r2 = await db.collection(VERIFICATION_COLLECTION).deleteMany({
+      acmsProfessionalId: {
+        $in: [AMBIGUOUS_ACMS_ID, ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID, MANUAL_LINK_ACMS_ID],
+      },
+    });
+    pass(`Deleted ${r2.deletedCount} ${VERIFICATION_COLLECTION} doc(s)`);
 
     const r3 = await db
       .collection('trustee-variation')
@@ -931,6 +1021,102 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
+  // Scenario 9: the ambiguous professional (UST_PROF_CODE 72, active appointment) gets a pending,
+  // caseless ACMS identity task carrying its acmsProfessionalId and the pipeline findings.
+  const ambiguousTasks = await db
+    .collection(VERIFICATION_COLLECTION)
+    .find({ acmsProfessionalId: AMBIGUOUS_ACMS_ID })
+    .toArray();
+  const ambiguousTask = ambiguousTasks[0];
+  if (ambiguousTasks.length !== 1) {
+    fail(
+      `Ambiguous task: expected exactly one identity task for ${AMBIGUOUS_ACMS_ID}, found ${ambiguousTasks.length}`,
+    );
+  } else if (
+    ambiguousTask.documentType === 'TRUSTEE_MATCH_VERIFICATION' &&
+    ambiguousTask.source === 'ACMS' &&
+    ambiguousTask.mismatchReason === 'ambiguous' &&
+    ambiguousTask.status === 'pending' &&
+    ambiguousTask.caseId === undefined &&
+    ambiguousTask.courtId === undefined &&
+    ambiguousTask.findings != null
+  ) {
+    pass(
+      `Ambiguous task: pending ACMS identity task for ${AMBIGUOUS_ACMS_ID} (mismatchReason=ambiguous, no caseId/courtId, findings present)`,
+    );
+    const taskCandidateIds = (ambiguousTask.findings.candidates ?? []).map(
+      (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
+    );
+    if (
+      taskCandidateIds.includes(AMBIGUOUS_TRUSTEE_ID_A) &&
+      taskCandidateIds.includes(AMBIGUOUS_TRUSTEE_ID_B)
+    ) {
+      pass('Ambiguous task: findings list both same-named candidates');
+    } else {
+      fail(
+        `Ambiguous task: expected both ${AMBIGUOUS_TRUSTEE_ID_A} and ${AMBIGUOUS_TRUSTEE_ID_B} among findings candidates, got ${JSON.stringify(taskCandidateIds)}`,
+      );
+    }
+    if (ambiguousTask.fingerprint === ambiguousRecord?.camsTrusteeId) {
+      pass("Ambiguous task: fingerprint matches the ambiguous professional-id record's key");
+    } else {
+      fail(
+        `Ambiguous task: fingerprint ${ambiguousTask.fingerprint} does not match the professional-id record's camsTrusteeId ${ambiguousRecord?.camsTrusteeId}`,
+      );
+    }
+  } else {
+    fail(
+      `Ambiguous task: unexpected identity task for ${AMBIGUOUS_ACMS_ID}: ${JSON.stringify(ambiguousTask)}`,
+    );
+  }
+
+  // Scenario 10: no-match and conflict professionals never get an identity task — only
+  // ambiguous ACMS outcomes do.
+  const otherTasks = await db
+    .collection(VERIFICATION_COLLECTION)
+    .find({ acmsProfessionalId: { $in: [ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID] } })
+    .toArray();
+  if (otherTasks.length === 0) {
+    pass(
+      `No identity task for the no-match (${ACTIVE_NO_MATCH_ACMS_ID}) or conflict (${CONFLICT_ACMS_ID}) professional`,
+    );
+  } else {
+    fail(
+      `Expected no identity tasks for ${ACTIVE_NO_MATCH_ACMS_ID}/${CONFLICT_ACMS_ID}, found ${JSON.stringify(otherTasks)}`,
+    );
+  }
+
+  // Scenario 11: a professional with a manual link keeps exactly that link — no new
+  // professional-id record and no identity task, even though it would otherwise be ambiguous.
+  const manualRecords = await db
+    .collection('trustee-professional-ids')
+    .find({ acmsProfessionalId: MANUAL_LINK_ACMS_ID })
+    .toArray();
+  const manualRecord = manualRecords[0];
+  if (
+    manualRecords.length === 1 &&
+    manualRecord.camsTrusteeId === AMBIGUOUS_TRUSTEE_ID_B &&
+    manualRecord.disposition === 'linked' &&
+    manualRecord.linkMethod === 'manual' &&
+    manualRecord.updatedBy?.id === 'HARNESS'
+  ) {
+    pass(`Manual link: ${MANUAL_LINK_ACMS_ID} kept its manual link to ${AMBIGUOUS_TRUSTEE_ID_B}`);
+  } else {
+    fail(
+      `Manual link: expected only the seeded manual link for ${MANUAL_LINK_ACMS_ID}, found ${JSON.stringify(manualRecords)}`,
+    );
+  }
+  const manualTask = await db
+    .collection(VERIFICATION_COLLECTION)
+    .findOne({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+  if (!manualTask) {
+    pass(`Manual link: no identity task written for ${MANUAL_LINK_ACMS_ID}`);
+  } else {
+    fail(
+      `Manual link: expected no identity task for ${MANUAL_LINK_ACMS_ID}, found ${JSON.stringify(manualTask)}`,
+    );
+  }
+
   // Deleted/non-trustee records must never be synced.
   const deletedLink = await db
     .collection('trustee-professional-ids')
@@ -951,7 +1137,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .collection('runtime-state')
     .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
   const byGroup = stateDoc?.lastUstProfCodeByGroup ?? {};
-  if (byGroup.NY >= 74 && byGroup.UT >= 70) {
+  if (byGroup.NY >= 75 && byGroup.UT >= 70) {
     pass(`Sync bookmark advanced correctly: ${JSON.stringify(byGroup)}`);
   } else {
     fail(`Sync bookmark did not advance as expected: ${JSON.stringify(byGroup)}`);
@@ -959,8 +1145,9 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 }
 
 // ---------------------------------------------------------------------------
-// run  (happy path — covers scenarios 1-5: fingerprint match, name match,
-// active no-match errored record, inactive no-match skip, cross-group paging)
+// run  (happy path — covers scenarios 1-11: fingerprint match, name match,
+// active no-match errored record, inactive no-match skip, cross-group paging, ambiguous,
+// skipped, conflict, ambiguous identity task, no task for no-match/conflict, manual link kept)
 // ---------------------------------------------------------------------------
 
 async function run() {
@@ -1033,6 +1220,19 @@ async function run() {
     });
     if (!newScenariosVerified) {
       fail('Timed out waiting for the ambiguous/skipped/conflict professional-id records');
+      return;
+    }
+
+    // The manual-link scenario writes nothing, so wait for the NY page's bookmark to pass its
+    // UST_PROF_CODE (75) - the bookmark is stored only after every record in the page is processed.
+    const nyPageProcessed = await pollUntil(async () => {
+      const stateDoc = await db
+        .collection('runtime-state')
+        .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
+      return (stateDoc?.lastUstProfCodeByGroup?.NY ?? 0) >= 75;
+    });
+    if (!nyPageProcessed) {
+      fail('Timed out waiting for the NY bookmark to reach UST_PROF_CODE 75');
       return;
     }
     console.log('');

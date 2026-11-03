@@ -16,6 +16,9 @@ const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and
 // Q Lakeshore, caseless, carries an ACMS professional id. The only task approved here, so it is
 // left out of every other test.
 const ACMS_LINK_TASK_ID = 'e2e-trustee-match-verification-acms-link';
+// J Nocasematch, ACMS-sourced and ambiguous (Jamie and Jesse Nocasematch), caseless as the ACMS
+// sync writes it. Approved by its own test, so it is left out of every other test.
+const ACMS_AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-acms-ambiguous';
 
 async function expandTask(page: Page, id: string) {
   await page.getByTestId(`accordion-button-order-list-${id}`).click();
@@ -238,6 +241,50 @@ test.describe('Trustee Identity Verification', () => {
     );
     await expect(content.getByTestId('resolved-statement')).toContainText(
       'Trustee Quinn Lakeshore was approved. No cases affected.',
+      timeoutOption,
+    );
+  });
+
+  test('approves a caseless ambiguous task from the ACMS professional-id sync', async ({
+    page,
+  }) => {
+    const content = await expandTask(page, ACMS_AMBIGUOUS_TASK_ID);
+
+    await expect(content.locator('.problem-statement')).toContainText(
+      'Trustee information sent to CAMS matches multiple trustees in CAMS. No cases yet. Cases attach as appointments sync.',
+      timeoutOption,
+    );
+    await expect(content.locator('.problem-statement a.new-tab-link')).toHaveCount(0);
+    await expect(
+      content.getByTestId('trustee-comparison-table').locator('tbody').getByRole('rowheader'),
+    ).toHaveText(['Jamie Nocasematch', 'Jesse Nocasematch']);
+
+    await content.getByTestId('approve-candidate-seed-trustee-match-nocases-a').click();
+    const modal = page.getByTestId(
+      `modal-content-trustee-confirmation-modal-${ACMS_AMBIGUOUS_TASK_ID}`,
+    );
+    await expect(modal).toBeVisible(timeoutOption);
+    await expect(modal).toContainText(
+      'No cases are affected yet. Future cases sent with this information will be matched to Jamie Nocasematch automatically.',
+    );
+
+    const approval = page.waitForResponse(
+      (response) =>
+        response.url().includes(`api/trustee-match-verification/${ACMS_AMBIGUOUS_TASK_ID}`) &&
+        response.request().method() === 'PATCH',
+      timeoutOption,
+    );
+    await page
+      .locator(`#trustee-confirmation-modal-${ACMS_AMBIGUOUS_TASK_ID}-submit-button`)
+      .click();
+    expect((await approval).ok()).toBe(true);
+
+    await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
+      'Trustee Jamie Nocasematch appointed. No cases affected.',
+      timeoutOption,
+    );
+    await expect(content.getByTestId('resolved-statement')).toContainText(
+      'Trustee Jamie Nocasematch was approved. No cases affected.',
       timeoutOption,
     );
   });

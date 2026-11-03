@@ -84,16 +84,17 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
     const ops = await generate(context());
 
     // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 8
-    // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 1 caseless task.
-    expect(pendingTasks(ops)).toHaveLength(12);
-    // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and seed-match-caseless (CAMS-953
-    // Slice 5, no case at all) are the deliberate exceptions: neither has a surrogate anywhere,
-    // including for its own originating case (the caseless task has no originating case to begin
-    // with). See the dedicated tests below.
+    // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 2 caseless tasks.
+    expect(pendingTasks(ops)).toHaveLength(13);
+    // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and the caseless tasks
+    // (seed-match-caseless, CAMS-953 Slice 5, and seed-match-acms-ambiguous, CAMS-954) are the
+    // deliberate exceptions: none has a surrogate anywhere, including for its own originating case
+    // (a caseless task has no originating case to begin with). See the dedicated tests below.
     const tasksExpectingASurrogate = pendingTasks(ops).filter(
       (task) =>
         !(task.id as string).startsWith('seed-match-no-cases-') &&
-        task.id !== 'seed-match-caseless',
+        task.id !== 'seed-match-caseless' &&
+        task.id !== 'seed-match-acms-ambiguous',
     );
     expect(tasksExpectingASurrogate).toHaveLength(10);
     for (const task of tasksExpectingASurrogate) {
@@ -108,7 +109,7 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
 
   test('should not seed two pending tasks on the same case', async () => {
     const ops = await generate(context());
-    // The caseless task's caseId is undefined; excluded here since this test is about distinct
+    // The caseless tasks' caseId is undefined; excluded here since this test is about distinct
     // real case IDs, not about counting how many pending tasks have no case at all.
     const caseIds = pendingTasks(ops)
       .map((task) => task.caseId)
@@ -248,6 +249,28 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     }
   });
 
+  test('should seed a pending caseless ambiguous task from the ACMS professional-id sync', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-acms-ambiguous');
+
+    expect(verification).toMatchObject({
+      status: 'pending',
+      source: 'ACMS',
+      mismatchReason: 'ambiguous',
+      acmsProfessionalId: 'SEED-ACMS-AMBIGUOUS',
+    });
+    expect(verification?.fingerprint).toBeTruthy();
+    expect('caseId' in (verification ?? {})).toBe(false);
+    expect('courtId' in (verification ?? {})).toBe(false);
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const forThisFingerprint = surrogatesFor(ops, table).filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(0);
+    }
+  });
+
   test('should have no surviving surrogate rows for an already-approved mismatch', async () => {
     const ops = await generate(context());
     const verification = findVerification(ops, 'seed-match-resolved-no-surrogates-091-99-28263');
@@ -292,12 +315,13 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
 });
 
 describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', () => {
-  test('should seed one approvable pending task carrying an ACMS professional id', async () => {
+  test('should seed one approvable pending DXTR task carrying an ACMS professional id', async () => {
     const ops = await generate(context());
+    // The caseless ACMS-sourced task also carries one, but has no case for the gate to check.
     const tasks = ops
       .filter((o) => o.collectionOrTable === 'trustee-match-verification')
       .flatMap((o) => o.data)
-      .filter((d) => d.acmsProfessionalId);
+      .filter((d) => d.acmsProfessionalId && d.source === 'DXTR');
 
     expect(tasks).toHaveLength(1);
     const [task] = tasks;

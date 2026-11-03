@@ -9,7 +9,7 @@ against real local containers.
 
 | Container                                   | Image                                            | Port        | Purpose                                                                                                                                                                          |
 | ------------------------------------------- | ------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cams-mongodb-sync-acms-professional-ids`   | `mongo:7.0`                                      | 27017       | Cosmos DB stand-in for `trustees`, `trustee-variation`, `trustee-professional-ids`, and `runtime-state` collections                                                              |
+| `cams-mongodb-sync-acms-professional-ids`   | `mongo:7.0`                                      | 27017       | Cosmos DB stand-in for `trustees`, `trustee-variation`, `trustee-professional-ids`, `trustee-match-verification`, and `runtime-state` collections                                |
 | `cams-sqledge-sync-acms-professional-ids`   | `mcr.microsoft.com/azure-sql-edge:latest`        | 1433        | ACMS source (`ACMS_INT`: `CMMPR`/`CMMAP`/`CMMDB`) and DXTR source (`DXTR_INT`: `AO_CS_DIV`/`AO_OFFICE`/`AO_COURT`/`AO_GRP_DES`/`AO_REGION`) — two databases on the same instance |
 | `cams-azurite-sync-acms-professional-ids`   | `mcr.microsoft.com/azure-storage/azurite:latest` | 10000–10002 | Azure Storage emulator for the `sync-acms-professional-ids-start`/`-page`/`-dlq` queues                                                                                          |
 | `cams-dataflows-sync-acms-professional-ids` | built from `Dockerfile.dataflows`                | 7072        | The dataflows function app itself, running the real `handleStart`/`handlePage` triggers                                                                                          |
@@ -43,10 +43,13 @@ This harness does **not** use a harness-local `.env.local` file. Instead:
 ## 3. Quick-start sequence
 
 ```bash
-# 1. Configure the SQL Edge SA password
-cd test/integration/sync-acms-professional-ids/scripts
-cp .env.template .env
-# Edit .env and set MSSQL_PASS to a strong password
+# 1. Configure the SQL Edge SA password and the function app's settings
+cd test/integration/sync-acms-professional-ids
+cp local.settings.integration.json.template local.settings.integration.json
+cp scripts/.env.template scripts/.env
+# The template password matches in both files. To change it, change MSSQL_PASS in
+# scripts/.env and ACMS_MSSQL_PASS/MSSQL_PASS in local.settings.integration.json together.
+cd scripts
 
 # 2. Start containers (builds the dataflows image and starts all four containers)
 ./start-services.sh
@@ -81,20 +84,23 @@ cd test/integration/sync-acms-professional-ids/scripts
 
 ### `run` (happy path)
 
-| Assertion                                                                                               | What it verifies                                                                                                                                                                |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NY-00063` linked to `INTEGRATION-TRUSTEE-FINGERPRINT`                                                  | Demographic-fingerprint matching auto-links a CMMPR record to its CAMS trustee via `TRUSTEE_VARIATION`                                                                          |
-| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                         | A fingerprint miss falls through to the real `runTrusteeMatchPipeline` and auto-links                                                                                           |
-| `NY-00065` has a `trustee-professional-ids` record with `disposition === 'no-match'`                    | No match + an active CMMAP appointment → a record (keyed by fingerprint) is written for later healing, with full pipeline evidence attached                                     |
-| `NY-00065`'s record has a non-empty `evidence.variant`, plus `evidence.sourceRaw`/`evidence.candidates` | The raw demographic variant and the pipeline's full evaluation history are persisted, not re-queried later                                                                      |
-| `NY-00066` has no record at all                                                                         | Any unlinked, non-conflict outcome (no-match, ambiguous, skipped, error) with zero active CMMAP appointments writes nothing (`applyActiveAppointmentGate`)                      |
-| `UT-00070` linked to `INTEGRATION-TRUSTEE-UT`                                                           | A second `GROUP_DESIGNATOR` is paged and processed independently of `NY`                                                                                                        |
-| `NY-00071` linked to `INTEGRATION-TRUSTEE-LEADINGZERO`                                                  | A PROF_ZIP value that lost its leading zero in NUMERIC(9,0) storage still fingerprint-matches, proving `formatAcmsZip` zero-pads to 9 digits before splitting into `NNNNN-NNNN` |
-| `NY-00072` has `disposition === 'ambiguous'` with both same-named candidates in `candidates`            | Two CAMS trustees sharing an identical name, with no corroborating contact data on this ACMS record, resolve to a genuine ambiguous state — not silently picking one            |
-| `NY-00073` has `disposition === 'skipped'`                                                              | An administrative placeholder name ("NOT ASSIGNED") is detected and skipped before any matching is attempted, and that skip is persisted rather than dropped                    |
-| `NY-00074` has a second record with `disposition === 'conflict'` and `conflictingTrusteeId` set         | A resolved match that collides with an ACMS id already linked to a different trustee is reported as a data-integrity conflict, not silently overwritten                         |
-| `NY-00067` (deleted) and `NY-00068` (non-trustee) are never synced                                      | `DELETE_CODE='D'` and non-`'TR'` `PROF_TYPE` rows are filtered by the ACMS gateway query                                                                                        |
-| `runtime-state` bookmark reaches `NY >= 74` and `UT >= 70`                                              | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                                                                                  |
+| Assertion                                                                                                                                                                                                                         | What it verifies                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NY-00063` linked to `INTEGRATION-TRUSTEE-FINGERPRINT`                                                                                                                                                                            | Demographic-fingerprint matching auto-links a CMMPR record to its CAMS trustee via `TRUSTEE_VARIATION`                                                                          |
+| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                                                                                                                                                   | A fingerprint miss falls through to the real `runTrusteeMatchPipeline` and auto-links                                                                                           |
+| `NY-00065` has a `trustee-professional-ids` record with `disposition === 'no-match'`                                                                                                                                              | No match + an active CMMAP appointment → a record (keyed by fingerprint) is written for later healing, with full pipeline evidence attached                                     |
+| `NY-00065`'s record has a non-empty `evidence.variant`, plus `evidence.sourceRaw`/`evidence.candidates`                                                                                                                           | The raw demographic variant and the pipeline's full evaluation history are persisted, not re-queried later                                                                      |
+| `NY-00066` has no record at all                                                                                                                                                                                                   | Any unlinked, non-conflict outcome (no-match, ambiguous, skipped, error) with zero active CMMAP appointments writes nothing (`applyActiveAppointmentGate`)                      |
+| `UT-00070` linked to `INTEGRATION-TRUSTEE-UT`                                                                                                                                                                                     | A second `GROUP_DESIGNATOR` is paged and processed independently of `NY`                                                                                                        |
+| `NY-00071` linked to `INTEGRATION-TRUSTEE-LEADINGZERO`                                                                                                                                                                            | A PROF_ZIP value that lost its leading zero in NUMERIC(9,0) storage still fingerprint-matches, proving `formatAcmsZip` zero-pads to 9 digits before splitting into `NNNNN-NNNN` |
+| `NY-00072` has `disposition === 'ambiguous'` with both same-named candidates in `candidates`                                                                                                                                      | Two CAMS trustees sharing an identical name, with no corroborating contact data on this ACMS record, resolve to a genuine ambiguous state — not silently picking one            |
+| `NY-00073` has `disposition === 'skipped'`                                                                                                                                                                                        | An administrative placeholder name ("NOT ASSIGNED") is detected and skipped before any matching is attempted, and that skip is persisted rather than dropped                    |
+| `NY-00074` has a second record with `disposition === 'conflict'` and `conflictingTrusteeId` set                                                                                                                                   | A resolved match that collides with an ACMS id already linked to a different trustee is reported as a data-integrity conflict, not silently overwritten                         |
+| `NY-00072` has exactly one pending `trustee-match-verification` task: `source: 'ACMS'`, `mismatchReason: 'ambiguous'`, no `caseId`/`courtId`, findings listing both candidates, `fingerprint` equal to the ambiguous record's key | An ambiguous ACMS professional with an active CMMAP appointment becomes a caseless identity task on Data Verification                                                           |
+| `NY-00065` (no-match) and `NY-00074` (conflict) have no `trustee-match-verification` task                                                                                                                                         | Only ambiguous ACMS outcomes create identity tasks                                                                                                                              |
+| `NY-00075` keeps only its pre-seeded `linkMethod: 'manual'` link and has no `trustee-match-verification` task                                                                                                                     | A manually linked professional is skipped before matching, even though its name and active appointment would otherwise make it ambiguous                                        |
+| `NY-00067` (deleted) and `NY-00068` (non-trustee) are never synced                                                                                                                                                                | `DELETE_CODE='D'` and non-`'TR'` `PROF_TYPE` rows are filtered by the ACMS gateway query                                                                                        |
+| `runtime-state` bookmark reaches `NY >= 75` and `UT >= 70`                                                                                                                                                                        | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                                                                                  |
 
 ### `run-purge`
 
@@ -149,6 +155,12 @@ next `start-services.sh` starts fresh.
   NY division — **not** Utah (Utah's real designator is `SK`). It is reused here purely as a second,
   distinct group designator to prove per-group paging and bookmarking; no attempt is made to also
   model real Utah data.
+- Every CAMS trustee fixture carries `firstName`/`middleName`/`lastName` as well as `name`: the
+  pipeline's name check compares the structured parts, so a name-only trustee never passes it. The
+  name-match trustees also carry contact data matching their CMMPR rows, because a sole exact-name
+  candidate with no contact data stays unresolved.
+- `buildAcmsVariant` writes a zero `PROF_FAX_NBR` as the string `"0"`, so the harness's fingerprint
+  variants use `fax: '0'`.
 - The `NY` and `UT` DXTR office rows (`AO_CS_DIV`/`AO_OFFICE`/`AO_COURT`/`AO_GRP_DES`/`AO_REGION`)
   use real reference data so that `getGroupDesignators()`'s live 5-table DXTR join is exercised
   faithfully, not mocked.

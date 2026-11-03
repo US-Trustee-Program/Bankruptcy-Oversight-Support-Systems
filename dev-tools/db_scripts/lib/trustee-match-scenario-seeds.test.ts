@@ -21,6 +21,12 @@ describe('identityTaskFields', () => {
     expect(task.fingerprint).toBe(computeFingerprint(task.variant));
   });
 
+  test('a task from the ACMS professional-id sync carries source ACMS', () => {
+    const task = identityTaskFields('acmsAmbiguousCaseless', 'ACMS');
+
+    expect(task).toMatchObject({ source: 'ACMS', mismatchReason: 'ambiguous' });
+  });
+
   test.each(['noCandidates', 'oneCandidateStateDiffers'] as const)(
     '%s, with fewer than 2 candidates, is a no-match task',
     (key) => {
