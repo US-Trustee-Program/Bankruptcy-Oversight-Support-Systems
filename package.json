@@ -56,11 +56,11 @@
   "devDependencies": {
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
-    "@eslint-react/eslint-plugin": "5.28.1",
+    "@eslint-react/eslint-plugin": "5.28.3",
     "@eslint/js": "10.0.0",
     "@types/node": "26.6.5",
-    "@typescript-eslint/eslint-plugin": "8.71.2",
-    "@typescript-eslint/parser": "8.71.2",
+    "@typescript-eslint/eslint-plugin": "8.72.0",
+    "@typescript-eslint/parser": "8.72.0",
     "@vitest/eslint-plugin": "1.6.27",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
@@ -68,13 +68,13 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.7",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.41.0",
+    "knip": "6.42.1",
     "mongodb": "7.7.0",
-    "mssql": "12.7.9",
+    "mssql": "12.7.10",
     "prettier": "3.9.10",
     "react": "19.3.1",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.71.2"
+    "typescript-eslint": "8.72.0"
   },
   "overrides": {
     "dompurify": "3.4.17",

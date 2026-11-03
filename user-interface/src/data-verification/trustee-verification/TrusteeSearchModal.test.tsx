@@ -80,6 +80,41 @@ describe('TrusteeSearchModal', () => {
     return inputField;
   }
 
+  const coverageCheckboxSelector = `#checkbox-trustee-search-show-without-coverage-${modalId}-click-target`;
+  const coverageProps = { courtId: '0208', divisionCode: '0208', chapter: '7' };
+
+  function coverageCheckbox() {
+    return document.querySelector(coverageCheckboxSelector);
+  }
+
+  function optionLabels() {
+    return Array.from(document.querySelectorAll(`#${comboBoxId}-item-list li`)).map(
+      (li) => li.textContent,
+    );
+  }
+
+  function deferredSearch() {
+    let resolve: (value: { data: TrusteeSearchResult[] }) => void = () => {};
+    const promise = new Promise<{ data: TrusteeSearchResult[] }>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  async function switchDistrict(courtName: string) {
+    await userEvent.click(document.querySelector(`#${districtComboBoxId}-expand`)!);
+    const districtInput = document.querySelector(
+      `#${districtComboBoxId}-combo-box-input`,
+    ) as HTMLInputElement;
+    // The originating court is pre-selected as the input's value; clear it before typing.
+    await userEvent.clear(districtInput);
+    await userEvent.type(districtInput, courtName);
+    await waitFor(() => {
+      expect(screen.getByTestId(`${districtComboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${districtComboBoxId}-option-item-0`));
+  }
+
   beforeEach(() => {
     // Restore/unstub here (start of beforeEach), not in afterEach — a failing test skips
     // afterEach, which would leak un-restored spies/stubs into the next test's setup.
@@ -190,20 +225,8 @@ describe('TrusteeSearchModal', () => {
     act(() => modalRef.current?.show());
 
     // Switch the district dropdown away from the originating court (0208) to a different one.
-    const districtExpandButton = document.querySelector(`#${districtComboBoxId}-expand`);
-    await userEvent.click(districtExpandButton!);
-    const districtInput = document.querySelector(
-      `#${districtComboBoxId}-combo-box-input`,
-    ) as HTMLInputElement;
-    // courtId="0208" pre-selects "Southern District of New York" as the input's starting
-    // value, so it must be cleared before typing or "Alaska" would just append to it.
-    await userEvent.clear(districtInput);
-    await userEvent.type(districtInput, 'Alaska');
-    await waitFor(() => {
-      const firstOption = screen.getByTestId(`${districtComboBoxId}-option-item-0`);
-      expect(firstOption).toBeVisible();
-    });
-    await userEvent.click(screen.getByTestId(`${districtComboBoxId}-option-item-0`));
+    await switchDistrict('Alaska');
+    expect(coverageCheckbox()).not.toBeInTheDocument();
 
     await expandComboBoxAndType('sm');
 
@@ -213,6 +236,290 @@ describe('TrusteeSearchModal', () => {
       )?.courtId;
       expect(searchSpy).toHaveBeenCalledWith('sm', alaskaCourtId, undefined, undefined);
     });
+  });
+
+  test('omits the coverage checkbox when neither divisionCode nor chapter is provided', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    expect(coverageCheckbox()).not.toBeInTheDocument();
+  });
+
+  test('omits divisionCode and chapter once the coverage checkbox is checked, even on the originating court', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = coverageCheckbox()!;
+    await userEvent.click(checkbox);
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', undefined, undefined);
+    });
+  });
+
+  test('restores divisionCode and chapter once the coverage checkbox is unchecked again', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = coverageCheckbox()!;
+    await userEvent.click(checkbox);
+    await userEvent.click(checkbox);
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', '0208', '7');
+    });
+  });
+
+  test('resets the coverage checkbox each time the modal is shown', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    const checkbox = coverageCheckbox()!;
+    await userEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+
+    act(() => modalRef.current?.show());
+
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('omits the coverage checkbox when chapter is missing, since the backend would not filter', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    expect(coverageCheckbox()).not.toBeInTheDocument();
+  });
+
+  test('reruns the last search with the new filter when the coverage checkbox is toggled after typing', async () => {
+    const [covered, uncovered] = sampleResults;
+    const searchSpy = vi
+      .spyOn(Api2, 'searchTrustees')
+      .mockResolvedValueOnce({ data: [covered] })
+      .mockResolvedValueOnce({ data: [uncovered] })
+      .mockResolvedValueOnce({ data: [covered] });
+
+    renderWithProps(vi.fn(), vi.fn(), coverageProps);
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', '0208', '7');
+      expect(optionLabels()).toEqual([covered.name]);
+    });
+
+    await userEvent.click(coverageCheckbox()!);
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', undefined, undefined);
+      expect(optionLabels()).toEqual([uncovered.name]);
+    });
+
+    await userEvent.click(coverageCheckbox()!);
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', '0208', '7');
+      expect(optionLabels()).toEqual([covered.name]);
+    });
+  });
+
+  test('discards a search response that resolves after the modal is shown again', async () => {
+    const pending = deferredSearch();
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockReturnValue(pending.promise);
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
+
+    act(() => modalRef.current?.show());
+    await act(async () => {
+      pending.resolve({ data: sampleResults });
+    });
+
+    expect(optionLabels()).toEqual([]);
+  });
+
+  test('discards a search response that resolves after the court is switched', async () => {
+    const pending = deferredSearch();
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockReturnValue(pending.promise);
+
+    renderWithProps(vi.fn(), vi.fn(), { courtId: '0208' });
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    expect(searchSpy).toHaveBeenCalledWith('sm', '0208', undefined, undefined);
+
+    await switchDistrict('Alaska');
+    await act(async () => {
+      pending.resolve({ data: sampleResults });
+    });
+
+    expect(optionLabels()).toEqual([]);
+  });
+
+  test('forgets the typed query when the modal is shown again', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps(vi.fn(), vi.fn(), coverageProps);
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', '0208', '7');
+    });
+    const callsBeforeReopen = searchSpy.mock.calls.length;
+
+    act(() => modalRef.current?.show());
+    await userEvent.click(coverageCheckbox()!);
+
+    expect(searchSpy).toHaveBeenCalledTimes(callsBeforeReopen);
+  });
+
+  test('reruns the remembered query when the chapter arrives after the user has searched', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+    const element = (chapter?: string) => (
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter={chapter}
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>
+    );
+    const { rerender } = render(element());
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', undefined, undefined);
+    });
+    expect(coverageCheckbox()).not.toBeInTheDocument();
+
+    rerender(element('7'));
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', '0208', '0208', '7');
+    });
+  });
+
+  test('does not search on mount or when coverage context arrives with no remembered query', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+    const { rerender } = render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    rerender(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('does not rerun the old query on toggle after a trustee is selected', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps(vi.fn(), vi.fn(), coverageProps);
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(optionLabels()).toEqual(sampleResults.map((r) => r.name));
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+    const callsBeforeToggle = searchSpy.mock.calls.length;
+
+    await userEvent.click(coverageCheckbox()!);
+
+    expect(searchSpy).toHaveBeenCalledTimes(callsBeforeToggle);
+  });
+
+  test('does not rerun the old query on toggle after the selection is cleared', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps(vi.fn(), vi.fn(), coverageProps);
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(optionLabels()).toEqual(sampleResults.map((r) => r.name));
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+    await userEvent.click(document.querySelector(`#${comboBoxId}-clear-all`)!);
+    const callsBeforeToggle = searchSpy.mock.calls.length;
+
+    await userEvent.click(coverageCheckbox()!);
+
+    expect(searchSpy).toHaveBeenCalledTimes(callsBeforeToggle);
   });
 
   test('normalizes courtDivisionCode to courtId when searching', async () => {
@@ -480,7 +787,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('calls onConfirm with selected trustee when Confirm is clicked', async () => {
+  test('hands the selected trustee to onConfirm when Select Trustee is clicked', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
     const { onConfirm } = renderWithProps();
 
@@ -497,6 +804,7 @@ describe('TrusteeSearchModal', () => {
     await userEvent.click(firstItem);
 
     const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
+    expect(submitButton).toHaveTextContent('Select Trustee');
     await waitFor(() => expect(submitButton).toBeEnabled());
     await userEvent.click(submitButton);
 
@@ -505,19 +813,15 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('disables Confirm and explains why when the selected trustee does not cover every affected case', async () => {
+  test('lets a trustee with no appointment for the task be selected', async () => {
     const resultWithAppointment: TrusteeSearchResult = {
       ...sampleResults[0],
       appointments: [
-        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '7' }),
+        MockData.getTrusteeAppointment({ courtId: '081', divisionCode: '081', chapter: '12' }),
       ],
     };
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
-    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), {
-      affectedCases: [
-        { caseId: '081-22-11111', courtId: '081', courtDivisionCode: '081', chapter: '12' },
-      ],
-    });
+    const { onConfirm } = renderWithProps(vi.fn(), vi.fn(), { chapter: '7' });
 
     act(() => modalRef.current?.show());
 
@@ -527,13 +831,12 @@ describe('TrusteeSearchModal', () => {
     });
     await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
 
-    const message = await screen.findByTestId('search-uncovered-cases-message');
-    expect(message.textContent).toContain('22-11111');
-    expect(message.textContent).toContain('Chapter 12');
-
     const submitButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-submit-button`);
-    expect(submitButton).toBeDisabled();
-    expect(onConfirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    expect(screen.queryByText(/Does not have an appointment/)).not.toBeInTheDocument();
+    await userEvent.click(submitButton);
+
+    expect(onConfirm).toHaveBeenCalledWith(resultWithAppointment);
   });
 
   test('calls onCancel when Cancel is clicked', async () => {
@@ -772,7 +1075,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('clears selected trustee and disables Confirm button when selection is removed', async () => {
+  test('clears selected trustee and disables Select Trustee when selection is removed', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -803,7 +1106,7 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
-  test('disables Confirm button when no trustee is selected', async () => {
+  test('disables Select Trustee when no trustee is selected', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());
 
@@ -845,62 +1148,6 @@ describe('TrusteeSearchModal', () => {
         `button-trustee-search-modal-${modalId}-submit-button`,
       );
       expect(submitButton).toBeDisabled();
-    });
-  });
-
-  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
-    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
-
-    render(
-      <BrowserRouter>
-        <TrusteeSearchModal
-          ref={modalRef}
-          id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          onConfirm={vi.fn()}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
-      const submitButton = screen.getByTestId(
-        `button-trustee-search-modal-${modalId}-submit-button`,
-      );
-      expect(submitButton).toBeDisabled();
-    });
-  });
-
-  test('disables Cancel when isProcessing is true', async () => {
-    render(
-      <BrowserRouter>
-        <TrusteeSearchModal
-          ref={modalRef}
-          id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          onConfirm={vi.fn()}
-          isProcessing={true}
-        />
-      </BrowserRouter>,
-    );
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      const cancelButton = screen.getByTestId(
-        `button-trustee-search-modal-${modalId}-cancel-button`,
-      );
-      expect(cancelButton).toBeDisabled();
-    });
-  });
-
-  test('does not show a loading spinner when isProcessing is omitted', async () => {
-    renderWithProps();
-    act(() => modalRef.current?.show());
-
-    await waitFor(() => {
-      expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
     });
   });
 

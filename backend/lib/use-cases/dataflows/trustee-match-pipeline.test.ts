@@ -444,6 +444,29 @@ describe('serializeState', () => {
     });
   });
 
+  test('serializes an error as a plain object with only its persistable fields', () => {
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      error: new CamsError('TEST-MODULE', {
+        message: 'recall failed',
+        status: 503,
+        originalError: new Error('connection reset'),
+        data: { stage: 'recallByName' },
+        camsStackInfo: { module: 'TEST-MODULE', message: 'stack entry' },
+      }),
+    };
+
+    const serialized = serializeState(state);
+
+    expect(serialized.error).toStrictEqual({
+      message: 'recall failed',
+      module: 'TEST-MODULE',
+      status: 503,
+      originalError: state.error!.originalError,
+      data: { stage: 'recallByName' },
+    });
+  });
+
   test('serializes an empty candidate map as an empty array', () => {
     const state = createInitialState(makeDxtrTrustee());
 

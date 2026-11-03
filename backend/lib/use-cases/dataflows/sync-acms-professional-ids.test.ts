@@ -343,7 +343,13 @@ describe('SyncAcmsProfessionalIds', () => {
 
       const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
-      expect(result.error).toBe(terminalError);
+      expect(result.error).toEqual({
+        message: terminalError.message,
+        module: 'TEST',
+        status: terminalError.status,
+        originalError: terminalError.originalError,
+        data: terminalError.data,
+      });
     });
   });
 

@@ -31,16 +31,16 @@
     "@stryker-mutator/typescript-checker": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
     "@types/node": "26.6.5",
-    "@typescript-eslint/parser": "8.71.2",
+    "@typescript-eslint/parser": "8.72.0",
     "@vitest/coverage-v8": "5.0.5",
-    "dependency-cruiser": "18.6.0",
+    "dependency-cruiser": "18.7.0",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.7",
     "prettier": "3.9.10",
     "ts-node": "10.9.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.71.2",
+    "typescript-eslint": "8.72.0",
     "vitest": "5.0.5"
   }
 }

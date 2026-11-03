@@ -27,6 +27,10 @@ export class TrusteeMatchVerificationController {
     }
 
     try {
+      if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+        throw new UnauthorizedError(MODULE_NAME);
+      }
+
       if (context.request.method === 'GET') {
         const id = context.request.params['id'];
         if (id) {
@@ -76,10 +80,6 @@ export class TrusteeMatchVerificationController {
   }
 
   private async handlePatch(context: ApplicationContext): Promise<CamsHttpResponseInit<undefined>> {
-    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
-      throw new UnauthorizedError(MODULE_NAME);
-    }
-
     const id = context.request.params['id'];
     if (!id) {
       throw new BadRequestError(MODULE_NAME, { message: 'Missing verification ID.' });

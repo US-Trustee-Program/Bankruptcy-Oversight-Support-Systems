@@ -96,7 +96,7 @@ post-swap correction:
    workspace. This is only automated for the dev tier (`sharedAnalyticsReaderRoleAssignment` in
    `app-shared-setup.bicep`, gated on `isDevTier`); staging and USTP prod require someone to grant
    it by hand, per the least-privilege pattern in
-   [GithubActionsOidcLeastPrivilege.md](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md#L143).
+   [GithubActionsOidcLeastPrivilege.md](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md#role-assignments-created-by-bicep).
    Without it, queries fail with `403 InsufficientAccessError` -- and that fails **silently**:
    `poll-notification-bounces.ts`'s timer catches the error, records it via
    `completeDataflowTrace(success: false)`, and does not rethrow, so Azure's own function-failure

@@ -1,6 +1,6 @@
 /**
  * Scenario: trustee-data
- * Database: cams only
+ * Database: cams, plus DXTR (AO_CS/AO_PY) if case 091-99-87899 isn't already there
  *
  * Seeds trustee data using existing DXTR case 091-99-87899 to exercise
  * trustee routes and the trustee match verification workflow:
@@ -9,27 +9,51 @@
  *   - One inactive trustee (Pat Seedtrustee) — appears on the trustees list
  *   - One matched appointment (active trustee, active status, chapter 7)
  *   - One mismatched appointment (active trustee, mismatched status, chapter 13)
- *   - One pending trustee match verification against case 091-99-87899
+ *   - One pending trustee match verification against case 091-99-16994: Samuel Seedtrustee, an
+ *     ambiguous task with both Seedtrustees as candidates (fixture scenario seedTrusteeNickname),
+ *     with the surrogate case appointment the sync writes for it. The task has its own case
+ *     because 091-99-87899 carries other scenarios' case appointments, and the sync only raises a
+ *     task for a case whose trustee it could not resolve.
  *
- * NOTE: Uses existing DXTR case - no DXTR seeding required.
+ * NOTE: Seeds case 091-99-87899 into DXTR via ensureDxtrCase only if it isn't already there.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
-import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
-import { computeFingerprint } from '../lib/compute-fingerprint.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
+import {
+  identityTaskFields,
+  scenarioTrusteeDocuments,
+} from '../lib/trustee-match-scenario-seeds.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
-const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
 const NO_EMAIL_TRUSTEE_ID = 'seed-trustee-nocontact-001';
 
-// Existing DXTR case in Buffalo (091)
+// Existing DXTR cases in Buffalo (091)
 const CASE_ID = '091-99-87899';
+const MATCH_VERIFICATION_CASE_ID = '091-99-16994'; // Ch 12
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  const matchVerificationTask = identityTaskFields('seedTrusteeNickname');
+  const matchVerificationSurrogate = {
+    id: `seed-surrogate-trustee-match-verification-${MATCH_VERIFICATION_CASE_ID}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId: MATCH_VERIFICATION_CASE_ID,
+    trusteeId: matchVerificationTask.fingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter: '12',
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  };
+
   // Ensure case exists in DXTR (guard against accidental deletion)
   const { operations: dxtrOps } = await ensureDxtrCase(ctx, {
     divisionCode: '091',
@@ -80,45 +104,13 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: active trustee ───────────────────────────────────────────────
-    {
-      db: 'cams',
+    // ── Cosmos: active trustee (Sam) and inactive trustee (Pat) ─────────────
+    // The candidates of the identity task below, so they come from its fixture scenario.
+    ...scenarioTrusteeDocuments('seedTrusteeNickname').map((trustee) => ({
+      db: 'cams' as const,
       collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: ACTIVE_TRUSTEE_ID,
-          firstName: 'Sam',
-          lastName: 'Seedtrustee',
-          status: 'active',
-          address1: '200 Trustee Ave',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10002',
-          phone: '212-555-0200',
-          email: 'sam.seedtrustee@example.com',
-        }),
-      ],
-    },
-
-    // ── Cosmos: inactive trustee ─────────────────────────────────────────────
-    {
-      db: 'cams',
-      collectionOrTable: 'trustees',
-      data: [
-        createTrusteeBase({
-          id: INACTIVE_TRUSTEE_ID,
-          firstName: 'Pat',
-          lastName: 'Seedtrustee',
-          status: 'inactive',
-          address1: '300 Trustee Blvd',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10003',
-          phone: '212-555-0300',
-          email: 'pat.seedtrustee@example.com',
-        }),
-      ],
-    },
+      data: [trustee],
+    })),
 
     // ── Cosmos: active trustee missing email (constructed literally, not via  ──
     // createTrusteeBase, since that helper always faker-fills phone/email) ────
@@ -207,59 +199,27 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustee-match-verification',
       data: [
         {
-          id: `seed-trustee-match-verification-${CASE_ID}`,
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          taskType: 'trustee-match',
-          caseId: CASE_ID,
+          id: `seed-trustee-match-verification-${MATCH_VERIFICATION_CASE_ID}`,
+          caseId: MATCH_VERIFICATION_CASE_ID,
           courtId: '0208',
           status: 'pending',
           taskDate: '2025-03-01T00:00:00.000Z',
-          mismatchReason: 'IMPERFECT_MATCH',
-          fingerprint: computeFingerprint({
-            firstName: 'Samuel',
-            lastName: 'Seedtrustee',
-            fullName: 'Samuel Seedtrustee',
-          }),
-          dxtrTrustee: {
-            firstName: 'Samuel',
-            lastName: 'Seedtrustee',
-            fullName: 'Samuel Seedtrustee',
-          },
-          // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
-          // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
-          // against this fixture's actual DXTR/candidate data, then hand-transcribed here).
-          // "Samuel" vs "Sam" is a nickname relationship, not the literal initial-vs-full pattern
-          // the scorer recognizes, so nameScore is a real 0. No DXTR legacy address/phone/email
-          // at all, so addressScore is a real 0 (not 100 as previously hardcoded); phoneScore/
-          // emailScore are hardcoded to 0 rather than the real function's null (not-comparable)
-          // result, to keep the mismatch icon visible for missing contact info per product
-          // decision.
-          matchCandidates: [
-            {
-              trusteeId: ACTIVE_TRUSTEE_ID,
-              trusteeName: 'Sam Seedtrustee',
-              totalScore: 50,
-              addressScore: 0,
-              nameScore: 0,
-              phoneScore: 0,
-              emailScore: 0,
-              districtDivisionScore: 100,
-              chapterScore: 100,
-              address: {
-                address1: '200 Trustee Ave',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10002',
-                countryCode: 'US',
-              },
-              phone: { number: '212-555-0200' },
-              email: 'sam.seedtrustee@example.com',
-            },
-          ],
+          ...matchVerificationTask,
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
+    },
+    // Dual-written to both partitions, as TrusteeCaseAppointmentsMongoRepository does.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: [matchVerificationSurrogate],
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: [matchVerificationSurrogate],
     },
   ];
 }

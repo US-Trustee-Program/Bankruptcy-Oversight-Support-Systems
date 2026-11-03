@@ -37,7 +37,6 @@
     "trustee-match-verification-search:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts",
     "trustee-match-normalization": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-normalization/scripts/trustee-match-normalization-harness.ts",
     "trustee-variation-audit": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-variation-audit-harness.ts",
-    "trustee-match-weight-backtest": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-match-weight-backtest-harness.ts",
     "sync-acms-professional-ids-audit": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/sync-acms-professional-ids-audit-harness.ts",
     "fuzzy-name-threshold-backtest": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/fuzzy-name-threshold-backtest-harness.ts",
     "heal-sentinel-case-appointments-audit": "npx tsx --tsconfig ../../backend/tsconfig.json heal-sentinel-case-appointments-audit/scripts/heal-sentinel-case-appointments-audit-harness.ts",
