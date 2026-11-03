@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import useFeatureFlags, {
+  CAMS_NATIVE_USER_ROLES,
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -12,6 +13,7 @@ export enum AdminNavState {
   CASE_RELOAD,
   BANKS,
   NOTIFICATION_ROUTING,
+  PERMISSIONS,
 }
 
 function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -29,6 +31,10 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
 
   function handleNavPrivilegedIdentity() {
     setActiveNav(AdminNavState.PRIVILEGED_IDENTITY);
+  }
+
+  function handleNavPermissions() {
+    setActiveNav(AdminNavState.PERMISSIONS);
   }
 
   function handleNavBankruptcySoftware() {
@@ -62,6 +68,19 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
               title="Manage privileged identity"
             >
               Privileged Identity
+            </NavLink>
+          </li>
+        )}
+        {isFlagEnabled(flags, CAMS_NATIVE_USER_ROLES) && (
+          <li className="usa-sidenav__item">
+            <NavLink
+              to="/admin/permissions"
+              data-testid="permissions-nav-link"
+              className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PERMISSIONS)}
+              onClick={handleNavPermissions}
+              title="Manage CAMS user permissions"
+            >
+              Permissions
             </NavLink>
           </li>
         )}

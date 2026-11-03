@@ -25,6 +25,18 @@ export const CamsRoles: CamsRoleType[] = [...new Set(Object.values(CamsRole))].f
   (role) => role !== CamsRole.PrivilegedIdentityUser,
 );
 
+export const CamsRoleLabels: Record<CamsRoleType, string> = {
+  PrivilegedIdentityUser: 'Privileged Identity User',
+  SuperUser: 'Super User',
+  CaseAssignmentManager: 'Case Assignment Manager',
+  TrialAttorney: 'Trial Attorney',
+  LeadTrialAttorney: 'Lead Trial Attorney',
+  DataVerifier: 'Data Verifier',
+  TrusteeAdmin: 'Trustee Admin',
+  Auditor: 'Auditor',
+  Paralegal: 'Paralegal',
+};
+
 export const AssignableRole = {
   TrialAttorney: CamsRole.TrialAttorney,
   LeadTrialAttorney: CamsRole.LeadTrialAttorney,

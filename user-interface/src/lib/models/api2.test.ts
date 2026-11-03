@@ -705,6 +705,24 @@ describe('_Api2 functions', async () => {
     expect(getSpy).toHaveBeenCalledWith('/banks/bank-1/trustees', {});
   });
 
+  test('should call api.get with the paging predicate when calling getCamsUsers', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getCamsUsers({ limit: 20, offset: 40 });
+    expect(getSpy).toHaveBeenCalledWith('/user-access/users', { limit: '20', offset: '40' });
+  });
+
+  test('should call api.post with the grant when calling postRoleAssignment', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: {} });
+    const request = {
+      userId: 'user-1',
+      role: CamsRole.TrialAttorney,
+      officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+      reason: 'New hire',
+    };
+    api2.default.postRoleAssignment(request);
+    expect(postSpy).toHaveBeenCalledWith('/user-access/assignments', request, {});
+  });
+
   test('should call api.get with limit and offset when both provided to getSoftwareBankTrustees', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
     api2.default.getSoftwareBankTrustees('sw-1', 'bank-1', 10, 20);

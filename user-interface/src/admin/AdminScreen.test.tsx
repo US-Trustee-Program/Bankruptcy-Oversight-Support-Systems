@@ -6,12 +6,20 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import {
+  CAMS_NATIVE_USER_ROLES,
+  PRIVILEGED_IDENTITY_MANAGEMENT,
+} from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
+  CAMS_NATIVE_USER_ROLES: 'cams-native-user-roles',
+}));
+
+vi.mock('./permissions/Permissions', () => ({
+  Permissions: () => <div data-testid="mocked-permissions" />,
 }));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
@@ -94,6 +102,7 @@ describe('Admin screen tests', () => {
   test.each([
     ['bankruptcy-software', '/admin/bankruptcy-software', 'bankruptcy-software-nav-link'],
     ['privileged-identity', '/admin/privileged-identity', 'privileged-identity-nav-link'],
+    ['permissions', '/admin/permissions/cams-users', 'permissions-nav-link'],
     ['case-reload', '/admin/case-reload', 'case-reload-nav-link'],
     ['banks', '/admin/banks', 'banks-nav-link'],
     ['notification-routing', '/admin/notification-routing', 'notification-routing-nav-link'],
@@ -144,6 +153,22 @@ describe('Admin screen tests', () => {
     });
     renderAtPath('/admin/privileged-identity');
     expect(screen.queryByTestId('mocked-privileged-identity')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
+
+  test('should render Permissions when navigating under /admin/permissions', () => {
+    renderAtPath('/admin/permissions/cams-users');
+    expect(screen.getByTestId('mocked-permissions')).toBeInTheDocument();
+  });
+
+  test('should not render Permissions or its nav link when the cams-native-user-roles flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [CAMS_NATIVE_USER_ROLES]: false,
+    });
+    renderAtPath('/admin/permissions/cams-users');
+    expect(screen.queryByTestId('mocked-permissions')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('permissions-nav-link')).not.toBeInTheDocument();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 });

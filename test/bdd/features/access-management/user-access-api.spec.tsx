@@ -8,7 +8,7 @@ import { TestSessions } from '../../fixtures/auth.fixtures';
 import { TestSetup } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import { CamsSession } from '@common/cams/session';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UserRoleAssignment } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
@@ -42,7 +42,7 @@ const GRANT_REASON =
 function permission(
   userId: string,
   office: { regionId: string; officeCode: string },
-  role = CamsRole.TrialAttorney,
+  role: CamsRoleType = CamsRole.TrialAttorney,
 ): UserRoleAssignment {
   return {
     documentType: 'USER_ROLE_ASSIGNMENT',

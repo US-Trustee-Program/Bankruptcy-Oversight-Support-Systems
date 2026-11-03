@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { CamsRole, CamsRoles } from './roles';
+import { CamsRole, CamsRoleLabels, CamsRoles } from './roles';
 
 describe('CamsRoles', () => {
   test('should list each unique CAMS role once, excluding PrivilegedIdentityUser', () => {
@@ -15,5 +15,21 @@ describe('CamsRoles', () => {
         CamsRole.Paralegal,
       ].sort(),
     );
+  });
+});
+
+describe('CamsRoleLabels', () => {
+  test('should give each role its human-readable label', () => {
+    expect(CamsRoleLabels).toEqual({
+      PrivilegedIdentityUser: 'Privileged Identity User',
+      SuperUser: 'Super User',
+      CaseAssignmentManager: 'Case Assignment Manager',
+      TrialAttorney: 'Trial Attorney',
+      LeadTrialAttorney: 'Lead Trial Attorney',
+      DataVerifier: 'Data Verifier',
+      TrusteeAdmin: 'Trustee Admin',
+      Auditor: 'Auditor',
+      Paralegal: 'Paralegal',
+    });
   });
 });
