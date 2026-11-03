@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import CasesRuntimeState from './cases-runtime-state';
 import { CamsError } from '../../common-errors/cams-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 
 describe('storeRuntimeState tests', () => {
   let context: ApplicationContext;
@@ -38,6 +39,17 @@ describe('storeRuntimeState tests', () => {
       expect.stringContaining('Wrote runtime state: '),
       expect.anything(),
     );
+  });
+
+  test('should rethrow a TooManyRequestsError so callers can recognize it as transient, without logging it as an error', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+      new TooManyRequestsError('CASE-RUNTIME-STATE'),
+    );
+    const errorLogSpy = vi.spyOn(context.logger, 'camsError');
+    await expect(
+      CasesRuntimeState.storeRuntimeState(context, '1001', '1001'),
+    ).rejects.toBeInstanceOf(TooManyRequestsError);
+    expect(errorLogSpy).not.toHaveBeenCalled();
   });
 
   test('should log and rethrow upsert failures as CamsError without logging success', async () => {

@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { CasesSyncState } from '../gateways.types';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 
 const MODULE_NAME = 'CASE-RUNTIME-STATE';
 
@@ -20,6 +21,9 @@ async function storeRuntimeState(
     await runtimeStateRepo.upsert(newSyncState);
     context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);
   } catch (originalError) {
+    if (isTransientInfraError(originalError)) {
+      throw originalError;
+    }
     const error = getCamsError(
       originalError,
       MODULE_NAME,

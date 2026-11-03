@@ -6,6 +6,8 @@ import { CasesSyncState, LegacyCasesSyncState } from '../gateways.types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 describe('getCaseIds tests', () => {
   let context: ApplicationContext;
@@ -18,6 +20,25 @@ describe('getCaseIds tests', () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('some error'));
     const actual = await SyncCases.getCaseIds(context);
     expect(actual).toEqual({ events: [] });
+  });
+
+  test('should rethrow a transient 429 from the runtime state read', async () => {
+    const tooManyRequests = new TooManyRequestsError('SYNC-CASES');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(tooManyRequests);
+
+    await expect(SyncCases.getCaseIds(context)).rejects.toBe(tooManyRequests);
+  });
+
+  test('should rethrow a gateway timeout from the cases gateway', async () => {
+    const gatewayTimeout = new GatewayTimeoutError('SYNC-CASES');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: '2025-01-01',
+      lastTransactionsSyncDate: '2025-01-01',
+    } as CasesSyncState);
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockRejectedValue(gatewayTimeout);
+
+    await expect(SyncCases.getCaseIds(context)).rejects.toBe(gatewayTimeout);
   });
 
   test('should return events to sync and last sync date from gateway', async () => {
