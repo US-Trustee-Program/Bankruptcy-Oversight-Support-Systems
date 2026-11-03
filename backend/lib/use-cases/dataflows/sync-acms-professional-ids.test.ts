@@ -357,6 +357,19 @@ describe('SyncAcmsProfessionalIds', () => {
     const unresolvedState = (overrides: object = {}) =>
       serializeState({ ...noMatchPipelineState, ...overrides } as never) as TrusteeSerializedState;
 
+    const ambiguousState = () =>
+      unresolvedState({
+        candidates: new Map([
+          ['t1', candidate('t1')],
+          ['t2', candidate('t2')],
+        ]),
+      });
+
+    const withActiveAppointment = () =>
+      vi
+        .spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional')
+        .mockResolvedValue([{ division: '081', chapter: '7' }]);
+
     test('calls identifyTrustee with the record, its ACMS id, fingerprint and variant', async () => {
       const identifySpy = mockIdentification({
         kind: 'unresolved',
@@ -523,18 +536,8 @@ describe('SyncAcmsProfessionalIds', () => {
     });
 
     test('should write an ambiguous record when two genuinely-qualifying candidates remain unresolved', async () => {
-      mockIdentification({
-        kind: 'unresolved',
-        state: unresolvedState({
-          candidates: new Map([
-            ['t1', candidate('t1')],
-            ['t2', candidate('t2')],
-          ]),
-        }),
-      });
-      vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([
-        { division: '081', chapter: '7' },
-      ]);
+      mockIdentification({ kind: 'unresolved', state: ambiguousState() });
+      withActiveAppointment();
       const upsertSpy = vi
         .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
         .mockResolvedValue(linkedProfessionalId({ disposition: 'ambiguous' }));
@@ -554,20 +557,10 @@ describe('SyncAcmsProfessionalIds', () => {
     });
 
     describe('identity tasks for ambiguous professionals', () => {
-      const ambiguousState = () =>
-        unresolvedState({
-          candidates: new Map([
-            ['t1', candidate('t1')],
-            ['t2', candidate('t2')],
-          ]),
-        });
-      const withActiveAppointment = () =>
-        vi
-          .spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional')
-          .mockResolvedValue([{ division: '081', chapter: '7' }]);
       const existingTask = (status: TrusteeMatchVerification['status']) =>
         ({
           id: 'existing-task',
+          fingerprint: computeFingerprint(buildAcmsVariant(record)),
           variant: buildAcmsVariant(record),
           status,
         }) as TrusteeMatchVerification;
@@ -587,8 +580,6 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(task).toMatchObject({
           source: 'ACMS',
           mismatchReason: 'ambiguous',
-          status: 'pending',
-          taskType: 'trustee-match',
           acmsProfessionalId: 'NY-00063',
           fingerprint: computeFingerprint(variant),
           variant,
@@ -600,15 +591,17 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(task.appointedDate).toBeUndefined();
       });
 
-      test('gives the task the same fingerprint as the professional-id record it writes', async () => {
+      test('links the task and the professional-id record by the same variant fingerprint', async () => {
         mockIdentification({ kind: 'unresolved', state: ambiguousState() });
         withActiveAppointment();
         const taskSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
         const idSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
+        const expected = computeFingerprint(buildAcmsVariant(record));
 
         await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-        expect(taskSpy.mock.calls[0][0].fingerprint).toBe(idSpy.mock.calls[0][0].camsTrusteeId);
+        expect(taskSpy.mock.calls[0][0].fingerprint).toBe(expected);
+        expect(idSpy.mock.calls[0][0].camsTrusteeId).toBe(expected);
       });
 
       test('leaves an existing pending task untouched', async () => {
@@ -660,6 +653,32 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(upsertSpy).not.toHaveBeenCalled();
       });
 
+      test.each([
+        ['skip', { skip: true }, 'skipped-not-a-person'],
+        ['error', { error: new UnknownError('TEST') }, 'error'],
+      ])(
+        'writes no task when an ambiguous-looking state has %s set',
+        async (_label, overrides, expectedKind) => {
+          mockIdentification({
+            kind: 'unresolved',
+            state: unresolvedState({
+              candidates: new Map([
+                ['t1', candidate('t1')],
+                ['t2', candidate('t2')],
+              ]),
+              ...overrides,
+            }),
+          });
+          withActiveAppointment();
+          const upsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+
+          const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+          expect(upsertSpy).not.toHaveBeenCalled();
+          expect(outcome).toEqual({ kind: expectedKind, gated: 'written' });
+        },
+      );
+
       test('writes no task for a conflict', async () => {
         mockIdentification({
           kind: 'conflict',
@@ -675,20 +694,52 @@ describe('SyncAcmsProfessionalIds', () => {
       });
     });
 
-    test('preserves a manual link: returns without identifying or writing anything', async () => {
-      vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
-        linkedProfessionalId({ linkMethod: 'manual' }),
-      ]);
-      const identifySpy = vi.spyOn(identifyTrusteeModule, 'identifyTrustee');
-      const idUpsertSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
-      const taskUpsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+    describe('manual link guard', () => {
+      test('preserves a manual link: returns without identifying or writing anything', async () => {
+        vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+          linkedProfessionalId({ linkMethod: 'manual' }),
+        ]);
+        const identifySpy = mockIdentification({ kind: 'unresolved', state: unresolvedState() });
+        const idUpsertSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
+        const taskUpsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
 
-      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-      expect(outcome).toEqual({ kind: 'manual-preserved' });
-      expect(identifySpy).not.toHaveBeenCalled();
-      expect(idUpsertSpy).not.toHaveBeenCalled();
-      expect(taskUpsertSpy).not.toHaveBeenCalled();
+        expect(outcome).toEqual({ kind: 'manual-preserved' });
+        expect(identifySpy).not.toHaveBeenCalled();
+        expect(idUpsertSpy).not.toHaveBeenCalled();
+        expect(taskUpsertSpy).not.toHaveBeenCalled();
+      });
+
+      test('preserves a manual link when it is one of several existing links', async () => {
+        vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+          linkedProfessionalId({ id: 'auto-link', linkMethod: 'auto' }),
+          linkedProfessionalId({ id: 'manual-link', linkMethod: 'manual' }),
+        ]);
+        const identifySpy = mockIdentification({ kind: 'unresolved', state: unresolvedState() });
+
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+        expect(outcome).toEqual({ kind: 'manual-preserved' });
+        expect(identifySpy).not.toHaveBeenCalled();
+      });
+
+      test.each([
+        ['an auto link', linkedProfessionalId({ linkMethod: 'auto' })],
+        [
+          'a conflict link with no link method',
+          linkedProfessionalId({ disposition: 'conflict', linkMethod: undefined }),
+        ],
+      ])('continues to identification when the only existing link is %s', async (_label, link) => {
+        vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([link]);
+        const identifySpy = mockIdentification({ kind: 'unresolved', state: unresolvedState() });
+        vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([]);
+
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+        expect(identifySpy).toHaveBeenCalled();
+        expect(outcome).toEqual({ kind: 'no-match', gated: 'skipped' });
+      });
     });
 
     test('should parse groupDesignator from the acmsProfessionalId when checking active appointments', async () => {
