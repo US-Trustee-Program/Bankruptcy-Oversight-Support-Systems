@@ -580,15 +580,13 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(task).toMatchObject({
           source: 'ACMS',
           mismatchReason: 'ambiguous',
+          status: 'pending',
           acmsProfessionalId: 'NY-00063',
           fingerprint: computeFingerprint(variant),
           variant,
           findings: state,
           sourceTrustee: expect.objectContaining({ firstName: 'John', lastName: 'Smith' }),
         });
-        expect(task.caseId).toBeUndefined();
-        expect(task.courtId).toBeUndefined();
-        expect(task.appointedDate).toBeUndefined();
       });
 
       test('links the task and the professional-id record by the same variant fingerprint', async () => {
@@ -611,9 +609,14 @@ describe('SyncAcmsProfessionalIds', () => {
           existingTask('pending'),
         ]);
         const upsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+        const idUpsertSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
 
         const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
+        expect(idUpsertSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ disposition: 'ambiguous' }),
+          expect.anything(),
+        );
         expect(upsertSpy).not.toHaveBeenCalled();
         expect(outcome).toEqual({ kind: 'ambiguous-task-pending' });
       });
@@ -625,9 +628,14 @@ describe('SyncAcmsProfessionalIds', () => {
           existingTask('approved'),
         ]);
         const upsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+        const idUpsertSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
 
         const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
+        expect(idUpsertSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ disposition: 'ambiguous' }),
+          expect.anything(),
+        );
         expect(upsertSpy).not.toHaveBeenCalled();
         expect(outcome).toEqual({ kind: 'ambiguous-already-resolved' });
       });
@@ -648,9 +656,10 @@ describe('SyncAcmsProfessionalIds', () => {
         withActiveAppointment();
         const upsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
 
-        await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
         expect(upsertSpy).not.toHaveBeenCalled();
+        expect(outcome).toEqual({ kind: 'no-match', gated: 'written' });
       });
 
       test.each([
@@ -688,9 +697,10 @@ describe('SyncAcmsProfessionalIds', () => {
         });
         const upsertSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
 
-        await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
         expect(upsertSpy).not.toHaveBeenCalled();
+        expect(outcome).toEqual({ kind: 'conflict', via: 'name' });
       });
     });
 

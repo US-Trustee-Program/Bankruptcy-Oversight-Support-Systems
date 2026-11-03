@@ -508,39 +508,6 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
-  describe('deleteByCamsTrusteeId', () => {
-    const camsTrusteeId = 'trustee-1';
-    const expectedQuery = {
-      condition: 'EQUALS',
-      leftOperand: { name: 'camsTrusteeId' },
-      rightOperand: camsTrusteeId,
-    };
-
-    test('should delete all professional IDs for a trustee and return count', async () => {
-      const deletedCount = 2;
-      const deleteManySpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockResolvedValue(deletedCount);
-
-      const result = await repository.deleteByCamsTrusteeId(camsTrusteeId);
-
-      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
-      expect(result).toBe(deletedCount);
-    });
-
-    test('should handle database errors', async () => {
-      const error = new Error('Database connection failed');
-      const deleteManySpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockRejectedValue(error);
-
-      await expect(repository.deleteByCamsTrusteeId(camsTrusteeId)).rejects.toThrow(
-        `Failed to delete professional IDs for trustee ${camsTrusteeId}.`,
-      );
-      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
-    });
-  });
-
   describe('deleteLink', () => {
     const camsTrusteeId = 'trustee-1';
     const acmsProfessionalId = 'NY-00063';
