@@ -6,18 +6,15 @@ import {
   AcmsProfessionalIdSyncState,
   AcmsTrusteeProfessionalDetailRecord,
 } from '../gateways.types';
-import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
-import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
-import { serializeState, TrusteeSerializedState } from './trustee-match-pipeline';
+import { TrusteeSerializedState } from './trustee-match-pipeline';
+import { identifyTrustee } from './identify-trustee';
 import {
-  createLinkedStateWithoutEvidence,
   deriveDisposition,
   deriveNameMatchCount,
   deriveSuspectDuplicateCamsTrustee,
@@ -114,44 +111,6 @@ async function storeRuntimeState(
   }
 }
 
-type LinkOutcome = { kind: 'auto-linked'; trusteeId: string };
-
-type FingerprintMatchResult = { kind: 'no-match' } | LinkOutcome;
-
-function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
-  return bucket.find((v) => v.variant === variant);
-}
-
-/**
- * Returns the camsTrusteeId of an existing linked record for this ACMS id that belongs to a
- * different trustee, if any.
- */
-async function findExistingConflict(
-  deps: SyncAcmsProfessionalIdsDeps,
-  acmsProfessionalId: string,
-  candidateTrusteeId: string,
-): Promise<string | undefined> {
-  const existing = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  const conflicting = existing.find((link) => link.camsTrusteeId !== candidateTrusteeId);
-  return conflicting?.camsTrusteeId;
-}
-
-/**
- * Looks up the TrusteeVariation fingerprint bucket for an entry with this exact variant.
- */
-async function processFingerprintMatch(
-  deps: SyncAcmsProfessionalIdsDeps,
-  fingerprint: string,
-  variant: string,
-): Promise<FingerprintMatchResult> {
-  const bucket: TrusteeVariation[] = await deps.variationRepo.findByFingerprint(fingerprint);
-  const match = findByVariant(bucket, variant);
-  if (!match) {
-    return { kind: 'no-match' };
-  }
-  return { kind: 'auto-linked', trusteeId: match.trusteeId };
-}
-
 /**
  * Projects CMMPR address/phone/fax into AcmsTrusteeProfessional.legacy; undefined when all are empty.
  */
@@ -199,24 +158,6 @@ function toAcmsTrusteeProfessional(
     fullName,
     legacy: toAcmsLegacy(record),
   };
-}
-
-/**
- * Rethrows a transient pipeline error so handlePage's retry re-runs the page from its original
- * bookmark; other outcomes return the serialized state.
- */
-async function processNameMatch(
-  deps: SyncAcmsProfessionalIdsDeps,
-  record: AcmsTrusteeProfessionalDetailRecord,
-): Promise<TrusteeSerializedState> {
-  const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
-  const state = await runTrusteeMatchPipeline(deps.context, acmsTrusteeProfessional);
-
-  if (state.error && isTransientInfraError(state.error)) {
-    throw state.error;
-  }
-
-  return serializeState(state);
 }
 
 /**
@@ -288,9 +229,9 @@ type ProcessOneRecordOutcome =
     };
 
 /**
- * Per-record order: fingerprint match, then the matching pipeline, then a conflict check on any
- * resolved match. A conflict bypasses the active-appointment gate; every other unlinked outcome goes
- * through applyActiveAppointmentGate.
+ * Per-record order: identifyTrustee's fingerprint lookup, then the matching pipeline, then a
+ * conflict check on any resolved match. A conflict bypasses the active-appointment gate; every
+ * other unresolved outcome goes through applyActiveAppointmentGate.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -299,17 +240,31 @@ async function processOneRecord(
   const variant = buildAcmsVariant(record);
   const fingerprint = computeFingerprint(variant);
 
-  const fingerprintResult = await processFingerprintMatch(deps, fingerprint, variant);
-  if (fingerprintResult.kind === 'auto-linked') {
-    return processResolvedFingerprintMatch(deps, record, fingerprint, variant, fingerprintResult);
+  const identification = await identifyTrustee(
+    deps,
+    toAcmsTrusteeProfessional(record),
+    record.acmsProfessionalId,
+    fingerprint,
+    variant,
+  );
+
+  if (identification.kind === 'linked') {
+    await writeProfessionalId(deps, record, fingerprint, variant, identification.state);
+    return { kind: 'auto-linked', via: identification.via };
+  }
+  if (identification.kind === 'conflict') {
+    await writeProfessionalId(
+      deps,
+      record,
+      fingerprint,
+      variant,
+      identification.state,
+      identification.existingTrusteeId,
+    );
+    return { kind: 'conflict', via: identification.via };
   }
 
-  const state = await processNameMatch(deps, record);
-
-  if (state.match) {
-    return processResolvedNameMatch(deps, record, fingerprint, variant, state);
-  }
-
+  const state = identification.state;
   const gated = await applyActiveAppointmentGate(deps, record, fingerprint, variant, state);
 
   if (state.skip) {
@@ -323,49 +278,6 @@ async function processOneRecord(
     return { kind: 'ambiguous', gated };
   }
   return { kind: 'no-match', gated };
-}
-
-async function processResolvedFingerprintMatch(
-  deps: SyncAcmsProfessionalIdsDeps,
-  record: AcmsTrusteeProfessionalDetailRecord,
-  fingerprint: string,
-  variant: string,
-  fingerprintResult: LinkOutcome,
-): Promise<ProcessOneRecordOutcome> {
-  const existingTrusteeId = await findExistingConflict(
-    deps,
-    record.acmsProfessionalId,
-    fingerprintResult.trusteeId,
-  );
-  const emptyState = createLinkedStateWithoutEvidence(
-    toAcmsTrusteeProfessional(record),
-    fingerprintResult.trusteeId,
-  );
-  if (existingTrusteeId) {
-    await writeProfessionalId(deps, record, fingerprint, variant, emptyState, existingTrusteeId);
-    return { kind: 'conflict', via: 'fingerprint' };
-  }
-
-  await writeProfessionalId(deps, record, fingerprint, variant, emptyState);
-  return { kind: 'auto-linked', via: 'fingerprint' };
-}
-
-async function processResolvedNameMatch(
-  deps: SyncAcmsProfessionalIdsDeps,
-  record: AcmsTrusteeProfessionalDetailRecord,
-  fingerprint: string,
-  variant: string,
-  state: TrusteeSerializedState,
-): Promise<ProcessOneRecordOutcome> {
-  const trusteeId = state.match!.trusteeId;
-  const existingTrusteeId = await findExistingConflict(deps, record.acmsProfessionalId, trusteeId);
-  if (existingTrusteeId) {
-    await writeProfessionalId(deps, record, fingerprint, variant, state, existingTrusteeId);
-    return { kind: 'conflict', via: 'name' };
-  }
-
-  await writeProfessionalId(deps, record, fingerprint, variant, state);
-  return { kind: 'auto-linked', via: 'name' };
 }
 
 /**
@@ -394,8 +306,6 @@ const SyncAcmsProfessionalIds = {
   getGroupDesignators,
   resolveSyncState,
   storeRuntimeState,
-  processFingerprintMatch,
-  processNameMatch,
   purgeAll,
   processOneRecord,
 };
