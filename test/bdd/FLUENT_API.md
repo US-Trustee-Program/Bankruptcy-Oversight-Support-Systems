@@ -307,6 +307,38 @@ await TestSetup
 
 ---
 
+### 5a. Access Management Methods
+
+#### `withCamsUsers(users: CamsUserReference[]): TestSetup`
+
+Provides the members of the "USTP Cams Users" Okta group, which is the list of CAMS users. Mocks
+`OktaUserGroupGateway.getUserGroupWithUsers()` for that group only (any other group name throws).
+The user-access use case's 15-minute member cache is cleared when these spies are set up and
+again in `clearAllRepositorySpies()`.
+
+#### `withRoleAssignments(assignments: UserRoleAssignment[]): TestSetup`
+
+Provides existing permissions (`USER_ROLE_ASSIGNMENT` documents). The role assignment
+repositories are always backed by `TestState`: `create()` appends, `findActiveByUserIds()` returns
+the active assignments for the requested users, and audit records written by
+`RoleAssignmentAuditMongoRepository.create()` are kept for assertions.
+
+**Example:**
+```typescript
+const state = await TestSetup.forUser(TestSessions.superUser())
+  .withFeatureFlag('cams-native-user-roles')
+  .withOffices([MANHATTAN])
+  .withCamsUsers([{ id: 'okta-sarah', name: 'Sarah Williams' }])
+  .withRoleAssignments([])
+  .setUpBackend();
+
+// ...grant a permission through the API or UI, then:
+expect(state.getRoleAssignments()).toHaveLength(1);
+expect(state.getRoleAssignmentAudits()[0].action).toBe('CREATED');
+```
+
+---
+
 ### 6. Rendering (Terminal Operation)
 
 #### `renderAt(route: string): Promise<void>`
@@ -328,6 +360,18 @@ await TestSetup
 
 // App is now rendered and ready for assertions
 ```
+
+#### `setUpBackend(): Promise<TestState>`
+
+Does everything `renderAt()` does except render the app: authentication, feature flags, and all
+gateway/repository spies. Use it for API-level scenarios that call `http://localhost:4000/api/...`
+directly with `fetch` and the session's bearer token. Not rendering the app means no background UI
+requests are still in flight when the test server stops (which Vitest reports as unhandled
+rejections). See `features/access-management/user-access-api.spec.tsx`.
+
+**Feature flags:** `withFeatureFlag(s)()` overrides apply to the backend as well as the frontend.
+The backend sees the overrides on top of `testFeatureFlags` (its defaults when LaunchDarkly is not
+configured); the frontend sees only the overridden flags.
 
 ---
 
@@ -575,6 +619,10 @@ expect(notes[0].content).toContain('My note content');
 
 **Docket Entries:**
 - `getDocketEntries(caseId: string): DocketEntry[]`
+
+**Role assignments (permissions):**
+- `getRoleAssignments(): UserRoleAssignment[]`
+- `getRoleAssignmentAudits(): RoleAssignmentAuditEntry[]`
 
 #### Assertion Helpers
 

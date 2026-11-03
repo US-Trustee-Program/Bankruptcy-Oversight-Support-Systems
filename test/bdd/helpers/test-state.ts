@@ -32,6 +32,7 @@
 
 import type { CaseDetail, CaseNote } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
+import type { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
 import type {
   TransferFrom,
   TransferTo,
@@ -66,6 +67,8 @@ export class TestState {
   private assignments: Map<string, CaseAssignment[]> = new Map();
   private notes: Map<string, CaseNote[]> = new Map();
   private dockets: Map<string, DocketEntry[]> = new Map();
+  private roleAssignments: UserRoleAssignment[] = [];
+  private roleAssignmentAudits: RoleAssignmentAuditEntry[] = [];
 
   // ============ CASE OPERATIONS ============
 
@@ -225,6 +228,28 @@ export class TestState {
       caseId,
       existing.filter((a) => a.userId !== attorneyId),
     );
+  }
+
+  // ============ ROLE ASSIGNMENT (PERMISSION) OPERATIONS ============
+
+  setRoleAssignments(assignments: UserRoleAssignment[]): void {
+    this.roleAssignments = [...assignments];
+  }
+
+  getRoleAssignments(): UserRoleAssignment[] {
+    return [...this.roleAssignments];
+  }
+
+  addRoleAssignment(assignment: UserRoleAssignment): void {
+    this.roleAssignments.push(assignment);
+  }
+
+  getRoleAssignmentAudits(): RoleAssignmentAuditEntry[] {
+    return [...this.roleAssignmentAudits];
+  }
+
+  addRoleAssignmentAudit(entry: RoleAssignmentAuditEntry): void {
+    this.roleAssignmentAudits.push(entry);
   }
 
   // ============ SEARCH OPERATIONS ============
