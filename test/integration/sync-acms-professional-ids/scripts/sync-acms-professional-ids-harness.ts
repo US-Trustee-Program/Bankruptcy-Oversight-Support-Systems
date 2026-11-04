@@ -880,7 +880,9 @@ async function clean() {
     pass(`Deleted ${r2.deletedCount} ${VERIFICATION_COLLECTION} doc(s)`);
 
     const r3 = await db.collection('trustee-variation').deleteMany({
-      trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID, NAME_TRUSTEE_ID] },
+      trusteeId: {
+        $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID, NAME_TRUSTEE_ID, UT_TRUSTEE_ID],
+      },
     });
     pass(`Deleted ${r3.deletedCount} trustee-variation doc(s)`);
 
@@ -1032,6 +1034,16 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   } else {
     fail(
       `Cross-group match: expected ${UT_ACMS_ID} linked to ${UT_TRUSTEE_ID}, got ${JSON.stringify(utLink)}`,
+    );
+  }
+  const utVariationCount = await db
+    .collection('trustee-variation')
+    .countDocuments({ trusteeId: UT_TRUSTEE_ID });
+  if (utVariationCount === 1) {
+    pass(`Variation: one TrusteeVariation saved under ${UT_TRUSTEE_ID} for ${UT_ACMS_ID}`);
+  } else {
+    fail(
+      `Variation: expected one TrusteeVariation under ${UT_TRUSTEE_ID}, found ${utVariationCount}`,
     );
   }
 

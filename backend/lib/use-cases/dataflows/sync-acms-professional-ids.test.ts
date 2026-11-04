@@ -497,6 +497,7 @@ describe('SyncAcmsProfessionalIds', () => {
           }),
         });
         const gateSpy = vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional');
+        const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
         const upsertSpy = vi
           .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
           .mockResolvedValue(linkedProfessionalId());
@@ -504,6 +505,7 @@ describe('SyncAcmsProfessionalIds', () => {
         const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
         expect(gateSpy).not.toHaveBeenCalled();
+        expect(createVariationSpy).not.toHaveBeenCalled();
         expect(upsertSpy).toHaveBeenCalledWith(
           expect.objectContaining({
             disposition: 'conflict',
