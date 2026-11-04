@@ -182,6 +182,19 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(within(sourceColumn()).queryAllByRole('img', { name: /differs/ })).toHaveLength(0);
   });
 
+  test('places the difference marker before the value it flags, matching the comparison table', () => {
+    renderModal();
+    showSelected();
+
+    const marker = within(selectedColumn()).getByRole('img', {
+      name: 'Name differs from the source record',
+    });
+    const nameLink = within(selectedColumn()).getByRole('link', { name: /Jane Smith/ });
+    expect(
+      marker.compareDocumentPosition(nameLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   test.each([
     { caseCount: 3, expected: '3 cases will be assigned to Jane Smith.' },
     { caseCount: 1, expected: '1 case will be assigned to Jane Smith.' },

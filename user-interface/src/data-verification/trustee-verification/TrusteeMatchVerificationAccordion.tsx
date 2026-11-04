@@ -86,7 +86,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
-  const [originatingCaseChapter, setOriginatingCaseChapter] = useState<string | undefined>();
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
   // The Search for a trustee button. Named explicitly as the return target of both the search
@@ -245,26 +244,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     isResolved || !detail ? order.affectedCaseCount : detail.affectedCaseIds.length;
   const hasFullCaseList = isResolved || !!detail;
 
-  // The originating case's chapter narrows the manual search modal's results. Fetched only once
-  // detail has loaded: DataVerificationScreen mounts every accordion up front (hidden rows
-  // included), so an ungated fetch would fire for every pending task on page load whether or
-  // not its row is ever expanded. Also skipped for approved tasks, matching handleExpand's guard.
-  const hasDetail = !!detail;
-  useEffect(() => {
-    if (order.status === 'approved' || !hasDetail || !order.caseId) return;
-    let cancelled = false;
-    Api2.getCaseSummary(order.caseId)
-      .then((response) => {
-        if (!cancelled) setOriginatingCaseChapter(response.data.chapter);
-      })
-      .catch(() => {
-        // Search falls back to district-only filtering without the chapter.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [order.caseId, order.status, hasDetail]);
-
   const singleCaseLink = (
     <NewTabLink
       to={`/case-detail/${affectedCaseIds[0]}`}
@@ -311,6 +290,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <TrusteeInformationReceivedTable
           comparison={comparison}
           labelledBy={`information-received-heading-${order.id}`}
+          reserveActionColumn={hasCandidates && canApprove}
         />
         {hasCandidates && (
           <>
@@ -437,8 +417,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {explanation || detailLoadError ? (
                 !order.caseId ? (
                   <p className="problem-statement" data-testid="problem-statement">
-                    {explanation ? `${explanation.sentence} ` : ''}No cases yet. Cases attach as
-                    appointments sync.
+                    {explanation ? `${explanation.sentence} ` : ''}No cases yet.
                   </p>
                 ) : affectedCaseCount === 0 ? (
                   <p className="problem-statement" data-testid="problem-statement">
@@ -482,8 +461,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         sourceTrusteePhone={legacy?.phone}
         sourceTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
-        divisionCode={divisionCode}
-        chapter={originatingCaseChapter}
         onConfirm={handleSearchSelection}
       />
     </>

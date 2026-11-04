@@ -136,7 +136,7 @@ Feature: Trustee identity verification on matching-pipeline findings
     Given a pending identity task with no case
     When I expand the task
     Then the header shows "No cases yet"
-    And I see "No cases yet. Cases attach as appointments sync."
+    And I see "No cases yet."
     When I choose a candidate
     Then "What Happens Next" says "No cases are affected yet. Future cases sent with this information will be matched to Henry Green automatically."
 
@@ -165,6 +165,8 @@ Feature: Trustee identity verification on matching-pipeline findings
     Then the comparison table shows the first 5 candidates
     And I can page to candidates 6 and 7
 
-  Scenario: Coverage filter is optional in trustee search
+  Scenario: Trustee search covers any trustee in the chosen district
     Given I open "Search for a trustee" from an identity task
-    Then the court, division and chapter coverage filter is optional
+    Then the Trustee District is pre-selected from the task
+    And I can switch to another district or clear it
+    And results are not limited by court, division or chapter coverage

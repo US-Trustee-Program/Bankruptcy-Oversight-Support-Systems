@@ -2548,8 +2548,6 @@ const trusteeSearchResults: TrusteeSearchResult[] = [
 async function searchTrustees(
   name: string,
   _courtId?: string,
-  _divisionCode?: string,
-  _chapter?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
   const term = name.toLowerCase();
   return { data: trusteeSearchResults.filter((t) => t.name.toLowerCase().includes(term)) };
