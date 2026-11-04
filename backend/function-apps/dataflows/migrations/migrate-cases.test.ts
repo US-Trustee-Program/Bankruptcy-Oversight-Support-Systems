@@ -12,6 +12,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import * as MigrateCasesModule from '../../../lib/use-cases/dataflows/migrate-cases';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -379,6 +380,34 @@ describe('migrate-cases handleStart', () => {
 });
 
 describe('migrate-cases handleError', () => {
+  test('routes a QueueError to HARD_STOP keeping its root cause and does not queue it for retry', async () => {
+    const { handleError } = await import('./migrate-cases');
+    const queueError = buildQueueError(
+      new CamsError('TEST', { message: 'root cause' }),
+      'MIGRATE-CASES',
+      'handlePage',
+    );
+    const invocationContext = makeInvocationContext();
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    await handleError(queueError, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const hardStopOutput = outputs.find(([key]) => key.queueName?.includes('hard-stop'));
+    expect(hardStopOutput?.[1]).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({ message: 'root cause' }),
+      }),
+    ]);
+    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
+    expect(retryOutput).toBeUndefined();
+  });
+
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./migrate-cases');
     const event: CaseSyncEvent = {

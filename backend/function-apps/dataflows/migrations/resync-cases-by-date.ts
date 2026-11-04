@@ -10,6 +10,11 @@ import { isTransientInfraError } from '../../../lib/common-errors/transient-infr
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry, requeueSingleEventWithBackoff } from '../dataflows-rate-limit';
+import {
+  isQueueError,
+  QueueError,
+  toCaseSyncEventSummary,
+} from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import ModuleNames from '../module-names';
 
@@ -180,6 +185,7 @@ export async function handlePage(
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
       message,
+      dlqMessage: { ...message, events: events.map(toCaseSyncEventSummary) },
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context,
@@ -246,10 +252,28 @@ export async function handlePage(
   });
 }
 
-export async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+export async function handleError(
+  event: CaseSyncEvent | QueueError,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  if (isQueueError(event)) {
+    logger.error(
+      MODULE_NAME,
+      `Queue error from ${event.module} ${event.activityName}: ${event.error.message}`,
+    );
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleError', logger, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: false,
+      details: { disposition: 'job-failure' },
+    });
+    return;
+  }
 
   const abandoned = isNotFoundError(event.error);
 
@@ -379,7 +403,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {

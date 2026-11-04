@@ -3,7 +3,11 @@ import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
 import { buildFunctionName, buildQueueName, RangeMessage, StartMessage } from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import {
+  buildQueueError,
+  isQueueError,
+  QueueError,
+} from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
@@ -245,7 +249,10 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
   }
 }
 
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+async function handleError(
+  event: CaseSyncEvent | QueueError,
+  invocationContext: InvocationContext,
+) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
@@ -255,6 +262,27 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
     });
 
     const trace = appContext.observability.startTrace(appContext.invocationId);
+    if (isQueueError(event)) {
+      appContext.logger.error(
+        MODULE_NAME,
+        `Queue error from ${event.module} ${event.activityName}: ${event.error.message}`,
+      );
+      appContext.extraOutputs.set(HARD_STOP, [event]);
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleError',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          details: { disposition: 'job-failure' },
+        },
+      );
+      return;
+    }
     if (isNotFoundError(event.error)) {
       appContext.logger.info(
         MODULE_NAME,
@@ -515,7 +543,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {

@@ -55,6 +55,12 @@ export async function handleRateLimitRetry<
   activityName: string;
   correlationId?: string;
   connectionString: string;
+  /**
+   * Payload recorded on the DLQ entry in place of `message` when retries are exhausted. Callers
+   * whose message carries sensitive data pass a redacted projection here; retry bookkeeping still
+   * comes from `message`.
+   */
+  dlqMessage?: unknown;
 }): Promise<'retried' | 'exhausted' | 'not-rate-limited'> {
   const {
     error,
@@ -66,6 +72,7 @@ export async function handleRateLimitRetry<
     activityName,
     correlationId,
     connectionString,
+    dlqMessage: dlqPayload,
   } = options;
 
   if (!isTooManyRequestsError(error) && !isGatewayTimeoutError(error)) {
@@ -91,7 +98,11 @@ export async function handleRateLimitRetry<
       activityName,
     );
 
-    const dlqMessage = { ...queueError, retryCount: currentRetryCount };
+    const dlqMessage = {
+      ...queueError,
+      retryCount: currentRetryCount,
+      message: dlqPayload ?? message,
+    };
     const dlqMessageWithCorrelation = correlationId ? { ...dlqMessage, correlationId } : dlqMessage;
 
     context.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);

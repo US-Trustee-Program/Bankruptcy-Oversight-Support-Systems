@@ -10,7 +10,9 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -236,9 +238,11 @@ describe('resync-cases-by-date handlePage', () => {
     expect(mockSendMessage).toHaveBeenCalled();
   });
 
-  test('routes to DLQ instead of throwing when the retry limit is exhausted', async () => {
+  test('routes to DLQ instead of throwing when the retry limit is exhausted, keeping only the case id and type of each event', async () => {
     const { handlePage } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
+    const events: CaseSyncEvent[] = [
+      { type: 'CASE_CHANGED', caseId: '001-25-00001', bCase: MockData.getDxtrCase() },
+    ];
     const message: PageMessage = { events, retryCount: 10 };
     const invocationContext = makeInvocationContext();
 
@@ -250,10 +254,17 @@ describe('resync-cases-by-date handlePage', () => {
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
     await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
-    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.anything(),
+    const dlqCall = extraOutputsSetSpy.mock.calls.find(([output]) =>
+      (output as { queueName: string }).queueName.includes('dlq'),
     );
+    expect(dlqCall?.[1]).toEqual([
+      expect.objectContaining({
+        message: {
+          events: [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }],
+          retryCount: 10,
+        },
+      }),
+    ]);
   });
 
   test('re-throws on a non-429 error', async () => {
@@ -276,6 +287,34 @@ describe('resync-cases-by-date handlePage', () => {
 });
 
 describe('resync-cases-by-date handleError', () => {
+  test('routes a QueueError to HARD_STOP keeping its root cause and does not queue it for retry', async () => {
+    const { handleError } = await import('./resync-cases-by-date');
+    const queueError = buildQueueError(
+      new CamsError('TEST', { message: 'root cause' }),
+      'RESYNC-CASES-BY-DATE',
+      'handlePage',
+    );
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleError(queueError, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const hardStopOutput = outputs.find(([key]) => key.queueName?.includes('hard-stop'));
+    expect(hardStopOutput?.[1]).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({ message: 'root cause' }),
+      }),
+    ]);
+    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
+    expect(retryOutput).toBeUndefined();
+  });
+
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./resync-cases-by-date');
     const event: CaseSyncEvent = {

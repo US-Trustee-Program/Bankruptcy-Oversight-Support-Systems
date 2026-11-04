@@ -10,7 +10,10 @@ import {
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import {
+  buildQueueError,
+  toCaseSyncEventSummary,
+} from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import type { ApplicationContext } from '../../../lib/adapters/types/basic';
@@ -227,6 +230,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
       message,
+      dlqMessage: { ...message, events: message.events.map(toCaseSyncEventSummary) },
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context: appContext,
