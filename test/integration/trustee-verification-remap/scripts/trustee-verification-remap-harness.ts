@@ -366,7 +366,7 @@ async function seedPendingVerification(
     documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
     caseId: caseIds[0],
     courtId: '0208',
-    dxtrTrustee,
+    sourceTrustee: dxtrTrustee,
     source: 'DXTR',
     findings: {
       sourceRaw: dxtrTrustee,

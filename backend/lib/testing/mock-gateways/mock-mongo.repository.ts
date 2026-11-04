@@ -744,17 +744,6 @@ export class MockMongoRepository
     );
   }
 
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
-    let count = 0;
-    for (const [key, mapping] of this.professionalIds) {
-      if (mapping.camsTrusteeId === camsTrusteeId) {
-        this.professionalIds.delete(key);
-        count++;
-      }
-    }
-    return Promise.resolve(count);
-  }
-
   deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {
     const deleted = this.professionalIds.delete(`${camsTrusteeId}:${acmsProfessionalId}`);
     return Promise.resolve(deleted ? 1 : 0);

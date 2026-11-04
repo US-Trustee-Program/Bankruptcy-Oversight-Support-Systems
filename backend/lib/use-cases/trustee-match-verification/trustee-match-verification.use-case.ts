@@ -191,8 +191,10 @@ export class TrusteeMatchVerificationUseCase {
    * shard key and part of the unique index, so moving a link is always upsert-new + delete-old:
    * - A link on a different trustee is deleted first; a failure there fails the approval, since
    *   writing the new link anyway would leave the ACMS id linked to two trustees.
-   * - The fingerprint-keyed unresolved records are deleted after the new link is written, best
-   *   effort: a leftover record is inert, and the upsert-first order never loses the link.
+   * - This ACMS id's fingerprint-keyed unresolved record is deleted after the new link is written,
+   *   best effort: a leftover record is inert, and the upsert-first order never loses the link.
+   *   Other ACMS ids that share the fingerprint (identical contact data) keep their unresolved
+   *   records, so they stay visible for later reconciliation instead of being deleted with this one.
    */
   private async linkAcmsProfessionalId(
     context: ApplicationContext,
@@ -228,11 +230,11 @@ export class TrusteeMatchVerificationUseCase {
     );
 
     try {
-      await professionalIdsRepo.deleteByCamsTrusteeId(verification.fingerprint);
+      await professionalIdsRepo.deleteLink(verification.fingerprint, acmsProfessionalId);
     } catch (originalError) {
       context.logger.warn(
         MODULE_NAME,
-        `Failed to delete fingerprint-keyed professional-id records for fingerprint ${verification.fingerprint} after manually linking ACMS ID ${acmsProfessionalId} to trustee ${resolvedTrusteeId}.`,
+        `Failed to delete the fingerprint-keyed professional-id record for fingerprint ${verification.fingerprint} and ACMS ID ${acmsProfessionalId} after manually linking it to trustee ${resolvedTrusteeId}.`,
         originalError,
       );
     }

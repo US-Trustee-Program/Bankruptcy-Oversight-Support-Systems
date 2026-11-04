@@ -101,7 +101,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   status: 'pending',
   mismatchReason: 'ambiguous',
   source: 'DXTR',
-  dxtrTrustee: { fullName: 'John Doe' },
+  sourceTrustee: { fullName: 'John Doe' },
   affectedCaseCount: 1,
   affectedCaseIds: ['081-22-11111'],
   taskDate: '2026-01-15T10:00:00.000Z',
@@ -117,7 +117,7 @@ const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   mismatchReason: 'ambiguous',
   source: 'DXTR',
   findings: findings([janetSmith, janeSmith]),
-  dxtrTrustee: { fullName: 'John Doe' },
+  sourceTrustee: { fullName: 'John Doe' },
   updatedOn: '2026-01-15T10:00:00.000Z',
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
   createdOn: '2026-01-15T10:00:00.000Z',
@@ -1110,7 +1110,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court
+    // Proves the accordion threads order.sourceTrustee.legacy through to the search modal's court
     // column. Only asserts on real forwarded values (the accordion's own contract) - not on
     // TrusteeSearchModal's placeholder wording for missing fields, which is that component's own
     // concern and is already covered by TrusteeSearchModal.test.tsx.
@@ -1140,7 +1140,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     ])("the search modal's court column shows $label", async ({ legacy, expectContains }) => {
       renderWithProps({
-        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
+        order: { ...sampleOrder, sourceTrustee: { fullName: 'John Doe', legacy } },
       });
       await mockDetailAndExpand();
 
@@ -1154,7 +1154,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     test('does not crash the search modal when the order has no legacy contact fields', async () => {
       renderWithProps({
-        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy: undefined } },
+        order: { ...sampleOrder, sourceTrustee: { fullName: 'John Doe', legacy: undefined } },
       });
       await mockDetailAndExpand();
 

@@ -1967,6 +1967,203 @@
     "skip": false,
     "error": null
   },
+  "acmsAmbiguousCaseless": {
+    "sourceRaw": {
+      "firstName": "A",
+      "lastName": "Acmsambiguous",
+      "fullName": "A Acmsambiguous",
+      "legacy": {
+        "address1": "1 Source Ct",
+        "cityStateZipCountry": "New York NY 10013",
+        "phone": "212-555-9996",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10013"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "a",
+      "middleName": "",
+      "lastName": "acmsambiguous",
+      "legacy": {
+        "address1": "1 Source Ct",
+        "cityStateZipCountry": "New York NY 10013",
+        "phone": "212-555-9996",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10013"
+        }
+      },
+      "fullName": "A Acmsambiguous",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-a",
+          "firstName": "Avery",
+          "lastName": "Acmsambiguous",
+          "name": "Avery Acmsambiguous",
+          "address": {
+            "address1": "504 Acms Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10013",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9201"
+          },
+          "email": "avery.acmsambiguous@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "avery",
+          "middleName": "",
+          "lastName": "acmsambiguous",
+          "phone": {
+            "number": "212-555-9201"
+          },
+          "email": "avery.acmsambiguous@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "avery acmsambiguous"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "a acmsambiguous|avery acmsambiguous",
+              "value": 0.937
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "a acmsambiguous|avery acmsambiguous",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-b",
+          "firstName": "Ashley",
+          "lastName": "Acmsambiguous",
+          "name": "Ashley Acmsambiguous",
+          "address": {
+            "address1": "505 Acms Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10013",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9202"
+          },
+          "email": "ashley.acmsambiguous@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "ashley",
+          "middleName": "",
+          "lastName": "acmsambiguous",
+          "phone": {
+            "number": "212-555-9202"
+          },
+          "email": "ashley.acmsambiguous@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "ashley acmsambiguous"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "a acmsambiguous|ashley acmsambiguous",
+              "value": 0.785
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "a acmsambiguous|ashley acmsambiguous",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "resolvedNoSurrogates": {
     "sourceRaw": {
       "firstName": "Riley",
