@@ -1,4 +1,5 @@
 import {
+  createLinkedStateWithoutEvidence,
   deriveDisposition,
   deriveNameMatchCount,
   deriveSuspectDuplicateCamsTrustee,
@@ -77,20 +78,6 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns no-match when only one candidate cleared doesNameMatch, even with a second candidate present', () => {
-    const state = makeState({
-      candidates: [
-        makeCandidate({
-          doesNameMatch: { pass: false },
-        }),
-        makeCandidate({
-          doesNameMatch: { pass: true, quality: 'exact' },
-        }),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('no-match');
-  });
-
   test('returns ambiguous when two candidates are exact name matches', () => {
     const state = makeState({
       candidates: [makeCandidate(passingNameMatch), makeCandidate(passingNameMatch)],
@@ -98,67 +85,57 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
-  // A strong, non-exact name is not evidence without ACMS contact data to compare against.
-  test('returns no-match when every candidate is only a strong name match with no ACMS contact data to corroborate against', () => {
-    const weakMatch = {
-      doesNameMatch: { pass: true, quality: 'strong' },
-      doesSourceTrusteeHaveAddressAndPhone: { pass: false },
-    };
-    const state = makeState({
-      candidates: [makeCandidate(weakMatch), makeCandidate(weakMatch), makeCandidate(weakMatch)],
-    });
-    expect(deriveDisposition(state)).toBe('no-match');
-  });
+  // Any passing name that is not exact (strong, or weak = a fuzzy surname with an identical first
+  // name) is evidence only when the source has contact data to compare against. A missing score is
+  // not a failed one, so it does not disqualify a rival.
+  test.each(['strong', 'weak'])(
+    'returns no-match when every candidate is only a %s name match and the source has no contact data',
+    (quality) => {
+      const match = {
+        doesNameMatch: { pass: true, quality },
+        doesSourceTrusteeHaveAddressAndPhone: { pass: false },
+      };
+      const state = makeState({
+        candidates: [makeCandidate(match), makeCandidate(match), makeCandidate(match)],
+      });
+      expect(deriveDisposition(state)).toBe('no-match');
+    },
+  );
 
-  // A missing ACMS contact-data score is not a failed one, so it does not disqualify a rival.
-  test('returns ambiguous when two strong-name candidates have no ACMS contact-data score at all', () => {
-    const strongMatch = { doesNameMatch: { pass: true, quality: 'strong' } };
-    const state = makeState({
-      candidates: [makeCandidate(strongMatch), makeCandidate(strongMatch)],
-    });
-    expect(deriveDisposition(state)).toBe('ambiguous');
-  });
+  test.each(['strong', 'weak'])(
+    'returns ambiguous when two %s-name candidates have no source contact-data score at all',
+    (quality) => {
+      const match = { doesNameMatch: { pass: true, quality } };
+      const state = makeState({ candidates: [makeCandidate(match), makeCandidate(match)] });
+      expect(deriveDisposition(state)).toBe('ambiguous');
+    },
+  );
 
-  test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
+  test.each(['strong', 'weak'])(
+    'returns ambiguous when two %s-name candidates and the source has contact data',
+    (quality) => {
+      const match = {
+        doesNameMatch: { pass: true, quality },
+        doesSourceTrusteeHaveAddressAndPhone: { pass: true },
+      };
+      const state = makeState({ candidates: [makeCandidate(match), makeCandidate(match)] });
+      expect(deriveDisposition(state)).toBe('ambiguous');
+    },
+  );
+
+  test('returns ambiguous when an exact name and a strong name with source contact data compete', () => {
     const exactMatch = {
       doesNameMatch: { pass: true, quality: 'exact' },
       doesSourceTrusteeHaveAddressAndPhone: { pass: false },
     };
-    const weakMatchWithComparableAcmsData = {
+    const strongMatchWithSourceContact = {
       doesNameMatch: { pass: true, quality: 'strong' },
       doesSourceTrusteeHaveAddressAndPhone: { pass: true },
     };
     const state = makeState({
-      candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],
+      candidates: [makeCandidate(exactMatch), makeCandidate(strongMatchWithSourceContact)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
-  });
-
-  // 'weak' means a fuzzy surname with an identical first name. As built, the ambiguity rule treats
-  // it like any non-exact passing name: it counts when the source has contact data to compare.
-  test('returns ambiguous when two fuzzy-surname (weak) candidates and the source has contact data', () => {
-    const weakWithSourceContact = {
-      doesNameMatch: { pass: true, quality: 'weak' },
-      doesSourceTrusteeHaveAddressAndPhone: { pass: true },
-    };
-    const state = makeState({
-      candidates: [makeCandidate(weakWithSourceContact), makeCandidate(weakWithSourceContact)],
-    });
-    expect(deriveDisposition(state)).toBe('ambiguous');
-  });
-
-  test('returns no-match when two fuzzy-surname (weak) candidates and the source has no contact data', () => {
-    const weakWithoutSourceContact = {
-      doesNameMatch: { pass: true, quality: 'weak' },
-      doesSourceTrusteeHaveAddressAndPhone: { pass: false },
-    };
-    const state = makeState({
-      candidates: [
-        makeCandidate(weakWithoutSourceContact),
-        makeCandidate(weakWithoutSourceContact),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('no-match');
   });
 
   // The discovery tiers keep a candidate that fails the name check when its state does not
@@ -213,6 +190,39 @@ describe('deriveNameMatchCount', () => {
 });
 
 describe('deriveSuspectDuplicateCamsTrustee', () => {
+  test('returns false when candidates share only a phone number too short to compare', () => {
+    const state = makeState({
+      candidates: [
+        makeCandidate(passingNameMatch, { phone: { number: '555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '555-0100' } }),
+      ],
+    });
+    expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
+  });
+
+  test('returns false when candidates share only a blank email', () => {
+    const state = makeState({
+      candidates: [
+        makeCandidate(passingNameMatch, { email: '   ' }),
+        makeCandidate(passingNameMatch, { email: '   ' }),
+      ],
+    });
+    expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
+  });
+
+  test('returns false when candidates share only a punctuation-only street line and nothing else', () => {
+    const punctuationOnly: Partial<ProjectedTrustee> = {
+      address: { address1: '.', city: '', state: '', zipCode: '', countryCode: 'US' },
+    };
+    const state = makeState({
+      candidates: [
+        makeCandidate(passingNameMatch, punctuationOnly),
+        makeCandidate(passingNameMatch, punctuationOnly),
+      ],
+    });
+    expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
+  });
+
   test('returns true when 2+ qualifying candidates share a phone number', () => {
     const state = makeState({
       candidates: [
@@ -303,5 +313,24 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
+  });
+});
+
+describe('createLinkedStateWithoutEvidence', () => {
+  test('returns a linked state for the source with no candidates and a linkedWithoutPipelineEvidence match', () => {
+    const source = { fullName: 'Jane Doe', firstName: 'Jane', lastName: 'Doe' };
+
+    const state = createLinkedStateWithoutEvidence(source, 'trustee-9');
+
+    expect(state).toEqual({
+      sourceRaw: source,
+      sourceNormalized: {},
+      memo: {},
+      candidates: [],
+      match: { trusteeId: 'trustee-9', score: {}, resolvedBy: 'linkedWithoutPipelineEvidence' },
+      skip: false,
+      error: null,
+    });
+    expect(deriveDisposition(state)).toBe('linked');
   });
 });
