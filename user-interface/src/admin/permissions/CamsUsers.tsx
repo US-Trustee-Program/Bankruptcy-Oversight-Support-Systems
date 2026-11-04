@@ -14,17 +14,79 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { CamsRoleLabels } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
+import {
+  CamsUsersPredicate,
+  CamsUserWithPermissions,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
 
 const PAGE_SIZE = 20;
 const ALL = 'All';
+// Same as the data-verification searches (TrusteeSearchModal, TrusteesList).
+const MIN_FILTER_LENGTH = 2;
+const FILTER_DEBOUNCE_MS = 300;
 
 type PagePredicate = { limit: number; offset: number };
-type UsersPage = { data: CamsUserWithPermissions[]; pagination: PaginationModel };
+type Filters = Pick<CamsUsersPredicate, 'name' | 'email'>;
+type UsersPage = {
+  data: CamsUserWithPermissions[];
+  pagination: PaginationModel;
+  filtered: boolean;
+};
+
+/** The text a filter applies: trimmed, and nothing until it is long enough. */
+function effectiveFilter(text: string): string | undefined {
+  const trimmed = text.trim();
+  return trimmed.length >= MIN_FILTER_LENGTH ? trimmed : undefined;
+}
+
+function TextFilter({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+}: Readonly<{
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}>) {
+  return (
+    <div className="cams-users__filter">
+      <div className="cams-users__filter-header">
+        <label className="usa-label" htmlFor={id}>
+          {label}
+        </label>
+        <button
+          id={`${id}-clear`}
+          type="button"
+          className="usa-button usa-button--unstyled cams-users__filter-clear"
+          aria-label={`Clear ${label} filter`}
+          hidden={value.length === 0}
+          onClick={() => onChange('')}
+        >
+          Clear
+        </button>
+      </div>
+      <input
+        id={id}
+        type="text"
+        className="usa-input"
+        value={value}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
 
 function PermissionLines({
   lines,
@@ -57,24 +119,54 @@ export function CamsUsers() {
   // Office names label each permission, so the table waits for them rather than flashing codes.
   const [officesLoaded, setOfficesLoaded] = useState(false);
   const [officesFailed, setOfficesFailed] = useState(false);
+  const [nameText, setNameText] = useState('');
+  const [emailText, setEmailText] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
   const modalRef = useRef<AddPermissionModalRef>(null);
+  // The filters the current rows were loaded with; paging and reloads reuse them.
+  const filtersRef = useRef<Filters>({});
+  // Each load takes a ticket; only the latest load may update the table.
+  const loadTicketRef = useRef(0);
+  const debounce = useDebounce();
 
   const loadPage = useCallback(async (pageOffset: number, focusHeading = false) => {
+    const ticket = ++loadTicketRef.current;
+    const filters = filtersRef.current;
     setIsLoading(true);
     setLoadFailed(false);
     try {
-      const response = await Api2.getCamsUsers({ limit: PAGE_SIZE, offset: pageOffset });
-      setPage({ data: response.data, pagination: response.pagination! });
+      const predicate: CamsUsersPredicate = { limit: PAGE_SIZE, offset: pageOffset };
+      if (filters.name) predicate.name = filters.name;
+      if (filters.email) predicate.email = filters.email;
+      const response = await Api2.getCamsUsers(predicate);
+      if (ticket !== loadTicketRef.current) return;
+      setPage({
+        data: response.data,
+        pagination: response.pagination!,
+        filtered: !!(filters.name || filters.email),
+      });
       setOffset(pageOffset);
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
     } catch {
-      setLoadFailed(true);
+      if (ticket === loadTicketRef.current) setLoadFailed(true);
     } finally {
-      setIsLoading(false);
+      if (ticket === loadTicketRef.current) setIsLoading(false);
     }
   }, []);
+
+  const nameFilter = effectiveFilter(nameText);
+  const emailFilter = effectiveFilter(emailText);
+
+  useEffect(() => {
+    // Re-arming cancels any pending change, including text deleted before typing stopped.
+    debounce(() => {
+      const applied = filtersRef.current;
+      if (applied.name === nameFilter && applied.email === emailFilter) return;
+      filtersRef.current = { name: nameFilter, email: emailFilter };
+      loadPage(0);
+    }, FILTER_DEBOUNCE_MS);
+  }, [nameFilter, emailFilter, debounce, loadPage]);
 
   useEffect(() => {
     loadPage(0);
@@ -103,6 +195,22 @@ export function CamsUsers() {
 
   return (
     <div className="cams-users" data-testid="cams-users-panel">
+      <div className="cams-users__filters">
+        <TextFilter
+          id="cams-users-name-filter"
+          label="CAMS User Name"
+          placeholder="Search by name"
+          value={nameText}
+          onChange={setNameText}
+        />
+        <TextFilter
+          id="cams-users-email-filter"
+          label="Email"
+          placeholder="Search by email"
+          value={emailText}
+          onChange={setEmailText}
+        />
+      </div>
       <h2 id="cams-users-count" ref={headingRef} tabIndex={-1}>
         {heading}
       </h2>
@@ -136,7 +244,9 @@ export function CamsUsers() {
         />
       )}
       {isReady && !loadFailed && page.data.length === 0 && (
-        <p id="cams-users-empty">No CAMS users found.</p>
+        <p id="cams-users-empty">
+          {page.filtered ? 'No CAMS users match your search criteria.' : 'No CAMS users found.'}
+        </p>
       )}
       {/* Kept mounted while a page reloads, so focus stays on the row the user was working in. */}
       {isReady && !loadFailed && page.data.length > 0 && (

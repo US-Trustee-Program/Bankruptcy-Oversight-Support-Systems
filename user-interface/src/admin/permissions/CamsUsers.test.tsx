@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
@@ -80,6 +80,10 @@ function pending<T>() {
   });
   return { promise, resolve };
 }
+
+const nameFilter = () => document.querySelector<HTMLInputElement>('#cams-users-name-filter')!;
+const emailFilter = () => document.querySelector<HTMLInputElement>('#cams-users-email-filter')!;
+const emptyState = () => document.querySelector('#cams-users-empty');
 
 const row = (user: CamsUserWithPermissions) => screen.getByTestId(`cams-user-row-${user.id}`);
 const lines = (user: CamsUserWithPermissions, column: string) =>
@@ -294,5 +298,245 @@ describe('CamsUsers', () => {
     await waitFor(() =>
       expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeDisabled(),
     );
+  });
+
+  describe('filters', () => {
+    const MIA: CamsUserWithPermissions = {
+      id: 'okta-mia',
+      name: 'Mia Sarahson',
+      email: 'mia@example.com',
+      permissions: [],
+    };
+    const DEBOUNCE_MS = 300;
+
+    // The debounce runs on a fake clock, so these tests drive the inputs with fireEvent: userEvent
+    // (through Testing Library's async wrapper) waits on a real-time setTimeout that a Vitest fake
+    // clock never fires.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    /** Types one character at a time, as a user would, appending to what is there. */
+    function typeInto(input: HTMLInputElement, text: string) {
+      for (const character of text) {
+        fireEvent.change(input, { target: { value: input.value + character } });
+      }
+    }
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const settle = (ms = DEBOUNCE_MS) => act(() => vi.advanceTimersByTimeAsync(ms));
+
+    async function showUsers(response = usersResponse([ALEX, SARAH, MIA])) {
+      const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(response);
+      render(<CamsUsers />);
+      await settle(0);
+      expect(table()).toBeInTheDocument();
+      return spy;
+    }
+
+    test('should label the CAMS User Name and Email filters', async () => {
+      await showUsers();
+
+      expect(screen.getByLabelText('CAMS User Name')).toBe(nameFilter());
+      expect(screen.getByLabelText('Email')).toBe(emailFilter());
+    });
+
+    test('should request page 1, 300 ms after typing stops, and show the filtered count', async () => {
+      const spy = await showUsers();
+      spy.mockResolvedValue(usersResponse([SARAH]));
+
+      typeInto(nameFilter(), 'Sarah');
+      await settle(DEBOUNCE_MS - 1);
+      expect(spy).toHaveBeenCalledTimes(1);
+      await settle(1);
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0, name: 'Sarah' });
+      expect(heading()).toHaveTextContent('1 CAMS User');
+      expect(screen.getByTestId('cams-users-status')).toHaveTextContent('1 CAMS User');
+      expect(row(SARAH)).toBeInTheDocument();
+    });
+
+    test('should send both filters together', async () => {
+      const spy = await showUsers();
+
+      typeInto(nameFilter(), 'sarah');
+      typeInto(emailFilter(), 'sarah.williams@');
+      await settle();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(spy).toHaveBeenLastCalledWith({
+        limit: 20,
+        offset: 0,
+        name: 'sarah',
+        email: 'sarah.williams@',
+      });
+    });
+
+    test.each(['S', ' a '])(
+      'should ignore a filter under 2 characters after trimming: "%s"',
+      async (typed) => {
+        const spy = await showUsers();
+
+        typeInto(nameFilter(), typed);
+        typeInto(emailFilter(), 'x');
+        await settle();
+
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(nameFilter()).toHaveValue(typed);
+      },
+    );
+
+    test('should send the trimmed text and leave the input as typed', async () => {
+      const spy = await showUsers();
+
+      typeInto(nameFilter(), '  sa ');
+      await settle();
+
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0, name: 'sa' });
+      expect(nameFilter()).toHaveValue('  sa ');
+    });
+
+    test('should not reload when only surrounding spaces change', async () => {
+      const spy = await showUsers();
+      typeInto(nameFilter(), 'sarah');
+      await settle();
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      typeInto(nameFilter(), '  ');
+      await settle();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should not apply text that was deleted before typing stopped', async () => {
+      const spy = await showUsers();
+
+      typeInto(nameFilter(), 'sarah');
+      fireEvent.change(nameFilter(), { target: { value: '' } });
+      await settle();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should never let an older response replace a newer one', async () => {
+      const spy = await showUsers();
+      const older = pending<ReturnType<typeof usersResponse>>();
+      const newer = pending<ReturnType<typeof usersResponse>>();
+      spy.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+
+      typeInto(nameFilter(), 'sa');
+      await settle();
+      typeInto(nameFilter(), 'rah');
+      await settle();
+      expect(spy).toHaveBeenCalledTimes(3);
+
+      await act(async () => newer.resolve(usersResponse([SARAH])));
+      await act(async () => older.resolve(usersResponse([SARAH, MIA])));
+
+      expect(heading()).toHaveTextContent('1 CAMS User');
+      expect(screen.queryByTestId(`cams-user-row-${MIA.id}`)).not.toBeInTheDocument();
+    });
+
+    test('should never let an older failure hide a newer result', async () => {
+      const spy = await showUsers();
+      const older = pending<ReturnType<typeof usersResponse>>();
+      spy
+        .mockReturnValueOnce(older.promise.then(() => Promise.reject(new Error('500'))))
+        .mockResolvedValueOnce(usersResponse([SARAH]));
+
+      typeInto(nameFilter(), 'sa');
+      await settle();
+      typeInto(nameFilter(), 'rah');
+      await settle();
+      await act(async () => older.resolve(usersResponse([])));
+
+      expect(document.querySelector('#cams-users-load-error')).not.toBeInTheDocument();
+      expect(spinner()).not.toBeInTheDocument();
+      expect(row(SARAH)).toBeInTheDocument();
+    });
+
+    test('should say so when the filters match nobody', async () => {
+      const spy = await showUsers();
+      spy.mockResolvedValue(usersResponse([]));
+
+      typeInto(nameFilter(), 'zz');
+      await settle();
+
+      expect(emptyState()).toHaveTextContent('No CAMS users match your search criteria.');
+      expect(table()).not.toBeInTheDocument();
+    });
+
+    test.each([
+      {
+        filter: 'CAMS User Name',
+        input: nameFilter,
+        clearId: '#cams-users-name-filter-clear',
+        key: 'name',
+      },
+      {
+        filter: 'Email',
+        input: emailFilter,
+        clearId: '#cams-users-email-filter-clear',
+        key: 'email',
+      },
+    ])(
+      'should clear the $filter filter and reload everyone, hiding Clear while it is empty',
+      async ({ filter, input, clearId, key }) => {
+        const clear = () => document.querySelector<HTMLButtonElement>(clearId)!;
+        const spy = await showUsers();
+        expect(clear()).not.toBeVisible();
+        typeInto(input(), 'sarah');
+        await settle();
+        expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0, [key]: 'sarah' });
+        expect(clear()).toBeVisible();
+        expect(clear()).toHaveAccessibleName(`Clear ${filter} filter`);
+
+        fireEvent.click(clear());
+        await settle();
+
+        expect(input()).toHaveValue('');
+        expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0 });
+        expect(clear()).not.toBeVisible();
+      },
+    );
+
+    test('should return to page 1 on a filter change and keep the filters while paging and after a grant', async () => {
+      const many = Array.from({ length: 20 }, (_, i) => ({
+        ...ALEX,
+        id: `u-${i}`,
+        name: `A ${i}`,
+      }));
+      const spy = await showUsers(usersResponse(many, 41));
+
+      fireEvent.click(screen.getByTestId('pagination-button-next-results'));
+      await settle(0);
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
+
+      typeInto(nameFilter(), 'al');
+      await settle();
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0, name: 'al' });
+
+      fireEvent.click(screen.getByTestId('pagination-button-next-results'));
+      await settle(0);
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20, name: 'al' });
+
+      await act(async () => modalProps!.onSuccess());
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20, name: 'al' });
+    });
+
+    test('should keep the filter values when loading fails', async () => {
+      const spy = await showUsers();
+      spy.mockRejectedValue(new Error('500'));
+
+      typeInto(nameFilter(), 'sarah');
+      await settle();
+
+      expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
+      expect(nameFilter()).toHaveValue('sarah');
+    });
   });
 });

@@ -711,6 +711,17 @@ describe('_Api2 functions', async () => {
     expect(getSpy).toHaveBeenCalledWith('/user-access/users', { limit: '20', offset: '40' });
   });
 
+  test('should send the name and email filters when calling getCamsUsers with them', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getCamsUsers({ limit: 20, offset: 0, name: 'sarah', email: 'example' });
+    expect(getSpy).toHaveBeenCalledWith('/user-access/users', {
+      limit: '20',
+      offset: '0',
+      name: 'sarah',
+      email: 'example',
+    });
+  });
+
   test('should call api.post with the grant when calling postRoleAssignment', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: {} });
     const request = {

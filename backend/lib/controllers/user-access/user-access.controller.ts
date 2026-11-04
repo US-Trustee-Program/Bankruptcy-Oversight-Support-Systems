@@ -23,8 +23,8 @@ function parseQueryInt(value: unknown, fallback: number, isValid: (n: number) =>
   return Number.isFinite(parsed) && isValid(parsed) ? parsed : fallback;
 }
 
-function optionalString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+function optionalTrimmedString(value: string | undefined): string | undefined {
+  return value?.trim() || undefined;
 }
 
 export class UserAccessController implements CamsController {
@@ -77,8 +77,8 @@ export class UserAccessController implements CamsController {
     const { data, totalCount } = await this.useCase.getCamsUsers(context, {
       limit,
       offset,
-      name: optionalString(query.name),
-      email: optionalString(query.email),
+      name: optionalTrimmedString(query.name),
+      email: optionalTrimmedString(query.email),
     });
 
     return httpSuccess({

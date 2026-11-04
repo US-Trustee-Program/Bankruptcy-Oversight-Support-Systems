@@ -108,6 +108,27 @@ describe('UserAccessController', () => {
     });
 
     test.each([
+      {
+        query: { name: '  sarah ', email: '\tsarah@example.com\n' },
+        name: 'sarah',
+        email: 'sarah@example.com',
+      },
+      { query: { name: '   ', email: '' }, name: undefined, email: undefined },
+    ])(
+      'should trim the filters and treat blank ones as absent for $query',
+      async ({ query, name, email }) => {
+        context.request.query = query;
+        const spy = vi
+          .spyOn(UserAccessUseCase.prototype, 'getCamsUsers')
+          .mockResolvedValue({ data: [], totalCount: 0 });
+
+        await handle();
+
+        expect(spy).toHaveBeenCalledWith(context, expect.objectContaining({ name, email }));
+      },
+    );
+
+    test.each([
       { query: { limit: 'abc', offset: 'xyz' } },
       { query: { limit: '0', offset: '-5' } },
     ])('should fall back to the defaults for invalid paging $query', async ({ query }) => {

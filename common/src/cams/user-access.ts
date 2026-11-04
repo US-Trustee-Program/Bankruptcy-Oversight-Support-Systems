@@ -66,6 +66,16 @@ export type RoleAssignmentGrantRequest = {
   reason: string;
 };
 
+/**
+ * One page of CAMS users. `name` and `email` filter by case-insensitive contains, combined with AND.
+ */
+export type CamsUsersPredicate = {
+  limit: number;
+  offset: number;
+  name?: string;
+  email?: string;
+};
+
 export type CamsUserWithPermissions = CamsUserReference & {
   permissions: UserRoleAssignment[];
 };

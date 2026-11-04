@@ -348,4 +348,83 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     expect(screen.queryByTestId('permissions-nav-link')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cams-users-panel')).not.toBeInTheDocument();
   });
+
+  // ---------------------------------------------------------------------------
+  // SLICE 2: Finding users (name and email filters, empty states)
+  // ---------------------------------------------------------------------------
+
+  describe('finding users', () => {
+    const SARAH_LEE: CamsUserReference = {
+      id: 'okta-sarah-lee',
+      name: 'Sarah Lee',
+      email: 'sarah.lee@other.gov',
+    };
+    const rowIds = () =>
+      Array.from(document.querySelectorAll('[data-testid^="cams-user-row-"]'), (row) =>
+        row.getAttribute('data-testid'),
+      );
+
+    async function openCamsUsers() {
+      await TestSetup.forUser(TestSessions.superUser())
+        .withFeatureFlag('cams-role-assignments')
+        .withOffices([SEATTLE, MANHATTAN, BUFFALO])
+        .withCamsUsers([SARAH, ALEX, SARAH_LEE])
+        .withRoleAssignments([])
+        .renderAt(PERMISSIONS_ROUTE);
+      await waitForAppLoad();
+      expect(await screen.findByRole('heading', { name: '3 CAMS Users' })).toBeInTheDocument();
+    }
+
+    /**
+     * Scenario: Filter by CAMS User Name as you type
+     */
+    test('should filter by CAMS User Name as Maria types', async () => {
+      await openCamsUsers();
+
+      await userEvent.type(screen.getByLabelText('CAMS User Name'), 'williams');
+
+      expect(await screen.findByRole('heading', { name: '1 CAMS User' })).toBeInTheDocument();
+      expect(rowIds()).toEqual([`cams-user-row-${SARAH.id}`]);
+    });
+
+    /**
+     * Scenario: Filter by Email as you type
+     */
+    test('should filter by Email as Maria types', async () => {
+      await openCamsUsers();
+
+      await userEvent.type(screen.getByLabelText('Email'), '  sarah.williams@ ');
+
+      expect(await screen.findByRole('heading', { name: '1 CAMS User' })).toBeInTheDocument();
+      expect(rowIds()).toEqual([`cams-user-row-${SARAH.id}`]);
+    });
+
+    /**
+     * Scenario: Filters combine
+     */
+    test('should show only users matching both filters', async () => {
+      await openCamsUsers();
+
+      await userEvent.type(screen.getByLabelText('CAMS User Name'), 'Sarah');
+      expect(await screen.findByRole('heading', { name: '2 CAMS Users' })).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText('Email'), 'other.gov');
+
+      expect(await screen.findByRole('heading', { name: '1 CAMS User' })).toBeInTheDocument();
+      expect(rowIds()).toEqual([`cams-user-row-${SARAH_LEE.id}`]);
+    });
+
+    /**
+     * Scenario: Empty state caused by filtering
+     */
+    test('should say so when the filters match no users', async () => {
+      await openCamsUsers();
+
+      await userEvent.type(screen.getByLabelText('CAMS User Name'), 'zz');
+
+      expect(
+        await screen.findByText('No CAMS users match your search criteria.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    });
+  });
 });

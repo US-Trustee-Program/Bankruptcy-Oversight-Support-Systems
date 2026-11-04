@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
+  CamsUsersPredicate,
   CamsUserWithPermissions,
   RoleAssignmentAuditEntry,
   RoleAssignmentGrantRequest,
@@ -19,13 +20,6 @@ const MODULE_NAME = 'USER-ACCESS-USE-CASE';
 const MEMBER_CACHE_TTL_MS = 15 * 60 * 1000;
 
 const AUDIT_WRITE_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_AUDIT write failed';
-
-type CamsUsersPredicate = {
-  limit: number;
-  offset: number;
-  name?: string;
-  email?: string;
-};
 
 // The "USTP Cams Users" member list, cached per process. Assignments are never cached.
 let memberCache: { members: CamsUserReference[]; expiresAt: number } | null = null;

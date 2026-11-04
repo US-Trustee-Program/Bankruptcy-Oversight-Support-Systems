@@ -63,6 +63,7 @@ import generatedTrusteeMatchFindings from '@common/cams/test-utilities/trustee-m
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 import {
   activeKeyFor,
+  CamsUsersPredicate,
   CamsUserWithPermissions,
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
@@ -3155,15 +3156,25 @@ const MOCK_CAMS_USERS: CamsUserWithPermissions[] = MOCK_CAMS_USER_LAST_NAMES.fla
   })),
 ).sort((a, b) => a.name.localeCompare(b.name));
 
-async function getCamsUsers(predicate: { limit: number; offset: number }) {
-  const data = MOCK_CAMS_USERS.slice(predicate.offset, predicate.offset + predicate.limit);
+function includesIgnoringCase(value: string | undefined, search: string | undefined) {
+  return !search || (value ?? '').toLowerCase().includes(search.toLowerCase());
+}
+
+// Same matching as the backend: case-insensitive contains on name and email, combined with AND.
+async function getCamsUsers(predicate: CamsUsersPredicate) {
+  const matching = MOCK_CAMS_USERS.filter(
+    (user) =>
+      includesIgnoringCase(user.name, predicate.name) &&
+      includesIgnoringCase(user.email, predicate.email),
+  );
+  const data = matching.slice(predicate.offset, predicate.offset + predicate.limit);
   return {
     data,
     pagination: {
       count: data.length,
-      totalCount: MOCK_CAMS_USERS.length,
+      totalCount: matching.length,
       currentPage: Math.floor(predicate.offset / predicate.limit) + 1,
-      totalPages: Math.ceil(MOCK_CAMS_USERS.length / predicate.limit),
+      totalPages: Math.ceil(matching.length / predicate.limit),
       limit: predicate.limit,
     },
   };
