@@ -216,7 +216,8 @@ async function writeProfessionalId(
 
 /**
  * Deletes all professional-id records and the sync bookmark document. Does not touch
- * TrusteeVariation.
+ * TrusteeVariation, so variations the sync saved survive a purge and a rebuild relinks those
+ * records by fingerprint instead of re-running the pipeline.
  */
 async function purgeAll(deps: SyncAcmsProfessionalIdsDeps): Promise<void> {
   await deps.professionalIdsRepo.deleteAll();
