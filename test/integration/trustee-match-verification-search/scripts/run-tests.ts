@@ -160,7 +160,7 @@ function makeVerification(overrides: Partial<TrusteeMatchVerification>): Trustee
     documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
     caseId: '081-24-00001',
     courtId: '0208',
-    dxtrTrustee: { fullName: 'Integration Test Trustee' },
+    sourceTrustee: { fullName: 'Integration Test Trustee' },
     source: 'DXTR',
     findings: {
       sourceRaw: { fullName: 'Integration Test Trustee' },

@@ -1222,7 +1222,7 @@ function getTrusteeMatchVerification(
     mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
     source: 'DXTR',
     findings,
-    dxtrTrustee: findings.sourceRaw,
+    sourceTrustee: findings.sourceRaw,
     fingerprint: faker.string.hexadecimal({ length: 64, prefix: '' }),
     variant: findings.sourceRaw.fullName.toLowerCase(),
     taskDate: '2026-01-15T10:00:00.000Z',

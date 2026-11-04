@@ -59,7 +59,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           onConfirm={onConfirm}
           onCancel={onCancel}
           {...extraProps}
@@ -166,7 +166,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           onConfirm={vi.fn()}
         />
@@ -189,7 +189,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -214,7 +214,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -253,7 +253,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -281,7 +281,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -308,7 +308,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -333,7 +333,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           onConfirm={vi.fn()}
@@ -433,7 +433,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter={chapter}
@@ -463,7 +463,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           onConfirm={vi.fn()}
@@ -475,7 +475,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           divisionCode="0208"
           chapter="7"
@@ -531,7 +531,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="061"
           onConfirm={vi.fn()}
         />
@@ -562,7 +562,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           onConfirm={vi.fn()}
         />
@@ -637,7 +637,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="no-such-court"
           onConfirm={vi.fn()}
         />
@@ -889,7 +889,7 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
+          sourceTrusteeName="DOE, JOHN"
           courtId="0208"
           onConfirm={vi.fn()}
         />
@@ -1157,10 +1157,10 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          dxtrTrusteeAddressLines={['123 Court St', 'Buffalo, NY 14202']}
-          dxtrTrusteePhone="716-555-0100"
-          dxtrTrusteeEmail="court.contact@example.com"
+          sourceTrusteeName="DOE, JOHN"
+          sourceTrusteeAddressLines={['123 Court St', 'Buffalo, NY 14202']}
+          sourceTrusteePhone="716-555-0100"
+          sourceTrusteeEmail="court.contact@example.com"
           onConfirm={vi.fn()}
         />
       </BrowserRouter>,
@@ -1251,10 +1251,10 @@ describe('TrusteeSearchModal', () => {
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
-          dxtrTrusteeName="DOE, JOHN"
-          dxtrTrusteeAddressLines={['123 Court St']}
-          dxtrTrusteePhone="716-555-0100"
-          dxtrTrusteeEmail="court.contact@example.com"
+          sourceTrusteeName="DOE, JOHN"
+          sourceTrusteeAddressLines={['123 Court St']}
+          sourceTrusteePhone="716-555-0100"
+          sourceTrusteeEmail="court.contact@example.com"
           onConfirm={vi.fn()}
         />
       </BrowserRouter>,

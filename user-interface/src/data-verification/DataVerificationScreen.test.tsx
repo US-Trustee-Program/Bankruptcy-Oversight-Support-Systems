@@ -432,7 +432,7 @@ describe('Review Orders screen', () => {
     status: 'pending',
     mismatchReason: 'no match',
     source: 'DXTR',
-    dxtrTrustee: { fullName: 'John Doe' },
+    sourceTrustee: { fullName: 'John Doe' },
     affectedCaseCount: 1,
     affectedCaseIds: ['081-22-11111'],
     taskDate: '2026-01-15T10:00:00.000Z',

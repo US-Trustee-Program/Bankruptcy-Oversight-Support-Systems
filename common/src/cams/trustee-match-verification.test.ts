@@ -30,7 +30,7 @@ describe('trustee-match-verification', () => {
       documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
       caseId: '081-22-11111',
       courtId: '0881',
-      dxtrTrustee: { fullName: 'Jane Doe' },
+      sourceTrustee: { fullName: 'Jane Doe' },
       mismatchReason,
       source,
       findings,

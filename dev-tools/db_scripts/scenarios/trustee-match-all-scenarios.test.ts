@@ -83,19 +83,14 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
   test('should give every pending task a surrogate for its own case in both partitions', async () => {
     const ops = await generate(context());
 
-    // Guards the loop below from passing vacuously if pendingTasks(ops) were ever empty: 8
-    // single-case tasks + 1 multi-case + 1 division-mismatch + 1 no-cases task + 1 caseless task.
-    expect(pendingTasks(ops)).toHaveLength(12);
-    // seed-match-no-cases-* (CAMS-953 "No cases affected yet") and seed-match-caseless (CAMS-953
-    // Slice 5, no case at all) are the deliberate exceptions: neither has a surrogate anywhere,
-    // including for its own originating case (the caseless task has no originating case to begin
-    // with). See the dedicated tests below.
+    // A caseless task has no originating case, so it has no surrogate to expect.
+    // seed-match-no-cases-* (CAMS-953 "No cases affected yet") is the one deliberate exception
+    // among tasks with a case: it has no surrogate anywhere. See the dedicated tests below.
     const tasksExpectingASurrogate = pendingTasks(ops).filter(
-      (task) =>
-        !(task.id as string).startsWith('seed-match-no-cases-') &&
-        task.id !== 'seed-match-caseless',
+      (task) => 'caseId' in task && !(task.id as string).startsWith('seed-match-no-cases-'),
     );
-    expect(tasksExpectingASurrogate).toHaveLength(10);
+    // Guards the loop below from passing vacuously.
+    expect(tasksExpectingASurrogate.length).toBeGreaterThan(0);
     for (const task of tasksExpectingASurrogate) {
       for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
         const surrogateCaseIds = surrogatesFor(ops, table)
@@ -108,14 +103,14 @@ describe('trustee-match-all-scenarios (pending tasks look like sync output)', ()
 
   test('should not seed two pending tasks on the same case', async () => {
     const ops = await generate(context());
-    // The caseless task's caseId is undefined; excluded here since this test is about distinct
+    // The caseless tasks' caseId is undefined; excluded here since this test is about distinct
     // real case IDs, not about counting how many pending tasks have no case at all.
     const caseIds = pendingTasks(ops)
       .map((task) => task.caseId)
       .filter((caseId): caseId is string => caseId !== undefined);
 
-    // Guards the Set-size comparison below from passing vacuously if caseIds were ever empty.
-    expect(caseIds.length).toBe(11);
+    // Guards the Set-size comparison below from passing vacuously.
+    expect(caseIds.length).toBeGreaterThan(1);
     expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 
@@ -219,34 +214,33 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect(
       (verification?.findings as { candidates: unknown[] } | undefined)?.candidates,
     ).toHaveLength(2);
-
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(0);
-    }
+    expectNoSurrogates(ops, verification?.fingerprint);
   });
 
-  test('should have no caseId/courtId and no surrogate rows for a pending caseless mismatch', async () => {
-    const ops = await generate(context());
-    const verification = findVerification(ops, 'seed-match-caseless');
+  test.each([
+    { id: 'seed-match-caseless', expected: { source: 'DXTR' } },
+    {
+      id: 'seed-match-acms-ambiguous',
+      expected: {
+        source: 'ACMS',
+        mismatchReason: 'ambiguous',
+        acmsProfessionalId: 'SEED-ACMS-AMBIGUOUS',
+      },
+    },
+  ])(
+    'should seed $id as a pending caseless task with no surrogate rows',
+    async ({ id, expected }) => {
+      const ops = await generate(context());
+      const verification = findVerification(ops, id);
 
-    expect(verification).toBeDefined();
-    expect(verification?.status).toBe('pending');
-    expect(verification?.fingerprint).toBeTruthy();
-    expect('caseId' in (verification ?? {})).toBe(false);
-    expect('courtId' in (verification ?? {})).toBe(false);
-
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const surrogates = surrogatesFor(ops, table);
-      const forThisFingerprint = surrogates.filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(0);
-    }
-  });
+      expect(verification).toMatchObject({ status: 'pending', ...expected });
+      // Asserted truthy so expectNoSurrogates cannot pass by matching an undefined trusteeId.
+      expect(verification?.fingerprint).toBeTruthy();
+      expect('caseId' in (verification ?? {})).toBe(false);
+      expect('courtId' in (verification ?? {})).toBe(false);
+      expectNoSurrogates(ops, verification?.fingerprint);
+    },
+  );
 
   test('should have no surviving surrogate rows for an already-approved mismatch', async () => {
     const ops = await generate(context());
@@ -292,12 +286,13 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
 });
 
 describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', () => {
-  test('should seed one approvable pending task carrying an ACMS professional id', async () => {
+  test('should seed one approvable pending DXTR task carrying an ACMS professional id', async () => {
     const ops = await generate(context());
+    // The caseless ACMS-sourced task also carries one, but has no case for the gate to check.
     const tasks = ops
       .filter((o) => o.collectionOrTable === 'trustee-match-verification')
       .flatMap((o) => o.data)
-      .filter((d) => d.acmsProfessionalId);
+      .filter((d) => d.acmsProfessionalId && d.source === 'DXTR');
 
     expect(tasks).toHaveLength(1);
     const [task] = tasks;

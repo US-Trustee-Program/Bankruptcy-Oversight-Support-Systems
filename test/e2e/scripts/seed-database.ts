@@ -246,7 +246,7 @@ function resolveFindingsScenarios(tasks: MongoDocument[]): {
     return {
       ...task,
       ...(caseId && task.status === 'approved' ? { affectedCaseIds: [caseId] } : {}),
-      dxtrTrustee: findings.sourceRaw,
+      sourceTrustee: findings.sourceRaw,
       findings,
       mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
       variant,

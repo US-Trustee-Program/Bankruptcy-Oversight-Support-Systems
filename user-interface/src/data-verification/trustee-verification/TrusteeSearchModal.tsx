@@ -17,10 +17,10 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 
 interface TrusteeSearchModalProps {
   id: string;
-  dxtrTrusteeName: string;
-  dxtrTrusteeAddressLines?: string[];
-  dxtrTrusteePhone?: string;
-  dxtrTrusteeEmail?: string;
+  sourceTrusteeName: string;
+  sourceTrusteeAddressLines?: string[];
+  sourceTrusteePhone?: string;
+  sourceTrusteeEmail?: string;
   courtId?: string;
   // When both are provided, search results are filtered server-side to trustees with an
   // active appointment covering this court+chapter+division (isAppointmentMatch's rule).
@@ -48,10 +48,10 @@ function TrusteeSearchModal_(
 ) {
   const {
     id,
-    dxtrTrusteeName,
-    dxtrTrusteeAddressLines,
-    dxtrTrusteePhone,
-    dxtrTrusteeEmail,
+    sourceTrusteeName,
+    sourceTrusteeAddressLines,
+    sourceTrusteePhone,
+    sourceTrusteeEmail,
     courtId,
     divisionCode,
     chapter,
@@ -297,19 +297,19 @@ function TrusteeSearchModal_(
           <div className="trustee-comparison">
             <div className="court-trustee-details">
               <h4>Information sent by court</h4>
-              <AccessibleFieldValue label="Name">{dxtrTrusteeName}</AccessibleFieldValue>
+              <AccessibleFieldValue label="Name">{sourceTrusteeName}</AccessibleFieldValue>
               <AccessibleFieldValue label="Address">
-                {dxtrTrusteeAddressLines && dxtrTrusteeAddressLines.length > 0 ? (
-                  dxtrTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
+                {sourceTrusteeAddressLines && sourceTrusteeAddressLines.length > 0 ? (
+                  sourceTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
                 ) : (
                   <div>{fieldOrPlaceholder('Address')}</div>
                 )}
               </AccessibleFieldValue>
               <AccessibleFieldValue label="Phone">
-                {fieldOrPlaceholder('Phone', dxtrTrusteePhone)}
+                {fieldOrPlaceholder('Phone', sourceTrusteePhone)}
               </AccessibleFieldValue>
               <AccessibleFieldValue label="Email">
-                {fieldOrPlaceholder('Email', dxtrTrusteeEmail)}
+                {fieldOrPlaceholder('Email', sourceTrusteeEmail)}
               </AccessibleFieldValue>
             </div>
             <div className="trustee-details">
