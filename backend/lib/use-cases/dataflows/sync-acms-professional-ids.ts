@@ -272,9 +272,10 @@ async function processOneRecord(
   const variant = buildAcmsVariant(record);
   const fingerprint = computeFingerprint(variant);
 
+  const sourceTrustee = toAcmsTrusteeProfessional(record);
   const identification = await identifyTrustee(
     deps,
-    toAcmsTrusteeProfessional(record),
+    sourceTrustee,
     record.acmsProfessionalId,
     fingerprint,
     variant,
@@ -306,7 +307,7 @@ async function processOneRecord(
   const writeTask = (mismatchReason: IdentityMismatchReason) =>
     upsertIdentityTask(deps.verificationRepo, {
       source: 'ACMS',
-      sourceTrustee: toAcmsTrusteeProfessional(record),
+      sourceTrustee,
       mismatchReason,
       findings: state,
       fingerprint,
