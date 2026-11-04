@@ -879,9 +879,9 @@ async function clean() {
     });
     pass(`Deleted ${r2.deletedCount} ${VERIFICATION_COLLECTION} doc(s)`);
 
-    const r3 = await db
-      .collection('trustee-variation')
-      .deleteMany({ trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID] } });
+    const r3 = await db.collection('trustee-variation').deleteMany({
+      trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID, NAME_TRUSTEE_ID] },
+    });
     pass(`Deleted ${r3.deletedCount} trustee-variation doc(s)`);
 
     const r4 = await db.collection('trustees').deleteMany({
@@ -960,6 +960,21 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   } else {
     fail(
       `Name match: expected ${NAME_MATCH_ACMS_ID} linked to ${NAME_TRUSTEE_ID}, got ${JSON.stringify(nameLink)}`,
+    );
+  }
+
+  // Slice 3: the pipeline link also saved a TrusteeVariation for the ACMS variant.
+  const nameVariations = await db
+    .collection('trustee-variation')
+    .find({ trusteeId: NAME_TRUSTEE_ID })
+    .toArray();
+  if (nameVariations.length === 1 && nameVariations[0].variant === nameLink?.evidence?.variant) {
+    pass(
+      `Variation: one TrusteeVariation saved under ${NAME_TRUSTEE_ID} for ${NAME_MATCH_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `Variation: expected one TrusteeVariation for ${NAME_MATCH_ACMS_ID} under ${NAME_TRUSTEE_ID}, got ${JSON.stringify(nameVariations)}`,
     );
   }
 
@@ -1395,6 +1410,14 @@ async function assertResyncLeavesIdentityTasksUntouched(db: ReturnType<MongoClie
     .updateOne({ _id: original._id }, { $set: { status: 'approved' } });
   if (!(await resyncFromStart(db))) {
     return;
+  }
+  const variationCount = await db
+    .collection('trustee-variation')
+    .countDocuments({ trusteeId: NAME_TRUSTEE_ID });
+  if (variationCount === 1) {
+    pass(`Re-sync: ${NAME_TRUSTEE_ID} still has exactly one TrusteeVariation`);
+  } else {
+    fail(`Re-sync: expected one TrusteeVariation for ${NAME_TRUSTEE_ID}, found ${variationCount}`);
   }
   const afterResolvedResync = await tasksFor();
   if (afterResolvedResync.length === 1 && isUnchanged(afterResolvedResync[0], 'approved')) {
