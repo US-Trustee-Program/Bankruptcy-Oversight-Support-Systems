@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { InvocationContext } from '@azure/functions';
+import { app, InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as CasesRuntimeStateModule from '../../../lib/use-cases/dataflows/cases-runtime-state';
@@ -341,12 +341,76 @@ describe('migrate-cases handleStart', () => {
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
     await handleStart({}, invocationContext);
 
     expect(loadMigrationTableSpy).not.toHaveBeenCalled();
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
       expect.objectContaining({ error: emptyError }),
+    );
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'MIGRATE-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('reports to DLQ, queues no pages, and stores no runtime state when loading the migration table fails', async () => {
+    const { handleStart } = await import('./migrate-cases');
+    const invocationContext = makeInvocationContext();
+    const loadError = new CamsError('TEST', { message: 'failed to load table' });
+
+    vi.spyOn(MigrateCasesModule.default, 'emptyMigrationTable').mockResolvedValue({
+      success: true,
+    });
+    vi.spyOn(MigrateCasesModule.default, 'loadMigrationTable').mockResolvedValue({
+      error: loadError,
+    });
+    const storeRuntimeStateSpy = vi.spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState');
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.objectContaining({ error: loadError }),
+    );
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('page') }),
+      expect.anything(),
+    );
+    expect(storeRuntimeStateSpy).not.toHaveBeenCalled();
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'MIGRATE-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('registers DLQ as an output of handleStart so its failure reports are delivered', async () => {
+    const MigrateCasesDataflow = (await import('./migrate-cases')).default;
+    const storageQueueSpy = vi.spyOn(app, 'storageQueue').mockImplementation(() => {});
+
+    MigrateCasesDataflow.setup();
+
+    const handleStartRegistration = storageQueueSpy.mock.calls.find(([name]) =>
+      name.endsWith('handleStart'),
+    );
+    expect(handleStartRegistration?.[1].extraOutputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      ]),
     );
   });
 

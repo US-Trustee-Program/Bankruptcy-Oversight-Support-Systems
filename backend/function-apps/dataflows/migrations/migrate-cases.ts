@@ -81,8 +81,8 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
       `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
     );
 
-    const isEmpty = await emptyMigrationTable(appContext);
-    if (!isEmpty) {
+    const emptied = await emptyMigrationTable(appContext);
+    if (!emptied) {
       completeDataflowTrace(
         appContext.observability,
         trace,
@@ -92,14 +92,30 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
         {
           documentsWritten: 0,
           documentsFailed: 0,
-          success: true,
-          details: { reason: 'migration table not empty' },
+          success: false,
+          error: 'failed to empty migration table',
         },
       );
       return;
     }
 
     const count = await loadMigrationTable(appContext);
+    if (count === undefined) {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleStart',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'failed to load migration table',
+        },
+      );
+      return;
+    }
 
     if (count === 0) {
       completeDataflowTrace(
@@ -439,13 +455,14 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
  * @param appContext
  * @returns
  */
-async function loadMigrationTable(appContext: ApplicationContext) {
+async function loadMigrationTable(appContext: ApplicationContext): Promise<number | undefined> {
   const result = await MigrateCases.loadMigrationTable(appContext);
   if (result.error) {
     appContext.extraOutputs.set(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE),
     );
+    return undefined;
   }
   return result.data;
 }
@@ -526,7 +543,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE],
+    extraOutputs: [PAGE, DLQ],
   });
 
   app.storageQueue(HANDLE_PAGE, {
