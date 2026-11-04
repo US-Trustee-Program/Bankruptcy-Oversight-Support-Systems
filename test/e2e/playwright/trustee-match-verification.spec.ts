@@ -19,6 +19,10 @@ const ACMS_LINK_TASK_ID = 'e2e-trustee-match-verification-acms-link';
 // J Nocasematch, ACMS-sourced and ambiguous (Jamie and Jesse Nocasematch), caseless like the
 // tasks the ACMS sync writes. Approved by its own test, so it is left out of every other test.
 const ACMS_AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-acms-ambiguous';
+// Noel Acmsnomatch, ACMS-sourced 'no match' with one name-passing candidate whose state differs,
+// caseless like the tasks the ACMS sync writes. Approved by its own test, so it is left out of
+// every other test.
+const ACMS_NO_MATCH_TASK_ID = 'e2e-trustee-match-verification-acms-no-match';
 
 async function expandTask(page: Page, id: string) {
   await page.getByTestId(`accordion-button-order-list-${id}`).click();
@@ -313,6 +317,41 @@ test.describe('Trustee Identity Verification', () => {
       );
       await expect(content.getByTestId('resolved-statement')).toContainText(
         'Trustee Jesse Nocasematch was approved. No cases affected.',
+        timeoutOption,
+      );
+    });
+
+    // The slice's user-facing acceptance check: a caseless ACMS 'no match' task, whose one
+    // candidate passed the name check, can be approved. The fixture stands in for the ACMS sync's
+    // output (its shape is pinned by seed-match-acms-no-match); the zero-case modal and alert
+    // sentences are already covered by the ACMS ambiguous test above.
+    test('approves an ACMS-sourced caseless no-match task with a name-passing candidate', async ({
+      page,
+    }) => {
+      await expect(
+        page.getByTestId(`accordion-heading-${ACMS_NO_MATCH_TASK_ID}`),
+        `${ACMS_NO_MATCH_TASK_ID} is missing; reseed the e2e database`,
+      ).toBeVisible(timeoutOption);
+      const content = await expandTask(page, ACMS_NO_MATCH_TASK_ID);
+
+      await expect(content.getByTestId('problem-statement')).toContainText(
+        'Trustee state sent to CAMS does not exactly match a trustee in CAMS. No cases yet.',
+        timeoutOption,
+      );
+      const table = content.getByTestId('trustee-comparison-table');
+      await expect(table.locator('tbody').getByRole('rowheader')).toHaveText(['Noel Acmsnomatch']);
+      await expect(table.getByLabel('Name differs from the source record')).toHaveCount(0);
+
+      const { submit } = await approveCandidate(
+        page,
+        content,
+        ACMS_NO_MATCH_TASK_ID,
+        'seed-trustee-match-acms-nomatch',
+      );
+      await submit();
+
+      await expect(content.getByTestId('resolved-statement')).toContainText(
+        'Trustee Noel Acmsnomatch was approved. No cases affected.',
         timeoutOption,
       );
     });

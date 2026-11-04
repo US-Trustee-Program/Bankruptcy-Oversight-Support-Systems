@@ -445,6 +445,29 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     expectedCandidateCount: 2,
   },
 
+  // trustee-match-all-scenarios and the e2e fixture: a pending caseless 'no match' task from the
+  // ACMS professional-id sync (CAMS-954 Slice 2). One candidate passes the name check exactly,
+  // but its state differs, which blocks resolveByNameOnly (same shape as oneCandidateStateDiffers).
+  acmsNoMatchCaseless: {
+    source: {
+      firstName: 'Noel',
+      lastName: 'Acmsnomatch',
+      fullName: 'Noel Acmsnomatch',
+      legacy: { cityStateZipCountry: 'Bristol TN' },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-nomatch',
+        firstName: 'Noel',
+        lastName: 'Acmsnomatch',
+        address: { address1: '1 State St', city: 'Bristol', state: 'VA', zipCode: '24201' },
+        phone: '276-555-0100',
+        email: 'noel.acmsnomatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
   // trustee-match-all-scenarios: approved tasks whose pipeline run found no candidate.
   resolvedNoSurrogates: {
     source: { firstName: 'Riley', lastName: 'Resolvedmatch', fullName: 'Riley Resolvedmatch' },

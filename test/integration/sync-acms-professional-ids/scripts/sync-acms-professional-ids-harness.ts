@@ -132,6 +132,9 @@ const LEADING_ZERO_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-LEADINGZERO';
 const AMBIGUOUS_TRUSTEE_ID_A = 'INTEGRATION-TRUSTEE-AMBIGUOUS-A';
 const AMBIGUOUS_TRUSTEE_ID_B = 'INTEGRATION-TRUSTEE-AMBIGUOUS-B';
 const CONFLICT_EXISTING_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-CONFLICT-EXISTING';
+const NO_MATCH_CANDIDATE_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-NOMATCH-CANDIDATE';
+const NAME_FAIL_TRUSTEE_ID_A = 'INTEGRATION-TRUSTEE-NAMEFAIL-A';
+const NAME_FAIL_TRUSTEE_ID_B = 'INTEGRATION-TRUSTEE-NAMEFAIL-B';
 
 const FINGERPRINT_ACMS_ID = 'NY-00063';
 const NAME_MATCH_ACMS_ID = 'NY-00064';
@@ -144,8 +147,10 @@ const SKIPPED_ACMS_ID = 'NY-00073';
 const CONFLICT_ACMS_ID = 'NY-00074';
 const MANUAL_LINK_ACMS_ID = 'NY-00075';
 const AMBIGUOUS_INACTIVE_ACMS_ID = 'NY-00076';
+const NO_MATCH_WITH_CANDIDATE_ACMS_ID = 'NY-00077';
+const NO_MATCH_NAME_FAIL_ACMS_ID = 'NY-00078';
 // The highest NY UST_PROF_CODE seeded; the NY bookmark reaching it means the NY page is done.
-const LAST_NY_UST_PROF_CODE = 76;
+const LAST_NY_UST_PROF_CODE = 78;
 
 const VERIFICATION_COLLECTION = 'trustee-match-verification';
 
@@ -695,6 +700,38 @@ async function seedCosmos() {
       `Seeded two identically-named trustee profiles for the ambiguous scenario (${AMBIGUOUS_TRUSTEE_ID_A}, ${AMBIGUOUS_TRUSTEE_ID_B})`,
     );
 
+    // One CAMS trustee with UST_PROF_CODE 77's exact name and no contact data: the sole candidate
+    // passes doesNameMatch, but nothing corroborates it, so the professional stays no-match.
+    // Two CAMS trustees sharing UST_PROF_CODE 78's surname with different first names: both are
+    // candidates (no state on either side, so discovery keeps them) that fail doesNameMatch.
+    for (const [trusteeId, firstName, middleName, lastName] of [
+      [NO_MATCH_CANDIDATE_TRUSTEE_ID, 'Nora', 'N', 'Candidatepass'],
+      [NAME_FAIL_TRUSTEE_ID_A, 'Pat', 'Q', 'Namefail'],
+      [NAME_FAIL_TRUSTEE_ID_B, 'Dana', 'Q', 'Namefail'],
+    ]) {
+      await db.collection('trustees').updateOne(
+        { documentType: 'TRUSTEE', trusteeId },
+        {
+          $set: {
+            documentType: 'TRUSTEE',
+            trusteeId,
+            name: `${firstName} ${middleName} ${lastName}`,
+            firstName,
+            middleName,
+            lastName,
+            status: 'active',
+            public: {},
+            updatedOn: now,
+          },
+          $setOnInsert: { createdOn: now },
+        },
+        { upsert: true },
+      );
+    }
+    pass(
+      `Seeded trustee profiles for the no-match-with-candidates scenarios (${NO_MATCH_CANDIDATE_TRUSTEE_ID}, ${NAME_FAIL_TRUSTEE_ID_A}, ${NAME_FAIL_TRUSTEE_ID_B})`,
+    );
+
     // A trustee already linked to CONFLICT_ACMS_ID before this run, so the pipeline's
     // resolved match for UST_PROF_CODE 74 (which shares NAME_TRUSTEE_ID's demographics)
     // collides with this existing, different link.
@@ -818,6 +855,8 @@ async function clean() {
           CONFLICT_ACMS_ID,
           MANUAL_LINK_ACMS_ID,
           AMBIGUOUS_INACTIVE_ACMS_ID,
+          NO_MATCH_WITH_CANDIDATE_ACMS_ID,
+          NO_MATCH_NAME_FAIL_ACMS_ID,
         ],
       },
     });
@@ -833,6 +872,8 @@ async function clean() {
           CONFLICT_ACMS_ID,
           MANUAL_LINK_ACMS_ID,
           AMBIGUOUS_INACTIVE_ACMS_ID,
+          NO_MATCH_WITH_CANDIDATE_ACMS_ID,
+          NO_MATCH_NAME_FAIL_ACMS_ID,
         ],
       },
     });
@@ -853,6 +894,9 @@ async function clean() {
           AMBIGUOUS_TRUSTEE_ID_A,
           AMBIGUOUS_TRUSTEE_ID_B,
           CONFLICT_EXISTING_TRUSTEE_ID,
+          NO_MATCH_CANDIDATE_TRUSTEE_ID,
+          NAME_FAIL_TRUSTEE_ID_A,
+          NAME_FAIL_TRUSTEE_ID_B,
         ],
       },
     });
@@ -1099,9 +1143,9 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
-  // Scenario 10: no-match and conflict professionals never get an identity task — only
-  // ambiguous ACMS outcomes do. Both have an active CMMAP appointment, so neither is kept from a
-  // task by the active-appointment gate.
+  // Scenario 10: a zero-candidate no-match professional and a conflict never get an identity task
+  // (a no-match with a name-passing candidate does; see Scenario 13). Both have an active CMMAP
+  // appointment, so neither is kept from a task by the active-appointment gate.
   const otherTasks = await db
     .collection(VERIFICATION_COLLECTION)
     .find({ acmsProfessionalId: { $in: [ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID] } })
@@ -1162,6 +1206,80 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   } else {
     fail(
       `Ambiguous, no active appointment: expected nothing for ${AMBIGUOUS_INACTIVE_ACMS_ID}, found record=${JSON.stringify(inactiveAmbiguousRecord)} task=${JSON.stringify(inactiveAmbiguousTask)}`,
+    );
+  }
+
+  // Scenario 13: a no-match professional with a name-passing candidate (UST_PROF_CODE 77, active
+  // appointment) gets its no-match record and a pending, caseless ACMS 'no match' identity task.
+  const [noMatchCandidateRecord, noMatchCandidateTasks] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: NO_MATCH_WITH_CANDIDATE_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: NO_MATCH_WITH_CANDIDATE_ACMS_ID })
+      .toArray(),
+  ]);
+  if (
+    noMatchCandidateRecord?.disposition === 'no-match' &&
+    noMatchCandidateRecord.nameMatchCount === 1
+  ) {
+    pass(
+      `No-match with candidate: no-match record (nameMatchCount=1) written for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `No-match with candidate: expected a no-match record with nameMatchCount=1 for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}, got ${JSON.stringify(noMatchCandidateRecord)}`,
+    );
+  }
+  const noMatchTask = noMatchCandidateTasks[0];
+  const noMatchTaskCandidateIds = (noMatchTask?.findings?.candidates ?? []).map(
+    (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
+  );
+  if (
+    noMatchCandidateTasks.length === 1 &&
+    noMatchTask.source === 'ACMS' &&
+    noMatchTask.mismatchReason === 'no match' &&
+    noMatchTask.status === 'pending' &&
+    noMatchTask.caseId === undefined &&
+    noMatchTask.courtId === undefined &&
+    noMatchTaskCandidateIds.includes(NO_MATCH_CANDIDATE_TRUSTEE_ID) &&
+    noMatchTask.fingerprint !== undefined &&
+    noMatchTask.fingerprint === noMatchCandidateRecord?.camsTrusteeId
+  ) {
+    pass(
+      `No-match with candidate: pending caseless ACMS task for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID} (mismatchReason='no match', findings name ${NO_MATCH_CANDIDATE_TRUSTEE_ID}, same fingerprint as the record)`,
+    );
+  } else {
+    fail(
+      `No-match with candidate: expected one pending caseless 'no match' ACMS task for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}, found ${JSON.stringify(noMatchCandidateTasks)}`,
+    );
+  }
+
+  // Scenario 14: a no-match professional whose candidates all fail the name check
+  // (UST_PROF_CODE 78) still gets its record, but no identity task. The candidates check keeps
+  // this from passing vacuously if discovery ever stopped finding them.
+  const [nameFailRecord, nameFailTask] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: NO_MATCH_NAME_FAIL_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .findOne({ acmsProfessionalId: NO_MATCH_NAME_FAIL_ACMS_ID }),
+  ]);
+  const nameFailCandidateCount = nameFailRecord?.evidence?.candidates?.length ?? 0;
+  if (
+    nameFailRecord?.disposition === 'no-match' &&
+    nameFailRecord.nameMatchCount === 0 &&
+    nameFailCandidateCount >= 1 &&
+    !nameFailTask
+  ) {
+    pass(
+      `No-match, name-failing candidates: record written (${nameFailCandidateCount} candidate(s), nameMatchCount=0) and no identity task for ${NO_MATCH_NAME_FAIL_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `No-match, name-failing candidates: expected a no-match record with candidates, nameMatchCount=0 and no task for ${NO_MATCH_NAME_FAIL_ACMS_ID}, found record=${JSON.stringify(nameFailRecord)} task=${JSON.stringify(nameFailTask)}`,
     );
   }
 

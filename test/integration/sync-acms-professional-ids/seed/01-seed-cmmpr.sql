@@ -37,6 +37,13 @@
 --   UST_PROF_CODE 76:  ambiguous, inactive — same name as UST_PROF_CODE 72's two CAMS trustees,
 --                      distinct address, NO active CMMAP appointment -> nothing written (no
 --                      professional-id record, no identity task)
+--   UST_PROF_CODE 77:  no-match with a name-passing candidate, active — exact name of one CAMS
+--                      trustee (INTEGRATION-TRUSTEE-NOMATCH-CANDIDATE) with no contact data, so
+--                      the sole candidate passes doesNameMatch but nothing corroborates it ->
+--                      disposition=no-match plus a 'no match' identity task
+--   UST_PROF_CODE 78:  no-match, name-failing candidates, active — surname shared with two CAMS
+--                      trustees (INTEGRATION-TRUSTEE-NAMEFAIL-A/B) whose first names differ, so
+--                      both are candidates that fail doesNameMatch -> no-match record, no task
 --
 -- Run against ACMS_INT database after seed-schema has been applied.
 
@@ -163,6 +170,26 @@ VALUES
    '2 Quiet Rd', '', 'Elmira', 'NY', 149010000, 0, 0);
 GO
 
+-- Record 5h: no-match with a name-passing candidate — exact name of one CAMS trustee that has no
+-- contact data, and no address/phone here either, so the sole candidate cannot be confirmed.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 77, ' ', 'TR', 'Candidatepass', 'Nora', 'N',
+   '', '', '', '', 0, 0, 0);
+GO
+
+-- Record 5i: no-match, name-failing candidates — same surname as two CAMS trustees with different
+-- first names; no state here, so discovery keeps them as candidates (see shouldEvictFromDiscovery).
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 78, ' ', 'TR', 'Namefail', 'Morgan', 'Q',
+   '', '', '', '', 0, 0, 0);
+GO
+
 -- Record 6: soft-deleted — must NOT be paged (DELETE_CODE='D')
 INSERT INTO dbo.CMMPR
   (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
@@ -181,7 +208,7 @@ VALUES
    '1000 Legal Way', '', 'Syracuse', 'NY', 132020000, 0, 3155550700);
 GO
 
-PRINT 'CMMPR seeded: 13 rows (11 TR/active + 1 deleted + 1 non-TR filtered)';
+PRINT 'CMMPR seeded: 15 rows (13 TR/active + 1 deleted + 1 non-TR filtered)';
 GO
 
 -- ── CMMDB rows (one per case referenced by CMMAP below) ─────────────────────
@@ -234,6 +261,15 @@ VALUES
   (5, 81, 24, 50001, 'NY', 74, 20230101, 0, ' ', 'Y', 'TR');
 GO
 
-PRINT 'CMMAP seeded: 5 rows (active appointments for UST_PROF_CODE 65, 72, 73, 74, 75)';
+-- UST_PROF_CODE 77 and 78 (no-match with candidates) each have one active appointment, so the
+-- gate writes their records and only the name check decides whether a task is written.
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (6, 81, 24, 50001, 'NY', 77, 20230101, 0, ' ', 'Y', 'TR'),
+  (7, 81, 24, 50001, 'NY', 78, 20230101, 0, ' ', 'Y', 'TR');
+GO
+
+PRINT 'CMMAP seeded: 7 rows (active appointments for UST_PROF_CODE 65, 72, 73, 74, 75, 77, 78)';
 PRINT 'CMMDB seeded: 1 row';
 GO
