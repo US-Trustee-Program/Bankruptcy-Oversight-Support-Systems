@@ -214,7 +214,12 @@ async function unseedDxtr(): Promise<void> {
   const pool = await new Pool(buildSqlConfig('MSSQL')).connect();
 
   try {
-    // AO_PY must be deleted before AO_CS (FK constraint)
+    // AO_TX and AO_PY must be deleted before AO_CS (FK constraint)
+    const txResult = await pool
+      .request()
+      .query(`DELETE FROM [dbo].[AO_TX] WHERE [CS_CASEID] LIKE 'SEED%'`);
+    console.log(`[${MODULE_NAME}] Deleted ${txResult.rowsAffected[0]} row(s) from AO_TX`);
+
     const pyResult = await pool
       .request()
       .query(`DELETE FROM [dbo].[AO_PY] WHERE [CS_CASEID] LIKE 'SEED%'`);

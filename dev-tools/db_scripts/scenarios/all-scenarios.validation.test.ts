@@ -59,6 +59,7 @@ import { generate as generateTrusteeMatchAllScenarios } from './trustee-match-al
 import { generate as generateTrusteesComprehensive } from './trustees-comprehensive.js';
 import { generate as generateTrusteeFilterConjunction } from './trustee-filter-conjunction.js';
 import { generate as generateNotificationRouting } from './notification-routing.js';
+import { generate as generateSyncCasesTerminalTransaction } from './sync-cases-terminal-transaction.js';
 
 // Array of all scenarios to validate
 const SCENARIOS = [
@@ -78,6 +79,7 @@ const SCENARIOS = [
   { name: 'trustees-comprehensive', generate: generateTrusteesComprehensive },
   { name: 'trustee-filter-conjunction', generate: generateTrusteeFilterConjunction },
   { name: 'notification-routing', generate: generateNotificationRouting },
+  { name: 'sync-cases-terminal-transaction', generate: generateSyncCasesTerminalTransaction },
 ];
 
 // Create mock context for scenario generation
