@@ -44,9 +44,6 @@
     width: 1.1rem;
     height: 1.1rem;
     fill: colors.$gold;
-    // Dark outline: the gold fill alone is 1.66:1 on white, below WCAG 1.4.11's 3:1.
-    stroke: colors.$ink;
-    stroke-width: 1px;
   }
 }
 
