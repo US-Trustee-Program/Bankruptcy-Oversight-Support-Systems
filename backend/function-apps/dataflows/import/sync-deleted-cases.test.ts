@@ -75,6 +75,7 @@ describe('sync-deleted-cases archiveDeletedCaseQueue', () => {
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await archiveDeletedCaseQueue(message, invocationContext);
 
@@ -86,6 +87,14 @@ describe('sync-deleted-cases archiveDeletedCaseQueue', () => {
     const dlqPayload = dlqOutput?.[1] as { event: unknown; error: string };
     expect(dlqPayload.event).toEqual(message);
     expect(dlqPayload.error).toContain('orders: boom');
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.stringContaining('SYNC-DELETED-CASES'),
+      'archiveDeletedCaseQueue',
+      expect.anything(),
+      expect.objectContaining({ success: false, documentsWritten: 2, documentsFailed: 1 }),
+    );
   });
 
   test('should not write to DLQ when archive completes with no errors', async () => {

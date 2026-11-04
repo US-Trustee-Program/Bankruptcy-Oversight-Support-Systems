@@ -93,7 +93,7 @@ async function archiveDeletedCaseQueue(
       {
         documentsWritten: summary.archivedCount,
         documentsFailed: summary.errors.length,
-        success: true,
+        success: summary.errors.length === 0,
         details: { caseId: message.caseId },
       },
     );
