@@ -2164,6 +2164,110 @@
     "skip": false,
     "error": null
   },
+  "acmsNoMatchCaseless": {
+    "sourceRaw": {
+      "firstName": "Noel",
+      "lastName": "Acmsnomatch",
+      "fullName": "Noel Acmsnomatch",
+      "legacy": {
+        "cityStateZipCountry": "Bristol TN",
+        "parsedCityStateZip": null
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "noel",
+      "middleName": "",
+      "lastName": "acmsnomatch",
+      "legacy": {
+        "cityStateZipCountry": "Bristol TN",
+        "parsedCityStateZip": null
+      },
+      "fullName": "Noel Acmsnomatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-nomatch",
+          "firstName": "Noel",
+          "lastName": "Acmsnomatch",
+          "name": "Noel Acmsnomatch",
+          "address": {
+            "address1": "1 State St",
+            "city": "Bristol",
+            "state": "VA",
+            "zipCode": "24201",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "276-555-0100"
+          },
+          "email": "noel.acmsnomatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "noel",
+          "middleName": "",
+          "lastName": "acmsnomatch",
+          "phone": {
+            "number": "276-555-0100"
+          },
+          "email": "noel.acmsnomatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "noel acmsnomatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "noel acmsnomatch|noel acmsnomatch",
+              "value": 1
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "noel acmsnomatch|noel acmsnomatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCamsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesAcmsTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "exact"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "weak",
+            "points": 1
+          },
+          "recallByTokenIntersection": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "resolvedNoSurrogates": {
     "sourceRaw": {
       "firstName": "Riley",
