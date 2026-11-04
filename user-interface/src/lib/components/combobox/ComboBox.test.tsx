@@ -2538,4 +2538,16 @@ describe('ComboBox keepFilterOnClose', () => {
     expect(isDropdownClosed()).toBe(true);
     expect(getInput().value).toBe('John Smith');
   });
+
+  test('clearFilter on the ref empties the kept typed text', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    renderSearchComboBox({ ref } as Partial<Omit<ComboBoxProps, 'ref'>>);
+    await userEvent.type(getInput(), 'sm');
+    await userEvent.keyboard('{Escape}');
+    expect(getInput().value).toBe('sm');
+
+    act(() => ref.current?.clearFilter());
+
+    expect(getInput().value).toBe('');
+  });
 });

@@ -257,6 +257,22 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).toHaveBeenCalledTimes(callsBeforeReopen);
   });
 
+  test('clears the typed trustee name when the modal is cancelled and shown again', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+    const { onCancel } = renderWithProps(vi.fn(), vi.fn(), { courtId: '0208' });
+    act(() => modalRef.current?.show());
+    const nameInput = await expandComboBoxAndType('sm');
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalled();
+    act(() => modalRef.current?.show());
+
+    expect(nameInput.value).toBe('');
+  });
+
   test('does not search when the district is switched with fewer than 2 characters typed', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 

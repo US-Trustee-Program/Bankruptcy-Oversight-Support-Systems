@@ -95,6 +95,7 @@ function TrusteeSearchModal_(
     setSelectedTrustee(null);
     setSelectedCourtId(courtId);
     trusteeNameComboBoxRef.current?.clearSelections();
+    trusteeNameComboBoxRef.current?.clearFilter();
     modalRef.current?.show(options ?? {});
   }
 

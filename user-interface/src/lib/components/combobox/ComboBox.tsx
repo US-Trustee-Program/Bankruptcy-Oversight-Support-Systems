@@ -582,6 +582,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setSelections,
     getSelections,
     clearSelections,
+    clearFilter,
     disable,
     focusInput,
     focus: focusInput,
