@@ -226,9 +226,9 @@ zones with this name in the subscription, and the CLI will not disambiguate for 
 
 The credential is `gha-deploy-sql-hub` on `cams-infrastructure-deploy-main-oidc`, created by
 `ops/scripts/utility/federated-credentials/setup-infrastructure-deploy-federated-credential.sh` when
-run with `TARGET=main` (or the default `all`). Any future standalone workflow that uses this
-environment needs its own credential: add an `upsert_federated_credential` call for it in that
-script, next to the existing ones, and re-run the script.
+run with `TARGET=main`. Any future standalone workflow that uses this environment needs its own
+credential: add an `upsert_federated_credential` call for it in that script, next to the existing
+ones, and re-run the script.
 
 ### Migrating a consumer onto the hub
 
@@ -283,6 +283,9 @@ In this order:
 1. Create the provisioning workflow's federated credential, `gha-deploy-dora-metrics-storage`, on
    `cams-infrastructure-deploy-main-oidc` by exporting `AZ_MAIN_KV_RG` and running
    `TARGET=main ops/scripts/utility/federated-credentials/setup-infrastructure-deploy-federated-credential.sh`.
+   This needs `az` logged in as an Entra admin and `gh` logged in with repo admin. The script also
+   re-applies the identity's existing role and Key Vault grants and re-sets its `AZ_CLIENT_ID`
+   environment secret, which is safe to repeat.
 2. Run **Deploy DORA Metrics Storage** with `mode: what-if`, review, then re-run with
    `mode: deploy`.
 3. Add the account name to `kv-ustp-cams` as `AZ-DORA-METRICS-STORAGE-NAME`.
