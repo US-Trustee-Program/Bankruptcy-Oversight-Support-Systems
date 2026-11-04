@@ -134,6 +134,48 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
+  // 'weak' means a fuzzy surname with an identical first name. As built, the ambiguity rule treats
+  // it like any non-exact passing name: it counts when the source has contact data to compare.
+  test('returns ambiguous when two fuzzy-surname (weak) candidates and the source has contact data', () => {
+    const weakWithSourceContact = {
+      doesNameMatch: { pass: true, quality: 'weak' },
+      doesSourceTrusteeHaveAddressAndPhone: { pass: true },
+    };
+    const state = makeState({
+      candidates: [makeCandidate(weakWithSourceContact), makeCandidate(weakWithSourceContact)],
+    });
+    expect(deriveDisposition(state)).toBe('ambiguous');
+  });
+
+  test('returns no-match when two fuzzy-surname (weak) candidates and the source has no contact data', () => {
+    const weakWithoutSourceContact = {
+      doesNameMatch: { pass: true, quality: 'weak' },
+      doesSourceTrusteeHaveAddressAndPhone: { pass: false },
+    };
+    const state = makeState({
+      candidates: [
+        makeCandidate(weakWithoutSourceContact),
+        makeCandidate(weakWithoutSourceContact),
+      ],
+    });
+    expect(deriveDisposition(state)).toBe('no-match');
+  });
+
+  // The discovery tiers keep a candidate that fails the name check when its state does not
+  // conflict, so a pool of 2 can hold only one name-passing candidate.
+  test.each(['exact', 'strong', 'weak'])(
+    'returns no-match when the pool has 2 candidates but only one (%s) passes the name check',
+    (quality) => {
+      const state = makeState({
+        candidates: [
+          makeCandidate({ doesNameMatch: { pass: true, quality } }),
+          makeCandidate({ doesNameMatch: { pass: false } }),
+        ],
+      });
+      expect(deriveDisposition(state)).toBe('no-match');
+    },
+  );
+
   test('precedence: error takes priority over skip/match/candidates', () => {
     const state = makeState({
       error: new CamsError('TEST', { message: 'boom' }),

@@ -197,6 +197,7 @@ const CASES = {
   reVerification: { caseId: '083-26-88910' },
   fingerprintRepeat: { caseId: '083-26-88911' },
   fingerprintNoFalseCollapse: { caseId: '083-26-88912' },
+  twoCandidatesOnePassesName: { caseId: '083-26-88918' },
 } as const;
 const ALL_CASE_IDS = Object.values(CASES).map((c) => c.caseId);
 
@@ -214,6 +215,11 @@ const TRUSTEES = {
   ambiguousWinnerDecoy: { id: 'ms-trustee-amb-winner-decoy', name: 'Ambiguous H Winner' },
   ambiguousTie1: { id: 'ms-trustee-amb-tie-1', name: 'Ambiguous T Tie' },
   ambiguousTie2: { id: 'ms-trustee-amb-tie-2', name: 'Ambiguous T Tie' },
+  // Scenario 16: the DXTR party is "Wendell Fairbanks" (Scenario City, SC 11111). Both trustees share
+  // its state, so discovery keeps them, but not its city or zip, so resolveByAddress does not fire. The fuzzy trustee passes the name check as
+  // 'weak' (fuzzy surname, identical first name); the other shares only a surname token and fails.
+  weakFuzzySurname: { id: 'ms-trustee-weak-fuzzy', name: 'Wendell Q Fairbankz' },
+  weakSurnameTokenOnly: { id: 'ms-trustee-weak-token', name: 'Winston Q Fairbanks' },
   notYetSynced: { id: 'ms-trustee-not-yet-synced', name: 'NotYet S Synced' },
   caseMoved: { id: 'ms-trustee-case-moved', name: 'Case H Moved' },
   // Deliberately NOT DXTR's "Reverify M Trustee", so scenario 11's first pass is a 'no match'
@@ -709,6 +715,16 @@ async function seedCosmos() {
         address: { address1: '2 Tie Ave', city: 'Faraway', state: 'FA', zipCode: '99999' },
       },
       {
+        id: TRUSTEES.weakFuzzySurname.id,
+        name: TRUSTEES.weakFuzzySurname.name,
+        address: { address1: '1 Fuzzy Ln', city: 'Othertown', state: 'SC', zipCode: '22222' },
+      },
+      {
+        id: TRUSTEES.weakSurnameTokenOnly.id,
+        name: TRUSTEES.weakSurnameTokenOnly.name,
+        address: { address1: '2 Token Ln', city: 'Othertown', state: 'SC', zipCode: '22222' },
+      },
+      {
         id: TRUSTEES.notYetSynced.id,
         name: TRUSTEES.notYetSynced.name,
         address: {
@@ -888,12 +904,12 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999417');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999418');
   } finally {
     await pool.close();
   }
@@ -1149,7 +1165,8 @@ async function runScenarios() {
     // checks.matchedTrusteeAppointment records whether one covers the case (asserted below).
     ['autoMatchCount', dist.autoMatchCount, 5],
     // 6: the name matches no CAMS trustee.
-    ['noMatchCount', dist.noMatchCount, 1],
+    // 6 (no candidates) and 16 (two candidates, only one passing the name check).
+    ['noMatchCount', dist.noMatchCount, 2],
     // 8: two trustees with identical names and nothing that separates them.
     ['multipleMatchCount', dist.multipleMatchCount, 1],
   ];
@@ -1266,6 +1283,15 @@ async function runScenarios() {
       TRUSTEES.ambiguousTie2.id,
     ]);
     assertCandidateScoresForUi('8. multiple-match-no-winner', task8);
+
+    // 16. two-candidates-one-passes-name-check: the pool has 2 candidates but fewer than 2 pass the
+    //     name check, so the shared rule labels the task 'no match' (the old pool-size rule said
+    //     'ambiguous').
+    const task16 = await taskFor(CASES.twoCandidatesOnePassesName.caseId);
+    assertIdentityTask('16. two-candidates-one-passes-name-check', task16, 'no match', [
+      TRUSTEES.weakFuzzySurname.id,
+      TRUSTEES.weakSurnameTokenOnly.id,
+    ]);
 
     // 9. case-not-yet-synced: no verification, no appointment (already asserted via
     //    notYetSyncedEvents above).
