@@ -39,6 +39,9 @@ describe('TabNavigation', () => {
     expect(screen.getByRole('link', { name: 'Change History' })).toHaveClass(
       'tab-navigation__link--current',
     );
+    expect(screen.getByRole('link', { name: 'CAMS Users' })).not.toHaveClass(
+      'tab-navigation__link--current',
+    );
   });
 
   test('should use links rather than the ARIA tab pattern', () => {

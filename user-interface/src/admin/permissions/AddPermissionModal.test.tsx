@@ -249,6 +249,30 @@ describe('AddPermissionModal', () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
+  test('should clear the error when retrying and close once the retry succeeds', async () => {
+    let finishRetry: () => void = () => {};
+    vi.spyOn(Api2, 'postRoleAssignment')
+      .mockRejectedValueOnce(new Error('500'))
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishRetry = () => resolve({ data: {} as UserRoleAssignment });
+        }),
+      );
+    await openFor();
+    await fillIn();
+    await userEvent.click(submitButton());
+    await screen.findByText(SAVE_FAILED);
+    await waitFor(() => expect(submitButton()).toBeEnabled());
+
+    await userEvent.click(submitButton());
+
+    expect(screen.queryByText(SAVE_FAILED)).not.toBeInTheDocument();
+    await act(async () => finishRetry());
+    await waitFor(() => expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden'));
+    expect(globalAlert.success).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
   test('should start empty each time it is opened', async () => {
     vi.spyOn(Api2, 'postRoleAssignment').mockRejectedValue(new Error('500'));
     await openFor();

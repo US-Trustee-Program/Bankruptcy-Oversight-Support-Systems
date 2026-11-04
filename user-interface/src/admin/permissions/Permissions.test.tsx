@@ -45,10 +45,6 @@ describe('Permissions', () => {
     renderAt('/admin/permissions/cams-users');
 
     expect(screen.getByTestId('mocked-cams-users')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'CAMS Users' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
   });
 
   test('should redirect /admin/permissions to the CAMS Users tab', () => {

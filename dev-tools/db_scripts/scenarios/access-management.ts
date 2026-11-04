@@ -36,10 +36,15 @@ const FLEXION_TEAM = {
   email: 'doj-ustp-cms-team@flexion.us',
 };
 
+/** An unset or blank variable (e.g. `SEED_SUPERUSER_ID=` in .env) uses the fallback. */
+function envOr(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback;
+}
+
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
-  const userId = process.env.SEED_SUPERUSER_ID ?? FLEXION_TEAM.id;
-  const userName = process.env.SEED_SUPERUSER_NAME ?? FLEXION_TEAM.name;
-  const email = process.env.SEED_SUPERUSER_EMAIL ?? FLEXION_TEAM.email;
+  const userId = envOr('SEED_SUPERUSER_ID', FLEXION_TEAM.id);
+  const userName = envOr('SEED_SUPERUSER_NAME', FLEXION_TEAM.name);
+  const email = envOr('SEED_SUPERUSER_EMAIL', FLEXION_TEAM.email);
 
   const assignment: UserRoleAssignment = {
     documentType: 'USER_ROLE_ASSIGNMENT',

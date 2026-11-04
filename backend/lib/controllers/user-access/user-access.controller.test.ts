@@ -181,6 +181,16 @@ describe('UserAccessController', () => {
     });
   });
 
+  test('should report an unexpected use-case failure as a 500 from this controller', async () => {
+    vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers').mockRejectedValue(new Error('boom'));
+
+    const error = await getTheThrownError(handle);
+
+    expect(error).toEqual(
+      expect.objectContaining({ status: 500, module: 'USER-ACCESS-CONTROLLER' }),
+    );
+  });
+
   test.each([
     { method: 'POST', resource: 'users' },
     { method: 'GET', resource: 'assignments' },

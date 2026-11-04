@@ -905,6 +905,20 @@ describe('access-management scenario', () => {
     expect(audit).toMatchObject({ userId: 'okta-00u123', userName: 'Dev Person' });
   });
 
+  test('blank SEED_SUPERUSER_* environment variables fall back to the Flexion Team account', async () => {
+    process.env.SEED_SUPERUSER_ID = '';
+    process.env.SEED_SUPERUSER_NAME = ' ';
+    process.env.SEED_SUPERUSER_EMAIL = '';
+
+    const assignment = documentIn(await operations(), 'user-role-assignments');
+
+    expect(assignment).toMatchObject({
+      userId: '00uxy2nwugG682IKt697',
+      userName: 'Flexion Team',
+      email: 'doj-ustp-cms-team@flexion.us',
+    });
+  });
+
   test('generates identical documents on every run so reseeding upserts in place', async () => {
     expect(await operations()).toEqual(await operations());
   });

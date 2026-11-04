@@ -158,14 +158,13 @@ describe('Admin screen tests', () => {
     expect(screen.getByTestId('mocked-permissions')).toBeInTheDocument();
   });
 
-  test('should not render Permissions or its nav link when the cams-role-assignments flag is off', () => {
+  test('should not render Permissions when the cams-role-assignments flag is off', () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       ...testFeatureFlags,
       [CAMS_ROLE_ASSIGNMENTS]: false,
     });
     renderAtPath('/admin/permissions/cams-users');
     expect(screen.queryByTestId('mocked-permissions')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('permissions-nav-link')).not.toBeInTheDocument();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 });

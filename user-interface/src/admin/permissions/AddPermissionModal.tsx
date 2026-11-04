@@ -17,7 +17,6 @@ import { ROLE_ASSIGNMENT_REASON_MAX_LENGTH } from '@common/cams/user-access';
 
 export type AddPermissionModalRef = {
   show: (user: CamsUserReference) => void;
-  hide: () => void;
 };
 
 export type AddPermissionModalProps = {
@@ -87,10 +86,6 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
         setUser(userToGrant);
         isOpenRef.current = true;
         modalRef.current?.show({});
-      },
-      hide() {
-        isOpenRef.current = false;
-        modalRef.current?.hide();
       },
     }));
 

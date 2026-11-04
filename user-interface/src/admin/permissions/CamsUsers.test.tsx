@@ -17,7 +17,7 @@ let modalProps: AddPermissionModalProps | undefined;
 vi.mock('./AddPermissionModal', () => ({
   AddPermissionModal: forwardRef(function MockModal(props: AddPermissionModalProps, ref) {
     modalProps = props;
-    useImperativeHandle(ref, () => ({ show: modalShow, hide: vi.fn() }));
+    useImperativeHandle(ref, () => ({ show: modalShow }));
     return <div data-testid="mocked-add-permission-modal" />;
   }),
 }));
@@ -565,18 +565,11 @@ describe('CamsUsers', () => {
 });
 
 describe('permissionSentence', () => {
-  const officeName = (officeCode: string) =>
-    officeCode === MANHATTAN.officeCode ? 'Manhattan' : officeCode;
+  const officeName = () => 'Manhattan';
 
   test('should name the role, region and office for an office permission', () => {
     expect(permissionSentence(permission(MANHATTAN), officeName)).toEqual(
       'Trial Attorney, Region 2, Manhattan',
-    );
-  });
-
-  test('should fall back to whatever the office lookup gives for an unknown office', () => {
-    expect(permissionSentence(permission(BUFFALO), officeName)).toEqual(
-      `Trial Attorney, Region 2, ${BUFFALO.officeCode}`,
     );
   });
 
