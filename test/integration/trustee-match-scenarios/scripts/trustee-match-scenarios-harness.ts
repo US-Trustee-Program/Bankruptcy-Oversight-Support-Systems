@@ -215,9 +215,10 @@ const TRUSTEES = {
   ambiguousWinnerDecoy: { id: 'ms-trustee-amb-winner-decoy', name: 'Ambiguous H Winner' },
   ambiguousTie1: { id: 'ms-trustee-amb-tie-1', name: 'Ambiguous T Tie' },
   ambiguousTie2: { id: 'ms-trustee-amb-tie-2', name: 'Ambiguous T Tie' },
-  // Scenario 16: the DXTR party is "Wendell Fairbanks" (Scenario City, SC 11111). Both trustees share
-  // its state, so discovery keeps them, but not its city or zip, so resolveByAddress does not fire. The fuzzy trustee passes the name check as
-  // 'weak' (fuzzy surname, identical first name); the other shares only a surname token and fails.
+  // Scenario 16: the DXTR party is "Wendell Fairbanks" (Scenario City, SC 11111). Both trustees
+  // share its state, so discovery keeps them, but not its city or zip, so resolveByAddress does not
+  // fire. The fuzzy trustee passes the name check as 'weak' (fuzzy surname, identical first name);
+  // the other has the exact surname but a different first name and fails the name check.
   weakFuzzySurname: { id: 'ms-trustee-weak-fuzzy', name: 'Wendell Q Fairbankz' },
   weakSurnameTokenOnly: { id: 'ms-trustee-weak-token', name: 'Winston Q Fairbanks' },
   notYetSynced: { id: 'ms-trustee-not-yet-synced', name: 'NotYet S Synced' },
@@ -287,7 +288,7 @@ const SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID = '083-26-88915';
 const SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID = '083-26-88916';
 const NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID = '083-26-88917';
 // Like BAD_REC_DATE_CASE_ID, these DO have DXTR rows (so they're covered by the
-// 999999400-999999417 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
+// 999999400-999999418 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
 // tracked separately here purely so clean() also removes the two Cosmos SYNCED_CASE fixtures
 // runSentinelProfCodeStage seeds for the two non-skipped cases (15b, 15c).
 const STAGE_9_CASE_IDS = [

@@ -1206,7 +1206,11 @@ function getTrusteeMatchScenarioFindings(key: TrusteeMatchScenarioKey): TrusteeS
   return structuredClone(findings[key]);
 }
 
-/** A pending DXTR identity task whose findings carry the given candidates (none by default). */
+/**
+ * A pending DXTR identity task whose findings carry the given candidates (none by default).
+ * mismatchReason defaults to 'no match'; pass it in the override for an 'ambiguous' task, since
+ * the rule that decides it lives in the backend and cannot be imported here.
+ */
 function getTrusteeMatchVerification(
   override: Partial<TrusteeMatchVerification> = {},
 ): TrusteeMatchVerification {
@@ -1219,7 +1223,7 @@ function getTrusteeMatchVerification(
     caseId,
     courtId: '081',
     status: 'pending',
-    mismatchReason: findings.candidates.length > 1 ? 'ambiguous' : 'no match',
+    mismatchReason: 'no match',
     source: 'DXTR',
     findings,
     sourceTrustee: findings.sourceRaw,
