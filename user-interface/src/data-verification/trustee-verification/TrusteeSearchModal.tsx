@@ -136,6 +136,9 @@ function TrusteeSearchModal_(
     const nextCourtId = options.length > 0 ? options[0].value : undefined;
     setSelectedCourtId(nextCourtId);
     setSearchResults([]);
+    // A trustee picked under the previous district is no longer a result of the current search.
+    setSelectedTrustee(null);
+    trusteeNameComboBoxRef.current?.clearSelections();
     // Rerun the typed query against the new district so switching districts doesn't force
     // the user to retype the trustee name.
     searchTrustees(lastQueryRef.current, findCourt(nextCourtId)?.courtId);
