@@ -321,35 +321,35 @@ test.describe('Trustee Identity Verification', () => {
       );
     });
 
-    // As above, the fixture stands in for the ACMS sync's output (seed-match-acms-no-match).
+    // The slice's user-facing acceptance check: a caseless ACMS 'no match' task, whose one
+    // candidate passed the name check, can be approved. The fixture stands in for the ACMS sync's
+    // output (its shape is pinned by seed-match-acms-no-match); the zero-case modal and alert
+    // sentences are already covered by the ACMS ambiguous test above.
     test('approves an ACMS-sourced caseless no-match task with a name-passing candidate', async ({
       page,
     }) => {
+      await expect(
+        page.getByTestId(`accordion-heading-${ACMS_NO_MATCH_TASK_ID}`),
+        `${ACMS_NO_MATCH_TASK_ID} is missing; reseed the e2e database`,
+      ).toBeVisible(timeoutOption);
       const content = await expandTask(page, ACMS_NO_MATCH_TASK_ID);
 
       await expect(content.getByTestId('problem-statement')).toContainText(
         'Trustee state sent to CAMS does not exactly match a trustee in CAMS. No cases yet.',
         timeoutOption,
       );
-      await expect(
-        content.getByTestId('trustee-comparison-table').locator('tbody').getByRole('rowheader'),
-      ).toHaveText(['Noel Acmsnomatch']);
+      const table = content.getByTestId('trustee-comparison-table');
+      await expect(table.locator('tbody').getByRole('rowheader')).toHaveText(['Noel Acmsnomatch']);
+      await expect(table.getByLabel('Name differs from the source record')).toHaveCount(0);
 
-      const { modal, submit } = await approveCandidate(
+      const { submit } = await approveCandidate(
         page,
         content,
         ACMS_NO_MATCH_TASK_ID,
         'seed-trustee-match-acms-nomatch',
       );
-      await expect(modal).toContainText(
-        'No cases are affected yet. Future cases sent with this information will be matched to Noel Acmsnomatch automatically.',
-      );
       await submit();
 
-      await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
-        'Trustee Noel Acmsnomatch appointed. No cases affected.',
-        timeoutOption,
-      );
       await expect(content.getByTestId('resolved-statement')).toContainText(
         'Trustee Noel Acmsnomatch was approved. No cases affected.',
         timeoutOption,

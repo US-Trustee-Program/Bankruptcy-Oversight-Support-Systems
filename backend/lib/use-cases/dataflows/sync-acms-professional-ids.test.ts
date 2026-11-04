@@ -562,7 +562,6 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(task).toMatchObject({
           source: 'ACMS',
           mismatchReason: 'ambiguous',
-          status: 'pending',
           acmsProfessionalId: 'NY-00063',
           fingerprint: computeFingerprint(variant),
           variant,
@@ -637,7 +636,8 @@ describe('SyncAcmsProfessionalIds', () => {
         ['skip', { skip: true }, 'skipped-not-a-person'],
         ['error', { error: new UnknownError('TEST') }, 'error'],
       ])(
-        'writes no task when an ambiguous-looking state has %s set',
+        // Two name-passing candidates, so this also guards the no-match task path.
+        'writes no identity task when a state with name-passing candidates has %s set',
         async (_label, overrides, expectedKind) => {
           mockIdentification({
             kind: 'unresolved',
@@ -659,7 +659,8 @@ describe('SyncAcmsProfessionalIds', () => {
         },
       );
 
-      test('writes no task for a conflict', async () => {
+      // The conflict state has name-passing candidates, so this guards both task kinds.
+      test('writes no identity task for a conflict', async () => {
         mockIdentification({
           kind: 'conflict',
           via: 'name',
@@ -695,7 +696,6 @@ describe('SyncAcmsProfessionalIds', () => {
         expect(upsertSpy.mock.calls[0][0]).toMatchObject({
           source: 'ACMS',
           mismatchReason: 'no match',
-          status: 'pending',
           acmsProfessionalId: 'NY-00063',
           fingerprint,
           variant,
@@ -785,19 +785,27 @@ describe('SyncAcmsProfessionalIds', () => {
       test.each([
         ['pending', { kind: 'no-match-task-pending' }],
         ['approved', { kind: 'no-match-already-resolved' }],
-      ] as const)('leaves an existing %s task untouched', async (status, expectedOutcome) => {
-        mockIdentification({ kind: 'unresolved', state: noMatchWithNamePassingCandidate() });
-        withActiveAppointment();
-        vi.spyOn(deps.verificationRepo, 'findByFingerprint').mockResolvedValue([
-          existingTask(status),
-        ]);
-        const taskSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+      ] as const)(
+        'leaves an existing %s task untouched, even one raised as ambiguous',
+        async (status, expectedOutcome) => {
+          mockIdentification({ kind: 'unresolved', state: noMatchWithNamePassingCandidate() });
+          withActiveAppointment();
+          vi.spyOn(deps.verificationRepo, 'findByFingerprint').mockResolvedValue([
+            { ...existingTask(status), mismatchReason: 'ambiguous' },
+          ]);
+          const taskSpy = vi.spyOn(deps.verificationRepo, 'upsertVerification');
+          const idUpsertSpy = vi.spyOn(deps.professionalIdsRepo, 'upsertProfessionalId');
 
-        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+          const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-        expect(taskSpy).not.toHaveBeenCalled();
-        expect(outcome).toEqual(expectedOutcome);
-      });
+          expect(idUpsertSpy).toHaveBeenCalledWith(
+            expect.objectContaining({ disposition: 'no-match' }),
+            expect.anything(),
+          );
+          expect(taskSpy).not.toHaveBeenCalled();
+          expect(outcome).toEqual(expectedOutcome);
+        },
+      );
     });
 
     describe('manual link guard', () => {

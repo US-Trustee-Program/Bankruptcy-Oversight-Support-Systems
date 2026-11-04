@@ -217,10 +217,13 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expectNoSurrogates(ops, verification?.fingerprint);
   });
 
+  // Pinning each task to its scenario's findings matters because mismatchReason alone cannot
+  // tell scenarios apart: zero and one candidate both seed 'no match'.
   test.each([
-    { id: 'seed-match-caseless', expected: { source: 'DXTR' } },
+    { id: 'seed-match-caseless', key: 'multipleCandidatesCaseless', expected: { source: 'DXTR' } },
     {
       id: 'seed-match-acms-ambiguous',
+      key: 'acmsAmbiguousCaseless',
       expected: {
         source: 'ACMS',
         mismatchReason: 'ambiguous',
@@ -229,19 +232,21 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     },
     {
       id: 'seed-match-acms-no-match',
+      key: 'acmsNoMatchCaseless',
       expected: {
         source: 'ACMS',
         mismatchReason: 'no match',
         acmsProfessionalId: 'SEED-ACMS-NO-MATCH',
       },
     },
-  ])(
-    'should seed $id as a pending caseless task with no surrogate rows',
-    async ({ id, expected }) => {
+  ] as const)(
+    'should seed $id as a pending caseless task with the $key findings and no surrogate rows',
+    async ({ id, key, expected }) => {
       const ops = await generate(context());
       const verification = findVerification(ops, id);
 
       expect(verification).toMatchObject({ status: 'pending', ...expected });
+      expect(verification?.findings).toEqual(MockData.getTrusteeMatchScenarioFindings(key));
       // Asserted truthy so expectNoSurrogates cannot pass by matching an undefined trusteeId.
       expect(verification?.fingerprint).toBeTruthy();
       expect('caseId' in (verification ?? {})).toBe(false);
@@ -296,7 +301,7 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
 describe('trustee-match-all-scenarios (CAMS-953 Slice 6 ACMS professional id)', () => {
   test('should seed one approvable pending DXTR task carrying an ACMS professional id', async () => {
     const ops = await generate(context());
-    // The caseless ACMS-sourced task also carries one, but has no case for the gate to check.
+    // The caseless ACMS-sourced tasks also carry one, but have no case for the gate to check.
     const tasks = ops
       .filter((o) => o.collectionOrTable === 'trustee-match-verification')
       .flatMap((o) => o.data)
