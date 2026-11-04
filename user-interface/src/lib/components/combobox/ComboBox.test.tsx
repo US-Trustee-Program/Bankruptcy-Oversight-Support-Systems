@@ -2485,7 +2485,9 @@ describe('ComboBox keepFilterOnClose', () => {
   ];
   const userEvent = TestingUtilities.setupUserEvent();
 
-  function renderSearchComboBox(props: Partial<ComboBoxProps> = {}) {
+  // Omit 'ref': ComboBoxProps inherits the input element's ref type, which conflicts with the
+  // forwarded ComboBoxRef when spread onto <ComboBox>.
+  function renderSearchComboBox(props: Partial<Omit<ComboBoxProps, 'ref'>> = {}) {
     render(
       <div>
         <button className="button1" tabIndex={0}>
