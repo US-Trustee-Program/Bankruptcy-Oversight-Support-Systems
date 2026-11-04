@@ -50,6 +50,7 @@ describe('sync-acms-professional-ids handlePage retry/DLQ', () => {
       trusteesRepo: {} as never,
       variationRepo: {} as never,
       professionalIdsRepo: {} as never,
+      verificationRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
@@ -96,6 +97,7 @@ describe('sync-acms-professional-ids handlePage retry/DLQ', () => {
       trusteesRepo: {} as never,
       variationRepo: {} as never,
       professionalIdsRepo: {} as never,
+      verificationRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
     // The error surfaces from processing the page's records (not a second page
@@ -143,6 +145,7 @@ describe('sync-acms-professional-ids handlePage retry/DLQ', () => {
       trusteesRepo: {} as never,
       variationRepo: {} as never,
       professionalIdsRepo: {} as never,
+      verificationRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
@@ -181,6 +184,7 @@ describe('sync-acms-professional-ids handlePage retry/DLQ', () => {
       trusteesRepo: {} as never,
       variationRepo: {} as never,
       professionalIdsRepo: {} as never,
+      verificationRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
 

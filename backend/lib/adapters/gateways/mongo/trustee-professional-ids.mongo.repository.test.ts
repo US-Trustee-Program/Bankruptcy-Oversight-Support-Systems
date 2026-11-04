@@ -346,6 +346,84 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
+  describe('findUnresolvedByFingerprint', () => {
+    const fingerprint = 'a'.repeat(64);
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'camsTrusteeId' },
+          rightOperand: fingerprint,
+        },
+        {
+          conjunction: 'OR',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'disposition' },
+              rightOperand: 'no-match',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'disposition' },
+              rightOperand: 'ambiguous',
+            },
+          ],
+        },
+      ],
+    };
+
+    test('should find the no-match and ambiguous records keyed by the fingerprint, with evidence', async () => {
+      const unresolved: TrusteeProfessionalIdDocument[] = [
+        {
+          ...sampleProfessionalId,
+          id: 'prof-id-1',
+          camsTrusteeId: fingerprint,
+          acmsProfessionalId: 'NY-00063',
+          disposition: 'no-match',
+          linkMethod: undefined,
+        },
+        {
+          ...sampleProfessionalId,
+          id: 'prof-id-2',
+          camsTrusteeId: fingerprint,
+          acmsProfessionalId: 'UT-05321',
+          disposition: 'ambiguous',
+          linkMethod: undefined,
+        },
+      ];
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(unresolved);
+
+      const result = await repository.findUnresolvedByFingerprint(fingerprint);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result.map((record) => record.acmsProfessionalId)).toEqual(['NY-00063', 'UT-05321']);
+      expect(result[0].evidence).toBeDefined();
+    });
+
+    test('should return an empty array when no unresolved record has the fingerprint', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await expect(repository.findUnresolvedByFingerprint(fingerprint)).resolves.toEqual([]);
+    });
+
+    test('should handle database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.findUnresolvedByFingerprint(fingerprint)).rejects.toThrow(
+        `Failed to find unresolved professional IDs for fingerprint ${fingerprint}.`,
+      );
+    });
+  });
+
   describe('findByAcmsProfessionalId', () => {
     const acmsProfessionalId = 'AK-01414';
     const expectedQuery = {
@@ -505,39 +583,6 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       await expect(repository.hasConflictByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
         `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
       );
-    });
-  });
-
-  describe('deleteByCamsTrusteeId', () => {
-    const camsTrusteeId = 'trustee-1';
-    const expectedQuery = {
-      condition: 'EQUALS',
-      leftOperand: { name: 'camsTrusteeId' },
-      rightOperand: camsTrusteeId,
-    };
-
-    test('should delete all professional IDs for a trustee and return count', async () => {
-      const deletedCount = 2;
-      const deleteManySpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockResolvedValue(deletedCount);
-
-      const result = await repository.deleteByCamsTrusteeId(camsTrusteeId);
-
-      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
-      expect(result).toBe(deletedCount);
-    });
-
-    test('should handle database errors', async () => {
-      const error = new Error('Database connection failed');
-      const deleteManySpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockRejectedValue(error);
-
-      await expect(repository.deleteByCamsTrusteeId(camsTrusteeId)).rejects.toThrow(
-        `Failed to delete professional IDs for trustee ${camsTrusteeId}.`,
-      );
-      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
     });
   });
 

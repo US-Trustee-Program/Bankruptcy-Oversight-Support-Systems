@@ -22,6 +22,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { buildTrusteeExplanation } from './trustee-explanation';
 
 const fieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
 
@@ -101,7 +102,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   status: 'pending',
   mismatchReason: 'ambiguous',
   source: 'DXTR',
-  dxtrTrustee: { fullName: 'John Doe' },
+  sourceTrustee: { fullName: 'John Doe' },
   affectedCaseCount: 1,
   affectedCaseIds: ['081-22-11111'],
   taskDate: '2026-01-15T10:00:00.000Z',
@@ -117,7 +118,7 @@ const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   mismatchReason: 'ambiguous',
   source: 'DXTR',
   findings: findings([janetSmith, janeSmith]),
-  dxtrTrustee: { fullName: 'John Doe' },
+  sourceTrustee: { fullName: 'John Doe' },
   updatedOn: '2026-01-15T10:00:00.000Z',
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
   createdOn: '2026-01-15T10:00:00.000Z',
@@ -253,9 +254,6 @@ function confirmModalSubmit(orderId = sampleOrder.id) {
 describe('TrusteeMatchVerificationAccordion', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    // Default: no case summary available. Tests that care about the search modal's chapter
-    // filter override this with their own getCaseSummary mock.
-    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not mocked in this test'));
   });
 
   describe('accordion heading', () => {
@@ -418,6 +416,44 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
       expect(screen.getByTestId('approve-candidate-trustee-2')).toBeInTheDocument();
+    });
+
+    test('gives the information received table the same col widths as the potential matches table for a pending task', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const colClasses = (testId: string) =>
+        Array.from(screen.getByTestId(testId).querySelectorAll('col')).map((col) => col.className);
+      expect(colClasses('trustee-information-received-table')).toEqual(
+        colClasses('trustee-comparison-table'),
+      );
+      expect(colClasses('trustee-information-received-table')).toContain('comparison-col-action');
+    });
+
+    test('shows no Action col in the information received table when a pending task has no candidates', async () => {
+      renderWithProps();
+      await mockDetailAndExpand({ ...sampleOrderDetail, findings: findings([]) });
+
+      expect(
+        screen
+          .getByTestId('trustee-information-received-table')
+          .querySelector('.comparison-col-action'),
+      ).toBeNull();
+    });
+
+    test('shows no Action col in either table when the task is not pending', async () => {
+      renderWithProps({ order: { ...sampleOrder, status: 'rejected' as const } });
+      await mockDetailAndExpand({ ...sampleOrderDetail, status: 'rejected' });
+
+      expect(candidateRowHeaders()).toEqual(['Jane Smith', 'Janet Smith']);
+      expect(
+        screen
+          .getByTestId('trustee-information-received-table')
+          .querySelector('.comparison-col-action'),
+      ).toBeNull();
+      expect(
+        screen.getByTestId('trustee-comparison-table').querySelector('.comparison-col-action'),
+      ).toBeNull();
     });
 
     test('does not offer Match Trustee for a task that is not pending', async () => {
@@ -629,37 +665,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
-    test('does not fetch the case summary on mount for a resolved task', async () => {
-      // The accordion group keeps every row mounted, so an ungated fetch would fire once per
-      // approved row on every list render with no display benefit.
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
-
-      renderWithProps({ order: resolvedOrder });
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(caseSummarySpy).not.toHaveBeenCalled();
-    });
-
-    test('does not fetch the case summary on mount for a pending, un-expanded task', async () => {
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
-
-      renderWithProps();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(caseSummarySpy).not.toHaveBeenCalled();
-    });
-
-    test('fetches the case summary once a pending task is expanded', async () => {
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
-        data: MockData.getCaseSummary({ override: { caseId: sampleOrder.caseId } }),
-      });
-
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
-    });
-
     test('does not refetch detail on collapse and re-expand once it has already loaded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       renderWithProps();
@@ -676,35 +681,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
 
       expect(detailSpy).toHaveBeenCalledTimes(1);
-    });
-
-    test('fetches the case summary for the originating case only', async () => {
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
-        data: MockData.getCaseSummary({ override: { caseId: sampleOrder.caseId } }),
-      });
-
-      renderWithProps();
-      await mockDetailAndExpand({
-        ...sampleOrderDetail,
-        affectedCaseIds: [sampleOrder.caseId!, '081-22-22222', '081-22-33333'],
-      });
-
-      await waitFor(() => expect(caseSummarySpy).toHaveBeenCalledWith(sampleOrder.caseId));
-      expect(caseSummarySpy).toHaveBeenCalledTimes(1);
-    });
-
-    test('does not fetch a case summary for a caseless pending task, even when expanded', async () => {
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
-
-      renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
-      await mockDetailAndExpand({
-        ...sampleOrderDetail,
-        caseId: undefined,
-        courtId: undefined,
-        affectedCaseIds: [],
-      });
-
-      expect(caseSummarySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -970,16 +946,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
     ];
 
     function setupSearchMocks(results: TrusteeSearchResult[] = manualSearchMockData) {
-      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
-        data: MockData.getCaseSummary({
-          override: {
-            caseId: sampleOrder.caseId,
-            chapter: '7',
-            courtId: '081',
-            courtDivisionCode: '081',
-          },
-        }),
-      });
       return vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: results });
     }
 
@@ -1036,6 +1002,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand();
 
       await openSearchModal();
+
+      expect(screen.getByRole('heading', { name: 'Search for Trustee' })).toBeVisible();
     });
 
     test('opens the search modal without throwing for a caseless pending task', async () => {
@@ -1048,6 +1016,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
 
       await openSearchModal();
+
+      expect(screen.getByRole('heading', { name: 'Search for Trustee' })).toBeVisible();
     });
 
     test('passes the courts-matched courtId, not order.courtId, to the search modal', async () => {
@@ -1110,7 +1080,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    // Proves the accordion threads order.dxtrTrustee.legacy through to the search modal's court
+    // Proves the accordion threads order.sourceTrustee.legacy through to the search modal's court
     // column. Only asserts on real forwarded values (the accordion's own contract) - not on
     // TrusteeSearchModal's placeholder wording for missing fields, which is that component's own
     // concern and is already covered by TrusteeSearchModal.test.tsx.
@@ -1140,7 +1110,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     ])("the search modal's court column shows $label", async ({ legacy, expectContains }) => {
       renderWithProps({
-        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy } },
+        order: { ...sampleOrder, sourceTrustee: { fullName: 'John Doe', legacy } },
       });
       await mockDetailAndExpand();
 
@@ -1154,7 +1124,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     test('does not crash the search modal when the order has no legacy contact fields', async () => {
       renderWithProps({
-        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe', legacy: undefined } },
+        order: { ...sampleOrder, sourceTrustee: { fullName: 'John Doe', legacy: undefined } },
       });
       await mockDetailAndExpand();
 
@@ -1347,39 +1317,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
         );
       });
     });
-
-    test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
-      const searchSpy = setupSearchMocks();
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      await openSearchModal();
-      await selectFirstSearchResult();
-
-      const [, , divisionCode, chapter] = searchSpy.mock.calls[0];
-      expect(divisionCode).toBe('081');
-      expect(chapter).toBe('7');
-    });
-
-    test('falls back to district-only filtering when the case-summary fetch fails', async () => {
-      const searchSpy = vi
-        .spyOn(Api2, 'searchTrustees')
-        .mockResolvedValue({ data: manualSearchMockData });
-      renderWithProps();
-      await mockDetailAndExpand();
-
-      await openSearchModal();
-      const comboBoxId = `trustee-search-combobox-${sampleOrder.id}`;
-      fireEvent.click(document.getElementById(`${comboBoxId}-expand`)!);
-      fireEvent.change(
-        document.getElementById(`${comboBoxId}-combo-box-input`) as HTMLInputElement,
-        { target: { value: 'manual' } },
-      );
-
-      await waitFor(() => expect(searchSpy).toHaveBeenCalled());
-      const [, , , chapter] = searchSpy.mock.calls[0];
-      expect(chapter).toBeUndefined();
-    });
   });
 
   describe('affected case count/list display', () => {
@@ -1413,7 +1350,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('shows "No cases yet. Cases attach as appointments sync." for a caseless task', async () => {
+    test('shows "No cases yet." for a caseless task', async () => {
       renderWithProps({ order: { ...sampleOrder, caseId: undefined, courtId: undefined } });
       await mockDetailAndExpand({
         ...sampleOrderDetail,
@@ -1425,9 +1362,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const problemStatement = screen
         .getByTestId(`accordion-content-${sampleOrder.id}`)
         .querySelector('.problem-statement');
-      expect(problemStatement?.textContent).toContain(
-        'No cases yet. Cases attach as appointments sync.',
-      );
+      const { sentence } = buildTrusteeExplanation(sampleOrderDetail.findings);
+      expect(problemStatement?.textContent).toBe(`${sentence} No cases yet.`);
+      expect(problemStatement?.textContent).not.toContain('Cases attach as appointments sync.');
       expect(problemStatement?.textContent).not.toContain('No cases affected yet.');
       expect(
         screen.queryByRole('link', { name: /22-11111/, hidden: true }),

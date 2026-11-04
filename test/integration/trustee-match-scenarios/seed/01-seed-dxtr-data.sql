@@ -8,13 +8,13 @@
 -- Divisions:
 --   CS_DIV='083', GRP_DES='MS', COURT_ID='0210', CS_DIV_ACMS='083' — all scenarios
 
-DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999401' AND '999999417' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999401' AND '999999418' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999401' AND '999999417' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999401' AND '999999418' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999401' AND '999999417' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999401' AND '999999418' AND COURT_ID = '0210';
 GO
 
 DELETE FROM dbo.AO_CS_DIV WHERE CS_DIV = '083' AND GRP_DES = 'MS';
@@ -56,7 +56,8 @@ VALUES
   ('999999414', '0210', '26-88914', '083', '7', 'MS'), -- 15a. sentinel-00000-no-name-no-address
   ('999999415', '0210', '26-88915', '083', '7', 'MS'), -- 15b. sentinel-99999-bogus-name-with-contact
   ('999999416', '0210', '26-88916', '083', '7', 'MS'), -- 15c. sentinel-00000-genuine-name-and-address
-  ('999999417', '0210', '26-88917', '083', '7', 'MS'); -- 15d. non-sentinel-profcode-empty-demographics
+  ('999999417', '0210', '26-88917', '083', '7', 'MS'), -- 15d. non-sentinel-profcode-empty-demographics
+  ('999999418', '0210', '26-88918', '083', '7', 'MS'); -- 16. two-candidates-one-passes-name-check
 GO
 
 -- 2. perfect-match-ambiguous-name-resolved-by-scoring — resolves via fuzzy scoring against an
@@ -157,6 +158,25 @@ INSERT INTO dbo.AO_PY (
   '8 Tie Rd', '', '', 'Nowhere', 'ZZ', '00000', 'USA',
   '', '', ''
 );
+GO
+
+-- 16. two-candidates-one-passes-name-check — the pool holds two CAMS trustees: one is a
+-- fuzzy-surname match (passes the name check as 'weak'), the other shares only a surname token
+-- (fails the name check). Both share the party's state, so discovery keeps them. Fewer than two
+-- candidates pass the name check, so the label is 'no match', not 'ambiguous'.
+INSERT INTO dbo.AO_PY (
+  CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
+  PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
+  PY_PHONENO, PY_FAX_PHONE, PY_E_MAIL
+) VALUES (
+  '999999418', '0210', 'tr', 'Wendell', '', 'Fairbanks', '',
+  '16 Weak Rd', '', '', 'Scenario City', 'SC', '11111', 'USA',
+  '', '', ''
+);
+GO
+
+INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
+VALUES ('999999418', '0210', 'A', 'TR', '2026-01-18T00:00:00', STUFF(REPLICATE(' ', 237), 24, 6, '260118'));
 GO
 
 -- 9. case-not-yet-synced — resolves via FP fine; deliberately no SYNCED_CASE Cosmos doc.

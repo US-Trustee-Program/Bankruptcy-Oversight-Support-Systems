@@ -11,7 +11,7 @@ import {
 import factory from '../../factory';
 import {
   firstLastNameToken,
-  isBlankAcmsValue,
+  isBlankSourceValue,
   isFirstMiddleSwap,
   isOneSidedMiddleNameMatch,
   isPlausibleNicknameByDistance,
@@ -32,7 +32,7 @@ import {
   shouldSkipAsNotAPerson,
   shouldSkipAsUstStaff,
   stripAdministrativeMarkers,
-} from './acms-name-normalization.helpers';
+} from './source-name-normalization.helpers';
 import {
   isKnownNicknamePair,
   nameSimilarity,
@@ -68,8 +68,8 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-STAGES';
 const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.88;
 
 /** Whether two surnames are plausibly spelling variants: JaroWinkler OR SoundEx/Metaphone. */
-function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
-  const a = acmsNamePart.toLowerCase();
+function isFuzzyNamePartMatch(sourceNamePart: string, camsNamePart: string): boolean {
+  const a = sourceNamePart.toLowerCase();
   const b = camsNamePart.toLowerCase();
   return nameSimilarity(a, b) >= FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD || soundsAlike(a, b);
 }
@@ -77,11 +77,11 @@ function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boole
 /** Memoized on the candidate, so the comparison is also kept in its persisted evidence. */
 function memoizedIsFuzzyNamePartMatch(
   memo: NormalizedMemo,
-  acmsNamePart: string,
+  sourceNamePart: string,
   camsNamePart: string,
 ): boolean {
-  return normalize(memo, 'isFuzzyNamePartMatch', `${acmsNamePart}|${camsNamePart}`, () =>
-    isFuzzyNamePartMatch(acmsNamePart, camsNamePart),
+  return normalize(memo, 'isFuzzyNamePartMatch', `${sourceNamePart}|${camsNamePart}`, () =>
+    isFuzzyNamePartMatch(sourceNamePart, camsNamePart),
   );
 }
 
@@ -252,7 +252,9 @@ const VALID_STATE_CODES = new Set(usStates.map((s) => s.code));
  * parseCityStateZip, plus a fallback for a zipless "CITY ST" address common in ACMS. The shared
  * parser stays strict because DXTR paths use it. A recovered address has zipCode ''.
  */
-function parseAcmsCityStateZip(cityStateZipCountry?: string): ReturnType<typeof parseCityStateZip> {
+function parseSourceCityStateZip(
+  cityStateZipCountry?: string,
+): ReturnType<typeof parseCityStateZip> {
   const parsed = parseCityStateZip(cityStateZipCountry);
   if (parsed) return parsed;
   if (!cityStateZipCountry) return null;
@@ -284,7 +286,7 @@ function emailMatch(sourceEmail: string | undefined, camsEmail: string | undefin
  * primary surname reduction goes to lastName and the rest to lastNameAlternates, so recall can try
  * each. Pure and idempotent.
  */
-export function normalizeAcmsSourceName(): Stage {
+export function normalizeSourceName(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     // Both recoveries read pre-strip text: stripAdministrativeMarkers removes the "LAST, FIRST"
     // comma and the digit ("TACOMACH13") their detection depends on.
@@ -368,7 +370,7 @@ export function skipAdministrativePlaceholder(): Stage {
 }
 
 /** Trustees whose surname matches the normalized source lastName or any of its alternates. */
-async function findSurnameExactCandidatesForAcms(
+async function findSurnameExactCandidatesForSource(
   context: ApplicationContext,
   sourceNormalized: NormalizedTrustee,
 ): Promise<Trustee[]> {
@@ -400,7 +402,7 @@ export function recallBySurnameExact(context: ApplicationContext): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     let found;
     try {
-      found = await findSurnameExactCandidatesForAcms(context, state.sourceNormalized);
+      found = await findSurnameExactCandidatesForSource(context, state.sourceNormalized);
     } catch (originalError) {
       return {
         ...state,
@@ -551,9 +553,9 @@ export function recallByTokenIntersection(context: ApplicationContext): Stage {
  */
 export function recallByAnchoredLevenshtein(context: ApplicationContext): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const acmsFirst = state.sourceNormalized.firstName ?? '';
-    const acmsLast = state.sourceNormalized.lastName ?? '';
-    if (!acmsFirst || !acmsLast) return state;
+    const sourceFirstName = state.sourceNormalized.firstName ?? '';
+    const sourceLastName = state.sourceNormalized.lastName ?? '';
+    if (!sourceFirstName || !sourceLastName) return state;
 
     const trusteesRepo = factory.getTrusteesRepository(context);
     const candidatesById = new Map<string, { trustee: Trustee; editDistance: number }>();
@@ -594,10 +596,20 @@ export function recallByAnchoredLevenshtein(context: ApplicationContext): Stage 
       return undefined;
     };
 
-    const firstDirectionError = await tryDirection(acmsLast, acmsFirst, 'lastName', 'firstName');
+    const firstDirectionError = await tryDirection(
+      sourceLastName,
+      sourceFirstName,
+      'lastName',
+      'firstName',
+    );
     if (firstDirectionError) return { ...state, error: firstDirectionError };
 
-    const secondDirectionError = await tryDirection(acmsFirst, acmsLast, 'firstName', 'lastName');
+    const secondDirectionError = await tryDirection(
+      sourceFirstName,
+      sourceLastName,
+      'firstName',
+      'lastName',
+    );
     if (secondDirectionError) return { ...state, error: secondDirectionError };
 
     for (const { trustee, editDistance } of candidatesById.values()) {
@@ -740,19 +752,19 @@ function isInitialOf(a: string, b: string): boolean {
 
 /** Fraction of ACMS name tokens matching some CAMS token exactly, as an initial, or as a known
  * nickname. Diagnostic only. */
-function tokenNameMatchRate(normalizedAcms: string, normalizedCams: string): number {
-  const acmsTokens = normalizedAcms.split(' ').filter(Boolean);
+function tokenNameMatchRate(normalizedSource: string, normalizedCams: string): number {
+  const sourceTokens = normalizedSource.split(' ').filter(Boolean);
   const camsTokens = normalizedCams.split(' ').filter(Boolean);
-  if (acmsTokens.length === 0) return 0;
+  if (sourceTokens.length === 0) return 0;
   let matched = 0;
-  for (const at of acmsTokens) {
+  for (const at of sourceTokens) {
     const hit = camsTokens.some(
       (ct) =>
         at === ct || isInitialOf(at, ct) || isInitialOf(ct, at) || isKnownNicknamePair(at, ct),
     );
     if (hit) matched++;
   }
-  return Math.round((matched / acmsTokens.length) * 1000) / 1000;
+  return Math.round((matched / sourceTokens.length) * 1000) / 1000;
 }
 
 /**
@@ -763,14 +775,14 @@ function recordSimilarityDiagnostics(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const normalizedAcms = memoizedNormalizeName(sourceNormalized, sourceNormalized.fullName ?? '');
+  const normalizedSource = memoizedNormalizeName(sourceNormalized, sourceNormalized.fullName ?? '');
   const normalizedCams = memoizedNormalizeName(candidate.camsNormalized, candidate.camsRaw.name);
-  const fingerprint = `${normalizedAcms}|${normalizedCams}`;
+  const fingerprint = `${normalizedSource}|${normalizedCams}`;
   normalize(candidate.memo, 'fullNameSimilarity', fingerprint, () =>
-    fullNameSimilarity(normalizedAcms, normalizedCams),
+    fullNameSimilarity(normalizedSource, normalizedCams),
   );
   normalize(candidate.memo, 'tokenNameMatchRate', fingerprint, () =>
-    tokenNameMatchRate(normalizedAcms, normalizedCams),
+    tokenNameMatchRate(normalizedSource, normalizedCams),
   );
   return candidate;
 }
@@ -790,7 +802,7 @@ function hasNoContactData(fields: {
   return !fields.address1 && !fields.city && !fields.state && !fields.zipCode && !fields.phone;
 }
 
-function scoreHasAddressAndPhone(
+function scoreCandidateHasAddressAndPhone(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
@@ -801,38 +813,38 @@ function scoreHasAddressAndPhone(
     zipCode: candidate.camsRaw.address?.zipCode,
     phone: candidate.camsRaw.phone?.number,
   });
-  addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', { pass: !noContactData });
+  addScore(candidate, 'doesCandidateTrusteeHaveAddressAndPhone', { pass: !noContactData });
   return candidate;
 }
 
-function memoizedAcmsHasNoContactData(sourceNormalized: NormalizedTrustee): boolean {
-  if (sourceNormalized.acmsHasNoContactData === undefined) {
+function memoizedSourceHasNoContactData(sourceNormalized: NormalizedTrustee): boolean {
+  if (sourceNormalized.sourceHasNoContactData === undefined) {
     const legacy = sourceNormalized.legacy;
-    sourceNormalized.acmsHasNoContactData =
-      isBlankAcmsValue(legacy?.address1) &&
-      isBlankAcmsValue(legacy?.cityStateZipCountry) &&
-      isBlankAcmsValue(legacy?.phone) &&
-      isBlankAcmsValue(legacy?.email);
+    sourceNormalized.sourceHasNoContactData =
+      isBlankSourceValue(legacy?.address1) &&
+      isBlankSourceValue(legacy?.cityStateZipCountry) &&
+      isBlankSourceValue(legacy?.phone) &&
+      isBlankSourceValue(legacy?.email);
   }
-  return sourceNormalized.acmsHasNoContactData;
+  return sourceNormalized.sourceHasNoContactData;
 }
 
-function scoreAcmsHasAddressAndPhone(
+function scoreSourceHasAddressAndPhone(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const acmsHasNoContactData = memoizedAcmsHasNoContactData(sourceNormalized);
-  addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: !acmsHasNoContactData });
+  const sourceHasNoContactData = memoizedSourceHasNoContactData(sourceNormalized);
+  addScore(candidate, 'doesSourceTrusteeHaveAddressAndPhone', { pass: !sourceHasNoContactData });
   return candidate;
 }
 
 /** Parses the ACMS address once, caching it on sourceNormalized.address. An unparseable address
  * is not cached and is simply re-parsed. */
-function memoizedParseAcmsAddress(
+function memoizedParseSourceAddress(
   sourceNormalized: NormalizedTrustee,
 ): ReturnType<typeof parseCityStateZip> {
   if (sourceNormalized.address === undefined) {
-    const parsed = parseAcmsCityStateZip(sourceNormalized.legacy?.cityStateZipCountry);
+    const parsed = parseSourceCityStateZip(sourceNormalized.legacy?.cityStateZipCountry);
     if (!parsed) return parsed;
     sourceNormalized.address = parsed;
   }
@@ -843,14 +855,14 @@ function stateMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): KleeneBoolean {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsState = parsedAcmsAddress?.state?.toLowerCase();
-  if (!acmsState) return null;
+  const parsedSourceAddress = memoizedParseSourceAddress(sourceNormalized);
+  const sourceState = parsedSourceAddress?.state?.toLowerCase();
+  if (!sourceState) return null;
 
   const camsState = candidate.camsRaw.address?.state?.toLowerCase();
   if (!camsState) return null;
 
-  return camsState === acmsState;
+  return camsState === sourceState;
 }
 
 function scoreStateMatch(
@@ -891,12 +903,12 @@ function cityMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): KleeneBoolean {
-  const acms = cityTokens(memoizedParseAcmsAddress(sourceNormalized)?.city ?? '');
+  const source = cityTokens(memoizedParseSourceAddress(sourceNormalized)?.city ?? '');
   const cams = cityTokens(candidate.camsRaw.address?.city ?? '');
-  if (acms.length === 0 || cams.length === 0) return null;
+  if (source.length === 0 || cams.length === 0) return null;
 
-  if (acms.join('') === cams.join('')) return true;
-  const [shorter, longer] = acms.length <= cams.length ? [acms, cams] : [cams, acms];
+  if (source.join('') === cams.join('')) return true;
+  const [shorter, longer] = source.length <= cams.length ? [source, cams] : [cams, source];
   return shorter.every((word) =>
     longer.some((other) => nameSimilarity(word, other) >= FUZZY_WORD_THRESHOLD),
   );
@@ -926,14 +938,14 @@ function zipCodeMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): KleeneBoolean {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsZip5 = parsedAcmsAddress?.zipCode.slice(0, 5);
-  if (!acmsZip5 || acmsZip5.length < 5) return null;
+  const parsedSourceAddress = memoizedParseSourceAddress(sourceNormalized);
+  const sourceZip5 = parsedSourceAddress?.zipCode.slice(0, 5);
+  if (!sourceZip5 || sourceZip5.length < 5) return null;
 
   const camsZip5 = candidate.camsRaw.address?.zipCode?.slice(0, 5);
   if (!camsZip5 || camsZip5.length < 5) return null;
 
-  return camsZip5 === acmsZip5;
+  return camsZip5 === sourceZip5;
 }
 
 function scoreZipCodeMatch(
@@ -1026,9 +1038,9 @@ function averageBestMatch(from: string[], to: string[]): number {
 }
 
 /** 0..1, averaged in both directions so extra tokens on either side lower it. */
-function streetCloseness(acms: string[], cams: string[]): number | null {
-  if (acms.length === 0 || cams.length === 0) return null;
-  return (averageBestMatch(acms, cams) + averageBestMatch(cams, acms)) / 2;
+function streetCloseness(source: string[], cams: string[]): number | null {
+  if (source.length === 0 || cams.length === 0) return null;
+  return (averageBestMatch(source, cams) + averageBestMatch(cams, source)) / 2;
 }
 
 function geoPoints(scores: ScoreByScorer): number | null {
@@ -1122,8 +1134,8 @@ type CandidateScorer = (
 const CANDIDATE_SCORERS: CandidateScorer[] = [
   // Must run before any scorer below reads candidate.camsNormalized.
   normalizeCandidateNameFields,
-  scoreHasAddressAndPhone,
-  scoreAcmsHasAddressAndPhone,
+  scoreCandidateHasAddressAndPhone,
+  scoreSourceHasAddressAndPhone,
   scoreNameMatch,
   recordSimilarityDiagnostics,
   scoreCityMatch,
@@ -1292,7 +1304,7 @@ export function resolveByNameOnly(): Stage {
 
     const [candidate] = exactNames;
     if (candidate.scores.doesStateMatch?.pass === false) return state;
-    if (candidate.scores.doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
+    if (candidate.scores.doesCandidateTrusteeHaveAddressAndPhone?.pass === false) return state;
 
     return resolveOnCandidate(state, candidate, 'resolveByNameOnly');
   };

@@ -1,5 +1,5 @@
 import { Auditable } from './auditable';
-import { DxtrTrusteeParty } from './dataflow-events';
+import { CanonicalTrusteeSource } from './dataflow-events';
 import { OrderStatus } from './orders';
 import { SerializedCamsError } from './serialized-cams-error';
 import { AppointmentStatus } from './trustees';
@@ -11,8 +11,9 @@ export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICAT
 export type TrusteeMatchSource = 'ACMS' | 'DXTR';
 
 /**
- * Why the trustee-match pipeline could not resolve the source record: 2+ candidates ('ambiguous')
- * or 0-1 ('no match'). There is no "multiple linked trustees" outcome — an ACMS professional id
+ * Why the trustee-match pipeline could not resolve the source record: 2+ candidates that pass the
+ * name check with genuine evidence ('ambiguous'), or anything else ('no match'). Both ACMS and DXTR
+ * sources use the same rule. There is no "multiple linked trustees" outcome — an ACMS professional id
  * links to at most one CAMS trustee (bd memory professional-id-never-multi-linked) — and
  * inactive appointments are appointment concerns, not identity-match outcomes.
  */
@@ -37,13 +38,15 @@ export type TrusteeMatchVerification = Auditable & {
    */
   caseId?: string;
   courtId?: string;
-  dxtrTrustee: DxtrTrusteeParty;
+  sourceTrustee: CanonicalTrusteeSource;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted
-   * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") — informational/diagnostic only, never
-   * used to pick or auto-link a trustee (see isSentinelWithNoIdentity in
-   * sync-trustee-case-appointments.ts, which keys off the underlying raw profCode, not this
-   * formatted field). Omitted (not persisted) when the underlying profCode is a known sentinel
+   * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123"). The sync never uses it to pick or
+   * auto-link a trustee (see isSentinelWithNoIdentity in sync-trustee-case-appointments.ts, which
+   * keys off the underlying raw profCode, not this formatted field). Approving the task does use
+   * it: the verifier's chosen trustee is linked to this ACMS id with link method 'manual', and
+   * to every other ACMS id with an unresolved record of identical source data. Omitted (not
+   * persisted) when the underlying profCode is a known sentinel
    * value ("00000"/"99999") — a formatted sentinel ID would read as a real professional ID to a
    * reviewer rather than the "no trustee appointed"/"ID unavailable" placeholder it actually is.
    * Lets a reviewer distinguish a genuine unmatched trustee from a sentinel-coded placeholder
@@ -125,7 +128,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'caseId'
   | 'courtId'
   | 'courtName'
-  | 'dxtrTrustee'
+  | 'sourceTrustee'
   | 'mismatchReason'
   | 'status'
   | 'resolvedTrusteeId'

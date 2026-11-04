@@ -245,7 +245,7 @@ const NON_PERSON_ONLY_WORDS = new Set([
  * Strips known administrative marker phrases (see ADMINISTRATIVE_MARKER_PHRASES) and glued chapter
  * markers from a name part, then replaces punctuation (including parens and colons) with spaces and
  * collapses whitespace, so words like "(debtor" or "stricken:" compare against
- * NON_PERSON_ONLY_WORDS. Applied to firstName and lastName in normalizeAcmsSourceName and to
+ * NON_PERSON_ONLY_WORDS. Applied to firstName and lastName in normalizeSourceName and to
  * fullName in shouldSkipAsNotAPerson; recoverLastFirstRoleSwap calls isLikelyNotAPerson on the
  * unstripped firstName.
  */

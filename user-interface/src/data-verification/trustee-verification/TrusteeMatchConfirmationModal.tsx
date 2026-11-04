@@ -109,6 +109,7 @@ function TrusteeMatchConfirmationModal_(
                   const { value, differs } = selected.cells[key];
                   return (
                     <AccessibleFieldValue key={key} label={label} className="confirm-match-field">
+                      {value !== undefined && differs && <DifferenceIcon label={label} />}
                       {key === 'name' ? (
                         <NewTabLink
                           to={`/trustees/${selected.trusteeId}`}
@@ -117,7 +118,6 @@ function TrusteeMatchConfirmationModal_(
                       ) : (
                         (value ?? 'Not Provided')
                       )}
-                      {value !== undefined && differs && <DifferenceIcon label={label} />}
                     </AccessibleFieldValue>
                   );
                 })}
