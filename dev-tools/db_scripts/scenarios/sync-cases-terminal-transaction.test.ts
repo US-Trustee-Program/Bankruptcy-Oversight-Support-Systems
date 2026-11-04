@@ -66,7 +66,10 @@ describe('sync-cases-terminal-transaction scenario', () => {
     expect(txRow.CASE_ID).toBe(csRow.CASE_ID);
     expect(txRow.TX_TYPE).toBe('O');
     expect(['CBC', 'CDC', 'OCO', 'CTO']).toContain(txRow.TX_CODE);
-    expect(txRow.TX_DATE).toEqual(new Date('2026-01-01'));
+    // Computed at seed time rather than fixed, so it stays after the real
+    // transactionsStart watermark however far that's advanced (see the
+    // module docstring); just assert it's recent, not an exact value.
+    expect(Date.now() - (txRow.TX_DATE as Date).getTime()).toBeLessThan(60_000);
     expect(txRow.DE_SEQNO).toBeTypeOf('number');
     expect(txRow.JOB_ID).toBeTypeOf('number');
     expect(txRow).not.toHaveProperty('TX_ID');

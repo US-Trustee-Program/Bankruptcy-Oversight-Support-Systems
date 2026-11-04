@@ -15,13 +15,18 @@
  *     LAST_UPDATE_DATE fixed in the past so the AO_CS.LAST_UPDATE_DATE query
  *     does NOT also pick this case up — this scenario exists specifically to
  *     isolate the AO_TX-driven query.
- *   - One terminal transaction (AO_TX, TX_CODE='CBC') dated after any
- *     reasonable transactionsStart watermark, on the same CS_CASEID+COURT_ID.
+ *   - One terminal transaction (AO_TX, TX_CODE='CBC') on the same
+ *     CS_CASEID+COURT_ID, dated to the moment this scenario is seeded (not a
+ *     fixed constant — the real transactionsStart watermark only moves
+ *     forward as sync-cases actually runs, so a hardcoded past date
+ *     eventually falls behind it and stops being picked up).
  *
  * No Cosmos document is seeded on purpose: run sync-cases's handleStart (or
  * call CasesDxtrGateway.getUpdatedCaseIds directly) against this data and
  * confirm the case actually syncs into CAMS, rather than pre-seeding the
- * outcome.
+ * outcome. Re-seed shortly before triggering a sync run, since the
+ * transaction date needs to stay after whatever the stored watermark is at
+ * trigger time.
  *
  * NOTE: Uses fixed case number 081-26-98100 for predictable testing.
  *       Uses ensureDxtrCase() to work with existing DXTR data if present.
@@ -41,11 +46,16 @@ const CS_CASEID = 'SEED98100';
 // does not also catch this case.
 const LAST_UPDATE_DATE = new Date('2024-01-01');
 
-// After any reasonable transactionsStart watermark used in a test.
-const TERMINAL_TX_DATE = new Date('2026-01-01');
+// Computed at seed time, not a fixed historical constant: the terminal-transaction
+// query's transactionsStart watermark only moves forward as sync-cases actually
+// runs, so a fixed past date eventually falls behind it and stops being picked up
+// (this happened in dev: the real watermark had already advanced past a
+// previously-hardcoded 2026-01-01). "Now" is always after the current watermark,
+// since the watermark can never be set ahead of the real time it was recorded at.
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const debtorName = 'SEED Terminal Transaction Test';
+  const terminalTxDate = new Date();
 
   // Ensure case exists in DXTR (uses existing if found, creates if not)
   const { operations: dxtrOps } = await ensureDxtrCase(ctx, {
@@ -94,7 +104,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CASE_ID: `${CASE_YEAR}-${CASE_NUMBER}`,
           TX_TYPE: 'O',
           TX_CODE: 'CBC',
-          TX_DATE: TERMINAL_TX_DATE,
+          TX_DATE: terminalTxDate,
           // NOT NULL FK-shaped link to AO_DE(CS_CASEID, COURT_ID, DE_SEQNO), but the
           // terminal-transaction query under test never joins AO_DE, so an unseeded
           // placeholder value is sufficient here.
