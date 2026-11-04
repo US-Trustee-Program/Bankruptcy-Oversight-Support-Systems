@@ -388,7 +388,7 @@ describe('TrusteeSearchModal', () => {
     );
   });
 
-  test('does not rerun a query the name box no longer shows once its dropdown closes', async () => {
+  test('keeps the typed query visible when the name dropdown closes so a district switch reruns it', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps(vi.fn(), vi.fn(), { courtId: '0208' });
@@ -399,18 +399,20 @@ describe('TrusteeSearchModal', () => {
     });
 
     await userEvent.keyboard('{Escape}');
-    expect(nameInput.value).toBe('');
+    // The query stays on screen, so rerunning it on a district switch searches only what the user sees.
+    expect(nameInput.value).toBe('sm');
 
     await switchDistrict('Alaska');
 
-    expect(searchSpy.mock.calls.filter(([name]) => name === 'sm')).toHaveLength(1);
+    const alaskaCourtId = COURT_DIVISIONS.find(
+      (c) => c.courtName === 'District of Alaska',
+    )?.courtId;
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenLastCalledWith('sm', alaskaCourtId);
+    });
   });
 
-  // Skipped, not fixed: findCourt() only sees courts once getCourts resolves, so a query typed
-  // before then goes out without the courtId prop. A complete fix also needs a fallback to the raw
-  // courtId and a rerun when courts load (courtId may be a courtDivisionCode that needs
-  // normalizing), which is more than a small change. Un-skip once that design is settled.
-  test.skip('searches within the known district when the query is typed before the courts list loads', async () => {
+  test('waits for the courts list before searching a query typed before it loads', async () => {
     let resolveCourts: (value: { data: typeof COURT_DIVISIONS }) => void = () => {};
     vi.spyOn(Api2, 'getCourts').mockReturnValue(
       new Promise((resolve) => {
@@ -422,18 +424,60 @@ describe('TrusteeSearchModal', () => {
     renderWithProps(vi.fn(), vi.fn(), { courtId: '0208' });
     act(() => modalRef.current?.show());
     await expandComboBoxAndType('sm');
-
-    expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
+    expect(searchSpy).not.toHaveBeenCalled();
 
     await act(async () => {
       resolveCourts({ data: COURT_DIVISIONS });
     });
+
     await waitFor(() => {
-      expect(
-        (document.querySelector(`#${districtComboBoxId}-combo-box-input`) as HTMLInputElement)
-          .value,
-      ).toBe('Southern District of New York');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
     });
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+    expect(
+      (document.querySelector(`#${districtComboBoxId}-combo-box-input`) as HTMLInputElement).value,
+    ).toBe('Southern District of New York');
+  });
+
+  test('searches with the normalized courtId when a division code is typed before courts load', async () => {
+    let resolveCourts: (value: { data: typeof COURT_DIVISIONS }) => void = () => {};
+    vi.spyOn(Api2, 'getCourts').mockReturnValue(
+      new Promise((resolve) => {
+        resolveCourts = resolve;
+      }),
+    );
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    // courtDivisionCode '061' (Albany) maps to courtId '0206'
+    renderWithProps(vi.fn(), vi.fn(), { courtId: '061' });
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+
+    await act(async () => {
+      resolveCourts({ data: COURT_DIVISIONS });
+    });
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0206');
+    });
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('searches without a court filter and still shows results when the courts list fails to load', async () => {
+    vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('courts unavailable'));
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps(vi.fn(), vi.fn(), { courtId: '0208' });
+    act(() => modalRef.current?.show());
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+    });
+    await waitFor(() => {
+      expect(optionLabels()).toEqual(['John Smith', 'Jane Smithson']);
+    });
+    expect(searchSpy).toHaveBeenCalledTimes(1);
   });
 
   test('normalizes courtDivisionCode to courtId when searching', async () => {
