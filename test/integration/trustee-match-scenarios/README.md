@@ -12,10 +12,12 @@ professional ID matching was retired).
 The pipeline decides (CAMS-953 Slice 2): a **resolved** match writes the case appointment and
 records in `checks.matchedTrusteeAppointment` whether one of the trustee's appointments covers the
 case; an **unresolved** match writes a pending identity task (`trustee-match-verification`) with
-`source: 'DXTR'`, `mismatchReason` `'ambiguous'` (2+ candidates) or `'no match'` (0 or 1), and the
-pipeline's serialized state as `findings` - never `matchCandidates`. Scenarios 12-13 test the
-**fingerprint/variant memoization** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on
-top: a fingerprint hit resolves `trusteeId` directly, a miss falls through to the pipeline.
+`source: 'DXTR'`, `mismatchReason` `'ambiguous'` (2+ candidates passing `doesNameMatch` with genuine
+evidence, the rule shared with the ACMS professional-id sync, amended by CAMS-954) or `'no match'`
+(anything else), and the pipeline's serialized state as `findings` - never `matchCandidates`.
+Scenarios 12-13 test the **fingerprint/variant memoization** (`trustee-variant.helpers.ts`,
+`TRUSTEE_VARIATION`) layered on top: a fingerprint hit resolves `trusteeId` directly, a miss falls
+through to the pipeline.
 
 ## What it tests
 

@@ -27,6 +27,7 @@ import * as pipelineOrchestrator from './trustee-match-pipeline-orchestrator';
 import {
   createTrusteeInitialState,
   addCandidate,
+  addScore,
   TrusteePipelineState,
 } from './trustee-match-pipeline';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
@@ -48,16 +49,22 @@ function makeResolvedState(trusteeId: string, resolvedBy = 'resolveByPhone'): Tr
 
 /**
  * Builds an unresolved TrusteePipelineState (state.match null) with the given number of
- * candidates in the pool — 2+ is 'ambiguous', 0 or 1 is 'no match' per the production rule.
+ * candidates in the pool. The first nameMatchCount candidates (default: all) pass doesNameMatch;
+ * the shared rule calls the state 'ambiguous' only when 2+ candidates pass it, otherwise
+ * 'no match'.
  */
-function makeUnresolvedState(candidateCount: number): TrusteePipelineState {
+function makeUnresolvedState(
+  candidateCount: number,
+  nameMatchCount = candidateCount,
+): TrusteePipelineState {
   const state = createTrusteeInitialState({ fullName: 'Jane Doe' });
   for (let i = 0; i < candidateCount; i++) {
-    addCandidate(
+    const candidate = addCandidate(
       state,
       { trusteeId: `candidate-${i}`, firstName: 'Jane', lastName: 'Doe', name: 'Jane Doe' },
       'recallByName',
     );
+    addScore(candidate, 'doesNameMatch', { pass: i < nameMatchCount });
   }
   return state;
 }
@@ -2165,6 +2172,30 @@ describe('SyncTrusteeCaseAppointments', () => {
           }),
         );
       });
+
+      test.each([
+        { candidateCount: 2, nameMatchCount: 1 },
+        { candidateCount: 2, nameMatchCount: 0 },
+        { candidateCount: 3, nameMatchCount: 1 },
+      ])(
+        "is 'no match' when the pool has $candidateCount candidates but only $nameMatchCount pass the name check",
+        async ({ candidateCount, nameMatchCount }) => {
+          (
+            pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+          ).mockResolvedValueOnce(makeUnresolvedState(candidateCount, nameMatchCount));
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [makeEvent('case-001', 'John Doe')],
+          );
+
+          expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+            expect.objectContaining({ mismatchReason: 'no match', source: 'DXTR' }),
+          );
+          expect(scenarioDistribution.noMatchCount).toBe(1);
+          expect(scenarioDistribution.multipleMatchCount).toBe(0);
+        },
+      );
 
       test('carries appointedDate from the event onto a new verification doc', async () => {
         (

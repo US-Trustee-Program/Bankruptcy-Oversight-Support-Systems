@@ -11,8 +11,9 @@ export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICAT
 export type TrusteeMatchSource = 'ACMS' | 'DXTR';
 
 /**
- * Why the trustee-match pipeline could not resolve the source record: 2+ candidates ('ambiguous')
- * or 0-1 ('no match'). There is no "multiple linked trustees" outcome — an ACMS professional id
+ * Why the trustee-match pipeline could not resolve the source record: 2+ candidates that pass the
+ * name check with genuine evidence ('ambiguous'), or anything else ('no match'). Both ACMS and DXTR
+ * sources use the same rule. There is no "multiple linked trustees" outcome — an ACMS professional id
  * links to at most one CAMS trustee (bd memory professional-id-never-multi-linked) — and
  * inactive appointments are appointment concerns, not identity-match outcomes.
  */
