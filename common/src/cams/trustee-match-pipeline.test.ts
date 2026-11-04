@@ -1,0 +1,123 @@
+import {
+  addressMatchPoints,
+  addressMatchStreetCloseness,
+  compareByAddressPointsThenNameQuality,
+  compareByNameQuality,
+  nameMatchQuality,
+  rankCandidates,
+  ScoreByScorer,
+} from './trustee-match-pipeline';
+
+function scores(nameQuality: 'exact' | 'strong' | 'weak' | null, addressPoints?: number) {
+  const result: ScoreByScorer = {
+    doesNameMatch: nameQuality ? { pass: true, quality: nameQuality } : { pass: false },
+  };
+  if (addressPoints !== undefined) {
+    result.doesAddressMatch = { pass: addressPoints > 0, points: addressPoints };
+  }
+  return result;
+}
+
+describe('trustee-match-pipeline ranking', () => {
+  test('compareByNameQuality orders exact, then strong, then weak, then a failed name', () => {
+    const ranked = [scores(null), scores('weak'), scores('exact'), scores('strong')].sort(
+      compareByNameQuality,
+    );
+
+    expect(ranked.map((s) => s.doesNameMatch.quality ?? 'fail')).toEqual([
+      'exact',
+      'strong',
+      'weak',
+      'fail',
+    ]);
+  });
+
+  test('compareByAddressPointsThenNameQuality orders by address points, highest first', () => {
+    const ranked = [scores('exact', 1), scores('weak', 6), scores('strong')].sort(
+      compareByAddressPointsThenNameQuality,
+    );
+
+    expect(ranked.map((s) => s.doesAddressMatch?.points ?? 0)).toEqual([6, 1, 0]);
+  });
+
+  test('compareByAddressPointsThenNameQuality breaks an address-points tie by name quality', () => {
+    const ranked = [scores('weak', 3), scores('exact', 3)].sort(
+      compareByAddressPointsThenNameQuality,
+    );
+
+    expect(ranked.map((s) => s.doesNameMatch.quality)).toEqual(['exact', 'weak']);
+  });
+
+  test('compareByNameQuality ranks a passing but unrecognized grade after weak', () => {
+    const unrecognized: ScoreByScorer = { doesNameMatch: { pass: true, quality: 'fuzzy' } };
+    const exact = scores('exact');
+    const weak = scores('weak');
+    const ranked = [unrecognized, weak, exact].sort(compareByNameQuality);
+
+    expect(ranked).toEqual([exact, weak, unrecognized]);
+  });
+
+  test('a tie on both address points and name quality compares equal', () => {
+    expect(compareByAddressPointsThenNameQuality(scores('strong', 3), scores('strong', 3))).toBe(0);
+  });
+
+  test('rankCandidates returns candidates in pipeline rank order, keeping discovery order on a tie', () => {
+    const candidate = (id: string, candidateScores: ScoreByScorer) => ({
+      camsRaw: { id },
+      camsNormalized: {},
+      memo: {},
+      scores: candidateScores,
+      origin: 'recallByName',
+    });
+    const discovered = [
+      candidate('tie-first', scores('strong', 3)),
+      candidate('best', scores('exact', 6)),
+      candidate('tie-second', scores('strong', 3)),
+    ];
+
+    expect(rankCandidates(discovered).map((c) => c.camsRaw.id)).toEqual([
+      'best',
+      'tie-first',
+      'tie-second',
+    ]);
+    expect(discovered.map((c) => c.camsRaw.id)).toEqual(['tie-first', 'best', 'tie-second']);
+  });
+});
+
+describe('typed scorer accessors', () => {
+  test('nameMatchQuality returns the quality when doesNameMatch passed', () => {
+    expect(nameMatchQuality(scores('exact'))).toBe('exact');
+    expect(nameMatchQuality(scores('strong'))).toBe('strong');
+    expect(nameMatchQuality(scores('weak'))).toBe('weak');
+  });
+
+  test('nameMatchQuality returns undefined for a passing grade it does not recognize', () => {
+    expect(nameMatchQuality({ doesNameMatch: { pass: true, quality: 'fuzzy' } })).toBeUndefined();
+  });
+
+  test('nameMatchQuality returns undefined when doesNameMatch failed or is absent', () => {
+    expect(nameMatchQuality(scores(null))).toBeUndefined();
+    expect(nameMatchQuality({})).toBeUndefined();
+  });
+
+  test('addressMatchPoints returns the recorded points', () => {
+    expect(addressMatchPoints(scores('exact', 4))).toBe(4);
+  });
+
+  test('addressMatchPoints returns 0 when doesAddressMatch is absent', () => {
+    expect(addressMatchPoints(scores('exact'))).toBe(0);
+  });
+
+  test('addressMatchStreetCloseness returns the recorded closeness when present', () => {
+    const withCloseness: ScoreByScorer = {
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesAddressMatch: { pass: true, points: 3, streetCloseness: 0.75 },
+    };
+    expect(addressMatchStreetCloseness(withCloseness)).toBe(0.75);
+  });
+
+  test('addressMatchStreetCloseness returns undefined when not recorded', () => {
+    expect(addressMatchStreetCloseness(scores('exact', 3))).toBeUndefined();
+    expect(addressMatchStreetCloseness({})).toBeUndefined();
+  });
+});

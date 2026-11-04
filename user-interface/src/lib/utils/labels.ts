@@ -10,7 +10,7 @@ export const orderStatusType = new Map([
 export const taskType = new Map<DataVerificationItemType, string>([
   ['transfer', 'Transfer'],
   ['consolidation', 'Consolidation'],
-  ['trustee-match', 'Trustee Mismatch'],
+  ['trustee-match', 'Trustee Identity'],
 ]);
 
 export const consolidationTypeMap = new Map<ConsolidationType, string>([

@@ -1,5 +1,4 @@
 @use '@/styles/abstracts/colors';
-@use 'styles/abstracts/device-screens' as device-screens;
 
 .usa-accordion__content:has(.trustee-match-content) {
   padding-top: 0;
@@ -19,71 +18,88 @@
     margin: 1rem 0;
   }
 
+  p.match-count {
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+  }
+
   .affected-cases-list {
     .affected-case-item:not(:last-child) {
       margin-right: 0.25rem;
     }
   }
 
-  p.other-matches-count {
-    font-weight: bold;
-    margin: 0 0 0.75rem;
+  // Wide candidate sets scroll horizontally rather than squeezing every column.
+  .trustee-comparison-table-container {
+    overflow-x: auto;
+    margin-bottom: 1rem;
   }
 
-  .trustee-data-grid {
-    margin-bottom: 1.5rem;
-    overflow-x: auto;
+  .trustee-comparison-table {
+    margin-top: 0;
 
-    .trustee-data-header {
-      font-weight: bold;
-
-      .trustee-data-cell {
-        padding: 0.5rem 0.5rem 0.5rem 0;
-        border-bottom: 1px solid colors.$ink;
-
-        &.no-border {
-          border-bottom: none;
-        }
-      }
+    // USWDS gives every cell 1rem of left padding; the first column's content should instead
+    // start flush with the heading and body text above the table, so it's zeroed out here.
+    th:first-child,
+    td:first-child {
+      padding-left: 0;
     }
 
-    .trustee-data-row {
-      .trustee-data-cell {
-        padding: 0.5rem 0.5rem 0.5rem 0;
-        word-wrap: break-word;
-        overflow-wrap: anywhere;
-        min-width: 0;
-        border-bottom: 1px solid colors.$ink;
-
-        &.no-border {
-          border-bottom: none;
-        }
-      }
+    th[scope='row'] {
+      font-weight: normal;
+      white-space: nowrap;
     }
+
+    td {
+      overflow-wrap: anywhere;
+    }
+
+    .comparison-cell-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .address-lines {
+      display: inline-flex;
+      flex-direction: column;
+    }
+  }
+
+  // The source record is a single row of known data, not a ranked list to scan - it doesn't
+  // need the full table width the Potential Matches comparison table uses. Chained with
+  // .trustee-comparison-table (rather than relying on cascade order) so this reliably outranks
+  // the app-wide ".cams-content table { width: 100% }" rule.
+  .trustee-comparison-table.trustee-information-received-table {
+    width: auto;
+  }
+
+  // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). Every field,
+  // State included, uses the same neutral marker; the icon carries its own accessible name, so
+  // meaning never rests on color alone.
+  .difference-icon {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .difference-icon-symbol {
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: middle;
+    fill: colors.$gold;
+  }
+
+  // vertical-align: middle centers the icon on the text's x-height, which still reads as
+  // slightly low next to full-height words like "icon marks" - nudge it up to compensate.
+  // (Icons inside .difference-icon, the table's hover/row markers, are flex-centered instead
+  // and unaffected by this.)
+  .subtext-icon {
+    position: relative;
+    top: -0.15em;
   }
 
   .no-candidates-message {
     margin: 0.5rem 0 1rem;
-  }
-
-  // Column-header mismatch icons for the CAMS Strongest Match table only (see ColumnHeader/
-  // MismatchIcon in TrusteeMatchVerificationAccordion.tsx). Color alone never carries the
-  // meaning - each icon also has a visually-hidden (usa-sr-only) text label.
-  .column-header-with-mismatch {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .mismatch-icon {
-    display: inline-flex;
-    align-items: center;
-
-    .mismatch-icon-symbol {
-      width: 1.1rem;
-      height: 1.1rem;
-      fill: colors.$error-text;
-    }
   }
 
   .match-trustee-link {
@@ -135,72 +151,6 @@
       vertical-align: text-bottom;
       line-height: 1.59rem;
       padding-right: 0.25rem;
-    }
-  }
-
-  .candidate-radio-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    input[type='radio'] {
-      width: 1.25rem;
-      height: 1.25rem;
-      cursor: pointer;
-    }
-  }
-
-  .candidate-scores-cell {
-    font-size: 0.8125rem;
-    line-height: 1.4;
-
-    .score-label {
-      font-weight: 600;
-    }
-  }
-
-  .candidate-selection-fieldset {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .multiple-match-actions {
-    margin: 1rem 0 0.5rem;
-  }
-}
-
-@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
-  .trustee-match-content {
-    .trustee-data-grid {
-      .trustee-data-header {
-        display: none;
-      }
-
-      .trustee-data-row {
-        display: block;
-      }
-
-      .trustee-data-cell.no-border {
-        display: none;
-      }
-
-      .trustee-data-cell[data-cell] {
-        display: block;
-        width: 100%;
-        min-height: 1.75rem;
-        padding: 0.25rem 0.375rem 0.25rem 30%;
-        position: relative;
-
-        &::before {
-          content: attr(data-cell) ':';
-          position: absolute;
-          left: 0;
-          top: 0.25rem;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-      }
     }
   }
 }

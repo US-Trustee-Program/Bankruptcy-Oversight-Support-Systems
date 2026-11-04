@@ -43,6 +43,15 @@ const ACMS_CONFIG = {
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
+/** The 5 existing DXTR cases this scenario gives real trustee appointment history. */
+export const HISTORICAL_CASE_IDS = [
+  '091-99-86706',
+  '091-99-87899',
+  '091-99-99943',
+  '091-99-97816',
+  '091-99-98483',
+] as const;
+
 // Helper: Parse case ID
 function parseCaseId(caseId: string): { courtId: string; caseYear: string; caseNumber: string } {
   const parts = caseId.split('-');
@@ -368,7 +377,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // Create case in CAMS
     camsCases.push(
       createCase({
-        caseId: '091-99-86706',
+        caseId: HISTORICAL_CASE_IDS[0],
         chapter: '11',
         caseTitle: 'Joan Jules Robel II',
         dateFiled: '2023-02-15',
@@ -437,7 +446,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // Create case in CAMS
     camsCases.push(
       createCase({
-        caseId: '091-99-87899',
+        caseId: HISTORICAL_CASE_IDS[1],
         chapter: '11',
         caseTitle: 'Kassulke Group',
         dateFiled: '2023-02-15',
@@ -524,7 +533,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // Create case in CAMS
     camsCases.push(
       createCase({
-        caseId: '091-99-99943',
+        caseId: HISTORICAL_CASE_IDS[2],
         chapter: '12',
         caseTitle: 'Randal Corey Jerde Jr.',
         dateFiled: '2023-02-15',
@@ -592,7 +601,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // Create case in CAMS
     camsCases.push(
       createCase({
-        caseId: '091-99-97816',
+        caseId: HISTORICAL_CASE_IDS[3],
         chapter: '12',
         caseTitle: 'Esther August Brown IV',
         dateFiled: '2023-02-15',
@@ -666,7 +675,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // Create case in CAMS
     camsCases.push(
       createCase({
-        caseId: '091-99-98483',
+        caseId: HISTORICAL_CASE_IDS[4],
         chapter: '15',
         caseTitle: 'Raheem Shawn Davis Sr.',
         dateFiled: '2023-02-15',

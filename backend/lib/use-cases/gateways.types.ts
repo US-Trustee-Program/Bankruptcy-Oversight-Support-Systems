@@ -988,6 +988,12 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
+  /**
+   * Applies `updates` only if the stored document with `id` is still 'pending'. Resolves false
+   * when no pending document matched, which is how a concurrent approval that already won the
+   * transition is detected.
+   */
+  updateIfPending(id: string, updates: Partial<TrusteeMatchVerification>): Promise<boolean>;
   findVerificationsMissingTaskDate(
     lastId: string | null,
     limit: number,
@@ -1027,6 +1033,9 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
    */
   hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
+  /** Deletes only the (camsTrusteeId, acmsProfessionalId) record, leaving the trustee's other
+   * ACMS id records in place - unlike deleteByCamsTrusteeId. */
+  deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }
 

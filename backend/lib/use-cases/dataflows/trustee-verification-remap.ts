@@ -158,8 +158,7 @@ class TrusteeVerificationRemapUseCase {
    * A rate-limit error, gateway-timeout error, or case-summary lookup failure mid-page
    * rethrows immediately rather than being counted as a per-case failure — all three are
    * conditions the caller must back off and retry (same convention as isTransientInfraError in
-   * sync-trustee-case-appointments.ts and resolveNameCollisionByScoring in
-   * trustee-match.helpers.ts), not a permanent failure for the one case that happened to hit it
+   * sync-trustee-case-appointments.ts), not a permanent failure for the one case that happened to hit it
    * while the rest of the page is untouched. A genuine division mismatch, by contrast, is
    * counted in permanentFailureCount rather than documentsFailed or rethrown: it's a real
    * per-case outcome (the surrogate is correctly left unremapped), but retrying it can never
