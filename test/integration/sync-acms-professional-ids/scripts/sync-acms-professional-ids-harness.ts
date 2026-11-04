@@ -41,6 +41,8 @@
  *   seed-sql     Drop/recreate CMMPR/CMMAP/CMMDB (ACMS_INT) and offices rows (DXTR_INT)
  *   seed-cosmos  Seed TRUSTEE_VARIATION and CAMS trustee fixtures into MongoDB
  *   run          Full test: clean → seed → enqueue start → wait → assert all scenarios
+ *   run-without-manual-link  Prove NY-00075 would be ambiguous (and get a task) without its
+ *                manual link
  *   run-purge    Verify { purge: true } wipes trustee-professional-ids and reloads
  *   run-retry-idempotency  Prove a retry replaying an errored record returns the existing
  *                document instead of throwing E11000 and dead-lettering
@@ -141,6 +143,9 @@ const AMBIGUOUS_ACMS_ID = 'NY-00072';
 const SKIPPED_ACMS_ID = 'NY-00073';
 const CONFLICT_ACMS_ID = 'NY-00074';
 const MANUAL_LINK_ACMS_ID = 'NY-00075';
+const AMBIGUOUS_INACTIVE_ACMS_ID = 'NY-00076';
+// The highest NY UST_PROF_CODE seeded; the NY bookmark reaching it means the NY page is done.
+const LAST_NY_UST_PROF_CODE = 76;
 
 const VERIFICATION_COLLECTION = 'trustee-match-verification';
 
@@ -812,6 +817,7 @@ async function clean() {
           SKIPPED_ACMS_ID,
           CONFLICT_ACMS_ID,
           MANUAL_LINK_ACMS_ID,
+          AMBIGUOUS_INACTIVE_ACMS_ID,
         ],
       },
     });
@@ -821,7 +827,13 @@ async function clean() {
     // previous run would be found and left untouched, so the run would not prove a fresh write.
     const r2 = await db.collection(VERIFICATION_COLLECTION).deleteMany({
       acmsProfessionalId: {
-        $in: [AMBIGUOUS_ACMS_ID, ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID, MANUAL_LINK_ACMS_ID],
+        $in: [
+          AMBIGUOUS_ACMS_ID,
+          ACTIVE_NO_MATCH_ACMS_ID,
+          CONFLICT_ACMS_ID,
+          MANUAL_LINK_ACMS_ID,
+          AMBIGUOUS_INACTIVE_ACMS_ID,
+        ],
       },
     });
     pass(`Deleted ${r2.deletedCount} ${VERIFICATION_COLLECTION} doc(s)`);
@@ -1069,6 +1081,18 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
         `Ambiguous task: fingerprint ${ambiguousTask.fingerprint} does not match the professional-id record's camsTrusteeId ${ambiguousRecord?.camsTrusteeId}`,
       );
     }
+    // The task is keyed by fingerprint + variant, so the variant must be the one the sync
+    // recorded for this professional, or later lookups would miss the task.
+    if (
+      ambiguousTask.variant != null &&
+      ambiguousTask.variant === ambiguousRecord?.evidence?.variant
+    ) {
+      pass("Ambiguous task: variant matches the ambiguous professional-id record's variant");
+    } else {
+      fail(
+        `Ambiguous task: variant ${ambiguousTask.variant} does not match the professional-id record's evidence.variant ${ambiguousRecord?.evidence?.variant}`,
+      );
+    }
   } else {
     fail(
       `Ambiguous task: unexpected identity task for ${AMBIGUOUS_ACMS_ID}: ${JSON.stringify(ambiguousTask)}`,
@@ -1076,7 +1100,8 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   }
 
   // Scenario 10: no-match and conflict professionals never get an identity task — only
-  // ambiguous ACMS outcomes do.
+  // ambiguous ACMS outcomes do. Both have an active CMMAP appointment, so neither is kept from a
+  // task by the active-appointment gate.
   const otherTasks = await db
     .collection(VERIFICATION_COLLECTION)
     .find({ acmsProfessionalId: { $in: [ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID] } })
@@ -1122,6 +1147,24 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
+  // Scenario 12: an ambiguous professional with no active appointment (UST_PROF_CODE 76) gets
+  // neither a professional-id record nor an identity task.
+  const [inactiveAmbiguousRecord, inactiveAmbiguousTask] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: AMBIGUOUS_INACTIVE_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .findOne({ acmsProfessionalId: AMBIGUOUS_INACTIVE_ACMS_ID }),
+  ]);
+  if (!inactiveAmbiguousRecord && !inactiveAmbiguousTask) {
+    pass(`Ambiguous, no active appointment: nothing written for ${AMBIGUOUS_INACTIVE_ACMS_ID}`);
+  } else {
+    fail(
+      `Ambiguous, no active appointment: expected nothing for ${AMBIGUOUS_INACTIVE_ACMS_ID}, found record=${JSON.stringify(inactiveAmbiguousRecord)} task=${JSON.stringify(inactiveAmbiguousTask)}`,
+    );
+  }
+
   // Deleted/non-trustee records must never be synced.
   const deletedLink = await db
     .collection('trustee-professional-ids')
@@ -1142,7 +1185,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .collection('runtime-state')
     .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
   const byGroup = stateDoc?.lastUstProfCodeByGroup ?? {};
-  if (byGroup.NY >= 75 && byGroup.UT >= 70) {
+  if (byGroup.NY >= LAST_NY_UST_PROF_CODE && byGroup.UT >= 70) {
     pass(`Sync bookmark advanced correctly: ${JSON.stringify(byGroup)}`);
   } else {
     fail(`Sync bookmark did not advance as expected: ${JSON.stringify(byGroup)}`);
@@ -1150,7 +1193,104 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 }
 
 // ---------------------------------------------------------------------------
-// run  (happy path — seeds the scenarios above, runs the sync once, then asserts each outcome)
+// sync helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * This harness's plain MongoDB container has no indexes applied. Create the
+ * (fingerprint, variant, documentType) unique index real Cosmos enforces on identity tasks
+ * (cosmos-collections.bicep), so a duplicate task write fails here as it would in Azure.
+ */
+async function createVerificationUniqueIndex() {
+  const { client, db } = await getMongoDb();
+  try {
+    await db
+      .collection(VERIFICATION_COLLECTION)
+      .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
+    pass(
+      `Ensured the (fingerprint, variant, documentType) unique index on ${VERIFICATION_COLLECTION}`,
+    );
+  } finally {
+    await client.close();
+  }
+}
+
+/** Waits for the NY bookmark to pass the last NY fixture; false (after a fail()) on timeout. */
+async function waitForNyPage(db: ReturnType<MongoClient['db']>): Promise<boolean> {
+  const nyPageProcessed = await pollUntil(async () => {
+    const stateDoc = await db
+      .collection('runtime-state')
+      .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
+    return (stateDoc?.lastUstProfCodeByGroup?.NY ?? 0) >= LAST_NY_UST_PROF_CODE;
+  });
+  if (!nyPageProcessed) {
+    fail(`Timed out waiting for the NY bookmark to reach UST_PROF_CODE ${LAST_NY_UST_PROF_CODE}`);
+  }
+  return nyPageProcessed;
+}
+
+/** Deletes the sync bookmark (so every group restarts at 0) and runs the sync again. */
+async function resyncFromStart(db: ReturnType<MongoClient['db']>): Promise<boolean> {
+  await db
+    .collection('runtime-state')
+    .deleteMany({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
+  await enqueueMessage(START_QUEUE, {});
+  return waitForNyPage(db);
+}
+
+/**
+ * Re-processing the ambiguous professional must leave its identity task exactly as it was:
+ * first while the task is pending, then after it is resolved. Proves the create-if-absent rule
+ * against real persistence, with the unique index in place.
+ */
+async function assertResyncLeavesIdentityTasksUntouched(db: ReturnType<MongoClient['db']>) {
+  const tasksFor = () =>
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: AMBIGUOUS_ACMS_ID })
+      .toArray();
+  const [original] = await tasksFor();
+  if (!original) {
+    fail(`Re-sync: no identity task for ${AMBIGUOUS_ACMS_ID} to re-sync against`);
+    return;
+  }
+  const isUnchanged = (task: typeof original | undefined, status: string) =>
+    task !== undefined &&
+    task._id.equals(original._id) &&
+    task.status === status &&
+    JSON.stringify(task.updatedOn) === JSON.stringify(original.updatedOn);
+
+  if (!(await resyncFromStart(db))) {
+    return;
+  }
+  const afterPendingResync = await tasksFor();
+  if (afterPendingResync.length === 1 && isUnchanged(afterPendingResync[0], 'pending')) {
+    pass(`Re-sync: the pending task for ${AMBIGUOUS_ACMS_ID} was left untouched`);
+  } else {
+    fail(
+      `Re-sync: expected the original pending task for ${AMBIGUOUS_ACMS_ID} unchanged, found ${JSON.stringify(afterPendingResync)}`,
+    );
+  }
+
+  await db
+    .collection(VERIFICATION_COLLECTION)
+    .updateOne({ _id: original._id }, { $set: { status: 'approved' } });
+  if (!(await resyncFromStart(db))) {
+    return;
+  }
+  const afterResolvedResync = await tasksFor();
+  if (afterResolvedResync.length === 1 && isUnchanged(afterResolvedResync[0], 'approved')) {
+    pass(`Re-sync: the resolved task for ${AMBIGUOUS_ACMS_ID} was left untouched, no new task`);
+  } else {
+    fail(
+      `Re-sync: expected only the resolved task for ${AMBIGUOUS_ACMS_ID}, found ${JSON.stringify(afterResolvedResync)}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run  (happy path — seeds the scenarios above, runs the sync once, asserts each outcome, then
+// re-syncs to prove existing pending and resolved identity tasks are left untouched)
 // ---------------------------------------------------------------------------
 
 async function run() {
@@ -1167,6 +1307,7 @@ async function run() {
 
   console.log('Step 2: Seed Cosmos fixtures (TRUSTEE_VARIATION + trustee profiles)');
   await seedCosmos();
+  await createVerificationUniqueIndex();
   console.log('');
 
   console.log('Step 3: Enqueue start message {}');
@@ -1206,8 +1347,8 @@ async function run() {
       return;
     }
 
-    // The ambiguous/skipped/conflict scenarios also gate behind the active-appointment check
-    // (ambiguous, conflict) or the upfront not-a-person check (skipped) - wait for all three
+    // The ambiguous and skipped records are written only after the active-appointment check; the
+    // conflict record is written before it (a conflict bypasses the gate). Wait for all three
     // before asserting, same as the active-no-match record above.
     const newScenariosVerified = await pollUntil(async () => {
       const [ambiguousDoc, skippedDoc, conflictDoc] = await Promise.all([
@@ -1226,21 +1367,75 @@ async function run() {
       return;
     }
 
-    // The manual-link scenario writes nothing, so wait for the NY page's bookmark to pass its
-    // UST_PROF_CODE (75) - the bookmark is stored only after every record in the page is processed.
-    const nyPageProcessed = await pollUntil(async () => {
-      const stateDoc = await db
-        .collection('runtime-state')
-        .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
-      return (stateDoc?.lastUstProfCodeByGroup?.NY ?? 0) >= 75;
-    });
-    if (!nyPageProcessed) {
-      fail('Timed out waiting for the NY bookmark to reach UST_PROF_CODE 75');
+    // The manual-link and inactive-ambiguous scenarios write nothing, so wait for the NY page's
+    // bookmark to pass them - the bookmark is stored only after every record in the page is processed.
+    if (!(await waitForNyPage(db))) {
       return;
     }
     console.log('');
 
     await assertHappyPath(db);
+    if (hasFailures) {
+      return;
+    }
+    console.log('');
+
+    console.log('Step 5: Re-sync from the start; existing identity tasks must be left untouched');
+    await assertResyncLeavesIdentityTasksUntouched(db);
+  } finally {
+    await client.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run-without-manual-link  (proves the manual-link scenario's premise: without its manual link,
+// NY-00075 really would end ambiguous and get an identity task)
+// ---------------------------------------------------------------------------
+
+async function runWithoutManualLink() {
+  console.log('\nRunning sync-acms-professional-ids without the NY-00075 manual link...\n');
+
+  await clean();
+  await seedSchema();
+  await seedSql();
+  await seedCosmos();
+  await createVerificationUniqueIndex();
+
+  const { client, db } = await getMongoDb();
+  try {
+    await db
+      .collection('trustee-professional-ids')
+      .deleteMany({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+    pass(`Removed the seeded manual link for ${MANUAL_LINK_ACMS_ID}`);
+
+    await enqueueMessage(START_QUEUE, {});
+    pass(`Enqueued {} to '${START_QUEUE}'`);
+    if (!(await waitForNyPage(db))) {
+      return;
+    }
+
+    const record = await db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+    const tasks = await db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: MANUAL_LINK_ACMS_ID })
+      .toArray();
+    if (
+      record?.disposition === 'ambiguous' &&
+      tasks.length === 1 &&
+      tasks[0].status === 'pending' &&
+      tasks[0].source === 'ACMS' &&
+      tasks[0].mismatchReason === 'ambiguous'
+    ) {
+      pass(
+        `Without its manual link, ${MANUAL_LINK_ACMS_ID} is ambiguous and gets a pending ACMS identity task`,
+      );
+    } else {
+      fail(
+        `Without its manual link, expected ${MANUAL_LINK_ACMS_ID} ambiguous with one pending ACMS task, found record=${JSON.stringify(record)} tasks=${JSON.stringify(tasks)}`,
+      );
+    }
   } finally {
     await client.close();
   }
@@ -1281,7 +1476,10 @@ async function runPurge() {
     // re-asserting the ambiguous/skipped/conflict scenarios here: deleteAll also wipes the
     // conflict scenario's pre-linked seed record, so a post-purge pass would resolve that ACMS
     // id as a clean auto-link rather than reproduce the conflict - a purge, unlike a normal
-    // sync, doesn't re-run seedCosmos to restore that pre-existing state.
+    // sync, doesn't re-run seedCosmos to restore that pre-existing state. deleteAll also wipes
+    // linkMethod 'manual' links (NY-00075's included), so purge is NOT manual-link safe: after a
+    // purge NY-00075 has no guard and is processed as ambiguous. Accepted for CAMS-954 - purge is
+    // an operator reset.
     const satisfied = await pollUntil(async () => {
       const count = await db.collection('trustee-professional-ids').countDocuments({
         acmsProfessionalId: {
@@ -1435,6 +1633,9 @@ async function main() {
     case 'run':
       await run();
       break;
+    case 'run-without-manual-link':
+      await runWithoutManualLink();
+      break;
     case 'run-purge':
       await runPurge();
       break;
@@ -1475,6 +1676,9 @@ async function main() {
       console.log('  seed-sql    [local] Seed fixture rows (idempotent)');
       console.log('  seed-cosmos Seed TRUSTEE_VARIATION + trustee profiles into MongoDB');
       console.log('  run         Full test: clean → seed → enqueue → wait → assert');
+      console.log(
+        '  run-without-manual-link  Prove NY-00075 is ambiguous and gets a task without its manual link',
+      );
       console.log('  run-purge   Verify { purge: true } wipes and reloads from scratch');
       console.log(
         '  run-retry-idempotency  Prove a replayed retry returns the existing errored record',

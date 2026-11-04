@@ -1,4 +1,4 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { TrusteeMatchVerificationListItem } from '../../../common/src/cams/trustee-match-verification';
 import { logout } from './login/login-helpers';
@@ -16,8 +16,8 @@ const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and
 // Q Lakeshore, caseless, carries an ACMS professional id. Approved by its own test, so it is
 // left out of every other test.
 const ACMS_LINK_TASK_ID = 'e2e-trustee-match-verification-acms-link';
-// J Nocasematch, ACMS-sourced and ambiguous (Jamie and Jesse Nocasematch), caseless as the ACMS
-// sync writes it. Approved by its own test, so it is left out of every other test.
+// J Nocasematch, ACMS-sourced and ambiguous (Jamie and Jesse Nocasematch), caseless like the
+// tasks the ACMS sync writes. Approved by its own test, so it is left out of every other test.
 const ACMS_AMBIGUOUS_TASK_ID = 'e2e-trustee-match-verification-acms-ambiguous';
 
 async function expandTask(page: Page, id: string) {
@@ -72,7 +72,7 @@ test.describe('Trustee Identity Verification', () => {
   test('explains why the task needs review', async ({ page }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
-    await expect(content.locator('.problem-statement')).toContainText(
+    await expect(content.getByTestId('problem-statement')).toContainText(
       'Trustee information sent to CAMS matches multiple trustees in CAMS.',
       timeoutOption,
     );
@@ -136,6 +136,8 @@ test.describe('Trustee Identity Verification', () => {
     await expect(selected.getByLabel('Street differs from the source record')).toBeVisible();
     await expect(selected.getByLabel(/differs from the source record/)).toHaveCount(3);
     await expect(modal.getByTestId('confirm-match-source').getByRole('img')).toHaveCount(0);
+    // DXTR records carry email, so a DXTR task compares it (ACMS tasks leave the row out).
+    await expect(modal.getByTestId('confirm-match-source')).toContainText('Email:');
 
     await expect(modal).toContainText('1 case will be assigned to Tyler Multimatch.');
 
@@ -149,7 +151,7 @@ test.describe('Trustee Identity Verification', () => {
   }) => {
     const content = await expandTask(page, NO_CANDIDATES_TASK_ID);
 
-    await expect(content.locator('.problem-statement')).toContainText(
+    await expect(content.getByTestId('problem-statement')).toContainText(
       'Trustee information sent to CAMS does not match any trustee in CAMS.',
       timeoutOption,
     );
@@ -164,7 +166,7 @@ test.describe('Trustee Identity Verification', () => {
   test('links the affected case in a new tab', async ({ page }) => {
     const content = await expandTask(page, AMBIGUOUS_TASK_ID);
 
-    const caseLink = content.locator('.problem-statement a.new-tab-link').first();
+    const caseLink = content.getByTestId('problem-statement').locator('a.new-tab-link').first();
     await expect(caseLink).toBeVisible(timeoutOption);
     await expect(caseLink).toHaveAttribute('target', '_blank');
     await expect(caseLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -200,11 +202,11 @@ test.describe('Trustee Identity Verification', () => {
   }) => {
     const content = await expandTask(page, CASELESS_TASK_ID);
 
-    await expect(content.locator('.problem-statement')).toContainText(
+    await expect(content.getByTestId('problem-statement')).toContainText(
       'No cases yet. Cases attach as appointments sync.',
       timeoutOption,
     );
-    await expect(content.locator('.problem-statement a.new-tab-link')).toHaveCount(0);
+    await expect(content.getByTestId('problem-statement').locator('a.new-tab-link')).toHaveCount(0);
 
     await content.getByTestId('approve-candidate-seed-trustee-match-caseless-b').click();
 
@@ -219,73 +221,100 @@ test.describe('Trustee Identity Verification', () => {
     await expect(modal).toBeHidden(timeoutOption);
   });
 
-  test('approves a task that carries an ACMS professional id', async ({ page }) => {
-    const content = await expandTask(page, ACMS_LINK_TASK_ID);
+  // Approval permanently changes a seeded task, so a retry would find it already approved and fail
+  // on an unrelated locator. No retries here: a failure must be the real one, then reseed.
+  test.describe('approval', () => {
+    test.describe.configure({ retries: 0 });
 
-    await content.getByTestId('approve-candidate-seed-trustee-match-lakeshore').click();
-    const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${ACMS_LINK_TASK_ID}`);
-    await expect(modal).toBeVisible(timeoutOption);
+    async function approveCandidate(
+      page: Page,
+      content: Locator,
+      taskId: string,
+      trusteeId: string,
+    ) {
+      await expect(
+        content.getByTestId(`approve-candidate-${trusteeId}`),
+        `${taskId} is already approved; reseed the e2e database`,
+      ).toBeVisible(timeoutOption);
+      await content.getByTestId(`approve-candidate-${trusteeId}`).click();
+      const modal = page.getByTestId(`modal-content-trustee-confirmation-modal-${taskId}`);
+      await expect(modal).toBeVisible(timeoutOption);
+      return {
+        modal,
+        submit: async () => {
+          const approval = page.waitForResponse(
+            (response) =>
+              response.url().includes(`api/trustee-match-verification/${taskId}`) &&
+              response.request().method() === 'PATCH',
+            timeoutOption,
+          );
+          await page.locator(`#trustee-confirmation-modal-${taskId}-submit-button`).click();
+          // status() rather than ok() so a failure shows the actual code.
+          expect((await approval).status()).toBeLessThan(300);
+        },
+      };
+    }
 
-    const approval = page.waitForResponse(
-      (response) =>
-        response.url().includes(`api/trustee-match-verification/${ACMS_LINK_TASK_ID}`) &&
-        response.request().method() === 'PATCH',
-      timeoutOption,
-    );
-    await page.locator(`#trustee-confirmation-modal-${ACMS_LINK_TASK_ID}-submit-button`).click();
-    expect((await approval).ok()).toBe(true);
+    test('approves a task that carries an ACMS professional id', async ({ page }) => {
+      const content = await expandTask(page, ACMS_LINK_TASK_ID);
+      const { submit } = await approveCandidate(
+        page,
+        content,
+        ACMS_LINK_TASK_ID,
+        'seed-trustee-match-lakeshore',
+      );
+      await submit();
 
-    await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
-      'Trustee Quinn Lakeshore appointed. No cases affected.',
-      timeoutOption,
-    );
-    await expect(content.getByTestId('resolved-statement')).toContainText(
-      'Trustee Quinn Lakeshore was approved. No cases affected.',
-      timeoutOption,
-    );
-  });
+      await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
+        'Trustee Quinn Lakeshore appointed. No cases affected.',
+        timeoutOption,
+      );
+      await expect(content.getByTestId('resolved-statement')).toContainText(
+        'Trustee Quinn Lakeshore was approved. No cases affected.',
+        timeoutOption,
+      );
+    });
 
-  test('approves a caseless ambiguous task from the ACMS professional-id sync', async ({
-    page,
-  }) => {
-    const content = await expandTask(page, ACMS_AMBIGUOUS_TASK_ID);
+    // The fixture stands in for the ACMS sync's output; that shape is covered by
+    // dev-tools/db_scripts/scenarios/trustee-match-all-scenarios.test.ts (seed-match-acms-ambiguous),
+    // and linking the ACMS professional id on approval by the trustee-match-verification use-case
+    // unit tests.
+    test('approves an ACMS-sourced caseless ambiguous task, choosing the second candidate', async ({
+      page,
+    }) => {
+      const content = await expandTask(page, ACMS_AMBIGUOUS_TASK_ID);
 
-    await expect(content.locator('.problem-statement')).toContainText(
-      'Trustee information sent to CAMS matches multiple trustees in CAMS. No cases yet. Cases attach as appointments sync.',
-      timeoutOption,
-    );
-    await expect(content.locator('.problem-statement a.new-tab-link')).toHaveCount(0);
-    await expect(
-      content.getByTestId('trustee-comparison-table').locator('tbody').getByRole('rowheader'),
-    ).toHaveText(['Jamie Nocasematch', 'Jesse Nocasematch']);
+      await expect(content.getByTestId('problem-statement')).toContainText(
+        'Trustee information sent to CAMS matches multiple trustees in CAMS. No cases yet. Cases attach as appointments sync.',
+        timeoutOption,
+      );
+      await expect(
+        content.getByTestId('trustee-comparison-table').locator('tbody').getByRole('rowheader'),
+      ).toHaveText(['Jamie Nocasematch', 'Jesse Nocasematch']);
 
-    await content.getByTestId('approve-candidate-seed-trustee-match-nocases-a').click();
-    const modal = page.getByTestId(
-      `modal-content-trustee-confirmation-modal-${ACMS_AMBIGUOUS_TASK_ID}`,
-    );
-    await expect(modal).toBeVisible(timeoutOption);
-    await expect(modal).toContainText(
-      'No cases are affected yet. Future cases sent with this information will be matched to Jamie Nocasematch automatically.',
-    );
+      // Not the first-ranked candidate, so approving the wrong row would show Jamie instead.
+      const { modal, submit } = await approveCandidate(
+        page,
+        content,
+        ACMS_AMBIGUOUS_TASK_ID,
+        'seed-trustee-match-nocases-b',
+      );
+      // ACMS records carry no email, so the comparison leaves the Email row out for ACMS tasks.
+      await expect(modal.getByTestId('confirm-match-source')).not.toContainText('Email:');
+      await expect(modal.getByTestId('confirm-match-selected')).not.toContainText('Email:');
+      await expect(modal).toContainText(
+        'No cases are affected yet. Future cases sent with this information will be matched to Jesse Nocasematch automatically.',
+      );
+      await submit();
 
-    const approval = page.waitForResponse(
-      (response) =>
-        response.url().includes(`api/trustee-match-verification/${ACMS_AMBIGUOUS_TASK_ID}`) &&
-        response.request().method() === 'PATCH',
-      timeoutOption,
-    );
-    await page
-      .locator(`#trustee-confirmation-modal-${ACMS_AMBIGUOUS_TASK_ID}-submit-button`)
-      .click();
-    expect((await approval).ok()).toBe(true);
-
-    await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
-      'Trustee Jamie Nocasematch appointed. No cases affected.',
-      timeoutOption,
-    );
-    await expect(content.getByTestId('resolved-statement')).toContainText(
-      'Trustee Jamie Nocasematch was approved. No cases affected.',
-      timeoutOption,
-    );
+      await expect(page.getByTestId('alert-message-data-verification-alert')).toContainText(
+        'Trustee Jesse Nocasematch appointed. No cases affected.',
+        timeoutOption,
+      );
+      await expect(content.getByTestId('resolved-statement')).toContainText(
+        'Trustee Jesse Nocasematch was approved. No cases affected.',
+        timeoutOption,
+      );
+    });
   });
 });

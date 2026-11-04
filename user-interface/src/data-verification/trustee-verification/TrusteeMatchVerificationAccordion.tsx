@@ -436,16 +436,16 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <>
               {explanation || detailLoadError ? (
                 !order.caseId ? (
-                  <p className="problem-statement">
+                  <p className="problem-statement" data-testid="problem-statement">
                     {explanation ? `${explanation.sentence} ` : ''}No cases yet. Cases attach as
                     appointments sync.
                   </p>
                 ) : affectedCaseCount === 0 ? (
-                  <p className="problem-statement">
+                  <p className="problem-statement" data-testid="problem-statement">
                     {explanation ? `${explanation.sentence} ` : ''}No cases affected yet.
                   </p>
                 ) : (
-                  <p className="problem-statement">
+                  <p className="problem-statement" data-testid="problem-statement">
                     <span>
                       {explanation ? `${explanation.sentence} ` : ''}Affects{' '}
                       {affectedCaseCount > 1 ? '' : '1 case: '}

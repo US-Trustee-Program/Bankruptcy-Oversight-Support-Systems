@@ -34,6 +34,9 @@
 --                      different address, with an active appointment, so it would otherwise end
 --                      ambiguous and get an identity task. The harness pre-links its
 --                      acmsProfessionalId with linkMethod 'manual', so the sync leaves it alone
+--   UST_PROF_CODE 76:  ambiguous, inactive — same name as UST_PROF_CODE 72's two CAMS trustees,
+--                      distinct address, NO active CMMAP appointment -> nothing written (no
+--                      professional-id record, no identity task)
 --
 -- Run against ACMS_INT database after seed-schema has been applied.
 
@@ -149,6 +152,17 @@ VALUES
    '1 Manual Way', '', 'Ithaca', 'NY', 148500000, 0, 0);
 GO
 
+-- Record 5g: ambiguous, inactive — same name as Record 5c's two CAMS trustees (distinct address
+-- so its variant differs from 5c's and 5f's), with no CMMAP appointment, so the active-appointment
+-- gate writes nothing for it.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 76, ' ', 'TR', 'Ambiguous', 'Chris', 'M',
+   '2 Quiet Rd', '', 'Elmira', 'NY', 149010000, 0, 0);
+GO
+
 -- Record 6: soft-deleted — must NOT be paged (DELETE_CODE='D')
 INSERT INTO dbo.CMMPR
   (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
@@ -167,7 +181,7 @@ VALUES
    '1000 Legal Way', '', 'Syracuse', 'NY', 132020000, 0, 3155550700);
 GO
 
-PRINT 'CMMPR seeded: 12 rows (10 TR/active + 1 deleted + 1 non-TR filtered)';
+PRINT 'CMMPR seeded: 13 rows (11 TR/active + 1 deleted + 1 non-TR filtered)';
 GO
 
 -- ── CMMDB rows (one per case referenced by CMMAP below) ─────────────────────
@@ -212,6 +226,14 @@ VALUES
   (4, 81, 24, 50001, 'NY', 75, 20230101, 0, ' ', 'Y', 'TR');
 GO
 
-PRINT 'CMMAP seeded: 4 rows (active appointments for UST_PROF_CODE 65, 72, 73, 75)';
+-- UST_PROF_CODE 74 (conflict) also has one active appointment, so the no-task assertion for it
+-- still means something if conflicts ever move behind the active-appointment gate.
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (5, 81, 24, 50001, 'NY', 74, 20230101, 0, ' ', 'Y', 'TR');
+GO
+
+PRINT 'CMMAP seeded: 5 rows (active appointments for UST_PROF_CODE 65, 72, 73, 74, 75)';
 PRINT 'CMMDB seeded: 1 row';
 GO
