@@ -500,7 +500,7 @@ async function seedCosmos() {
     // UST_PROF_CODE 63's demographics in seed/01-seed-cmmpr.sql exactly. PROF_ZIP is seeded there
     // as the raw numeric 627010000; buildAcmsVariant formats it via formatAcmsZip into
     // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run. PROF_FAX_NBR 0
-    // reaches the variant as the string "0".
+    // reaches the variant as a string (see the README).
     const fingerprintVariant = JSON.stringify({
       firstName: 'Iris',
       middleName: 'F',
@@ -1037,6 +1037,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     ambiguousTask.source === 'ACMS' &&
     ambiguousTask.mismatchReason === 'ambiguous' &&
     ambiguousTask.status === 'pending' &&
+    // Mongo client uses ignoreUndefined, so the sync's absent caseId/courtId read back undefined.
     ambiguousTask.caseId === undefined &&
     ambiguousTask.courtId === undefined &&
     ambiguousTask.findings != null
@@ -1057,7 +1058,11 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
         `Ambiguous task: expected both ${AMBIGUOUS_TRUSTEE_ID_A} and ${AMBIGUOUS_TRUSTEE_ID_B} among findings candidates, got ${JSON.stringify(taskCandidateIds)}`,
       );
     }
-    if (ambiguousTask.fingerprint === ambiguousRecord?.camsTrusteeId) {
+    if (typeof ambiguousTask.fingerprint !== 'string' || ambiguousTask.fingerprint === '') {
+      fail(
+        `Ambiguous task: expected a non-empty string fingerprint, got ${JSON.stringify(ambiguousTask.fingerprint)}`,
+      );
+    } else if (ambiguousTask.fingerprint === ambiguousRecord?.camsTrusteeId) {
       pass("Ambiguous task: fingerprint matches the ambiguous professional-id record's key");
     } else {
       fail(
@@ -1145,9 +1150,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 }
 
 // ---------------------------------------------------------------------------
-// run  (happy path — covers scenarios 1-11: fingerprint match, name match,
-// active no-match errored record, inactive no-match skip, cross-group paging, ambiguous,
-// skipped, conflict, ambiguous identity task, no task for no-match/conflict, manual link kept)
+// run  (happy path — seeds the scenarios above, runs the sync once, then asserts each outcome)
 // ---------------------------------------------------------------------------
 
 async function run() {

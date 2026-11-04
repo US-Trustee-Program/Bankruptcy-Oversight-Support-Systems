@@ -263,12 +263,7 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
     expect('caseId' in (verification ?? {})).toBe(false);
     expect('courtId' in (verification ?? {})).toBe(false);
 
-    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
-      const forThisFingerprint = surrogatesFor(ops, table).filter(
-        (s) => s.trusteeId === verification?.fingerprint,
-      );
-      expect(forThisFingerprint).toHaveLength(0);
-    }
+    expectNoSurrogates(ops, verification?.fingerprint);
   });
 
   test('should have no surviving surrogate rows for an already-approved mismatch', async () => {
