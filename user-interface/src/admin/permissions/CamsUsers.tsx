@@ -16,7 +16,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { CamsRoleLabels } from '@common/cams/roles';
+import { CamsRole, CamsRoleLabels } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   CamsUsersPredicate,
@@ -88,19 +88,44 @@ function TextFilter({
   );
 }
 
-function PermissionLines({
-  lines,
-  emptyLabel,
-}: Readonly<{ lines: string[]; emptyLabel?: string }>) {
-  if (lines.length === 0) {
-    return emptyLabel ? <span className="usa-sr-only">{emptyLabel}</span> : null;
-  }
+/**
+ * One permission read as a sentence, so a screen reader ties the role to its scope; the stacked
+ * Role, Region and Office cells only line up visually.
+ */
+export function permissionSentence(
+  permission: UserRoleAssignment,
+  officeName: (officeCode: string) => string,
+): string {
+  const role = CamsRoleLabels[permission.role];
+  if (permission.role === CamsRole.SuperUser) return role;
+  if (permission.regionId === null) return `${role}, all regions`;
+  const office = permission.officeCode === null ? 'all offices' : officeName(permission.officeCode);
+  return `${role}, Region ${permission.regionId}, ${office}`;
+}
+
+function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
+  if (lines.length === 0) return null;
+  return (
+    // Hidden from assistive technology: the Role cell reads each permission as a sentence instead.
+    <ul className="cams-users__permission-lines" aria-hidden="true">
+      {lines.map((line, index) => (
+        <li key={index}>{line}</li>
+      ))}
+    </ul>
+  );
+}
+
+function PermissionSentences({
+  permissions,
+  officeName,
+}: Readonly<{ permissions: UserRoleAssignment[]; officeName: (officeCode: string) => string }>) {
+  if (permissions.length === 0) return <span className="usa-sr-only">No permissions</span>;
   return (
     // role="list" keeps list semantics in Safari/VoiceOver, which drop them when list-style is none.
     // eslint-disable-next-line jsx-a11y/no-redundant-roles
-    <ul className="cams-users__permission-lines" role="list">
-      {lines.map((line, index) => (
-        <li key={index}>{line}</li>
+    <ul className="usa-sr-only" role="list">
+      {permissions.map((permission) => (
+        <li key={permission.id}>{permissionSentence(permission, officeName)}</li>
       ))}
     </ul>
   );
@@ -181,9 +206,12 @@ export function CamsUsers() {
     [offices],
   );
 
+  function officeName(officeCode: string) {
+    return officeNames.get(officeCode) ?? officeCode;
+  }
+
   function officeLabel(permission: UserRoleAssignment) {
-    if (permission.officeCode === null) return ALL;
-    return officeNames.get(permission.officeCode) ?? permission.officeCode;
+    return permission.officeCode === null ? ALL : officeName(permission.officeCode);
   }
 
   const isReady = officesLoaded && page !== null;
@@ -268,10 +296,8 @@ export function CamsUsers() {
                   <CamsTableCell data-cell="Name">{user.name}</CamsTableCell>
                   <CamsTableCell data-cell="Email">{user.email}</CamsTableCell>
                   <CamsTableCell data-cell="Role">
-                    <PermissionLines
-                      lines={user.permissions.map((p) => CamsRoleLabels[p.role])}
-                      emptyLabel="No permissions"
-                    />
+                    <PermissionSentences permissions={user.permissions} officeName={officeName} />
+                    <PermissionLines lines={user.permissions.map((p) => CamsRoleLabels[p.role])} />
                   </CamsTableCell>
                   <CamsTableCell data-cell="Region">
                     <PermissionLines lines={user.permissions.map((p) => p.regionId ?? ALL)} />

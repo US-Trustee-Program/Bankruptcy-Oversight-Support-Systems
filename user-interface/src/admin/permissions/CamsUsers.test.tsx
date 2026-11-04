@@ -6,7 +6,7 @@ import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
-import { CamsUsers } from './CamsUsers';
+import { CamsUsers, permissionSentence } from './CamsUsers';
 import type { AddPermissionModalProps } from './AddPermissionModal';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
@@ -86,8 +86,15 @@ const emailFilter = () => document.querySelector<HTMLInputElement>('#cams-users-
 const emptyState = () => document.querySelector('#cams-users-empty');
 
 const row = (user: CamsUserWithPermissions) => screen.getByTestId(`cams-user-row-${user.id}`);
+const visibleLines = (user: CamsUserWithPermissions, column: string) =>
+  row(user).querySelector(`[data-cell="${column}"] .cams-users__permission-lines`);
 const lines = (user: CamsUserWithPermissions, column: string) =>
-  Array.from(row(user).querySelectorAll(`[data-cell="${column}"] li`), (li) => li.textContent);
+  Array.from(visibleLines(user, column)?.querySelectorAll('li') ?? [], (li) => li.textContent);
+const sentences = (user: CamsUserWithPermissions) =>
+  Array.from(
+    row(user).querySelectorAll('[data-cell="Role"] .usa-sr-only li'),
+    (li) => li.textContent,
+  );
 const table = () => document.querySelector('#cams-users-table');
 const heading = () => document.querySelector('#cams-users-count');
 const spinner = () => screen.queryByTestId('cams-users-loading');
@@ -172,6 +179,22 @@ describe('CamsUsers', () => {
     expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
     expect(lines(SARAH, 'Region')).toEqual(['2', '2', 'All']);
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
+  });
+
+  test('should read each permission to screen readers as one sentence, in the Role cell', async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    expect(sentences(SARAH)).toEqual([
+      'Auditor, Region 2, Buffalo',
+      'Trial Attorney, Region 2, Manhattan',
+      'Super User',
+    ]);
+    for (const column of ['Role', 'Region', 'Office']) {
+      expect(visibleLines(SARAH, column)).toHaveAttribute('aria-hidden', 'true');
+    }
   });
 
   test('should show a user with no permissions as having none', async () => {
@@ -538,5 +561,39 @@ describe('CamsUsers', () => {
       expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
       expect(nameFilter()).toHaveValue('sarah');
     });
+  });
+});
+
+describe('permissionSentence', () => {
+  const officeName = (officeCode: string) =>
+    officeCode === MANHATTAN.officeCode ? 'Manhattan' : officeCode;
+
+  test('should name the role, region and office for an office permission', () => {
+    expect(permissionSentence(permission(MANHATTAN), officeName)).toEqual(
+      'Trial Attorney, Region 2, Manhattan',
+    );
+  });
+
+  test('should fall back to whatever the office lookup gives for an unknown office', () => {
+    expect(permissionSentence(permission(BUFFALO), officeName)).toEqual(
+      `Trial Attorney, Region 2, ${BUFFALO.officeCode}`,
+    );
+  });
+
+  test('should say all offices for a region-wide permission', () => {
+    const regionWide = { ...permission(MANHATTAN), officeCode: null };
+    expect(permissionSentence(regionWide, officeName)).toEqual(
+      'Trial Attorney, Region 2, all offices',
+    );
+  });
+
+  test('should say all regions for a national permission', () => {
+    expect(permissionSentence(permission(null), officeName)).toEqual('Trial Attorney, all regions');
+  });
+
+  test('should give only the role for Super User, which has no scope', () => {
+    expect(permissionSentence(permission(null, CamsRole.SuperUser), officeName)).toEqual(
+      'Super User',
+    );
   });
 });

@@ -85,7 +85,7 @@ function rowFor(name: string) {
 
 function cellLines(name: string, column: string) {
   return Array.from(
-    rowFor(name).querySelectorAll(`[data-cell="${column}"] li`),
+    rowFor(name).querySelectorAll(`[data-cell="${column}"] .cams-users__permission-lines li`),
     (line) => line.textContent,
   );
 }
