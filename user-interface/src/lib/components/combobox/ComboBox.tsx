@@ -66,6 +66,13 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   placeholder?: string;
   scrollToSelected?: boolean;
   disableFiltering?: boolean;
+  /**
+   * When true, typed text stays in the input after the dropdown closes without a selection
+   * (Escape, Tab, outside click, toggle). Use when the typed text drives something else, such as
+   * an async search, so the visible text always matches the query that ran. Default false clears
+   * the text on close.
+   */
+  keepFilterOnClose?: boolean;
 }
 
 function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -91,6 +98,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     placeholder,
     scrollToSelected,
     disableFiltering,
+    keepFilterOnClose,
     ...otherProps
   } = props;
 
@@ -128,7 +136,9 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function closeDropdown(shouldFocus: boolean = true, selectionsToClose?: ComboOption[]) {
     setExpanded(false);
-    clearFilter();
+    if (!keepFilterOnClose) {
+      clearFilter();
+    }
     if (shouldFocus) {
       focusInput();
     }
@@ -307,6 +317,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
 
     if (!multiSelect) {
+      // The selected label replaces typed text, so the filter always clears on a single pick.
+      clearFilter();
       closeDropdown(true, [...nextSelectedMap.values()]);
     }
   }
