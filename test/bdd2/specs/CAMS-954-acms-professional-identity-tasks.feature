@@ -15,7 +15,7 @@ Feature: Unresolved ACMS professionals become Data Verification identity tasks
   # Dependencies: CAMS-953
   # User Value: The verifier can resolve ACMS professionals that match two or more CAMS trustees
   Scenario: An ambiguous professional becomes an identity task with no case
-    Given ACMS professional "NY-00063" matches two CAMS trustees, each with strong signals
+    Given ACMS professional "NY-00063" matches two CAMS trustees, each with genuine evidence (see the SLICE 4 note)
     When the ACMS professional-id sync processes "NY-00063"
     Then a pending identity task exists with source "ACMS" and mismatch reason "ambiguous"
     And the task has no case attached
@@ -104,12 +104,17 @@ Feature: Unresolved ACMS professionals become Data Verification identity tasks
   # Dependencies: Slice 1
   # User Value: "Ambiguous" means the same thing on every identity task, whatever its source
   # Note: Amends CAMS-953, where the DXTR sync labels a task ambiguous when the candidate pool has 2+ trustees
-  Scenario: A DXTR record with two strong candidates is ambiguous
-    Given a DXTR trustee appointment event whose trustee matches two CAMS trustees, each with strong signals
+  # As built: a candidate has "genuine evidence" when its name is an exact match, or when its name
+  # passes the name check and the source record has contact data (address, phone or email). A
+  # task is "ambiguous" only when 2+ candidates have genuine evidence; otherwise it is "no match".
+  # The candidate pool can hold a candidate that fails the name check (kept when its state does not
+  # conflict with the source's), so a pool of 2+ is not by itself ambiguous.
+  Scenario: A DXTR record with two candidates having genuine evidence is ambiguous
+    Given a DXTR trustee appointment event whose trustee matches two CAMS trustees by name, each with genuine evidence
     When the DXTR trustee appointment sync processes the event
     Then a pending identity task exists with source "DXTR" and mismatch reason "ambiguous"
 
-  Scenario: A DXTR record with two weak candidates is no match
-    Given a DXTR trustee appointment event whose trustee has two candidates, at most one with strong signals
+  Scenario: A DXTR record with fewer than two name-matching candidates is no match
+    Given a DXTR trustee appointment event whose trustee has two candidates, only one of which passes the name check
     When the DXTR trustee appointment sync processes the event
     Then a pending identity task exists with source "DXTR" and mismatch reason "no match"
