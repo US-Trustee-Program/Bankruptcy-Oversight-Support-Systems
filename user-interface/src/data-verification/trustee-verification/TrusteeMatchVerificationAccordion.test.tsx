@@ -22,6 +22,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { buildTrusteeExplanation } from './trustee-explanation';
 
 const fieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
 
@@ -415,6 +416,44 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
       expect(screen.getByTestId('approve-candidate-trustee-2')).toBeInTheDocument();
+    });
+
+    test('gives the information received table the same col widths as the potential matches table for a pending task', async () => {
+      renderWithProps();
+      await mockDetailAndExpand();
+
+      const colClasses = (testId: string) =>
+        Array.from(screen.getByTestId(testId).querySelectorAll('col')).map((col) => col.className);
+      expect(colClasses('trustee-information-received-table')).toEqual(
+        colClasses('trustee-comparison-table'),
+      );
+      expect(colClasses('trustee-information-received-table')).toContain('comparison-col-action');
+    });
+
+    test('shows no Action col in the information received table when a pending task has no candidates', async () => {
+      renderWithProps();
+      await mockDetailAndExpand({ ...sampleOrderDetail, findings: findings([]) });
+
+      expect(
+        screen
+          .getByTestId('trustee-information-received-table')
+          .querySelector('.comparison-col-action'),
+      ).toBeNull();
+    });
+
+    test('shows no Action col in either table when the task is not pending', async () => {
+      renderWithProps({ order: { ...sampleOrder, status: 'rejected' as const } });
+      await mockDetailAndExpand({ ...sampleOrderDetail, status: 'rejected' });
+
+      expect(candidateRowHeaders()).toEqual(['Jane Smith', 'Janet Smith']);
+      expect(
+        screen
+          .getByTestId('trustee-information-received-table')
+          .querySelector('.comparison-col-action'),
+      ).toBeNull();
+      expect(
+        screen.getByTestId('trustee-comparison-table').querySelector('.comparison-col-action'),
+      ).toBeNull();
     });
 
     test('does not offer Match Trustee for a task that is not pending', async () => {
@@ -963,6 +1002,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand();
 
       await openSearchModal();
+
+      expect(screen.getByRole('heading', { name: 'Search for Trustee' })).toBeVisible();
     });
 
     test('opens the search modal without throwing for a caseless pending task', async () => {
@@ -975,6 +1016,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
 
       await openSearchModal();
+
+      expect(screen.getByRole('heading', { name: 'Search for Trustee' })).toBeVisible();
     });
 
     test('passes the courts-matched courtId, not order.courtId, to the search modal', async () => {
@@ -1319,7 +1362,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const problemStatement = screen
         .getByTestId(`accordion-content-${sampleOrder.id}`)
         .querySelector('.problem-statement');
-      expect(problemStatement?.textContent).toContain('No cases yet.');
+      const { sentence } = buildTrusteeExplanation(sampleOrderDetail.findings);
+      expect(problemStatement?.textContent).toBe(`${sentence} No cases yet.`);
       expect(problemStatement?.textContent).not.toContain('Cases attach as appointments sync.');
       expect(problemStatement?.textContent).not.toContain('No cases affected yet.');
       expect(
