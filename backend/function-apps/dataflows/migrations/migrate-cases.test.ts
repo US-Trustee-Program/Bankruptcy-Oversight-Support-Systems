@@ -293,6 +293,37 @@ describe('migrate-cases handleStart', () => {
     expect(storeRuntimeStateSpy).toHaveBeenCalled();
   });
 
+  test('still queues pages and completes when storing runtime state fails', async () => {
+    const { handleStart } = await import('./migrate-cases');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(MigrateCasesModule.default, 'emptyMigrationTable').mockResolvedValue({
+      success: true,
+    });
+    vi.spyOn(MigrateCasesModule.default, 'loadMigrationTable').mockResolvedValue({ data: 150 });
+    vi.spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    const loggerWarnSpy = vi.spyOn(mockContext.logger, 'warn');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    await expect(handleStart({}, invocationContext)).resolves.toBeUndefined();
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('page') }),
+      [
+        { start: 1, end: 100 },
+        { start: 101, end: 200 },
+      ],
+    );
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'MIGRATE-CASES',
+      expect.stringContaining('runtime state'),
+    );
+  });
+
   test('does nothing further and reports to DLQ when emptying the migration table fails', async () => {
     const { handleStart } = await import('./migrate-cases');
     const invocationContext = makeInvocationContext();

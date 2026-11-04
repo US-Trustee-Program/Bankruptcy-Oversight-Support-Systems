@@ -10,6 +10,7 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -79,6 +80,96 @@ describe('resync-cases-by-date handleStart', () => {
 
     await handleStart({ fromDate: '2024-01-01' }, invocationContext);
 
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
+
+  test.each([
+    { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+    { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+  ])(
+    'requeues the start message with backoff instead of throwing when getCaseIds fails with a $label',
+    async ({ build }) => {
+      const { handleStart } = await import('./resync-cases-by-date');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(build());
+      const mockContext = await createMockApplicationContext();
+      mockContext.extraOutputs = invocationContext.extraOutputs;
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      const fromConnectionStringSpy = vi
+        .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+        .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
+      await expect(
+        handleStart({ fromDate: '2024-01-01' }, invocationContext),
+      ).resolves.toBeUndefined();
+
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('start'),
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Number));
+      const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
+      expect(JSON.parse(body)).toEqual({
+        fromDate: '2024-01-01',
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      });
+      expect(visibilityTimeout).toBeGreaterThan(0);
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
+    },
+  );
+
+  test('routes the start message to DLQ instead of throwing when the transient-error retry limit is exhausted', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const fromConnectionStringSpy = vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString');
+
+    await expect(
+      handleStart(
+        { fromDate: '2024-01-01', retryCount: RATE_LIMIT_RETRY_LIMIT },
+        invocationContext,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(fromConnectionStringSpy).not.toHaveBeenCalled();
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput?.[1]).toEqual([
+      expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: RATE_LIMIT_RETRY_LIMIT }),
+    ]);
+  });
+
+  test('rethrows a non-transient getCaseIds failure without routing it to DLQ', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await expect(handleStart({ fromDate: '2024-01-01' }, invocationContext)).rejects.toThrow(
+      'Database connection failed',
+    );
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 });

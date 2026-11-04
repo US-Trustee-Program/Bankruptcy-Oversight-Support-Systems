@@ -7,6 +7,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
@@ -472,10 +473,11 @@ async function getCaseIdsToMigrate(
 /**
  * storeRuntimeState
  *
- * Wrapper for CasesRuntimeState.storeRuntimeState that swallows failures. The shared function
- * already logged the error. Rethrowing here would stop handleStart before the PAGE output is
- * delivered, and the queue retry would return early because the migration table is already
- * loaded, stalling the migration.
+ * Wrapper for CasesRuntimeState.storeRuntimeState that does not rethrow. Rethrowing would stop
+ * handleStart before the PAGE output is delivered, and the queue retry would return early because
+ * the migration table is already loaded, stalling the migration. The shared function logs
+ * non-transient failures before rethrowing, and rethrows transient ones unlogged, so this wrapper
+ * logs only the transient case to avoid a duplicate entry.
  *
  * @param appContext
  * @param syncDate
@@ -484,8 +486,13 @@ async function getCaseIdsToMigrate(
 async function storeRuntimeState(appContext: ApplicationContext, syncDate: string) {
   try {
     await CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
-  } catch {
-    // Already logged by CasesRuntimeState.storeRuntimeState.
+  } catch (error) {
+    if (isTransientInfraError(error)) {
+      appContext.logger.warn(
+        MODULE_NAME,
+        `Failed to store runtime state; migration continues. ${(error as Error).message}`,
+      );
+    }
   }
 }
 

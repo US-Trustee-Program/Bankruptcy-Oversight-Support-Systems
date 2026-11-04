@@ -18,6 +18,8 @@ const PAGE_SIZE = 100;
 
 type ResyncCasesByDateStartMessage = {
   fromDate: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 type ResyncCasesByDatePageMessage = {
@@ -88,7 +90,43 @@ export async function handleStart(
 
   logger.info(MODULE_NAME, `Starting resync of cases by date with fromDate: ${fromDate}`);
 
-  const { events } = await SyncCases.getCaseIds(context, fromDate);
+  let events: CaseSyncEvent[];
+  try {
+    ({ events } = await SyncCases.getCaseIds(context, fromDate));
+  } catch (originalError) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error: originalError,
+      message,
+      checkQueueName: START.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleStart',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
+      return;
+    }
+
+    throw originalError;
+  }
 
   if (!events.length) {
     logger.info(MODULE_NAME, `No cases found since ${fromDate}. Nothing to resync.`);
@@ -327,7 +365,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE],
+    extraOutputs: [PAGE, DLQ],
   });
 
   app.storageQueue(HANDLE_PAGE, {
