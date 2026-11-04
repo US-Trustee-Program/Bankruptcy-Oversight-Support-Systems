@@ -744,6 +744,16 @@ export class MockMongoRepository
     );
   }
 
+  findUnresolvedByFingerprint(fingerprint: string): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).filter(
+        (m) =>
+          m.camsTrusteeId === fingerprint &&
+          (m.disposition === 'no-match' || m.disposition === 'ambiguous'),
+      ),
+    );
+  }
+
   deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {
     const deleted = this.professionalIds.delete(`${camsTrusteeId}:${acmsProfessionalId}`);
     return Promise.resolve(deleted ? 1 : 0);

@@ -47,6 +47,21 @@ Feature: Unresolved ACMS professionals become Data Verification identity tasks
     Then "NY-00063" is linked to "Trustee A" with link method "manual"
     And "NY-00063" is not linked to "Trustee B"
 
+  Scenario: Approving an ACMS identity task links every ACMS id with identical source data
+    Given a pending ACMS identity task for "NY-00063" with candidates "Trustee A" and "Trustee B"
+    And "UT-05321" has an unresolved record with the same source data as "NY-00063"
+    When I approve the task with "Trustee A"
+    Then "NY-00063" is linked to "Trustee A" with link method "manual"
+    And "UT-05321" is linked to "Trustee A" with link method "manual"
+    And "UT-05321" has no unresolved record left
+
+  Scenario: Approving an ACMS identity task does not move a link another ACMS id already has
+    Given a pending ACMS identity task for "NY-00063" with candidates "Trustee A" and "Trustee B"
+    And "UT-05321" has an unresolved record with the same source data as "NY-00063"
+    And "UT-05321" is already linked to "Trustee C"
+    When I approve the task with "Trustee A"
+    Then "UT-05321" is still linked to "Trustee C"
+
   Scenario: The sync never overwrites a manual link
     Given "NY-00063" is linked to "Trustee A" with link method "manual"
     When the ACMS professional-id sync processes "NY-00063" again

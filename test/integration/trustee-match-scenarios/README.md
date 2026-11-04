@@ -107,7 +107,10 @@ directly into Cosmos (no DXTR row involved):
   gate A's real `getCaseSummary` + `isAppointmentMatch` check passes. Asserts in
   `trustee-professional-ids`: the `linkMethod: 'manual'` link exists, a stale link to another
   trustee is gone while that trustee's other ACMS id link survives (`deleteLink`'s pair scoping),
-  and the fingerprint-keyed rows are gone. `getCaseSummary` is why the DXTR schema also creates
+  another ACMS id with an unresolved record of identical source data (same fingerprint and variant)
+  is linked to the approved trustee as `manual`, a record under the same fingerprint with a
+  different variant stays unresolved, and the approved and healed ids' fingerprint-keyed rows are
+  gone. `getCaseSummary` is why the DXTR schema also creates
   `AO_COURT`/`AO_OFFICE`/`AO_GRP_DES`/`AO_REGION` (+ empty `AO_ALIAS`/`AO_SSN`/`AO_TAXID`); their
   rows are inserted only if absent and never cleaned. The remap enqueue is swapped for a recording
   stub, since this harness runs no Azurite; the queue path is `../trustee-verification-remap`'s job.

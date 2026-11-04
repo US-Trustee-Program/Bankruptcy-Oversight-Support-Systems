@@ -41,10 +41,12 @@ export type TrusteeMatchVerification = Auditable & {
   sourceTrustee: CanonicalTrusteeSource;
   /**
    * The ACMS professional ID this event's DXTR record maps to, formatted
-   * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") — informational/diagnostic only, never
-   * used to pick or auto-link a trustee (see isSentinelWithNoIdentity in
-   * sync-trustee-case-appointments.ts, which keys off the underlying raw profCode, not this
-   * formatted field). Omitted (not persisted) when the underlying profCode is a known sentinel
+   * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123"). The sync never uses it to pick or
+   * auto-link a trustee (see isSentinelWithNoIdentity in sync-trustee-case-appointments.ts, which
+   * keys off the underlying raw profCode, not this formatted field). Approving the task does use
+   * it: the verifier's chosen trustee is linked to this ACMS id with link method 'manual', and
+   * to every other ACMS id with an unresolved record of identical source data. Omitted (not
+   * persisted) when the underlying profCode is a known sentinel
    * value ("00000"/"99999") — a formatted sentinel ID would read as a real professional ID to a
    * reviewer rather than the "no trustee appointed"/"ID unavailable" placeholder it actually is.
    * Lets a reviewer distinguish a genuine unmatched trustee from a sentinel-coded placeholder

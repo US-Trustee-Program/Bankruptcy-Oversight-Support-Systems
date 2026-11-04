@@ -310,6 +310,10 @@ const MANUAL_LINK_FINGERPRINT = 'stage-10-manual-link-fingerprint';
 const MANUAL_LINK_VARIANT = '{"firstName":"manual","lastName":"link"}';
 const MANUAL_LINK_ACMS_ID = 'INT-ACMS-MANUAL-LINK';
 const MANUAL_LINK_OTHER_ACMS_ID = 'INT-ACMS-MANUAL-LINK-OTHER';
+// Two more ACMS ids with an unresolved record under the same fingerprint: one with the identical
+// variant (healed on approval) and one with a different variant (left unresolved).
+const MANUAL_LINK_SHARED_ACMS_ID = 'INT-ACMS-MANUAL-LINK-SHARED';
+const MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID = 'INT-ACMS-MANUAL-LINK-DIFFERENT-VARIANT';
 const STAGE_10_PROFESSIONAL_ID_CAMS_TRUSTEE_IDS = [
   MANUAL_LINK_STALE_TRUSTEE_ID,
   MANUAL_LINK_FINGERPRINT,
@@ -2243,6 +2247,7 @@ async function runManualProfessionalIdLinkStage(
       camsTrusteeId: string,
       acmsProfessionalId: string,
       disposition: 'linked' | 'no-match',
+      variant?: string,
     ) =>
       professionalIdsRepo.upsertProfessionalId(
         {
@@ -2252,15 +2257,27 @@ async function runManualProfessionalIdLinkStage(
           disposition,
           ...(disposition === 'linked' ? { linkMethod: 'auto' as const } : {}),
           nameMatchCount: 0,
-          evidence: MockData.getTrusteeMatchFindings(),
+          evidence: { ...MockData.getTrusteeMatchFindings(), variant },
         },
         systemUser,
       );
     await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_ACMS_ID, 'linked');
     await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_OTHER_ACMS_ID, 'linked');
-    await seedRow(MANUAL_LINK_FINGERPRINT, MANUAL_LINK_ACMS_ID, 'no-match');
+    await seedRow(MANUAL_LINK_FINGERPRINT, MANUAL_LINK_ACMS_ID, 'no-match', MANUAL_LINK_VARIANT);
+    await seedRow(
+      MANUAL_LINK_FINGERPRINT,
+      MANUAL_LINK_SHARED_ACMS_ID,
+      'no-match',
+      MANUAL_LINK_VARIANT,
+    );
+    await seedRow(
+      MANUAL_LINK_FINGERPRINT,
+      MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID,
+      'no-match',
+      '{"firstName":"a different","lastName":"variant"}',
+    );
     pass(
-      'Seeded pending identity task with acmsProfessionalId, one covering-case surrogate, and 3 trustee-professional-ids rows',
+      'Seeded pending identity task with acmsProfessionalId, one covering-case surrogate, and 5 trustee-professional-ids rows (two sharing its fingerprint and one with a different variant)',
     );
 
     const queuedRemaps: TrusteeVerificationRemapMessage[] = [];
@@ -2332,11 +2349,37 @@ async function runManualProfessionalIdLinkStage(
       );
     }
 
-    const fingerprintRows = await rows.countDocuments({ camsTrusteeId: MANUAL_LINK_FINGERPRINT });
-    if (fingerprintRows === 0) {
-      pass('10. fingerprint-keyed trustee-professional-ids rows deleted');
+    const sharedLink = await rows.findOne({
+      camsTrusteeId: MANUAL_LINK_TRUSTEE.id,
+      acmsProfessionalId: MANUAL_LINK_SHARED_ACMS_ID,
+    });
+    if (
+      sharedLink?.disposition === 'linked' &&
+      sharedLink?.linkMethod === 'manual' &&
+      sharedLink?.evidence?.match?.resolvedBy === 'manualApproval' &&
+      sharedLink?.createdBy?.id === 'integration-harness'
+    ) {
+      pass(
+        '10. another ACMS id with an unresolved record of identical source data was linked to the approved trustee as manual',
+      );
     } else {
-      fail(`10. expected 0 fingerprint-keyed rows, found ${fingerprintRows}`);
+      fail(`10. expected the shared-fingerprint ACMS id healed, got ${JSON.stringify(sharedLink)}`);
+    }
+
+    const remainingFingerprintRows = await rows
+      .find({ camsTrusteeId: MANUAL_LINK_FINGERPRINT })
+      .toArray();
+    if (
+      remainingFingerprintRows.length === 1 &&
+      remainingFingerprintRows[0].acmsProfessionalId === MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID
+    ) {
+      pass(
+        '10. fingerprint-keyed rows deleted for the approved and healed ids; the different-variant record stays unresolved',
+      );
+    } else {
+      fail(
+        `10. expected only the different-variant row left, found ${JSON.stringify(remainingFingerprintRows.map((r) => r.acmsProfessionalId))}`,
+      );
     }
 
     const approved = await db

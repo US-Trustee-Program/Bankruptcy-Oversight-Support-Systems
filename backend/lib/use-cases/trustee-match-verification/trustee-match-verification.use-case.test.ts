@@ -909,18 +909,32 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
       let professionalIdsRepo: MockMongoRepository;
 
-      function seedProfessionalId(camsTrusteeId: string, disposition: 'linked') {
+      function seedProfessionalId(
+        camsTrusteeId: string,
+        disposition: 'linked' | 'no-match' | 'ambiguous' | 'skipped',
+        options: { acmsId?: string; variant?: string } = {},
+      ) {
         return professionalIdsRepo.upsertProfessionalId(
           {
             documentType: 'TRUSTEE_PROFESSIONAL_ID',
             camsTrusteeId,
-            acmsProfessionalId,
+            acmsProfessionalId: options.acmsId ?? acmsProfessionalId,
             disposition,
             nameMatchCount: 0,
-            evidence: MockData.getTrusteeMatchFindings(),
+            evidence: { ...MockData.getTrusteeMatchFindings(), variant: options.variant },
           },
           systemUser,
         );
+      }
+
+      // An unresolved record of another ACMS id whose source record has the same contact data,
+      // so it shares this task's fingerprint and variant.
+      function seedSharedFingerprintRecord(
+        acmsId: string,
+        disposition: 'no-match' | 'ambiguous' | 'skipped' = 'no-match',
+        variant: string = sampleVerification.variant,
+      ) {
+        return seedProfessionalId(sampleVerification.fingerprint, disposition, { acmsId, variant });
       }
 
       beforeEach(() => {
@@ -967,26 +981,92 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect(remaining).toEqual([]);
       });
 
-      test('keeps the unresolved records of other ACMS ids that share the fingerprint', async () => {
-        await seedProfessionalId(sampleVerification.fingerprint, 'linked');
-        await professionalIdsRepo.upsertProfessionalId(
-          {
-            documentType: 'TRUSTEE_PROFESSIONAL_ID',
-            camsTrusteeId: sampleVerification.fingerprint,
-            acmsProfessionalId: 'UT-05321',
-            disposition: 'linked',
-            nameMatchCount: 0,
-            evidence: MockData.getTrusteeMatchFindings(),
-          },
-          systemUser,
-        );
+      test.each(['no-match', 'ambiguous'] as const)(
+        'links another ACMS id that shares the fingerprint and variant (%s) to the approved trustee as manual',
+        async (disposition) => {
+          await seedProfessionalId(sampleVerification.fingerprint, 'no-match');
+          await seedSharedFingerprintRecord('UT-05321', disposition);
+          const upsertSpy = vi.spyOn(professionalIdsRepo, 'upsertProfessionalId');
+
+          await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+          expect(upsertSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              camsTrusteeId: 'trustee-b',
+              acmsProfessionalId: 'UT-05321',
+              disposition: 'linked',
+              linkMethod: 'manual',
+              evidence: expect.objectContaining({
+                match: { trusteeId: 'trustee-b', score: {}, resolvedBy: 'manualApproval' },
+                variant: sampleVerification.variant,
+              }),
+            }),
+            expect.objectContaining({ id: expect.any(String) }),
+          );
+          const links = await professionalIdsRepo.findByAcmsProfessionalId('UT-05321');
+          expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-b']);
+          expect(
+            await professionalIdsRepo.findUnresolvedByFingerprint(sampleVerification.fingerprint),
+          ).toEqual([]);
+        },
+      );
+
+      test('links several other ACMS ids that share the fingerprint', async () => {
+        await seedProfessionalId(sampleVerification.fingerprint, 'no-match');
+        await seedSharedFingerprintRecord('UT-05321');
+        await seedSharedFingerprintRecord('CA-00012', 'ambiguous');
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-b');
 
-        const remaining = await professionalIdsRepo.findByCamsTrusteeId(
+        const linked = await professionalIdsRepo.findByCamsTrusteeId('trustee-b');
+        expect(linked.map((link) => link.acmsProfessionalId).sort()).toEqual([
+          'CA-00012',
+          'NY-00063',
+          'UT-05321',
+        ]);
+      });
+
+      test('leaves an unresolved record whose stored variant differs from the approved variant', async () => {
+        await seedSharedFingerprintRecord('UT-05321', 'no-match', 'a different variant');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        expect(await professionalIdsRepo.findByAcmsProfessionalId('UT-05321')).toEqual([]);
+        const unresolved = await professionalIdsRepo.findUnresolvedByFingerprint(
           sampleVerification.fingerprint,
         );
-        expect(remaining.map((record) => record.acmsProfessionalId)).toEqual(['UT-05321']);
+        expect(unresolved.map((record) => record.acmsProfessionalId)).toEqual(['UT-05321']);
+      });
+
+      test('does not move a link another ACMS id already has on a different trustee', async () => {
+        await seedSharedFingerprintRecord('UT-05321');
+        await seedProfessionalId('trustee-old', 'linked', { acmsId: 'UT-05321' });
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        const links = await professionalIdsRepo.findByAcmsProfessionalId('UT-05321');
+        expect(links.map((link) => link.camsTrusteeId)).toEqual(['trustee-old']);
+      });
+
+      test('ignores a record keyed by the fingerprint that is neither no-match nor ambiguous', async () => {
+        await seedSharedFingerprintRecord('UT-05321', 'skipped');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+        expect(await professionalIdsRepo.findByAcmsProfessionalId('UT-05321')).toEqual([]);
+      });
+
+      test('fails the approval, leaving it pending, when linking another ACMS id throws', async () => {
+        await seedSharedFingerprintRecord('UT-05321');
+        vi.spyOn(professionalIdsRepo, 'upsertProfessionalId')
+          .mockResolvedValueOnce({} as never)
+          .mockRejectedValueOnce(new CamsError('TEST', { message: 'sibling write failed' }));
+
+        await expect(
+          useCase.approveVerification(context, 'verification-1', 'trustee-b'),
+        ).rejects.toThrow('sibling write failed');
+
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
       });
 
       test('moves an existing link on a different trustee to the approved trustee', async () => {
@@ -1070,6 +1150,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         mockFindById.mockResolvedValue(sampleVerification);
         const spies = [
           vi.spyOn(professionalIdsRepo, 'findByAcmsProfessionalId'),
+          vi.spyOn(professionalIdsRepo, 'findUnresolvedByFingerprint'),
           vi.spyOn(professionalIdsRepo, 'deleteLink'),
           vi.spyOn(professionalIdsRepo, 'upsertProfessionalId'),
         ];
