@@ -2477,3 +2477,63 @@ describe('ComboBox', () => {
     });
   });
 });
+
+describe('ComboBox keepFilterOnClose', () => {
+  const searchOptions: ComboOption[] = [
+    { label: 'John Smith', value: 'trustee-001' },
+    { label: 'Jane Smithson', value: 'trustee-002' },
+  ];
+  const userEvent = TestingUtilities.setupUserEvent();
+
+  function renderSearchComboBox(props: Partial<ComboBoxProps> = {}) {
+    render(
+      <div>
+        <button className="button1" tabIndex={0}>
+          button
+        </button>
+        <ComboBox
+          id={comboboxId}
+          label="Trustee Name"
+          options={searchOptions}
+          disableFiltering={true}
+          keepFilterOnClose={true}
+          {...props}
+        />
+      </div>,
+    );
+  }
+
+  function getInput() {
+    return document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+  }
+
+  test('keeps the typed text visible when the dropdown closes with Escape and nothing is selected', async () => {
+    renderSearchComboBox();
+
+    await userEvent.type(getInput(), 'sm');
+    await userEvent.keyboard('{Escape}');
+
+    expect(isDropdownClosed()).toBe(true);
+    expect(getInput().value).toBe('sm');
+  });
+
+  test('keeps the typed text visible when focus moves outside the combobox', async () => {
+    renderSearchComboBox();
+
+    await userEvent.type(getInput(), 'sm');
+    await userEvent.click(document.querySelector('.button1')!);
+
+    expect(isDropdownClosed()).toBe(true);
+    expect(getInput().value).toBe('sm');
+  });
+
+  test('replaces the typed text with the selected label when an option is chosen', async () => {
+    renderSearchComboBox();
+
+    await userEvent.type(getInput(), 'sm');
+    await userEvent.click(screen.getByTestId(`${comboboxId}-option-item-0`));
+
+    expect(isDropdownClosed()).toBe(true);
+    expect(getInput().value).toBe('John Smith');
+  });
+});
