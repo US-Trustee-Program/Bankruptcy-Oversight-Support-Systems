@@ -203,7 +203,7 @@ test.describe('Trustee Identity Verification', () => {
     const content = await expandTask(page, CASELESS_TASK_ID);
 
     await expect(content.getByTestId('problem-statement')).toContainText(
-      'No cases yet. Cases attach as appointments sync.',
+      'No cases yet.',
       timeoutOption,
     );
     await expect(content.getByTestId('problem-statement').locator('a.new-tab-link')).toHaveCount(0);
@@ -285,7 +285,7 @@ test.describe('Trustee Identity Verification', () => {
       const content = await expandTask(page, ACMS_AMBIGUOUS_TASK_ID);
 
       await expect(content.getByTestId('problem-statement')).toContainText(
-        'Trustee information sent to CAMS matches multiple trustees in CAMS. No cases yet. Cases attach as appointments sync.',
+        'Trustee information sent to CAMS matches multiple trustees in CAMS. No cases yet.',
         timeoutOption,
       );
       await expect(

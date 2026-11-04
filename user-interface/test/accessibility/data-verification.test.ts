@@ -172,13 +172,11 @@ test.describe('Data Verification', () => {
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     await page.getByRole('button', { name: 'Search for a trustee' }).click();
-    await expect(
-      page.locator(`#checkbox-trustee-search-show-without-coverage-${taskId}-click-target`),
-    ).toBeVisible();
+    await expect(page.locator(`#${comboBoxId}-expand`)).toBeVisible();
     await page.locator(`#${comboBoxId}-expand`).click();
     await page.locator(`#${comboBoxId}-combo-box-input`).fill('Riley');
     await page.locator(`[data-testid="${comboBoxId}-option-item-0"]`).click();
-    // Scan while the search modal and its coverage checkbox are visible; let the fade-in finish.
+    // Scan while the search modal is visible; let the fade-in finish.
     await page.waitForTimeout(ANALYZE_DELAY);
     const searchModalScan = await createAxeBuilder(page).analyze();
     expect(searchModalScan.violations).toEqual([]);
@@ -211,9 +209,7 @@ test.describe('Data Verification', () => {
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     const content = page.locator(`[data-testid="accordion-content-${taskId}"]`);
-    await expect(content.locator('.problem-statement')).toContainText(
-      'No cases yet. Cases attach as appointments sync.',
-    );
+    await expect(content.locator('.problem-statement')).toContainText('No cases yet.');
 
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

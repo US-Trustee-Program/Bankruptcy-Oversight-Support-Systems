@@ -33,9 +33,28 @@ export function DifferenceIcon({ label }: DifferenceIconProps) {
   );
 }
 
+type ComparisonColumnsProps = { showEmail: boolean; showAction: boolean };
+
+/**
+ * Shared column widths for the Trustee Information Received and Potential Matches tables, so
+ * each sent value sits directly above the candidate values it's compared against. The received
+ * table renders the Action column with no cells, reserving the same width.
+ */
+export function ComparisonColumns({ showEmail, showAction }: ComparisonColumnsProps) {
+  return (
+    <colgroup>
+      <col className="comparison-col-name" />
+      <col className="comparison-col-address" />
+      <col className="comparison-col-phone" />
+      {showEmail && <col className="comparison-col-email" />}
+      {showAction && <col className="comparison-col-action" />}
+    </colgroup>
+  );
+}
+
 function FieldCell({ cell, label }: { cell: ComparisonCell; label: string }) {
   return (
-    <td>
+    <td data-label={label}>
       <span className="comparison-cell-value">
         {cell.value !== undefined && cell.differs && <DifferenceIcon label={label} />}
         {cell.value ?? 'Not Provided'}
@@ -47,7 +66,7 @@ function FieldCell({ cell, label }: { cell: ComparisonCell; label: string }) {
 function AddressCell({ candidate }: { candidate: ComparisonCandidate }) {
   const { lines, differs } = candidateAddress(candidate.cells);
   return (
-    <td>
+    <td data-label="Address">
       <span className="comparison-cell-value">
         {lines.length > 0 && differs && <DifferenceIcon label="Address" />}
         <span className="address-lines">
@@ -78,7 +97,7 @@ function CandidateRow({
   const { cells } = candidate;
   return (
     <tr>
-      <th scope="row">
+      <th scope="row" data-label="Name">
         <span className="comparison-cell-value">
           {cells.name.differs && <DifferenceIcon label="Name" />}
           <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
@@ -88,7 +107,7 @@ function CandidateRow({
       <FieldCell cell={cells.phone} label="Phone" />
       {showEmail && <FieldCell cell={cells.email} label="Email" />}
       {onApprove && (
-        <td className="text-no-wrap">
+        <td className="text-no-wrap" data-label="Action">
           <button
             type="button"
             data-testid={`approve-candidate-${candidate.trusteeId}`}
@@ -153,6 +172,7 @@ export default function TrusteeComparisonTable({
         data-testid="trustee-comparison-table"
         aria-labelledby={labelledBy}
       >
+        <ComparisonColumns showEmail={showEmail} showAction={!!onApprove} />
         <thead>
           <tr>
             <th scope="col">Name</th>

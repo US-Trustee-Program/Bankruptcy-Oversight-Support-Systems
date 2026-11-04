@@ -1,3 +1,4 @@
+@use 'uswds-core' as *;
 @use '@/styles/abstracts/colors';
 
 .usa-accordion__content:has(.trustee-match-content) {
@@ -35,8 +36,29 @@
     margin-bottom: 1rem;
   }
 
+  // Fixed layout with the shared ComparisonColumns widths keeps the Trustee Information Received
+  // columns directly above the matching Potential Matches columns. Address and Email take the
+  // remaining width.
   .trustee-comparison-table {
     margin-top: 0;
+    table-layout: fixed;
+
+    .comparison-col-name {
+      width: 22%;
+    }
+    .comparison-col-phone {
+      width: 16%;
+    }
+    .comparison-col-action {
+      width: 14%;
+    }
+
+    // Multi-line cells (a two-line address) shouldn't push single-line values to the middle of
+    // the row - every value starts on the row's first line.
+    th,
+    td {
+      vertical-align: top;
+    }
 
     // USWDS gives every cell 1rem of left padding; the first column's content should instead
     // start flush with the heading and body text above the table, so it's zeroed out here.
@@ -47,16 +69,17 @@
 
     th[scope='row'] {
       font-weight: normal;
-      white-space: nowrap;
     }
 
+    th[scope='row'],
     td {
       overflow-wrap: anywhere;
     }
 
+    // flex-start (not center) keeps a difference icon on the first line of a multi-line value.
     .comparison-cell-value {
       display: inline-flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.25rem;
     }
 
@@ -64,22 +87,40 @@
       display: inline-flex;
       flex-direction: column;
     }
-  }
 
-  // The source record is a single row of known data, not a ranked list to scan - it doesn't
-  // need the full table width the Potential Matches comparison table uses. Chained with
-  // .trustee-comparison-table (rather than relying on cascade order) so this reliably outranks
-  // the app-wide ".cams-content table { width: 100% }" rule.
-  .trustee-comparison-table.trustee-information-received-table {
-    width: auto;
+    // Stack each row's cells, labelled by data-label, below tablet width. usa-table--stacked
+    // only stacks below mobile-lg, which leaves these five columns unreadably narrow in between.
+    // USWDS blocks the cells but leaves the row a table-row, so the fixed column widths are
+    // dropped too - otherwise the stacked cells share one anonymous column held to Name's 22%.
+    @include at-media-max('tablet') {
+      table-layout: auto;
+      @include table-stacked-styles;
+
+      colgroup {
+        display: none;
+      }
+
+      tbody,
+      tr {
+        display: block;
+      }
+
+      th,
+      td {
+        padding-left: 0;
+      }
+    }
   }
 
   // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). Every field,
   // State included, uses the same neutral marker; the icon carries its own accessible name, so
   // meaning never rests on color alone.
+  // One line tall, so the icon centers on the first line of text beside it.
   .difference-icon {
     display: inline-flex;
     align-items: center;
+    height: 1.5em; // fallback for browsers without lh support
+    height: 1lh;
   }
 
   .difference-icon-symbol {
