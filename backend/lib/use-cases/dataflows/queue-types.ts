@@ -41,14 +41,3 @@ export function buildQueueError(
 export function isQueueError(value: unknown): value is QueueError {
   return (value as QueueError | undefined)?.type === 'QUEUE_ERROR';
 }
-
-/**
- * Non-sensitive projection of a CaseSyncEvent, safe to write to a DLQ. The bCase payload carries
- * debtor and joint-debtor names and tax IDs, so it is excluded. Fields are picked explicitly so a
- * field added to CaseSyncEvent later stays out of the DLQ until someone opts it in here.
- */
-export type CaseSyncEventSummary = Pick<CaseSyncEvent, 'type' | 'caseId'>;
-
-export function toCaseSyncEventSummary(event: CaseSyncEvent): CaseSyncEventSummary {
-  return { type: event.type, caseId: event.caseId };
-}

@@ -32,7 +32,7 @@ describe('Export and Load Case Tests', () => {
   });
 
   describe('exportAndLoadCase', () => {
-    test('should return list of events with case details on each', async () => {
+    test('should sync each case and return the events without attaching case details', async () => {
       const mockCaseDetails = MockData.getCaseDetail();
       const events = MockData.buildArray(mockCaseSyncEvent, 3);
 
@@ -42,16 +42,22 @@ describe('Export and Load Case Tests', () => {
       const loadSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
       const actual = await ExportAndLoadCase.exportAndLoad(context, events);
-      const expected: CaseSyncEvent[] = events.map((event) => {
-        return {
-          ...event,
-          bCase: mockCaseDetails,
-        };
-      });
 
       expect(exportSpy).toHaveBeenCalledTimes(events.length);
       expect(loadSpy).toHaveBeenCalledTimes(events.length);
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual(MockData.buildArray(mockCaseSyncEvent, 3));
+    });
+
+    test('does not leave the fetched debtor data on the events it returns or was given', async () => {
+      const bCase = MockData.getCaseDetail({ override: { debtor: { name: 'REDACTION-PROBE' } } });
+      const events = MockData.buildArray(mockCaseSyncEvent, 2);
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(bCase);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const actual = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(JSON.stringify(actual)).not.toContain('REDACTION-PROBE');
     });
 
     test('should return a list of events with an error on each event', async () => {
@@ -70,19 +76,18 @@ describe('Export and Load Case Tests', () => {
   });
 
   describe('exportCase', () => {
-    test('should return CaseDetail on event', async () => {
-      const mockCaseDetails = MockData.getCaseDetail();
+    test('should return the DxtrCase and leave the event untouched', async () => {
+      const bCase = MockData.getCaseDetail({ override: { debtor: { name: 'REDACTION-PROBE' } } });
       const event = mockCaseSyncEvent();
-      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(bCase);
+
       const actual = await ExportAndLoadCase.exportCase(context, event);
-      const expected: CaseSyncEvent = {
-        ...event,
-        bCase: mockCaseDetails,
-      };
-      expect(actual).toEqual(expected);
+
+      expect(actual).toEqual({ caseDetail: bCase });
+      expect(event).toEqual(mockCaseSyncEvent());
     });
 
-    test('should return an error on the event', async () => {
+    test('should return the error without modifying the event', async () => {
       const event = mockCaseSyncEvent();
 
       const error = new Error('some error');
@@ -92,17 +97,18 @@ describe('Export and Load Case Tests', () => {
       const actual = await ExportAndLoadCase.exportCase(context, event);
 
       expect(actual.error).toEqual(expect.objectContaining(expected));
+      expect(event).toEqual(mockCaseSyncEvent());
     });
   });
 
   describe('loadCase', () => {
     test('should persist a SyncedCase', async () => {
       const bCase = MockData.getDxtrCase();
-      const event = mockCaseSyncEvent({ bCase });
+      const event = mockCaseSyncEvent();
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
-      await ExportAndLoadCase.loadCase(context, event);
+      await ExportAndLoadCase.loadCase(context, event, bCase);
 
       expect(syncSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -120,9 +126,9 @@ describe('Export and Load Case Tests', () => {
       );
     });
 
-    test('should return an error on the event', async () => {
+    test('should return the error without modifying the event', async () => {
       const bCase = MockData.getDxtrCase();
-      const event = mockCaseSyncEvent({ bCase });
+      const event = mockCaseSyncEvent();
       const error = new UnknownError('test-module');
       vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockRejectedValue(error);
 
@@ -133,8 +139,9 @@ describe('Export and Load Case Tests', () => {
         },
       });
 
-      const actual = await ExportAndLoadCase.loadCase(context, event);
+      const actual = await ExportAndLoadCase.loadCase(context, event, bCase);
       expect(actual.error).toEqual(expect.objectContaining(expected));
+      expect(event).toEqual(mockCaseSyncEvent());
     });
 
     test('should add phonetic tokens to debtor name when loading case', async () => {
@@ -145,11 +152,11 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Michael Johnson' },
         },
       });
-      const event = mockCaseSyncEvent({ bCase });
+      const event = mockCaseSyncEvent();
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
-      await ExportAndLoadCase.loadCase(context, event);
+      await ExportAndLoadCase.loadCase(context, event, bCase);
 
       const syncedCase = syncSpy.mock.calls[0][0];
       expect(syncedCase.debtor.phoneticTokens).toBeDefined();
@@ -163,11 +170,11 @@ describe('Export and Load Case Tests', () => {
           jointDebtor: { name: 'Sarah Connor' },
         },
       });
-      const event = mockCaseSyncEvent({ bCase });
+      const event = mockCaseSyncEvent();
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
-      await ExportAndLoadCase.loadCase(context, event);
+      await ExportAndLoadCase.loadCase(context, event, bCase);
 
       const syncedCase = syncSpy.mock.calls[0][0];
       expect(syncedCase.debtor.phoneticTokens).toBeDefined();
@@ -182,11 +189,11 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: undefined },
         },
       });
-      const event = mockCaseSyncEvent({ bCase });
+      const event = mockCaseSyncEvent();
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
-      await ExportAndLoadCase.loadCase(context, event);
+      await ExportAndLoadCase.loadCase(context, event, bCase);
 
       const syncedCase = syncSpy.mock.calls[0][0];
       expect(syncedCase.debtor.phoneticTokens).toBeUndefined();

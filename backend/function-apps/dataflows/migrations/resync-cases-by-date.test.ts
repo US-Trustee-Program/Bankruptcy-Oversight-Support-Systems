@@ -10,7 +10,6 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
@@ -238,10 +237,14 @@ describe('resync-cases-by-date handlePage', () => {
     expect(mockSendMessage).toHaveBeenCalled();
   });
 
-  test('routes to DLQ instead of throwing when the retry limit is exhausted, keeping only the case id and type of each event', async () => {
+  test('routes to DLQ instead of throwing when the retry limit is exhausted, keeping the original page events', async () => {
     const { handlePage } = await import('./resync-cases-by-date');
     const events: CaseSyncEvent[] = [
-      { type: 'CASE_CHANGED', caseId: '001-25-00001', bCase: MockData.getDxtrCase() },
+      {
+        type: 'CASE_CHANGED',
+        caseId: '001-25-00001',
+        divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
+      },
     ];
     const message: PageMessage = { events, retryCount: 10 };
     const invocationContext = makeInvocationContext();
@@ -260,7 +263,7 @@ describe('resync-cases-by-date handlePage', () => {
     expect(dlqCall?.[1]).toEqual([
       expect.objectContaining({
         message: {
-          events: [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }],
+          events,
           retryCount: 10,
         },
       }),

@@ -1,25 +1,7 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { CaseSyncEvent } from '@common/cams/dataflow-events';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { buildQueueError, isQueueError, QueueError, toCaseSyncEventSummary } from './queue-types';
+import { buildQueueError, isQueueError, QueueError } from './queue-types';
 
 describe('Queue types', () => {
-  test('toCaseSyncEventSummary keeps only type and caseId', () => {
-    const event: CaseSyncEvent = {
-      type: 'CASE_CHANGED',
-      caseId: '001-25-00001',
-      bCase: MockData.getDxtrCase(),
-      error: new CamsError('TEST_MODULE', { message: 'bad', data: { reason: 'test' } }),
-      retryCount: 2,
-      divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
-    };
-
-    expect(toCaseSyncEventSummary(event)).toEqual({
-      type: 'CASE_CHANGED',
-      caseId: '001-25-00001',
-    });
-  });
-
   test('isQueueError recognizes a QueueError built by buildQueueError', () => {
     const queueError = buildQueueError(new CamsError('TEST_MODULE'), 'TEST_MODULE', 'activity');
 

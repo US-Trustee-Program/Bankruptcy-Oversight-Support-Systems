@@ -315,7 +315,7 @@ describe('handleRateLimitRetry', () => {
     });
   });
 
-  test('DLQ exhaustion entry records the original message when no dlqMessage is given', async () => {
+  test('DLQ exhaustion entry records the original message', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
 
@@ -335,31 +335,6 @@ describe('handleRateLimitRetry', () => {
     ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
 
     expect(dlqMessageArray?.[0].message).toEqual(message);
-  });
-
-  test('DLQ exhaustion entry uses dlqMessage in place of the original message when given', async () => {
-    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { caseId: 'CASE-123', debtorName: 'SENSITIVE', retryCount: 10 };
-    const dlqPayload = { caseId: 'CASE-123' };
-
-    await handleRateLimitRetry({
-      error,
-      message,
-      dlqMessage: dlqPayload,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-
-    const dlqMessageArray = (
-      mockApplicationContext.extraOutputs.set as ReturnType<typeof vi.fn>
-    ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
-
-    expect(dlqMessageArray?.[0].message).toEqual(dlqPayload);
-    expect(JSON.stringify(dlqMessageArray)).not.toContain('SENSITIVE');
   });
 
   test('throws when connectionString is empty string', async () => {

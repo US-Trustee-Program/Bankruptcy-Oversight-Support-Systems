@@ -13,7 +13,6 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -365,34 +364,32 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
         },
       );
     } else {
-      if (!event.bCase) {
-        const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
+      const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
 
-        if (exportResult.bCase) {
-          event.bCase = exportResult.bCase;
-        } else {
-          event.error =
-            exportResult.error ??
-            new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
-          appContext.extraOutputs.set(DLQ, [event]);
-          completeDataflowTrace(
-            appContext.observability,
-            trace,
-            MODULE_NAME,
-            'handleRetry',
-            appContext.logger,
-            {
-              documentsWritten: 0,
-              documentsFailed: 1,
-              success: true,
-              details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
-            },
-          );
-          return;
-        }
+      if (exportResult.error) {
+        event.error = exportResult.error;
+        appContext.extraOutputs.set(DLQ, [event]);
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handleRetry',
+          appContext.logger,
+          {
+            documentsWritten: 0,
+            documentsFailed: 1,
+            success: true,
+            details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
+          },
+        );
+        return;
       }
 
-      const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
+      const loadResult = await ExportAndLoadCase.loadCase(
+        appContext,
+        event,
+        exportResult.caseDetail,
+      );
 
       if (loadResult.error) {
         event.error = loadResult.error;

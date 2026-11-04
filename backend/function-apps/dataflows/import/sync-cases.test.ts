@@ -10,7 +10,6 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { buildQueueName } from '../dataflows-common';
 import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 
@@ -101,18 +100,19 @@ describe('sync-cases handlePage', () => {
     );
   });
 
-  test('should route to DLQ and emit telemetry when retry limit exhausted, keeping only type and caseId of each event', async () => {
+  test('should route to DLQ and emit telemetry when retry limit exhausted, keeping the original page events', async () => {
     const { handlePage } = await import('./sync-cases');
     const events = [makeCaseSyncEvent('001-25-00001')];
     const message = { events, retryCount: RATE_LIMIT_RETRY_LIMIT };
     const invocationContext = makeInvocationContext();
 
-    const bCase = MockData.getDxtrCase();
-    bCase.debtor.name = 'REDACTION-PROBE';
     const tooManyError = new TooManyRequestsError('SYNC-CASES');
     vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockImplementation(
       async (_context, pageEvents) => {
-        pageEvents[0].bCase = bCase;
+        pageEvents[0].divisionChange = {
+          orphanedCaseId: '081-25-00001',
+          currentCaseId: '001-25-00001',
+        };
         throw tooManyError;
       },
     );
@@ -132,8 +132,13 @@ describe('sync-cases handlePage', () => {
       (output as { queueName: string }).queueName.includes('dlq'),
     );
     const [dlqEntry] = dlqCall?.[1] as { message: { events: unknown } }[];
-    expect(dlqEntry.message.events).toEqual([{ type: 'CASE_CHANGED', caseId: '001-25-00001' }]);
-    expect(JSON.stringify(dlqEntry)).not.toContain('REDACTION-PROBE');
+    expect(dlqEntry.message.events).toEqual([
+      {
+        type: 'CASE_CHANGED',
+        caseId: '001-25-00001',
+        divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
+      },
+    ]);
 
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),

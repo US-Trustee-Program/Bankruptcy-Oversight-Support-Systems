@@ -10,11 +10,7 @@ import { isTransientInfraError } from '../../../lib/common-errors/transient-infr
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry, requeueSingleEventWithBackoff } from '../dataflows-rate-limit';
-import {
-  isQueueError,
-  QueueError,
-  toCaseSyncEventSummary,
-} from '../../../lib/use-cases/dataflows/queue-types';
+import { isQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import ModuleNames from '../module-names';
 
@@ -185,7 +181,6 @@ export async function handlePage(
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
       message,
-      dlqMessage: { ...message, events: events.map(toCaseSyncEventSummary) },
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context,

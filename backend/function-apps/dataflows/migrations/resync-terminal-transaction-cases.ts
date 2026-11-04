@@ -12,7 +12,6 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
-import { toCaseSyncEventSummary } from '../../../lib/use-cases/dataflows/queue-types';
 
 const MODULE_NAME = 'RESYNC-TERMINAL-TRANSACTION-CASES';
 const PAGE_SIZE = 100;
@@ -138,10 +137,6 @@ async function handlePage(
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
       message: normalizedMessage,
-      dlqMessage: {
-        ...normalizedMessage,
-        events: normalizedMessage.events.map(toCaseSyncEventSummary),
-      },
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context: appContext,
