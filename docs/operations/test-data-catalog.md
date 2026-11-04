@@ -55,11 +55,12 @@ onto `AppointmentAccordion`.
 
 ### Administrative Data
 
-| Scenario                | Source Script                                    | What It Tests                                                                        |
-| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Banks**               | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                            |
-| **Bankruptcy Software** | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank |
-| **User Groups**         | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                        |
+| Scenario                  | Source Script                                    | What It Tests                                                                                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Banks**                 | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                                                                                                                                                                                              |
+| **Bankruptcy Software**   | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                                                                                                                                                                   |
+| **User Groups**           | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                                                                                                                                                          |
+| **Super User Permission** | `access-management.ts`                           | One active, unscoped Super User role assignment plus its CREATED audit record, for reaching Administration > Permissions when `cams-role-assignments` is on. Defaults to the Flexion Team account; see [Super User Permission](#super-user-permission) |
 
 ## Key Test Records
 
@@ -134,6 +135,26 @@ Each case has 3 docket entries (petition, commencement notice, 341 meeting).
 
 **Empty trustee:** `cams-593-empty` (Empty Trustee) — no active appointments, renders empty state.
 
+### Super User Permission
+
+**Script:** `access-management.ts` (CAMS-940). Writes `seed-role-assignment-superuser-001` to
+`user-role-assignments` (role `SuperUser`, `regionId`/`officeCode` null, `activeKey`
+`SuperUser|*|*`, `assignedBy` `SYSTEM_SEED`) and `seed-role-assignment-audit-superuser-001` to
+`role-assignment-audit`.
+
+The seeded user defaults to the shared Flexion Team account (`doj-ustp-cms-team@flexion.us`) in the
+Flexion dev Okta org. To seed a different user, set these before running the scenario:
+
+| Variable               | Default                        | Meaning                                                                                   |
+| ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
+| `SEED_SUPERUSER_ID`    | `00uxy2nwugG682IKt697`         | Okta user id: the access token's `uid` claim, which CAMS also uses as the session user id |
+| `SEED_SUPERUSER_NAME`  | `Flexion Team`                 | Display name                                                                              |
+| `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us` | Email                                                                                     |
+
+Ids and timestamps are fixed, so re-running replaces the same two documents. If the user already
+holds an active Super User assignment created another way (for example, through the Permissions
+screen), the unique `{userId, activeKey}` index rejects the seeded insert.
+
 ### Bank and Software Assignments
 
 **Trustee:** Michael James Brooklyn
@@ -157,6 +178,7 @@ npm run seed:local -- --scenario=trustees-comprehensive
 npm run seed:local -- --scenario=oversight-assignments
 npm run seed:local -- --scenario=dxtr-historical-trustees
 npm run seed:local -- --scenario=trustee-case-list
+npm run seed:local -- --scenario=access-management
 ```
 
 For complete usage instructions, see [dev-tools/README.md](../../dev-tools/README.md).
