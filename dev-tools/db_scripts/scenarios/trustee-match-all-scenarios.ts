@@ -3,8 +3,9 @@
  * Database: cams only
  *
  * Seeds trustee identity tasks (TRUSTEE_MATCH_VERIFICATION documents) the way the DXTR trustee
- * appointment sync writes them (and one as the ACMS professional-id sync does, see 10): source 'DXTR', the trustee-match pipeline's serialized state as
+ * appointment sync writes them: source 'DXTR', the trustee-match pipeline's serialized state as
  * `findings`, and mismatchReason 'ambiguous' (2+ candidates) or 'no match' (0 or 1 candidate).
+ * One task (acmsAmbiguousCaseless) is written the way the ACMS professional-id sync does instead.
  * A resolved pipeline match writes the appointment instead, so it has no document to seed here.
  *
  * Each task's findings, DXTR source and candidate trustees come from a trustee-match fixture
@@ -418,7 +419,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
 
     // 9. Pending ambiguous task with no caseId/courtId at all (CAMS-953 Slice 5): unlike the
     // no-cases task above, this task never had an originating case to begin with - there is no
-    // case to seed a surrogate against. Its source is DXTR; see 10 for the ACMS sync's shape.
+    // case to seed a surrogate against. Its source is DXTR; see acmsAmbiguousCaseless
+    // (seed-match-acms-ambiguous) for the ACMS sync's shape.
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',

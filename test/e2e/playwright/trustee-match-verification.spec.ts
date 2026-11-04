@@ -13,7 +13,7 @@ const NO_CANDIDATES_TASK_ID = 'e2e-trustee-match-verification-pending-3';
 const STATE_DIFFERS_TASK_ID = 'e2e-trustee-match-verification-pending-4'; // Morgan Stateline, exact name
 const APPROVED_TASK_ID = 'e2e-trustee-match-verification-approved';
 const CASELESS_TASK_ID = 'e2e-trustee-match-verification-caseless'; // Casey and Carter Caselessmatch, no caseId/courtId
-// Q Lakeshore, caseless, carries an ACMS professional id. The only task approved here, so it is
+// Q Lakeshore, caseless, carries an ACMS professional id. Approved by its own test, so it is
 // left out of every other test.
 const ACMS_LINK_TASK_ID = 'e2e-trustee-match-verification-acms-link';
 // J Nocasematch, ACMS-sourced and ambiguous (Jamie and Jesse Nocasematch), caseless as the ACMS
