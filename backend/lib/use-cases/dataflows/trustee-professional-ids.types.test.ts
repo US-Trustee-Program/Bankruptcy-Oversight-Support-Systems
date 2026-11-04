@@ -102,7 +102,7 @@ describe('deriveDisposition', () => {
   test('returns no-match when every candidate is only a strong name match with no ACMS contact data to corroborate against', () => {
     const weakMatch = {
       doesNameMatch: { pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
+      doesSourceTrusteeHaveAddressAndPhone: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatch), makeCandidate(weakMatch), makeCandidate(weakMatch)],
@@ -122,11 +122,11 @@ describe('deriveDisposition', () => {
   test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
     const exactMatch = {
       doesNameMatch: { pass: true, quality: 'exact' },
-      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
+      doesSourceTrusteeHaveAddressAndPhone: { pass: false },
     };
     const weakMatchWithComparableAcmsData = {
       doesNameMatch: { pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
+      doesSourceTrusteeHaveAddressAndPhone: { pass: true },
     };
     const state = makeState({
       candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],

@@ -732,7 +732,7 @@ describe('SyncAcmsProfessionalIds', () => {
           ...candidate(trusteeId),
           scores: {
             doesNameMatch: { pass: true, quality: 'weak' },
-            doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
+            doesSourceTrusteeHaveAddressAndPhone: { pass: false },
           },
         });
         mockIdentification({

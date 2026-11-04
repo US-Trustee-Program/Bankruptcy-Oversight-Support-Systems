@@ -146,7 +146,7 @@ function toAcmsLegacy(
 
 /**
  * Projects raw CMMPR name fields unchanged; name recovery happens only in the pipeline's
- * normalizeAcmsSourceName stage (written to sourceNormalized).
+ * normalizeSourceName stage (written to sourceNormalized).
  */
 function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,

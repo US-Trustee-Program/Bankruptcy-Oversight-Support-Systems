@@ -98,10 +98,10 @@ function hasSuspectDuplicateCamsTrustee<
 }
 
 /** True when the name match is exact, or when the ACMS source has any contact data
- * (doesAcmsTrusteeHaveAddressAndPhone not failed). */
+ * (doesSourceTrusteeHaveAddressAndPhone not failed). */
 function isGenuineAmbiguousEvidence(candidate: SerializedCandidate<unknown>): boolean {
   if (nameMatchQuality(candidate.scores) === 'exact') return true;
-  return candidate.scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
+  return candidate.scores.doesSourceTrusteeHaveAddressAndPhone?.pass !== false;
 }
 
 /** Maps state to a disposition (error > skipped > linked). Without a match, 'ambiguous' requires 2+

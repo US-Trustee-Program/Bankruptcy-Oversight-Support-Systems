@@ -24,7 +24,7 @@
  * longer what staging exports produce.)
  *
  * Calls the real, exported shouldSkipAsNotAPerson/isRecordDisavowed
- * (acms-name-normalization.helpers.ts) and the real runTrusteeMatchPipeline directly - there is
+ * (source-name-normalization.helpers.ts) and the real runTrusteeMatchPipeline directly - there is
  * no separate reimplementation of matching logic to keep in sync with production.
  *
  * Requires a REAL local MongoDB (not the mocked in-memory adapter) — searchTrusteesByNameScored's
@@ -353,7 +353,7 @@ async function run() {
 
   const context = await buildRealApplicationContext();
   const { shouldSkipAsNotAPerson, isRecordDisavowed } =
-    await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
+    await import('../../../../backend/lib/use-cases/dataflows/source-name-normalization.helpers');
   const { runTrusteeMatchPipeline } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-match-pipeline-orchestrator');
   const { serializeState } =
