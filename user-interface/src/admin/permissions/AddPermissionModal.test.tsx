@@ -77,7 +77,12 @@ describe('AddPermissionModal', () => {
 
   async function fillIn({ role = true, office = true, reason = REASON as string | null } = {}) {
     if (role) await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, TRIAL_ATTORNEY_INDEX);
-    if (office) await TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, MANHATTAN_INDEX);
+    if (office) {
+      await TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, MANHATTAN_INDEX);
+      // ComboBox returns focus to its input in a requestAnimationFrame after a selection. Until
+      // then focus sits on the clicked option, whose keydown handler consumes Escape.
+      await waitFor(() => expect(officeInput()).toHaveFocus());
+    }
     if (reason !== null) {
       fireEvent.change(document.querySelector(`#${REASON_ID}`)!, { target: { value: reason } });
     }
