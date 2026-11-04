@@ -90,9 +90,17 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           CS_CASEID: CS_CASEID,
           COURT_ID: COURT_ID,
+          // AO_TX carries its own denormalized copy of the public case number.
+          CASE_ID: `${CASE_YEAR}-${CASE_NUMBER}`,
           TX_TYPE: 'O',
           TX_CODE: 'CBC',
           TX_DATE: TERMINAL_TX_DATE,
+          // NOT NULL FK-shaped link to AO_DE(CS_CASEID, COURT_ID, DE_SEQNO), but the
+          // terminal-transaction query under test never joins AO_DE, so an unseeded
+          // placeholder value is sufficient here.
+          DE_SEQNO: 1,
+          // NOT NULL batch-job identifier; unused by the terminal-transaction query.
+          JOB_ID: 1,
           REC: 'SEED terminal transaction row — content unused by the caseId-construction query'.padEnd(
             237,
             ' ',

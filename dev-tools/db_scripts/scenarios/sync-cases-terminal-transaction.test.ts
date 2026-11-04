@@ -63,9 +63,12 @@ describe('sync-cases-terminal-transaction scenario', () => {
     const txRow = aoTx?.data[0] as Record<string, unknown>;
     expect(txRow.CS_CASEID).toBe(csRow.CS_CASEID);
     expect(txRow.COURT_ID).toBe(csRow.COURT_ID);
+    expect(txRow.CASE_ID).toBe(csRow.CASE_ID);
     expect(txRow.TX_TYPE).toBe('O');
     expect(['CBC', 'CDC', 'OCO', 'CTO']).toContain(txRow.TX_CODE);
     expect(txRow.TX_DATE).toEqual(new Date('2026-01-01'));
+    expect(txRow.DE_SEQNO).toBeTypeOf('number');
+    expect(txRow.JOB_ID).toBeTypeOf('number');
     expect(txRow).not.toHaveProperty('TX_ID');
     expect(typeof txRow.REC).toBe('string');
     expect((txRow.REC as string).length).toBeGreaterThan(0);
