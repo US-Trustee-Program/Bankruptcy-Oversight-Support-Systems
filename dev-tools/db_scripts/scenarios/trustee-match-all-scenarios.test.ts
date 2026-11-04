@@ -227,6 +227,14 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
         acmsProfessionalId: 'SEED-ACMS-AMBIGUOUS',
       },
     },
+    {
+      id: 'seed-match-acms-no-match',
+      expected: {
+        source: 'ACMS',
+        mismatchReason: 'no match',
+        acmsProfessionalId: 'SEED-ACMS-NO-MATCH',
+      },
+    },
   ])(
     'should seed $id as a pending caseless task with no surrogate rows',
     async ({ id, expected }) => {

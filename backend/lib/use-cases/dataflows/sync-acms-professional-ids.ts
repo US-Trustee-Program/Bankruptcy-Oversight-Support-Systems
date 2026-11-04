@@ -11,6 +11,7 @@ import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers'
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
+import { IdentityMismatchReason } from '@common/cams/trustee-match-verification';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { identifyTrustee, IdentifyTrusteeOutcome } from './identify-trustee';
 import { upsertIdentityTask } from './identity-task';
@@ -231,6 +232,10 @@ type GateOutcome = 'skipped' | 'written';
  * - 'ambiguous-already-resolved': the identity task for this fingerprint and variant was already
  *   resolved or dismissed and was left unchanged.
  * - 'ambiguous' with gated 'skipped': ambiguous, but no active appointment, so no record or task.
+ * - 'no-match-task-pending' / 'no-match-already-resolved': as the ambiguous pair, for a no-match
+ *   professional with an active appointment and at least one candidate passing doesNameMatch.
+ * - 'no-match': no task, because no candidate passed doesNameMatch or there was no active
+ *   appointment.
  */
 type ProcessOneRecordOutcome =
   | { kind: 'auto-linked'; via: 'fingerprint' | 'name' }
@@ -238,6 +243,8 @@ type ProcessOneRecordOutcome =
   | { kind: 'manual-preserved' }
   | { kind: 'ambiguous-task-pending' }
   | { kind: 'ambiguous-already-resolved' }
+  | { kind: 'no-match-task-pending' }
+  | { kind: 'no-match-already-resolved' }
   | { kind: 'ambiguous'; gated: 'skipped' }
   | {
       kind: 'no-match' | 'error' | 'skipped-not-a-person';
@@ -248,7 +255,8 @@ type ProcessOneRecordOutcome =
  * Per-record order: manual-link guard, identifyTrustee's fingerprint lookup, then the matching
  * pipeline, then a conflict check on any resolved match. A conflict bypasses the
  * active-appointment gate; every other unresolved outcome goes through
- * applyActiveAppointmentGate. An ambiguous record the gate wrote also gets an identity task.
+ * applyActiveAppointmentGate. An ambiguous record the gate wrote also gets an identity task, as
+ * does a no-match record with a name-passing candidate.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -295,21 +303,27 @@ async function processOneRecord(
   if (state.error) {
     return { kind: 'error', gated };
   }
-  const disposition = deriveDisposition(state);
-  if (disposition === 'ambiguous') {
-    if (gated === 'skipped') {
-      return { kind: 'ambiguous', gated };
-    }
-    const isAlreadyResolved = await upsertIdentityTask(deps.verificationRepo, {
+  const writeTask = (mismatchReason: IdentityMismatchReason) =>
+    upsertIdentityTask(deps.verificationRepo, {
       source: 'ACMS',
       sourceTrustee: toAcmsTrusteeProfessional(record),
-      mismatchReason: 'ambiguous',
+      mismatchReason,
       findings: state,
       fingerprint,
       variant,
       acmsProfessionalId: record.acmsProfessionalId,
     });
+  const disposition = deriveDisposition(state);
+  if (disposition === 'ambiguous') {
+    if (gated === 'skipped') {
+      return { kind: 'ambiguous', gated };
+    }
+    const isAlreadyResolved = await writeTask('ambiguous');
     return { kind: isAlreadyResolved ? 'ambiguous-already-resolved' : 'ambiguous-task-pending' };
+  }
+  if (gated === 'written' && deriveNameMatchCount(state) > 0) {
+    const isAlreadyResolved = await writeTask('no match');
+    return { kind: isAlreadyResolved ? 'no-match-already-resolved' : 'no-match-task-pending' };
   }
   return { kind: 'no-match', gated };
 }
