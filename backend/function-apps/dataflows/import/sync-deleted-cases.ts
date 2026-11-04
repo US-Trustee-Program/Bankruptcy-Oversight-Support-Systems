@@ -74,6 +74,16 @@ async function archiveDeletedCaseQueue(
       MODULE_NAME,
       `Successfully archived case ${summary.caseId}: ${summary.archivedCount} documents archived with ${summary.errors.length} errors`,
     );
+    if (summary.errors.length > 0) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Archive of case ${summary.caseId} completed with ${summary.errors.length} non-transient step errors; routing to DLQ so the archive can be re-run.`,
+      );
+      invocationContext.extraOutputs.set(CASE_DELETED_EVENT_DLQ, {
+        event: message,
+        error: summary.errors.map((e) => `${e.type}: ${e.error}`).join('; '),
+      });
+    }
     completeDataflowTrace(
       context.observability,
       trace,
@@ -83,7 +93,7 @@ async function archiveDeletedCaseQueue(
       {
         documentsWritten: summary.archivedCount,
         documentsFailed: summary.errors.length,
-        success: true,
+        success: summary.errors.length === 0,
         details: { caseId: message.caseId },
       },
     );
