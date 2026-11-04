@@ -55,6 +55,7 @@ function TrusteeSearchModal_(
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
+  const [courtsLoading, setCourtsLoading] = useState(true);
   const [selectedCourtId, setSelectedCourtId] = useState<string | undefined>(courtId);
   const lastQueryRef = useRef('');
   const searchTicketRef = useRef(0);
@@ -73,8 +74,19 @@ function TrusteeSearchModal_(
       })
       .catch(() => {
         // courts list is optional; search still works without it
+      })
+      .finally(() => {
+        setCourtsLoading(false);
       });
   }, []);
+
+  // A query typed while courts were loading was held, not searched. Run it once the list settles,
+  // so it goes out with the normalized courtId. If courts failed to load, it runs unfiltered.
+  useEffect(() => {
+    if (!courtsLoading && lastQueryRef.current) {
+      searchTrustees(lastQueryRef.current, findCourt(selectedCourtId)?.courtId);
+    }
+  }, [courtsLoading]);
 
   function show(options?: ModalShowOptions) {
     invalidateSearches();
@@ -129,6 +141,8 @@ function TrusteeSearchModal_(
 
   function handleFilterChange(value: string) {
     lastQueryRef.current = value;
+    // Held until the courts list settles; the effect above runs the query then.
+    if (courtsLoading) return;
     searchTrustees(value, selectedCourtEntry?.courtId);
   }
 
@@ -249,6 +263,7 @@ function TrusteeSearchModal_(
             autoComplete="off"
             placeholder="- Search Trustee name -"
             disableFiltering={true}
+            keepFilterOnClose={true}
           />
           <div className="trustee-comparison">
             <div className="court-trustee-details">
