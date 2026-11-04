@@ -6,7 +6,8 @@ import {
   AcmsProfessionalIdSyncState,
   AcmsTrusteeProfessionalDetailRecord,
 } from '../gateways.types';
-import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { ACMS_SYSTEM_USER_REFERENCE, createAuditRecord } from '@common/cams/auditable';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -283,6 +284,20 @@ async function processOneRecord(
 
   if (identification.kind !== 'unresolved') {
     await writeProfessionalId(deps, record, fingerprint, variant, identification);
+    if (identification.kind === 'linked' && identification.via === 'name') {
+      // A fingerprint hit means the variation already exists; only a pipeline match needs saving.
+      await deps.variationRepo.createVariation(
+        createAuditRecord(
+          {
+            documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+            fingerprint,
+            variant,
+            trusteeId: identification.trusteeId,
+          },
+          ACMS_SYSTEM_USER_REFERENCE,
+        ),
+      );
+    }
     return {
       kind: identification.kind === 'linked' ? 'auto-linked' : 'conflict',
       via: identification.via,

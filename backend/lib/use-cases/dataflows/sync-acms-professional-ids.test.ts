@@ -9,6 +9,7 @@ import {
   AcmsTrusteeProfessionalDetailRecord,
 } from '../gateways.types';
 import { TrusteeProfessionalId } from './trustee-professional-ids.types';
+import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import * as identifyTrusteeModule from './identify-trustee';
 import { IdentifyTrusteeOutcome } from './identify-trustee';
@@ -423,6 +424,7 @@ describe('SyncAcmsProfessionalIds', () => {
         }),
       });
       const gateSpy = vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional');
+      const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
       const upsertSpy = vi
         .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
         .mockResolvedValue(linkedProfessionalId());
@@ -430,6 +432,7 @@ describe('SyncAcmsProfessionalIds', () => {
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(gateSpy).not.toHaveBeenCalled();
+      expect(createVariationSpy).not.toHaveBeenCalled();
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           camsTrusteeId: 'trustee-1',
@@ -442,7 +445,7 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'auto-linked', via: 'fingerprint' });
     });
 
-    test('should write a name match as linked by auto, without recording a TrusteeVariation', async () => {
+    test('should write a name match as linked by auto and save a TrusteeVariation for the ACMS variant', async () => {
       mockIdentification({
         kind: 'linked',
         trusteeId: 'trustee-1',
@@ -452,14 +455,24 @@ describe('SyncAcmsProfessionalIds', () => {
           match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByNameOnly' },
         }),
       });
-      const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
+      const createVariationSpy = vi
+        .spyOn(deps.variationRepo, 'createVariation')
+        .mockResolvedValue({} as TrusteeVariation);
       const upsertSpy = vi
         .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
         .mockResolvedValue(linkedProfessionalId());
 
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-      expect(createVariationSpy).not.toHaveBeenCalled();
+      const variant = buildAcmsVariant(record);
+      expect(createVariationSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_VARIATION',
+          fingerprint: computeFingerprint(variant),
+          variant,
+          trusteeId: 'trustee-1',
+        }),
+      );
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           camsTrusteeId: 'trustee-1',
