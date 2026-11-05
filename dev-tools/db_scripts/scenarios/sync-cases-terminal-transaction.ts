@@ -53,6 +53,25 @@ const LAST_UPDATE_DATE = new Date('2024-01-01');
 // previously-hardcoded 2026-01-01). "Now" is always after the current watermark,
 // since the watermark can never be set ahead of the real time it was recorded at.
 
+// CasesDxtrGateway's transactionQueryCallback derives the case's closedDate by
+// parsing AO_TX.REC as a fixed-width legacy record, not from TX_DATE directly:
+// dxtr.gateway.helper.ts's parseTransactionDate reads a 6-digit YYMMDD date out
+// of REC at character offset 19-24 and throws if those characters aren't
+// numeric. A placeholder string there (verified live: it lands the event in
+// sync-cases-dlq with "non-numeric characters in the date string") isn't
+// enough to exercise the full sync; the date must be packed at that exact
+// offset for getCaseDetail's transaction query to succeed.
+function buildTerminalTransactionRec(date: Date): string {
+  const yy = String(date.getUTCFullYear() % 100).padStart(2, '0');
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  const packedDate = `${yy}${mm}${dd}`;
+  // Only the length up to offset 19 matters — content before the packed date
+  // is never read by parseTransactionDate.
+  const prefix = 'SEED-TX'.padEnd(19, ' ');
+  return `${prefix}${packedDate}`.padEnd(237, ' ');
+}
+
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const debtorName = 'SEED Terminal Transaction Test';
   const terminalTxDate = new Date();
@@ -111,10 +130,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           DE_SEQNO: 1,
           // NOT NULL batch-job identifier; unused by the terminal-transaction query.
           JOB_ID: 1,
-          REC: 'SEED terminal transaction row — content unused by the caseId-construction query'.padEnd(
-            237,
-            ' ',
-          ),
+          REC: buildTerminalTransactionRec(terminalTxDate),
         },
       ],
     },

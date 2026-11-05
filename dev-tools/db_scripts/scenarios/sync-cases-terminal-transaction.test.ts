@@ -74,7 +74,29 @@ describe('sync-cases-terminal-transaction scenario', () => {
     expect(txRow.JOB_ID).toBeTypeOf('number');
     expect(txRow).not.toHaveProperty('TX_ID');
     expect(typeof txRow.REC).toBe('string');
-    expect((txRow.REC as string).length).toBeGreaterThan(0);
+    expect((txRow.REC as string).length).toBe(237);
+  });
+
+  test('AO_TX.REC packs a numeric YYMMDD date at offset 19-24, matching TX_DATE', async () => {
+    // dxtr.gateway.helper.ts's parseTransactionDate reads exactly this
+    // substring; getCaseDetail throws ("non-numeric characters in the date
+    // string") and the event lands in sync-cases-dlq if it isn't numeric —
+    // confirmed by actually seeding this scenario before this assertion
+    // existed and watching it fail that way in dev.
+    const ops = await generate(mockContext);
+    const aoTx = ops.find((op) => op.collectionOrTable === 'AO_TX');
+    const txRow = aoTx?.data[0] as Record<string, unknown>;
+
+    const rec = txRow.REC as string;
+    const packedDate = rec.slice(19, 25);
+    expect(packedDate).toMatch(/^\d{6}$/);
+
+    const txDate = txRow.TX_DATE as Date;
+    const expected =
+      String(txDate.getUTCFullYear() % 100).padStart(2, '0') +
+      String(txDate.getUTCMonth() + 1).padStart(2, '0') +
+      String(txDate.getUTCDate()).padStart(2, '0');
+    expect(packedDate).toBe(expected);
   });
 
   test('AO_TX transaction date is after the AO_CS LAST_UPDATE_DATE, matching the blind-spot scenario', async () => {
