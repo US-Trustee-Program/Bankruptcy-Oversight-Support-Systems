@@ -219,6 +219,23 @@ describe('UserAccessUseCase', () => {
       expect(groupSpy).toHaveBeenCalledTimes(2);
     });
 
+    test('should log whether the member list came from the cache', async () => {
+      spyOnMembers();
+      const debugSpy = vi.spyOn(context.logger, 'debug');
+
+      await useCase.getCamsUsers(context, { limit: 20, offset: 0 });
+      await useCase.getCamsUsers(context, { limit: 20, offset: 0 });
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        'USER-ACCESS-USE-CASE',
+        'CAMS users member list cache miss: read 3 members from Okta.',
+      );
+      expect(debugSpy).toHaveBeenCalledWith(
+        'USER-ACCESS-USE-CASE',
+        'CAMS users member list cache hit: 3 members.',
+      );
+    });
+
     test('should not cache a failed member list read', async () => {
       const groupSpy = vi
         .spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers')

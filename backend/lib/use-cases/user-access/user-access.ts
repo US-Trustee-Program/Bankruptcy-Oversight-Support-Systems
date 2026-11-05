@@ -155,6 +155,10 @@ export class UserAccessUseCase {
 
   private async getMembers(context: ApplicationContext): Promise<CamsUserReference[]> {
     if (memberCache && Date.now() < memberCache.expiresAt) {
+      context.logger.debug(
+        MODULE_NAME,
+        `CAMS users member list cache hit: ${memberCache.members.length} members.`,
+      );
       return memberCache.members;
     }
     const gateway = await factory.getUserGroupGateway(context);
@@ -166,6 +170,10 @@ export class UserAccessUseCase {
     const members = (group.users ?? [])
       .map(({ id, name, email }) => ({ id, name, email }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    context.logger.debug(
+      MODULE_NAME,
+      `CAMS users member list cache miss: read ${members.length} members from Okta.`,
+    );
     memberCache = { members, expiresAt: Date.now() + MEMBER_CACHE_TTL_MS };
     return members;
   }

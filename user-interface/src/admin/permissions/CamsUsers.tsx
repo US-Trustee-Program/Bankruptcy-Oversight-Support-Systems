@@ -16,7 +16,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { CamsRole, CamsRoleLabels } from '@common/cams/roles';
+import { CamsRoleLabels } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   CamsUsersPredicate,
@@ -97,7 +97,7 @@ export function permissionSentence(
   officeName: (officeCode: string) => string,
 ): string {
   const role = CamsRoleLabels[permission.role];
-  if (permission.role === CamsRole.SuperUser) return role;
+  // Also covers Super User, which has no scope; the table shows it as All, All.
   if (permission.regionId === null) return `${role}, all regions`;
   const office = permission.officeCode === null ? 'all offices' : officeName(permission.officeCode);
   return `${role}, Region ${permission.regionId}, ${office}`;

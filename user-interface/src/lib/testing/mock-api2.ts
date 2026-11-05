@@ -3181,6 +3181,10 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
 }
 
 async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
+  // Lets the accessibility tests show the modal's save-failed state.
+  if (request.reason === 'Fail this save') {
+    throw new Error('Unable to create role assignment.');
+  }
   const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
   const office = MOCKED_USTP_OFFICES_ARRAY.find((o) => o.officeCode === request.officeCode);
   const assignment: UserRoleAssignment = {

@@ -46,4 +46,20 @@ test.describe('Administration > Permissions', () => {
 
     await expectNoViolations(page);
   });
+
+  test('Add Permission modal with a failed save should not have accessibility issues', async ({
+    page,
+  }) => {
+    await openAddPermissionModal(page);
+    await page.locator('#add-permission-modal-role-combo-box-input').click();
+    await page.getByTestId('add-permission-modal-role-option-item-0').click();
+    await page.locator('#add-permission-modal-office-combo-box-input').click();
+    await page.getByTestId('add-permission-modal-office-option-item-0').click();
+    // The fake API rejects a grant with this reason (mock-api2.ts postRoleAssignment).
+    await page.locator('#textarea-add-permission-modal-reason').fill('Fail this save');
+    await page.getByTestId('button-add-permission-modal-submit-button').click();
+    await expect(page.locator('#add-permission-modal-error')).toBeVisible();
+
+    await expectNoViolations(page);
+  });
 });

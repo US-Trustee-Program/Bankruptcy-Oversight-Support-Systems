@@ -190,7 +190,7 @@ describe('CamsUsers', () => {
     expect(sentences(SARAH)).toEqual([
       'Auditor, Region 2, Buffalo',
       'Trial Attorney, Region 2, Manhattan',
-      'Super User',
+      'Super User, all regions',
     ]);
     for (const column of ['Role', 'Region', 'Office']) {
       expect(visibleLines(SARAH, column)).toHaveAttribute('aria-hidden', 'true');
@@ -598,9 +598,10 @@ describe('permissionSentence', () => {
     expect(permissionSentence(permission(null), officeName)).toEqual('Trial Attorney, all regions');
   });
 
-  test('should give only the role for Super User, which has no scope', () => {
+  // The table shows Super User's Region and Office as All, so the sentence says the same.
+  test('should say all regions for Super User, as the table shows', () => {
     expect(permissionSentence(permission(null, CamsRole.SuperUser), officeName)).toEqual(
-      'Super User',
+      'Super User, all regions',
     );
   });
 });
