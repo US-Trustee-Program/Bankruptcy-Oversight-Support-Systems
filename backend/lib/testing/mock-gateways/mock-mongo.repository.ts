@@ -753,15 +753,14 @@ export class MockMongoRepository
     );
   }
 
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
-    let count = 0;
-    for (const [key, mapping] of this.professionalIds) {
-      if (mapping.camsTrusteeId === camsTrusteeId) {
-        this.professionalIds.delete(key);
-        count++;
-      }
-    }
-    return Promise.resolve(count);
+  findUnresolvedByFingerprint(fingerprint: string): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).filter(
+        (m) =>
+          m.camsTrusteeId === fingerprint &&
+          (m.disposition === 'no-match' || m.disposition === 'ambiguous'),
+      ),
+    );
   }
 
   deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number> {

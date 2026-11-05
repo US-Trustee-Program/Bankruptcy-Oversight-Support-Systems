@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ArchivedCasesRepository } from '../gateways.types';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import factory from '../../factory';
 
 const MODULE_NAME = 'ARCHIVE-CASE-DOCUMENTS';
@@ -106,6 +107,9 @@ export async function archiveCaseAndRelatedDocuments(
           context,
         );
       } catch (error) {
+        if (isTransientInfraError(error)) {
+          throw error;
+        }
         summary.errors.push({ type: step.type, error: error.message });
         context.logger.error(MODULE_NAME, `Error archiving ${step.type}`, error);
       }

@@ -59,6 +59,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
         },
       ],
       clearSelections: () => {},
+      clearFilter: () => {},
       disable: (value: boolean) => {},
       focusInput: () => {},
       focus: () => {},

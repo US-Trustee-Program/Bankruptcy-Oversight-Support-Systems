@@ -18,6 +18,8 @@ export type StartMessage = {
 export type RangeMessage = {
   start: number;
   end: number;
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 export type CursorMessage = {

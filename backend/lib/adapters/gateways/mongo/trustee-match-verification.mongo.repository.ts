@@ -113,7 +113,9 @@ export class TrusteeMatchVerificationMongoRepository
    * $setOnInsert only, so a matching update (status already 'pending') can never clear or
    * overwrite the case this task was originally opened for, or its creation record. Every other
    * field (mismatchReason, findings, source, status, etc.) is in $set, so a
-   * re-sync refreshes them from the latest event.
+   * write that reaches an existing pending task refreshes them. upsertIdentityTask checks for an
+   * existing task first and does not call this for one, so that refresh only happens when another
+   * writer creates the task between its check and its write.
    *
    * `id` falls back to a generated UUID on insert: callers building a new verification via
    * `createAuditRecord` never set `id`, and the Mongo client's `ignoreUndefined: true` would
@@ -195,7 +197,7 @@ export class TrusteeMatchVerificationMongoRepository
         'caseId',
         'courtId',
         'courtName',
-        'dxtrTrustee',
+        'sourceTrustee',
         'mismatchReason',
         'status',
         'resolvedTrusteeId',

@@ -39,7 +39,7 @@ const DATA_DIR = path.resolve(__dirname, '../../../../data');
 
 type ReplayRecord = {
   acmsProfessionalId: string;
-  acmsRaw: {
+  sourceRaw: {
     firstName?: string;
     lastName?: string;
     fullName?: string;
@@ -90,7 +90,7 @@ async function run() {
   let errored = 0;
 
   for (const record of zeroCandidateRecords) {
-    const fullName = record.acmsRaw.fullName ?? '';
+    const fullName = record.sourceRaw.fullName ?? '';
     if (!fullName.trim()) {
       withoutHits++;
       continue;
@@ -103,8 +103,8 @@ async function run() {
           JSON.stringify({
             acmsProfessionalId: record.acmsProfessionalId,
             acmsFullName: fullName,
-            acmsFirstName: record.acmsRaw.firstName,
-            acmsLastName: record.acmsRaw.lastName,
+            acmsFirstName: record.sourceRaw.firstName,
+            acmsLastName: record.sourceRaw.lastName,
             phoneticHits: scoredCandidates.map((c) => ({
               trusteeId: c.trusteeId,
               name: c.name,

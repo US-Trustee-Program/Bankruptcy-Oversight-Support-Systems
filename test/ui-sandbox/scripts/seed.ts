@@ -95,7 +95,7 @@ async function seedTrusteeMatchMismatch(db: ReturnType<MongoClient['db']>) {
         status: 'pending',
         mismatchReason: 'no match',
         source: 'DXTR',
-        dxtrTrustee: findings.sourceRaw,
+        sourceTrustee: findings.sourceRaw,
         findings,
         fingerprint: computeFingerprint(variant),
         variant,

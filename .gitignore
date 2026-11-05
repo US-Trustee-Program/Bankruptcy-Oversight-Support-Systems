@@ -112,11 +112,13 @@ backend/dev-users.json
 # Flexion AI
 .gitmodules
 .ustp-cams-fdp
+.cams-issues
 
 # Other USTP Repos
 .cams-gists
 .ado-mirror
 .threat-model
+.cams-roadmap
 
 # Python (docs tooling and caches)
 dev-tools/.venv-docs/

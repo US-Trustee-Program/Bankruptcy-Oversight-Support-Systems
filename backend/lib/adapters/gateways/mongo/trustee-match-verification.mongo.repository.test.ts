@@ -20,7 +20,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
     caseId: 'case-001',
     courtId: '081',
-    dxtrTrustee: { fullName: 'John Doe' },
+    sourceTrustee: { fullName: 'John Doe' },
     mismatchReason: 'no match',
     source: 'DXTR',
     findings,
@@ -387,7 +387,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             'caseId',
             'courtId',
             'courtName',
-            'dxtrTrustee',
+            'sourceTrustee',
             'mismatchReason',
             'status',
             'resolvedTrusteeId',
@@ -474,7 +474,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
         {
           $set: {
             documentType: 'TRUSTEE_MATCH_VERIFICATION',
-            dxtrTrustee: { fullName: 'John Doe' },
+            sourceTrustee: { fullName: 'John Doe' },
             mismatchReason: 'no match',
             source: 'DXTR',
             findings,

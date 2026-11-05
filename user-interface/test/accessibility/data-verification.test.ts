@@ -7,6 +7,8 @@ import {
   getUrl,
 } from './test-constants';
 
+const NARROW_VIEWPORT = { width: 600, height: 864 };
+
 /** Narrows the Task Type filter to trustee identity tasks only. */
 async function narrowToTrusteeIdentityTasks(page: Page) {
   await page.locator('#task-type-filter .input-container').click();
@@ -165,20 +167,15 @@ test.describe('Data Verification', () => {
     const comboBoxId = `trustee-search-combobox-${taskId}`;
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
-    await page.locator('#task-type-filter .input-container').click();
-    await page.locator('[id="option-transfer"]').click();
-    await page.locator('[id="option-consolidation"]').click();
-    await page.keyboard.press('Escape');
+    await narrowToTrusteeIdentityTasks(page);
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     await page.getByRole('button', { name: 'Search for a trustee' }).click();
-    await expect(
-      page.locator(`#checkbox-trustee-search-show-without-coverage-${taskId}-click-target`),
-    ).toBeVisible();
+    await expect(page.locator(`#${comboBoxId}-expand`)).toBeVisible();
     await page.locator(`#${comboBoxId}-expand`).click();
     await page.locator(`#${comboBoxId}-combo-box-input`).fill('Riley');
     await page.locator(`[data-testid="${comboBoxId}-option-item-0"]`).click();
-    // Scan while the search modal and its coverage checkbox are visible; let the fade-in finish.
+    // Scan while the search modal is visible; let the fade-in finish.
     await page.waitForTimeout(ANALYZE_DELAY);
     const searchModalScan = await createAxeBuilder(page).analyze();
     expect(searchModalScan.violations).toEqual([]);
@@ -211,9 +208,7 @@ test.describe('Data Verification', () => {
 
     await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
     const content = page.locator(`[data-testid="accordion-content-${taskId}"]`);
-    await expect(content.locator('.problem-statement')).toContainText(
-      'No cases yet. Cases attach as appointments sync.',
-    );
+    await expect(content.locator('.problem-statement')).toContainText('No cases yet.');
 
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
@@ -259,5 +254,56 @@ test.describe('Data Verification', () => {
 
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test.describe('narrow viewport', () => {
+    // Below tablet width the identity task tables stack into labelled rows (CAMS-954).
+    test.use({ viewport: NARROW_VIEWPORT });
+
+    test('should not have accessibility issues in an expanded identity task at 600px', async ({
+      page,
+    }) => {
+      test.setTimeout(COMPLEX_TEST_TIMEOUT);
+      const taskId = 'e8c1f0a2-identity-task-multimatch';
+      await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+      await narrowToTrusteeIdentityTasks(page);
+
+      await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+      const table = page.locator('[data-testid="trustee-comparison-table"]');
+      await expect(table).toBeVisible();
+
+      const accessibilityScanResults = await createAxeBuilder(page).analyze();
+      expect(accessibilityScanResults.violations).toEqual([]);
+    });
+
+    test('should not have accessibility issues after the Trustee District changes in the search modal', async ({
+      page,
+    }) => {
+      test.setTimeout(COMPLEX_TEST_TIMEOUT);
+      const taskId = 'e8c1f0a2-identity-task-multimatch';
+      const districtComboBoxId = `trustee-district-combobox-${taskId}`;
+      const nameComboBoxId = `trustee-search-combobox-${taskId}`;
+      await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+      await narrowToTrusteeIdentityTasks(page);
+
+      await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+      await page.getByRole('button', { name: 'Search for a trustee' }).click();
+      await expect(page.locator(`#${nameComboBoxId}-expand`)).toBeVisible();
+
+      await page.locator(`#${districtComboBoxId}-expand`).click();
+      await page.locator(`#${districtComboBoxId}-combo-box-input`).fill('Alaska');
+      await page.locator(`[data-testid="${districtComboBoxId}-option-item-0"]`).click();
+
+      await page.locator(`#${nameComboBoxId}-expand`).click();
+      await page.locator(`#${nameComboBoxId}-combo-box-input`).fill('Riley');
+      await expect(page.locator(`[data-testid="${nameComboBoxId}-option-item-0"]`)).toBeVisible();
+      // Let the modal's fade-in and the rerun search settle before scanning.
+      await page.waitForTimeout(ANALYZE_DELAY);
+
+      const accessibilityScanResults = await createAxeBuilder(page).analyze();
+      expect(accessibilityScanResults.violations).toEqual([]);
+    });
   });
 });

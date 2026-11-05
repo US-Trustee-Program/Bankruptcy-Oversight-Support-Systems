@@ -1,6 +1,6 @@
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import TrusteeComparisonTable from './TrusteeComparisonTable';
+import TrusteeComparisonTable, { ComparisonColumns } from './TrusteeComparisonTable';
 import { ComparisonCandidate, ComparisonCell, TrusteeComparison } from './trustee-comparison';
 
 function cells(
@@ -260,6 +260,80 @@ describe('TrusteeComparisonTable', () => {
     renderTable({ comparison: { ...comparison, candidates: [] } });
 
     expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+  });
+
+  describe('shared column widths', () => {
+    test.each([
+      { showEmail: false, showAction: false },
+      { showEmail: true, showAction: false },
+      { showEmail: false, showAction: true },
+      { showEmail: true, showAction: true },
+    ])(
+      'renders one col per optional column for showEmail=$showEmail, showAction=$showAction',
+      ({ showEmail, showAction }) => {
+        render(
+          <table>
+            <ComparisonColumns showEmail={showEmail} showAction={showAction} />
+          </table>,
+        );
+
+        const classNames = Array.from(screen.getByRole('table').querySelectorAll('col')).map(
+          (col) => col.className,
+        );
+        expect(classNames).toEqual([
+          'comparison-col-name',
+          'comparison-col-address',
+          'comparison-col-phone',
+          ...(showEmail ? ['comparison-col-email'] : []),
+          ...(showAction ? ['comparison-col-action'] : []),
+        ]);
+      },
+    );
+
+    test('has one col for each column header when approval is offered', () => {
+      renderTable({ onApprove: vi.fn() });
+
+      const headerCount = screen.getAllByRole('columnheader').length;
+      expect(headerCount).toBe(5);
+      expect(
+        screen.getByTestId('trustee-comparison-table').querySelectorAll('colgroup col'),
+      ).toHaveLength(headerCount);
+    });
+  });
+
+  describe('mobile data-label attributes', () => {
+    function firstBodyRowCells(): HTMLElement[] {
+      const row = document.querySelector('tbody tr');
+      return Array.from(row!.children) as HTMLElement[];
+    }
+
+    test('labels each cell of the first row with the header text at the same position', () => {
+      renderTable({ onApprove: vi.fn() });
+
+      const headers = screen.getAllByRole('columnheader');
+      const cells = firstBodyRowCells();
+      expect(cells.map((cell) => cell.getAttribute('data-label'))).toEqual([
+        'Name',
+        'Address',
+        'Phone',
+        'Email',
+        'Action',
+      ]);
+      cells.forEach((cell, i) => {
+        expect(cell.getAttribute('data-label')).toBe(headers[i].textContent);
+      });
+    });
+
+    test('omits the Action label when approval is not offered', () => {
+      renderTable();
+
+      expect(firstBodyRowCells().map((cell) => cell.getAttribute('data-label'))).toEqual([
+        'Name',
+        'Address',
+        'Phone',
+        'Email',
+      ]);
+    });
   });
 
   describe('pagination', () => {

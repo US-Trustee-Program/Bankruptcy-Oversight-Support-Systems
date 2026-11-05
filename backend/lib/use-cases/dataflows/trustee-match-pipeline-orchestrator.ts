@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   createTrusteeInitialState as createInitialState,
@@ -17,7 +17,7 @@ import {
   resolveByAddress,
   resolveByPhone,
   resolveByEmailAddress,
-  normalizeAcmsSourceName,
+  normalizeSourceName,
   skipAdministrativePlaceholder,
   recallBySurnameExact,
   recallByTokenIntersection,
@@ -48,18 +48,18 @@ function resolveStages(): Stage[] {
  * irrelevant candidates (see shouldEvictFromDiscovery).
  */
 async function runNestedTier(
-  acmsRaw: DxtrTrusteeParty,
+  sourceRaw: CanonicalTrusteeSource,
   outerState: PipelineState,
   discoveryStage: Stage,
 ): Promise<PipelineState> {
-  const nestedState = createInitialState(acmsRaw);
+  const nestedState = createInitialState(sourceRaw);
   for (const candidate of outerState.candidates.values()) {
     promoteCandidate(nestedState, candidate);
   }
   // A fresh state starts unnormalized, so the source name is normalized again here (pure and
   // idempotent). The skip gate is not repeated: it reads only sourceRaw, which the caller checked.
   const nestedResult = await runPipeline(nestedState, [
-    normalizeAcmsSourceName(),
+    normalizeSourceName(),
     discoveryStage,
     ...resolveStages(),
   ]);
@@ -81,9 +81,9 @@ async function runNestedTier(
  */
 export async function runTrusteeMatchPipeline(
   context: ApplicationContext,
-  acmsRaw: DxtrTrusteeParty,
+  sourceRaw: CanonicalTrusteeSource,
 ): Promise<PipelineState> {
-  const outerState = createInitialState(acmsRaw);
+  const outerState = createInitialState(sourceRaw);
 
   // Backstop only: RECALL failures land on state.error and are checked at each tier boundary.
   try {
@@ -94,11 +94,11 @@ export async function runTrusteeMatchPipeline(
     }
 
     // The outer state is what gets persisted, so it carries its own normalized source name.
-    const normalizeResult = await normalizeAcmsSourceName()(outerState);
+    const normalizeResult = await normalizeSourceName()(outerState);
     outerState.sourceNormalized = normalizeResult.sourceNormalized;
 
     const surnameExactResult = await runNestedTier(
-      acmsRaw,
+      sourceRaw,
       outerState,
       recallBySurnameExact(context),
     );
@@ -111,7 +111,7 @@ export async function runTrusteeMatchPipeline(
       return outerState;
     }
 
-    const matchByNameResult = await runNestedTier(acmsRaw, outerState, recallByName(context));
+    const matchByNameResult = await runNestedTier(sourceRaw, outerState, recallByName(context));
     if (matchByNameResult.error) {
       outerState.error = matchByNameResult.error;
       return outerState;
@@ -122,7 +122,7 @@ export async function runTrusteeMatchPipeline(
     }
 
     const tokenIntersectionResult = await runNestedTier(
-      acmsRaw,
+      sourceRaw,
       outerState,
       recallByTokenIntersection(context),
     );
@@ -132,7 +132,7 @@ export async function runTrusteeMatchPipeline(
     }
 
     const anchoredLevenshteinResult = await runNestedTier(
-      acmsRaw,
+      sourceRaw,
       outerState,
       recallByAnchoredLevenshtein(context),
     );

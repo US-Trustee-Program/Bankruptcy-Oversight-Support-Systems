@@ -187,12 +187,16 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   /**
-   * Links acmsProfessionalId to resolvedTrusteeId with linkMethod 'manual'. camsTrusteeId is the
+   * Links acmsProfessionalId to resolvedTrusteeId with linkMethod 'manual', then heals the other
+   * ACMS ids whose source record is identical (same fingerprint and variant). camsTrusteeId is the
    * shard key and part of the unique index, so moving a link is always upsert-new + delete-old:
    * - A link on a different trustee is deleted first; a failure there fails the approval, since
    *   writing the new link anyway would leave the ACMS id linked to two trustees.
-   * - The fingerprint-keyed unresolved records are deleted after the new link is written, best
-   *   effort: a leftover record is inert, and the upsert-first order never loses the link.
+   * - This ACMS id's fingerprint-keyed unresolved record is deleted after the new link is written,
+   *   best effort: a leftover record is inert, and the upsert-first order never loses the link.
+   * - Every other ACMS id with an unresolved record under this fingerprint and variant is linked
+   *   to the same trustee (see linkSharedFingerprintProfessionalIds). A write failure there fails
+   *   the approval; it stays pending and a retry repeats the idempotent upserts.
    */
   private async linkAcmsProfessionalId(
     context: ApplicationContext,
@@ -227,12 +231,88 @@ export class TrusteeMatchVerificationUseCase {
       userRef,
     );
 
+    await this.deleteUnresolvedProfessionalId(
+      context,
+      verification.fingerprint,
+      acmsProfessionalId,
+      resolvedTrusteeId,
+    );
+
+    await this.linkSharedFingerprintProfessionalIds(
+      context,
+      verification,
+      acmsProfessionalId,
+      resolvedTrusteeId,
+      userRef,
+    );
+  }
+
+  /**
+   * Links every other ACMS id that has a no-match or ambiguous record under the task's fingerprint
+   * with an identical stored variant, as 'manual' like the approved id. Their source records are
+   * identical, so the verifier's choice applies to them, and the sync's bookmark would never
+   * revisit them. An ACMS id that already has a link keeps it: only unresolved ids are healed.
+   */
+  private async linkSharedFingerprintProfessionalIds(
+    context: ApplicationContext,
+    verification: TrusteeMatchVerification,
+    approvedAcmsProfessionalId: string,
+    resolvedTrusteeId: string,
+    userRef: CamsUserReference,
+  ): Promise<void> {
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+    const unresolved = await professionalIdsRepo.findUnresolvedByFingerprint(
+      verification.fingerprint,
+    );
+    for (const record of unresolved) {
+      if (record.acmsProfessionalId === approvedAcmsProfessionalId) continue;
+      if (record.evidence.variant !== verification.variant) continue;
+
+      const existingLinks = await professionalIdsRepo.findByAcmsProfessionalId(
+        record.acmsProfessionalId,
+      );
+      if (existingLinks.length > 0) continue;
+
+      await professionalIdsRepo.upsertProfessionalId(
+        {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: resolvedTrusteeId,
+          acmsProfessionalId: record.acmsProfessionalId,
+          disposition: 'linked',
+          linkMethod: 'manual',
+          nameMatchCount: deriveNameMatchCount(record.evidence),
+          evidence: {
+            ...record.evidence,
+            match: { trusteeId: resolvedTrusteeId, score: {}, resolvedBy: 'manualApproval' },
+          },
+        },
+        userRef,
+      );
+
+      await this.deleteUnresolvedProfessionalId(
+        context,
+        verification.fingerprint,
+        record.acmsProfessionalId,
+        resolvedTrusteeId,
+      );
+    }
+  }
+
+  /** Best effort: a leftover fingerprint-keyed record is inert once the ACMS id is linked. */
+  private async deleteUnresolvedProfessionalId(
+    context: ApplicationContext,
+    fingerprint: string,
+    acmsProfessionalId: string,
+    resolvedTrusteeId: string,
+  ): Promise<void> {
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
     try {
-      await professionalIdsRepo.deleteByCamsTrusteeId(verification.fingerprint);
+      await professionalIdsRepo.deleteLink(fingerprint, acmsProfessionalId);
     } catch (originalError) {
       context.logger.warn(
         MODULE_NAME,
-        `Failed to delete fingerprint-keyed professional-id records for fingerprint ${verification.fingerprint} after manually linking ACMS ID ${acmsProfessionalId} to trustee ${resolvedTrusteeId}.`,
+        `Failed to delete the fingerprint-keyed professional-id record for fingerprint ${fingerprint} and ACMS ID ${acmsProfessionalId} after manually linking it to trustee ${resolvedTrusteeId}.`,
         originalError,
       );
     }

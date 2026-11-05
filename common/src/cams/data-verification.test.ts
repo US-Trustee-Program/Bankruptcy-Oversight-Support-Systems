@@ -20,7 +20,7 @@ const baseVerification: TrusteeMatchVerificationListItem = {
   documentType: 'TRUSTEE_MATCH_VERIFICATION',
   caseId: '00-00000',
   courtId: 'test-court',
-  dxtrTrustee: {
+  sourceTrustee: {
     fullName: 'Test Trustee',
   },
   source: 'DXTR',
@@ -95,7 +95,7 @@ describe('computeTaskDate', () => {
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       caseId: '00-00000',
       courtId: 'test-court',
-      dxtrTrustee: { fullName: 'Test Trustee' },
+      sourceTrustee: { fullName: 'Test Trustee' },
       source: 'DXTR',
       mismatchReason: 'no match',
       findings: MockData.getTrusteeMatchFindings(),
@@ -117,7 +117,7 @@ describe('computeTaskDate', () => {
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       caseId: '00-00000',
       courtId: 'test-court',
-      dxtrTrustee: { fullName: 'Test Trustee' },
+      sourceTrustee: { fullName: 'Test Trustee' },
       source: 'DXTR',
       mismatchReason: 'no match',
       findings: MockData.getTrusteeMatchFindings(),

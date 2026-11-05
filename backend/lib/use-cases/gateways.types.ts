@@ -464,7 +464,11 @@ export interface CasesRepository extends Releasable {
   findDuplicateSyncedCases(): Promise<
     Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
   >;
-  findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined>;
+  findSyncedCaseByDxtrId(
+    dxtrId: string,
+    courtId: string,
+    excludeCaseId?: string,
+  ): Promise<SyncedCase | undefined>;
 }
 
 export interface OfficesRepository
@@ -1029,9 +1033,13 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
    * (heal-sentinel-case-appointments.ts) that distinguishes "never linked" from "conflict".
    */
   hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
+  /**
+   * The unresolved ('no-match' or 'ambiguous') records keyed by this fingerprint, one per ACMS id
+   * whose source record produced it, with evidence (the caller compares evidence.variant).
+   */
+  findUnresolvedByFingerprint(fingerprint: string): Promise<TrusteeProfessionalId[]>;
   /** Deletes only the (camsTrusteeId, acmsProfessionalId) record, leaving the trustee's other
-   * ACMS id records in place - unlike deleteByCamsTrusteeId. */
+   * ACMS id records in place. */
   deleteLink(camsTrusteeId: string, acmsProfessionalId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

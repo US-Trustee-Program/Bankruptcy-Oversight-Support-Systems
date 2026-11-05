@@ -835,7 +835,7 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   status: 'pending',
   mismatchReason: 'ambiguous',
   source: 'DXTR',
-  dxtrTrustee: trusteeMatchFindings.sourceRaw,
+  sourceTrustee: trusteeMatchFindings.sourceRaw,
   findings: trusteeMatchFindings,
   fingerprint: 'mock-fingerprint',
   variant: 't multimatch',
@@ -858,7 +858,7 @@ const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification =
   status: 'pending',
   mismatchReason: 'ambiguous',
   source: 'DXTR',
-  dxtrTrustee: trusteeMatchCaselessFindings.sourceRaw,
+  sourceTrustee: trusteeMatchCaselessFindings.sourceRaw,
   findings: trusteeMatchCaselessFindings,
   fingerprint: 'mock-fingerprint-caseless',
   variant: 'c caselessmatch',
@@ -884,7 +884,7 @@ const trusteeMatchVerificationManyCandidatesDetail: EnrichedTrusteeMatchVerifica
   status: 'pending',
   mismatchReason: 'ambiguous',
   source: 'DXTR',
-  dxtrTrustee: trusteeMatchManyCandidatesFindings.sourceRaw,
+  sourceTrustee: trusteeMatchManyCandidatesFindings.sourceRaw,
   findings: trusteeMatchManyCandidatesFindings,
   fingerprint: 'mock-fingerprint-manycandidates',
   variant: 's sevenway',
@@ -904,7 +904,7 @@ function toListItem(detail: EnrichedTrusteeMatchVerification): TrusteeMatchVerif
     status: detail.status,
     mismatchReason: detail.mismatchReason,
     source: detail.source,
-    dxtrTrustee: detail.dxtrTrustee,
+    sourceTrustee: detail.sourceTrustee,
     affectedCaseCount: detail.affectedCaseIds.length,
     affectedCaseIds: detail.affectedCaseIds,
     taskDate: detail.taskDate,
@@ -2555,8 +2555,6 @@ const trusteeSearchResults: TrusteeSearchResult[] = [
 async function searchTrustees(
   name: string,
   _courtId?: string,
-  _divisionCode?: string,
-  _chapter?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
   const term = name.toLowerCase();
   return { data: trusteeSearchResults.filter((t) => t.name.toLowerCase().includes(term)) };

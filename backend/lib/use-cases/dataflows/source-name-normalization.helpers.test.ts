@@ -7,7 +7,7 @@ import {
   shouldSkipAsNotAPerson,
   shouldSkipAsUstStaff,
   stripAdministrativeMarkers,
-} from './acms-name-normalization.helpers';
+} from './source-name-normalization.helpers';
 
 describe('shouldSkipAsNotAPerson', () => {
   test.each([

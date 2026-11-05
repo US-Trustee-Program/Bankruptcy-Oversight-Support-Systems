@@ -197,6 +197,7 @@ const CASES = {
   reVerification: { caseId: '083-26-88910' },
   fingerprintRepeat: { caseId: '083-26-88911' },
   fingerprintNoFalseCollapse: { caseId: '083-26-88912' },
+  twoCandidatesOnePassesName: { caseId: '083-26-88918' },
 } as const;
 const ALL_CASE_IDS = Object.values(CASES).map((c) => c.caseId);
 
@@ -214,6 +215,12 @@ const TRUSTEES = {
   ambiguousWinnerDecoy: { id: 'ms-trustee-amb-winner-decoy', name: 'Ambiguous H Winner' },
   ambiguousTie1: { id: 'ms-trustee-amb-tie-1', name: 'Ambiguous T Tie' },
   ambiguousTie2: { id: 'ms-trustee-amb-tie-2', name: 'Ambiguous T Tie' },
+  // Scenario 16: the DXTR party is "Wendell Fairbanks" (Scenario City, SC 11111). Both trustees
+  // share its state, so discovery keeps them, but not its city or zip, so resolveByAddress does not
+  // fire. The fuzzy trustee passes the name check as 'weak' (fuzzy surname, identical first name);
+  // the other has the exact surname but a different first name and fails the name check.
+  weakFuzzySurname: { id: 'ms-trustee-weak-fuzzy', name: 'Wendell Q Fairbankz' },
+  weakSurnameTokenOnly: { id: 'ms-trustee-weak-token', name: 'Winston Q Fairbanks' },
   notYetSynced: { id: 'ms-trustee-not-yet-synced', name: 'NotYet S Synced' },
   caseMoved: { id: 'ms-trustee-case-moved', name: 'Case H Moved' },
   // Deliberately NOT DXTR's "Reverify M Trustee", so scenario 11's first pass is a 'no match'
@@ -281,7 +288,7 @@ const SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID = '083-26-88915';
 const SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID = '083-26-88916';
 const NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID = '083-26-88917';
 // Like BAD_REC_DATE_CASE_ID, these DO have DXTR rows (so they're covered by the
-// 999999400-999999417 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
+// 999999400-999999418 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
 // tracked separately here purely so clean() also removes the two Cosmos SYNCED_CASE fixtures
 // runSentinelProfCodeStage seeds for the two non-skipped cases (15b, 15c).
 const STAGE_9_CASE_IDS = [
@@ -303,6 +310,10 @@ const MANUAL_LINK_FINGERPRINT = 'stage-10-manual-link-fingerprint';
 const MANUAL_LINK_VARIANT = '{"firstName":"manual","lastName":"link"}';
 const MANUAL_LINK_ACMS_ID = 'INT-ACMS-MANUAL-LINK';
 const MANUAL_LINK_OTHER_ACMS_ID = 'INT-ACMS-MANUAL-LINK-OTHER';
+// Two more ACMS ids with an unresolved record under the same fingerprint: one with the identical
+// variant (healed on approval) and one with a different variant (left unresolved).
+const MANUAL_LINK_SHARED_ACMS_ID = 'INT-ACMS-MANUAL-LINK-SHARED';
+const MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID = 'INT-ACMS-MANUAL-LINK-DIFFERENT-VARIANT';
 const STAGE_10_PROFESSIONAL_ID_CAMS_TRUSTEE_IDS = [
   MANUAL_LINK_STALE_TRUSTEE_ID,
   MANUAL_LINK_FINGERPRINT,
@@ -709,6 +720,16 @@ async function seedCosmos() {
         address: { address1: '2 Tie Ave', city: 'Faraway', state: 'FA', zipCode: '99999' },
       },
       {
+        id: TRUSTEES.weakFuzzySurname.id,
+        name: TRUSTEES.weakFuzzySurname.name,
+        address: { address1: '1 Fuzzy Ln', city: 'Othertown', state: 'SC', zipCode: '22222' },
+      },
+      {
+        id: TRUSTEES.weakSurnameTokenOnly.id,
+        name: TRUSTEES.weakSurnameTokenOnly.name,
+        address: { address1: '2 Token Ln', city: 'Othertown', state: 'SC', zipCode: '22222' },
+      },
+      {
         id: TRUSTEES.notYetSynced.id,
         name: TRUSTEES.notYetSynced.name,
         address: {
@@ -888,12 +909,12 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999418' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999417');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999418');
   } finally {
     await pool.close();
   }
@@ -1149,7 +1170,8 @@ async function runScenarios() {
     // checks.matchedTrusteeAppointment records whether one covers the case (asserted below).
     ['autoMatchCount', dist.autoMatchCount, 5],
     // 6: the name matches no CAMS trustee.
-    ['noMatchCount', dist.noMatchCount, 1],
+    // 6 (no candidates) and 16 (two candidates, only one passing the name check).
+    ['noMatchCount', dist.noMatchCount, 2],
     // 8: two trustees with identical names and nothing that separates them.
     ['multipleMatchCount', dist.multipleMatchCount, 1],
   ];
@@ -1266,6 +1288,15 @@ async function runScenarios() {
       TRUSTEES.ambiguousTie2.id,
     ]);
     assertCandidateScoresForUi('8. multiple-match-no-winner', task8);
+
+    // 16. two-candidates-one-passes-name-check: the pool has 2 candidates but fewer than 2 pass the
+    //     name check, so the shared rule labels the task 'no match' (the old pool-size rule said
+    //     'ambiguous').
+    const task16 = await taskFor(CASES.twoCandidatesOnePassesName.caseId);
+    assertIdentityTask('16. two-candidates-one-passes-name-check', task16, 'no match', [
+      TRUSTEES.weakFuzzySurname.id,
+      TRUSTEES.weakSurnameTokenOnly.id,
+    ]);
 
     // 9. case-not-yet-synced: no verification, no appointment (already asserted via
     //    notYetSyncedEvents above).
@@ -2216,6 +2247,7 @@ async function runManualProfessionalIdLinkStage(
       camsTrusteeId: string,
       acmsProfessionalId: string,
       disposition: 'linked' | 'no-match',
+      variant?: string,
     ) =>
       professionalIdsRepo.upsertProfessionalId(
         {
@@ -2225,15 +2257,27 @@ async function runManualProfessionalIdLinkStage(
           disposition,
           ...(disposition === 'linked' ? { linkMethod: 'auto' as const } : {}),
           nameMatchCount: 0,
-          evidence: MockData.getTrusteeMatchFindings(),
+          evidence: { ...MockData.getTrusteeMatchFindings(), variant },
         },
         systemUser,
       );
     await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_ACMS_ID, 'linked');
     await seedRow(MANUAL_LINK_STALE_TRUSTEE_ID, MANUAL_LINK_OTHER_ACMS_ID, 'linked');
-    await seedRow(MANUAL_LINK_FINGERPRINT, MANUAL_LINK_ACMS_ID, 'no-match');
+    await seedRow(MANUAL_LINK_FINGERPRINT, MANUAL_LINK_ACMS_ID, 'no-match', MANUAL_LINK_VARIANT);
+    await seedRow(
+      MANUAL_LINK_FINGERPRINT,
+      MANUAL_LINK_SHARED_ACMS_ID,
+      'no-match',
+      MANUAL_LINK_VARIANT,
+    );
+    await seedRow(
+      MANUAL_LINK_FINGERPRINT,
+      MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID,
+      'no-match',
+      '{"firstName":"a different","lastName":"variant"}',
+    );
     pass(
-      'Seeded pending identity task with acmsProfessionalId, one covering-case surrogate, and 3 trustee-professional-ids rows',
+      'Seeded pending identity task with acmsProfessionalId, one covering-case surrogate, and 5 trustee-professional-ids rows (two sharing its fingerprint and one with a different variant)',
     );
 
     const queuedRemaps: TrusteeVerificationRemapMessage[] = [];
@@ -2305,11 +2349,37 @@ async function runManualProfessionalIdLinkStage(
       );
     }
 
-    const fingerprintRows = await rows.countDocuments({ camsTrusteeId: MANUAL_LINK_FINGERPRINT });
-    if (fingerprintRows === 0) {
-      pass('10. fingerprint-keyed trustee-professional-ids rows deleted');
+    const sharedLink = await rows.findOne({
+      camsTrusteeId: MANUAL_LINK_TRUSTEE.id,
+      acmsProfessionalId: MANUAL_LINK_SHARED_ACMS_ID,
+    });
+    if (
+      sharedLink?.disposition === 'linked' &&
+      sharedLink?.linkMethod === 'manual' &&
+      sharedLink?.evidence?.match?.resolvedBy === 'manualApproval' &&
+      sharedLink?.createdBy?.id === 'integration-harness'
+    ) {
+      pass(
+        '10. another ACMS id with an unresolved record of identical source data was linked to the approved trustee as manual',
+      );
     } else {
-      fail(`10. expected 0 fingerprint-keyed rows, found ${fingerprintRows}`);
+      fail(`10. expected the shared-fingerprint ACMS id healed, got ${JSON.stringify(sharedLink)}`);
+    }
+
+    const remainingFingerprintRows = await rows
+      .find({ camsTrusteeId: MANUAL_LINK_FINGERPRINT })
+      .toArray();
+    if (
+      remainingFingerprintRows.length === 1 &&
+      remainingFingerprintRows[0].acmsProfessionalId === MANUAL_LINK_DIFFERENT_VARIANT_ACMS_ID
+    ) {
+      pass(
+        '10. fingerprint-keyed rows deleted for the approved and healed ids; the different-variant record stays unresolved',
+      );
+    } else {
+      fail(
+        `10. expected only the different-variant row left, found ${JSON.stringify(remainingFingerprintRows.map((r) => r.acmsProfessionalId))}`,
+      );
     }
 
     const approved = await db

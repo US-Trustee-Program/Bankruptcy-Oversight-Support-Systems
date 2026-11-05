@@ -4,11 +4,7 @@ import {
   TrusteeAppointmentSyncEvent,
   SoftCloseWriteFailed,
 } from '@common/cams/dataflow-events';
-import {
-  TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-  TrusteeMatchVerification,
-  IdentityMismatchReason,
-} from '@common/cams/trustee-match-verification';
+import { IdentityMismatchReason } from '@common/cams/trustee-match-verification';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -18,15 +14,16 @@ import {
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteePetitionSyncState,
-  TrusteeMatchVerificationRepository,
   RuntimeState,
   RuntimeStateDocumentType,
   RuntimeStateRepository,
 } from '../gateways.types';
 import { parseCityStateZip, normalizeName } from './trustee-match.helpers';
 import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
-import { serializeState, candidatePool, TrusteeSerializedState } from './trustee-match-pipeline';
+import { serializeState } from './trustee-match-pipeline';
+import { deriveDisposition } from './trustee-professional-ids.types';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
+import { findByVariant, upsertIdentityTask } from './identity-task';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import {
   CaseAppointment,
@@ -49,9 +46,9 @@ type ScenarioDistribution = {
    * unexpectedly high rate is visible rather than buried inside autoMatchCount.
    */
   autoMatchUncoveredCount: number;
-  /** The trustee-match pipeline settled on 'no match' — zero or one unresolved candidate. */
+  /** The trustee-match pipeline settled on 'no match' — fewer than two genuinely name-matching candidates. */
   noMatchCount: number;
-  /** The trustee-match pipeline settled on 'ambiguous' — two or more unresolved candidates. */
+  /** The trustee-match pipeline settled on 'ambiguous' — two or more genuinely name-matching candidates. */
   multipleMatchCount: number;
   reVerificationCount: number;
   verificationBucketHitCount: number;
@@ -547,17 +544,6 @@ async function autoLinkTrustee(
 }
 
 /**
- * Finds the exact-variant match within an already-fetched fingerprint bucket. A fingerprint
- * (sha256 digest) is never trusted as a unique key on its own — a bucket can hold more than one
- * document, so every lookup must verify by comparing the full variant string for exact equality
- * ("bucket+verify"). Shared by both the TRUSTEE_VARIATION and TrusteeMatchVerification bucket
- * lookups below, which differ only in what they do with the matched entry.
- */
-function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
-  return bucket.find((v) => v.variant === variant);
-}
-
-/**
  * Guards the "syncedCase is always assigned before a classified mismatch outcome is reached"
  * invariant relied on by processAppointments' surrogate writes for an unresolved identity
  * match, so a future code path that breaks the ordering fails loudly here instead of as an opaque TypeError
@@ -573,75 +559,6 @@ export function assertSyncedCase(syncedCase: SyncedCase | undefined): SyncedCase
     });
   }
   return syncedCase;
-}
-
-/**
- * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by variant (see
- * findByVariant). Mirrors matchTrusteeByVariation's shape for the parallel TRUSTEE_VARIATION
- * bucket check.
- */
-async function findVerificationBucketEntry(
-  verificationRepo: TrusteeMatchVerificationRepository,
-  fingerprint: string,
-  variant: string,
-): Promise<TrusteeMatchVerification | null> {
-  const bucket = await verificationRepo.findByFingerprint(fingerprint);
-  return findByVariant(bucket, variant) ?? null;
-}
-
-/**
- * Upserts a TrusteeMatchVerification identity task for an unresolved (ambiguous or no-match)
- * pipeline outcome. Skips the write if the existing document has already been resolved or
- * dismissed (S2.3's repository-level merge-upsert enforces the same rule again at the DB layer;
- * this pre-check avoids even attempting the write and lets reVerificationCount be reported here).
- */
-async function upsertIdentityTask(
-  verificationRepo: TrusteeMatchVerificationRepository,
-  event: TrusteeAppointmentSyncEvent,
-  mismatchReason: IdentityMismatchReason,
-  findings: TrusteeSerializedState,
-  fingerprint: string,
-  variant: string,
-): Promise<boolean> {
-  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
-  if (existing && existing.status !== 'pending') {
-    return true; // Already resolved — signals a re-verification for match accuracy tracking
-  }
-  const acmsProfessionalId = resolveAcmsProfessionalIdForVerification(event);
-  if (existing) {
-    await verificationRepo.upsertVerification({
-      ...existing,
-      mismatchReason,
-      source: 'DXTR',
-      findings,
-      appointedDate: event.appointedDate,
-      acmsProfessionalId,
-      updatedOn: new Date().toISOString(),
-      updatedBy: SYSTEM_USER_REFERENCE,
-    });
-  } else {
-    const doc = createAuditRecord<TrusteeMatchVerification>(
-      {
-        documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-        caseId: event.caseId,
-        courtId: event.courtId,
-        dxtrTrustee: event.dxtrTrustee,
-        mismatchReason,
-        source: 'DXTR',
-        findings,
-        appointedDate: event.appointedDate,
-        acmsProfessionalId,
-        taskType: 'trustee-match',
-        status: 'pending',
-        taskDate: new Date().toISOString(),
-        fingerprint,
-        variant,
-      },
-      SYSTEM_USER_REFERENCE,
-    );
-    await verificationRepo.upsertVerification(doc);
-  }
-  return false;
 }
 
 /**
@@ -934,11 +851,11 @@ async function resolveTrusteeViaPipeline(
     };
   }
 
-  // Unresolved: 2+ candidates is ambiguous, 0 or 1 is no match (candidate-pool size, per the
-  // bead's explicit rule — not ACMS's deriveDisposition, which counts by a different threshold).
+  // Unresolved: the same rule the ACMS professional-id sync uses (deriveDisposition) — 2+
+  // candidates that pass doesNameMatch with genuine evidence is ambiguous, otherwise no match.
   const findings = serializeState(state);
   const reason: IdentityMismatchReason =
-    candidatePool(state).length >= 2 ? 'ambiguous' : 'no match';
+    deriveDisposition(findings) === 'ambiguous' ? 'ambiguous' : 'no match';
   if (reason === 'ambiguous') {
     scenarioDistribution.multipleMatchCount++;
     audit.matchOutcome = 'ambiguous';
@@ -946,14 +863,18 @@ async function resolveTrusteeViaPipeline(
     scenarioDistribution.noMatchCount++;
     audit.matchOutcome = 'no-match';
   }
-  const isReVerification = await upsertIdentityTask(
-    deps.verificationRepo,
-    event,
-    reason,
+  const isReVerification = await upsertIdentityTask(deps.verificationRepo, {
+    source: 'DXTR',
+    sourceTrustee: event.dxtrTrustee,
+    mismatchReason: reason,
     findings,
     fingerprint,
     variant,
-  );
+    acmsProfessionalId: resolveAcmsProfessionalIdForVerification(event),
+    caseId: event.caseId,
+    courtId: event.courtId,
+    appointedDate: event.appointedDate,
+  });
   if (isReVerification) scenarioDistribution.reVerificationCount++;
   await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
   return { outcome: 'handled' };
@@ -1599,8 +1520,9 @@ async function processOneEventOrDlq(
  *   stage): resolved, matchedBy = the stage's name.
  * - The pipeline's own skipAdministrativePlaceholder stage fires (state.skip): no-op,
  *   pipelineSkippedCount — see that function's doc comment for why this is a new edge case.
- * - The pipeline does not resolve a trusteeId (state.match null): the candidate pool's size
- *   decides the identity task's mismatchReason — 2 or more candidates is 'ambiguous', 0 or 1 is
+ * - The pipeline does not resolve a trusteeId (state.match null): deriveDisposition, the rule the
+ *   ACMS professional-id sync shares, decides the identity task's mismatchReason — 2 or more
+ *   candidates passing doesNameMatch with genuine evidence is 'ambiguous', anything else is
  *   'no match'. findings is the pipeline's serialized state, unchanged.
  * - A non-transient pipeline processing failure (state.error): rethrown, landing in
  *   processOneEvent's one catch exactly like any other unclassified error (retry if transient,

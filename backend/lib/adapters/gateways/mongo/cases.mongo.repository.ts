@@ -698,15 +698,23 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined> {
+  async findSyncedCaseByDxtrId(
+    dxtrId: string,
+    courtId: string,
+    excludeCaseId?: string,
+  ): Promise<SyncedCase | undefined> {
     try {
       const doc = using<SyncedCase>();
-      const query = and(
+      const conditions = [
         doc('documentType').equals('SYNCED_CASE'),
         doc('dxtrId').equals(dxtrId),
         doc('courtId').equals(courtId),
         doc('movedToCaseId').notExists(),
-      );
+      ];
+      if (excludeCaseId) {
+        conditions.push(doc('caseId').notEqual(excludeCaseId));
+      }
+      const query = and(...conditions);
       const adapter = this.getAdapter<SyncedCase>();
       const results = await adapter.find(query, undefined, 1);
       return results[0];

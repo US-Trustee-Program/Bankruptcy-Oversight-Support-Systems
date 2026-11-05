@@ -4,6 +4,7 @@ import {
   handleRateLimitRetry,
   computeBackoffSeconds,
   computeBackoffSecondsWithJitter,
+  requeueSingleEventWithBackoff,
   RATE_LIMIT_BASE_DELAY_SECONDS,
   RATE_LIMIT_MAX_DELAY_SECONDS,
   RATE_LIMIT_RETRY_LIMIT,
@@ -528,5 +529,41 @@ describe('computeBackoffSecondsWithJitter', () => {
     }
 
     expect(results.size).toBeGreaterThan(1);
+  });
+});
+
+describe('requeueSingleEventWithBackoff', () => {
+  test('sends the message to the given queue with a backoff visibility timeout based on the next retry count', async () => {
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
+    const message = { caseId: '001-25-00001', retryCount: 1 };
+
+    await requeueSingleEventWithBackoff(message, 'retry-queue', TEST_CONNECTION_STRING);
+
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(TEST_CONNECTION_STRING, 'retry-queue');
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toEqual(message);
+    // retryCount 1 -> nextRetryCount 2 -> base 2^2*30=120s, +/-10% jitter
+    expect(visibilityTimeout).toBeGreaterThanOrEqual(Math.round(120 * 0.9));
+    expect(visibilityTimeout).toBeLessThanOrEqual(Math.round(120 * 1.1));
+  });
+
+  test('treats an undefined retryCount as the first attempt', async () => {
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    const message: { caseId: string; retryCount?: number } = { caseId: '001-25-00001' };
+    await requeueSingleEventWithBackoff(message, 'retry-queue', TEST_CONNECTION_STRING);
+
+    const [, visibilityTimeout] = mockSendMessage.mock.calls[0];
+    // no retryCount -> nextRetryCount 1 -> base 2^1*30=60s, +/-10% jitter
+    expect(visibilityTimeout).toBeGreaterThanOrEqual(Math.round(60 * 0.9));
+    expect(visibilityTimeout).toBeLessThanOrEqual(Math.round(60 * 1.1));
   });
 });
