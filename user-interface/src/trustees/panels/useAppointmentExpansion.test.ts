@@ -164,7 +164,7 @@ describe('useAppointmentExpansion', () => {
       },
     );
 
-    test('a lone appointment collapses on the first toggle and stores the explicit choice', () => {
+    test('a lone appointment collapses on the first toggle', () => {
       const { result } = renderWithCount(1);
 
       act(() => {
@@ -172,7 +172,6 @@ describe('useAppointmentExpansion', () => {
       });
 
       expect(result.current.isExpanded(appointment)).toBe(false);
-      expect(sessionStorage.getItem(STORAGE_KEY)).toBe(JSON.stringify({ 'appt-1': false }));
     });
 
     test('a collapsed lone appointment stays collapsed after remount', () => {
@@ -188,10 +187,13 @@ describe('useAppointmentExpansion', () => {
     });
 
     test('a default expansion is never persisted', () => {
-      const { result } = renderWithCount(1);
+      const { result: beforeNavigation, unmount } = renderWithCount(1);
+      expect(beforeNavigation.current.isExpanded(appointment)).toBe(true);
+      unmount();
 
-      expect(result.current.isExpanded(appointment)).toBe(true);
-      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+      const { result } = renderWithCount(2);
+
+      expect(result.current.isExpanded(appointment)).toBe(false);
     });
 
     test('an untouched default-expanded appointment collapses when the count grows to 2', () => {
@@ -201,15 +203,16 @@ describe('useAppointmentExpansion', () => {
       rerender({ count: 2 });
 
       expect(result.current.isExpanded(appointment)).toBe(false);
-      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
     test.each([
       { count: 2, stored: true },
       { count: 1, stored: false },
     ])(
-      'a stored choice of $stored wins over the default for $count appointment(s)',
+      'a choice stored before this change ($stored) still wins over the default for $count appointment(s)',
       ({ count, stored }) => {
+        // Seeds the pre-existing session key and format directly: choices users made
+        // before count-based defaults shipped must still be honored.
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ 'appt-1': stored }));
 
         const { result } = renderWithCount(count);
