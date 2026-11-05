@@ -50,6 +50,8 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: 'auth-setup.ts',
+      // A trace records the password typed into Okta, and the CI report is a public artifact.
+      use: { trace: 'off' },
     },
     {
       name: 'chromium',
@@ -63,6 +65,7 @@ export default defineConfig({
           {
             name: 'superuser-setup',
             testMatch: 'superuser-auth-setup.ts',
+            use: { trace: 'off' as const },
           },
           {
             name: 'chromium-superuser',

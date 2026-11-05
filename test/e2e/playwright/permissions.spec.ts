@@ -66,8 +66,9 @@ test.describe('Administration > Permissions', () => {
 
   test("grants a role in an office and shows it in the user's row", async ({ page }) => {
     // A user without permissions, so a retry grants to someone else instead of hitting a duplicate.
+    // The seed clears every assignment, so finding none means the seed did not run.
     const user = users.find((candidate) => candidate.permissions.length === 0);
-    test.skip(!user, 'Every CAMS user on the first page already has a permission');
+    expect(user, 'the seed should leave CAMS users without permissions').toBeDefined();
 
     await page.locator(`#add-permission-${user!.id}`).click();
     await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
