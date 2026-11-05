@@ -84,6 +84,10 @@ const ANY_SCOPE = '*';
 
 /**
  * The key a unique {userId, activeKey} index uses to reject exact duplicate active assignments.
+ *
+ * The index does not look at `active`, so deactivating an assignment must also change its
+ * activeKey (for example, clear it or suffix it with the assignment id). Otherwise granting the
+ * same role and scope again collides with the inactive record.
  */
 export function activeKeyFor(
   role: CamsRoleType,
@@ -96,7 +100,7 @@ export function activeKeyFor(
 export const ROLE_ASSIGNMENT_REASON_MAX_LENGTH = 1000;
 
 // Super User grants are enabled in a later slice.
-const grantableRoles = CamsRoles.filter((role) => role !== CamsRole.SuperUser);
+export const grantableRoles = CamsRoles.filter((role) => role !== CamsRole.SuperUser);
 
 // Rejects non-strings, empty strings and whitespace-only strings.
 const NOT_BLANK = /\S/;

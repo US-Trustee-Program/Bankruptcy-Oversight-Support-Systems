@@ -197,6 +197,20 @@ describe('CamsUsers', () => {
     }
   });
 
+  test('should give screen readers text after the Region and Office labels', async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    for (const column of ['Region', 'Office']) {
+      const srText = (user: CamsUserWithPermissions) =>
+        row(user).querySelector(`[data-cell="${column}"] .usa-sr-only`);
+      expect(srText(SARAH)).toHaveTextContent('See Role');
+      expect(srText(ALEX)).toHaveTextContent('None');
+    }
+  });
+
   test('should show a user with no permissions as having none', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX]));
 

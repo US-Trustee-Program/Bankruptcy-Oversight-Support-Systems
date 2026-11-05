@@ -114,6 +114,13 @@ export class UserAccessUseCase {
     };
     const created = await this.assignmentRepository.create(assignment);
 
+    const newState = {
+      role: created.role,
+      regionId: created.regionId,
+      officeCode: created.officeCode,
+      active: created.active,
+    };
+    // The top-level role and scope are read from newState so the two can't disagree.
     const audit: RoleAssignmentAuditEntry = {
       documentType: 'ROLE_ASSIGNMENT_AUDIT',
       id: randomUUID(),
@@ -121,19 +128,14 @@ export class UserAccessUseCase {
       action: 'CREATED',
       userId: created.userId,
       userName: created.userName,
-      role: created.role,
-      regionId: created.regionId,
-      officeCode: created.officeCode,
+      role: newState.role,
+      regionId: newState.regionId,
+      officeCode: newState.officeCode,
       performedBy: performer.id,
       performedByName: performer.name,
       performedAt: now,
       previousState: null,
-      newState: {
-        role: created.role,
-        regionId: created.regionId,
-        officeCode: created.officeCode,
-        active: created.active,
-      },
+      newState,
       reason: request.reason.trim(),
     };
 

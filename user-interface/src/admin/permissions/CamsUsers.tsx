@@ -115,6 +115,11 @@ function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
   );
 }
 
+// Region and Office are read as part of each Role sentence. This gives their labels text to read.
+function ScopeCellText({ hasPermissions }: Readonly<{ hasPermissions: boolean }>) {
+  return <span className="usa-sr-only">{hasPermissions ? 'See Role' : 'None'}</span>;
+}
+
 function PermissionSentences({
   permissions,
   officeName,
@@ -300,9 +305,11 @@ export function CamsUsers() {
                     <PermissionLines lines={user.permissions.map((p) => CamsRoleLabels[p.role])} />
                   </CamsTableCell>
                   <CamsTableCell data-cell="Region">
+                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
                     <PermissionLines lines={user.permissions.map((p) => p.regionId ?? ALL)} />
                   </CamsTableCell>
                   <CamsTableCell data-cell="Office">
+                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
                     <PermissionLines lines={user.permissions.map(officeLabel)} />
                   </CamsTableCell>
                   <CamsTableCell data-cell="">

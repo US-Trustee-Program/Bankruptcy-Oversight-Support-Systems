@@ -10,10 +10,10 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
-import { CamsRole, CamsRoleLabels, CamsRoles, CamsRoleType } from '@common/cams/roles';
+import { CamsRoleLabels, CamsRoleType } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { ROLE_ASSIGNMENT_REASON_MAX_LENGTH } from '@common/cams/user-access';
+import { grantableRoles, ROLE_ASSIGNMENT_REASON_MAX_LENGTH } from '@common/cams/user-access';
 
 export type AddPermissionModalRef = {
   show: (user: CamsUserReference) => void;
@@ -27,8 +27,7 @@ export type AddPermissionModalProps = {
 
 const SAVE_FAILED_MESSAGE = 'Unable to save permission. Please try again';
 
-// Super User grants arrive in a later slice.
-const ROLE_OPTIONS: ComboOption[] = CamsRoles.filter((role) => role !== CamsRole.SuperUser)
+const ROLE_OPTIONS: ComboOption[] = grantableRoles
   .map((role) => ({ value: role, label: CamsRoleLabels[role] }))
   .sort((a, b) => a.label.localeCompare(b.label));
 
