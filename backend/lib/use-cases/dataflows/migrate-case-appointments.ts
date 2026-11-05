@@ -15,7 +15,8 @@ import {
 } from '../gateways.types';
 import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
-import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { DEFAULT_INVOCATION_BUDGET_MS, shouldEscape } from './invocation-budget';
 
 export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
   trusteeId: string | null; // null = no mapping found, skip write
@@ -201,10 +202,6 @@ function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
   return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
 }
 
-function shouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number): boolean {
-  return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
-}
-
 /**
  * Handles a single record's write with 429 retry and escape-hatch detection.
  * Returns 'escape' when the next backoff sleep would exceed safeThresholdMs.
@@ -369,7 +366,7 @@ async function writePage(
 }> {
   const {
     startedAt = Date.now(),
-    safeThresholdMs = SAFE_THRESHOLD_MS,
+    safeThresholdMs = DEFAULT_INVOCATION_BUDGET_MS,
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -565,7 +562,7 @@ async function updateHealState(
  * Processes documents in batches, resuming from cursor across invocations.
  * Filters to active (no unassignedOn) docs when comparing partitions.
  * Repairs by writing only to trustee partition, preserving existing case-partition ids.
- * Exits early if approaching SAFE_THRESHOLD_MS to stay within Function budget.
+ * Exits early if approaching DEFAULT_INVOCATION_BUDGET_MS to stay within Function budget.
  */
 async function heal(context: ApplicationContext): Promise<void> {
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -583,7 +580,7 @@ async function heal(context: ApplicationContext): Promise<void> {
   // Main loop: fetch batches and process
   while (true) {
     // Check timeout before processing each batch
-    if (Date.now() - healStartedAt >= SAFE_THRESHOLD_MS) {
+    if (Date.now() - healStartedAt >= DEFAULT_INVOCATION_BUDGET_MS) {
       logger.warn(
         MODULE_NAME,
         `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} lastId=${lastId}`,

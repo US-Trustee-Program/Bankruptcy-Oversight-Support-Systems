@@ -15,11 +15,11 @@ import MigrateCaseAppointmentsUseCase, {
   ResolvedAcmsRecord,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments';
 import {
-  SAFE_THRESHOLD_MS,
   DEFAULT_FETCH_SIZE,
   MAX_FETCH_SIZE,
   WRITE_BATCH_SIZE,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments-constants';
+import { DEFAULT_INVOCATION_BUDGET_MS } from '../../../lib/use-cases/dataflows/invocation-budget';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -615,7 +615,7 @@ export async function handlePage(
 
   const result = await MigrateCaseAppointmentsUseCase.writePage(context, records, {
     startedAt: invocationStartedAt,
-    safeThresholdMs: SAFE_THRESHOLD_MS,
+    safeThresholdMs: DEFAULT_INVOCATION_BUDGET_MS,
   });
 
   const escapeHatchFailures = await handleEscapeHatch(context, result);
