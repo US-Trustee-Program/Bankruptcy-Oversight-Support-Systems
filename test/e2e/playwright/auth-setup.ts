@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
+import { oktaLogin } from './login/okta-login';
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config({ quiet: true });
 
@@ -43,44 +44,8 @@ async function mockLogin(page: Page) {
   expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
 
-async function oktaLogin(page: Page) {
-  if (!OKTA_USER_NAME || !OKTA_PASSWORD) {
-    throw new Error(
-      'OKTA_USER_NAME and OKTA_PASSWORD environment variables are required for Okta E2E tests',
-    );
-  }
-
-  await page.goto(TARGET_HOST + LOGIN_PATH);
-  await page.getByTestId('button-auo-confirm').click();
-  await expect(page.locator('#okta-sign-in')).toBeVisible();
-
-  const username = page.locator('input[name=identifier]').first();
-  await username.fill(OKTA_USER_NAME);
-
-  const next = page.locator('input[type=submit]').first();
-  await next.click();
-
-  const password = page.locator('input[name="credentials.passcode"]').first();
-  await expect(password).toBeVisible();
-  await page.waitForTimeout(300);
-  await password.fill(OKTA_PASSWORD);
-
-  const submit = page.locator('input[type=submit]').first();
-  await submit.click();
-  await page.waitForURL(TARGET_HOST);
-  const state = await page.context().storageState({ path: authFile });
-  expect(state).toBeDefined();
-  await page.goto(TARGET_HOST);
-  const expectedHost = TARGET_HOST.includes('localhost:3000')
-    ? TARGET_HOST
-    : `${TARGET_HOST}/?x-ms-routing-name=${
-        process.env.SLOT_NAME ||
-        (() => {
-          throw new Error('SLOT_NAME environment variable is required for E2E tests');
-        })()
-      }`;
-  await page.waitForURL(expectedHost);
-  await expect(page.getByTestId('app-component-test-id')).toBeVisible({ timeout: 60000 });
+async function oktaUserLogin(page: Page) {
+  await oktaLogin(page, { userName: OKTA_USER_NAME, password: OKTA_PASSWORD, authFile });
 }
 
 function usingAuthenticationProvider() {
@@ -90,7 +55,7 @@ function usingAuthenticationProvider() {
     case 'none':
       return { login: noOp };
     case 'okta':
-      return { login: oktaLogin };
+      return { login: oktaUserLogin };
     case 'mock':
       return { login: mockLogin };
     default:
