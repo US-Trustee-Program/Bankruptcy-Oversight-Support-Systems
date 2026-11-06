@@ -1,8 +1,10 @@
 import { AcmsCaseAppointmentRawRecord, AcmsCaseAppointmentRecord } from '../gateways.types';
 import {
+  buildAcmsSourceTrustee,
   buildAppointmentFields,
   formatAcmsDate,
   rawToAppointmentRecord,
+  rawToTrusteeAppointmentSyncEvent,
 } from './acms-case-appointment.helpers';
 
 function makeRawRecord(
@@ -219,5 +221,120 @@ describe('buildAppointmentFields', () => {
     expect(() => buildAppointmentFields(makeAppointmentRecord({ chapter: 'AC' }))).toThrow(
       'Invalid ACMS chapter value',
     );
+  });
+});
+
+describe('buildAcmsSourceTrustee', () => {
+  test('builds fullName and legacy contact fields from CMMPR fields', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord());
+
+    expect(sourceTrustee).toEqual({
+      firstName: 'Jane',
+      middleName: undefined,
+      lastName: 'Doe',
+      fullName: 'Jane Doe',
+      legacy: {
+        address1: '123 Main St',
+        address2: undefined,
+        cityStateZipCountry: 'Anytown NY 10001-0000',
+        phone: '2125551234',
+      },
+    });
+  });
+
+  test('includes middle initial in fullName when present', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: 'Q' }));
+
+    expect(sourceTrustee.middleName).toBe('Q');
+    expect(sourceTrustee.fullName).toBe('Jane Q Doe');
+  });
+
+  test('treats a phone of 0 as absent', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_COMMERCIAL_PHONE_NBR: 0 }));
+
+    expect(sourceTrustee.legacy?.phone).toBeUndefined();
+  });
+
+  test('never sets email or fax (no such columns on this query)', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord());
+
+    expect(sourceTrustee.legacy?.email).toBeUndefined();
+    expect(sourceTrustee.legacy?.fax).toBeUndefined();
+  });
+
+  test('omits legacy entirely when address, city/state/zip, and phone are all blank', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(
+      makeRawRecord({
+        PROF_ADDRESS1: '',
+        PROF_ADDRESS2: '',
+        PROF_CITY: '',
+        PROF_STATE: '',
+        PROF_ZIP: 0,
+        PROF_COMMERCIAL_PHONE_NBR: 0,
+      }),
+    );
+
+    expect(sourceTrustee.legacy).toBeUndefined();
+  });
+
+  test('collapses extra spaces when middle initial is blank', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: '' }));
+
+    expect(sourceTrustee.fullName).toBe('Jane Doe');
+  });
+});
+
+describe('rawToTrusteeAppointmentSyncEvent', () => {
+  test('maps a raw record and courtId into a source-neutral ACMS sync event', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord(), '0208');
+
+    expect(event).toEqual({
+      caseId: '081-24-12345',
+      courtId: '0208',
+      source: 'ACMS',
+      sourceTrustee: buildAcmsSourceTrustee(makeRawRecord()),
+      acmsProfessionalId: 'NY-00063',
+      groupDesignator: 'NY',
+      profCode: '63',
+      appointedDate: '2020-01-01',
+      chapter: '7',
+      courtDivisionCode: '081',
+    });
+  });
+
+  test('omits appointedDate when APPT_DATE is 0', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ APPT_DATE: 0 }), '0208');
+
+    expect(event).not.toHaveProperty('appointedDate');
+  });
+
+  test('includes unassignedOn when DISP_DATE is present and non-zero', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: 20210301 }), '0208');
+
+    expect(event.unassignedOn).toBe('2021-03-01');
+  });
+
+  test('omits unassignedOn when DISP_DATE is null', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: null }), '0208');
+
+    expect(event).not.toHaveProperty('unassignedOn');
+  });
+
+  test('omits chapter when CURR_CASE_CHAPT is null', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CURR_CASE_CHAPT: null }),
+      '0208',
+    );
+
+    expect(event).not.toHaveProperty('chapter');
+  });
+
+  test('normalizes a zero-padded chapter', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CURR_CASE_CHAPT: '09' }),
+      '0208',
+    );
+
+    expect(event.chapter).toBe('9');
   });
 });

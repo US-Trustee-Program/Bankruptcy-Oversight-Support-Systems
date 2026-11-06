@@ -759,6 +759,77 @@ describe('ACMS gateway tests', () => {
     });
   });
 
+  describe('getLatestCmmapChangeDateForRegion', () => {
+    test('should return the formatted date from the first (DESC-ordered) row', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [{ CDB_UPDATE_DATE: 20260701 }] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBe('2026-07-01');
+    });
+
+    test('should return undefined when the region has no matching rows', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBeUndefined();
+    });
+
+    test('should filter by region and order by CDB_UPDATE_DATE descending', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('m.REGION_CODE = @regionId');
+      expect(query).toContain('ORDER BY m.CDB_UPDATE_DATE DESC');
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ name: 'regionId', value: '02' })]),
+      );
+    });
+
+    test('should apply the same row-inclusion filters as getCmmapAppointmentsRaw', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain("m.DELETE_CODE != 'D'");
+      expect(query).toContain('m.PROF_CODE > 0');
+      expect(query).toContain('m.PROF_CODE < 98000');
+      expect(query).toContain("m.APPT_TYPE = 'TR'");
+      expect(query).toContain("c.DELETE_CODE != 'D'");
+      expect(query).toContain("p.DELETE_CODE != 'D'");
+    });
+  });
+
   describe('getTrusteeProfessionalRecordsPage', () => {
     test('should return demographic fields for the given group, filtered by PROF_TYPE = TR', async () => {
       const dbResults = [

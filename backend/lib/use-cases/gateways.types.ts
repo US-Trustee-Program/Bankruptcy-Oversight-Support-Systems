@@ -414,6 +414,15 @@ export interface AcmsGateway {
     regionId?: string,
     changeDate?: string,
   ): Promise<AcmsCaseAppointmentRawRecord[]>;
+  /**
+   * Most recent CMMAP.CDB_UPDATE_DATE (ISO) for the region, among rows that would actually be
+   * returned by getCmmapAppointmentsRaw for that date (same row-inclusion filters), or undefined
+   * when the region has no matching rows.
+   */
+  getLatestCmmapChangeDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined>;
 }
 
 export interface AtsGateway {
