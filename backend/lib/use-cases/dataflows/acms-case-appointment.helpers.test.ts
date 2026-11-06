@@ -69,6 +69,14 @@ describe('formatAcmsDate', () => {
   test('throws for a value that is not a real calendar date', () => {
     expect(() => formatAcmsDate(20200231)).toThrow('Invalid date');
   });
+
+  test('throws for a negative value with 8 characters', () => {
+    expect(() => formatAcmsDate(-1000000)).toThrow('Invalid ACMS date format');
+  });
+
+  test('throws for a month outside the valid calendar range', () => {
+    expect(() => formatAcmsDate(20201301)).toThrow('Invalid date');
+  });
 });
 
 describe('rawToAppointmentRecord', () => {
@@ -113,6 +121,22 @@ describe('rawToAppointmentRecord', () => {
     expect(record.acmsProfessionalId).toBe('CA-00007');
     expect(record.courtDivisionCode).toBe('009');
   });
+
+  test('passes through non-null disposition, close, and reopened dates', () => {
+    const record = rawToAppointmentRecord(
+      makeRawRecord({
+        DISP_DATE: 20210301,
+        CLOSED_BY_COURT_DATE: 20220101,
+        CLOSED_BY_UST_DATE: 20220201,
+        REOPENED_DATE: 20230101,
+      }),
+    );
+
+    expect(record.unassignDate).toBe(20210301);
+    expect(record.closedByCourtDate).toBe(20220101);
+    expect(record.closedByUstDate).toBe(20220201);
+    expect(record.reopenedDate).toBe(20230101);
+  });
 });
 
 describe('buildAppointmentFields', () => {
@@ -141,6 +165,18 @@ describe('buildAppointmentFields', () => {
     const fields = buildAppointmentFields(makeAppointmentRecord({ unassignDate: null }));
 
     expect(fields).not.toHaveProperty('unassignedOn');
+  });
+
+  test('omits dateFiled when caseFiledDate is null', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ caseFiledDate: null }));
+
+    expect(fields).not.toHaveProperty('dateFiled');
+  });
+
+  test('omits chapter when chapter is null', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ chapter: null }));
+
+    expect(fields).not.toHaveProperty('chapter');
   });
 
   test('includes unassignedOn when unassignDate is present', () => {

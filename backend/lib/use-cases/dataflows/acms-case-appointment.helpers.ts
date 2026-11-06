@@ -61,7 +61,7 @@ export function buildAppointmentFields(
     ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
     ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
     ...(record.chapter ? { chapter: normalizeAcmsCaseChapter(record.chapter) } : {}),
-    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
+    courtDivisionCode: record.courtDivisionCode,
     ...(closedDate ? { closedDate } : {}),
     ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
   };
