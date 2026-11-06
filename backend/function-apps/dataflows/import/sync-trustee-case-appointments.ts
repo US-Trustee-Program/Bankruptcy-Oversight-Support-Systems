@@ -1,11 +1,14 @@
-import { app, InvocationContext, Timer, output } from '@azure/functions';
+import { app, InvocationContext, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
+import RegionDriver, {
+  RegionDriverResumePoint,
+} from '../../../lib/use-cases/dataflows/trustee-appointment-region-driver';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
-import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
+import DateHelper from '@common/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -28,11 +31,15 @@ const PAGE_SIZE = 100;
 const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
+// Manually triggered by an operator naming the regions to sync (cams-fd8qd.1.10) -- not on
+// DEFAULT_DATAFLOWS and no timer trigger until lanes/scheduling land (Slice 2).
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
-  lastSyncDate?: string;
-  reset?: boolean;
+  regions: string[];
+  /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
+  runDate?: string;
+  /** Where a prior, budget-exhausted invocation left off -- see RegionDriver's continuation. */
+  resumeFrom?: RegionDriverResumePoint;
   deleteAll?: boolean;
-  overrideRuntimeState?: TrusteeAppointmentsSyncState;
   flushQueues?: boolean;
 };
 
@@ -75,7 +82,6 @@ const DLQ = output.storageQueue({
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
-const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
 function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
   const byteSize = Buffer.byteLength(JSON.stringify(event));
@@ -150,10 +156,9 @@ async function handleStart(
       return;
     }
 
-    const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
-
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
+      const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
       const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAll(deps);
       if (deleteResult.error) {
         invocationContext.extraOutputs.set(
@@ -170,39 +175,57 @@ async function handleStart(
       }
     }
 
-    const { events, latestSyncDate, petitionLatestSyncDate } =
-      await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
-        deps,
-        startMessage.lastSyncDate,
-        startMessage.reset || startMessage.deleteAll,
-        startMessage.overrideRuntimeState,
+    const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: startMessage.regions,
+      runDate,
+      resumeFrom: startMessage.resumeFrom,
+    });
+
+    if (result.dlqMessages.length > 0) {
+      const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        DLQ.queueName,
       );
-
-    if (!events.length) {
-      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-      });
-      return;
+      for (const dlqMessage of result.dlqMessages) {
+        await dlqQueueClient.sendMessage(JSON.stringify(dlqMessage));
+      }
     }
 
-    const { pagesQueued, rejectedCount } = await queueEventPages(events, connectionString);
-
-    if (latestSyncDate) {
-      await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, latestSyncDate);
+    // Retryable/not-yet-synced events get their first attempt at a delayed retry via the
+    // existing PAGE queue/handlePage, which already owns the backoff/retry-limit policies for
+    // both kinds (see handlePage below) -- unchanged since before this dataflow's rewrite.
+    let pagesQueued = 0;
+    if (result.retryableEvents.length > 0) {
+      pagesQueued += (await queueEventPages(result.retryableEvents, connectionString)).pagesQueued;
     }
-    if (petitionLatestSyncDate) {
-      await SyncTrusteeCaseAppointmentsUseCase.storePetitionRuntimeState(
-        deps,
-        petitionLatestSyncDate,
+    if (result.notYetSyncedEvents.length > 0) {
+      pagesQueued += (await queueEventPages(result.notYetSyncedEvents, connectionString))
+        .pagesQueued;
+    }
+
+    if (result.continuation) {
+      const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        START.queueName,
       );
+      const continuationMessage: SyncTrusteeCaseAppointmentsStartMessage = {
+        regions: result.continuation.regions,
+        runDate: result.continuation.runDate,
+        resumeFrom: result.continuation.resumeFrom,
+      };
+      await startQueueClient.sendMessage(JSON.stringify(continuationMessage));
     }
+
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
-      documentsFailed: rejectedCount,
+      documentsFailed: result.dlqMessages.length,
       success: true,
-      details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
+      details: {
+        processedRegions: result.processedRegions.join(','),
+        pagesQueued: String(pagesQueued),
+        continuation: String(Boolean(result.continuation)),
+      },
     });
   } catch (originalError) {
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -411,28 +434,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   }
 }
 
-async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const observability = factory.getObservability(logger);
-  const trace = observability.startTrace(invocationContext.invocationId);
-  try {
-    invocationContext.extraOutputs.set(START, {});
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-    });
-  } catch (error) {
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-}
-
 function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
@@ -447,15 +448,9 @@ function setup() {
     extraOutputs: [DLQ],
     handler: handlePage,
   });
-
-  app.timer(TIMER_TRIGGER, {
-    schedule: '0 35 9 * * *', // 5 minutes after sync-cases (at 9:30)
-    extraOutputs: [START],
-    handler: timerTrigger,
-  });
 }
 
-export { handleStart, handlePage, timerTrigger };
+export { handleStart, handlePage };
 export default {
   MODULE_NAME,
   setup,

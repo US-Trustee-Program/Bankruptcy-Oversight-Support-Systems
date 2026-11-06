@@ -52,21 +52,19 @@ export function getDxtrSource(): TrusteeAppointmentSource {
 }
 
 /**
- * Seam 2: the per-region driver (cams-fd8qd.1.10, plus the CAMS-957 source switch): for each region
- * named, read its bookmark and source (ACMS unless switched to DXTR), walk change dates (catch-up from
- * 2026-07-01, a date is complete only when a later date exists, the run date itself is never read),
- * process events, and advance the bookmark.
- *
- * The harness assumes this contract; adapt this function to the as-built API rather than the harness.
+ * Seam 2: the per-region driver (cams-fd8qd.1.10). For each region named, reads its bookmark
+ * (ACMS unconditionally -- the CAMS-957 source switch is a separate, not-yet-built ticket), walks
+ * change dates (catch-up from 2026-07-01, a date is complete only when a later date exists, the
+ * run date itself is never read), processes events, and advances the bookmark.
  */
-export type RegionDriverResult = { processedRegions: string[] };
 export async function runRegionDriver(
-  _context: ApplicationContext,
-  _options: { regions: string[]; runDate: string },
-): Promise<RegionDriverResult> {
-  throw new NotImplementedError(
-    'The per-region sync driver is not built (cams-fd8qd.1.10: per-region start/continuation flow)',
-  );
+  context: ApplicationContext,
+  options: { regions: string[]; runDate: string },
+): Promise<{ processedRegions: string[] }> {
+  const { default: RegionDriver } =
+    await import('../../../../backend/lib/use-cases/dataflows/trustee-appointment-region-driver');
+  const result = await RegionDriver.runRegionDriver(context, options);
+  return { processedRegions: result.processedRegions };
 }
 
 /**

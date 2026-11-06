@@ -806,8 +806,6 @@ export type RuntimeStateDocumentType =
   | 'MIGRATE_CASE_APPOINTMENTS_STATE'
   | 'HEAL_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
-  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
-  | 'TRUSTEE_PETITION_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
@@ -888,16 +886,6 @@ export type HealCaseAppointmentsState = RuntimeState & {
   lastUpdatedAt: string;
   repairedCount: number;
   checkedCount: number;
-};
-
-export type TrusteeAppointmentsSyncState = RuntimeState & {
-  documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
-  lastSyncDate: string;
-};
-
-export type TrusteePetitionSyncState = RuntimeState & {
-  documentType: 'TRUSTEE_PETITION_SYNC_STATE';
-  lastSyncDate: string;
 };
 
 /**

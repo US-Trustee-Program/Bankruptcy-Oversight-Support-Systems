@@ -10,14 +10,7 @@ import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
-import {
-  TrusteeCaseAppointmentsRepository,
-  TrusteeAppointmentsSyncState,
-  TrusteePetitionSyncState,
-  RuntimeState,
-  RuntimeStateDocumentType,
-  RuntimeStateRepository,
-} from '../gateways.types';
+import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
 import { parseCityStateZip, normalizeName } from './trustee-match.helpers';
 import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
 import { serializeState } from './trustee-match-pipeline';
@@ -32,7 +25,6 @@ import {
 } from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { randomUUID } from 'node:crypto';
 import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
@@ -603,14 +595,11 @@ export function assertSyncedCase(syncedCase: SyncedCase | undefined): SyncedCase
 function createDeps(context: ApplicationContext) {
   return {
     context,
-    casesGateway: factory.getCasesGateway(context),
     casesRepo: factory.getCasesRepository(context),
     appointmentsRepo: factory.getTrusteeAppointmentsRepository(context),
     caseAppointmentsRepo: factory.getTrusteeCaseAppointmentsRepository(context),
     trusteesRepo: factory.getTrusteesRepository(context),
     verificationRepo: factory.getTrusteeMatchVerificationRepository(context),
-    runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
-    petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
     professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
   };
@@ -738,95 +727,6 @@ async function writeSurrogateAppointment(
     chapter: assertValidChapter(event.caseId, syncedCase.chapter),
     courtDivisionCode: syncedCase.courtDivisionCode,
   });
-}
-
-async function resolveSyncState<D extends RuntimeStateDocumentType>(
-  documentType: D,
-  repo: RuntimeStateRepository<RuntimeState & { documentType: D; lastSyncDate: string }>,
-  lastSyncDate?: string,
-  reset?: boolean,
-): Promise<RuntimeState & { documentType: D; lastSyncDate: string }> {
-  if (lastSyncDate) {
-    return { id: randomUUID(), documentType, lastSyncDate };
-  }
-  if (reset) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
-  }
-  try {
-    return await repo.read(documentType);
-  } catch (_error) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
-  }
-}
-
-async function getAppointmentEvents(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  lastSyncDate?: string,
-  reset?: boolean,
-  overrideRuntimeState?: TrusteeAppointmentsSyncState,
-) {
-  const { context } = deps;
-  try {
-    let syncState: TrusteeAppointmentsSyncState;
-    if (overrideRuntimeState !== undefined) {
-      context.logger.info(MODULE_NAME, 'Using overrideRuntimeState from start message.');
-      syncState = overrideRuntimeState;
-    } else {
-      if (!lastSyncDate && reset) {
-        context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
-      }
-      syncState = await resolveSyncState(
-        'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-        deps.runtimeStateRepo,
-        lastSyncDate,
-        reset,
-      );
-    }
-
-    const petitionSyncState = await resolveSyncState(
-      'TRUSTEE_PETITION_SYNC_STATE',
-      deps.petitionSyncStateRepo,
-      lastSyncDate,
-      reset,
-    );
-
-    const [trusteeResult, petitionResult] = await Promise.allSettled([
-      deps.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
-      deps.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate),
-    ]);
-
-    // The petition-time query is newer and less proven than the long-running TR-appointment
-    // sync, so its failure must not take down the previously-reliable TR sync or block its
-    // watermark from advancing. Settled independently rather than via Promise.all.
-    if (trusteeResult.status === 'rejected') {
-      throw trusteeResult.reason;
-    }
-    const trusteeAppointments = trusteeResult.value;
-
-    let petitionEvents: TrusteeAppointmentSyncEvent[] = [];
-    let petitionLatestSyncDate: string | undefined;
-    if (petitionResult.status === 'fulfilled') {
-      petitionEvents = petitionResult.value.events;
-      petitionLatestSyncDate = petitionResult.value.latestSyncDate;
-    } else {
-      const error = getCamsError(petitionResult.reason, MODULE_NAME);
-      context.logger.camsError(error);
-      context.logger.error(
-        MODULE_NAME,
-        'Petition-time trustee event sync failed; continuing with TR-appointment events only for this run.',
-      );
-    }
-
-    return {
-      events: [...trusteeAppointments.events, ...petitionEvents],
-      latestSyncDate: trusteeAppointments.latestSyncDate,
-      petitionLatestSyncDate,
-    };
-  } catch (originalError) {
-    const error = getCamsError(originalError, MODULE_NAME);
-    context.logger.camsError(error);
-    throw error;
-  }
 }
 
 /**
@@ -1729,47 +1629,6 @@ async function processAppointments(
   };
 }
 
-async function storeRuntimeState(deps: SyncTrusteeCaseAppointmentsDeps, lastSyncDate: string) {
-  const { context } = deps;
-  try {
-    const newSyncState: TrusteeAppointmentsSyncState = {
-      documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-      lastSyncDate,
-    };
-    await deps.runtimeStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      'Failed while storing the trustee appointments sync runtime state.',
-    );
-    context.logger.camsError(error);
-  }
-}
-
-async function storePetitionRuntimeState(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  lastSyncDate: string,
-) {
-  const { context } = deps;
-  try {
-    const newSyncState: TrusteePetitionSyncState = {
-      documentType: 'TRUSTEE_PETITION_SYNC_STATE',
-      lastSyncDate,
-    };
-    await deps.petitionSyncStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote petition runtime state: `, newSyncState);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      'Failed while storing the trustee petition sync runtime state.',
-    );
-    context.logger.camsError(error);
-  }
-}
-
 async function deleteAll(
   deps: SyncTrusteeCaseAppointmentsDeps,
 ): Promise<{ data: { deleted: number }; error?: Error }> {
@@ -1791,10 +1650,7 @@ async function deleteAll(
 
 const SyncTrusteeCaseAppointments = {
   createDeps,
-  getAppointmentEvents,
   processAppointments,
-  storeRuntimeState,
-  storePetitionRuntimeState,
   deleteAll,
 };
 
