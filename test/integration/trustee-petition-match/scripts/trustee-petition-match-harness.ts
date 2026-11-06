@@ -506,10 +506,10 @@ async function run() {
   ] as const) {
     if (!event) continue;
     if (event.sourceTrustee.fullName === TEST_TRUSTEE_NAME) {
-      pass(`${label} event dxtrTrustee.fullName === "${TEST_TRUSTEE_NAME}"`);
+      pass(`${label} event sourceTrustee.fullName === "${TEST_TRUSTEE_NAME}"`);
     } else {
       fail(
-        `${label} event dxtrTrustee.fullName: expected "${TEST_TRUSTEE_NAME}", got "${event.sourceTrustee.fullName}"`,
+        `${label} event sourceTrustee.fullName: expected "${TEST_TRUSTEE_NAME}", got "${event.sourceTrustee.fullName}"`,
       );
     }
     if (

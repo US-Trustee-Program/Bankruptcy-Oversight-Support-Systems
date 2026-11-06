@@ -580,7 +580,7 @@ async function heal(context: ApplicationContext): Promise<void> {
   // Main loop: fetch batches and process
   while (true) {
     // Check timeout before processing each batch
-    if (Date.now() - healStartedAt >= DEFAULT_INVOCATION_BUDGET_MS) {
+    if (shouldEscape(healStartedAt, DEFAULT_INVOCATION_BUDGET_MS, 0)) {
       logger.warn(
         MODULE_NAME,
         `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} lastId=${lastId}`,

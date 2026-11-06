@@ -73,7 +73,7 @@ type ScenarioDistribution = {
    */
   unappointableChapterSkippedCount: number;
   /**
-   * dxtrTrustee had NO usable demographics at all (blank name AND no other legacy/contact
+   * sourceTrustee had NO usable demographics at all (blank name AND no other legacy/contact
    * fields) — an event this sparse cannot be safely attributed to any trustee, since absent
    * demographics could describe any of them. Never routed to matching or verification; logged
    * loudly instead, so this genuine data-quality condition is visible without polluting a real
@@ -83,7 +83,7 @@ type ScenarioDistribution = {
   /**
    * event.profCode was a known sentinel value AND the record's name was itself a
    * bogus/administrative placeholder (isBogusTrusteeName) with no usable contact info either.
-   * Distinct from emptyDemographicsSkippedCount: this path can fire even though dxtrTrustee HAS a
+   * Distinct from emptyDemographicsSkippedCount: this path can fire even though sourceTrustee HAS a
    * populated name — the name is present but not a real identity.
    */
   sentinelBogusNameSkippedCount: number;
@@ -1087,7 +1087,7 @@ type SkipReason =
 
 /**
  * Determines whether the case's chapter can never have a trustee appointment (see
- * isUnappointableChapter), dxtrTrustee carries no usable demographics at all, is a sentinel-coded
+ * isUnappointableChapter), sourceTrustee carries no usable demographics at all, is a sentinel-coded
  * record whose name is itself a bogus placeholder, or is a bogus administrative-office name with
  * no firstName (see isUnattributableBogusName). Checked before matchTrusteeByName in
  * processOneEvent: any condition means the event cannot be safely attributed to a trustee and
@@ -1140,7 +1140,7 @@ function isSentinelWithNoIdentity(
 
 /**
  * Short-circuits processOneEvent before any repo call is made when the case's chapter can never
- * have a trustee appointment ('unappointable-chapter'), dxtrTrustee has no usable demographics at
+ * have a trustee appointment ('unappointable-chapter'), sourceTrustee has no usable demographics at
  * all ('empty-demographics'), or is a non-sentinel record whose name is an administrative
  * placeholder with no firstName ('unattributable-bogus-name'). Returns null when none applies, so
  * the caller proceeds normally.
@@ -1545,7 +1545,7 @@ async function processOneEventOrDlq(
  *   isUnappointableChapter): unappointable-chapter, skipped before matching
  *   (unappointableChapterSkippedCount) rather than creating a permanently-unapprovable
  *   verification task.
- * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
+ * - sourceTrustee has no usable demographics at all (blank name and no other legacy/contact
  *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
  *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
  *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /
