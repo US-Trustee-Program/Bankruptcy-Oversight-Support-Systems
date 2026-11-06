@@ -10,14 +10,16 @@ Use it to guide development: a scenario that fails is a target, not a mistake. A
 
 ## What it checks
 
-| Group      | What                                                                                                                    | State today                       |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `query`    | ACMS fixtures through the **production** `AcmsGateway.getCmmapAppointmentsRaw` (filters, region, change date)           | passes                            |
-| `scenario` | source → sync → CAMS state, per lane (`ACMS`, `DXTR`). ~29 ACMS and 10 DXTR scenarios, several shared for source parity | DXTR passes; ACMS not implemented |
-| `driver`   | per-region bookmark, catch-up from 2026-07-01, run-date exclusion, named regions                                        | not implemented (cams-fd8qd.1.10) |
+| Group      | What                                                                                                                                 | State today                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `query`    | ACMS fixtures through the **production** `AcmsGateway.getCmmapAppointmentsRaw` (filters, region, change date)                        | 10 pass                           |
+| `scenario` | source → sync → CAMS state, per lane. 70 ACMS and 24 DXTR scenario runs, many shared for source parity                               | DXTR 23 pass, 1 finding; ACMS n/i |
+| `driver`   | per-region bookmark, catch-up from 2026-07-01, run-date exclusion, named regions, **per-region ACMS/DXTR source routing** (CAMS-957) | not implemented (cams-fd8qd.1.10) |
+
+`n/i` = NOT IMPLEMENTED until the ACMS source exists.
 
 Each scenario is written once in [`scripts/scenarios.ts`](scripts/scenarios.ts), source-neutral, and
-rendered into ACMS rows (CMMAP/CMMDB/CMMPR/CMMKE) and/or DXTR rows (AO_CS/AO_PY/AO_TX). Every
+rendered into ACMS rows (CMMPR/CMMDB/CMMAP/CMMKE) and/or DXTR rows (AO_CS/AO_PY/AO_TX). Every
 scenario carries a `basis` so a guess is never mistaken for a requirement:
 
 - `feature` — a scenario of the same name in
@@ -27,18 +29,69 @@ scenario carries a `basis` so a guess is never mistaken for a requirement:
 - `provisional` — a conceivable edge case with an unconfirmed expectation; confirm or correct it
   when built
 
-`npm run sync-trustee-case-appointments -- list` prints every scenario with its lanes and basis.
+`npm run sync-trustee-case-appointments -- list` prints every scenario with its region, lanes and
+basis.
 
-## The two seams
+### Fixtures are segmented by region
+
+CAMS-955/956/957 all work per region (per-region bookmarks, per-region ACMS/DXTR source, per-region
+tasks), so geography is a first-class part of the fixtures (`GEOGRAPHY` in `scenarios.ts`):
+
+| Region | Group | Division | Court | Notes                                              |
+| ------ | ----- | -------- | ----- | -------------------------------------------------- |
+| 02     | NY    | 081      | 0208  | Manhattan (real codes)                             |
+| 02     | UT    | 066      | 0206  | Utica NY (not Utah); gives region 02 two divisions |
+| 03     | PA    | 301      | 0301  | synthetic                                          |
+| 04     | DA    | 401      | 0401  | synthetic                                          |
+
+A case id's division prefix determines its region, group and court everywhere (CMMAP `REGION_CODE`,
+DXTR `GRP_DES`, the `SYNCED_CASE` document, the identity task's `courtId`). Scenarios cover: read
+isolation across regions and change dates, the same compound-key rule across regions, tasks carrying
+their own region's court, the core identification/active-trustee/placeholder rules repeated in
+regions 03 and 04, and driver scenarios for per-region bookmarks and a region switched to DXTR.
+
+### Fixtures are shaped like staging data
+
+Shapes were profiled from retained staging exports (aggregates only; no real values are stored):
+ACMS names are upper-case (the renderer upper-cases every ACMS text field, so every ACMS scenario
+also proves case-insensitive matching), suffixes and decorations inside the last name, multi-word
+and initial-only first names, 4% with no address and 3.5% with no city/state/zip, phone `0` for 14%,
+ZIP+4 everywhere. DXTR variants vary generation, address line 2, phone punctuation, ZIP+4, email and
+case. Jurisdiction scenarios span court, division, chapter (7, 11, 12, 13) and appointment status
+(active, voluntarily-suspended, resigned) for CAMS-956. Seeded CAMS trustees carry `phoneticTokens`
+and the `legacy` block, as real ones do.
+
+### Replaying real exports (aggregate output only)
+
+```bash
+F=../../../CAMS/test/integration/sync-acms-professional-ids-audit/fixtures   # gitignored over there
+npm run sync-trustee-case-appointments -- replay \
+  --professional-ids $F/2026-10-05-trustee-professional-ids.json \
+  --trustees $F/2026-10-05-trustees.json --limit 500 --region 02
+```
+
+Seeds one synthetic case and CMMAP row per real professional (one synthetic division per real
+group), loads the real CAMS trustees and links, verifies every row comes back through the production
+ACMS query, and — once the ACMS source exists — runs the sync and prints only counts: appointments
+by `matchedBy`, tasks by reason, DLQ, and agreement with the export's own professional-id
+dispositions. It prints no names or addresses and stores nothing. The 2026-10-05 export (6,770
+professionals, 95 groups) already round-trips through the production query.
+
+## The seams
 
 [`scripts/bindings.ts`](scripts/bindings.ts) is the only file that touches unbuilt production code:
 
 1. `getAcmsSource()` — expects `AcmsTrusteeAppointmentSource` exported from
    `backend/lib/use-cases/dataflows/trustee-appointment-source.ts`, no-arg constructor.
-2. `runRegionDriver()` — the per-region driver (cams-fd8qd.1.10). The assumed contract is
-   `{ regions, runDate }`. Adapt the binding to the as-built API, not the harness.
+2. `runRegionDriver()` — the per-region driver (cams-fd8qd.1.10) including the CAMS-957 source
+   switch. The assumed contract is `{ regions, runDate }`. Adapt the binding to the as-built API,
+   not the harness.
+3. `seedRegionState()` / `readRegionBookmark()` — the **assumed** per-region runtime-state document
+   (`regions.<id>.lastSyncDate` and `regions.<id>.source = { system: 'DXTR', ... }`, from
+   cams-fd8qd.1.3 and cams-rxb7a). Correct the document type and shape here when the real one
+   exists.
 
-When the production code lands, wire these two functions; nothing else changes.
+When the production code lands, wire these functions; nothing else changes.
 
 ## Prerequisites
 
@@ -89,11 +142,26 @@ local containers.
 - **Dual-partition check.** Every appointment assertion also checks that `case-trustee-appointments`
   and `trustee-case-appointments` agree.
 
+## Open findings the harness already surfaced
+
+- **DXTR does not skip "United States Trustee (NY)"** — it writes a placeholder and an identity
+  task, because `isUnattributableBogusName` only skips when there is no first name. Real ACMS data
+  has such names among its 118 skipped professionals. Scenario
+  `administrative-placeholder-united-states-trustee` fails today on the DXTR lane (decide whether to
+  fix the rule or change the expectation).
+- **Ambiguous professional-id link.** `cams-nd7ns` says 2+ links is an integrity error that goes
+  straight to a "multiple linked trustees" task; the `.feature` and `cams-fd8qd.1.7` say it falls
+  through to variation and the pipeline. Scenario `ambiguous-link-not-used` follows the latter.
+- No open bead exists for `AcmsTrusteeAppointmentSource` itself.
+
 ## Not covered (and why)
 
 - A transient error retries in place — needs fault injection into Cosmos; covered by unit tests.
 - A long date continues in a fresh message — needs an injectable invocation budget.
-- Slices 2–4 (lanes, parking/healing, admin page) and CAMS-957 region routing — not built; add
-  scenarios when designed. `cams-rxb7a.1` should extend this harness.
+- Slice 3 parking (`CASE_APPOINTMENT_UNATTACHED`), Slice 2 lanes, Slice 4 admin page, the CAMS-956
+  Trustee Appointment task, and the CAMS-957 gap report / SuperUser-only switch — not built, or
+  API-level. `cams-rxb7a.1` should extend this harness; the driver scenarios already model region
+  source routing.
+- Empty first names (83 of 6,770 real ACMS records) — expected outcome unknown.
 - `trustee-match-verification.findings` for **seeded** pending tasks is `{}`, not a real serialized
   pipeline state. Tasks the sync itself creates are real.
