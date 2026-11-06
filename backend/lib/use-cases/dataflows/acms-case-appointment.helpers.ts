@@ -1,11 +1,9 @@
 import {
   AcmsCaseAppointmentRawRecord,
-  AcmsCaseAppointmentRecord,
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
 import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
-import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { AcmsTrusteeProfessional, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { formatCityStateZipCountry, removeExtraSpaces } from '../../adapters/utils/string-helper';
 import { formatAcmsZip } from './acms-trustee-variant.helpers';
@@ -26,48 +24,6 @@ export function formatAcmsDate(acmsDate: number): string {
   }
 
   return formatted;
-}
-
-export function rawToAppointmentRecord(
-  raw: AcmsCaseAppointmentRawRecord,
-): AcmsCaseAppointmentRecord {
-  return {
-    id: raw.id,
-    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
-    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
-    assignDate: raw.APPT_DATE,
-    apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
-    unassignDate: raw.DISP_DATE,
-    caseFiledDate: raw.CASE_FILED_DATE,
-    chapter: raw.CURR_CASE_CHAPT,
-    courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
-    closedByCourtDate: raw.CLOSED_BY_COURT_DATE,
-    closedByUstDate: raw.CLOSED_BY_UST_DATE,
-    reopenedDate: raw.REOPENED_DATE,
-  };
-}
-
-// Shared date/field mapping used by both the normal write path (writeRecord) and
-// the moved-case migration path (buildCaseAppointmentMigrationInput) in
-// migrate-case-appointments.ts. Throws if any ACMS date field is malformed, or if
-// chapter is not a value CAMS recognizes (e.g. 'AC') — callers are responsible for catching.
-export function buildAppointmentFields(
-  record: AcmsCaseAppointmentRecord,
-): Partial<CaseAppointmentInput> {
-  const closedDate = record.closedByCourtDate
-    ? formatAcmsDate(record.closedByCourtDate)
-    : record.closedByUstDate
-      ? formatAcmsDate(record.closedByUstDate)
-      : undefined;
-  return {
-    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
-    ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
-    ...(record.chapter ? { chapter: normalizeAcmsCaseChapter(record.chapter) } : {}),
-    courtDivisionCode: record.courtDivisionCode,
-    ...(closedDate ? { closedDate } : {}),
-    ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
-  };
 }
 
 /**

@@ -4,7 +4,6 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
-  CaseAppointmentMigrationInput,
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -22,7 +21,7 @@ import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
 import { classifyRateLimitError } from './utils/mongo-adapter';
-import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
@@ -355,9 +354,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return and(...conditions);
   }
 
-  async upsert(
-    appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
-  ): Promise<CaseAppointment> {
+  async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
     // Defensive strip: CaseAppointmentInput's declared type has no _id field, but TypeScript's
@@ -365,9 +362,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     // raw read result into this parameter would carry _id through undetected otherwise. See
     // stripMongoId's comment for why this partition's _id must never leak into either partition's
     // replaceOne payload below.
-    const { _id: _mongoId, ...appointmentWithoutMongoId } = appointment as (
-      CaseAppointmentInput | CaseAppointmentMigrationInput
-    ) & { _id?: unknown };
+    const { _id: _mongoId, ...appointmentWithoutMongoId } = appointment as CaseAppointmentInput & {
+      _id?: unknown;
+    };
 
     // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {

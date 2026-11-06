@@ -286,6 +286,15 @@ export type Expect = {
   tasksTotal?: number;
   /** Existing seeded appointments for these caseIds must be byte-for-byte untouched (same updatedOn). */
   untouched?: string[];
+  /**
+   * Ports the retired test/integration/case-trustee-appointments harness's read-path check
+   * (cams-rsn9a): calls CaseTrusteeAppointmentUseCase.getCaseTrusteeAppointmentHistory(caseId)
+   * directly against whatever this pass actually wrote, and asserts history length and that the
+   * first (most-recently-closed) entry's trustee name resolved correctly. The sort/history-vs-
+   * current logic itself is exhaustively unit-tested (case-trustee-appointment.use-case.test.ts);
+   * this proves only that it works end-to-end against real ACMS-sync-written documents.
+   */
+  historyRead?: { caseId: string; expectedLength: number; expectedFirstTrusteeName: string };
 };
 
 export type Pass = {
@@ -694,6 +703,10 @@ function add(s: Scenario): void {
               { trustee: 'T-2', assignedOn: '2026-08-10' },
             ],
           },
+          // cams-rsn9a: proves the case-appointment history read works end-to-end against a real
+          // ACMS-sync-written, now-closed appointment (T-1) -- T-2 is still open, so it's `current`,
+          // not `history`.
+          historyRead: { caseId: c, expectedLength: 1, expectedFirstTrusteeName: 'Fixture Q Fir' },
         },
       },
     ],

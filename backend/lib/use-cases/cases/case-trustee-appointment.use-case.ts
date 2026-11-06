@@ -6,7 +6,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { SENTINEL_TRUSTEE_ID } from '../dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from './sentinel-trustee';
 
 const MODULE_NAME = 'CASE-TRUSTEE-APPOINTMENT-USE-CASE';
 

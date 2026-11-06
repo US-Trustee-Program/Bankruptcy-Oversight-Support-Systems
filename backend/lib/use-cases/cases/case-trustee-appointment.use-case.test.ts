@@ -5,7 +5,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteesRepository } from '../gateways.types';
 import factory from '../../factory';
-import { SENTINEL_TRUSTEE_ID } from '../dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from './sentinel-trustee';
 
 describe('CaseTrusteeAppointmentUseCase', () => {
   beforeEach(() => {

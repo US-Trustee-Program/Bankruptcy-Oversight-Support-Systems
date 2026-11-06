@@ -242,22 +242,6 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
-export type AcmsCaseAppointmentRecord = {
-  id: number;
-  caseId: string;
-  acmsProfessionalId: string;
-  assignDate: number;
-  apptDate: number | null;
-  unassignDate: number | null;
-  // Case metadata from CMMDB/CMMKE — no Cosmos lookup required during migration
-  caseFiledDate: number | null;
-  chapter: string | null;
-  courtDivisionCode: string;
-  closedByCourtDate: number | null;
-  closedByUstDate: number | null;
-  reopenedDate: number | null;
-};
-
 export type AcmsCaseAppointmentRawRecord = {
   id: number;
   CASE_DIV: number;
@@ -684,11 +668,6 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
-export type CaseAppointmentMigrationInput = CaseAppointmentInput & {
-  movedToCaseId?: string;
-  acmsProfessionalId?: string;
-};
-
 export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getByCaseId(caseId: string): Promise<CaseAppointment[]>;
   getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
@@ -697,9 +676,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]>;
-  upsert(
-    appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
-  ): Promise<CaseAppointment>;
+  upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
   findActiveMissingAppointedDate(
@@ -803,8 +780,6 @@ export type RuntimeStateDocumentType =
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
   | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
-  | 'MIGRATE_CASE_APPOINTMENTS_STATE'
-  | 'HEAL_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
@@ -860,32 +835,6 @@ export type CaseAppointmentDateBackfillState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-};
-
-export type MigrateCaseAppointmentsState = RuntimeState & {
-  documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
-  lastId: number | null;
-  // Atomically incremented counters — accumulate across resume attempts
-  processedCount: number;
-  failedCount: number;
-  reEnqueuedCount: number;
-  acmsQueryRetries: number;
-  resumeAttempts: number;
-  readingCompleted: boolean;
-
-  startedAt: string;
-  lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-};
-
-export type HealCaseAppointmentsState = RuntimeState & {
-  documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
-  lastId: string | null;
-  status: 'IN_PROGRESS' | 'COMPLETED';
-  startedAt: string;
-  lastUpdatedAt: string;
-  repairedCount: number;
-  checkedCount: number;
 };
 
 /**
