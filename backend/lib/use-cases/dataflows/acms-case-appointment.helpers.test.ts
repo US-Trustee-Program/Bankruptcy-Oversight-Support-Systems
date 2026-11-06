@@ -1,0 +1,187 @@
+import { AcmsCaseAppointmentRawRecord, AcmsCaseAppointmentRecord } from '../gateways.types';
+import {
+  buildAppointmentFields,
+  formatAcmsDate,
+  rawToAppointmentRecord,
+} from './acms-case-appointment.helpers';
+
+function makeRawRecord(
+  override: Partial<AcmsCaseAppointmentRawRecord> = {},
+): AcmsCaseAppointmentRawRecord {
+  return {
+    id: 1001,
+    CASE_DIV: 81,
+    CASE_YEAR: 24,
+    CASE_NUMBER: 12345,
+    GROUP_DESIGNATOR: 'NY',
+    PROF_CODE: 63,
+    APPT_DATE: 20200101,
+    DISP_DATE: null,
+    CASE_FILED_DATE: 20190110,
+    CURR_CASE_CHAPT: '7',
+    CLOSED_BY_COURT_DATE: null,
+    CLOSED_BY_UST_DATE: null,
+    REOPENED_DATE: null,
+    REGION_CODE: '02',
+    CDB_UPDATE_DATE: 20200101,
+    PROF_FIRST_NAME: 'Jane',
+    PROF_LAST_NAME: 'Doe',
+    PROF_MI: '',
+    PROF_ADDRESS1: '123 Main St',
+    PROF_ADDRESS2: '',
+    PROF_CITY: 'Anytown',
+    PROF_STATE: 'NY',
+    PROF_ZIP: 100010000,
+    PROF_COMMERCIAL_PHONE_NBR: 2125551234,
+    ...override,
+  };
+}
+
+function makeAppointmentRecord(
+  override: Partial<AcmsCaseAppointmentRecord> = {},
+): AcmsCaseAppointmentRecord {
+  return {
+    id: 1001,
+    caseId: '081-24-12345',
+    acmsProfessionalId: 'NY-00063',
+    assignDate: 20200101,
+    apptDate: 20200101,
+    unassignDate: null,
+    caseFiledDate: 20190110,
+    chapter: '7',
+    courtDivisionCode: '081',
+    closedByCourtDate: null,
+    closedByUstDate: null,
+    reopenedDate: null,
+    ...override,
+  };
+}
+
+describe('formatAcmsDate', () => {
+  test('formats an 8-digit YYYYMMDD integer as an ISO date', () => {
+    expect(formatAcmsDate(20200615)).toBe('2020-06-15');
+  });
+
+  test('throws for a value with fewer than 8 digits', () => {
+    expect(() => formatAcmsDate(202)).toThrow('Invalid ACMS date format');
+  });
+
+  test('throws for a value that is not a real calendar date', () => {
+    expect(() => formatAcmsDate(20200231)).toThrow('Invalid date');
+  });
+});
+
+describe('rawToAppointmentRecord', () => {
+  test('maps raw CMMAP component fields to a formatted appointment record', () => {
+    const record = rawToAppointmentRecord(makeRawRecord());
+
+    expect(record).toEqual({
+      id: 1001,
+      caseId: '081-24-12345',
+      acmsProfessionalId: 'NY-00063',
+      assignDate: 20200101,
+      apptDate: 20200101,
+      unassignDate: null,
+      caseFiledDate: 20190110,
+      chapter: '7',
+      courtDivisionCode: '081',
+      closedByCourtDate: null,
+      closedByUstDate: null,
+      reopenedDate: null,
+    });
+  });
+
+  test('sets apptDate to null when APPT_DATE is 0', () => {
+    const record = rawToAppointmentRecord(makeRawRecord({ APPT_DATE: 0 }));
+
+    expect(record.apptDate).toBeNull();
+    expect(record.assignDate).toBe(0);
+  });
+
+  test('formats caseId and acmsProfessionalId from component fields', () => {
+    const record = rawToAppointmentRecord(
+      makeRawRecord({
+        CASE_DIV: 9,
+        CASE_YEAR: 5,
+        CASE_NUMBER: 99,
+        GROUP_DESIGNATOR: 'CA',
+        PROF_CODE: 7,
+      }),
+    );
+
+    expect(record.caseId).toBe('009-05-00099');
+    expect(record.acmsProfessionalId).toBe('CA-00007');
+    expect(record.courtDivisionCode).toBe('009');
+  });
+});
+
+describe('buildAppointmentFields', () => {
+  test('includes appointedDate, dateFiled and normalized chapter when present', () => {
+    const fields = buildAppointmentFields(
+      makeAppointmentRecord({ apptDate: 20200620, caseFiledDate: 20190110, chapter: '09' }),
+    );
+
+    expect(fields).toEqual(
+      expect.objectContaining({
+        appointedDate: '2020-06-20',
+        dateFiled: '2019-01-10',
+        chapter: '9',
+        courtDivisionCode: '081',
+      }),
+    );
+  });
+
+  test('omits appointedDate when apptDate is null', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ apptDate: null }));
+
+    expect(fields).not.toHaveProperty('appointedDate');
+  });
+
+  test('omits unassignedOn when unassignDate is null', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ unassignDate: null }));
+
+    expect(fields).not.toHaveProperty('unassignedOn');
+  });
+
+  test('includes unassignedOn when unassignDate is present', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ unassignDate: 20200901 }));
+
+    expect(fields.unassignedOn).toBe('2020-09-01');
+  });
+
+  test('prefers closedByCourtDate over closedByUstDate for closedDate', () => {
+    const fields = buildAppointmentFields(
+      makeAppointmentRecord({ closedByCourtDate: 20210101, closedByUstDate: 20210201 }),
+    );
+
+    expect(fields.closedDate).toBe('2021-01-01');
+  });
+
+  test('falls back to closedByUstDate when closedByCourtDate is absent', () => {
+    const fields = buildAppointmentFields(
+      makeAppointmentRecord({ closedByCourtDate: null, closedByUstDate: 20210201 }),
+    );
+
+    expect(fields.closedDate).toBe('2021-02-01');
+  });
+
+  test('omits closedDate when neither closed date is present', () => {
+    const fields = buildAppointmentFields(
+      makeAppointmentRecord({ closedByCourtDate: null, closedByUstDate: null }),
+    );
+
+    expect(fields).not.toHaveProperty('closedDate');
+  });
+
+  test('includes reopenedDate when present', () => {
+    const fields = buildAppointmentFields(makeAppointmentRecord({ reopenedDate: 20220501 }));
+
+    expect(fields.reopenedDate).toBe('2022-05-01');
+  });
+
+  test('throws for an unrecognized ACMS chapter', () => {
+    expect(() => buildAppointmentFields(makeAppointmentRecord({ chapter: 'AC' }))).toThrow(
+      'Invalid ACMS chapter value',
+    );
+  });
+});
