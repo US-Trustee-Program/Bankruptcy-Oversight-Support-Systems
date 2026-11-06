@@ -60,6 +60,24 @@ export class UserRoleAssignmentMongoRepository
     }
   }
 
+  /**
+   * Marks the assignment inactive. Its activeKey becomes unique to it, because the unique
+   * {userId, activeKey} index ignores `active`: otherwise the same scope could never be granted
+   * again. The filter includes userId, the collection's shard key.
+   */
+  async deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
+    const changes = { active: false, activeKey: `inactive|${assignment.id}` };
+    try {
+      await this.getAdapter<UserRoleAssignment>().updateOne(
+        and(doc('userId').equals(assignment.userId), doc('id').equals(assignment.id)),
+        changes,
+      );
+      return { ...assignment, ...changes };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to deactivate role assignment.');
+    }
+  }
+
   async findActiveByUserAndRole(userId: string, role: CamsRoleType): Promise<UserRoleAssignment[]> {
     const query = and(
       doc('documentType').equals('USER_ROLE_ASSIGNMENT'),

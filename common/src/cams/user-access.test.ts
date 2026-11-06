@@ -3,6 +3,8 @@ import { CamsRole } from './roles';
 import { validateObject, VALID } from './validation';
 import {
   activeKeyFor,
+  scopeLabel,
+  scopesOverlap,
   ROLE_ASSIGNMENT_REASON_MAX_LENGTH,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
@@ -51,6 +53,7 @@ describe('user-access', () => {
       CamsRole.TrusteeAdmin,
       CamsRole.Auditor,
       CamsRole.Paralegal,
+      CamsRole.SuperUser,
     ])('should accept the role %s', (role) => {
       const request = { ...validRequest, role };
       expect(validateObject(roleAssignmentGrantRequestSpec, request)).toEqual(VALID);
@@ -104,17 +107,61 @@ describe('user-access', () => {
         value: CamsRole.PrivilegedIdentityUser,
         expected: ROLE_REQUIRED,
       },
-      {
-        case: 'the SuperUser role',
-        field: 'role',
-        value: CamsRole.SuperUser,
-        expected: ROLE_REQUIRED,
-      },
     ])('should reject $case', ({ field, value, expected }) => {
       const request = { ...validRequest, [field]: value };
       expect(validateObject(roleAssignmentGrantRequestSpec, request)).toEqual({
         reasonMap: { [field]: { reasons: [expected] } },
       });
+    });
+  });
+
+  describe('scopes', () => {
+    const NATIONAL = { regionId: null, officeCode: null };
+    const REGION_2 = { regionId: '2', officeCode: null };
+    const REGION_3 = { regionId: '3', officeCode: null };
+    const MANHATTAN = { regionId: '2', officeCode: 'USTP_CAMS_Region_2_Office_Manhattan' };
+    const BUFFALO = { regionId: '2', officeCode: 'USTP_CAMS_Region_2_Office_Buffalo' };
+    const WILMINGTON = { regionId: '3', officeCode: 'USTP_CAMS_Region_3_Office_Wilmington' };
+
+    test.each([
+      { a: 'national', b: 'national', scopeA: NATIONAL, scopeB: NATIONAL, overlap: true },
+      { a: 'national', b: 'a region', scopeA: NATIONAL, scopeB: REGION_2, overlap: true },
+      { a: 'national', b: 'an office', scopeA: NATIONAL, scopeB: MANHATTAN, overlap: true },
+      { a: 'a region', b: 'national', scopeA: REGION_2, scopeB: NATIONAL, overlap: true },
+      { a: 'a region', b: 'the same region', scopeA: REGION_2, scopeB: REGION_2, overlap: true },
+      { a: 'a region', b: 'another region', scopeA: REGION_2, scopeB: REGION_3, overlap: false },
+      {
+        a: 'a region',
+        b: 'one of its offices',
+        scopeA: REGION_2,
+        scopeB: MANHATTAN,
+        overlap: true,
+      },
+      { a: 'an office', b: 'its region', scopeA: MANHATTAN, scopeB: REGION_2, overlap: true },
+      {
+        a: 'a region',
+        b: "another region's office",
+        scopeA: REGION_2,
+        scopeB: WILMINGTON,
+        overlap: false,
+      },
+      { a: 'an office', b: 'the same office', scopeA: MANHATTAN, scopeB: MANHATTAN, overlap: true },
+      { a: 'an office', b: 'another office', scopeA: MANHATTAN, scopeB: BUFFALO, overlap: false },
+    ])('should say $a and $b overlap: $overlap', ({ scopeA, scopeB, overlap }) => {
+      expect(scopesOverlap(scopeA, scopeB)).toBe(overlap);
+    });
+
+    test.each([
+      { scope: NATIONAL, officeName: undefined, label: 'All regions' },
+      { scope: REGION_2, officeName: undefined, label: 'Region 2, All' },
+      { scope: MANHATTAN, officeName: 'Manhattan', label: 'Region 2, Manhattan' },
+      {
+        scope: MANHATTAN,
+        officeName: undefined,
+        label: 'Region 2, USTP_CAMS_Region_2_Office_Manhattan',
+      },
+    ])('should label $scope as "$label"', ({ scope, officeName, label }) => {
+      expect(scopeLabel(scope, officeName)).toEqual(label);
     });
   });
 });

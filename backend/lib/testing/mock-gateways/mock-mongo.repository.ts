@@ -302,6 +302,14 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
+    return Promise.resolve({
+      ...assignment,
+      active: false,
+      activeKey: `inactive|${assignment.id}`,
+    });
+  }
+
   create(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }

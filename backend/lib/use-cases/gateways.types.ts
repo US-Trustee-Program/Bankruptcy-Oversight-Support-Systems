@@ -1054,6 +1054,8 @@ export interface UserRoleAssignmentRepository extends Releasable {
   /** Returns null when the user already holds that exact active permission. */
   create(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
   findActiveByUserAndRole(userId: string, role: CamsRoleType): Promise<UserRoleAssignment[]>;
+  /** Marks the assignment inactive and frees its activeKey; returns it as stored. */
+  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
 }
 

@@ -1,4 +1,4 @@
-import { CamsRole, CamsRoles, CamsRoleType } from './roles';
+import { CamsRoles, CamsRoleType } from './roles';
 import { CamsUserReference } from './users';
 import { ValidationSpec } from './validation';
 import V from './validators';
@@ -111,8 +111,34 @@ export function activeKeyFor(
 
 export const ROLE_ASSIGNMENT_REASON_MAX_LENGTH = 1000;
 
-// Super User grants are enabled in a later slice.
-export const grantableRoles = CamsRoles.filter((role) => role !== CamsRole.SuperUser);
+// Every CAMS role can be granted. (CamsRoles already leaves out PrivilegedIdentityUser.)
+export const grantableRoles = [...CamsRoles];
+
+/**
+ * Where a permission applies: one office (both set), a whole region (office null), or every region
+ * (both null). Super User permissions are always every region.
+ */
+export type PermissionScope = { regionId: string | null; officeCode: string | null };
+
+function scopeContains(outer: PermissionScope, inner: PermissionScope): boolean {
+  if (outer.regionId === null) return true;
+  if (outer.regionId !== inner.regionId) return false;
+  return outer.officeCode === null || outer.officeCode === inner.officeCode;
+}
+
+/**
+ * Whether one scope contains the other. For the same user and role, a new grant replaces every
+ * active permission whose scope overlaps it, broader or narrower.
+ */
+export function scopesOverlap(a: PermissionScope, b: PermissionScope): boolean {
+  return scopeContains(a, b) || scopeContains(b, a);
+}
+
+/** "All regions", "Region 2, All" or "Region 2, Manhattan" (the office code if no name is known). */
+export function scopeLabel(scope: PermissionScope, officeName?: string): string {
+  if (scope.regionId === null) return 'All regions';
+  return `Region ${scope.regionId}, ${scope.officeCode === null ? 'All' : (officeName ?? scope.officeCode)}`;
+}
 
 // Rejects non-strings, empty strings and whitespace-only strings.
 const NOT_BLANK = /\S/;

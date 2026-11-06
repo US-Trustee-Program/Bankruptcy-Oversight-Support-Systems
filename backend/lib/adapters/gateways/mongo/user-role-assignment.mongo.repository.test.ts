@@ -77,6 +77,38 @@ describe('UserRoleAssignmentMongoRepository', () => {
     });
   });
 
+  describe('deactivate', () => {
+    test("should mark the assignment inactive and free its activeKey, filtering on the user's shard key", async () => {
+      const updateOne = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+      const result = await repo.deactivate(assignment);
+
+      const doc = using<UserRoleAssignment>();
+      const deactivated = { ...assignment, active: false, activeKey: `inactive|${assignment.id}` };
+      expect(result).toEqual(deactivated);
+      expect(updateOne).toHaveBeenCalledWith(
+        and(doc('userId').equals(assignment.userId), doc('id').equals(assignment.id)),
+        { active: false, activeKey: `inactive|${assignment.id}` },
+      );
+    });
+
+    test('should throw a CamsError when the update fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.deactivate(assignment)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to deactivate role assignment.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('findActiveByUserAndRole', () => {
     test("should query the user's active assignments for that role and return them", async () => {
       const find = vi
