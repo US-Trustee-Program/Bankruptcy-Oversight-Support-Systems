@@ -31,6 +31,17 @@ function makeRawRecord(
     CLOSED_BY_COURT_DATE: null,
     CLOSED_BY_UST_DATE: null,
     REOPENED_DATE: null,
+    REGION_CODE: '02',
+    CDB_UPDATE_DATE: 20200101,
+    PROF_FIRST_NAME: 'Jane',
+    PROF_LAST_NAME: 'Doe',
+    PROF_MI: '',
+    PROF_ADDRESS1: '123 Main St',
+    PROF_ADDRESS2: '',
+    PROF_CITY: 'Anytown',
+    PROF_STATE: 'NY',
+    PROF_ZIP: 100010000,
+    PROF_COMMERCIAL_PHONE_NBR: 2125551234,
     ...override,
   };
 }

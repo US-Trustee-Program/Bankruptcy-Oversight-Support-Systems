@@ -11,6 +11,10 @@ import {
 } from '../../../use-cases/dataflows/migrate-consolidations';
 
 describe('ACMS gateway tests', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const chapters = [
     { chapter: '9', inputVariable: '09' },
     { chapter: '11', inputVariable: '11' },
@@ -176,6 +180,40 @@ describe('ACMS gateway tests', () => {
     expect(result).toEqual(expectedResult);
   });
 
+  test('should exclude a row that is self-referential to the lead case', async () => {
+    const leadCaseId = '0000000000';
+    const databaseResult: AcmsConsolidationMemberCase[] = [
+      {
+        caseId: '000-00-00000',
+        consolidationDate: '20240201',
+        consolidationType: 'S',
+      },
+      {
+        caseId: '000-00-11111',
+        consolidationDate: '20240201',
+        consolidationType: 'S',
+      },
+    ];
+
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: { recordset: databaseResult },
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getConsolidationDetails(context, leadCaseId);
+
+    expect(result.memberCases).toEqual([
+      {
+        caseId: '000-00-11111',
+        consolidationDate: '2024-02-01',
+        consolidationType: 'substantive',
+      },
+    ]);
+  });
+
   test('should wrap non-Error thrown values in CamsError', async () => {
     vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue('plain string error');
 
@@ -221,6 +259,25 @@ describe('ACMS gateway tests', () => {
     [
       'getDeletedCaseIds',
       (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getDeletedCaseIds(ctx, '2026-01-01'),
+    ],
+    [
+      'getTrusteeProfessionalIds',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getTrusteeProfessionalIds(ctx, 'John', 'Doe', 'CA'),
+    ],
+    [
+      'getAllTrusteeProfessionalRecords',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getAllTrusteeProfessionalRecords(ctx),
+    ],
+    [
+      'getTrusteeProfessionalRecordsPage',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getTrusteeProfessionalRecordsPage(ctx, 'NY', 0, 500),
+    ],
+    [
+      'getActiveAppointmentsForProfessional',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getActiveAppointmentsForProfessional(ctx, 'NY', 63),
     ],
   ] as [string, GwInvoke][])(
     'should throw CamsError when executeQuery fails in %s',
@@ -371,38 +428,32 @@ describe('ACMS gateway tests', () => {
       expect(result.latestDeletedCaseDate).toBe('2026-03-12');
     });
 
-    test('should handle various date formats correctly', async () => {
-      const testCases = [
-        { input: '2018-01-01', expected: 20180101 },
-        { input: '2026-12-31', expected: 20261231 },
-        { input: '2020-02-29', expected: 20200229 },
-      ];
+    test.each([
+      { input: '2018-01-01', expected: 20180101 },
+      { input: '2026-12-31', expected: 20261231 },
+      { input: '2020-02-29', expected: 20200229 },
+    ])('should convert $input to $expected', async ({ input, expected }) => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
 
-      for (const testCase of testCases) {
-        const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-          success: true,
-          results: { recordset: [] },
-          message: '',
-        });
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
 
-        const context = await createMockApplicationContext();
-        const gateway = new AcmsGatewayImpl(context);
+      await gateway.getDeletedCaseIds(context, input);
 
-        await gateway.getDeletedCaseIds(context, testCase.input);
-
-        expect(spy).toHaveBeenCalledWith(
-          context,
-          expect.any(String),
-          expect.arrayContaining([
-            expect.objectContaining({
-              name: 'lastChangeDate',
-              value: testCase.expected,
-            }),
-          ]),
-        );
-
-        vi.restoreAllMocks();
-      }
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'lastChangeDate',
+            value: expected,
+          }),
+        ]),
+      );
     });
   });
 
@@ -434,19 +485,6 @@ describe('ACMS gateway tests', () => {
       const result = await gateway.getTrusteeProfessionalIds(context, 'Unknown', 'Trustee', 'TX');
 
       expect(result).toEqual([]);
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getTrusteeProfessionalIds(context, 'John', 'Doe', 'CA')).rejects.toThrow(
-        CamsError,
-      );
     });
   });
 
@@ -499,17 +537,6 @@ describe('ACMS gateway tests', () => {
       const result = await gateway.getAllTrusteeProfessionalRecords(context);
 
       expect(result).toEqual([]);
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getAllTrusteeProfessionalRecords(context)).rejects.toThrow(CamsError);
     });
   });
 
@@ -601,6 +628,134 @@ describe('ACMS gateway tests', () => {
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
         300000,
       );
+    });
+
+    test('should join CMMPR for trustee name/contact fields', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('INNER JOIN [dbo].[CMMPR] p');
+      expect(query).toContain('m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR');
+      expect(query).toContain('m.PROF_CODE = p.UST_PROF_CODE');
+    });
+
+    test('should exclude sentinel/dummy professional codes', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('m.PROF_CODE < 98000');
+    });
+
+    test('should include region filter clause when regionId is provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null, '02');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.REGION_CODE = @regionId'),
+        expect.arrayContaining([expect.objectContaining({ name: 'regionId', value: '02' })]),
+        300000,
+      );
+    });
+
+    test('should omit region filter clause when regionId is not provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('@regionId');
+    });
+
+    test('should include change date filter clause when changeDate is provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null, undefined, '2026-07-01');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.CDB_UPDATE_DATE = @changeDate'),
+        expect.arrayContaining([expect.objectContaining({ name: 'changeDate', value: 20260701 })]),
+        300000,
+      );
+    });
+
+    test('should omit change date filter clause when changeDate is not provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('@changeDate');
+    });
+
+    test('should throw for an invalid cutoffDate value', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getCmmapAppointmentsRaw(context, 0, 10, 'not-a-date')).rejects.toThrow();
+    });
+
+    test('should throw for an invalid changeDate value', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(
+        gateway.getCmmapAppointmentsRaw(context, 0, 10, null, undefined, 'not-a-date'),
+      ).rejects.toThrow();
     });
   });
 
@@ -788,19 +943,6 @@ describe('ACMS gateway tests', () => {
 
       expect(result).toEqual([]);
     });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(
-        gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500),
-      ).rejects.toThrow(CamsError);
-    });
   });
 
   describe('getActiveAppointmentsForProfessional', () => {
@@ -880,19 +1022,6 @@ describe('ACMS gateway tests', () => {
           expect.objectContaining({ name: 'groupDesignator', value: 'UT' }),
           expect.objectContaining({ name: 'ustProfCode', value: 5321 }),
         ]),
-      );
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getActiveAppointmentsForProfessional(context, 'NY', 63)).rejects.toThrow(
-        CamsError,
       );
     });
   });
