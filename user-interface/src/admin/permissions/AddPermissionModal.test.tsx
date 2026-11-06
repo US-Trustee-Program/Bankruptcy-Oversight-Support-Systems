@@ -171,12 +171,17 @@ describe('AddPermissionModal', () => {
     expect(screen.getByTestId(MODAL_WRAPPER)).toHaveTextContent('indicates a required field');
   });
 
-  test('should enable Save once every field is filled in', async () => {
+  test.each([
+    { field: 'the role', index: TRIAL_ATTORNEY_INDEX, comboBoxId: ROLE_ID },
+    { field: 'the region and office', index: MANHATTAN_INDEX, comboBoxId: OFFICE_ID },
+  ])('should disable Save again when $field is cleared', async ({ comboBoxId, index }) => {
     await openFor();
-
     await fillIn();
-
     expect(submitButton()).toBeEnabled();
+
+    await TestingUtilities.toggleComboBoxItemSelection(comboBoxId, index, false);
+
+    await waitFor(() => expect(submitButton()).toBeDisabled());
   });
 
   test('should save the grant, close, announce success and tell the caller', async () => {
@@ -327,16 +332,82 @@ describe('AddPermissionModal', () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
+  describe('a save that finishes after the modal was opened again', () => {
+    const ALEX = { id: 'okta-alex', name: 'Alex Brown' };
+
+    async function startSaveThenReopenForAlex() {
+      let settle: { resolve: () => void; reject: () => void } = {
+        resolve: () => {},
+        reject: () => {},
+      };
+      vi.spyOn(Api2, 'grantPermission').mockReturnValue(
+        new Promise((resolve, reject) => {
+          settle = { resolve: () => resolve(GRANTED), reject: () => reject(new Error('500')) };
+        }),
+      );
+      await openFor();
+      await fillIn();
+      await userEvent.click(submitButton());
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden'));
+      await openFor(ALEX);
+      await fillIn();
+      return settle;
+    }
+
+    test('should report the earlier success without closing or changing the new form', async () => {
+      const settle = await startSaveThenReopenForAlex();
+
+      await act(async () => settle.resolve());
+
+      expect(globalAlert.success).toHaveBeenCalledWith(
+        'New permission successfully added to Sarah Williams.',
+      );
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+      expect(screen.getByRole('heading', { name: 'Add Permission to Alex Brown' })).toBeVisible();
+      expect(submitButton()).toBeEnabled();
+    });
+
+    test('should report the earlier failure as a global error, not on the new form', async () => {
+      const settle = await startSaveThenReopenForAlex();
+
+      await act(async () => settle.reject());
+
+      expect(globalAlert.error).toHaveBeenCalledWith(
+        'Unable to save permission for Sarah Williams. Please try again.',
+      );
+      expect(screen.queryByText(SAVE_FAILED)).not.toBeInTheDocument();
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    });
+
+    test('should leave the new form saving while its own save is in progress', async () => {
+      const settle = await startSaveThenReopenForAlex();
+      vi.spyOn(Api2, 'grantPermission').mockReturnValue(new Promise(() => {}));
+      await userEvent.click(submitButton());
+
+      await act(async () => settle.resolve());
+
+      expect(submitButton()).toBeDisabled();
+      expect(screen.getByTestId(`${MODAL_ID}-status`)).toHaveTextContent('Adding permission...');
+    });
+  });
+
   describe('broader scopes and replaced permissions', () => {
     const officeField = () => document.querySelector(`#${OFFICE_ID}`);
 
+    // Answers with the permission the request asked for, as the server does.
     function grantSucceeds(replaced: Partial<UserRoleAssignment>[] = []) {
-      return vi.spyOn(Api2, 'grantPermission').mockResolvedValue({
+      const scopeValue = (value: string) => (value === 'all' ? null : value);
+      return vi.spyOn(Api2, 'grantPermission').mockImplementation(async (request) => ({
         data: {
-          permission: { regionId: '2', officeCode: null } as UserRoleAssignment,
+          permission: {
+            regionId: scopeValue(request.regionId),
+            officeCode: scopeValue(request.officeCode),
+          } as UserRoleAssignment,
           replaced: replaced as UserRoleAssignment[],
         },
-      });
+      }));
     }
 
     async function save() {
@@ -385,6 +456,16 @@ describe('AddPermissionModal', () => {
         officeCode: 'all',
         reason: REASON,
       });
+    });
+
+    test('should show Region and Office again when Super User is cleared', async () => {
+      await openFor();
+      await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, SUPER_USER_INDEX);
+
+      await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, SUPER_USER_INDEX, false);
+
+      expect(officeField()).toBeInTheDocument();
+      expect(submitButton()).toBeDisabled();
     });
 
     test('should show an empty Region and Office again after switching away from Super User', async () => {

@@ -97,9 +97,9 @@ const ANY_SCOPE = '*';
 /**
  * The key a unique {userId, activeKey} index uses to reject exact duplicate active assignments.
  *
- * The index does not look at `active`, so deactivating an assignment must also change its
- * activeKey (for example, clear it or suffix it with the assignment id). Otherwise granting the
- * same role and scope again collides with the inactive record.
+ * The index does not look at `active`, so deactivating an assignment replaces its activeKey with
+ * inactiveKeyFor(id). Otherwise granting the same role and scope again collides with the inactive
+ * record.
  */
 export function activeKeyFor(
   role: CamsRoleType,
@@ -107,6 +107,11 @@ export function activeKeyFor(
   officeCode: string | null,
 ): string {
   return [role, regionId ?? ANY_SCOPE, officeCode ?? ANY_SCOPE].join('|');
+}
+
+/** The activeKey of a deactivated assignment: unique to it, so it never blocks a new grant. */
+export function inactiveKeyFor(assignmentId: string): string {
+  return `inactive|${assignmentId}`;
 }
 
 export const ROLE_ASSIGNMENT_REASON_MAX_LENGTH = 1000;

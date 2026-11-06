@@ -1,4 +1,4 @@
-import { UserRoleAssignment } from '@common/cams/user-access';
+import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SyncedCase } from '@common/cams/cases';
 import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@common/cams/events';
@@ -306,7 +306,7 @@ export class MockMongoRepository
     return Promise.resolve({
       ...assignment,
       active: false,
-      activeKey: `inactive|${assignment.id}`,
+      activeKey: inactiveKeyFor(assignment.id),
     });
   }
 

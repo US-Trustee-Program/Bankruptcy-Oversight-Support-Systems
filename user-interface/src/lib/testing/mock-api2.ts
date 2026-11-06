@@ -64,6 +64,7 @@ import { CamsRole, CamsRoleType, OversightRoleType } from '@common/cams/roles';
 import {
   activeKeyFor,
   ALL_SCOPE,
+  inactiveKeyFor,
   CamsUsersPredicate,
   PermissionScope,
   scopesOverlap,
@@ -3157,23 +3158,28 @@ const MOCK_CAMS_USERS: CamsUserWithPermissions[] = MOCK_CAMS_USER_LAST_NAMES.fla
   })),
 ).sort((a, b) => a.name.localeCompare(b.name));
 
+const SEEDED_PERMISSION_DATE = '2026-11-01T00:00:00.000Z';
+
 function mockPermission(
   userId: string,
   role: CamsRoleType,
   regionId: string | null,
   officeCode: string | null,
+  assignedAt = SEEDED_PERMISSION_DATE,
 ): UserRoleAssignment {
+  const user = MOCK_CAMS_USERS.find((u) => u.id === userId);
   return {
     documentType: 'USER_ROLE_ASSIGNMENT',
     id: `mock-permission-${userId}-${role}-${regionId ?? 'all'}-${officeCode ?? 'all'}`,
     userId,
-    userName: MOCK_CAMS_USERS.find((u) => u.id === userId)?.name ?? '',
+    userName: user?.name ?? '',
+    email: user?.email,
     role,
     regionId,
     officeCode,
     assignedBy: 'mock-super-user',
     assignedByName: 'Mock Super User',
-    assignedAt: '2026-11-01T00:00:00.000Z',
+    assignedAt,
     expiresAt: null,
     active: true,
     activeKey: activeKeyFor(role, regionId, officeCode),
@@ -3236,10 +3242,16 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   const sameRole = user.permissions.filter((p) => p.active && p.role === request.role);
   const permission =
     sameRole.find((p) => p.activeKey === activeKey) ??
-    mockPermission(user.id, request.role, scope.regionId, scope.officeCode);
+    mockPermission(
+      user.id,
+      request.role,
+      scope.regionId,
+      scope.officeCode,
+      new Date().toISOString(),
+    );
   const replaced = sameRole
     .filter((p) => p.activeKey !== activeKey && scopesOverlap(p, scope))
-    .map((p) => ({ ...p, active: false, activeKey: `inactive|${p.id}` }));
+    .map((p) => ({ ...p, active: false, activeKey: inactiveKeyFor(p.id) }));
   const replacedIds = new Set(replaced.map((p) => p.id));
   user.permissions = [
     ...user.permissions.filter((p) => !replacedIds.has(p.id) && p.id !== permission.id),
@@ -3255,7 +3267,12 @@ function mockScope(request: RoleAssignmentGrantRequest): PermissionScope {
     if (!everyRegion || !everyOffice) throw new Error('Invalid scope for this role.');
     return { regionId: null, officeCode: null };
   }
-  if (everyOffice) return { regionId: request.regionId, officeCode: null };
+  if (everyOffice) {
+    if (!MOCKED_USTP_OFFICES_ARRAY.some((o) => o.regionId === request.regionId)) {
+      throw new Error('The region does not exist.');
+    }
+    return { regionId: request.regionId, officeCode: null };
+  }
   const office = MOCKED_USTP_OFFICES_ARRAY.find((o) => o.officeCode === request.officeCode);
   if (office?.regionId !== request.regionId) {
     throw new Error('The office is not in that region.');

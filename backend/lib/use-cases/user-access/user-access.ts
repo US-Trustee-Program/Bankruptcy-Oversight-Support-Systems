@@ -261,14 +261,16 @@ export class UserAccessUseCase {
 
   /** The writes are sequential, not atomic: a failed audit write keeps the change. */
   private async writeAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry) {
+    let saved = true;
     try {
       await this.auditRepository.create(audit);
     } catch (error) {
+      saved = false;
       context.logger.error(MODULE_NAME, `${AUDIT_WRITE_FAILED_MESSAGE}: ${error.message}`, {
         audit,
       });
     }
-    this.trackAudit(context, audit);
+    this.trackAudit(context, audit, saved);
   }
 
   private async getMembers(context: ApplicationContext): Promise<CamsUserReference[]> {
@@ -296,14 +298,14 @@ export class UserAccessUseCase {
     return members;
   }
 
-  private trackAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry) {
+  private trackAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry, saved: boolean) {
     try {
       const trace = context.observability.startTrace(context.invocationId);
       context.observability.completeTrace(
         trace,
         'RoleAssignmentAudit',
         {
-          success: true,
+          success: saved,
           properties: {
             auditId: audit.id,
             assignmentId: audit.assignmentId,

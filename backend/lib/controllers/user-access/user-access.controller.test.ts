@@ -231,10 +231,16 @@ describe('UserAccessController', () => {
   ])('should return 400 for $method $params', async ({ method, params }) => {
     context.request.method = method as 'GET';
     context.request.params = { ...params };
+    const listSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
+    const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
 
     const error = await getTheThrownError(handle);
 
-    expect(error).toEqual(expect.objectContaining({ status: 400 }));
+    expect(error).toEqual(
+      expect.objectContaining({ status: 400, message: 'Unsupported HTTP Method' }),
+    );
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(grantSpy).not.toHaveBeenCalled();
   });
 
   test('should finalize deferred resources whether or not the request succeeds', async () => {

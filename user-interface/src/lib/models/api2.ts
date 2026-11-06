@@ -624,9 +624,7 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   ]
     .map(encodeURIComponent)
     .join('/');
-  return api().put(`/user-access/${path}`, { reason: request.reason }) as Promise<
-    ResponseBody<RoleAssignmentGrantResult>
-  >;
+  return api().put<RoleAssignmentGrantResult>(`/user-access/${path}`, { reason: request.reason });
 }
 
 async function getSoftwareBankTrustees(

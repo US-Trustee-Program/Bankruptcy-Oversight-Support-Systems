@@ -1,8 +1,9 @@
 import { describe, test, expect } from 'vitest';
-import { CamsRole } from './roles';
+import { CamsRole, CamsRoles } from './roles';
 import { validateObject, VALID } from './validation';
 import {
   activeKeyFor,
+  inactiveKeyFor,
   scopeLabel,
   scopesOverlap,
   ROLE_ASSIGNMENT_REASON_MAX_LENGTH,
@@ -26,6 +27,12 @@ describe('user-access', () => {
     });
   });
 
+  describe('inactiveKeyFor', () => {
+    test('should build a key unique to the deactivated assignment', () => {
+      expect(inactiveKeyFor('assignment-1')).toEqual('inactive|assignment-1');
+    });
+  });
+
   describe('roleAssignmentGrantRequestSpec', () => {
     const validRequest: RoleAssignmentGrantRequest = {
       userId: 'user-1',
@@ -45,16 +52,7 @@ describe('user-access', () => {
       expect(validateObject(roleAssignmentGrantRequestSpec, request)).toEqual(VALID);
     });
 
-    test.each([
-      CamsRole.CaseAssignmentManager,
-      CamsRole.TrialAttorney,
-      CamsRole.LeadTrialAttorney,
-      CamsRole.DataVerifier,
-      CamsRole.TrusteeAdmin,
-      CamsRole.Auditor,
-      CamsRole.Paralegal,
-      CamsRole.SuperUser,
-    ])('should accept the role %s', (role) => {
+    test.each(CamsRoles)('should accept the role %s', (role) => {
       const request = { ...validRequest, role };
       expect(validateObject(roleAssignmentGrantRequestSpec, request)).toEqual(VALID);
     });
@@ -138,6 +136,14 @@ describe('user-access', () => {
         overlap: true,
       },
       { a: 'an office', b: 'its region', scopeA: MANHATTAN, scopeB: REGION_2, overlap: true },
+      { a: 'an office', b: 'national', scopeA: MANHATTAN, scopeB: NATIONAL, overlap: true },
+      {
+        a: 'an office',
+        b: "another region's office",
+        scopeA: MANHATTAN,
+        scopeB: WILMINGTON,
+        overlap: false,
+      },
       {
         a: 'a region',
         b: "another region's office",
@@ -152,15 +158,21 @@ describe('user-access', () => {
     });
 
     test.each([
-      { scope: NATIONAL, officeName: undefined, label: 'All regions' },
-      { scope: REGION_2, officeName: undefined, label: 'Region 2, All' },
-      { scope: MANHATTAN, officeName: 'Manhattan', label: 'Region 2, Manhattan' },
+      { name: 'national', scope: NATIONAL, officeName: undefined, label: 'All regions' },
+      { name: 'a region', scope: REGION_2, officeName: undefined, label: 'Region 2, All' },
       {
+        name: 'an office with its name',
+        scope: MANHATTAN,
+        officeName: 'Manhattan',
+        label: 'Region 2, Manhattan',
+      },
+      {
+        name: 'an office without a name',
         scope: MANHATTAN,
         officeName: undefined,
         label: 'Region 2, USTP_CAMS_Region_2_Office_Manhattan',
       },
-    ])('should label $scope as "$label"', ({ scope, officeName, label }) => {
+    ])('should label $name as "$label"', ({ scope, officeName, label }) => {
       expect(scopeLabel(scope, officeName)).toEqual(label);
     });
   });

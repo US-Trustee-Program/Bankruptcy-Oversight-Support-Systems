@@ -498,7 +498,7 @@ describe('UserAccessUseCase', () => {
       );
     });
 
-    test('should keep the grant and log a searchable error with the audit payload when the audit write fails', async () => {
+    test('should keep the grant, log a searchable error with the audit payload, and report the audit as failed when the audit write fails', async () => {
       spyOnMembers();
       spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
@@ -523,8 +523,14 @@ describe('UserAccessUseCase', () => {
         expect.stringContaining('ROLE_ASSIGNMENT_AUDIT write failed'),
         { audit: attemptedAudit },
       );
-      // The telemetry event still records the grant.
-      expect(traceSpy).toHaveBeenCalled();
+      // The telemetry event still records the grant, flagged as an audit that was not saved.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'RoleAssignmentAudit',
+        expect.objectContaining({ success: false }),
+        undefined,
+        expect.anything(),
+      );
     });
 
     test('should keep the grant and log when the telemetry event fails', async () => {
@@ -540,8 +546,8 @@ describe('UserAccessUseCase', () => {
       expect(result.permission.userId).toEqual('user-a');
       expect(errorSpy).toHaveBeenCalledWith(
         'USER-ACCESS-USE-CASE',
-        expect.stringContaining('telemetry'),
-        expect.anything(),
+        'RoleAssignmentAudit telemetry failed: telemetry down',
+        { auditId: expect.any(String) },
       );
     });
 
@@ -557,6 +563,44 @@ describe('UserAccessUseCase', () => {
         'Unable to create role assignment.',
       );
       expect(auditWrites(createSpy)).toEqual([]);
+      expect(traceSpy).not.toHaveBeenCalled();
+    });
+
+    test('should leave overlapping permissions in place when the new permission cannot be saved', async () => {
+      spyOnMembers();
+      spyOnHeld([scopedAssignmentFor('user-a', MANHATTAN.regionId)]);
+      spyOnWrites().createSpy.mockRejectedValue(
+        new CamsError('X', { message: 'Unable to create role assignment.' }),
+      );
+      const deactivateSpy = vi.spyOn(MockMongoRepository.prototype, 'deactivate');
+
+      await expect(useCase.grantPermission(context, request)).rejects.toThrow(
+        'Unable to create role assignment.',
+      );
+      expect(deactivateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should change nothing when a Super User is granted Super User again', async () => {
+      spyOnMembers();
+      const held: UserRoleAssignment = {
+        ...scopedAssignmentFor('user-a', null),
+        role: CamsRole.SuperUser,
+        activeKey: 'SuperUser|*|*',
+      };
+      spyOnHeld([held]);
+      const { createSpy, traceSpy } = spyOnWrites();
+      const deactivateSpy = vi.spyOn(MockMongoRepository.prototype, 'deactivate');
+
+      const outcome = await useCase.grantPermission(context, {
+        ...request,
+        role: CamsRole.SuperUser,
+        regionId: 'all',
+        officeCode: 'all',
+      });
+
+      expect(outcome).toEqual({ result: { permission: held, replaced: [] }, created: false });
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(deactivateSpy).not.toHaveBeenCalled();
       expect(traceSpy).not.toHaveBeenCalled();
     });
 
@@ -669,10 +713,6 @@ describe('UserAccessUseCase', () => {
           })),
         );
         expect(traceSpy).toHaveBeenCalledTimes(3); // one CREATED, two DEACTIVATED
-        // The new permission is saved before any old one is deactivated.
-        expect(createSpy.mock.invocationCallOrder[0]).toBeLessThan(
-          deactivateSpy.mock.invocationCallOrder[0],
-        );
       });
 
       test.each([

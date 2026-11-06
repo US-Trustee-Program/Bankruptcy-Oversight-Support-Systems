@@ -18,6 +18,7 @@ import {
   grantableRoles,
   PermissionScope,
   ROLE_ASSIGNMENT_REASON_MAX_LENGTH,
+  RoleAssignmentGrantRequest,
   scopeLabel,
   UserRoleAssignment,
 } from '@common/cams/user-access';
@@ -53,7 +54,11 @@ function toScopeOptions(offices: UstpOfficeDetails[]): ScopeOption[] {
     a.localeCompare(b, undefined, { numeric: true }),
   );
   const options: ScopeOption[] = [
-    { value: 'all', label: 'All regions', scope: { regionId: ALL_SCOPE, officeCode: ALL_SCOPE } },
+    {
+      value: ALL_SCOPE,
+      label: 'All regions',
+      scope: { regionId: ALL_SCOPE, officeCode: ALL_SCOPE },
+    },
   ];
   for (const regionId of regionIds) {
     const regionOffices = [...byRegion.get(regionId)!].sort((a, b) =>
@@ -101,6 +106,8 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
     const errorRef = useRef<HTMLDivElement>(null);
     // Tracks whether the modal is still open when a save finishes; it can be closed mid-save.
     const isOpenRef = useRef(false);
+    // Counts openings, so a save that finishes after the modal was opened again leaves it alone.
+    const openingRef = useRef(0);
     const globalAlert = useGlobalAlert();
 
     const [user, setUser] = useState<CamsUserReference | null>(null);
@@ -120,7 +127,20 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
     const scope = isSuperUser
       ? { regionId: ALL_SCOPE, officeCode: ALL_SCOPE }
       : scopeOptions.find((option) => option.value === scopeValue)?.scope;
-    const isComplete = !!role && !!scope && reason.trim().length > 0;
+    const trimmedReason = reason.trim();
+    const pending =
+      user && role && scope && trimmedReason
+        ? {
+            user,
+            request: {
+              userId: user.id,
+              role,
+              regionId: scope.regionId,
+              officeCode: scope.officeCode,
+              reason: trimmedReason,
+            },
+          }
+        : null;
 
     // Save is disabled while it saves, which strands focus; move it to the explanation instead.
     useEffect(() => {
@@ -142,36 +162,34 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
         resetForm();
         setUser(userToGrant);
         isOpenRef.current = true;
+        openingRef.current += 1;
         modalRef.current?.show({});
       },
     }));
 
-    async function handleSave() {
-      if (!user || !role || !scope) return;
+    async function handleSave(grantee: CamsUserReference, request: RoleAssignmentGrantRequest) {
+      const opening = openingRef.current;
+      const isSameOpening = () => opening === openingRef.current;
       setIsSaving(true);
       setSaveFailed(false);
       try {
-        const response = await Api2.grantPermission({
-          userId: user.id,
-          role,
-          regionId: scope.regionId,
-          officeCode: scope.officeCode,
-          reason: reason.trim(),
-        });
-        isOpenRef.current = false;
-        modalRef.current?.hide();
+        const response = await Api2.grantPermission(request);
+        if (isSameOpening()) {
+          isOpenRef.current = false;
+          modalRef.current?.hide();
+        }
         const { permission, replaced } = response.data;
-        globalAlert?.success(successMessage(user.name, permission, replaced, officeNames));
+        globalAlert?.success(successMessage(grantee.name, permission, replaced, officeNames));
         onSuccess();
       } catch (error) {
         getAppInsights()?.appInsights?.trackException({ exception: error as Error });
-        if (isOpenRef.current) {
+        if (isSameOpening() && isOpenRef.current) {
           setSaveFailed(true);
         } else {
-          globalAlert?.error(`Unable to save permission for ${user.name}. Please try again.`);
+          globalAlert?.error(`Unable to save permission for ${grantee.name}. Please try again.`);
         }
       } finally {
-        setIsSaving(false);
+        if (isSameOpening()) setIsSaving(false);
       }
     }
 
@@ -180,9 +198,9 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
       modalRef,
       submitButton: {
         label: 'Save',
-        onClick: handleSave,
+        onClick: pending ? () => handleSave(pending.user, pending.request) : undefined,
         closeOnClick: false,
-        disabled: !isComplete || isSaving,
+        disabled: !pending || isSaving,
       },
       cancelButton: {
         label: 'Cancel',

@@ -306,17 +306,16 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
   test('should treat a permission another grant saved a moment ago as already held', async () => {
     const maria = TestSessions.superUser();
     const savedByOtherAdmin = permission(SARAH.id, MANHATTAN);
-    const state = await setupFor(maria)
-      .withCamsUsers([SARAH])
-      .withRoleAssignments([savedByOtherAdmin])
-      .setUpBackend();
+    const state = await setupFor(maria).withCamsUsers([SARAH]).setUpBackend();
     const { UserRoleAssignmentMongoRepository } =
       await import('../../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
-    // Maria's first look happens before the other admin's grant lands.
-    vi.spyOn(
-      UserRoleAssignmentMongoRepository.prototype,
-      'findActiveByUserAndRole',
-    ).mockImplementationOnce(async () => []);
+    // The other admin's grant lands just before Maria's write, so the unique index rejects hers.
+    vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'create').mockImplementationOnce(
+      async () => {
+        state.addRoleAssignment(savedByOtherAdmin);
+        return null;
+      },
+    );
 
     const response = await grant(maria);
 
@@ -356,16 +355,29 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
   });
 
   test.each([
-    { case: 'an office outside the given region', change: { regionId: SEATTLE.regionId } },
-    { case: 'an office without its region', change: { regionId: 'all' } },
-    { case: 'an unknown region', change: { regionId: '99', officeCode: 'all' } },
-  ])('should reject a grant for $case with a 400 and save nothing', async ({ change }) => {
+    {
+      case: 'an office outside the given region',
+      change: { regionId: SEATTLE.regionId },
+      message: 'The office is not in that region.',
+    },
+    {
+      case: 'an office without its region',
+      change: { regionId: 'all' },
+      message: 'An office needs its region.',
+    },
+    {
+      case: 'an unknown region',
+      change: { regionId: '99', officeCode: 'all' },
+      message: 'The region does not exist.',
+    },
+  ])('should reject a grant for $case with a 400 and save nothing', async ({ change, message }) => {
     const maria = TestSessions.superUser();
     const state = await setupFor(maria).withCamsUsers([SARAH]).setUpBackend();
 
     const response = await grant(maria, change);
 
     expect(response.status).toBe(400);
+    expect((await response.json()).message).toBe(message);
     expect(state.getRoleAssignments()).toEqual([]);
     expect(state.getRoleAssignmentAudits()).toEqual([]);
   });
@@ -422,6 +434,12 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
     const NATIONAL = { regionId: 'all', officeCode: 'all' };
     const active = (state: TestState) => state.getRoleAssignments().filter((p) => p.active);
     const scopeOf = (p: UserRoleAssignment) => [p.role, p.regionId, p.officeCode];
+    // Active permissions in any order: the API promises which ones remain, not how they are stored.
+    function expectActiveScopes(state: TestState, expected: (string | null)[][]) {
+      const actual = active(state).map(scopeOf);
+      expect(actual).toHaveLength(expected.length);
+      expect(actual).toEqual(expect.arrayContaining(expected));
+    }
 
     async function sarahHolds(maria: CamsSession, held: UserRoleAssignment[]) {
       return setupFor(maria).withCamsUsers([SARAH]).withRoleAssignments(held).setUpBackend();
@@ -461,7 +479,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       const response = await grant(maria, change);
 
       expect(response.status).toBe(201);
-      expect(active(state).map(scopeOf)).toEqual([expected]);
+      expectActiveScopes(state, [expected]);
       expect(state.getRoleAssignmentAudits().map((a) => a.action)).toEqual(['CREATED']);
     });
 
@@ -491,25 +509,27 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       const body = await response.json();
 
       expect(response.status).toBe(201);
-      expect(body.data.replaced.map((p: UserRoleAssignment) => p.id)).toEqual([
-        manhattan.id,
-        buffalo.id,
-      ]);
-      expect(active(state).map(scopeOf)).toEqual([
+      expect(body.data.replaced.map((p: UserRoleAssignment) => p.id).sort()).toEqual(
+        [manhattan.id, buffalo.id].sort(),
+      );
+      expectActiveScopes(state, [
         [CamsRole.Auditor, '2', MANHATTAN.officeCode],
         [CamsRole.TrialAttorney, SEATTLE.regionId, SEATTLE.officeCode],
         [CamsRole.TrialAttorney, '2', null],
       ]);
       const deactivated = state.getRoleAssignmentAudits().filter((a) => a.action === 'DEACTIVATED');
-      expect(deactivated).toEqual([
-        expect.objectContaining({
-          assignmentId: manhattan.id,
-          performedBy: maria.user.id,
-          reason: `Replaced by Region 2, All: ${GRANT_REASON}`,
-          newState: expect.objectContaining({ active: false }),
-        }),
-        expect.objectContaining({ assignmentId: buffalo.id }),
-      ]);
+      expect(deactivated).toHaveLength(2);
+      expect(deactivated).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            assignmentId: manhattan.id,
+            performedBy: maria.user.id,
+            reason: `Replaced by Region 2, All: ${GRANT_REASON}`,
+            newState: expect.objectContaining({ active: false }),
+          }),
+          expect.objectContaining({ assignmentId: buffalo.id }),
+        ]),
+      );
     });
 
     /**
@@ -544,12 +564,49 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       },
     ])('should apply the overlap rule: $case', async ({ held, change, remaining }) => {
       const maria = TestSessions.superUser();
-      const state = await sarahHolds(maria, held());
+      const heldPermissions = held();
+      const replacedIds = heldPermissions
+        .filter((p) => p.role === CamsRole.TrialAttorney)
+        .map((p) => p.id)
+        .sort();
+      const state = await sarahHolds(maria, heldPermissions);
+
+      const response = await grant(maria, change);
+      const body = await response.json();
+
+      expect(response.status).toBe(201);
+      expectActiveScopes(state, remaining);
+      // The replaced list drives the "was replaced by" alert, and each one gets its own audit.
+      expect(body.data.replaced.map((p: UserRoleAssignment) => p.id).sort()).toEqual(replacedIds);
+      const deactivatedIds = state
+        .getRoleAssignmentAudits()
+        .filter((a) => a.action === 'DEACTIVATED')
+        .map((a) => a.assignmentId)
+        .sort();
+      expect(deactivatedIds).toEqual(replacedIds);
+    });
+
+    /**
+     * Scenario: Granting a broad permission the user already holds changes nothing
+     */
+    test.each([
+      { scope: 'every region', held: () => regionWide(null), change: NATIONAL },
+      {
+        scope: 'Super User',
+        held: () => regionWide(null, CamsRole.SuperUser),
+        change: { ...NATIONAL, role: CamsRole.SuperUser },
+      },
+    ])('should change nothing when Sarah already holds $scope', async ({ held, change }) => {
+      const maria = TestSessions.superUser();
+      const existing = held();
+      const state = await sarahHolds(maria, [existing]);
 
       const response = await grant(maria, change);
 
-      expect(response.status).toBe(201);
-      expect(active(state).map(scopeOf)).toEqual(remaining);
+      expect(response.status).toBe(200);
+      expect((await response.json()).data).toEqual({ permission: existing, replaced: [] });
+      expect(state.getRoleAssignments()).toEqual([existing]);
+      expect(state.getRoleAssignmentAudits()).toEqual([]);
     });
 
     /**
@@ -576,9 +633,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       const again = await grant(maria);
 
       expect(again.status).toBe(201);
-      expect(active(state).map(scopeOf)).toEqual([
-        [CamsRole.TrialAttorney, '2', MANHATTAN.officeCode],
-      ]);
+      expectActiveScopes(state, [[CamsRole.TrialAttorney, '2', MANHATTAN.officeCode]]);
     });
 
     /**
@@ -600,7 +655,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       const response = await grant(maria, REGION_2);
 
       expect(response.status).toBe(500);
-      expect(active(state).map(scopeOf)).toEqual([
+      expectActiveScopes(state, [
         [CamsRole.TrialAttorney, '2', MANHATTAN.officeCode],
         [CamsRole.TrialAttorney, '2', null],
       ]);

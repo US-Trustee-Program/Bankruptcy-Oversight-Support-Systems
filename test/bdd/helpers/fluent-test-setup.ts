@@ -42,6 +42,7 @@ import type {
 import type { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import type { CamsUserReference } from '@common/cams/users';
 import type { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
+import { inactiveKeyFor } from '@common/cams/user-access';
 import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
@@ -789,7 +790,7 @@ export class TestSetup {
         const deactivated = {
           ...assignment,
           active: false,
-          activeKey: `inactive|${assignment.id}`,
+          activeKey: inactiveKeyFor(assignment.id),
         };
         state.updateRoleAssignment(deactivated);
         return deactivated;
