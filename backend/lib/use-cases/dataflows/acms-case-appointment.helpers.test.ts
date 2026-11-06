@@ -295,11 +295,17 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
       sourceTrustee: buildAcmsSourceTrustee(makeRawRecord()),
       acmsProfessionalId: 'NY-00063',
       groupDesignator: 'NY',
-      profCode: '63',
+      profCode: '00063',
       appointedDate: '2020-01-01',
       chapter: '7',
       courtDivisionCode: '081',
     });
+  });
+
+  test("zero-pads profCode to 5 digits, matching DXTR's fixed-width profCode convention", () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ PROF_CODE: 7 }), '0208');
+
+    expect(event.profCode).toBe('00007');
   });
 
   test('omits appointedDate when APPT_DATE is 0', () => {

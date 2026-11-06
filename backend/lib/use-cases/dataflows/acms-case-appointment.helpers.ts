@@ -116,7 +116,10 @@ export function rawToTrusteeAppointmentSyncEvent(
     sourceTrustee: buildAcmsSourceTrustee(raw),
     acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
     groupDesignator: raw.GROUP_DESIGNATOR,
-    profCode: String(raw.PROF_CODE),
+    // Zero-padded to 5 digits, matching DXTR's own profCode (a fixed-width 5-char REC substring)
+    // -- resolveAcmsProfessionalIdForVerification in sync-trustee-case-appointments.ts crosses
+    // groupDesignator+profCode directly with a hyphen, with no padding of its own.
+    profCode: String(raw.PROF_CODE).padStart(5, '0'),
     ...(raw.APPT_DATE ? { appointedDate: formatAcmsDate(raw.APPT_DATE) } : {}),
     ...(raw.DISP_DATE ? { unassignedOn: formatAcmsDate(raw.DISP_DATE) } : {}),
     ...(raw.CURR_CASE_CHAPT ? { chapter: normalizeAcmsCaseChapter(raw.CURR_CASE_CHAPT) } : {}),
