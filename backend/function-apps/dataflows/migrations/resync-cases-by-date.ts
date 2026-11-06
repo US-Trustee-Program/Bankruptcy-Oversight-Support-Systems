@@ -6,9 +6,10 @@ import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import { handleRateLimitRetry, requeueSingleEventWithBackoff } from '../dataflows-rate-limit';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import ModuleNames from '../module-names';
 
@@ -237,6 +238,11 @@ export async function handleError(event: CaseSyncEvent, invocationContext: Invoc
 }
 
 export async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -258,7 +264,31 @@ export async function handleRetry(event: CaseSyncEvent, invocationContext: Invoc
 
   logger.info(MODULE_NAME, `Retry attempt ${event.retryCount} for ${event.caseId}`);
 
-  const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  let processed: CaseSyncEvent;
+  try {
+    [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  } catch (transientError) {
+    if (!isTransientInfraError(transientError)) {
+      throw transientError;
+    }
+    // A transient error on a retry attempt still has budget left under RETRY_LIMIT above, so
+    // requeue it with a backoff delay instead of treating it as a final failure: sending it
+    // straight to DLQ here would mean the one case of error this whole bug is about (429s) never
+    // gets the exponential backoff the fix is meant to provide on this path.
+    logger.warn(
+      MODULE_NAME,
+      `Transient error on retry attempt ${event.retryCount} for ${event.caseId}; requeuing with backoff.`,
+    );
+    await requeueSingleEventWithBackoff(event, RETRY.queueName, connectionString);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: 'transient-error-requeued',
+      details: { disposition: 'retry-requeued', retryCount: String(event.retryCount) },
+    });
+    return;
+  }
 
   if (processed.error) {
     invocationContext.extraOutputs.set(DLQ, [processed]);

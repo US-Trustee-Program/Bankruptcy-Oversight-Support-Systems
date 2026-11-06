@@ -27,6 +27,7 @@ import * as pipelineOrchestrator from './trustee-match-pipeline-orchestrator';
 import {
   createTrusteeInitialState,
   addCandidate,
+  addScore,
   TrusteePipelineState,
 } from './trustee-match-pipeline';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
@@ -48,16 +49,32 @@ function makeResolvedState(trusteeId: string, resolvedBy = 'resolveByPhone'): Tr
 
 /**
  * Builds an unresolved TrusteePipelineState (state.match null) with the given number of
- * candidates in the pool — 2+ is 'ambiguous', 0 or 1 is 'no match' per the production rule.
+ * candidates in the pool. The first nameMatchCount candidates (default: all) pass doesNameMatch as
+ * a strong match and carry explicit source contact data (doesSourceTrusteeHaveAddressAndPhone
+ * passing), so they are genuine evidence under the shared rule; the rest fail doesNameMatch and
+ * carry a different name. The rule calls the state 'ambiguous' only when 2+ candidates are
+ * genuine, otherwise 'no match'. Scores are injected rather than derived from the names.
  */
-function makeUnresolvedState(candidateCount: number): TrusteePipelineState {
+function makeUnresolvedState(
+  candidateCount: number,
+  nameMatchCount = candidateCount,
+): TrusteePipelineState {
   const state = createTrusteeInitialState({ fullName: 'Jane Doe' });
   for (let i = 0; i < candidateCount; i++) {
-    addCandidate(
+    const isNameMatch = i < nameMatchCount;
+    const candidate = addCandidate(
       state,
-      { trusteeId: `candidate-${i}`, firstName: 'Jane', lastName: 'Doe', name: 'Jane Doe' },
+      isNameMatch
+        ? { trusteeId: `candidate-${i}`, firstName: 'Jane', lastName: 'Doe', name: 'Jane Doe' }
+        : { trusteeId: `candidate-${i}`, firstName: 'Zed', lastName: 'Roe', name: 'Zed Roe' },
       'recallByName',
     );
+    addScore(
+      candidate,
+      'doesNameMatch',
+      isNameMatch ? { pass: true, quality: 'strong' } : { pass: false },
+    );
+    addScore(candidate, 'doesSourceTrusteeHaveAddressAndPhone', { pass: true });
   }
   return state;
 }
@@ -2149,22 +2166,38 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test("a single unresolved candidate is 'no match', not 'ambiguous' — boundary at 2 candidates", async () => {
-        (
-          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
-        ).mockResolvedValueOnce(makeUnresolvedState(1));
+      // The label depends on how many pooled candidates pass the name check with genuine
+      // evidence, not on the pool size: the discovery tiers keep a candidate that fails the name
+      // check when its state does not conflict with the source's.
+      test.each([
+        { candidateCount: 1, nameMatchCount: 1, expectedReason: 'no match' },
+        { candidateCount: 2, nameMatchCount: 0, expectedReason: 'no match' },
+        { candidateCount: 2, nameMatchCount: 1, expectedReason: 'no match' },
+        { candidateCount: 3, nameMatchCount: 1, expectedReason: 'no match' },
+        { candidateCount: 2, nameMatchCount: 2, expectedReason: 'ambiguous' },
+        { candidateCount: 3, nameMatchCount: 2, expectedReason: 'ambiguous' },
+        { candidateCount: 3, nameMatchCount: 3, expectedReason: 'ambiguous' },
+      ])(
+        "is '$expectedReason' when the pool has $candidateCount candidates and $nameMatchCount pass the name check",
+        async ({ candidateCount, nameMatchCount, expectedReason }) => {
+          (
+            pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+          ).mockResolvedValueOnce(makeUnresolvedState(candidateCount, nameMatchCount));
 
-        await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          [makeEvent('case-001', 'John Doe')],
-        );
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [makeEvent('case-001', 'John Doe')],
+          );
 
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            mismatchReason: 'no match',
-          }),
-        );
-      });
+          expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+            expect.objectContaining({ mismatchReason: expectedReason }),
+          );
+          expect(scenarioDistribution.multipleMatchCount).toBe(
+            expectedReason === 'ambiguous' ? 1 : 0,
+          );
+          expect(scenarioDistribution.noMatchCount).toBe(expectedReason === 'no match' ? 1 : 0);
+        },
+      );
 
       test('carries appointedDate from the event onto a new verification doc', async () => {
         (

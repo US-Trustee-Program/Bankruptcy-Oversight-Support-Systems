@@ -41,6 +41,8 @@
  *   seed-sql     Drop/recreate CMMPR/CMMAP/CMMDB (ACMS_INT) and offices rows (DXTR_INT)
  *   seed-cosmos  Seed TRUSTEE_VARIATION and CAMS trustee fixtures into MongoDB
  *   run          Full test: clean → seed → enqueue start → wait → assert all scenarios
+ *   run-without-manual-link  Prove NY-00075 would be ambiguous (and get a task) without its
+ *                manual link
  *   run-purge    Verify { purge: true } wipes trustee-professional-ids and reloads
  *   run-retry-idempotency  Prove a retry replaying an errored record returns the existing
  *                document instead of throwing E11000 and dead-lettering
@@ -130,6 +132,9 @@ const LEADING_ZERO_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-LEADINGZERO';
 const AMBIGUOUS_TRUSTEE_ID_A = 'INTEGRATION-TRUSTEE-AMBIGUOUS-A';
 const AMBIGUOUS_TRUSTEE_ID_B = 'INTEGRATION-TRUSTEE-AMBIGUOUS-B';
 const CONFLICT_EXISTING_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-CONFLICT-EXISTING';
+const NO_MATCH_CANDIDATE_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-NOMATCH-CANDIDATE';
+const NAME_FAIL_TRUSTEE_ID_A = 'INTEGRATION-TRUSTEE-NAMEFAIL-A';
+const NAME_FAIL_TRUSTEE_ID_B = 'INTEGRATION-TRUSTEE-NAMEFAIL-B';
 
 const FINGERPRINT_ACMS_ID = 'NY-00063';
 const NAME_MATCH_ACMS_ID = 'NY-00064';
@@ -140,6 +145,14 @@ const LEADING_ZERO_ACMS_ID = 'NY-00071';
 const AMBIGUOUS_ACMS_ID = 'NY-00072';
 const SKIPPED_ACMS_ID = 'NY-00073';
 const CONFLICT_ACMS_ID = 'NY-00074';
+const MANUAL_LINK_ACMS_ID = 'NY-00075';
+const AMBIGUOUS_INACTIVE_ACMS_ID = 'NY-00076';
+const NO_MATCH_WITH_CANDIDATE_ACMS_ID = 'NY-00077';
+const NO_MATCH_NAME_FAIL_ACMS_ID = 'NY-00078';
+// The highest NY UST_PROF_CODE seeded; the NY bookmark reaching it means the NY page is done.
+const LAST_NY_UST_PROF_CODE = 78;
+
+const VERIFICATION_COLLECTION = 'trustee-match-verification';
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -471,7 +484,9 @@ async function seedCosmos() {
 
     // Trustee for the fingerprint-match scenario (UST_PROF_CODE 63)
     // documentType must be 'TRUSTEE' — findTrusteesByName/findByFingerprint's
-    // callers only query that value (see trustees.mongo.repository.ts).
+    // callers only query that value (see trustees.mongo.repository.ts). Every trustee carries
+    // firstName/middleName/lastName as well as name: the pipeline's doesNameMatch compares the
+    // structured name parts, so a name-only trustee never passes the name check.
     await db.collection('trustees').updateOne(
       { documentType: 'TRUSTEE', trusteeId: FINGERPRINT_TRUSTEE_ID },
       {
@@ -479,6 +494,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: FINGERPRINT_TRUSTEE_ID,
           name: 'Iris F Fingerprint',
+          firstName: 'Iris',
+          middleName: 'F',
+          lastName: 'Fingerprint',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -491,7 +509,8 @@ async function seedCosmos() {
     // The fingerprint variant — built to match buildAcmsVariant's shape for
     // UST_PROF_CODE 63's demographics in seed/01-seed-cmmpr.sql exactly. PROF_ZIP is seeded there
     // as the raw numeric 627010000; buildAcmsVariant formats it via formatAcmsZip into
-    // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run.
+    // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run. PROF_FAX_NBR 0
+    // reaches the variant as a string (see the README).
     const fingerprintVariant = JSON.stringify({
       firstName: 'Iris',
       middleName: 'F',
@@ -502,7 +521,7 @@ async function seedCosmos() {
       address3: '',
       cityStateZipCountry: 'Springfield IL 62701-0000',
       phone: '2175550100',
-      fax: '',
+      fax: '0',
       email: '',
     });
     const crypto = await import('crypto');
@@ -526,7 +545,8 @@ async function seedCosmos() {
     pass(`Seeded TRUSTEE_VARIATION for ${FINGERPRINT_TRUSTEE_ID}`);
 
     // Trustee for the name-match scenario (UST_PROF_CODE 64) — unique name,
-    // no fingerprint variant on file, so matchTrusteeByName resolves it.
+    // no fingerprint variant on file, so the matching pipeline resolves it. Its contact data
+    // matches the CMMPR row: a sole exact-name candidate with no contact data stays unresolved.
     // Name must match CMMPR's PROF_FIRST_NAME/PROF_MI/PROF_LAST_NAME for
     // UST_PROF_CODE 64 in seed/01-seed-cmmpr.sql exactly ("Norman N Namematch").
     await db.collection('trustees').updateOne(
@@ -536,8 +556,20 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: NAME_TRUSTEE_ID,
           name: 'Norman N Namematch',
+          firstName: 'Norman',
+          middleName: 'N',
+          lastName: 'Namematch',
           status: 'active',
-          public: {},
+          public: {
+            address: {
+              address1: '600 Unique Ave',
+              city: 'Albany',
+              state: 'NY',
+              zipCode: '12207',
+              countryCode: 'US',
+            },
+            phone: { number: '518-555-0200' },
+          },
           updatedOn: now,
         },
         $setOnInsert: { createdOn: now },
@@ -555,8 +587,20 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: UT_TRUSTEE_ID,
           name: 'Ulysses U Utahmatch',
+          firstName: 'Ulysses',
+          middleName: 'U',
+          lastName: 'Utahmatch',
           status: 'active',
-          public: {},
+          public: {
+            address: {
+              address1: '900 Beehive Blvd',
+              city: 'Salt Lake City',
+              state: 'UT',
+              zipCode: '84111',
+              countryCode: 'US',
+            },
+            phone: { number: '801-555-0500' },
+          },
           updatedOn: now,
         },
         $setOnInsert: { createdOn: now },
@@ -573,6 +617,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: LEADING_ZERO_TRUSTEE_ID,
           name: 'Lena L Leadingzero',
+          firstName: 'Lena',
+          middleName: 'L',
+          lastName: 'Leadingzero',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -597,7 +644,7 @@ async function seedCosmos() {
       address3: '',
       cityStateZipCountry: 'New Haven CT 06511-0000',
       phone: '2035550800',
-      fax: '',
+      fax: '0',
       email: '',
     });
     const leadingZeroFingerprint = crypto
@@ -637,6 +684,9 @@ async function seedCosmos() {
             documentType: 'TRUSTEE',
             trusteeId,
             name: 'Chris M Ambiguous',
+            firstName: 'Chris',
+            middleName: 'M',
+            lastName: 'Ambiguous',
             status: 'active',
             public: {},
             updatedOn: now,
@@ -650,6 +700,38 @@ async function seedCosmos() {
       `Seeded two identically-named trustee profiles for the ambiguous scenario (${AMBIGUOUS_TRUSTEE_ID_A}, ${AMBIGUOUS_TRUSTEE_ID_B})`,
     );
 
+    // One CAMS trustee with UST_PROF_CODE 77's exact name and no contact data: the sole candidate
+    // passes doesNameMatch, but nothing corroborates it, so the professional stays no-match.
+    // Two CAMS trustees sharing UST_PROF_CODE 78's surname with different first names: both are
+    // candidates (no state on either side, so discovery keeps them) that fail doesNameMatch.
+    for (const [trusteeId, firstName, middleName, lastName] of [
+      [NO_MATCH_CANDIDATE_TRUSTEE_ID, 'Nora', 'N', 'Candidatepass'],
+      [NAME_FAIL_TRUSTEE_ID_A, 'Pat', 'Q', 'Namefail'],
+      [NAME_FAIL_TRUSTEE_ID_B, 'Dana', 'Q', 'Namefail'],
+    ]) {
+      await db.collection('trustees').updateOne(
+        { documentType: 'TRUSTEE', trusteeId },
+        {
+          $set: {
+            documentType: 'TRUSTEE',
+            trusteeId,
+            name: `${firstName} ${middleName} ${lastName}`,
+            firstName,
+            middleName,
+            lastName,
+            status: 'active',
+            public: {},
+            updatedOn: now,
+          },
+          $setOnInsert: { createdOn: now },
+        },
+        { upsert: true },
+      );
+    }
+    pass(
+      `Seeded trustee profiles for the no-match-with-candidates scenarios (${NO_MATCH_CANDIDATE_TRUSTEE_ID}, ${NAME_FAIL_TRUSTEE_ID_A}, ${NAME_FAIL_TRUSTEE_ID_B})`,
+    );
+
     // A trustee already linked to CONFLICT_ACMS_ID before this run, so the pipeline's
     // resolved match for UST_PROF_CODE 74 (which shares NAME_TRUSTEE_ID's demographics)
     // collides with this existing, different link.
@@ -660,6 +742,9 @@ async function seedCosmos() {
           documentType: 'TRUSTEE',
           trusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
           name: 'Priorly Linked Trustee',
+          firstName: 'Priorly',
+          middleName: '',
+          lastName: 'Trustee',
           status: 'active',
           public: {},
           updatedOn: now,
@@ -705,6 +790,43 @@ async function seedCosmos() {
     pass(
       `Pre-linked ${CONFLICT_ACMS_ID} to ${CONFLICT_EXISTING_TRUSTEE_ID} for the conflict scenario`,
     );
+
+    // A person already linked MANUAL_LINK_ACMS_ID (UST_PROF_CODE 75) to one of the two
+    // same-named trustees. Without this link the record would end ambiguous and get an identity
+    // task; the sync must leave a manual link alone.
+    await db.collection('trustee-professional-ids').updateOne(
+      {
+        documentType: 'TRUSTEE_PROFESSIONAL_ID',
+        camsTrusteeId: AMBIGUOUS_TRUSTEE_ID_B,
+        acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+      },
+      {
+        $set: {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: AMBIGUOUS_TRUSTEE_ID_B,
+          acmsProfessionalId: MANUAL_LINK_ACMS_ID,
+          disposition: 'linked',
+          linkMethod: 'manual',
+          nameMatchCount: 2,
+          evidence: {
+            sourceRaw: { fullName: 'Chris M Ambiguous' },
+            sourceNormalized: {},
+            memo: {},
+            candidates: [],
+            match: null,
+            skip: false,
+            error: null,
+          },
+          updatedOn: now,
+          updatedBy: { id: 'HARNESS', name: 'HARNESS' },
+        },
+        $setOnInsert: { createdOn: now, createdBy: { id: 'HARNESS', name: 'HARNESS' } },
+      },
+      { upsert: true },
+    );
+    pass(
+      `Manually linked ${MANUAL_LINK_ACMS_ID} to ${AMBIGUOUS_TRUSTEE_ID_B} for the manual-link scenario`,
+    );
   } finally {
     await client.close();
   }
@@ -731,14 +853,37 @@ async function clean() {
           AMBIGUOUS_ACMS_ID,
           SKIPPED_ACMS_ID,
           CONFLICT_ACMS_ID,
+          MANUAL_LINK_ACMS_ID,
+          AMBIGUOUS_INACTIVE_ACMS_ID,
+          NO_MATCH_WITH_CANDIDATE_ACMS_ID,
+          NO_MATCH_NAME_FAIL_ACMS_ID,
         ],
       },
     });
     pass(`Deleted ${r1.deletedCount} trustee-professional-ids doc(s)`);
 
-    const r3 = await db
-      .collection('trustee-variation')
-      .deleteMany({ trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID] } });
+    // ACMS identity tasks are keyed by fingerprint+variant; a pending task left over from a
+    // previous run would be found and left untouched, so the run would not prove a fresh write.
+    const r2 = await db.collection(VERIFICATION_COLLECTION).deleteMany({
+      acmsProfessionalId: {
+        $in: [
+          AMBIGUOUS_ACMS_ID,
+          ACTIVE_NO_MATCH_ACMS_ID,
+          CONFLICT_ACMS_ID,
+          MANUAL_LINK_ACMS_ID,
+          AMBIGUOUS_INACTIVE_ACMS_ID,
+          NO_MATCH_WITH_CANDIDATE_ACMS_ID,
+          NO_MATCH_NAME_FAIL_ACMS_ID,
+        ],
+      },
+    });
+    pass(`Deleted ${r2.deletedCount} ${VERIFICATION_COLLECTION} doc(s)`);
+
+    const r3 = await db.collection('trustee-variation').deleteMany({
+      trusteeId: {
+        $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID, NAME_TRUSTEE_ID, UT_TRUSTEE_ID],
+      },
+    });
     pass(`Deleted ${r3.deletedCount} trustee-variation doc(s)`);
 
     const r4 = await db.collection('trustees').deleteMany({
@@ -751,6 +896,9 @@ async function clean() {
           AMBIGUOUS_TRUSTEE_ID_A,
           AMBIGUOUS_TRUSTEE_ID_B,
           CONFLICT_EXISTING_TRUSTEE_ID,
+          NO_MATCH_CANDIDATE_TRUSTEE_ID,
+          NAME_FAIL_TRUSTEE_ID_A,
+          NAME_FAIL_TRUSTEE_ID_B,
         ],
       },
     });
@@ -817,6 +965,21 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
+  // Slice 3: the pipeline link also saved a TrusteeVariation for the ACMS variant.
+  const nameVariations = await db
+    .collection('trustee-variation')
+    .find({ trusteeId: NAME_TRUSTEE_ID })
+    .toArray();
+  if (nameVariations.length === 1 && nameVariations[0].variant === nameLink?.evidence?.variant) {
+    pass(
+      `Variation: one TrusteeVariation saved under ${NAME_TRUSTEE_ID} for ${NAME_MATCH_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `Variation: expected one TrusteeVariation for ${NAME_MATCH_ACMS_ID} under ${NAME_TRUSTEE_ID}, got ${JSON.stringify(nameVariations)}`,
+    );
+  }
+
   // Scenario 3: no-match with an active CMMAP appointment must produce an
   // errored professional-id record (not silently skipped), keyed by
   // fingerprint rather than a real trusteeId.
@@ -871,6 +1034,16 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   } else {
     fail(
       `Cross-group match: expected ${UT_ACMS_ID} linked to ${UT_TRUSTEE_ID}, got ${JSON.stringify(utLink)}`,
+    );
+  }
+  const utVariationCount = await db
+    .collection('trustee-variation')
+    .countDocuments({ trusteeId: UT_TRUSTEE_ID });
+  if (utVariationCount === 1) {
+    pass(`Variation: one TrusteeVariation saved under ${UT_TRUSTEE_ID} for ${UT_ACMS_ID}`);
+  } else {
+    fail(
+      `Variation: expected one TrusteeVariation under ${UT_TRUSTEE_ID}, found ${utVariationCount}`,
     );
   }
 
@@ -931,6 +1104,212 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
+  // Scenario 9: the ambiguous professional (UST_PROF_CODE 72, active appointment) gets a pending,
+  // caseless ACMS identity task carrying its acmsProfessionalId and the pipeline findings.
+  const ambiguousTasks = await db
+    .collection(VERIFICATION_COLLECTION)
+    .find({ acmsProfessionalId: AMBIGUOUS_ACMS_ID })
+    .toArray();
+  const ambiguousTask = ambiguousTasks[0];
+  if (ambiguousTasks.length !== 1) {
+    fail(
+      `Ambiguous task: expected exactly one identity task for ${AMBIGUOUS_ACMS_ID}, found ${ambiguousTasks.length}`,
+    );
+  } else if (
+    ambiguousTask.documentType === 'TRUSTEE_MATCH_VERIFICATION' &&
+    ambiguousTask.source === 'ACMS' &&
+    ambiguousTask.mismatchReason === 'ambiguous' &&
+    ambiguousTask.status === 'pending' &&
+    // Mongo client uses ignoreUndefined, so the sync's absent caseId/courtId read back undefined.
+    ambiguousTask.caseId === undefined &&
+    ambiguousTask.courtId === undefined &&
+    ambiguousTask.findings != null
+  ) {
+    pass(
+      `Ambiguous task: pending ACMS identity task for ${AMBIGUOUS_ACMS_ID} (mismatchReason=ambiguous, no caseId/courtId, findings present)`,
+    );
+    const taskCandidateIds = (ambiguousTask.findings.candidates ?? []).map(
+      (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
+    );
+    if (
+      taskCandidateIds.includes(AMBIGUOUS_TRUSTEE_ID_A) &&
+      taskCandidateIds.includes(AMBIGUOUS_TRUSTEE_ID_B)
+    ) {
+      pass('Ambiguous task: findings list both same-named candidates');
+    } else {
+      fail(
+        `Ambiguous task: expected both ${AMBIGUOUS_TRUSTEE_ID_A} and ${AMBIGUOUS_TRUSTEE_ID_B} among findings candidates, got ${JSON.stringify(taskCandidateIds)}`,
+      );
+    }
+    if (typeof ambiguousTask.fingerprint !== 'string' || ambiguousTask.fingerprint === '') {
+      fail(
+        `Ambiguous task: expected a non-empty string fingerprint, got ${JSON.stringify(ambiguousTask.fingerprint)}`,
+      );
+    } else if (ambiguousTask.fingerprint === ambiguousRecord?.camsTrusteeId) {
+      pass("Ambiguous task: fingerprint matches the ambiguous professional-id record's key");
+    } else {
+      fail(
+        `Ambiguous task: fingerprint ${ambiguousTask.fingerprint} does not match the professional-id record's camsTrusteeId ${ambiguousRecord?.camsTrusteeId}`,
+      );
+    }
+    // The task is keyed by fingerprint + variant, so the variant must be the one the sync
+    // recorded for this professional, or later lookups would miss the task.
+    if (
+      ambiguousTask.variant != null &&
+      ambiguousTask.variant === ambiguousRecord?.evidence?.variant
+    ) {
+      pass("Ambiguous task: variant matches the ambiguous professional-id record's variant");
+    } else {
+      fail(
+        `Ambiguous task: variant ${ambiguousTask.variant} does not match the professional-id record's evidence.variant ${ambiguousRecord?.evidence?.variant}`,
+      );
+    }
+  } else {
+    fail(
+      `Ambiguous task: unexpected identity task for ${AMBIGUOUS_ACMS_ID}: ${JSON.stringify(ambiguousTask)}`,
+    );
+  }
+
+  // Scenario 10: a zero-candidate no-match professional and a conflict never get an identity task
+  // (a no-match with a name-passing candidate does; see Scenario 13). Both have an active CMMAP
+  // appointment, so neither is kept from a task by the active-appointment gate.
+  const otherTasks = await db
+    .collection(VERIFICATION_COLLECTION)
+    .find({ acmsProfessionalId: { $in: [ACTIVE_NO_MATCH_ACMS_ID, CONFLICT_ACMS_ID] } })
+    .toArray();
+  if (otherTasks.length === 0) {
+    pass(
+      `No identity task for the no-match (${ACTIVE_NO_MATCH_ACMS_ID}) or conflict (${CONFLICT_ACMS_ID}) professional`,
+    );
+  } else {
+    fail(
+      `Expected no identity tasks for ${ACTIVE_NO_MATCH_ACMS_ID}/${CONFLICT_ACMS_ID}, found ${JSON.stringify(otherTasks)}`,
+    );
+  }
+
+  // Scenario 11: a professional with a manual link keeps exactly that link — no new
+  // professional-id record and no identity task, even though it would otherwise be ambiguous.
+  const manualRecords = await db
+    .collection('trustee-professional-ids')
+    .find({ acmsProfessionalId: MANUAL_LINK_ACMS_ID })
+    .toArray();
+  const manualRecord = manualRecords[0];
+  if (
+    manualRecords.length === 1 &&
+    manualRecord.camsTrusteeId === AMBIGUOUS_TRUSTEE_ID_B &&
+    manualRecord.disposition === 'linked' &&
+    manualRecord.linkMethod === 'manual' &&
+    manualRecord.updatedBy?.id === 'HARNESS'
+  ) {
+    pass(`Manual link: ${MANUAL_LINK_ACMS_ID} kept its manual link to ${AMBIGUOUS_TRUSTEE_ID_B}`);
+  } else {
+    fail(
+      `Manual link: expected only the seeded manual link for ${MANUAL_LINK_ACMS_ID}, found ${JSON.stringify(manualRecords)}`,
+    );
+  }
+  const manualTask = await db
+    .collection(VERIFICATION_COLLECTION)
+    .findOne({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+  if (!manualTask) {
+    pass(`Manual link: no identity task written for ${MANUAL_LINK_ACMS_ID}`);
+  } else {
+    fail(
+      `Manual link: expected no identity task for ${MANUAL_LINK_ACMS_ID}, found ${JSON.stringify(manualTask)}`,
+    );
+  }
+
+  // Scenario 12: an ambiguous professional with no active appointment (UST_PROF_CODE 76) gets
+  // neither a professional-id record nor an identity task.
+  const [inactiveAmbiguousRecord, inactiveAmbiguousTask] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: AMBIGUOUS_INACTIVE_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .findOne({ acmsProfessionalId: AMBIGUOUS_INACTIVE_ACMS_ID }),
+  ]);
+  if (!inactiveAmbiguousRecord && !inactiveAmbiguousTask) {
+    pass(`Ambiguous, no active appointment: nothing written for ${AMBIGUOUS_INACTIVE_ACMS_ID}`);
+  } else {
+    fail(
+      `Ambiguous, no active appointment: expected nothing for ${AMBIGUOUS_INACTIVE_ACMS_ID}, found record=${JSON.stringify(inactiveAmbiguousRecord)} task=${JSON.stringify(inactiveAmbiguousTask)}`,
+    );
+  }
+
+  // Scenario 13: a no-match professional with a name-passing candidate (UST_PROF_CODE 77, active
+  // appointment) gets its no-match record and a pending, caseless ACMS 'no match' identity task.
+  const [noMatchCandidateRecord, noMatchCandidateTasks] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: NO_MATCH_WITH_CANDIDATE_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: NO_MATCH_WITH_CANDIDATE_ACMS_ID })
+      .toArray(),
+  ]);
+  if (
+    noMatchCandidateRecord?.disposition === 'no-match' &&
+    noMatchCandidateRecord.nameMatchCount === 1
+  ) {
+    pass(
+      `No-match with candidate: no-match record (nameMatchCount=1) written for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `No-match with candidate: expected a no-match record with nameMatchCount=1 for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}, got ${JSON.stringify(noMatchCandidateRecord)}`,
+    );
+  }
+  const noMatchTask = noMatchCandidateTasks[0];
+  const noMatchTaskCandidateIds = (noMatchTask?.findings?.candidates ?? []).map(
+    (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
+  );
+  if (
+    noMatchCandidateTasks.length === 1 &&
+    noMatchTask.source === 'ACMS' &&
+    noMatchTask.mismatchReason === 'no match' &&
+    noMatchTask.status === 'pending' &&
+    noMatchTask.caseId === undefined &&
+    noMatchTask.courtId === undefined &&
+    noMatchTaskCandidateIds.includes(NO_MATCH_CANDIDATE_TRUSTEE_ID) &&
+    noMatchTask.fingerprint !== undefined &&
+    noMatchTask.fingerprint === noMatchCandidateRecord?.camsTrusteeId
+  ) {
+    pass(
+      `No-match with candidate: pending caseless ACMS task for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID} (mismatchReason='no match', findings name ${NO_MATCH_CANDIDATE_TRUSTEE_ID}, same fingerprint as the record)`,
+    );
+  } else {
+    fail(
+      `No-match with candidate: expected one pending caseless 'no match' ACMS task for ${NO_MATCH_WITH_CANDIDATE_ACMS_ID}, found ${JSON.stringify(noMatchCandidateTasks)}`,
+    );
+  }
+
+  // Scenario 14: a no-match professional whose candidates all fail the name check
+  // (UST_PROF_CODE 78) still gets its record, but no identity task. The candidates check keeps
+  // this from passing vacuously if discovery ever stopped finding them.
+  const [nameFailRecord, nameFailTask] = await Promise.all([
+    db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: NO_MATCH_NAME_FAIL_ACMS_ID }),
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .findOne({ acmsProfessionalId: NO_MATCH_NAME_FAIL_ACMS_ID }),
+  ]);
+  const nameFailCandidateCount = nameFailRecord?.evidence?.candidates?.length ?? 0;
+  if (
+    nameFailRecord?.disposition === 'no-match' &&
+    nameFailRecord.nameMatchCount === 0 &&
+    nameFailCandidateCount >= 1 &&
+    !nameFailTask
+  ) {
+    pass(
+      `No-match, name-failing candidates: record written (${nameFailCandidateCount} candidate(s), nameMatchCount=0) and no identity task for ${NO_MATCH_NAME_FAIL_ACMS_ID}`,
+    );
+  } else {
+    fail(
+      `No-match, name-failing candidates: expected a no-match record with candidates, nameMatchCount=0 and no task for ${NO_MATCH_NAME_FAIL_ACMS_ID}, found record=${JSON.stringify(nameFailRecord)} task=${JSON.stringify(nameFailTask)}`,
+    );
+  }
+
   // Deleted/non-trustee records must never be synced.
   const deletedLink = await db
     .collection('trustee-professional-ids')
@@ -951,7 +1330,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .collection('runtime-state')
     .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
   const byGroup = stateDoc?.lastUstProfCodeByGroup ?? {};
-  if (byGroup.NY >= 74 && byGroup.UT >= 70) {
+  if (byGroup.NY >= LAST_NY_UST_PROF_CODE && byGroup.UT >= 70) {
     pass(`Sync bookmark advanced correctly: ${JSON.stringify(byGroup)}`);
   } else {
     fail(`Sync bookmark did not advance as expected: ${JSON.stringify(byGroup)}`);
@@ -959,8 +1338,112 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 }
 
 // ---------------------------------------------------------------------------
-// run  (happy path — covers scenarios 1-5: fingerprint match, name match,
-// active no-match errored record, inactive no-match skip, cross-group paging)
+// sync helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * This harness's plain MongoDB container has no indexes applied. Create the
+ * (fingerprint, variant, documentType) unique index real Cosmos enforces on identity tasks
+ * (cosmos-collections.bicep), so a duplicate task write fails here as it would in Azure.
+ */
+async function createVerificationUniqueIndex() {
+  const { client, db } = await getMongoDb();
+  try {
+    await db
+      .collection(VERIFICATION_COLLECTION)
+      .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
+    pass(
+      `Ensured the (fingerprint, variant, documentType) unique index on ${VERIFICATION_COLLECTION}`,
+    );
+  } finally {
+    await client.close();
+  }
+}
+
+/** Waits for the NY bookmark to pass the last NY fixture; false (after a fail()) on timeout. */
+async function waitForNyPage(db: ReturnType<MongoClient['db']>): Promise<boolean> {
+  const nyPageProcessed = await pollUntil(async () => {
+    const stateDoc = await db
+      .collection('runtime-state')
+      .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
+    return (stateDoc?.lastUstProfCodeByGroup?.NY ?? 0) >= LAST_NY_UST_PROF_CODE;
+  });
+  if (!nyPageProcessed) {
+    fail(`Timed out waiting for the NY bookmark to reach UST_PROF_CODE ${LAST_NY_UST_PROF_CODE}`);
+  }
+  return nyPageProcessed;
+}
+
+/** Deletes the sync bookmark (so every group restarts at 0) and runs the sync again. */
+async function resyncFromStart(db: ReturnType<MongoClient['db']>): Promise<boolean> {
+  await db
+    .collection('runtime-state')
+    .deleteMany({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
+  await enqueueMessage(START_QUEUE, {});
+  return waitForNyPage(db);
+}
+
+/**
+ * Re-processing the ambiguous professional must leave its identity task exactly as it was:
+ * first while the task is pending, then after it is resolved. Proves the create-if-absent rule
+ * against real persistence, with the unique index in place.
+ */
+async function assertResyncLeavesIdentityTasksUntouched(db: ReturnType<MongoClient['db']>) {
+  const tasksFor = () =>
+    db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: AMBIGUOUS_ACMS_ID })
+      .toArray();
+  const [original] = await tasksFor();
+  if (!original) {
+    fail(`Re-sync: no identity task for ${AMBIGUOUS_ACMS_ID} to re-sync against`);
+    return;
+  }
+  const isUnchanged = (task: typeof original | undefined, status: string) =>
+    task !== undefined &&
+    task._id.equals(original._id) &&
+    task.status === status &&
+    JSON.stringify(task.updatedOn) === JSON.stringify(original.updatedOn);
+
+  if (!(await resyncFromStart(db))) {
+    return;
+  }
+  const afterPendingResync = await tasksFor();
+  if (afterPendingResync.length === 1 && isUnchanged(afterPendingResync[0], 'pending')) {
+    pass(`Re-sync: the pending task for ${AMBIGUOUS_ACMS_ID} was left untouched`);
+  } else {
+    fail(
+      `Re-sync: expected the original pending task for ${AMBIGUOUS_ACMS_ID} unchanged, found ${JSON.stringify(afterPendingResync)}`,
+    );
+  }
+
+  await db
+    .collection(VERIFICATION_COLLECTION)
+    .updateOne({ _id: original._id }, { $set: { status: 'approved' } });
+  if (!(await resyncFromStart(db))) {
+    return;
+  }
+  const variationCount = await db
+    .collection('trustee-variation')
+    .countDocuments({ trusteeId: NAME_TRUSTEE_ID });
+  if (variationCount === 1) {
+    pass(`Re-sync: ${NAME_TRUSTEE_ID} still has exactly one TrusteeVariation`);
+  } else {
+    fail(`Re-sync: expected one TrusteeVariation for ${NAME_TRUSTEE_ID}, found ${variationCount}`);
+  }
+  const afterResolvedResync = await tasksFor();
+  if (afterResolvedResync.length === 1 && isUnchanged(afterResolvedResync[0], 'approved')) {
+    pass(`Re-sync: the resolved task for ${AMBIGUOUS_ACMS_ID} was left untouched, no new task`);
+  } else {
+    fail(
+      `Re-sync: expected only the resolved task for ${AMBIGUOUS_ACMS_ID}, found ${JSON.stringify(afterResolvedResync)}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run  (happy path — seeds the scenarios above, runs the sync once, asserts each outcome, then
+// re-syncs to prove existing pending and resolved identity tasks are left untouched)
 // ---------------------------------------------------------------------------
 
 async function run() {
@@ -977,6 +1460,7 @@ async function run() {
 
   console.log('Step 2: Seed Cosmos fixtures (TRUSTEE_VARIATION + trustee profiles)');
   await seedCosmos();
+  await createVerificationUniqueIndex();
   console.log('');
 
   console.log('Step 3: Enqueue start message {}');
@@ -1016,8 +1500,8 @@ async function run() {
       return;
     }
 
-    // The ambiguous/skipped/conflict scenarios also gate behind the active-appointment check
-    // (ambiguous, conflict) or the upfront not-a-person check (skipped) - wait for all three
+    // The ambiguous and skipped records are written only after the active-appointment check; the
+    // conflict record is written before it (a conflict bypasses the gate). Wait for all three
     // before asserting, same as the active-no-match record above.
     const newScenariosVerified = await pollUntil(async () => {
       const [ambiguousDoc, skippedDoc, conflictDoc] = await Promise.all([
@@ -1035,9 +1519,76 @@ async function run() {
       fail('Timed out waiting for the ambiguous/skipped/conflict professional-id records');
       return;
     }
+
+    // The manual-link and inactive-ambiguous scenarios write nothing, so wait for the NY page's
+    // bookmark to pass them - the bookmark is stored only after every record in the page is processed.
+    if (!(await waitForNyPage(db))) {
+      return;
+    }
     console.log('');
 
     await assertHappyPath(db);
+    if (hasFailures) {
+      return;
+    }
+    console.log('');
+
+    console.log('Step 5: Re-sync from the start; existing identity tasks must be left untouched');
+    await assertResyncLeavesIdentityTasksUntouched(db);
+  } finally {
+    await client.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run-without-manual-link  (proves the manual-link scenario's premise: without its manual link,
+// NY-00075 really would end ambiguous and get an identity task)
+// ---------------------------------------------------------------------------
+
+async function runWithoutManualLink() {
+  console.log('\nRunning sync-acms-professional-ids without the NY-00075 manual link...\n');
+
+  await clean();
+  await seedSchema();
+  await seedSql();
+  await seedCosmos();
+  await createVerificationUniqueIndex();
+
+  const { client, db } = await getMongoDb();
+  try {
+    await db
+      .collection('trustee-professional-ids')
+      .deleteMany({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+    pass(`Removed the seeded manual link for ${MANUAL_LINK_ACMS_ID}`);
+
+    await enqueueMessage(START_QUEUE, {});
+    pass(`Enqueued {} to '${START_QUEUE}'`);
+    if (!(await waitForNyPage(db))) {
+      return;
+    }
+
+    const record = await db
+      .collection('trustee-professional-ids')
+      .findOne({ acmsProfessionalId: MANUAL_LINK_ACMS_ID });
+    const tasks = await db
+      .collection(VERIFICATION_COLLECTION)
+      .find({ acmsProfessionalId: MANUAL_LINK_ACMS_ID })
+      .toArray();
+    if (
+      record?.disposition === 'ambiguous' &&
+      tasks.length === 1 &&
+      tasks[0].status === 'pending' &&
+      tasks[0].source === 'ACMS' &&
+      tasks[0].mismatchReason === 'ambiguous'
+    ) {
+      pass(
+        `Without its manual link, ${MANUAL_LINK_ACMS_ID} is ambiguous and gets a pending ACMS identity task`,
+      );
+    } else {
+      fail(
+        `Without its manual link, expected ${MANUAL_LINK_ACMS_ID} ambiguous with one pending ACMS task, found record=${JSON.stringify(record)} tasks=${JSON.stringify(tasks)}`,
+      );
+    }
   } finally {
     await client.close();
   }
@@ -1078,7 +1629,10 @@ async function runPurge() {
     // re-asserting the ambiguous/skipped/conflict scenarios here: deleteAll also wipes the
     // conflict scenario's pre-linked seed record, so a post-purge pass would resolve that ACMS
     // id as a clean auto-link rather than reproduce the conflict - a purge, unlike a normal
-    // sync, doesn't re-run seedCosmos to restore that pre-existing state.
+    // sync, doesn't re-run seedCosmos to restore that pre-existing state. deleteAll also wipes
+    // linkMethod 'manual' links (NY-00075's included), so purge is NOT manual-link safe: after a
+    // purge NY-00075 has no guard and is processed as ambiguous. Accepted for CAMS-954 - purge is
+    // an operator reset.
     const satisfied = await pollUntil(async () => {
       const count = await db.collection('trustee-professional-ids').countDocuments({
         acmsProfessionalId: {
@@ -1232,6 +1786,9 @@ async function main() {
     case 'run':
       await run();
       break;
+    case 'run-without-manual-link':
+      await runWithoutManualLink();
+      break;
     case 'run-purge':
       await runPurge();
       break;
@@ -1272,6 +1829,9 @@ async function main() {
       console.log('  seed-sql    [local] Seed fixture rows (idempotent)');
       console.log('  seed-cosmos Seed TRUSTEE_VARIATION + trustee profiles into MongoDB');
       console.log('  run         Full test: clean → seed → enqueue → wait → assert');
+      console.log(
+        '  run-without-manual-link  Prove NY-00075 is ambiguous and gets a task without its manual link',
+      );
       console.log('  run-purge   Verify { purge: true } wipes and reloads from scratch');
       console.log(
         '  run-retry-idempotency  Prove a replayed retry returns the existing errored record',

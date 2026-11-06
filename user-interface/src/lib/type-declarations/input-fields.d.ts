@@ -15,6 +15,8 @@ export interface ComboBoxRef {
   setSelections: (options: ComboOption[]) => void;
   getSelections: () => ComboOption[];
   clearSelections: () => void;
+  /** Empties the typed filter text, including text kept after the dropdown closed. */
+  clearFilter: () => void;
   disable: (value: boolean) => void;
   focusInput: () => void;
   focus: () => void;

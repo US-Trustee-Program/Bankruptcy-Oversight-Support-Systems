@@ -59,6 +59,66 @@ describe('sync-deleted-cases archiveDeletedCaseQueue', () => {
     );
   });
 
+  test('should route to DLQ when archive completes with non-transient step errors', async () => {
+    const { archiveDeletedCaseQueue } = await import('./sync-deleted-cases');
+    const message = makeArchiveMessage('001-25-00001');
+    const invocationContext = makeInvocationContext();
+
+    const archiveSummary = {
+      caseId: '001-25-00001',
+      archivedCount: 2,
+      errors: [{ type: 'orders', error: 'boom' }],
+    };
+    vi.spyOn(ArchiveCaseDocuments, 'archiveCaseAndRelatedDocuments').mockResolvedValue(
+      archiveSummary,
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await archiveDeletedCaseQueue(message, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput).toBeDefined();
+    const dlqPayload = dlqOutput?.[1] as { event: unknown; error: string };
+    expect(dlqPayload.event).toEqual(message);
+    expect(dlqPayload.error).toContain('orders: boom');
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.stringContaining('SYNC-DELETED-CASES'),
+      'archiveDeletedCaseQueue',
+      expect.anything(),
+      expect.objectContaining({ success: false, documentsWritten: 2, documentsFailed: 1 }),
+    );
+  });
+
+  test('should not write to DLQ when archive completes with no errors', async () => {
+    const { archiveDeletedCaseQueue } = await import('./sync-deleted-cases');
+    const message = makeArchiveMessage('001-25-00001');
+    const invocationContext = makeInvocationContext();
+
+    const archiveSummary = { caseId: '001-25-00001', archivedCount: 2, errors: [] };
+    vi.spyOn(ArchiveCaseDocuments, 'archiveCaseAndRelatedDocuments').mockResolvedValue(
+      archiveSummary,
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await archiveDeletedCaseQueue(message, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput).toBeUndefined();
+  });
+
   test('should re-enqueue with backoff on 429 error', async () => {
     const { archiveDeletedCaseQueue } = await import('./sync-deleted-cases');
     const message = makeArchiveMessage('001-25-00001', 0);

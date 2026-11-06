@@ -1,13 +1,9 @@
-.usa-pagination__button .usa-current {
+.usa-pagination__button.usa-current {
   background-color: black;
   color: white;
-}
-a.usa-pagination__button.usa-current {
   cursor: default;
 }
-a.usa-pagination__button {
-  cursor: pointer;
-}
-a.usa-pagination__link {
+.usa-pagination__button,
+.usa-pagination__link {
   cursor: pointer;
 }

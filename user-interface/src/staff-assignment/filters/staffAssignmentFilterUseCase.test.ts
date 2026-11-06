@@ -43,6 +43,7 @@ describe('staff assignment filter use case tests', () => {
         },
       ],
       clearSelections: () => {},
+      clearFilter: () => {},
       disable: (_value: boolean) => {},
       focusInput: () => {},
       focus: () => {},
