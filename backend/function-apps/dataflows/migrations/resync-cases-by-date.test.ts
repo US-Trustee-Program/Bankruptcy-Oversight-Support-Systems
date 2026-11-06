@@ -10,6 +10,8 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -81,6 +83,96 @@ describe('resync-cases-by-date handleStart', () => {
 
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
+
+  test.each([
+    { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
+    { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
+  ])(
+    'requeues the start message with backoff instead of throwing when getCaseIds fails with a $label',
+    async ({ build }) => {
+      const { handleStart } = await import('./resync-cases-by-date');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(build());
+      const mockContext = await createMockApplicationContext();
+      mockContext.extraOutputs = invocationContext.extraOutputs;
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      const fromConnectionStringSpy = vi
+        .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+        .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
+      await expect(
+        handleStart({ fromDate: '2024-01-01' }, invocationContext),
+      ).resolves.toBeUndefined();
+
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('start'),
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(expect.any(String), expect.any(Number));
+      const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
+      expect(JSON.parse(body)).toEqual({
+        fromDate: '2024-01-01',
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      });
+      expect(visibilityTimeout).toBeGreaterThan(0);
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
+    },
+  );
+
+  test('routes the start message to DLQ instead of throwing when the transient-error retry limit is exhausted', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const fromConnectionStringSpy = vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString');
+
+    await expect(
+      handleStart(
+        { fromDate: '2024-01-01', retryCount: RATE_LIMIT_RETRY_LIMIT },
+        invocationContext,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(fromConnectionStringSpy).not.toHaveBeenCalled();
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput?.[1]).toEqual([
+      expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: RATE_LIMIT_RETRY_LIMIT }),
+    ]);
+  });
+
+  test('rethrows a non-transient getCaseIds failure without routing it to DLQ', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await expect(handleStart({ fromDate: '2024-01-01' }, invocationContext)).rejects.toThrow(
+      'Database connection failed',
+    );
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
 });
 
 describe('resync-cases-by-date handlePage', () => {
@@ -145,9 +237,15 @@ describe('resync-cases-by-date handlePage', () => {
     expect(mockSendMessage).toHaveBeenCalled();
   });
 
-  test('routes to DLQ instead of throwing when the retry limit is exhausted', async () => {
+  test('routes to DLQ instead of throwing when the retry limit is exhausted, keeping the original page events', async () => {
     const { handlePage } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
+    const events: CaseSyncEvent[] = [
+      {
+        type: 'CASE_CHANGED',
+        caseId: '001-25-00001',
+        divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
+      },
+    ];
     const message: PageMessage = { events, retryCount: 10 };
     const invocationContext = makeInvocationContext();
 
@@ -159,10 +257,17 @@ describe('resync-cases-by-date handlePage', () => {
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
     await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
-    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.anything(),
+    const dlqCall = extraOutputsSetSpy.mock.calls.find(([output]) =>
+      (output as { queueName: string }).queueName.includes('dlq'),
     );
+    expect(dlqCall?.[1]).toEqual([
+      expect.objectContaining({
+        message: {
+          events,
+          retryCount: 10,
+        },
+      }),
+    ]);
   });
 
   test('re-throws on a non-429 error', async () => {
@@ -185,6 +290,34 @@ describe('resync-cases-by-date handlePage', () => {
 });
 
 describe('resync-cases-by-date handleError', () => {
+  test('routes a QueueError to HARD_STOP keeping its root cause and does not queue it for retry', async () => {
+    const { handleError } = await import('./resync-cases-by-date');
+    const queueError = buildQueueError(
+      new CamsError('TEST', { message: 'root cause' }),
+      'RESYNC-CASES-BY-DATE',
+      'handlePage',
+    );
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleError(queueError, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const hardStopOutput = outputs.find(([key]) => key.queueName?.includes('hard-stop'));
+    expect(hardStopOutput?.[1]).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({ message: 'root cause' }),
+      }),
+    ]);
+    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
+    expect(retryOutput).toBeUndefined();
+  });
+
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./resync-cases-by-date');
     const event: CaseSyncEvent = {
