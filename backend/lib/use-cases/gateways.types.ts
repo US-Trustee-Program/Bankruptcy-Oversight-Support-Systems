@@ -813,7 +813,8 @@ export type RuntimeStateDocumentType =
   | 'ZOOM_CSV_IMPORT_STATE'
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
-  | 'ACS_BOUNCE_POLL_STATE';
+  | 'ACS_BOUNCE_POLL_STATE'
+  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -907,6 +908,33 @@ export type TrusteePetitionSyncState = RuntimeState & {
 export type AcmsProfessionalIdSyncState = RuntimeState & {
   documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE';
   lastUstProfCodeByGroup: Record<string, number>;
+};
+
+/**
+ * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
+ * (cams-fd8qd.1.10, the per-region driver). One document, one key per region, each written
+ * independently with RuntimeStateRepository.setField's dotted path (e.g.
+ * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
+ * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a
+ * (which disagreed with an earlier draft of this type that nested it under a `regions` key).
+ *
+ * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
+ * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
+ */
+export type TrusteeAppointmentRegionSyncState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
+  region: Record<
+    string,
+    {
+      /** Latest fully-processed change date (ISO) for this region; a partly-loaded day never counts. */
+      lastSyncDate?: string;
+      source?: {
+        system: 'DXTR';
+        updatedOn: string;
+        updatedBy: CamsUserReference;
+      };
+    }
+  >;
 };
 
 export type TrusteeNotesMetricsState = RuntimeState & {

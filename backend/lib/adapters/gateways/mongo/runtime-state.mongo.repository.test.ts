@@ -1,6 +1,10 @@
 import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { OrderSyncState, ProfessionalIdCounterState } from '../../../use-cases/gateways.types';
+import {
+  OrderSyncState,
+  ProfessionalIdCounterState,
+  TrusteeAppointmentRegionSyncState,
+} from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
 import * as crypto from 'crypto';
@@ -298,6 +302,71 @@ describe('Runtime State Repo', () => {
       await expect(repo.setField('ORDERS_SYNC_STATE', 'someMap.NY', 63)).rejects.toThrow(
         expect.objectContaining({ isCamsError: true }),
       );
+    });
+
+    test('a setField write to one region key does not clobber a sibling region key (cams-fd8qd.1.3)', async () => {
+      const regionRepo = new RuntimeStateMongoRepository<TrusteeAppointmentRegionSyncState>(
+        context,
+      );
+      const findOneAndUpdateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate');
+
+      findOneAndUpdateSpy.mockResolvedValueOnce({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: { '02': { lastSyncDate: '2026-07-01' } },
+      });
+      await regionRepo.setField(
+        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        'region.02.lastSyncDate',
+        '2026-07-01',
+      );
+
+      expect(findOneAndUpdateSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        {
+          $set: { 'region.02.lastSyncDate': '2026-07-01' },
+          $setOnInsert: { documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE' },
+        },
+        { upsert: true },
+      );
+
+      findOneAndUpdateSpy.mockResolvedValueOnce({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: {
+          '02': { lastSyncDate: '2026-07-01' },
+          '03': { lastSyncDate: '2026-07-03' },
+        },
+      });
+      await regionRepo.setField(
+        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        'region.03.lastSyncDate',
+        '2026-07-03',
+      );
+
+      // The second call's $set touches ONLY region.03 -- MongoDB's $set on a dotted path never
+      // replaces the document, so region.02 (set by the first, independent call) is untouched.
+      expect(findOneAndUpdateSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        {
+          $set: { 'region.03.lastSyncDate': '2026-07-03' },
+          $setOnInsert: { documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE' },
+        },
+        { upsert: true },
+      );
+
+      // Round-trip: reading back after both writes shows both regions' bookmarks coexisting.
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: {
+          '02': { lastSyncDate: '2026-07-01' },
+          '03': { lastSyncDate: '2026-07-03' },
+        },
+      });
+      const result = await regionRepo.read('TRUSTEE_APPOINTMENT_REGION_SYNC_STATE');
+
+      expect(result.region['02'].lastSyncDate).toBe('2026-07-01');
+      expect(result.region['03'].lastSyncDate).toBe('2026-07-03');
     });
   });
 });

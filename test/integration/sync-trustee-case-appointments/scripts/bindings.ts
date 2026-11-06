@@ -70,13 +70,11 @@ export async function runRegionDriver(
 }
 
 /**
- * Seam 3 (ASSUMED SHAPE): the per-region runtime-state document, one document with a `region` map:
- * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}.
- *
- * The shape follows the .feature file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with
- * setField) and cams-rxb7a ("region.<regionId>.source"). NOTE cams-fd8qd.1.3's prose describes a `regions`
- * map instead; the beads disagree, so correct this one place when the real document exists. `source`
- * unset means ACMS. The document type is the bead's example name and must be replaced with the real one.
+ * Seam 3: the per-region runtime-state document, one document with a `region` map:
+ * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}
+ * (TrusteeAppointmentRegionSyncState, gateways.types.ts -- cams-fd8qd.1.3). Matches the .feature
+ * file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with setField) and cams-rxb7a
+ * ("region.<regionId>.source"). `source` unset means ACMS.
  */
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 
