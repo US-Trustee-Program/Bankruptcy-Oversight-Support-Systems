@@ -28,6 +28,7 @@ describe('user-access', () => {
     const validRequest: RoleAssignmentGrantRequest = {
       userId: 'user-1',
       role: CamsRole.TrialAttorney,
+      regionId: '2',
       officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
       reason: 'New hire in the Manhattan office',
     };
@@ -57,6 +58,7 @@ describe('user-access', () => {
 
     const USER_REQUIRED = 'A user is required';
     const ROLE_REQUIRED = 'A valid role is required';
+    const REGION_REQUIRED = 'A region is required';
     const OFFICE_REQUIRED = 'An office is required';
     const REASON_REQUIRED = 'A reason is required';
     const REASON_TOO_LONG = `Max length ${ROLE_ASSIGNMENT_REASON_MAX_LENGTH} characters`;
@@ -67,6 +69,14 @@ describe('user-access', () => {
       { case: 'a missing userId', field: 'userId', value: undefined, expected: USER_REQUIRED },
       { case: 'a null userId', field: 'userId', value: null, expected: USER_REQUIRED },
       { case: 'an array userId', field: 'userId', value: ['user-1'], expected: USER_REQUIRED },
+      { case: 'an empty regionId', field: 'regionId', value: '', expected: REGION_REQUIRED },
+      { case: 'a blank regionId', field: 'regionId', value: '  ', expected: REGION_REQUIRED },
+      {
+        case: 'a missing regionId',
+        field: 'regionId',
+        value: undefined,
+        expected: REGION_REQUIRED,
+      },
       { case: 'an empty officeCode', field: 'officeCode', value: '', expected: OFFICE_REQUIRED },
       { case: 'a blank officeCode', field: 'officeCode', value: '  ', expected: OFFICE_REQUIRED },
       {

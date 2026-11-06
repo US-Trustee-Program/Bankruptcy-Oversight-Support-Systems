@@ -89,14 +89,16 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
     }));
 
     async function handleSave() {
-      if (!user || !role || !officeCode) return;
+      const office = offices.find((o) => o.officeCode === officeCode);
+      if (!user || !role || !office) return;
       setIsSaving(true);
       setSaveFailed(false);
       try {
-        await Api2.postRoleAssignment({
+        await Api2.grantPermission({
           userId: user.id,
           role,
-          officeCode,
+          regionId: office.regionId,
+          officeCode: office.officeCode,
           reason: reason.trim(),
         });
         isOpenRef.current = false;

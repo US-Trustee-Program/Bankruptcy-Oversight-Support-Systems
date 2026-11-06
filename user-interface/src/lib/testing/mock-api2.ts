@@ -3178,13 +3178,22 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   };
 }
 
-async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
+async function grantPermission(request: RoleAssignmentGrantRequest) {
   // Lets the accessibility tests show the modal's save-failed state.
   if (request.reason === 'Fail this save') {
     throw new Error('Unable to create role assignment.');
   }
   const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
   const office = MOCKED_USTP_OFFICES_ARRAY.find((o) => o.officeCode === request.officeCode);
+  if (office?.regionId !== request.regionId) {
+    throw new Error('The office is not in that region.');
+  }
+  const activeKey = activeKeyFor(request.role, office.regionId, office.officeCode);
+  // Granting a permission the user already holds changes nothing, as on the server.
+  const held = user?.permissions.find((p) => p.active && p.activeKey === activeKey);
+  if (held) {
+    return { data: { permission: held, replaced: [] } };
+  }
   const assignment: UserRoleAssignment = {
     documentType: 'USER_ROLE_ASSIGNMENT',
     id: crypto.randomUUID(),
@@ -3192,17 +3201,17 @@ async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
     userName: user?.name ?? '',
     email: user?.email,
     role: request.role,
-    regionId: office?.regionId ?? null,
-    officeCode: request.officeCode,
+    regionId: office.regionId,
+    officeCode: office.officeCode,
     assignedBy: 'mock-super-user',
     assignedByName: 'Mock Super User',
     assignedAt: new Date().toISOString(),
     expiresAt: null,
     active: true,
-    activeKey: activeKeyFor(request.role, office?.regionId ?? null, request.officeCode),
+    activeKey,
   };
   user?.permissions.push(assignment);
-  return { data: assignment };
+  return { data: { permission: assignment, replaced: [] } };
 }
 
 async function getBankTrustees(_bankId: string, _limit?: number, _offset?: number) {
@@ -3499,7 +3508,7 @@ const MockApi2 = {
   getBankHistory,
   getBankTrustees,
   getCamsUsers,
-  postRoleAssignment,
+  grantPermission,
   getSoftwareList,
   createSoftware,
   getSoftware,

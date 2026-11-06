@@ -298,6 +298,10 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  findActiveByUserAndRole(_userId: string, _role: string): Promise<UserRoleAssignment[]> {
+    return Promise.resolve([]);
+  }
+
   create(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }

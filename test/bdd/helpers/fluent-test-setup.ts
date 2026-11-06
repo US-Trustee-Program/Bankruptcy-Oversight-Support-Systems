@@ -770,11 +770,30 @@ export class TestSetup {
     const { RoleAssignmentAuditMongoRepository } =
       await import('../../../backend/lib/adapters/gateways/mongo/role-assignment-audit.mongo.repository');
 
+    // Like the unique {userId, activeKey} index: an exact duplicate of an active permission isn't
+    // written, and create reports that with null.
     vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'create').mockImplementation(
       async (assignment: UserRoleAssignment) => {
+        const duplicate = state
+          .getRoleAssignments()
+          .some(
+            (held) => held.userId === assignment.userId && held.activeKey === assignment.activeKey,
+          );
+        if (duplicate) return null;
         state.addRoleAssignment(assignment);
         return assignment;
       },
+    );
+    vi.spyOn(
+      UserRoleAssignmentMongoRepository.prototype,
+      'findActiveByUserAndRole',
+    ).mockImplementation(async (userId: string, role: string) =>
+      state
+        .getRoleAssignments()
+        .filter(
+          (assignment) =>
+            assignment.active && assignment.userId === userId && assignment.role === role,
+        ),
     );
     vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'findActiveByUserIds').mockImplementation(
       async (userIds: string[]) =>

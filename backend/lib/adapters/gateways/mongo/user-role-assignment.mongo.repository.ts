@@ -1,5 +1,5 @@
 import { UserRoleAssignment } from '@common/cams/user-access';
-import { BadRequestError } from '../../../common-errors/bad-request';
+import { CamsRoleType } from '@common/cams/roles';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { UserRoleAssignmentRepository } from '../../../use-cases/gateways.types';
@@ -47,20 +47,30 @@ export class UserRoleAssignmentMongoRepository
   }
 
   /**
-   * Inserts the assignment. The unique {userId, activeKey} index rejects an exact duplicate of an
-   * active assignment, which surfaces here as a 400.
+   * Inserts the assignment, or returns null when the unique {userId, activeKey} index shows the user
+   * already holds that exact active permission (for example, another grant just wrote it).
    */
-  async create(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
+  async create(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null> {
     try {
       await this.getAdapter<UserRoleAssignment>().insertOne(assignment, { useProvidedId: true });
       return assignment;
     } catch (originalError) {
-      if (isDuplicateKeyError(originalError)) {
-        throw new BadRequestError(MODULE_NAME, {
-          message: 'This user already has that permission.',
-        });
-      }
+      if (isDuplicateKeyError(originalError)) return null;
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create role assignment.');
+    }
+  }
+
+  async findActiveByUserAndRole(userId: string, role: CamsRoleType): Promise<UserRoleAssignment[]> {
+    const query = and(
+      doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+      doc('userId').equals(userId),
+      doc('role').equals(role),
+      doc('active').equals(true),
+    );
+    try {
+      return await this.getAdapter<UserRoleAssignment>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve role assignments.');
     }
   }
 

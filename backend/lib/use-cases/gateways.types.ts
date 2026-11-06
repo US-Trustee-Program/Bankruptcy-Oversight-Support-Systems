@@ -1,4 +1,5 @@
 import { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
+import { CamsRoleType } from '@common/cams/roles';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
@@ -1050,7 +1051,9 @@ export interface TrusteeVariationRepository extends Releasable {
 }
 
 export interface UserRoleAssignmentRepository extends Releasable {
-  create(assignment: UserRoleAssignment): Promise<UserRoleAssignment>;
+  /** Returns null when the user already holds that exact active permission. */
+  create(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
+  findActiveByUserAndRole(userId: string, role: CamsRoleType): Promise<UserRoleAssignment[]>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
 }
 

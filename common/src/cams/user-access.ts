@@ -56,14 +56,26 @@ export type RoleAssignmentAuditEntry = {
   reason: string;
 };
 
+/** The path segment that stands for every region or every office in a grant. */
+export const ALL_SCOPE = 'all';
+
 /**
- * A request to grant a role in one office. The server derives regionId from the office.
+ * A grant, as sent to PUT /user-access/users/:userId/permissions/:role/:regionId/:officeCode with
+ * the reason in the body. `regionId` and `officeCode` are ALL_SCOPE for every region or office.
+ * Granting a permission the user already holds changes nothing.
  */
 export type RoleAssignmentGrantRequest = {
   userId: string;
   role: CamsRoleType;
+  regionId: string;
   officeCode: string;
   reason: string;
+};
+
+/** The outcome of a grant: the permission the user now holds, and any it replaced. */
+export type RoleAssignmentGrantResult = {
+  permission: UserRoleAssignment;
+  replaced: UserRoleAssignment[];
 };
 
 /**
@@ -108,6 +120,7 @@ const NOT_BLANK = /\S/;
 export const roleAssignmentGrantRequestSpec: ValidationSpec<RoleAssignmentGrantRequest> = {
   userId: [V.matches(NOT_BLANK, 'A user is required')],
   role: [V.isInSet<CamsRoleType>(grantableRoles, 'A valid role is required')],
+  regionId: [V.matches(NOT_BLANK, 'A region is required')],
   officeCode: [V.matches(NOT_BLANK, 'An office is required')],
   // The length limit applies to the trimmed reason, which is what gets stored.
   reason: [

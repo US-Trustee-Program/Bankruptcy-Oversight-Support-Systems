@@ -4,7 +4,7 @@ import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import { UserRoleAssignment } from '@common/cams/user-access';
+import { RoleAssignmentGrantResult } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
 
@@ -167,8 +167,8 @@ describe('AddPermissionModal', () => {
 
   test('should save the grant, close, announce success and tell the caller', async () => {
     const postSpy = vi
-      .spyOn(Api2, 'postRoleAssignment')
-      .mockResolvedValue({ data: {} as UserRoleAssignment });
+      .spyOn(Api2, 'grantPermission')
+      .mockResolvedValue({ data: {} as RoleAssignmentGrantResult });
     await openFor();
     await fillIn({ reason: `  ${REASON}  ` });
 
@@ -178,6 +178,7 @@ describe('AddPermissionModal', () => {
     expect(postSpy).toHaveBeenCalledWith({
       userId: SARAH.id,
       role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
       officeCode: MANHATTAN.officeCode,
       reason: REASON,
     });
@@ -189,9 +190,9 @@ describe('AddPermissionModal', () => {
 
   test('should show progress and disable Save while saving', async () => {
     let finish: () => void = () => {};
-    vi.spyOn(Api2, 'postRoleAssignment').mockReturnValue(
+    vi.spyOn(Api2, 'grantPermission').mockReturnValue(
       new Promise((resolve) => {
-        finish = () => resolve({ data: {} as UserRoleAssignment });
+        finish = () => resolve({ data: {} as RoleAssignmentGrantResult });
       }),
     );
     await openFor();
@@ -210,7 +211,7 @@ describe('AddPermissionModal', () => {
   });
 
   test('should keep the modal open with the entries and explain a failed save', async () => {
-    vi.spyOn(Api2, 'postRoleAssignment').mockRejectedValue(new Error('500'));
+    vi.spyOn(Api2, 'grantPermission').mockRejectedValue(new Error('500'));
     await openFor();
     await fillIn();
 
@@ -238,7 +239,7 @@ describe('AddPermissionModal', () => {
     },
     { how: 'Escape', close: () => userEvent.keyboard('{Escape}') },
   ])('should close without saving on $how', async ({ close }) => {
-    const postSpy = vi.spyOn(Api2, 'postRoleAssignment');
+    const postSpy = vi.spyOn(Api2, 'grantPermission');
     await openFor();
     await fillIn();
 
@@ -251,11 +252,11 @@ describe('AddPermissionModal', () => {
 
   test('should clear the error when retrying and close once the retry succeeds', async () => {
     let finishRetry: () => void = () => {};
-    vi.spyOn(Api2, 'postRoleAssignment')
+    vi.spyOn(Api2, 'grantPermission')
       .mockRejectedValueOnce(new Error('500'))
       .mockReturnValueOnce(
         new Promise((resolve) => {
-          finishRetry = () => resolve({ data: {} as UserRoleAssignment });
+          finishRetry = () => resolve({ data: {} as RoleAssignmentGrantResult });
         }),
       );
     await openFor();
@@ -274,7 +275,7 @@ describe('AddPermissionModal', () => {
   });
 
   test('should start empty each time it is opened', async () => {
-    vi.spyOn(Api2, 'postRoleAssignment').mockRejectedValue(new Error('500'));
+    vi.spyOn(Api2, 'grantPermission').mockRejectedValue(new Error('500'));
     await openFor();
     await fillIn();
     await userEvent.click(submitButton());
@@ -295,7 +296,7 @@ describe('AddPermissionModal', () => {
 
   test('should report a failure as a global error when the modal was closed during the save', async () => {
     let fail: () => void = () => {};
-    vi.spyOn(Api2, 'postRoleAssignment').mockReturnValue(
+    vi.spyOn(Api2, 'grantPermission').mockReturnValue(
       new Promise((_resolve, reject) => {
         fail = () => reject(new Error('500'));
       }),

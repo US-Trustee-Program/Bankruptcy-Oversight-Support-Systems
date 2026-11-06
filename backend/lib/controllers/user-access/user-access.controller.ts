@@ -2,7 +2,7 @@ import { CamsRole } from '@common/cams/roles';
 import {
   CamsUserWithPermissions,
   RoleAssignmentGrantRequest,
-  UserRoleAssignment,
+  RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
@@ -36,20 +36,16 @@ export class UserAccessController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<CamsUserWithPermissions[] | UserRoleAssignment>> {
+  ): Promise<CamsHttpResponseInit<CamsUserWithPermissions[] | RoleAssignmentGrantResult>> {
     try {
       this.requireAccess(context);
 
-      const { method } = context.request;
-      const { resource } = context.request.params;
+      const { method, params } = context.request;
 
-      if (method === 'GET' && resource === 'users') {
+      if (method === 'GET' && params.resource === 'users') {
         return await this.getUsers(context);
-      } else if (method === 'POST' && resource === 'assignments') {
-        // The use case validates the body before using it.
-        const body = context.request.body as RoleAssignmentGrantRequest;
-        const data = await this.useCase.createAssignment(context, body);
-        return httpSuccess({ statusCode: 201, body: { data } });
+      } else if (method === 'PUT' && params.role) {
+        return await this.grantPermission(context);
       } else {
         throw new BadRequestError(MODULE_NAME, { message: 'Unsupported HTTP Method' });
       }
@@ -67,6 +63,22 @@ export class UserAccessController implements CamsController {
     ) {
       throw new ForbiddenError(MODULE_NAME);
     }
+  }
+
+  /** PUT users/:userId/permissions/:role/:regionId/:officeCode, with { reason } in the body. */
+  private async grantPermission(context: ApplicationContext) {
+    const { userId, role, regionId, officeCode } = context.request.params;
+    const body = context.request.body as { reason?: unknown } | undefined;
+    // The use case validates the request before using it.
+    const request = {
+      userId,
+      role,
+      regionId,
+      officeCode,
+      reason: body?.reason,
+    } as RoleAssignmentGrantRequest;
+    const { result, created } = await this.useCase.grantPermission(context, request);
+    return httpSuccess({ statusCode: created ? 201 : 200, body: { data: result } });
   }
 
   private async getUsers(context: ApplicationContext) {

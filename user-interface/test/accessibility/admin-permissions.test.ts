@@ -59,7 +59,7 @@ test.describe('Administration > Permissions', () => {
       await firstOption.click();
       await expect(page.locator(`#add-permission-modal-${field}-item-list`)).toBeHidden();
     }
-    // The fake API rejects a grant with this reason (mock-api2.ts postRoleAssignment).
+    // The fake API rejects a grant with this reason (mock-api2.ts grantPermission).
     const reason = page.locator('#textarea-add-permission-modal-reason');
     await reason.click();
     await reason.fill('Fail this save');

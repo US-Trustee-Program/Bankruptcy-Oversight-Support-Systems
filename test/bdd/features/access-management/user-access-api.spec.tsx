@@ -19,7 +19,8 @@ import '../../helpers/driver-mocks';
 /**
  * Feature: IT SuperUser grants a role in an office (CAMS-940, Slice 1) — API level
  *
- * These scenarios exercise GET /api/user-access/users and POST /api/user-access/assignments
+ * These scenarios exercise GET /api/user-access/users and
+ * PUT /api/user-access/users/:userId/permissions/:role/:regionId/:officeCode
  * through the real Express server, use cases and controllers, with only the Okta group and
  * the Mongo repositories spied. The Permissions screen scenarios are covered with the UI.
  */
@@ -70,6 +71,17 @@ function api(session: CamsSession, path: string, init: RequestInit = {}) {
       ...init.headers,
     },
   });
+}
+
+/** PUT the grant of Trial Attorney (by default) in the Manhattan office to Sarah. */
+function grant(
+  session: CamsSession,
+  { reason = GRANT_REASON, regionId = MANHATTAN.regionId, officeCode = MANHATTAN.officeCode } = {},
+) {
+  const path = ['users', SARAH.id, 'permissions', CamsRole.TrialAttorney, regionId, officeCode]
+    .map(encodeURIComponent)
+    .join('/');
+  return api(session, path, { method: 'PUT', body: JSON.stringify({ reason }) });
 }
 
 function setupFor(session: CamsSession) {
@@ -167,21 +179,13 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
     const maria = TestSessions.superUser();
     const state = await setupFor(maria).withCamsUsers([SARAH, ALEX]).setUpBackend();
 
-    const response = await api(maria, 'assignments', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: SARAH.id,
-        role: CamsRole.TrialAttorney,
-        officeCode: MANHATTAN.officeCode,
-        reason: GRANT_REASON,
-      }),
-    });
+    const response = await grant(maria);
     const body = await response.json();
 
     expect(response.status).toBe(201);
     expect(state.getRoleAssignments()).toHaveLength(1);
     const [assignment] = state.getRoleAssignments();
-    expect(body.data).toEqual(assignment);
+    expect(body.data).toEqual({ permission: assignment, replaced: [] });
     expect(assignment).toEqual(
       expect.objectContaining({
         documentType: 'USER_ROLE_ASSIGNMENT',
@@ -217,15 +221,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
     const maria = TestSessions.superUser();
     const state = await setupFor(maria).withCamsUsers([SARAH]).setUpBackend();
 
-    const response = await api(maria, 'assignments', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: SARAH.id,
-        role: CamsRole.TrialAttorney,
-        officeCode: MANHATTAN.officeCode,
-        reason: '   ',
-      }),
-    });
+    const response = await grant(maria, { reason: '   ' });
 
     expect(response.status).toBe(400);
     expect((await response.json()).message).toMatch(/reason is required/i);
@@ -260,18 +256,110 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       .setUpBackend();
 
     const list = await api(user, 'users');
-    const grant = await api(user, 'assignments', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: SARAH.id,
-        role: CamsRole.TrialAttorney,
-        officeCode: MANHATTAN.officeCode,
-        reason: GRANT_REASON,
-      }),
-    });
+    const granted = await grant(user);
 
     expect(list.status).toBe(403);
-    expect(grant.status).toBe(403);
+    expect(granted.status).toBe(403);
+    expect(state.getRoleAssignments()).toEqual([]);
+    expect(state.getRoleAssignmentAudits()).toEqual([]);
+  });
+
+  /**
+   * Scenario: Granting a permission the user already holds changes nothing
+   *
+   * GIVEN Sarah has an active Trial Attorney permission for "2 - Manhattan"
+   * WHEN Maria grants Sarah Trial Attorney for "2 - Manhattan" again
+   * THEN the API answers 200 with the permission Sarah already holds
+   * AND no USER_ROLE_ASSIGNMENT or ROLE_ASSIGNMENT_AUDIT is written
+   */
+  test('should change nothing when Sarah already holds the permission', async () => {
+    const maria = TestSessions.superUser();
+    const held = permission(SARAH.id, MANHATTAN);
+    const state = await setupFor(maria)
+      .withCamsUsers([SARAH])
+      .withRoleAssignments([held])
+      .setUpBackend();
+
+    const response = await grant(maria);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({ permission: held, replaced: [] });
+    expect(state.getRoleAssignments()).toEqual([held]);
+    expect(state.getRoleAssignmentAudits()).toEqual([]);
+  });
+
+  /**
+   * Scenario: Two admins granting the same permission at once both succeed
+   *
+   * GIVEN another SuperUser's grant of Trial Attorney in Manhattan to Sarah was saved a moment ago,
+   *   after Maria's request had already looked for it
+   * WHEN Maria's grant is written
+   * THEN the database's unique index stops a second copy, and Maria still gets success (200)
+   * AND Sarah has exactly one active Trial Attorney permission for Manhattan, with no new audit
+   */
+  test('should treat a permission another grant saved a moment ago as already held', async () => {
+    const maria = TestSessions.superUser();
+    const savedByOtherAdmin = permission(SARAH.id, MANHATTAN);
+    const state = await setupFor(maria)
+      .withCamsUsers([SARAH])
+      .withRoleAssignments([savedByOtherAdmin])
+      .setUpBackend();
+    const { UserRoleAssignmentMongoRepository } =
+      await import('../../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
+    // Maria's first look happens before the other admin's grant lands.
+    vi.spyOn(
+      UserRoleAssignmentMongoRepository.prototype,
+      'findActiveByUserAndRole',
+    ).mockImplementationOnce(async () => []);
+
+    const response = await grant(maria);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({
+      permission: savedByOtherAdmin,
+      replaced: [],
+    });
+    expect(state.getRoleAssignments()).toEqual([savedByOtherAdmin]);
+    expect(state.getRoleAssignmentAudits()).toEqual([]);
+  });
+
+  /**
+   * Scenario: The same role in a different office is not a duplicate
+   * (and neither is a different role in the same office)
+   */
+  test.each([
+    { case: 'Trial Attorney in Buffalo', held: () => permission(SARAH.id, BUFFALO) },
+    {
+      case: 'Data Verifier in Manhattan',
+      held: () => permission(SARAH.id, MANHATTAN, CamsRole.DataVerifier),
+    },
+  ])('should grant Trial Attorney in Manhattan when Sarah holds only $case', async ({ held }) => {
+    const maria = TestSessions.superUser();
+    const existing = held();
+    const state = await setupFor(maria)
+      .withCamsUsers([SARAH])
+      .withRoleAssignments([existing])
+      .setUpBackend();
+
+    const response = await grant(maria);
+
+    expect(response.status).toBe(201);
+    expect(state.getRoleAssignments()).toHaveLength(2);
+    expect(state.getRoleAssignments()).toContainEqual(existing);
+    expect(state.getRoleAssignmentAudits()).toHaveLength(1);
+  });
+
+  test.each([
+    { case: 'an office outside the given region', change: { regionId: SEATTLE.regionId } },
+    { case: 'every office in a region (not yet)', change: { officeCode: 'all' } },
+    { case: 'every region (not yet)', change: { regionId: 'all', officeCode: 'all' } },
+  ])('should reject a grant for $case with a 400 and save nothing', async ({ change }) => {
+    const maria = TestSessions.superUser();
+    const state = await setupFor(maria).withCamsUsers([SARAH]).setUpBackend();
+
+    const response = await grant(maria, change);
+
+    expect(response.status).toBe(400);
     expect(state.getRoleAssignments()).toEqual([]);
     expect(state.getRoleAssignmentAudits()).toEqual([]);
   });
@@ -295,15 +383,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
     const { LoggerImpl } = await import('../../../../backend/lib/adapters/services/logger.service');
     const errorSpy = vi.spyOn(LoggerImpl.prototype, 'error');
 
-    const response = await api(maria, 'assignments', {
-      method: 'POST',
-      body: JSON.stringify({
-        userId: SARAH.id,
-        role: CamsRole.TrialAttorney,
-        officeCode: MANHATTAN.officeCode,
-        reason: GRANT_REASON,
-      }),
-    });
+    const response = await grant(maria);
 
     expect(response.status).toBe(201);
     expect(state.getRoleAssignments()).toHaveLength(1);

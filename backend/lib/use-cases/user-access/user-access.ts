@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
+  ALL_SCOPE,
+  RoleAssignmentGrantResult,
   CamsUsersPredicate,
   CamsUserWithPermissions,
   RoleAssignmentAuditEntry,
@@ -13,6 +15,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import { flatten, validateObject } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { RoleAssignmentAuditRepository, UserRoleAssignmentRepository } from '../gateways.types';
 
@@ -73,14 +76,23 @@ export class UserAccessUseCase {
     return { data, totalCount: members.length };
   }
 
-  async createAssignment(
+  /**
+   * Grants a permission. Granting one the user already holds changes nothing: no permission, audit
+   * record or telemetry is written, and `created` is false.
+   */
+  async grantPermission(
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
-  ): Promise<UserRoleAssignment> {
+  ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
     const validation = validateObject(roleAssignmentGrantRequestSpec, request);
     if (!validation.valid) {
       const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
       throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
+    }
+    if (request.regionId === ALL_SCOPE || request.officeCode === ALL_SCOPE) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Region-wide and national grants are not available yet.',
+      });
     }
 
     const member = (await this.getMembers(context)).find((m) => m.id === request.userId);
@@ -92,6 +104,15 @@ export class UserAccessUseCase {
     const office = offices.find((o) => o.officeCode === request.officeCode);
     if (!office) {
       throw new BadRequestError(MODULE_NAME, { message: 'The office does not exist.' });
+    }
+    if (office.regionId !== request.regionId) {
+      throw new BadRequestError(MODULE_NAME, { message: 'The office is not in that region.' });
+    }
+
+    const activeKey = activeKeyFor(request.role, office.regionId, office.officeCode);
+    const held = await this.findHeld(member.id, request.role, activeKey);
+    if (held) {
+      return { result: { permission: held, replaced: [] }, created: false };
     }
 
     const performer = getCamsUserReference(context.session.user);
@@ -110,9 +131,17 @@ export class UserAccessUseCase {
       assignedAt: now,
       expiresAt: null,
       active: true,
-      activeKey: activeKeyFor(request.role, office.regionId, office.officeCode),
+      activeKey,
     };
     const created = await this.assignmentRepository.create(assignment);
+    if (!created) {
+      // Another grant wrote the same permission between our read and our write.
+      const written = await this.findHeld(member.id, request.role, activeKey);
+      if (!written) {
+        throw new CamsError(MODULE_NAME, { message: 'Unable to create role assignment.' });
+      }
+      return { result: { permission: written, replaced: [] }, created: false };
+    }
 
     const newState = {
       role: created.role,
@@ -150,7 +179,16 @@ export class UserAccessUseCase {
 
     this.trackAudit(context, audit);
 
-    return created;
+    return { result: { permission: created, replaced: [] }, created: true };
+  }
+
+  private async findHeld(
+    userId: string,
+    role: RoleAssignmentGrantRequest['role'],
+    activeKey: string,
+  ): Promise<UserRoleAssignment | undefined> {
+    const permissions = await this.assignmentRepository.findActiveByUserAndRole(userId, role);
+    return permissions.find((permission) => permission.activeKey === activeKey);
   }
 
   private async getMembers(context: ApplicationContext): Promise<CamsUserReference[]> {
