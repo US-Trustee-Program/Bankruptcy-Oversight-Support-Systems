@@ -38,6 +38,12 @@ on:
         required: true
       OKTA_PASSWORD:
         required: true
+      # The shared SuperUser account, for the Permissions e2e spec. Optional: without it that spec
+      # does not run.
+      OKTA_SUPERUSER_USER_NAME:
+        required: false
+      OKTA_SUPERUSER_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -236,6 +242,8 @@ jobs:
           WEBAPP_NAME: ${{ inputs.webappName }}
           OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
           OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
+          OKTA_SUPERUSER_USER_NAME: ${{ secrets.OKTA_SUPERUSER_USER_NAME }} # pragma: allowlist secret
+          OKTA_SUPERUSER_PASSWORD: ${{ secrets.OKTA_SUPERUSER_PASSWORD }} # pragma: allowlist secret
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
@@ -274,6 +282,8 @@ jobs:
             -e CAMS_LOGIN_PROVIDER="${{ env.CAMS_LOGIN_PROVIDER }}" \
             -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
             -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
+            -e OKTA_SUPERUSER_USER_NAME="${OKTA_SUPERUSER_USER_NAME}" \
+            -e OKTA_SUPERUSER_PASSWORD="${OKTA_SUPERUSER_PASSWORD}" \
             -e CI=true \
             "${{ env.PLAYWRIGHT_IMAGE }}" \
             npx playwright test --reporter=list,html

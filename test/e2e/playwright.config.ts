@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import {
+  isSuperUserLoginConfigured,
+  SUPERUSER_AUTH_FILE,
+  SUPERUSER_SPECS,
+} from './playwright/superuser';
 
 /**
  * Read environment variables from file.
@@ -44,13 +49,32 @@ export default defineConfig({
   projects: [
     {
       name: 'setup',
-      testMatch: '*setup.ts',
+      testMatch: 'auth-setup.ts',
+      // A trace records the password typed into Okta, and the CI report is a public artifact.
+      use: { trace: 'off' },
     },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: 'playwright/.auth/user.json' },
       dependencies: ['setup'],
+      testIgnore: SUPERUSER_SPECS,
     },
+    // The SuperUser specs run only when the shared SuperUser account can sign in.
+    ...(isSuperUserLoginConfigured()
+      ? [
+          {
+            name: 'superuser-setup',
+            testMatch: 'superuser-auth-setup.ts',
+            use: { trace: 'off' as const },
+          },
+          {
+            name: 'chromium-superuser',
+            use: { ...devices['Desktop Chrome'], storageState: SUPERUSER_AUTH_FILE },
+            dependencies: ['superuser-setup'],
+            testMatch: SUPERUSER_SPECS,
+          },
+        ]
+      : []),
 
     // Microsoft Edge is not available in the Playwright Docker image
     // Only Chromium, Firefox, and WebKit are pre-installed

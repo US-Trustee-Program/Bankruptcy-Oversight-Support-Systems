@@ -51,6 +51,9 @@ const COLLECTIONS = [
   'trustee-match-verification',
   'trustees',
   'user-groups',
+  // Cleared each run so the Permissions spec's grants never collide with a previous run's.
+  'user-role-assignments',
+  'role-assignment-audit',
 ];
 
 type MongoDocument = Record<string, unknown>;
@@ -283,6 +286,17 @@ async function ensureTrusteeMatchVerificationIndex(db: ReturnType<MongoClient['d
     .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
 }
 
+/**
+ * Mirrors the unique {userId, activeKey} index from cosmos-collections.bicep
+ * (userRoleAssignmentsCollection), so a duplicate grant is rejected in e2e as it
+ * is in Cosmos.
+ */
+async function ensureUserRoleAssignmentIndex(db: ReturnType<MongoClient['db']>) {
+  await db
+    .collection('user-role-assignments')
+    .createIndex({ userId: 1, activeKey: 1 }, { unique: true });
+}
+
 async function main() {
   const fixturePath = resolve(__dirname, '../fixtures/mongo-fixture.json');
 
@@ -318,6 +332,7 @@ async function main() {
     console.log(`[${MODULE_NAME}] ✓ Collections cleared`);
 
     await ensureTrusteeMatchVerificationIndex(db);
+    await ensureUserRoleAssignmentIndex(db);
 
     const scenarios = resolveFindingsScenarios(
       fixture.collections['trustee-match-verification'] ?? [],
