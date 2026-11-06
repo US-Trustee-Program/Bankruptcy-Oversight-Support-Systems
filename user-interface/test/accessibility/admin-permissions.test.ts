@@ -52,14 +52,21 @@ test.describe('Administration > Permissions', () => {
   }) => {
     await openAddPermissionModal(page);
     // Wait for each list to close before moving on; otherwise typing can land in the open ComboBox.
-    for (const field of ['role', 'office']) {
+    // Pick options by value, not position: Super User would remove the office field.
+    const choices = [
+      { field: 'role', value: 'TrialAttorney' },
+      { field: 'office', value: 'USTP_CAMS_Region_2_Office_Manhattan' },
+    ];
+    for (const { field, value } of choices) {
       await page.locator(`#add-permission-modal-${field}-combo-box-input`).click();
-      const firstOption = page.getByTestId(`add-permission-modal-${field}-option-item-0`);
-      await expect(firstOption).toBeVisible();
-      await firstOption.click();
+      const option = page.locator(
+        `#add-permission-modal-${field}-item-list li[data-value="${value}"]`,
+      );
+      await expect(option).toBeVisible();
+      await option.click();
       await expect(page.locator(`#add-permission-modal-${field}-item-list`)).toBeHidden();
     }
-    // The fake API rejects a grant with this reason (mock-api2.ts postRoleAssignment).
+    // The fake API rejects a grant with this reason (mock-api2.ts grantPermission).
     const reason = page.locator('#textarea-add-permission-modal-reason');
     await reason.click();
     await reason.fill('Fail this save');

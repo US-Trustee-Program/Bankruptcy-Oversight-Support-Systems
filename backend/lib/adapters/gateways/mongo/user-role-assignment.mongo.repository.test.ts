@@ -54,18 +54,12 @@ describe('UserRoleAssignmentMongoRepository', () => {
       expect(insertOne).toHaveBeenCalledWith(assignment, { useProvidedId: true });
     });
 
-    test('should throw a 400 when the user already has that active permission', async () => {
+    test('should return null, not throw, when the user already has that active permission', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
         new Error('Failed to insert item. E11000 duplicate key error collection'),
       );
 
-      await expect(repo.create(assignment)).rejects.toThrow(
-        expect.objectContaining({
-          message: 'This user already has that permission.',
-          status: 400,
-          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
-        }),
-      );
+      await expect(repo.create(assignment)).resolves.toBeNull();
     });
 
     test('should throw a CamsError when the insert fails for another reason', async () => {
@@ -76,6 +70,73 @@ describe('UserRoleAssignmentMongoRepository', () => {
       await expect(repo.create(assignment)).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to create role assignment.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('deactivate', () => {
+    test("should mark the assignment inactive and free its activeKey, filtering on the user's shard key", async () => {
+      const updateOne = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+      const result = await repo.deactivate(assignment);
+
+      const doc = using<UserRoleAssignment>();
+      const deactivated = { ...assignment, active: false, activeKey: `inactive|${assignment.id}` };
+      expect(result).toEqual(deactivated);
+      expect(updateOne).toHaveBeenCalledWith(
+        and(doc('userId').equals(assignment.userId), doc('id').equals(assignment.id)),
+        { active: false, activeKey: `inactive|${assignment.id}` },
+      );
+    });
+
+    test('should throw a CamsError when the update fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.deactivate(assignment)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to deactivate role assignment.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('findActiveByUserAndRole', () => {
+    test("should query the user's active assignments for that role and return them", async () => {
+      const find = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([assignment]);
+
+      const result = await repo.findActiveByUserAndRole('user-1', CamsRole.TrialAttorney);
+
+      const doc = using<UserRoleAssignment>();
+      expect(result).toEqual([assignment]);
+      expect(find).toHaveBeenCalledWith(
+        and(
+          doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+          doc('userId').equals('user-1'),
+          doc('role').equals(CamsRole.TrialAttorney),
+          doc('active').equals(true),
+        ),
+      );
+    });
+
+    test('should throw a CamsError when the query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.findActiveByUserAndRole('user-1', CamsRole.TrialAttorney)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve role assignments.',
           status: 500,
           module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
         }),

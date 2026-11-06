@@ -27,8 +27,15 @@ export default async function handler(
 }
 
 app.http('user-access', {
-  methods: ['GET', 'POST'],
+  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
   route: 'user-access/{resource}',
+});
+
+app.http('user-access-permissions', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'user-access/users/{userId}/permissions/{role}/{regionId}/{officeCode}',
 });

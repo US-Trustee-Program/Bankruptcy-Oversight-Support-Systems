@@ -224,12 +224,18 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     expect(roles).toEqual(
       expect.arrayContaining(['Case Assignment Manager', 'Trial Attorney', 'Lead Trial Attorney']),
     );
+    expect(roles).toContain('Super User');
     expect(roles).not.toContain('Privileged Identity User');
-    // Super User grants arrive in Slice 3.
-    expect(roles).not.toContain('Super User');
 
+    // Region 18 has one office here, so it has no "All offices" option.
     const offices = (await expandOptions(OFFICE_ID)).map((option) => option.textContent);
-    expect(offices).toEqual(['2 - Buffalo', '2 - Manhattan', '18 - Seattle']);
+    expect(offices).toEqual([
+      'All regions',
+      '2 - All offices',
+      '2 - Buffalo',
+      '2 - Manhattan',
+      '18 - Seattle',
+    ]);
   });
 
   /**
@@ -426,5 +432,49 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
       ).toBeInTheDocument();
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SLICE 3: broader grants and replaced permissions on the screen
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Scenario: A broader grant replaces the narrower ones it covers (screen)
+   */
+  test('should grant a whole region, name the replaced permission and show the result', async () => {
+    await openPermissionsAs(TestSessions.superUser(), [permission(SARAH.id, MANHATTAN)]);
+    await screen.findByRole('heading', { name: '2 CAMS Users' });
+    await openAddPermissionFor('Sarah Williams');
+
+    await choose(ROLE_ID, 'Trial Attorney');
+    await choose(OFFICE_ID, '2 - All offices');
+    typeReason(REASON);
+    await userEvent.click(saveButton());
+
+    expect(
+      await screen.findByText(
+        'New permission successfully added to Sarah Williams. Their existing Region 2, Manhattan permission was replaced by Region 2, All.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(cellLines('Sarah Williams', 'Office')).toEqual(['All']));
+    expect(cellLines('Sarah Williams', 'Region')).toEqual(['2']);
+  });
+
+  /**
+   * Scenario: Grant the Super User role, which has no scope (screen)
+   */
+  test('should hide Region and Office for Super User and grant it', async () => {
+    await openPermissionsAs(TestSessions.superUser());
+    await screen.findByRole('heading', { name: '2 CAMS Users' });
+    await openAddPermissionFor('Sarah Williams');
+
+    await choose(ROLE_ID, 'Super User');
+
+    expect(document.querySelector(`#${OFFICE_ID}`)).not.toBeInTheDocument();
+    typeReason(REASON);
+    await userEvent.click(saveButton());
+    await waitFor(() => expect(cellLines('Sarah Williams', 'Role')).toEqual(['Super User']));
+    expect(cellLines('Sarah Williams', 'Region')).toEqual(['All']);
+    expect(cellLines('Sarah Williams', 'Office')).toEqual(['All']);
   });
 });

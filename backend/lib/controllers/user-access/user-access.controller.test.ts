@@ -8,6 +8,13 @@ import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-a
 import { BadRequestError } from '../../common-errors/bad-request';
 import * as FinalizeDeferrableModule from '../../deferrable/finalize-deferrable';
 
+const GRANT_PARAMS = {
+  userId: 'user-a',
+  role: CamsRole.TrialAttorney,
+  regionId: '2',
+  officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+};
+
 describe('UserAccessController', () => {
   let context: ApplicationContext;
 
@@ -50,19 +57,19 @@ describe('UserAccessController', () => {
     ])('should return 403 when $case', async ({ setup }) => {
       setup();
       const getSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
-      const createSpy = vi.spyOn(UserAccessUseCase.prototype, 'createAssignment');
+      const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
 
-      for (const [method, resource] of [
-        ['GET', 'users'],
-        ['POST', 'assignments'],
-      ]) {
-        context.request.method = method as 'GET' | 'POST';
-        context.request.params = { resource };
+      for (const [method, params] of [
+        ['GET', { resource: 'users' }],
+        ['PUT', GRANT_PARAMS],
+      ] as const) {
+        context.request.method = method;
+        context.request.params = { ...params };
         const error = await getTheThrownError(handle);
         expect(error).toEqual(expect.objectContaining({ status: 403 }));
       }
       expect(getSpy).not.toHaveBeenCalled();
-      expect(createSpy).not.toHaveBeenCalled();
+      expect(grantSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -143,33 +150,56 @@ describe('UserAccessController', () => {
     });
   });
 
-  describe('POST assignments', () => {
-    test('should create the assignment and respond 201 with it', async () => {
-      const body = {
-        userId: 'user-a',
-        role: CamsRole.TrialAttorney,
-        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        reason: 'New hire',
-      };
-      context.request.method = 'POST';
-      context.request.params = { resource: 'assignments' };
-      context.request.body = body;
+  describe('PUT a permission', () => {
+    const permission = assignment;
+
+    beforeEach(() => {
+      context.request.method = 'PUT';
+      context.request.params = { ...GRANT_PARAMS };
+      context.request.body = { reason: 'New hire', userId: 'ignored', role: 'ignored' };
+    });
+
+    test('should grant the permission named by the path, with the reason from the body', async () => {
       const spy = vi
-        .spyOn(UserAccessUseCase.prototype, 'createAssignment')
-        .mockResolvedValue(assignment);
+        .spyOn(UserAccessUseCase.prototype, 'grantPermission')
+        .mockResolvedValue({ result: { permission, replaced: [] }, created: true });
 
-      const response = await handle();
+      await handle();
 
-      expect(spy).toHaveBeenCalledWith(context, body);
-      expect(response.statusCode).toEqual(201);
-      expect(response.body).toEqual({ data: assignment });
+      expect(spy).toHaveBeenCalledWith(context, { ...GRANT_PARAMS, reason: 'New hire' });
+    });
+
+    test.each([
+      { created: true, statusCode: 201 },
+      { created: false, statusCode: 200 },
+    ])(
+      'should respond $statusCode with the result when created is $created',
+      async ({ created, statusCode }) => {
+        vi.spyOn(UserAccessUseCase.prototype, 'grantPermission').mockResolvedValue({
+          result: { permission, replaced: [] },
+          created,
+        });
+
+        const response = await handle();
+
+        expect(response.statusCode).toEqual(statusCode);
+        expect(response.body).toEqual({ data: { permission, replaced: [] } });
+      },
+    );
+
+    test('should pass an absent body to the use case as a missing reason', async () => {
+      context.request.body = undefined;
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'grantPermission')
+        .mockResolvedValue({ result: { permission, replaced: [] }, created: true });
+
+      await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, { ...GRANT_PARAMS, reason: undefined });
     });
 
     test('should pass through a 400 from the use case', async () => {
-      context.request.method = 'POST';
-      context.request.params = { resource: 'assignments' };
-      context.request.body = {};
-      vi.spyOn(UserAccessUseCase.prototype, 'createAssignment').mockRejectedValue(
+      vi.spyOn(UserAccessUseCase.prototype, 'grantPermission').mockRejectedValue(
         new BadRequestError('USER-ACCESS-USE-CASE', { message: 'A reason is required.' }),
       );
 
@@ -192,17 +222,25 @@ describe('UserAccessController', () => {
   });
 
   test.each([
-    { method: 'POST', resource: 'users' },
-    { method: 'GET', resource: 'assignments' },
-    { method: 'DELETE', resource: 'users' },
-    { method: 'GET', resource: 'other' },
-  ])('should return 400 for $method $resource', async ({ method, resource }) => {
+    { method: 'POST', params: { resource: 'assignments' } },
+    { method: 'POST', params: { resource: 'users' } },
+    { method: 'PUT', params: { resource: 'users' } },
+    { method: 'GET', params: GRANT_PARAMS },
+    { method: 'DELETE', params: { resource: 'users' } },
+    { method: 'GET', params: { resource: 'other' } },
+  ])('should return 400 for $method $params', async ({ method, params }) => {
     context.request.method = method as 'GET';
-    context.request.params = { resource };
+    context.request.params = { ...params };
+    const listSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
+    const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
 
     const error = await getTheThrownError(handle);
 
-    expect(error).toEqual(expect.objectContaining({ status: 400 }));
+    expect(error).toEqual(
+      expect.objectContaining({ status: 400, message: 'Unsupported HTTP Method' }),
+    );
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(grantSpy).not.toHaveBeenCalled();
   });
 
   test('should finalize deferred resources whether or not the request succeeds', async () => {

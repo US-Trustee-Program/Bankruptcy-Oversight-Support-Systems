@@ -1,6 +1,11 @@
 import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
+  ALL_SCOPE,
+  PermissionScope,
+  RoleAssignmentGrantResult,
+  scopeLabel,
+  scopesOverlap,
   CamsUsersPredicate,
   CamsUserWithPermissions,
   RoleAssignmentAuditEntry,
@@ -8,11 +13,14 @@ import {
   roleAssignmentGrantRequestSpec,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { CamsRole } from '@common/cams/roles';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { flatten, validateObject } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { RoleAssignmentAuditRepository, UserRoleAssignmentRepository } from '../gateways.types';
 
@@ -38,6 +46,84 @@ function byRegionThenOffice(a: UserRoleAssignment, b: UserRoleAssignment): numbe
     (a.regionId ?? '').localeCompare(b.regionId ?? '', undefined, numeric) ||
     (a.officeCode ?? '').localeCompare(b.officeCode ?? '', undefined, numeric)
   );
+}
+
+const DEACTIVATION_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_DEACTIVATION failed';
+
+function badRequest(message: string) {
+  return new BadRequestError(MODULE_NAME, { message });
+}
+
+/**
+ * Turns the path's region and office into a scope, checking them against the office list. Super
+ * User has no region or office; 'all' means every region or every office in the region.
+ */
+function resolveScope(
+  request: RoleAssignmentGrantRequest,
+  offices: UstpOfficeDetails[],
+): { scope: PermissionScope; officeName?: string } {
+  const everyRegion = request.regionId === ALL_SCOPE;
+  const everyOffice = request.officeCode === ALL_SCOPE;
+  if (request.role === CamsRole.SuperUser) {
+    if (!everyRegion || !everyOffice) throw badRequest('Super User has no region or office.');
+    return { scope: { regionId: null, officeCode: null } };
+  }
+  if (everyRegion) {
+    if (!everyOffice) throw badRequest('An office needs its region.');
+    return { scope: { regionId: null, officeCode: null } };
+  }
+  if (everyOffice) {
+    if (!offices.some((o) => o.regionId === request.regionId)) {
+      throw badRequest('The region does not exist.');
+    }
+    return { scope: { regionId: request.regionId, officeCode: null } };
+  }
+  const office = offices.find((o) => o.officeCode === request.officeCode);
+  if (!office) throw badRequest('The office does not exist.');
+  if (office.regionId !== request.regionId) throw badRequest('The office is not in that region.');
+  return {
+    scope: { regionId: office.regionId, officeCode: office.officeCode },
+    officeName: office.officeName,
+  };
+}
+
+function stateOf(assignment: UserRoleAssignment) {
+  return {
+    role: assignment.role,
+    regionId: assignment.regionId,
+    officeCode: assignment.officeCode,
+    active: assignment.active,
+  };
+}
+
+function auditEntry(
+  action: RoleAssignmentAuditEntry['action'],
+  assignment: UserRoleAssignment,
+  previousState: RoleAssignmentAuditEntry['previousState'],
+  newState: RoleAssignmentAuditEntry['newState'],
+  performer: CamsUserReference,
+  performedAt: string,
+  reason: string,
+): RoleAssignmentAuditEntry {
+  // The top-level role and scope are read from the state so the two can't disagree.
+  const { role, regionId, officeCode } = newState;
+  return {
+    documentType: 'ROLE_ASSIGNMENT_AUDIT',
+    id: randomUUID(),
+    assignmentId: assignment.id,
+    action,
+    userId: assignment.userId,
+    userName: assignment.userName,
+    role,
+    regionId,
+    officeCode,
+    performedBy: performer.id,
+    performedByName: performer.name,
+    performedAt,
+    previousState,
+    newState,
+    reason,
+  };
 }
 
 export class UserAccessUseCase {
@@ -73,10 +159,16 @@ export class UserAccessUseCase {
     return { data, totalCount: members.length };
   }
 
-  async createAssignment(
+  /**
+   * Grants a permission and converges: afterwards the user holds it, and no other active permission
+   * for that role whose scope overlaps it (each replaced one is deactivated with its own audit
+   * record). Granting a permission the user already holds writes nothing new, but still replaces
+   * any overlapping permission left behind by an earlier, partly failed grant.
+   */
+  async grantPermission(
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
-  ): Promise<UserRoleAssignment> {
+  ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
     const validation = validateObject(roleAssignmentGrantRequestSpec, request);
     if (!validation.valid) {
       const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
@@ -89,68 +181,96 @@ export class UserAccessUseCase {
     }
 
     const offices = await factory.getOfficesGateway(context).getOffices(context);
-    const office = offices.find((o) => o.officeCode === request.officeCode);
-    if (!office) {
-      throw new BadRequestError(MODULE_NAME, { message: 'The office does not exist.' });
-    }
-
+    const { scope, officeName } = resolveScope(request, offices);
+    const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
     const performer = getCamsUserReference(context.session.user);
     const now = new Date().toISOString();
-    const assignment: UserRoleAssignment = {
-      documentType: 'USER_ROLE_ASSIGNMENT',
-      id: randomUUID(),
-      userId: member.id,
-      userName: member.name,
-      email: member.email,
-      role: request.role,
-      regionId: office.regionId,
-      officeCode: office.officeCode,
-      assignedBy: performer.id,
-      assignedByName: performer.name,
-      assignedAt: now,
-      expiresAt: null,
-      active: true,
-      activeKey: activeKeyFor(request.role, office.regionId, office.officeCode),
-    };
-    const created = await this.assignmentRepository.create(assignment);
+    const reason = request.reason.trim();
 
-    const newState = {
-      role: created.role,
-      regionId: created.regionId,
-      officeCode: created.officeCode,
-      active: created.active,
-    };
-    // The top-level role and scope are read from newState so the two can't disagree.
-    const audit: RoleAssignmentAuditEntry = {
-      documentType: 'ROLE_ASSIGNMENT_AUDIT',
-      id: randomUUID(),
-      assignmentId: created.id,
-      action: 'CREATED',
-      userId: created.userId,
-      userName: created.userName,
-      role: newState.role,
-      regionId: newState.regionId,
-      officeCode: newState.officeCode,
-      performedBy: performer.id,
-      performedByName: performer.name,
-      performedAt: now,
-      previousState: null,
-      newState,
-      reason: request.reason.trim(),
-    };
+    let held = await this.assignmentRepository.findActiveByUserAndRole(member.id, request.role);
+    let permission = held.find((p) => p.activeKey === activeKey);
+    let created = false;
 
-    // The writes are sequential, not atomic: a failed audit write keeps the grant.
+    if (!permission) {
+      const assignment: UserRoleAssignment = {
+        documentType: 'USER_ROLE_ASSIGNMENT',
+        id: randomUUID(),
+        userId: member.id,
+        userName: member.name,
+        email: member.email,
+        role: request.role,
+        regionId: scope.regionId,
+        officeCode: scope.officeCode,
+        assignedBy: performer.id,
+        assignedByName: performer.name,
+        assignedAt: now,
+        expiresAt: null,
+        active: true,
+        activeKey,
+      };
+      const inserted = await this.assignmentRepository.create(assignment);
+      if (inserted) {
+        permission = inserted;
+        created = true;
+        await this.writeAudit(
+          context,
+          auditEntry('CREATED', inserted, null, stateOf(inserted), performer, now, reason),
+        );
+      } else {
+        // Another grant wrote the same permission between our read and our write.
+        held = await this.assignmentRepository.findActiveByUserAndRole(member.id, request.role);
+        permission = held.find((p) => p.activeKey === activeKey);
+        if (!permission) {
+          throw new CamsError(MODULE_NAME, { message: 'Unable to create role assignment.' });
+        }
+      }
+    }
+
+    const replaced: UserRoleAssignment[] = [];
+    const replacedReason = `Replaced by ${scopeLabel(scope, officeName)}: ${reason}`;
+    for (const overlapping of held) {
+      if (overlapping.activeKey === activeKey || !scopesOverlap(overlapping, scope)) continue;
+      let deactivated: UserRoleAssignment;
+      try {
+        deactivated = await this.assignmentRepository.deactivate(overlapping);
+      } catch (error) {
+        // The new permission stays; granting again finishes replacing the old ones.
+        context.logger.error(MODULE_NAME, `${DEACTIVATION_FAILED_MESSAGE}: ${error.message}`, {
+          grantedAssignmentId: permission.id,
+          replacedAssignmentId: overlapping.id,
+        });
+        throw new CamsError(MODULE_NAME, { message: 'Unable to replace an existing permission.' });
+      }
+      replaced.push(deactivated);
+      await this.writeAudit(
+        context,
+        auditEntry(
+          'DEACTIVATED',
+          overlapping,
+          stateOf(overlapping),
+          stateOf(deactivated),
+          performer,
+          now,
+          replacedReason,
+        ),
+      );
+    }
+
+    return { result: { permission, replaced }, created };
+  }
+
+  /** The writes are sequential, not atomic: a failed audit write keeps the change. */
+  private async writeAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry) {
+    let saved = true;
     try {
       await this.auditRepository.create(audit);
     } catch (error) {
+      saved = false;
       context.logger.error(MODULE_NAME, `${AUDIT_WRITE_FAILED_MESSAGE}: ${error.message}`, {
         audit,
       });
     }
-
-    this.trackAudit(context, audit);
-
-    return created;
+    this.trackAudit(context, audit, saved);
   }
 
   private async getMembers(context: ApplicationContext): Promise<CamsUserReference[]> {
@@ -178,14 +298,14 @@ export class UserAccessUseCase {
     return members;
   }
 
-  private trackAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry) {
+  private trackAudit(context: ApplicationContext, audit: RoleAssignmentAuditEntry, saved: boolean) {
     try {
       const trace = context.observability.startTrace(context.invocationId);
       context.observability.completeTrace(
         trace,
         'RoleAssignmentAudit',
         {
-          success: true,
+          success: saved,
           properties: {
             auditId: audit.id,
             assignmentId: audit.assignmentId,

@@ -244,6 +244,12 @@ export class TestState {
     this.roleAssignments.push(assignment);
   }
 
+  updateRoleAssignment(updated: UserRoleAssignment): void {
+    this.roleAssignments = this.roleAssignments.map((assignment) =>
+      assignment.id === updated.id ? updated : assignment,
+    );
+  }
+
   getRoleAssignmentAudits(): RoleAssignmentAuditEntry[] {
     return [...this.roleAssignmentAudits];
   }

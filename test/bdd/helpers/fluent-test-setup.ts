@@ -42,6 +42,7 @@ import type {
 import type { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import type { CamsUserReference } from '@common/cams/users';
 import type { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
+import { inactiveKeyFor } from '@common/cams/user-access';
 import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
@@ -770,11 +771,41 @@ export class TestSetup {
     const { RoleAssignmentAuditMongoRepository } =
       await import('../../../backend/lib/adapters/gateways/mongo/role-assignment-audit.mongo.repository');
 
+    // Like the unique {userId, activeKey} index: an exact duplicate of an active permission isn't
+    // written, and create reports that with null.
     vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'create').mockImplementation(
       async (assignment: UserRoleAssignment) => {
+        const duplicate = state
+          .getRoleAssignments()
+          .some(
+            (held) => held.userId === assignment.userId && held.activeKey === assignment.activeKey,
+          );
+        if (duplicate) return null;
         state.addRoleAssignment(assignment);
         return assignment;
       },
+    );
+    vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'deactivate').mockImplementation(
+      async (assignment: UserRoleAssignment) => {
+        const deactivated = {
+          ...assignment,
+          active: false,
+          activeKey: inactiveKeyFor(assignment.id),
+        };
+        state.updateRoleAssignment(deactivated);
+        return deactivated;
+      },
+    );
+    vi.spyOn(
+      UserRoleAssignmentMongoRepository.prototype,
+      'findActiveByUserAndRole',
+    ).mockImplementation(async (userId: string, role: string) =>
+      state
+        .getRoleAssignments()
+        .filter(
+          (assignment) =>
+            assignment.active && assignment.userId === userId && assignment.role === role,
+        ),
     );
     vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'findActiveByUserIds').mockImplementation(
       async (userIds: string[]) =>
