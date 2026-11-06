@@ -471,6 +471,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (same
     // exclusion as getTrusteeProfessionalRecordsPage) -- those codes have no real CMMPR row,
     // so without this filter the INNER JOIN below would silently drop their appointment rows.
+    //
+    // The CMMPR join is INNER, not LEFT OUTER, so it also narrows results for the legacy
+    // migrate-case-appointments.ts caller (no regionId/changeDate): a CMMAP row whose PROF_CODE
+    // has no matching CMMPR row (a data-quality orphan, not the sentinel range above) is now
+    // dropped instead of migrated with partial/empty trustee fields. Accepted: the one-time
+    // migration already completed, and this file is slated for deletion in Task 9 (cams-fd8qd.1.11).
     const query = `
       SELECT
         x.id,
@@ -523,6 +529,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           AND m.PROF_CODE < 98000
           AND m.APPT_TYPE = 'TR'
           AND c.DELETE_CODE != 'D'
+          AND p.DELETE_CODE != 'D'
           AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
             OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
           ${cutoffClause}
