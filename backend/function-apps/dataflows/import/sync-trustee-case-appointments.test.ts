@@ -22,7 +22,8 @@ const makeTrusteeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
   ({
     caseId,
     courtId: '081',
-    dxtrTrustee: {} as never,
+    source: 'DXTR',
+    sourceTrustee: {} as never,
   }) as TrusteeAppointmentSyncEvent;
 
 const makeEmptyScenarioDistribution = () => ({
@@ -548,7 +549,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     ({
       caseId,
       courtId: '081',
-      dxtrTrustee: { fullName: 'John Doe' },
+      sourceTrustee: { fullName: 'John Doe' },
     }) as TrusteeAppointmentSyncEvent;
 
   const makeHeavyEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
@@ -559,7 +560,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       chapter: '7',
       appointedDate: '2026-07-01T00:00:00Z',
       acmsProfessionalId: '081-999999',
-      dxtrTrustee: {
+      sourceTrustee: {
         firstName: 'Bartholomew',
         middleName: 'Alessandro',
         lastName: 'Winterbottom-Fitzgerald',
@@ -745,7 +746,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const invocationContext = makeInvocationContext();
     const oversizedEvent = {
       ...makeEvent('001-25-99999'),
-      dxtrTrustee: { fullName: 'x'.repeat(70_000) },
+      sourceTrustee: { fullName: 'x'.repeat(70_000) },
     } as TrusteeAppointmentSyncEvent;
     const events = [makeEvent('001-25-00000'), oversizedEvent, makeEvent('001-25-00001')];
 
@@ -813,8 +814,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const oversizedEvents = [
-      { ...makeEvent('001-25-00000'), dxtrTrustee: { fullName: 'x'.repeat(70_000) } },
-      { ...makeEvent('001-25-00001'), dxtrTrustee: { fullName: 'y'.repeat(70_000) } },
+      { ...makeEvent('001-25-00000'), sourceTrustee: { fullName: 'x'.repeat(70_000) } },
+      { ...makeEvent('001-25-00001'), sourceTrustee: { fullName: 'y'.repeat(70_000) } },
     ] as TrusteeAppointmentSyncEvent[];
 
     const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({

@@ -9,13 +9,16 @@ import {
   MigrateCaseAppointmentsState,
   HealCaseAppointmentsState,
   AcmsCaseAppointmentRecord,
-  AcmsCaseAppointmentRawRecord,
-  formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
-import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
-import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { DEFAULT_INVOCATION_BUDGET_MS, shouldEscape } from './invocation-budget';
+import {
+  formatAcmsDate,
+  rawToAppointmentRecord,
+  buildAppointmentFields,
+} from './acms-case-appointment.helpers';
 
 export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
   trusteeId: string | null; // null = no mapping found, skip write
@@ -44,41 +47,6 @@ let professionalIdMapCache: Map<string, string> | null = null;
 
 export function clearProfessionalIdMapCache(): void {
   professionalIdMapCache = null;
-}
-
-function formatAcmsDate(acmsDate: number): string {
-  const s = acmsDate.toString();
-  if (s.length !== 8 || acmsDate < 10000000) {
-    throw new Error(`Invalid ACMS date format: ${acmsDate}. Expected 8-digit YYYYMMDD.`);
-  }
-  const year = s.slice(0, 4);
-  const month = s.slice(4, 6);
-  const day = s.slice(6, 8);
-  const formatted = `${year}-${month}-${day}`;
-
-  const date = new Date(formatted);
-  if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== formatted) {
-    throw new Error(`Invalid date: ${formatted} from ACMS date ${acmsDate}`);
-  }
-
-  return formatted;
-}
-
-function rawToAppointmentRecord(raw: AcmsCaseAppointmentRawRecord): AcmsCaseAppointmentRecord {
-  return {
-    id: raw.id,
-    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
-    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
-    assignDate: raw.APPT_DATE,
-    apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
-    unassignDate: raw.DISP_DATE,
-    caseFiledDate: raw.CASE_FILED_DATE,
-    chapter: raw.CURR_CASE_CHAPT,
-    courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
-    closedByCourtDate: raw.CLOSED_BY_COURT_DATE,
-    closedByUstDate: raw.CLOSED_BY_UST_DATE,
-    reopenedDate: raw.REOPENED_DATE,
-  };
 }
 
 async function readMigrationState(
@@ -201,10 +169,6 @@ function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
   return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
 }
 
-function shouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number): boolean {
-  return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
-}
-
 /**
  * Handles a single record's write with 429 retry and escape-hatch detection.
  * Returns 'escape' when the next backoff sleep would exceed safeThresholdMs.
@@ -238,27 +202,6 @@ async function writeRecordWithRetry(
     await sleep(nextBackoffMs);
     attempt++;
   }
-}
-
-// Shared date/field mapping used by both the normal write path (writeRecord) and
-// the moved-case migration path (buildCaseAppointmentMigrationInput). Throws if
-// any ACMS date field is malformed, or if chapter is not a value CAMS recognizes
-// (e.g. 'AC') — callers are responsible for catching.
-function buildAppointmentFields(record: ResolvedAcmsRecord): Partial<CaseAppointmentInput> {
-  const closedDate = record.closedByCourtDate
-    ? formatAcmsDate(record.closedByCourtDate)
-    : record.closedByUstDate
-      ? formatAcmsDate(record.closedByUstDate)
-      : undefined;
-  return {
-    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
-    ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
-    ...(record.chapter ? { chapter: normalizeAcmsCaseChapter(record.chapter) } : {}),
-    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
-    ...(closedDate ? { closedDate } : {}),
-    ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
-  };
 }
 
 function buildCaseAppointmentMigrationInput(
@@ -369,7 +312,7 @@ async function writePage(
 }> {
   const {
     startedAt = Date.now(),
-    safeThresholdMs = SAFE_THRESHOLD_MS,
+    safeThresholdMs = DEFAULT_INVOCATION_BUDGET_MS,
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -565,7 +508,7 @@ async function updateHealState(
  * Processes documents in batches, resuming from cursor across invocations.
  * Filters to active (no unassignedOn) docs when comparing partitions.
  * Repairs by writing only to trustee partition, preserving existing case-partition ids.
- * Exits early if approaching SAFE_THRESHOLD_MS to stay within Function budget.
+ * Exits early if approaching DEFAULT_INVOCATION_BUDGET_MS to stay within Function budget.
  */
 async function heal(context: ApplicationContext): Promise<void> {
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -583,7 +526,7 @@ async function heal(context: ApplicationContext): Promise<void> {
   // Main loop: fetch batches and process
   while (true) {
     // Check timeout before processing each batch
-    if (Date.now() - healStartedAt >= SAFE_THRESHOLD_MS) {
+    if (shouldEscape(healStartedAt, DEFAULT_INVOCATION_BUDGET_MS, 0)) {
       logger.warn(
         MODULE_NAME,
         `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} lastId=${lastId}`,

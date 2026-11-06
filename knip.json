@@ -26,7 +26,10 @@
       ],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreFiles": ["function-apps/api/index.ts"]
+      "ignoreFiles": [
+        "function-apps/api/index.ts",
+        "lib/use-cases/dataflows/trustee-appointment-source.ts"
+      ]
     },
     "user-interface": {
       "entry": ["test/**/*.ts", "src/**/*.test.ts", "src/**/*.test.tsx"],

@@ -109,6 +109,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       return {
         caseId,
         courtId: '081',
+        source: 'DXTR',
         courtDivisionCode: '081',
         chapter: '7',
         // appointedDate must be present: applyResolvedTrustee now throws rather than falling
@@ -119,7 +120,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         // real fullName-only shape used to be) so each distinct fullName in this test file
         // produces a distinct trustee-variant fingerprint — otherwise every event sharing the
         // all-undefined structured-name fields would collide on the Slice 5 memoization bucket.
-        dxtrTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
+        sourceTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
       };
     };
 
@@ -291,7 +292,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       // whole page and send it to the native poison queue.
       const malformed = {
         ...makeEvent('case-002', 'Bad Event'),
-        dxtrTrustee: undefined,
+        sourceTrustee: undefined,
       } as unknown as TrusteeAppointmentSyncEvent;
       const events = [malformed, makeEvent('case-001', 'John Doe')];
 
@@ -627,7 +628,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', ''),
-            dxtrTrustee: { fullName: '' },
+            sourceTrustee: { fullName: '' },
           },
         ];
 
@@ -653,7 +654,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', ''),
-            dxtrTrustee: { fullName: '   ' },
+            sourceTrustee: { fullName: '   ' },
           },
         ];
 
@@ -670,7 +671,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', ''),
-            dxtrTrustee: { fullName: '', legacy: { address1: '123 Main St' } },
+            sourceTrustee: { fullName: '', legacy: { address1: '123 Main St' } },
           },
         ];
 
@@ -703,7 +704,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         'skips an event with profCode %s and no name/address at all',
         async (profCode) => {
           const events: TrusteeAppointmentSyncEvent[] = [
-            { ...makeEvent('case-001', ''), dxtrTrustee: { fullName: '' }, profCode },
+            { ...makeEvent('case-001', ''), sourceTrustee: { fullName: '' }, profCode },
           ];
 
           const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
@@ -726,7 +727,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', 'Jane Trustee Services'),
-              dxtrTrustee: {
+              sourceTrustee: {
                 fullName: 'Jane Trustee Services',
                 lastName: '   ',
               },
@@ -760,7 +761,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: bogusName, lastName: bogusName },
+              sourceTrustee: { fullName: bogusName, lastName: bogusName },
               profCode,
             },
           ];
@@ -786,7 +787,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: {
+              sourceTrustee: {
                 fullName: 'John Doe, Trustee',
                 lastName: 'Doe, Trustee',
                 legacy: {
@@ -833,7 +834,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', 'Jane A Example'),
-              dxtrTrustee: {
+              sourceTrustee: {
                 fullName: 'Jane A Example',
                 firstName: 'Jane',
                 lastName: 'Example',
@@ -864,7 +865,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: '', legacy: { phone: '555-555-5555' } },
+              sourceTrustee: { fullName: '', legacy: { phone: '555-555-5555' } },
               profCode,
             },
           ];
@@ -885,7 +886,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: '', legacy: { email: 'fake@example.com' } },
+              sourceTrustee: { fullName: '', legacy: { email: 'fake@example.com' } },
               profCode,
             },
           ];
@@ -910,7 +911,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', 'Jane A Example'),
-              dxtrTrustee: { fullName: 'Jane A Example' },
+              sourceTrustee: { fullName: 'Jane A Example' },
               profCode,
             },
           ];
@@ -929,7 +930,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', ''),
-            dxtrTrustee: { fullName: '' },
+            sourceTrustee: { fullName: '' },
             profCode: '12345',
           },
         ];
@@ -948,7 +949,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'Jane A Example'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Jane A Robert Trustee',
               firstName: 'Jane',
               lastName: 'Robert Trustee',
@@ -975,7 +976,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', 'Robert Trustee'),
-              dxtrTrustee: {
+              sourceTrustee: {
                 fullName: 'Robert Trustee',
                 firstName: 'Robert',
                 lastName: 'Trustee',
@@ -1020,7 +1021,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              sourceTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
               profCode: '00000',
             },
           ];
@@ -1048,7 +1049,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              sourceTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
               profCode: '00000',
             },
           ];
@@ -1074,7 +1075,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              sourceTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
               profCode: '00000',
             },
           ];
@@ -1103,7 +1104,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              sourceTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
               profCode: '00000',
             },
           ];
@@ -1128,7 +1129,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
-              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              sourceTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
               profCode: '00000',
               appointedDate: undefined,
             },
@@ -1183,7 +1184,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', bogusName),
-              dxtrTrustee: { fullName: bogusName, lastName: bogusName, legacy },
+              sourceTrustee: { fullName: bogusName, lastName: bogusName, legacy },
               profCode: '12345',
             },
           ];
@@ -1203,7 +1204,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'Robert E Eggmann III'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Robert E Eggmann III',
               firstName: 'Robert',
               lastName: 'Eggmann',
@@ -1231,7 +1232,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'Robert Trustee'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Robert Trustee',
               firstName: 'Robert',
               lastName: 'Trustee',
@@ -1259,7 +1260,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'Robert Trustee'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Robert Trustee',
               firstName: 'Robert',
               lastName: 'Trustee',
@@ -1282,7 +1283,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'Jane A Example'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Jane A Example',
               firstName: 'Jane',
               lastName: 'Example',
@@ -1307,7 +1308,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'CHAPTER 11 - LV'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'CHAPTER 11 - LV',
               lastName: 'CHAPTER 11 - LV',
               legacy: {
@@ -1338,7 +1339,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'CHAPTER 11 - LV'),
-            dxtrTrustee: { fullName: 'CHAPTER 11 - LV', lastName: 'CHAPTER 11 - LV' },
+            sourceTrustee: { fullName: 'CHAPTER 11 - LV', lastName: 'CHAPTER 11 - LV' },
             profCode: '00000',
             chapter: '11',
           },
@@ -1367,7 +1368,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'No Trustee'),
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'No Trustee',
               firstName: 'No',
               lastName: 'Trustee',
@@ -1421,7 +1422,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     describe('fingerprint hit/miss counters', () => {
       test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
         const event = makeEvent('case-001', 'John Doe');
-        const variant = buildVariant(event.dxtrTrustee);
+        const variant = buildVariant(event.sourceTrustee);
         const fingerprint = computeFingerprint(variant);
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
@@ -1442,7 +1443,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       test("a TRUSTEE_VARIATION bucket hit writes checks.matchedBy: 'variation' with matchedTrusteeAppointment from isAppointmentMatch", async () => {
         const event = makeEvent('case-001', 'John Doe');
-        const variant = buildVariant(event.dxtrTrustee);
+        const variant = buildVariant(event.sourceTrustee);
         const fingerprint = computeFingerprint(variant);
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
@@ -1481,7 +1482,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       test('tallies fingerprintHitCount/fingerprintMissCount correctly across a mixed batch', async () => {
         const hitEvent = makeEvent('case-001', 'Known Trustee');
         const missEvent = makeEvent('case-002', 'Unknown Trustee');
-        const hitVariant = buildVariant(hitEvent.dxtrTrustee);
+        const hitVariant = buildVariant(hitEvent.sourceTrustee);
         const hitFingerprint = computeFingerprint(hitVariant);
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockImplementation(
           async (fingerprint: string) =>
@@ -1872,7 +1873,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             ...makeEvent('case-001', 'Nobody Real'),
             profCode: '12345',
             groupDesignator: 'NY',
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Nobody Real',
               firstName: 'Nobody',
               lastName: 'Real',
@@ -1902,7 +1903,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             ...makeEvent('case-001', 'Nobody Real'),
             profCode: '99999',
             groupDesignator: 'NY',
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Nobody Real',
               firstName: 'Nobody',
               lastName: 'Real',
@@ -1928,7 +1929,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           {
             ...makeEvent('case-001', 'Nobody Real'),
             profCode: '12345',
-            dxtrTrustee: {
+            sourceTrustee: {
               fullName: 'Nobody Real',
               firstName: 'Nobody',
               lastName: 'Real',
@@ -2147,7 +2148,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(auditCalls[0][2]).toEqual(
         expect.objectContaining({
           caseId: 'case-001',
-          dxtrTrusteeName: 'John Doe',
+          sourceTrusteeName: 'John Doe',
           matchOutcome: 'auto-matched',
           matchedTrusteeId: 'trustee-123',
           appointmentStatus: 'active',
@@ -2356,8 +2357,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             caseId: 'case-999', // a different case already pending on this same fingerprint
             status: 'pending',
             mismatchReason: 'no match',
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',
             createdBy: { id: 'system', name: 'System' },
             updatedOn: '2025-01-01T00:00:00.000Z',
@@ -2397,8 +2398,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             caseId: 'case-999',
             status: 'pending',
             mismatchReason: 'no match',
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
             createdOn: '2025-01-01T00:00:00.000Z',
             createdBy: { id: 'system', name: 'System' },
             updatedOn: '2025-01-01T00:00:00.000Z',
@@ -2425,8 +2426,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             createdOn: '2025-01-01T00:00:00.000Z',
             updatedOn: '2025-01-01T00:00:00.000Z',
             updatedBy: { id: 'user-1', name: 'Operator' },
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
           },
         ]);
         (
@@ -2451,8 +2452,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             createdOn: '2025-01-01T00:00:00.000Z',
             updatedOn: '2025-01-01T00:00:00.000Z',
             updatedBy: { id: 'user-1', name: 'Operator' },
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
           },
         ]);
         (
@@ -2487,14 +2488,14 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     describe('parsedCityStateZip enrichment', () => {
-      // Enrichment mutates event.dxtrTrustee.legacy in place before matching runs, so these
+      // Enrichment mutates event.sourceTrustee.legacy in place before matching runs, so these
       // assert directly on the event object rather than on a downstream repo call — auto-matched
       // outcomes (the default mock setup in this describe block) no longer write a verification
       // doc at all, so that's no longer an available observation point.
       test('populates dxtrTrustee.legacy.parsedCityStateZip when cityStateZipCountry is parseable', async () => {
         const event: TrusteeAppointmentSyncEvent = {
           ...makeEvent('case-001', 'John Doe'),
-          dxtrTrustee: {
+          sourceTrustee: {
             fullName: 'John Doe',
             legacy: { cityStateZipCountry: 'New York, NY 10001' },
           },
@@ -2505,7 +2506,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           [event],
         );
 
-        expect(event.dxtrTrustee.legacy?.parsedCityStateZip).toEqual({
+        expect(event.sourceTrustee.legacy?.parsedCityStateZip).toEqual({
           city: 'New York',
           state: 'NY',
           zipCode: '10001',
@@ -2515,7 +2516,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       test('sets dxtrTrustee.legacy.parsedCityStateZip to null when cityStateZipCountry is present but unparseable', async () => {
         const event: TrusteeAppointmentSyncEvent = {
           ...makeEvent('case-001', 'John Doe'),
-          dxtrTrustee: {
+          sourceTrustee: {
             fullName: 'John Doe',
             legacy: { cityStateZipCountry: 'not a valid address' },
           },
@@ -2526,13 +2527,13 @@ describe('SyncTrusteeCaseAppointments', () => {
           [event],
         );
 
-        expect(event.dxtrTrustee.legacy?.parsedCityStateZip).toBeNull();
+        expect(event.sourceTrustee.legacy?.parsedCityStateZip).toBeNull();
       });
 
       test('leaves dxtrTrustee.legacy.parsedCityStateZip absent when there is no cityStateZipCountry', async () => {
         const event: TrusteeAppointmentSyncEvent = {
           ...makeEvent('case-001', 'John Doe'),
-          dxtrTrustee: {
+          sourceTrustee: {
             fullName: 'John Doe',
             legacy: { phone: '555-1234' },
           },
@@ -2543,7 +2544,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           [event],
         );
 
-        expect(event.dxtrTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
+        expect(event.sourceTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
       });
     });
 
@@ -2559,7 +2560,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           [event],
         );
 
-        const expectedVariant = buildVariant(event.dxtrTrustee);
+        const expectedVariant = buildVariant(event.sourceTrustee);
         const expectedFingerprint = computeFingerprint(expectedVariant);
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -2619,7 +2620,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledTimes(1);
 
         // Second sync run: the surrogate written above already exists for this fingerprint.
-        const expectedVariant = buildVariant(event.dxtrTrustee);
+        const expectedVariant = buildVariant(event.sourceTrustee);
         const expectedFingerprint = computeFingerprint(expectedVariant);
         (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
           [
@@ -2713,7 +2714,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           [event],
         );
 
-        const expectedFingerprint = computeFingerprint(buildVariant(event.dxtrTrustee));
+        const expectedFingerprint = computeFingerprint(buildVariant(event.sourceTrustee));
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
             caseId: 'case-001',
@@ -2743,8 +2744,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             createdOn: '2025-01-01T00:00:00.000Z',
             updatedOn: '2025-01-01T00:00:00.000Z',
             updatedBy: { id: 'user-1', name: 'Operator' },
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
           },
         ]);
 
@@ -2790,8 +2791,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             createdOn: '2025-01-01T00:00:00.000Z',
             updatedOn: '2025-01-01T00:00:00.000Z',
             updatedBy: { id: 'user-1', name: 'Operator' },
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            variant: buildVariant(event.sourceTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
           },
         ]);
 
@@ -2815,8 +2816,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           createdOn: '2025-01-01T00:00:00.000Z',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: { id: 'user-1', name: 'Operator' },
-          variant: buildVariant(event.dxtrTrustee),
-          fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          variant: buildVariant(event.sourceTrustee),
+          fingerprint: computeFingerprint(buildVariant(event.sourceTrustee)),
         },
       ]);
       (
@@ -2840,7 +2841,12 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockCasesGateway: Partial<CasesInterface>;
 
     const mockEvents: TrusteeAppointmentSyncEvent[] = [
-      { caseId: 'case-001', courtId: '081', dxtrTrustee: { fullName: 'Jane Doe' } },
+      {
+        caseId: 'case-001',
+        courtId: '081',
+        source: 'DXTR',
+        sourceTrustee: { fullName: 'Jane Doe' },
+      },
     ];
     const mockLatestSyncDate = '2025-01-15T00:00:00Z';
     const mockPetitionEvents: TrusteeAppointmentSyncEvent[] = [];
@@ -2971,7 +2977,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       const petitionEvent: TrusteeAppointmentSyncEvent = {
         caseId: 'case-002',
         courtId: '082',
-        dxtrTrustee: { fullName: 'Petition Trustee' },
+        source: 'DXTR',
+        sourceTrustee: { fullName: 'Petition Trustee' },
       };
       (mockCasesGateway.getTrusteePetitionEvents as ReturnType<typeof vi.fn>).mockResolvedValue({
         events: [petitionEvent],
@@ -3236,7 +3243,8 @@ describe('throwIfTransientSoftCloseFailure', () => {
     courtId: '081',
     courtDivisionCode: '081',
     chapter: '7',
-    dxtrTrustee: { fullName: 'Jane Doe' },
+    source: 'DXTR',
+    sourceTrustee: { fullName: 'Jane Doe' },
   };
   const existingAppointment = {
     caseId: 'case-001',
@@ -3356,7 +3364,8 @@ describe('createNewAppointment', () => {
       courtDivisionCode: '081',
       chapter: '7',
       appointedDate: '2023-01-02T00:00:00.000Z',
-      dxtrTrustee: { fullName: 'Jane Doe' },
+      source: 'DXTR',
+      sourceTrustee: { fullName: 'Jane Doe' },
     };
 
     await createNewAppointment(
@@ -3389,7 +3398,8 @@ const closeFixtureEvent: TrusteeAppointmentSyncEvent = {
   courtId: '081',
   courtDivisionCode: '081',
   chapter: '7',
-  dxtrTrustee: { fullName: 'Jane Doe' },
+  source: 'DXTR',
+  sourceTrustee: { fullName: 'Jane Doe' },
 };
 const closeFixtureExistingAppointment = {
   caseId: 'case-001',

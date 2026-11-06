@@ -73,7 +73,7 @@ type ScenarioDistribution = {
    */
   unappointableChapterSkippedCount: number;
   /**
-   * dxtrTrustee had NO usable demographics at all (blank name AND no other legacy/contact
+   * sourceTrustee had NO usable demographics at all (blank name AND no other legacy/contact
    * fields) — an event this sparse cannot be safely attributed to any trustee, since absent
    * demographics could describe any of them. Never routed to matching or verification; logged
    * loudly instead, so this genuine data-quality condition is visible without polluting a real
@@ -83,7 +83,7 @@ type ScenarioDistribution = {
   /**
    * event.profCode was a known sentinel value AND the record's name was itself a
    * bogus/administrative placeholder (isBogusTrusteeName) with no usable contact info either.
-   * Distinct from emptyDemographicsSkippedCount: this path can fire even though dxtrTrustee HAS a
+   * Distinct from emptyDemographicsSkippedCount: this path can fire even though sourceTrustee HAS a
    * populated name — the name is present but not a real identity.
    */
   sentinelBogusNameSkippedCount: number;
@@ -99,7 +99,7 @@ type ScenarioDistribution = {
 
 type MatchAuditEntry = {
   caseId: string;
-  dxtrTrusteeName: string;
+  sourceTrusteeName: string;
   matchOutcome:
     | 'auto-matched'
     | 'no-match'
@@ -818,7 +818,7 @@ async function resolveTrusteeViaPipeline(
   syncedCase: SyncedCase,
 ): Promise<IdentityResolution> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  const state = await runTrusteeMatchPipeline(deps.context, event.dxtrTrustee);
+  const state = await runTrusteeMatchPipeline(deps.context, event.sourceTrustee);
 
   // Rethrown unconditionally (not gated on isTransientInfraError) so it reaches
   // processOneEvent's one existing catch, which already classifies retryable vs DLQ — "error:
@@ -864,8 +864,8 @@ async function resolveTrusteeViaPipeline(
     audit.matchOutcome = 'no-match';
   }
   const isReVerification = await upsertIdentityTask(deps.verificationRepo, {
-    source: 'DXTR',
-    sourceTrustee: event.dxtrTrustee,
+    source: event.source,
+    sourceTrustee: event.sourceTrustee,
     mismatchReason: reason,
     findings,
     fingerprint,
@@ -1028,9 +1028,9 @@ function isUnappointableChapter(event: TrusteeAppointmentSyncEvent): boolean {
 }
 
 function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
-  const { dxtrTrustee } = event;
+  const { sourceTrustee } = event;
   const name = (
-    normalizeName(dxtrTrustee.lastName ?? '') || normalizeName(dxtrTrustee.fullName ?? '')
+    normalizeName(sourceTrustee.lastName ?? '') || normalizeName(sourceTrustee.fullName ?? '')
   ).toLowerCase();
   return BOGUS_TRUSTEE_NAME_KEYWORDS.some((keyword) => name.includes(keyword));
 }
@@ -1042,7 +1042,7 @@ function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
  */
 function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean {
   const hasBogusName = isBogusTrusteeName(event);
-  const hasFirstName = Boolean(normalizeName(event.dxtrTrustee.firstName ?? ''));
+  const hasFirstName = Boolean(normalizeName(event.sourceTrustee.firstName ?? ''));
   const isChapter11 = event.chapter === '11';
   const isSentinelProfCode =
     event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
@@ -1055,11 +1055,11 @@ function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean 
 }
 
 /**
- * True when dxtrTrustee.legacy carries any usable contact info — address, phone, or email.
+ * True when sourceTrustee.legacy carries any usable contact info — address, phone, or email.
  * Shared by resolveSkipReason and isSentinelWithNoIdentity so what counts as "usable contact"
  * can't diverge between the two.
  */
-function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['legacy']): boolean {
+function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['sourceTrustee']['legacy']): boolean {
   return Boolean(
     legacy?.address1 ||
     legacy?.address2 ||
@@ -1087,7 +1087,7 @@ type SkipReason =
 
 /**
  * Determines whether the case's chapter can never have a trustee appointment (see
- * isUnappointableChapter), dxtrTrustee carries no usable demographics at all, is a sentinel-coded
+ * isUnappointableChapter), sourceTrustee carries no usable demographics at all, is a sentinel-coded
  * record whose name is itself a bogus placeholder, or is a bogus administrative-office name with
  * no firstName (see isUnattributableBogusName). Checked before matchTrusteeByName in
  * processOneEvent: any condition means the event cannot be safely attributed to a trustee and
@@ -1098,9 +1098,9 @@ function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
     return 'unappointable-chapter';
   }
 
-  const { dxtrTrustee } = event;
-  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
-  const hasContact = hasUsableContact(dxtrTrustee.legacy);
+  const { sourceTrustee } = event;
+  const hasName = Boolean(normalizeName(sourceTrustee.fullName ?? ''));
+  const hasContact = hasUsableContact(sourceTrustee.legacy);
   if (!hasName && !hasContact) {
     return 'empty-demographics';
   }
@@ -1132,15 +1132,15 @@ function isSentinelWithNoIdentity(
   if (event.profCode !== sentinelProfCode) {
     return false;
   }
-  const { dxtrTrustee } = event;
-  const hasNoContact = !hasUsableContact(dxtrTrustee.legacy);
-  const hasNoName = !normalizeName(dxtrTrustee.fullName ?? '');
+  const { sourceTrustee } = event;
+  const hasNoContact = !hasUsableContact(sourceTrustee.legacy);
+  const hasNoName = !normalizeName(sourceTrustee.fullName ?? '');
   return hasNoContact && (hasNoName || isBogusTrusteeName(event));
 }
 
 /**
  * Short-circuits processOneEvent before any repo call is made when the case's chapter can never
- * have a trustee appointment ('unappointable-chapter'), dxtrTrustee has no usable demographics at
+ * have a trustee appointment ('unappointable-chapter'), sourceTrustee has no usable demographics at
  * all ('empty-demographics'), or is a non-sentinel record whose name is an administrative
  * placeholder with no firstName ('unattributable-bogus-name'). Returns null when none applies, so
  * the caller proceeds normally.
@@ -1334,18 +1334,18 @@ async function resolveSyncedCase(
 }
 
 /**
- * Parses event.dxtrTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
+ * Parses event.sourceTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
  * itself are present) and attaches the result as parsedCityStateZip, mutating event in place.
  * Pulled out of processOneEvent as a single-purpose step alongside that function's other
  * whole-procedure extractions, removing this branch's nesting/branching cost from the measured
  * function.
  */
 function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
-  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
-  if (!event.dxtrTrustee.legacy || !cityStateZipCountry) {
+  const cityStateZipCountry = event.sourceTrustee.legacy?.cityStateZipCountry;
+  if (!event.sourceTrustee.legacy || !cityStateZipCountry) {
     return;
   }
-  event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
+  event.sourceTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
 }
 
 /**
@@ -1377,12 +1377,12 @@ async function processOneEvent(
 
   parseAndAttachCityStateZip(event);
 
-  const variant = buildVariant(event.dxtrTrustee);
+  const variant = buildVariant(event.sourceTrustee);
   const fingerprint = computeFingerprint(variant);
 
   const audit: MatchAuditEntry = {
     caseId: event.caseId,
-    dxtrTrusteeName: event.dxtrTrustee.fullName,
+    sourceTrusteeName: event.sourceTrustee.fullName,
     matchOutcome: 'error',
     matchedTrusteeId: null,
     appointmentStatus: null,
@@ -1545,7 +1545,7 @@ async function processOneEventOrDlq(
  *   isUnappointableChapter): unappointable-chapter, skipped before matching
  *   (unappointableChapterSkippedCount) rather than creating a permanently-unapprovable
  *   verification task.
- * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
+ * - sourceTrustee has no usable demographics at all (blank name and no other legacy/contact
  *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
  *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
  *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /

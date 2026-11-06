@@ -6,11 +6,6 @@
 // Sentinel trustee ID for unmapped appointments
 export const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
 
-// Azure Function execution budget (matches host.json functionTimeout of 01:00:00).
-// Used as the upper bound for the writePage escape hatch calculation.
-// 4-minute safety buffer: 60 min - 4 min = 56 min
-export const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
-
 // Rows fetched from ACMS per handleStart continuation invocation.
 export const DEFAULT_FETCH_SIZE = 2500;
 // Upper bound — matches the original hardcoded value and the ACMS query timeout budget.

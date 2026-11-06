@@ -87,14 +87,22 @@ export type DxtrTrusteeParty = CanonicalTrusteeSource;
 /** Trustee professional data from ACMS's CMMPR (Professional Master File) table. */
 export type AcmsTrusteeProfessional = CanonicalTrusteeSource;
 
+/** Legacy system that produced a trustee appointment sync event. */
+export type TrusteeAppointmentSourceName = 'ACMS' | 'DXTR';
+
 /**
- * Event triggered when a trustee appointment is detected in DXTR.
+ * Event triggered when a trustee appointment is detected in a legacy source system (ACMS or DXTR).
  * Processed by sync-trustee-case-appointments dataflow to match and link trustees to cases.
  */
 export type TrusteeAppointmentSyncEvent = {
   caseId: string;
   courtId: string;
-  dxtrTrustee: DxtrTrusteeParty;
+  source: TrusteeAppointmentSourceName;
+  sourceTrustee: CanonicalTrusteeSource;
+  /** ACMS only: CAMS-formatted professional id for the trustee, when the source record has one. */
+  acmsProfessionalId?: string;
+  /** ISO date the trustee was unassigned from the case (ACMS DISP_DATE); absent while open. */
+  unassignedOn?: string;
   appointedDate?: string;
   error?: unknown;
   retryCount?: number;

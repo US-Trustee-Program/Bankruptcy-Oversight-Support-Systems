@@ -429,6 +429,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     lastId: number,
     pageSize: number,
     cutoffDate: string | null,
+    regionId?: string,
+    changeDate?: string,
   ): Promise<AcmsCaseAppointmentRawRecord[]> {
     const input: DbTableFieldSpec[] = [
       { name: 'lastId', type: mssql.BigInt, value: lastId },
@@ -445,10 +447,36 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
     }
 
-    // Paginate the CMMAP+CMMDB join first (inner query), then join CMMKE against
+    let regionClause = '';
+    if (regionId !== undefined) {
+      input.push({ name: 'regionId', type: mssql.Char, value: regionId });
+      regionClause = 'AND m.REGION_CODE = @regionId';
+    }
+
+    let changeDateClause = '';
+    if (changeDate !== undefined) {
+      const changeDateInt = parseInt(changeDate.replace(/-/g, ''), 10);
+      if (!Number.isFinite(changeDateInt)) {
+        throw new Error(`Invalid changeDate value: "${changeDate}"`);
+      }
+      input.push({ name: 'changeDate', type: mssql.Int, value: changeDateInt });
+      changeDateClause = 'AND m.CDB_UPDATE_DATE = @changeDate';
+    }
+
+    // Paginate the CMMAP+CMMDB+CMMPR join first (inner query), then join CMMKE against
     // only the paged rows. Without this subquery pattern the LEFT OUTER JOIN on
     // CMMKE — a table with millions of rows — must be evaluated before pagination,
     // causing SQL timeouts at scale.
+    //
+    // PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (same
+    // exclusion as getTrusteeProfessionalRecordsPage) -- those codes have no real CMMPR row,
+    // so without this filter the INNER JOIN below would silently drop their appointment rows.
+    //
+    // The CMMPR join is INNER, not LEFT OUTER, so it also narrows results for the legacy
+    // migrate-case-appointments.ts caller (no regionId/changeDate): a CMMAP row whose PROF_CODE
+    // has no matching CMMPR row (a data-quality orphan, not the sentinel range above) is now
+    // dropped instead of migrated with partial/empty trustee fields. Accepted: the one-time
+    // migration already completed, and this file is slated for deletion in Task 9 (cams-fd8qd.1.11).
     const query = `
       SELECT
         x.id,
@@ -463,6 +491,17 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.CURR_CASE_CHAPT,
         CASE WHEN x.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE x.CLOSED_BY_COURT_DATE END AS CLOSED_BY_COURT_DATE,
         CASE WHEN x.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE x.CLOSED_BY_UST_DATE END AS CLOSED_BY_UST_DATE,
+        x.REGION_CODE,
+        x.CDB_UPDATE_DATE,
+        x.PROF_FIRST_NAME,
+        x.PROF_LAST_NAME,
+        x.PROF_MI,
+        x.PROF_ADDRESS1,
+        x.PROF_ADDRESS2,
+        x.PROF_CITY,
+        x.PROF_STATE,
+        x.PROF_ZIP,
+        x.PROF_COMMERCIAL_PHONE_NBR,
         MAX(ke.ORIGINAL_OCC_DATE) AS REOPENED_DATE
       FROM (
         SELECT
@@ -470,21 +509,32 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
           m.GROUP_DESIGNATOR, m.PROF_CODE,
           m.APPT_DATE, m.DISP_DATE,
+          m.REGION_CODE, m.CDB_UPDATE_DATE,
           c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
-          c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
+          c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE,
+          p.PROF_FIRST_NAME, p.PROF_LAST_NAME, p.PROF_MI,
+          p.PROF_ADDRESS1, p.PROF_ADDRESS2, p.PROF_CITY, p.PROF_STATE,
+          p.PROF_ZIP, p.PROF_COMMERCIAL_PHONE_NBR
         FROM [dbo].[CMMAP] m
         INNER JOIN [dbo].[CMMDB] c
           ON m.CASE_DIV = c.CASE_DIV
           AND m.CASE_YEAR = c.CASE_YEAR
           AND m.CASE_NUMBER = c.CASE_NUMBER
+        INNER JOIN [dbo].[CMMPR] p
+          ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
+          AND m.PROF_CODE = p.UST_PROF_CODE
         WHERE m.id > @lastId
           AND m.DELETE_CODE != 'D'
           AND m.PROF_CODE > 0
+          AND m.PROF_CODE < 98000
           AND m.APPT_TYPE = 'TR'
           AND c.DELETE_CODE != 'D'
+          AND p.DELETE_CODE != 'D'
           AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
             OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
           ${cutoffClause}
+          ${regionClause}
+          ${changeDateClause}
         ORDER BY m.id
         OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY
       ) AS x
@@ -498,7 +548,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.id, x.CASE_DIV, x.CASE_YEAR, x.CASE_NUMBER,
         x.GROUP_DESIGNATOR, x.PROF_CODE, x.APPT_DATE, x.DISP_DATE,
         x.CASE_FILED_DATE, x.CURR_CASE_CHAPT,
-        x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE
+        x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE,
+        x.REGION_CODE, x.CDB_UPDATE_DATE,
+        x.PROF_FIRST_NAME, x.PROF_LAST_NAME, x.PROF_MI,
+        x.PROF_ADDRESS1, x.PROF_ADDRESS2, x.PROF_CITY, x.PROF_STATE,
+        x.PROF_ZIP, x.PROF_COMMERCIAL_PHONE_NBR
       ORDER BY x.id`;
 
     // Large fetch: set per-request timeout to ACMS_REQUEST_TIMEOUT_MS to accommodate

@@ -273,6 +273,20 @@ export type AcmsCaseAppointmentRawRecord = {
   CLOSED_BY_COURT_DATE: number | null;
   CLOSED_BY_UST_DATE: number | null;
   REOPENED_DATE: number | null;
+  // Region/change-date columns from CMMAP, used for the per-region ACMS source
+  REGION_CODE: string;
+  CDB_UPDATE_DATE: number;
+  // Trustee name/contact fields from the CMMPR join. No email column exists on CMMPR
+  // (confirmed against acms-schema) -- legacy.email stays undefined for ACMS.
+  PROF_FIRST_NAME: string;
+  PROF_LAST_NAME: string;
+  PROF_MI: string;
+  PROF_ADDRESS1: string;
+  PROF_ADDRESS2: string;
+  PROF_CITY: string;
+  PROF_STATE: string;
+  PROF_ZIP: number;
+  PROF_COMMERCIAL_PHONE_NBR: number;
 };
 
 /**
@@ -386,11 +400,19 @@ export interface AcmsGateway {
     groupDesignator: string,
     ustProfCode: number,
   ): Promise<AcmsActiveAppointment[]>;
+  /**
+   * regionId and changeDate are optional, additive WHERE filters (CMMAP.REGION_CODE and
+   * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, they leave
+   * the existing cutoffDate-scoped, all-regions behavior relied on by migrate-case-appointments.ts
+   * unchanged.
+   */
   getCmmapAppointmentsRaw(
     context: ApplicationContext,
     lastId: number,
     pageSize: number,
     cutoffDate: string | null,
+    regionId?: string,
+    changeDate?: string,
   ): Promise<AcmsCaseAppointmentRawRecord[]>;
 }
 
