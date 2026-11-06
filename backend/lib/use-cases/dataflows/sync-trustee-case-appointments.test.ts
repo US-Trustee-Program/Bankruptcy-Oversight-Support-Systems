@@ -2415,6 +2415,179 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(auditCalls).toHaveLength(3);
     });
 
+    describe("DISP_DATE closes an already-placeholder'd fingerprint (cams-fd8qd.1.9)", () => {
+      test('removes the open surrogate and writes no new task when the fingerprint is already unresolved', async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(0));
+
+        const event = { ...makeEvent('case-001', 'Ghost Trustee'), unassignedOn: '2026-09-01' };
+        const variant = buildVariant(event.sourceTrustee);
+        const fingerprint = computeFingerprint(variant);
+        const openSurrogate: CaseAppointment = {
+          id: 'surrogate-1',
+          caseId: 'case-001',
+          trusteeId: fingerprint,
+          assignedOn: '2024-01-15',
+          isSurrogate: true,
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
+          .fn()
+          .mockResolvedValue([openSurrogate]);
+        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.delete).toHaveBeenCalledWith('surrogate-1');
+        expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      });
+
+      test('ignores a surrogate for a different case on the same fingerprint', async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(0));
+
+        const event = { ...makeEvent('case-001', 'Ghost Trustee'), unassignedOn: '2026-09-01' };
+        const variant = buildVariant(event.sourceTrustee);
+        const fingerprint = computeFingerprint(variant);
+        const otherCaseSurrogate: CaseAppointment = {
+          id: 'surrogate-other-case',
+          caseId: 'case-999',
+          trusteeId: fingerprint,
+          assignedOn: '2024-01-15',
+          isSurrogate: true,
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
+          .fn()
+          .mockResolvedValue([otherCaseSurrogate]);
+        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.delete).not.toHaveBeenCalled();
+        // Falls through to the normal unresolved handling since there was nothing of this
+        // fingerprint's own to clean up on this case.
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
+      });
+
+      test('proceeds with normal unresolved handling when there is no existing surrogate to clean up', async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(0));
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
+
+        const event = { ...makeEvent('case-001', 'Ghost Trustee'), unassignedOn: '2026-09-01' };
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', isSurrogate: true }),
+        );
+      });
+
+      test('does not check for a surrogate to remove when the event carries no unassignedOn', async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(0));
+        const getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = getSurrogatesByFingerprint;
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'Ghost Trustee')],
+        );
+
+        expect(getSurrogatesByFingerprint).not.toHaveBeenCalled();
+      });
+
+      test('removes the open surrogate via the verification-bucket-hit short-circuit, not just the pipeline path', async () => {
+        // A pending verification bucket (from an earlier unresolved pass) short-circuits
+        // processOneEvent BEFORE resolveTrusteeViaPipeline ever runs -- this is the path the real
+        // harness scenario actually takes on its second pass, since the first pass's unresolved
+        // outcome already created this exact pending bucket entry.
+        const event = { ...makeEvent('case-001', 'Ghost Trustee'), unassignedOn: '2026-09-01' };
+        const variant = buildVariant(event.sourceTrustee);
+        const fingerprint = computeFingerprint(variant);
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { documentType: 'TRUSTEE_MATCH_VERIFICATION', fingerprint, variant, status: 'pending' },
+        ]);
+        const openSurrogate: CaseAppointment = {
+          id: 'surrogate-1',
+          caseId: 'case-001',
+          trusteeId: fingerprint,
+          assignedOn: '2024-01-15',
+          isSurrogate: true,
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
+          .fn()
+          .mockResolvedValue([openSurrogate]);
+        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.delete).toHaveBeenCalledWith('surrogate-1');
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).not.toHaveBeenCalled();
+      });
+
+      test('does not fire when the pipeline resolves the trustee (handled by cams-fd8qd.1.8 instead)', async () => {
+        const getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
+        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = getSurrogatesByFingerprint;
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-1',
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          assignedOn: '2024-01-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(existingAppointment);
+        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
+
+        const event = { ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-03-01' };
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(getSurrogatesByFingerprint).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'ca-1', unassignedOn: '2024-03-01' }),
+        );
+      });
+    });
+
     describe('TrusteeMatchVerification persistence', () => {
       test('upserts verification doc for an ambiguous outcome', async () => {
         (

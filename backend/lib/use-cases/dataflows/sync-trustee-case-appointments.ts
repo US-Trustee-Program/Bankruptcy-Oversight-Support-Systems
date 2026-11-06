@@ -866,6 +866,29 @@ type IdentityResolution =
  * isTransientInfraError/isTooManyRequestsError/isGatewayTimeoutError. Transient-error
  * classification happens exactly once, at processAppointments' own outer catch.
  */
+/**
+ * cams-fd8qd.1.9: removes the open surrogate placeholder for this case+fingerprint when an ACMS
+ * row with DISP_DATE arrives for an already-unresolved trustee. Returns whether an open surrogate
+ * was found and removed on THIS case — false means there was nothing of this fingerprint's own to
+ * clean up here (no surrogate yet for this case, only for a different one sharing the fingerprint,
+ * or none at all), so normal unresolved handling should proceed.
+ */
+async function removeOpenSurrogateForDisposedFingerprint(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  fingerprint: string,
+): Promise<boolean> {
+  const surrogates = await deps.caseAppointmentsRepo.getSurrogatesByFingerprint(fingerprint);
+  const openSurrogate = surrogates.find(
+    (appointment) => appointment.caseId === event.caseId && !appointment.unassignedOn,
+  );
+  if (!openSurrogate) {
+    return false;
+  }
+  await deps.caseAppointmentsRepo.delete(openSurrogate.id);
+  return true;
+}
+
 async function resolveTrusteeViaPipeline(
   ctx: MatchContext,
   syncedCase: SyncedCase,
@@ -902,6 +925,19 @@ async function resolveTrusteeViaPipeline(
       trusteeId: state.match.trusteeId,
       matchedBy: state.match.resolvedBy,
     };
+  }
+
+  if (event.unassignedOn) {
+    // cams-fd8qd.1.9: a CMMAP row for an already-placeholder'd fingerprint whose DISP_DATE has
+    // closed the appointment removes the open surrogate for this case+fingerprint and writes no
+    // new placeholder/task — the identity task itself is left in place (a later, still-unresolved
+    // row for the same contact details reuses it via upsertIdentityTask's existing-task check).
+    // No surrogate yet for this fingerprint on this case (its first-ever row arrived pre-closed)
+    // falls through to the normal unresolved handling below.
+    const removed = await removeOpenSurrogateForDisposedFingerprint(deps, event, fingerprint);
+    if (removed) {
+      return { outcome: 'handled' };
+    }
   }
 
   // Unresolved: the same rule the ACMS professional-id sync uses (deriveDisposition) — 2+
@@ -1340,7 +1376,15 @@ async function handleVerificationBucketHit(
     return false;
   }
 
-  await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  if (event.unassignedOn) {
+    // cams-fd8qd.1.9: a CMMAP row for an already-placeholder'd fingerprint whose DISP_DATE has
+    // closed the appointment removes the open surrogate for this case+fingerprint and writes no
+    // new placeholder — the identity task (and its 'pending' verification bucket entry) is left
+    // in place, reused by a later, still-unresolved row for the same contact details.
+    await removeOpenSurrogateForDisposedFingerprint(deps, event, fingerprint);
+  } else {
+    await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  }
   scenarioDistribution.verificationBucketHitCount++;
   audit.matchOutcome = 'verification-bucket-hit';
   deps.context.logger.info(
