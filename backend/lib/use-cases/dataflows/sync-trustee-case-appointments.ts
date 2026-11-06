@@ -578,6 +578,7 @@ function createDeps(context: ApplicationContext) {
     runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
     petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
+    professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
   };
 }
 
@@ -595,6 +596,24 @@ async function matchTrusteeByVariation(
 ): Promise<string | null> {
   const bucket = await deps.variationRepo.findByFingerprint(fingerprint);
   return findByVariant(bucket, variant)?.trusteeId ?? null;
+}
+
+/**
+ * Identification step 1 (see the .feature's identification-order header comment): an ACMS event
+ * whose acmsProfessionalId is linked (verified, disposition 'linked') to exactly one CAMS
+ * trustee resolves directly from that link. Returns null for a DXTR event (no acmsProfessionalId),
+ * no link, or an ambiguous link (2+ distinct trustees) -- an ambiguous link is deliberately not
+ * used here, falling through to variation/pipeline matching exactly like any other unresolved
+ * event (see the .feature's "An ambiguous professional-id link is not used").
+ */
+async function matchTrusteeByProfessionalId(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  acmsProfessionalId: string | undefined,
+): Promise<string | null> {
+  if (!acmsProfessionalId) return null;
+  const links = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+  const distinctTrusteeIds = new Set(links.map((link) => link.camsTrusteeId));
+  return distinctTrusteeIds.size === 1 ? links[0].camsTrusteeId : null;
 }
 
 /**
@@ -1277,13 +1296,13 @@ async function handleBogusTrusteeCloseOnly(
 async function handleVerificationBucketHit(
   ctx: MatchContext,
   syncedCase: SyncedCase,
-  variationTrusteeId: string | null,
+  // "Known" per the .feature's identification-order header: resolved by step 1
+  // (professional-id) or step 2 (variation) -- either already identifies the trustee, so a
+  // pending-verification bucket is irrelevant and must not short-circuit this event.
+  knownTrusteeId: string | null,
 ): Promise<boolean> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  if (
-    variationTrusteeId ||
-    !(await hasPendingVerificationForVariation(deps, fingerprint, variant))
-  ) {
+  if (knownTrusteeId || !(await hasPendingVerificationForVariation(deps, fingerprint, variant))) {
     return false;
   }
 
@@ -1389,6 +1408,10 @@ async function processOneEvent(
   };
 
   try {
+    const professionalIdTrusteeId = await matchTrusteeByProfessionalId(
+      deps,
+      event.acmsProfessionalId,
+    );
     const variationTrusteeId = await matchTrusteeByVariation(deps, fingerprint, variant);
     if (variationTrusteeId) {
       scenarioDistribution.fingerprintHitCount++;
@@ -1408,13 +1431,24 @@ async function processOneEvent(
     if (bogusTrusteeOutcome) return bogusTrusteeOutcome;
 
     const ctx: MatchContext = { deps, event, fingerprint, variant, audit, scenarioDistribution };
-    if (await handleVerificationBucketHit(ctx, syncedCase, variationTrusteeId)) {
+    if (
+      await handleVerificationBucketHit(
+        ctx,
+        syncedCase,
+        professionalIdTrusteeId || variationTrusteeId,
+      )
+    ) {
       return { kind: 'none' };
     }
 
     let trusteeId: string;
     let matchedBy: string;
-    if (variationTrusteeId) {
+    if (professionalIdTrusteeId) {
+      // A verified ACMS professional-id link involved no pipeline run and no fingerprint bucket
+      // at all — checks.matchedBy names the link itself (identification step 1).
+      trusteeId = professionalIdTrusteeId;
+      matchedBy = 'professional-id';
+    } else if (variationTrusteeId) {
       // A fingerprint-bucket hit involved no pipeline run at all — checks.matchedBy names the
       // bucket, not a RESOLVE stage.
       trusteeId = variationTrusteeId;

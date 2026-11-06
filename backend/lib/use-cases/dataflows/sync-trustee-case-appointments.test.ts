@@ -22,6 +22,7 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeVariationRepository,
+  TrusteeProfessionalIdsRepository,
 } from '../gateways.types';
 import * as pipelineOrchestrator from './trustee-match-pipeline-orchestrator';
 import {
@@ -103,6 +104,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockTrusteesRepo: Partial<TrusteesRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
     let mockVariationRepo: Partial<TrusteeVariationRepository>;
+    let mockProfessionalIdsRepo: Partial<TrusteeProfessionalIdsRepository>;
 
     const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => {
       const [firstName, ...rest] = fullName.split(' ');
@@ -123,6 +125,16 @@ describe('SyncTrusteeCaseAppointments', () => {
         sourceTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
       };
     };
+
+    const makeAcmsEvent = (
+      caseId: string,
+      fullName: string,
+      acmsProfessionalId: string,
+    ): TrusteeAppointmentSyncEvent => ({
+      ...makeEvent(caseId, fullName),
+      source: 'ACMS',
+      acmsProfessionalId,
+    });
 
     beforeEach(async () => {
       vi.restoreAllMocks();
@@ -178,6 +190,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         release: vi.fn(),
       };
 
+      mockProfessionalIdsRepo = {
+        findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      };
+
       vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
       vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
         mockAppointmentsRepo as TrusteeAppointmentsRepository,
@@ -193,6 +210,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
         mockVariationRepo as TrusteeVariationRepository,
+      );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        mockProfessionalIdsRepo as TrusteeProfessionalIdsRepository,
       );
       vi.spyOn(pipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         makeResolvedState('trustee-123'),
@@ -1433,6 +1453,131 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(scenarioDistribution.fingerprintHitCount).toBe(1);
         expect(scenarioDistribution.fingerprintMissCount).toBe(1);
+      });
+    });
+
+    describe('professional-id identification step', () => {
+      test('resolves directly when exactly one CAMS trustee is linked, with matchedBy "professional-id"', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi
+          .fn()
+          .mockResolvedValue([
+            { camsTrusteeId: 'trustee-123', acmsProfessionalId: 'NY-00063', disposition: 'linked' },
+          ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({ matchedBy: 'professional-id' }),
+          }),
+        );
+      });
+
+      test('a professional-id match still seeds a new TrusteeVariation (variationTrusteeId stays null)', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi
+          .fn()
+          .mockResolvedValue([
+            { camsTrusteeId: 'trustee-123', acmsProfessionalId: 'NY-00063', disposition: 'linked' },
+          ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockVariationRepo.createVariation).toHaveBeenCalledWith(
+          expect.objectContaining({ trusteeId: 'trustee-123' }),
+        );
+      });
+
+      test('falls through to variation/pipeline matching when there is no link', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).toHaveBeenCalled();
+      });
+
+      test('falls through when the link is ambiguous (2+ distinct trustees)', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00064');
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi.fn().mockResolvedValue([
+          { camsTrusteeId: 'trustee-a', acmsProfessionalId: 'NY-00064', disposition: 'linked' },
+          { camsTrusteeId: 'trustee-b', acmsProfessionalId: 'NY-00064', disposition: 'linked' },
+        ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).toHaveBeenCalled();
+      });
+
+      test('treats repeated links to the same trustee as a single match, not ambiguous', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi.fn().mockResolvedValue([
+          { camsTrusteeId: 'trustee-123', acmsProfessionalId: 'NY-00063', disposition: 'linked' },
+          { camsTrusteeId: 'trustee-123', acmsProfessionalId: 'NY-00063', disposition: 'linked' },
+        ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            checks: expect.objectContaining({ matchedBy: 'professional-id' }),
+          }),
+        );
+      });
+
+      test('is not consulted for a DXTR event (no acmsProfessionalId)', async () => {
+        const event = makeEvent('case-001', 'Jane Doe');
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockProfessionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
+      });
+
+      test('a resolved professional-id link short-circuits the verification-bucket-hit check', async () => {
+        const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi
+          .fn()
+          .mockResolvedValue([
+            { camsTrusteeId: 'trustee-123', acmsProfessionalId: 'NY-00063', disposition: 'linked' },
+          ]);
+        const variant = buildVariant(event.sourceTrustee);
+        const fingerprint = computeFingerprint(variant);
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { documentType: 'TRUSTEE_MATCH_VERIFICATION', fingerprint, variant, status: 'pending' },
+        ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            checks: expect.objectContaining({ matchedBy: 'professional-id' }),
+          }),
+        );
       });
     });
 
