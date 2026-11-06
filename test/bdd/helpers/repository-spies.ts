@@ -270,6 +270,22 @@ export async function spyOnAllGateways(
     'ListsMongoRepository',
     explicitMocks.ListsMongoRepository,
   );
+
+  const { UserRoleAssignmentMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
+  spyOnAllGatewayMethods(
+    UserRoleAssignmentMongoRepository,
+    'UserRoleAssignmentMongoRepository',
+    explicitMocks.UserRoleAssignmentMongoRepository,
+  );
+
+  const { RoleAssignmentAuditMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/role-assignment-audit.mongo.repository');
+  spyOnAllGatewayMethods(
+    RoleAssignmentAuditMongoRepository,
+    'RoleAssignmentAuditMongoRepository',
+    explicitMocks.RoleAssignmentAuditMongoRepository,
+  );
 }
 
 /**
@@ -288,6 +304,14 @@ export async function clearAllRepositorySpies() {
   // This prevents cross-test state leakage
   // Note: BDD tests use restoreMocks: false in config and handle cleanup manually
   vi.restoreAllMocks();
+
+  // Undo the backend feature flag routing made by TestSetup.withFeatureFlag(s)()
+  vi.unstubAllEnvs();
+
+  // The user-access use case caches the CAMS user list per process for 15 minutes
+  const { resetCamsUsersCache } =
+    await import('../../../backend/lib/use-cases/user-access/user-access');
+  resetCamsUsersCache();
 
   // Clear singleton instances to ensure fresh instances with new spies
   // IMPORTANT: Access the class's private static instance field to reset it

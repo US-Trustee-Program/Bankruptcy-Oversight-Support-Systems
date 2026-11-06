@@ -90,6 +90,7 @@ export const TestSessions = {
    */
   superUser: (): CamsSession =>
     createTestSession([
+      CamsRole.SuperUser,
       CamsRole.CaseAssignmentManager,
       CamsRole.TrialAttorney,
       CamsRole.DataVerifier,
@@ -114,6 +115,7 @@ export const TestAuthTokens = {
   trialAttorney: createTestAuthToken([CamsRole.TrialAttorney]),
   dataVerifier: createTestAuthToken([CamsRole.DataVerifier]),
   superUser: createTestAuthToken([
+    CamsRole.SuperUser,
     CamsRole.CaseAssignmentManager,
     CamsRole.TrialAttorney,
     CamsRole.DataVerifier,

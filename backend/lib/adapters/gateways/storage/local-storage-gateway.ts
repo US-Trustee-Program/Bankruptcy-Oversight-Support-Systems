@@ -62,10 +62,18 @@ function getPrivilegedIdentityUserRoleGroupName(): string {
   return groupNameToReturn;
 }
 
+/**
+ * The Okta group whose members are every CAMS user.
+ */
+function getCamsUsersGroupName(): string {
+  return 'USTP Cams Users';
+}
+
 const LocalStorageGateway: StorageGateway = {
   get,
   getRoleMapping,
   getPrivilegedIdentityUserRoleGroupName,
+  getCamsUsersGroupName,
 };
 
 export default LocalStorageGateway;

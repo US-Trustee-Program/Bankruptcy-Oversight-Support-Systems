@@ -61,6 +61,13 @@ import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeSerializedState } from '@common/cams/trustee-match-pipeline';
 import generatedTrusteeMatchFindings from '@common/cams/test-utilities/trustee-match-findings.generated.json';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import {
+  activeKeyFor,
+  CamsUsersPredicate,
+  CamsUserWithPermissions,
+  RoleAssignmentGrantRequest,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
 
 // Helper to generate a random ID
 function randomId() {
@@ -3124,6 +3131,80 @@ async function getBankHistory(_bankId: string) {
   return { data: [] };
 }
 
+// Deterministic fake-API CAMS users (MockData would pull faker into the app bundle). 45 users give
+// three pages of 20.
+const MOCK_CAMS_USER_FIRST_NAMES = [
+  'Alex',
+  'Blair',
+  'Casey',
+  'Devon',
+  'Emery',
+  'Finley',
+  'Gray',
+  'Harper',
+  'Indy',
+];
+const MOCK_CAMS_USER_LAST_NAMES = ['Adams', 'Baker', 'Chen', 'Diaz', 'Evans'];
+const MOCK_CAMS_USERS: CamsUserWithPermissions[] = MOCK_CAMS_USER_LAST_NAMES.flatMap((last) =>
+  MOCK_CAMS_USER_FIRST_NAMES.map((first) => ({
+    id: `mock-cams-user-${first}-${last}`.toLowerCase(),
+    name: `${first} ${last}`,
+    email: `${first}.${last}@example.com`.toLowerCase(),
+    permissions: [],
+  })),
+).sort((a, b) => a.name.localeCompare(b.name));
+
+function includesIgnoringCase(value: string | undefined, search: string | undefined) {
+  return !search || (value ?? '').toLowerCase().includes(search.toLowerCase());
+}
+
+// Same matching as the backend: case-insensitive contains on name and email, combined with AND.
+async function getCamsUsers(predicate: CamsUsersPredicate) {
+  const matching = MOCK_CAMS_USERS.filter(
+    (user) =>
+      includesIgnoringCase(user.name, predicate.name) &&
+      includesIgnoringCase(user.email, predicate.email),
+  );
+  const data = matching.slice(predicate.offset, predicate.offset + predicate.limit);
+  return {
+    data,
+    pagination: {
+      count: data.length,
+      totalCount: matching.length,
+      currentPage: Math.floor(predicate.offset / predicate.limit) + 1,
+      totalPages: Math.ceil(matching.length / predicate.limit),
+      limit: predicate.limit,
+    },
+  };
+}
+
+async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
+  // Lets the accessibility tests show the modal's save-failed state.
+  if (request.reason === 'Fail this save') {
+    throw new Error('Unable to create role assignment.');
+  }
+  const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
+  const office = MOCKED_USTP_OFFICES_ARRAY.find((o) => o.officeCode === request.officeCode);
+  const assignment: UserRoleAssignment = {
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id: crypto.randomUUID(),
+    userId: request.userId,
+    userName: user?.name ?? '',
+    email: user?.email,
+    role: request.role,
+    regionId: office?.regionId ?? null,
+    officeCode: request.officeCode,
+    assignedBy: 'mock-super-user',
+    assignedByName: 'Mock Super User',
+    assignedAt: new Date().toISOString(),
+    expiresAt: null,
+    active: true,
+    activeKey: activeKeyFor(request.role, office?.regionId ?? null, request.officeCode),
+  };
+  user?.permissions.push(assignment);
+  return { data: assignment };
+}
+
 async function getBankTrustees(_bankId: string, _limit?: number, _offset?: number) {
   return {
     data: [],
@@ -3417,6 +3498,8 @@ const MockApi2 = {
   updateBank,
   getBankHistory,
   getBankTrustees,
+  getCamsUsers,
+  postRoleAssignment,
   getSoftwareList,
   createSoftware,
   getSoftware,

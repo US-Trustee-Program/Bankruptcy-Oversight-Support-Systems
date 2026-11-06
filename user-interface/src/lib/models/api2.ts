@@ -36,6 +36,12 @@ import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi2 from '../testing/mock-api2';
+import {
+  CamsUsersPredicate,
+  CamsUserWithPermissions,
+  RoleAssignmentGrantRequest,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
 import LocalCache from '../utils/local-cache';
 import DateTimeUtils from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
@@ -596,6 +602,23 @@ async function getBankTrustees(bankId: string, limit?: number, offset?: number) 
   return api().get<TrusteeSummary[]>(`/banks/${bankId}/trustees`, params);
 }
 
+async function getCamsUsers(predicate: CamsUsersPredicate) {
+  const params: Record<string, string> = {
+    limit: String(predicate.limit),
+    offset: String(predicate.offset),
+  };
+  if (predicate.name) params.name = predicate.name;
+  if (predicate.email) params.email = predicate.email;
+  return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
+}
+
+async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
+  return api().post<UserRoleAssignment, RoleAssignmentGrantRequest>(
+    '/user-access/assignments',
+    request,
+  );
+}
+
 async function getSoftwareBankTrustees(
   softwareId: string,
   bankId: string,
@@ -715,6 +738,8 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 }
 
 export const _Api2 = {
+  getCamsUsers,
+  postRoleAssignment,
   getTrustees,
   getTrustee,
   getTrusteeHistory,

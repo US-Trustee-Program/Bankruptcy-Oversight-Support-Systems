@@ -5,24 +5,12 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 import { Creatable } from '@common/cams/creatable';
+import { isDuplicateKeyError } from './utils/duplicate-key-error';
 
 const MODULE_NAME = 'TRUSTEE-VARIATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-variation';
 
 const { and, using } = QueryBuilder;
-
-// Cosmos/MongoDB signals a unique-index violation via an "E11000" message; the code property
-// is stripped by MongoCollectionAdapter's error handling, so detection must be message-based.
-// Checks are intentionally broad to guard against driver version variance (same rationale as
-// mongo-adapter.ts's isRateLimitError and the sibling trustee-match-verification repository's
-// identical check).
-function isDuplicateKeyError(error: unknown): boolean {
-  if (!(error instanceof Object) || !('message' in error)) {
-    return false;
-  }
-  const message = String((error as { message: unknown }).message);
-  return message.includes('E11000') || /duplicate key/i.test(message);
-}
 
 export class TrusteeVariationMongoRepository
   extends BaseMongoRepository

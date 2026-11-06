@@ -6,12 +6,17 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import { CAMS_ROLE_ASSIGNMENTS, PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
+  CAMS_ROLE_ASSIGNMENTS: 'cams-role-assignments',
+}));
+
+vi.mock('./permissions/Permissions', () => ({
+  Permissions: () => <div data-testid="mocked-permissions" />,
 }));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
@@ -91,21 +96,25 @@ describe('Admin screen tests', () => {
     );
   }
 
-  test.each([
-    ['bankruptcy-software', '/admin/bankruptcy-software', 'bankruptcy-software-nav-link'],
-    ['privileged-identity', '/admin/privileged-identity', 'privileged-identity-nav-link'],
-    ['case-reload', '/admin/case-reload', 'case-reload-nav-link'],
-    ['banks', '/admin/banks', 'banks-nav-link'],
-    ['notification-routing', '/admin/notification-routing', 'notification-routing-nav-link'],
-  ])('should select %s nav when path matches', (_desc, path, testId) => {
+  const adminRoutes = [
+    ['bankruptcy-software', '/admin/bankruptcy-software', 'mocked-bankruptcy-software'],
+    ['privileged-identity', '/admin/privileged-identity', 'mocked-privileged-identity'],
+    ['permissions', '/admin/permissions/cams-users', 'mocked-permissions'],
+    ['case-reload', '/admin/case-reload', 'mocked-case-reload'],
+    ['banks', '/admin/banks', 'mocked-banks'],
+    ['notification-routing', '/admin/notification-routing', 'mocked-notification-routing'],
+  ];
+
+  test.each(adminRoutes)('should select %s nav when path matches', (name, path) => {
     renderAtPath(path);
-    const navLink = screen.getByTestId(testId);
+    const navLink = screen.getByTestId(`${name}-nav-link`);
     expect(navLink).toHaveClass('usa-current');
   });
 
-  test('should render Banks component when navigating to /admin/banks', () => {
-    renderAtPath('/admin/banks');
-    expect(screen.getByTestId('mocked-banks')).toBeInTheDocument();
+  // Nav highlighting comes from the path alone, so this checks each route renders its panel.
+  test.each(adminRoutes)('should render the %s panel when path matches', (_name, path, panel) => {
+    renderAtPath(path);
+    expect(screen.getByTestId(panel)).toBeInTheDocument();
   });
 
   test('should render BankDetail component when navigating to /admin/banks/:bankId', () => {
@@ -144,6 +153,16 @@ describe('Admin screen tests', () => {
     });
     renderAtPath('/admin/privileged-identity');
     expect(screen.queryByTestId('mocked-privileged-identity')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
+
+  test('should not render Permissions when the cams-role-assignments flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [CAMS_ROLE_ASSIGNMENTS]: false,
+    });
+    renderAtPath('/admin/permissions/cams-users');
+    expect(screen.queryByTestId('mocked-permissions')).not.toBeInTheDocument();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 });

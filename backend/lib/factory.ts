@@ -95,6 +95,8 @@ import {
 import {
   ApiToDataflowsGateway,
   BanksRepository,
+  RoleAssignmentAuditRepository,
+  UserRoleAssignmentRepository,
   BankruptcySoftwareRepository,
   DomainVerificationGateway,
   EmailBounceQueryGateway,
@@ -117,6 +119,8 @@ import { AcsBounceQueryGateway } from './adapters/gateways/monitor/acs-bounce-qu
 import { EmailClient } from '@azure/communication-email';
 import { AppInsightsObservability, NoOpObservability } from './adapters/services/observability';
 import { LoggerImpl } from './adapters/services/logger.service';
+import { UserRoleAssignmentMongoRepository } from './adapters/gateways/mongo/user-role-assignment.mongo.repository';
+import { RoleAssignmentAuditMongoRepository } from './adapters/gateways/mongo/role-assignment-audit.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -188,6 +192,28 @@ const getBanksRepository = (context: ApplicationContext): BanksRepository => {
     return new MockMongoRepository();
   }
   const repo = BanksMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getUserRoleAssignmentRepository = (
+  context: ApplicationContext,
+): UserRoleAssignmentRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = UserRoleAssignmentMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getRoleAssignmentAuditRepository = (
+  context: ApplicationContext,
+): RoleAssignmentAuditRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = RoleAssignmentAuditMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -682,6 +708,8 @@ const factory = {
   getAssignmentRepository,
   getBanksRepository,
   getBankruptcySoftwareRepository,
+  getUserRoleAssignmentRepository,
+  getRoleAssignmentAuditRepository,
   getCaseNotesRepository,
   getCaseDocketUseCase,
   getOrdersGateway,

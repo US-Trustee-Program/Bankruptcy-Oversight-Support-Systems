@@ -3,7 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import { CAMS_ROLE_ASSIGNMENTS, PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 
 const NAV_LINKS = [
@@ -12,6 +12,12 @@ const NAV_LINKS = [
     testId: 'privileged-identity-nav-link',
     href: '/admin/privileged-identity',
     navState: AdminNavState.PRIVILEGED_IDENTITY,
+  },
+  {
+    name: 'Permissions',
+    testId: 'permissions-nav-link',
+    href: '/admin/permissions',
+    navState: AdminNavState.PERMISSIONS,
   },
   {
     name: 'Bankruptcy Software',
@@ -110,6 +116,18 @@ describe('Admin screen navigation tests', () => {
     renderNav();
 
     expect(screen.queryByTestId('privileged-identity-nav-link')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(NAV_LINKS.length - 1);
+  });
+
+  test('should not display the Permissions nav link when the cams-role-assignments flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [CAMS_ROLE_ASSIGNMENTS]: false,
+    });
+
+    renderNav();
+
+    expect(screen.queryByTestId('permissions-nav-link')).not.toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(NAV_LINKS.length - 1);
   });
 });

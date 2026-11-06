@@ -14,7 +14,9 @@ import { BankDetail } from './banks/BankDetail';
 import { NotificationRouting } from './notification-routing/NotificationRouting';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { Permissions } from './permissions/Permissions';
 import useFeatureFlags, {
+  CAMS_ROLE_ASSIGNMENTS,
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
 } from '../lib/hooks/UseFeatureFlags';
@@ -32,6 +34,9 @@ export function AdminScreen() {
     }
     if (location.pathname.includes('/admin/privileged-identity')) {
       return AdminNavState.PRIVILEGED_IDENTITY;
+    }
+    if (location.pathname.includes('/admin/permissions')) {
+      return AdminNavState.PERMISSIONS;
     }
     if (location.pathname.includes('/admin/case-reload')) {
       return AdminNavState.CASE_RELOAD;
@@ -76,6 +81,9 @@ export function AdminScreen() {
                     <Routes>
                       {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
                         <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      )}
+                      {isFlagEnabled(flags, CAMS_ROLE_ASSIGNMENTS) && (
+                        <Route path="permissions/*" element={<Permissions />} />
                       )}
                       <Route path="banks" element={<Banks />} />
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
