@@ -1704,6 +1704,132 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.autoMatchCount).toBe(1);
     });
 
+    describe('DISP_DATE and out-of-order appointments', () => {
+      test('closes the active appointment using event.unassignedOn directly when the same trustee is disposed, with no replacement', async () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-1',
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          assignedOn: '2024-01-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(existingAppointment);
+        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
+
+        const event = { ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-03-01' };
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'ca-1',
+            trusteeId: 'trustee-123',
+            unassignedOn: '2024-03-01',
+          }),
+        );
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      });
+
+      test("clamps the DISP_DATE close to never precede the appointment's own assignedOn", async () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-1',
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          assignedOn: '2024-03-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(existingAppointment);
+        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
+
+        // An out-of-order DISP_DATE older than the appointment's own assignedOn.
+        const event = { ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-01-01' };
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+          expect.objectContaining({ unassignedOn: '2024-03-01' }),
+        );
+      });
+
+      test('does not touch the appointment when the same trustee is active and the event carries no unassignedOn', async () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-1',
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          assignedOn: '2024-01-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(existingAppointment);
+        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
+
+        const events = [makeEvent('case-001', 'John Doe')];
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      });
+
+      test('writes an older out-of-order appointment already closed instead of displacing the active one', async () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-active',
+          caseId: 'case-001',
+          trusteeId: 'old-trustee',
+          assignedOn: '2024-02-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(existingAppointment);
+
+        // makeEvent's appointedDate ('2024-01-15') is older than existingAppointment.assignedOn.
+        const events = [makeEvent('case-001', 'John Doe')];
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        // The currently-active appointment is left untouched — it is not displaced.
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+        // The older row is written already closed, one day before the active appointment starts.
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            assignedOn: '2024-01-15',
+            unassignedOn: '2024-01-31',
+          }),
+        );
+      });
+    });
+
     test.each([
       ['TooManyRequestsError', new TooManyRequestsError('TEST', { message: 'Throttled.' })],
       ['GatewayTimeoutError', new GatewayTimeoutError('TEST', { message: 'Timed out.' })],

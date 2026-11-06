@@ -198,12 +198,16 @@ export async function createNewAppointment(
   trusteeId: string,
   assignedOn: string,
   checks: CaseAppointmentChecks,
+  // Set only for an out-of-order older row (cams-fd8qd.1.8): written already closed so it never
+  // displaces the case's currently-active appointment for a different trustee.
+  unassignedOn?: string,
 ): Promise<void> {
   await appointmentsRepo.upsert({
     caseId: event.caseId,
     trusteeId,
     assignedOn,
     appointedDate: event.appointedDate,
+    ...(unassignedOn ? { unassignedOn } : {}),
     checks,
   });
   context.logger.info(
@@ -424,10 +428,40 @@ async function applyResolvedTrustee(
         { ...existingAppointment, documentType: 'CASE_APPOINTMENT' },
       );
     }
+
+    // ACMS DISP_DATE closes this same trustee's active appointment with no replacement
+    // (cams-fd8qd.1.8) — event.unassignedOn is the closure date itself, not a reference date a
+    // new appointment starts on, so it is used directly rather than via deriveUnassignedOn's
+    // "day before a new appointment" rule. Still clamped to never precede the appointment's own
+    // assignedOn, the same safety rule deriveUnassignedOn applies, for out-of-order delivery.
+    if (event.unassignedOn) {
+      const existingAssignedOnDate = existingAppointment.assignedOn.slice(0, 10);
+      const unassignedOn =
+        event.unassignedOn < existingAssignedOnDate ? existingAssignedOnDate : event.unassignedOn;
+      await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn });
+    }
     return null; // Same trustee already active — nothing further to do
   }
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
+    if (assignedOn < existingAppointment.assignedOn.slice(0, 10)) {
+      // Out-of-order: this row is older than the case's currently-active appointment for a
+      // different trustee (cams-fd8qd.1.8). The active appointment is still current and must
+      // not be displaced — write this older row already closed instead, one day before the
+      // active appointment starts (same deriveUnassignedOn clamp, roles reversed).
+      const unassignedOn = deriveUnassignedOn(existingAppointment.assignedOn, assignedOn);
+      await createNewAppointment(
+        context,
+        appointmentsRepo,
+        event,
+        trusteeId,
+        assignedOn,
+        checks,
+        unassignedOn,
+      );
+      return null;
+    }
+
     const { closed, dlqFailure } = await softCloseExistingAppointment(
       context,
       event,
