@@ -1029,7 +1029,7 @@ export function calculateEmailScore(
  * zero-corroboration auto-link through (a real example: 4 same-surname candidates, resolved to
  * one purely by exact first+last name equality).
  */
-export function isBlankAcmsValue(value: string | undefined): boolean {
+export function isBlankSourceValue(value: string | undefined): boolean {
   return !value || value === '0';
 }
 

@@ -119,6 +119,62 @@ describe('TrusteeInformationReceivedTable', () => {
     expect(screen.getByRole('table', { name: 'Trustee Information Received' })).toBeInTheDocument();
   });
 
+  describe('reserveActionColumn', () => {
+    test('reserves an Action col without adding an Action header or cell', () => {
+      render(<TrusteeInformationReceivedTable comparison={comparison} reserveActionColumn />);
+
+      const table = screen.getByTestId('trustee-information-received-table');
+      expect(table.querySelectorAll('colgroup col')).toHaveLength(5);
+      expect(table.querySelector('.comparison-col-action')).toBeInTheDocument();
+      expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+        'Name',
+        'Address',
+        'Phone',
+        'Email',
+      ]);
+      const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
+      expect(within(row).getAllByRole('cell')).toHaveLength(3);
+    });
+
+    test('reserves 4 cols when the comparison has no email row', () => {
+      render(
+        <TrusteeInformationReceivedTable
+          comparison={{ ...comparison, rows: comparison.rows.filter((r) => r.key !== 'email') }}
+          reserveActionColumn
+        />,
+      );
+
+      const table = screen.getByTestId('trustee-information-received-table');
+      expect(table.querySelectorAll('colgroup col')).toHaveLength(4);
+      expect(screen.getAllByRole('columnheader')).toHaveLength(3);
+    });
+
+    test('omits the Action col by default', () => {
+      render(<TrusteeInformationReceivedTable comparison={comparison} />);
+
+      const table = screen.getByTestId('trustee-information-received-table');
+      expect(table.querySelector('.comparison-col-action')).toBeNull();
+      expect(table.querySelectorAll('colgroup col')).toHaveLength(4);
+    });
+  });
+
+  test('labels each cell of the row with the header text at the same position', () => {
+    render(<TrusteeInformationReceivedTable comparison={comparison} />);
+
+    const headers = screen.getAllByRole('columnheader');
+    const row = screen.getByRole('rowheader', { name: 'Jane Q. Doe' }).closest('tr')!;
+    const cells = Array.from(row.children) as HTMLElement[];
+    expect(cells.map((cell) => cell.getAttribute('data-label'))).toEqual([
+      'Name',
+      'Address',
+      'Phone',
+      'Email',
+    ]);
+    cells.forEach((cell, i) => {
+      expect(cell.getAttribute('data-label')).toBe(headers[i].textContent);
+    });
+  });
+
   test('shows "Not Provided" for phone when it is missing', () => {
     render(
       <TrusteeInformationReceivedTable

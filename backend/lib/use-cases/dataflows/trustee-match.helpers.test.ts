@@ -763,7 +763,7 @@ describe('parseCityStateZip', () => {
   });
 
   // The ACMS pipeline recovers a city+state address carrying no zip at all (see
-  // parseAcmsCityStateZip in trustee-match-pipeline-stages.ts); the shared parser the DXTR paths
+  // parseSourceCityStateZip in trustee-match-pipeline-stages.ts); the shared parser the DXTR paths
   // use returns null for that shape.
   test('returns null when no zip-like token exists at all', () => {
     expect(parseCityStateZip('Corinth MS')).toBeNull();
@@ -1490,7 +1490,7 @@ describe('lastNameSurnameCandidates', () => {
   // Real backtest finding: a bracketed role/chapter/status marker must never survive as a bogus
   // fallback candidate - "(TR)" produced "tr" as an alternate, which then genuinely phonetically
   // matched unrelated real CAMS trustees. Inputs are real, isolated lastName field values (never
-  // a composite firstName+lastName string) - findSurnameExactCandidatesForAcms/
+  // a composite firstName+lastName string) - findSurnameExactCandidatesForSource/
   // lastNameSurnameCandidates only ever receive the raw lastName on its own.
   test.each([
     ['CURRY (TR)', 'curry'],

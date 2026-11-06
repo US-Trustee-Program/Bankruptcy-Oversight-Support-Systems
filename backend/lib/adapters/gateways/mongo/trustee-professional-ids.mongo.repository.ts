@@ -17,7 +17,7 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-professional-ids';
 
-const { and, using, omit } = QueryBuilder;
+const { and, or, using, omit } = QueryBuilder;
 
 /** Stored shape of a TrusteeProfessionalId in the trustee-professional-ids collection. */
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
@@ -184,16 +184,19 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  async deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
+  /** Unresolved records are keyed by their fingerprint in camsTrusteeId; evidence is included. */
+  async findUnresolvedByFingerprint(fingerprint: string): Promise<TrusteeProfessionalId[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = doc('camsTrusteeId').equals(camsTrusteeId);
-      const deletedCount = await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany(query);
-
-      return deletedCount;
+      const query = and(
+        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
+        doc('camsTrusteeId').equals(fingerprint),
+        or(doc('disposition').equals('no-match'), doc('disposition').equals('ambiguous')),
+      );
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete professional IDs for trustee ${camsTrusteeId}.`,
+        message: `Failed to find unresolved professional IDs for fingerprint ${fingerprint}.`,
       });
     }
   }

@@ -5,6 +5,8 @@
  * Seeds trustee identity tasks (TRUSTEE_MATCH_VERIFICATION documents) the way the DXTR trustee
  * appointment sync writes them: source 'DXTR', the trustee-match pipeline's serialized state as
  * `findings`, and mismatchReason 'ambiguous' (2+ candidates) or 'no match' (0 or 1 candidate).
+ * Two tasks (acmsAmbiguousCaseless, acmsNoMatchCaseless) are written the way the ACMS
+ * professional-id sync does instead.
  * A resolved pipeline match writes the appointment instead, so it has no document to seed here.
  *
  * Each task's findings, DXTR source and candidate trustees come from a trustee-match fixture
@@ -45,6 +47,12 @@
  *        count (CAMS-953 "No cases affected yet").
  *     9. Pending, ambiguous (2 candidates, multipleCandidatesCaseless), with NO caseId/courtId at
  *        all - a task that never had an originating case (CAMS-953 Slice 5 "No cases yet").
+ *    10. Pending, ambiguous (2 candidates, acmsAmbiguousCaseless), caseless, with source 'ACMS'
+ *        and an acmsProfessionalId - as the ACMS professional-id sync writes an ambiguous
+ *        professional (CAMS-954).
+ *    11. Pending, no match (1 candidate whose name passes but state differs, acmsNoMatchCaseless),
+ *        caseless, with source 'ACMS' and an acmsProfessionalId - as the ACMS professional-id sync
+ *        writes a no-match professional with a name-passing candidate (CAMS-954 Slice 2).
  *
  * Inactive-trustee/appointment variations are not identity tasks (an appointment concern, see
  * CAMS-956), so this scenario no longer seeds them.
@@ -263,6 +271,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           'divisionMismatch',
           'multipleCandidatesNoCases',
           'multipleCandidatesCaseless',
+          'acmsAmbiguousCaseless',
+          'acmsNoMatchCaseless',
           'manyCandidates',
         ),
         TRUSTEE_RESOLVED,
@@ -414,8 +424,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
 
     // 9. Pending ambiguous task with no caseId/courtId at all (CAMS-953 Slice 5): unlike the
     // no-cases task above, this task never had an originating case to begin with - there is no
-    // case to seed a surrogate against. The producer that creates these in practice (the ACMS
-    // sync, CAMS-954) doesn't exist yet, so only this seed creates one, for local/staging viewing.
+    // case to seed a surrogate against. Its source is DXTR; see acmsAmbiguousCaseless
+    // (seed-match-acms-ambiguous) for the ACMS sync's shape.
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
@@ -425,6 +435,43 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           ...identityTaskFields('multipleCandidatesCaseless'),
           status: 'pending',
           taskDate: '2023-01-10T00:00:00.000Z',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // 10. Pending caseless ambiguous task as the ACMS professional-id sync writes it (CAMS-954):
+    // source 'ACMS', an acmsProfessionalId, and no caseId/courtId or surrogate. Approving it
+    // links the ACMS professional id to the chosen candidate.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: 'seed-match-acms-ambiguous',
+          ...identityTaskFields('acmsAmbiguousCaseless', 'ACMS'),
+          acmsProfessionalId: 'SEED-ACMS-AMBIGUOUS',
+          status: 'pending',
+          taskDate: '2023-02-14T00:00:00.000Z',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // 11. Pending caseless no-match task as the ACMS professional-id sync writes it for a
+    // professional whose one candidate passes the name check (CAMS-954 Slice 2).
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: 'seed-match-acms-no-match',
+          ...identityTaskFields('acmsNoMatchCaseless', 'ACMS'),
+          acmsProfessionalId: 'SEED-ACMS-NO-MATCH',
+          status: 'pending',
+          taskDate: '2023-02-15T00:00:00.000Z',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

@@ -12,13 +12,13 @@
     "start": "func start --javascript"
   },
   "dependencies": {
-    "@azure/functions": "4.16.5",
+    "@azure/functions": "4.17.0",
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
     "mongodb": "7.7.0",
-    "mssql": "12.7.10",
-    "dotenv": "18.0.8",
+    "mssql": "12.7.11",
+    "dotenv": "18.0.9",
     "applicationinsights": "3.14.0",
-    "natural": "8.1.1"
+    "natural": "8.2.1"
   }
 }

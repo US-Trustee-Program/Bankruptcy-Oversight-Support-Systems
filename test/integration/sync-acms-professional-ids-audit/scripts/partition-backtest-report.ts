@@ -270,7 +270,7 @@ async function main(): Promise<void> {
   const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types');
   const { shouldSkipAsNotAPerson, isRecordDisavowed, shouldSkipAsUstStaff } =
-    await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
+    await import('../../../../backend/lib/use-cases/dataflows/source-name-normalization.helpers');
 
   const records = loadProfessionalIds();
   const trusteeById = new Map(loadTrustees().map((t) => [t.trusteeId, t]));

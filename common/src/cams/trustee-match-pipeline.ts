@@ -55,12 +55,12 @@ type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'add
 /**
  * Processing state carried alongside a normalized record, not normalization output: raw
  * passthroughs a later stage reads (legacy, fullName) and cached computations
- * (acmsHasNoContactData).
+ * (sourceHasNoContactData).
  */
 type TrusteeNormalizationCache = {
   legacy?: NonNullable<CanonicalTrusteeSource['legacy']>;
   fullName?: string;
-  acmsHasNoContactData?: boolean;
+  sourceHasNoContactData?: boolean;
 };
 
 /** Either side of a match after normalization, plus its processing cache. */

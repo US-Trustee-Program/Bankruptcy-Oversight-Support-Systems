@@ -42,7 +42,7 @@
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.64.1",
     "@types/node": "26.6.5",
-    "dotenv": "18.0.8",
+    "dotenv": "18.0.9",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-n": "18.5.0",
@@ -53,10 +53,10 @@
     "typescript-eslint": "8.72.0"
   },
   "dependencies": {
-    "@azure/functions": "4.16.5",
+    "@azure/functions": "4.17.0",
     "@faker-js/faker": "10.5.0",
     "mongodb": "7.7.0",
-    "mssql": "12.7.10",
+    "mssql": "12.7.11",
     "ts-node": "10.9.2",
     "tsx": "4.23.15"
   }

@@ -22,7 +22,7 @@ describe('TrusteeMatchVerificationController', () => {
     courtId: '081',
     status: 'pending',
     mismatchReason: 'ambiguous',
-    dxtrTrustee: { fullName: 'John Doe' },
+    sourceTrustee: { fullName: 'John Doe' },
     source: 'DXTR',
     findings: MockData.getTrusteeMatchFindings({
       candidates: [
