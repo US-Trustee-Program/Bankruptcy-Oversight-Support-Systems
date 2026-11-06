@@ -43,6 +43,7 @@
     "sync-acms-professional-ids": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
     "sync-acms-professional-ids:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
     "sync-acms-professional-ids:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
+    "sync-trustee-case-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json sync-trustee-case-appointments/scripts/harness.ts",
     "trustee-verification-remap": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts",
     "trustee-verification-remap:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts",
     "trustee-verification-remap:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts"
