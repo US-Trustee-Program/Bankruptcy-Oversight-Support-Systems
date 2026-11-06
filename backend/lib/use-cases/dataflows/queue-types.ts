@@ -37,3 +37,7 @@ export function buildQueueError(
     error,
   };
 }
+
+export function isQueueError(value: unknown): value is QueueError {
+  return (value as QueueError | undefined)?.type === 'QUEUE_ERROR';
+}

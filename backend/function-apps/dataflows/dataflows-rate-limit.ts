@@ -91,7 +91,11 @@ export async function handleRateLimitRetry<
       activityName,
     );
 
-    const dlqMessage = { ...queueError, retryCount: currentRetryCount };
+    const dlqMessage = {
+      ...queueError,
+      retryCount: currentRetryCount,
+      message,
+    };
     const dlqMessageWithCorrelation = correlationId ? { ...dlqMessage, correlationId } : dlqMessage;
 
     context.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);

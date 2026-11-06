@@ -13,17 +13,25 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import type { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
 
 type PageMessage = {
   events: CaseSyncEvent[];
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+type SyncCasesStartMessage = StartMessage & {
+  lastSyncDate?: string;
   retryCount?: number;
   firstAttemptAt?: string;
 };
@@ -59,21 +67,29 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  *
  * Export and load changed cases from DXTR into CAMS.
  *
- * @param {StartMessage} startMessage
+ * @param {SyncCasesStartMessage} startMessage
  * @param {InvocationContext} invocationContext
  */
-async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
+async function handleStart(
+  startMessage: SyncCasesStartMessage,
+  invocationContext: InvocationContext,
+) {
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
+  const connectionString = process.env.AzureWebJobsDataflowsStorage ?? '';
+  let context: ApplicationContext | undefined;
   try {
-    const context = await ContextCreator.getApplicationContext({
+    if (!connectionString) {
+      throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+    }
+    context = await ContextCreator.getApplicationContext({
       invocationContext,
       observability,
     });
     const { events, lastCasesSyncDate, lastTransactionsSyncDate } = await SyncCases.getCaseIds(
       context,
-      startMessage['lastSyncDate'],
+      startMessage.lastSyncDate,
     );
 
     if (!events.length) {
@@ -94,7 +110,17 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       end += PAGE_SIZE;
       pages.push({ events: events.slice(start, end) });
     }
-    invocationContext.extraOutputs.set(PAGE, pages);
+
+    // Send pages directly rather than through the PAGE output binding, which is only
+    // delivered after this function returns. The sync dates must not be stored until
+    // every page is on the queue, or a failed delivery would skip these cases for good.
+    const queueClient = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      PAGE.queueName,
+    );
+    for (const page of pages) {
+      await queueClient.sendMessage(JSON.stringify(page));
+    }
 
     await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -104,6 +130,39 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
     });
   } catch (originalError) {
+    if (context) {
+      const rateLimitRetryStatus = await handleRateLimitRetry({
+        error: originalError,
+        message: startMessage,
+        checkQueueName: START.queueName,
+        dlqOutput: DLQ,
+        context,
+        moduleName: MODULE_NAME,
+        activityName: 'handleStart',
+        connectionString,
+      });
+
+      if (rateLimitRetryStatus === 'retried') {
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        });
+        return;
+      }
+
+      if (rateLimitRetryStatus === 'exhausted') {
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        });
+        return;
+      }
+    }
+
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
@@ -242,7 +301,7 @@ function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
     queueName: START.queueName,
-    extraOutputs: [DLQ, PAGE],
+    extraOutputs: [DLQ],
     handler: handleStart,
   });
 
@@ -267,7 +326,7 @@ function setup() {
   });
 }
 
-export { handlePage, handlePagePoison };
+export { handleStart, handlePage, handlePagePoison };
 export default {
   MODULE_NAME,
   setup,
