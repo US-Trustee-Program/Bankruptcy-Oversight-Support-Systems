@@ -505,11 +505,11 @@ async function run() {
     ['petition', petitionEvent],
   ] as const) {
     if (!event) continue;
-    if (event.dxtrTrustee.fullName === TEST_TRUSTEE_NAME) {
+    if (event.sourceTrustee.fullName === TEST_TRUSTEE_NAME) {
       pass(`${label} event dxtrTrustee.fullName === "${TEST_TRUSTEE_NAME}"`);
     } else {
       fail(
-        `${label} event dxtrTrustee.fullName: expected "${TEST_TRUSTEE_NAME}", got "${event.dxtrTrustee.fullName}"`,
+        `${label} event dxtrTrustee.fullName: expected "${TEST_TRUSTEE_NAME}", got "${event.sourceTrustee.fullName}"`,
       );
     }
     if (

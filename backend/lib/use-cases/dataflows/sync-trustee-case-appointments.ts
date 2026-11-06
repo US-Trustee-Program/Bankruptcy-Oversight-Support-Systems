@@ -99,7 +99,7 @@ type ScenarioDistribution = {
 
 type MatchAuditEntry = {
   caseId: string;
-  dxtrTrusteeName: string;
+  sourceTrusteeName: string;
   matchOutcome:
     | 'auto-matched'
     | 'no-match'
@@ -818,7 +818,7 @@ async function resolveTrusteeViaPipeline(
   syncedCase: SyncedCase,
 ): Promise<IdentityResolution> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  const state = await runTrusteeMatchPipeline(deps.context, event.dxtrTrustee);
+  const state = await runTrusteeMatchPipeline(deps.context, event.sourceTrustee);
 
   // Rethrown unconditionally (not gated on isTransientInfraError) so it reaches
   // processOneEvent's one existing catch, which already classifies retryable vs DLQ — "error:
@@ -864,8 +864,8 @@ async function resolveTrusteeViaPipeline(
     audit.matchOutcome = 'no-match';
   }
   const isReVerification = await upsertIdentityTask(deps.verificationRepo, {
-    source: 'DXTR',
-    sourceTrustee: event.dxtrTrustee,
+    source: event.source,
+    sourceTrustee: event.sourceTrustee,
     mismatchReason: reason,
     findings,
     fingerprint,
@@ -1028,9 +1028,9 @@ function isUnappointableChapter(event: TrusteeAppointmentSyncEvent): boolean {
 }
 
 function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
-  const { dxtrTrustee } = event;
+  const { sourceTrustee } = event;
   const name = (
-    normalizeName(dxtrTrustee.lastName ?? '') || normalizeName(dxtrTrustee.fullName ?? '')
+    normalizeName(sourceTrustee.lastName ?? '') || normalizeName(sourceTrustee.fullName ?? '')
   ).toLowerCase();
   return BOGUS_TRUSTEE_NAME_KEYWORDS.some((keyword) => name.includes(keyword));
 }
@@ -1042,7 +1042,7 @@ function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
  */
 function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean {
   const hasBogusName = isBogusTrusteeName(event);
-  const hasFirstName = Boolean(normalizeName(event.dxtrTrustee.firstName ?? ''));
+  const hasFirstName = Boolean(normalizeName(event.sourceTrustee.firstName ?? ''));
   const isChapter11 = event.chapter === '11';
   const isSentinelProfCode =
     event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
@@ -1055,11 +1055,11 @@ function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean 
 }
 
 /**
- * True when dxtrTrustee.legacy carries any usable contact info — address, phone, or email.
+ * True when sourceTrustee.legacy carries any usable contact info — address, phone, or email.
  * Shared by resolveSkipReason and isSentinelWithNoIdentity so what counts as "usable contact"
  * can't diverge between the two.
  */
-function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['legacy']): boolean {
+function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['sourceTrustee']['legacy']): boolean {
   return Boolean(
     legacy?.address1 ||
     legacy?.address2 ||
@@ -1098,9 +1098,9 @@ function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
     return 'unappointable-chapter';
   }
 
-  const { dxtrTrustee } = event;
-  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
-  const hasContact = hasUsableContact(dxtrTrustee.legacy);
+  const { sourceTrustee } = event;
+  const hasName = Boolean(normalizeName(sourceTrustee.fullName ?? ''));
+  const hasContact = hasUsableContact(sourceTrustee.legacy);
   if (!hasName && !hasContact) {
     return 'empty-demographics';
   }
@@ -1132,9 +1132,9 @@ function isSentinelWithNoIdentity(
   if (event.profCode !== sentinelProfCode) {
     return false;
   }
-  const { dxtrTrustee } = event;
-  const hasNoContact = !hasUsableContact(dxtrTrustee.legacy);
-  const hasNoName = !normalizeName(dxtrTrustee.fullName ?? '');
+  const { sourceTrustee } = event;
+  const hasNoContact = !hasUsableContact(sourceTrustee.legacy);
+  const hasNoName = !normalizeName(sourceTrustee.fullName ?? '');
   return hasNoContact && (hasNoName || isBogusTrusteeName(event));
 }
 
@@ -1334,18 +1334,18 @@ async function resolveSyncedCase(
 }
 
 /**
- * Parses event.dxtrTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
+ * Parses event.sourceTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
  * itself are present) and attaches the result as parsedCityStateZip, mutating event in place.
  * Pulled out of processOneEvent as a single-purpose step alongside that function's other
  * whole-procedure extractions, removing this branch's nesting/branching cost from the measured
  * function.
  */
 function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
-  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
-  if (!event.dxtrTrustee.legacy || !cityStateZipCountry) {
+  const cityStateZipCountry = event.sourceTrustee.legacy?.cityStateZipCountry;
+  if (!event.sourceTrustee.legacy || !cityStateZipCountry) {
     return;
   }
-  event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
+  event.sourceTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
 }
 
 /**
@@ -1377,12 +1377,12 @@ async function processOneEvent(
 
   parseAndAttachCityStateZip(event);
 
-  const variant = buildVariant(event.dxtrTrustee);
+  const variant = buildVariant(event.sourceTrustee);
   const fingerprint = computeFingerprint(variant);
 
   const audit: MatchAuditEntry = {
     caseId: event.caseId,
-    dxtrTrusteeName: event.dxtrTrustee.fullName,
+    sourceTrusteeName: event.sourceTrustee.fullName,
     matchOutcome: 'error',
     matchedTrusteeId: null,
     appointmentStatus: null,

@@ -1747,7 +1747,8 @@ async function runIdempotencyStage(
   const event: TrusteeAppointmentSyncEvent = {
     caseId: IDEMPOTENCY_CASE_ID,
     courtId: COURT_ID,
-    dxtrTrustee: {
+    source: 'DXTR',
+    sourceTrustee: {
       fullName: IDEMPOTENCY_TRUSTEE.name,
       firstName: 'Idempotency',
       lastName: 'Trustee',
@@ -1930,11 +1931,12 @@ async function runDivergenceRepairStage(
   const event: TrusteeAppointmentSyncEvent = {
     caseId: DIVERGENCE_CASE_ID,
     courtId: COURT_ID,
-    // firstName/lastName must be distinct from every other stage's dxtrTrustee: buildVariant
+    // firstName/lastName must be distinct from every other stage's sourceTrustee: buildVariant
     // substitutes empty strings for missing fields (see trustee-variant.helpers.ts), so a
     // fullName-only dxtrTrustee (Stage 6's shape) produces an identical all-blank fingerprint
     // for every stage using it, colliding on the same TRUSTEE_VARIATION bucket entry.
-    dxtrTrustee: {
+    source: 'DXTR',
+    sourceTrustee: {
       fullName: DIVERGENCE_TRUSTEE.name,
       firstName: 'Divergence',
       lastName: 'Trustee',
