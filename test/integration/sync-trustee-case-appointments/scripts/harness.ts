@@ -20,13 +20,16 @@
  *
  * Commands:
  *   check-env    Verify environment
- *   seed-schema  [local] Create ACMS_INT and DXTR_INT, apply DDL, load office reference data
+ *   seed-schema  Create ACMS_INT and DXTR_INT, apply DDL, load office reference data
  *   run          Run every scenario; options: --lane ACMS|DXTR, --region 02, --only <key>, --verbose
  *   list         List scenarios with region, lanes and basis
  *   replay       Run real staging exports through the ACMS source and print AGGREGATE outcomes only:
  *                  replay --professional-ids <file> --trustees <file> [--region 02] [--limit 500]
  *                Exports are PII; pass paths into a checkout where they are gitignored (for example
- *                ../CAMS/test/integration/sync-acms-professional-ids-audit/fixtures). Nothing is stored.
+ *                ../CAMS/test/integration/sync-acms-professional-ids-audit/fixtures). Never copy exports into this repo.
+ *                Real rows are loaded into the LOCAL containers and wiped when the command ends; --verbose is
+ *                ignored by replay so production log lines (which can carry names) stay hidden.
+ *   check-env    Verify environment
  *   clean        Wipe all fixture data from both SQL databases and Mongo
  *   help         This text
  */
@@ -92,7 +95,7 @@ function loadEnv() {
   }
   dotenv.config({ path: envPath, override: true });
 }
-loadEnv();
+// loadEnv() runs from main() so that `list` and `help` work on a fresh checkout.
 
 // ---------------------------------------------------------------------------
 // Output
@@ -101,7 +104,7 @@ loadEnv();
 const realLog = console.log.bind(console); // captured before the filter below
 // The production logger prints each DEBUG/INFO/WARN record as a one-element array. Hide those so
 // scenario output stays readable; ERROR records and --verbose still show everything.
-if (!process.argv.includes('--verbose')) {
+if (!process.argv.includes('--verbose') || process.argv[2] === 'replay') {
   for (const method of ['log', 'debug', 'info', 'warn'] as const) {
     const original = console[method].bind(console);
     console[method] = (...args: unknown[]) => {
@@ -122,7 +125,7 @@ function line(msg: string) {
   realLog(msg);
 }
 
-type Status = 'pass' | 'fail' | 'not-implemented' | 'pending';
+type Status = 'pass' | 'fail' | 'not-implemented';
 type Outcome = { name: string; group: string; status: Status };
 const outcomes: Outcome[] = [];
 
@@ -189,7 +192,8 @@ async function getMongo(): Promise<{ client: MongoClient; db: Db }> {
   const name = process.env.COSMOS_DATABASE_NAME;
   if (!uri || !name)
     throw new Error('MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set');
-  const client = new MongoClient(uri);
+  // ignoreUndefined matches production (mongo-humble.ts): undefined members are omitted, not stored as null.
+  const client = new MongoClient(uri, { ignoreUndefined: true, serverSelectionTimeoutMS: 5000 });
   await client.connect();
   return { client, db: client.db(name) };
 }
@@ -327,6 +331,8 @@ type GeoRow = {
   officeCode: string;
   officeName: string;
   state: string;
+  /** AO_CS.CS_DIV when it differs from the ACMS division code (AO_CS_DIV.CS_DIV_ACMS). */
+  dxtrDivision?: string;
 };
 
 /**
@@ -371,8 +377,8 @@ async function seedDxtrReference(pool: mssql.ConnectionPool, geo: GeoRow[]) {
     geo.map((g) => [g.court, g.officeCode, g.officeName]),
   );
   await insert(
-    'INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, OFFICE_CODE, STATE, CS_DIV_ACMS) VALUES (@p0, @p1, @p2, @p3, @p4, @p0)',
-    geo.map((g) => [g.code, g.group, g.court, g.officeCode, g.state]),
+    'INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, OFFICE_CODE, STATE, CS_DIV_ACMS) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)',
+    geo.map((g) => [g.dxtrDivision ?? g.code, g.group, g.court, g.officeCode, g.state, g.code]),
   );
 }
 
@@ -503,13 +509,14 @@ async function renderAcms(
     const key = `${r.prof.group}-${r.prof.code}`;
     if (!seenProfessionals.has(key)) {
       seenProfessionals.add(key);
-      await insertAcmsProfessional(
-        pool,
-        r.prof.group,
-        r.prof.code,
-        r.prof.person,
-        Boolean(r.prof.cmmprDeleted),
-      );
+      if (!r.prof.cmmprMissing)
+        await insertAcmsProfessional(
+          pool,
+          r.prof.group,
+          r.prof.code,
+          r.prof.person,
+          Boolean(r.prof.cmmprDeleted),
+        );
     }
     const { div, yr, num } = parseCaseId(r.caseId);
     const seq = (seqByCase.get(r.caseId) ?? 0) + 1;
@@ -554,7 +561,7 @@ async function renderDxtr(
       .input('id', mssql.VarChar(9), dxtrId)
       .input('court', mssql.VarChar(4), division.court)
       .input('caseId', mssql.VarChar(10), caseNumber)
-      .input('div', mssql.VarChar(3), divisionCode)
+      .input('div', mssql.VarChar(3), division.dxtrDivision ?? divisionCode)
       .input('chapter', mssql.VarChar(3), c.chapter ?? '7')
       .input('grp', mssql.VarChar(2), division.group).query(`
         INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES)
@@ -683,9 +690,10 @@ async function seedCasesAndTrustees(db: Db, s: { cases: CaseSpec[]; cams?: Scena
       updatedOn: SEEDED_UPDATED_ON,
       updatedBy: SYSTEM,
     };
-    // Dual-written in production (one partition per access path); seed both identically.
+    // Dual-written in production with ONE id (trustee-case-appointments.mongo.repository.ts upsert); the close
+    // path replaces by documentType + id in both partitions, so the id must match or the close fails.
     await db.collection('case-trustee-appointments').insertOne({ ...doc });
-    await db.collection('trustee-case-appointments').insertOne({ ...doc, id: randomUUID() });
+    await db.collection('trustee-case-appointments').insertOne({ ...doc });
   }
 }
 
@@ -732,6 +740,7 @@ async function seedTrustee(db: Db, t: CamsTrustee, now: string) {
         courtId: a.court,
         divisionCode: a.division,
         chapter: a.chapter,
+        status: a.status ?? 'active',
       },
       {
         documentType: 'TRUSTEE_APPOINTMENT',
@@ -749,6 +758,15 @@ async function seedTrustee(db: Db, t: CamsTrustee, now: string) {
         updatedBy: SYSTEM,
       },
       { upsert: true },
+    );
+  }
+  const declared = appointmentsOf(t).length;
+  const stored = await db
+    .collection('trustee-appointments')
+    .countDocuments({ documentType: 'TRUSTEE_APPOINTMENT', trusteeId: t.id });
+  if (stored !== declared) {
+    throw new Error(
+      `Fixture error: trustee ${t.id} declares ${declared} appointment(s) but ${stored} were stored (duplicate court/division/chapter/status?)`,
     );
   }
 }
@@ -927,9 +945,22 @@ function assertAppointments(
   else r.pass(`${label}: ${expected.map(fmtExpected).join(', ') || 'no appointments'}`);
 }
 
-async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[]) {
+async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTotal?: number) {
   const all = await db.collection('trustee-match-verification').find({}).toArray();
+  if (tasksTotal !== undefined) {
+    r.step('Then', `${tasksTotal} identity task(s) exist in total, under any name`);
+    r.check(
+      all.length === tasksTotal,
+      `${all.length} task(s) in total`,
+      `found ${all.length} task(s) in total, expected ${tasksTotal}`,
+    );
+  }
   for (const t of tasks) {
+    if (!t.last.trim()) {
+      throw new Error(
+        'Fixture error: an expected task has an empty lookup key and would pass vacuously',
+      );
+    }
     r.step(
       'Then',
       `${t.count} identity task(s) for "${t.last}"${t.source ? ` from ${t.source}` : ''}${t.reason ? ` (${t.reason})` : ''}${t.court ? ` in court ${t.court}` : ''}`,
@@ -968,6 +999,14 @@ async function assertExpect(
   expect: Expect,
   outcome: { events: number; dlq: number; notYetSynced: number },
 ) {
+  // "Nothing written" is identical to "the source never returned the row" unless the read is asserted.
+  const expectsNothing =
+    expect.appointments !== undefined &&
+    Object.keys(expect.appointments).length > 0 &&
+    Object.values(expect.appointments).every((a) => a.length === 0);
+  if (expectsNothing && expect.sourceEvents === undefined) {
+    r.fail('Fixture error: this pass expects nothing written but declares no sourceEvents');
+  }
   if (expect.sourceEvents !== undefined) {
     r.step('Then', `the source returns ${expect.sourceEvents} event(s)`);
     r.check(
@@ -1024,7 +1063,7 @@ async function assertExpect(
     }
   }
   await assertUntouched(r, db, expect.untouched ?? []);
-  await assertTasks(r, db, expect.tasks ?? []);
+  await assertTasks(r, db, expect.tasks ?? [], expect.tasksTotal);
 }
 
 async function assertUntouched(r: Reporter, db: Db, caseIds: string[]) {
@@ -1186,10 +1225,16 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
       r.step('When', `the driver runs on ${s.runDate} for region(s) ${s.regions.join(', ')}`);
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
 
-      for (const caseId of s.expect.written) {
-        r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) has an appointment`);
-        const n = await db.collection('case-trustee-appointments').countDocuments({ caseId });
-        r.check(n > 0, 'written', 'nothing written');
+      for (const [caseId, expected] of Object.entries(s.expect.written)) {
+        r.step(
+          'Then',
+          `case ${caseId} (region ${regionOfCase(caseId)}) has ${expected.map(fmtExpected).join(', ')}`,
+        );
+        const docs = (await db
+          .collection('case-trustee-appointments')
+          .find({ documentType: 'CASE_APPOINTMENT', caseId })
+          .toArray()) as unknown as AppointmentDoc[];
+        assertAppointments(r, caseId, docs, expected);
       }
       for (const caseId of s.expect.notWritten) {
         r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) is untouched`);
@@ -1202,7 +1247,7 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         const actual = await readRegionBookmark(db, region);
         r.check(actual === expected, `bookmark ${actual}`, `bookmark is ${actual ?? 'unset'}`);
       }
-      await assertTasks(r, db, s.expect.tasks ?? []);
+      await assertTasks(r, db, s.expect.tasks ?? [], s.expect.tasksTotal);
     } finally {
       await acms.close();
       await dxtr.close();
@@ -1502,6 +1547,7 @@ function parseArgs() {
 
 async function run() {
   const { lane, only, region } = parseArgs();
+  if (!(await preflight())) return;
   const context = await getContext();
   const selected = SCENARIOS.filter(
     (s) =>
@@ -1516,11 +1562,7 @@ async function run() {
   for (const s of selected) {
     for (const l of s.lanes) {
       if (lane && lane !== l) continue;
-      if (s.pending) {
-        line(`\n  Scenario: ${s.title}   [${l}] PENDING: ${s.pending}`);
-        outcomes.push({ name: `${s.title} [${l}]`, group: 'scenario', status: 'pending' });
-        continue;
-      }
+
       await runScenarioLane(context, s, l);
     }
   }
@@ -1537,6 +1579,7 @@ async function run() {
   summarize();
 }
 
+/** Exit codes: 0 all pass, 1 failures (regressions or infrastructure), 2 only not-implemented targets, 3 infrastructure down. */
 function summarize() {
   const count = (status: Status, group?: string) =>
     outcomes.filter((o) => o.status === status && (!group || o.group === group)).length;
@@ -1545,18 +1588,58 @@ function summarize() {
     const total = outcomes.filter((o) => o.group === g).length;
     if (total === 0) continue;
     line(
-      `  ${g.padEnd(9)} ${count('pass', g)} passed, ${count('fail', g)} failed, ${count('not-implemented', g)} not implemented, ${count('pending', g)} pending (of ${total})`,
+      `  ${g.padEnd(9)} ${count('pass', g)} passed, ${count('fail', g)} failed, ${count('not-implemented', g)} not implemented (of ${total})`,
     );
   }
   line('\n  Not covered by this harness (see scenarios.ts PENDING_BEHAVIORS):');
   for (const p of PENDING_BEHAVIORS) line(`   - ${p.title}: ${p.reason}`);
-  const bad = count('fail') + count('not-implemented');
-  line(
-    bad === 0
-      ? '\n  All scenarios pass.'
-      : `\n  ${bad} scenario(s) not passing. While CAMS-955 is being built this is expected; each one is a target.`,
-  );
-  process.exitCode = bad === 0 ? 0 : 1;
+  const failed = count('fail');
+  const targets = count('not-implemented');
+  if (failed > 0) {
+    line(
+      `\n  ${failed} FAILED (a regression, an unmet expectation, or infrastructure trouble) and ${targets} not implemented (targets).`,
+    );
+    process.exitCode = 1;
+  } else if (targets > 0) {
+    line(`\n  No failures. ${targets} not implemented (targets while CAMS-955 is being built).`);
+    process.exitCode = 2;
+  } else {
+    line('\n  All scenarios pass.');
+    process.exitCode = 0;
+  }
+}
+
+/** Fail fast, with its own exit code, when a database is unreachable, instead of 94 identical failures. */
+async function preflight(): Promise<boolean> {
+  const problems: string[] = [];
+  try {
+    const { client, db } = await getMongo();
+    await db.command({ ping: 1 });
+    await client.close();
+  } catch (e) {
+    problems.push(`MongoDB: ${(e as Error).message}`);
+  }
+  for (const [label, connect] of [
+    ['ACMS SQL', acmsPool],
+    ['DXTR SQL', dxtrPool],
+  ] as const) {
+    try {
+      const pool = await connect();
+      await pool.request().query('SELECT 1');
+      await pool.close();
+    } catch (e) {
+      problems.push(`${label}: ${(e as Error).message}`);
+    }
+  }
+  if (problems.length > 0) {
+    line(
+      '\n  Infrastructure is not reachable (is start-services.sh running, and seed-schema done?):',
+    );
+    for (const problem of problems) line(`   - ${problem}`);
+    process.exitCode = 3;
+    return false;
+  }
+  return true;
 }
 
 function list() {
@@ -1604,8 +1687,51 @@ function help() {
   line(header.replace(/^\/\*\*\n/, '').replace(/^ \* ?/gm, ''));
 }
 
+/**
+ * Refuse to run anything destructive unless every target is local and the Mongo database name is
+ * disposable. wipeAll() deletes every document in nine collections and every fixture table row, and
+ * .env.local is often assembled from other checkouts' files, so a wrong host must never reach it.
+ * The name rule copies the '-idxtest-' convention of ../_lib/ephemeral-cosmos-database.ts.
+ */
+function assertLocalTargets() {
+  const problems: string[] = [];
+  const isLocal = (host: string) => host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+  const dbName = process.env.COSMOS_DATABASE_NAME ?? '';
+  if (!dbName.includes('-idxtest-')) {
+    problems.push(
+      `COSMOS_DATABASE_NAME '${dbName}' must contain '-idxtest-' (disposable databases only)`,
+    );
+  }
+
+  const uri = process.env.MONGO_CONNECTION_STRING ?? '';
+  const match = uri.match(/^mongodb(\+srv)?:\/\/(?:[^@/]*@)?([^/?]+)/);
+  if (!match || match[1]) {
+    problems.push('MONGO_CONNECTION_STRING must be a plain mongodb:// URI to a local host');
+  } else {
+    for (const hostPort of match[2].split(',')) {
+      const host = hostPort.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+      if (!isLocal(host)) problems.push(`MONGO_CONNECTION_STRING host '${host}' is not local`);
+    }
+  }
+  for (const name of ['ACMS_MSSQL_HOST', 'MSSQL_HOST']) {
+    const host = process.env[name] ?? '';
+    if (!isLocal(host)) problems.push(`${name} '${host}' is not local`);
+  }
+
+  if (problems.length > 0) {
+    console.error(
+      '\nRefusing to run: this harness wipes its databases and only runs against local containers.',
+    );
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exit(4);
+  }
+}
+
 async function main() {
   const command = process.argv[2] ?? 'help';
+  if (command !== 'list' && command !== 'help') loadEnv();
+  if (['seed-schema', 'run', 'replay', 'clean'].includes(command)) assertLocalTargets();
   switch (command) {
     case 'check-env':
       return checkEnv();

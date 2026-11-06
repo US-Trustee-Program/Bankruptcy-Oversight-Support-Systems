@@ -70,10 +70,13 @@ export async function runRegionDriver(
 }
 
 /**
- * Seam 3 (ASSUMED SHAPE): the per-region runtime-state document. Shape from cams-fd8qd.1.3 and cams-rxb7a:
- * one document {documentType, regions: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}.
- * The document type name is an example in the bead ("e.g."); correct it here when the real one exists.
- * `source` unset means ACMS.
+ * Seam 3 (ASSUMED SHAPE): the per-region runtime-state document, one document with a `region` map:
+ * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}.
+ *
+ * The shape follows the .feature file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with
+ * setField) and cams-rxb7a ("region.<regionId>.source"). NOTE cams-fd8qd.1.3's prose describes a `regions`
+ * map instead; the beads disagree, so correct this one place when the real document exists. `source`
+ * unset means ACMS. The document type is the bead's example name and must be replaced with the real one.
  */
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 
@@ -81,32 +84,28 @@ export async function seedRegionState(
   db: Db,
   state: { bookmarks?: Record<string, string>; switchedToDxtr?: string[] },
 ): Promise<void> {
-  const regions: Record<string, { lastSyncDate?: string; source?: unknown }> = {};
-  for (const [region, lastSyncDate] of Object.entries(state.bookmarks ?? {})) {
-    regions[region] = { ...regions[region], lastSyncDate };
+  const region: Record<string, { lastSyncDate?: string; source?: unknown }> = {};
+  for (const [id, lastSyncDate] of Object.entries(state.bookmarks ?? {})) {
+    region[id] = { ...region[id], lastSyncDate };
   }
   const now = new Date().toISOString();
-  for (const region of state.switchedToDxtr ?? []) {
-    regions[region] = {
-      ...regions[region],
+  for (const id of state.switchedToDxtr ?? []) {
+    region[id] = {
+      ...region[id],
       source: { system: 'DXTR', updatedOn: now, updatedBy: { id: 'SYSTEM', name: 'SYSTEM' } },
     };
   }
-  if (Object.keys(regions).length === 0) return;
+  if (Object.keys(region).length === 0) return;
   await db
     .collection('runtime-state')
-    .insertOne({ id: randomUUID(), documentType: REGION_STATE_DOCUMENT_TYPE, regions });
+    .insertOne({ id: randomUUID(), documentType: REGION_STATE_DOCUMENT_TYPE, region });
 }
 
 /** The latest fully processed date for a region, or undefined. Same assumed shape as seedRegionState. */
 export async function readRegionBookmark(db: Db, region: string): Promise<string | undefined> {
-  const docs = await db
+  const doc = await db
     .collection('runtime-state')
-    .find({ documentType: /REGION/ })
-    .toArray();
-  for (const d of docs) {
-    const v = (d.regions?.[region] ?? d.region?.[region])?.lastSyncDate as string | undefined;
-    if (v) return v.slice(0, 10);
-  }
-  return undefined;
+    .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
+  const value = doc?.region?.[region]?.lastSyncDate as string | undefined;
+  return value ? value.slice(0, 10) : undefined;
 }

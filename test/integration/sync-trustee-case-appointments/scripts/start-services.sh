@@ -19,13 +19,14 @@ POD_NAME="cams-sync-trustee-case-appointments-pod"
 podman pod stop "${POD_NAME}" 2>/dev/null || true
 podman pod rm -f "${POD_NAME}" 2>/dev/null || true
 
-podman pod create --name "${POD_NAME}" --publish 1433:1433 --publish 27017:27017
+# Bind to loopback only: MongoDB has no auth, and `replay` loads real trustee data into these containers.
+podman pod create --name "${POD_NAME}" --publish 127.0.0.1:1433:1433 --publish 127.0.0.1:27017:27017
 
 podman run -d --pod "${POD_NAME}" --name cams-mongodb-sync-trustee-case-appointments \
-  mongo:7.0 --bind_ip_all
+  docker.io/library/mongo:7.0.37 --bind_ip_all
 podman run -d --pod "${POD_NAME}" --name cams-sqledge-sync-trustee-case-appointments \
   -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" -e MSSQL_PID=Developer \
-  mcr.microsoft.com/azure-sql-edge:latest
+  mcr.microsoft.com/azure-sql-edge:1.0.7
 
 wait_for_port() {
   local name="$1" port="$2" tries="$3" delay="$4"
