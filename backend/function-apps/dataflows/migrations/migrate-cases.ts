@@ -3,12 +3,16 @@ import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
 import { buildFunctionName, buildQueueName, RangeMessage, StartMessage } from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import {
+  buildQueueError,
+  isQueueError,
+  QueueError,
+} from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTransientInfraError } from '../../../lib/common-errors/transient-infra-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -77,8 +81,8 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
       `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
     );
 
-    const isEmpty = await emptyMigrationTable(appContext);
-    if (!isEmpty) {
+    const emptied = await emptyMigrationTable(appContext);
+    if (!emptied) {
       completeDataflowTrace(
         appContext.observability,
         trace,
@@ -88,14 +92,30 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
         {
           documentsWritten: 0,
           documentsFailed: 0,
-          success: true,
-          details: { reason: 'migration table not empty' },
+          success: false,
+          error: 'failed to empty migration table',
         },
       );
       return;
     }
 
     const count = await loadMigrationTable(appContext);
+    if (count === undefined) {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleStart',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'failed to load migration table',
+        },
+      );
+      return;
+    }
 
     if (count === 0) {
       completeDataflowTrace(
@@ -244,7 +264,10 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
   }
 }
 
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+async function handleError(
+  event: CaseSyncEvent | QueueError,
+  invocationContext: InvocationContext,
+) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
@@ -254,6 +277,27 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
     });
 
     const trace = appContext.observability.startTrace(appContext.invocationId);
+    if (isQueueError(event)) {
+      appContext.logger.error(
+        MODULE_NAME,
+        `Queue error from ${event.module} ${event.activityName}: ${event.error.message}`,
+      );
+      appContext.extraOutputs.set(HARD_STOP, [event]);
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleError',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          details: { disposition: 'job-failure' },
+        },
+      );
+      return;
+    }
     if (isNotFoundError(event.error)) {
       appContext.logger.info(
         MODULE_NAME,
@@ -336,34 +380,32 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
         },
       );
     } else {
-      if (!event.bCase) {
-        const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
+      const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
 
-        if (exportResult.bCase) {
-          event.bCase = exportResult.bCase;
-        } else {
-          event.error =
-            exportResult.error ??
-            new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
-          appContext.extraOutputs.set(DLQ, [event]);
-          completeDataflowTrace(
-            appContext.observability,
-            trace,
-            MODULE_NAME,
-            'handleRetry',
-            appContext.logger,
-            {
-              documentsWritten: 0,
-              documentsFailed: 1,
-              success: true,
-              details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
-            },
-          );
-          return;
-        }
+      if (exportResult.error) {
+        event.error = exportResult.error;
+        appContext.extraOutputs.set(DLQ, [event]);
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handleRetry',
+          appContext.logger,
+          {
+            documentsWritten: 0,
+            documentsFailed: 1,
+            success: true,
+            details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
+          },
+        );
+        return;
       }
 
-      const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
+      const loadResult = await ExportAndLoadCase.loadCase(
+        appContext,
+        event,
+        exportResult.caseDetail,
+      );
 
       if (loadResult.error) {
         event.error = loadResult.error;
@@ -413,13 +455,14 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
  * @param appContext
  * @returns
  */
-async function loadMigrationTable(appContext: ApplicationContext) {
+async function loadMigrationTable(appContext: ApplicationContext): Promise<number | undefined> {
   const result = await MigrateCases.loadMigrationTable(appContext);
   if (result.error) {
     appContext.extraOutputs.set(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE),
     );
+    return undefined;
   }
   return result.data;
 }
@@ -472,14 +515,27 @@ async function getCaseIdsToMigrate(
 /**
  * storeRuntimeState
  *
- * Wrapper for CasesRuntimeState.storeRuntimeState
+ * Wrapper for CasesRuntimeState.storeRuntimeState that does not rethrow. Rethrowing would stop
+ * handleStart before the PAGE output is delivered, and the queue retry would return early because
+ * the migration table is already loaded, stalling the migration. The shared function logs
+ * non-transient failures before rethrowing, and rethrows transient ones unlogged, so this wrapper
+ * logs only the transient case to avoid a duplicate entry.
  *
  * @param appContext
  * @param syncDate
  * @returns
  */
 async function storeRuntimeState(appContext: ApplicationContext, syncDate: string) {
-  return CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
+  try {
+    await CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
+  } catch (error) {
+    if (isTransientInfraError(error)) {
+      appContext.logger.warn(
+        MODULE_NAME,
+        `Failed to store runtime state; migration continues. ${(error as Error).message}`,
+      );
+    }
+  }
 }
 
 function setup() {
@@ -487,7 +543,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE],
+    extraOutputs: [PAGE, DLQ],
   });
 
   app.storageQueue(HANDLE_PAGE, {
@@ -501,7 +557,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {

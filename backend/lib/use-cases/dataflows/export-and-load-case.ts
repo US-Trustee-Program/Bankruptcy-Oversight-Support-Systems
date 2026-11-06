@@ -8,6 +8,7 @@ import {
 } from '@common/cams/cases';
 import { CaseDenormalizedFields } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsError } from '../../common-errors/cams-error';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -124,8 +125,8 @@ async function exportAndLoad(
 
   for (const event of events) {
     try {
-      event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
-      const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
+      const caseDetail = await casesGateway.getCaseDetail(context, event.caseId);
+      const caseWithPhoneticTokens = addPhoneticTokens(caseDetail);
       const syncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' as const };
 
       try {
@@ -166,7 +167,7 @@ async function exportAndLoad(
       // should skip the patch rather than aborting the sync itself.
       let fieldsToUpdate: CaseDenormalizedFields | null = null;
       try {
-        fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
+        fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, caseDetail);
       } catch (fieldsError) {
         event.error = getCamsError(
           fieldsError,
@@ -239,10 +240,21 @@ async function exportAndLoad(
   return events;
 }
 
-async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
+/**
+ * Fetches the DXTR case for an event and returns it to the caller. The event is not modified:
+ * it is a queue message, and DXTR case detail (debtor names, tax IDs) must not be written back
+ * onto it, where it would reach every later DLQ, RETRY, and HARD_STOP write.
+ */
+async function exportCase(
+  context: ApplicationContext,
+  event: CaseSyncEvent,
+): Promise<
+  { caseDetail: DxtrCase; error?: undefined } | { caseDetail?: undefined; error: CamsError }
+> {
   try {
     const gateway = factory.getCasesGateway(context);
-    event.bCase = await gateway.getCaseDetail(context, event.caseId);
+    const caseDetail = await gateway.getCaseDetail(context, event.caseId);
+    return { caseDetail };
   } catch (originalError) {
     const error = getCamsError(
       originalError,
@@ -250,30 +262,33 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
       `Failed while exporting case ${event.caseId}.`,
     );
     context.logger.camsError(error);
-    event.error = error;
+    return { error };
   }
-
-  return event;
 }
 
-async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
+async function loadCase(
+  context: ApplicationContext,
+  event: CaseSyncEvent,
+  caseDetail: DxtrCase,
+): Promise<{ error?: CamsError }> {
   try {
     const casesRepo = factory.getCasesRepository(context);
-    const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
+    const caseWithPhoneticTokens = addPhoneticTokens(caseDetail);
     const synced = createAuditRecord<SyncedCase>({
       ...caseWithPhoneticTokens,
       documentType: 'SYNCED_CASE',
     });
     await casesRepo.syncDxtrCase(synced);
+    return {};
   } catch (originalError) {
-    event.error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+    const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
       camsStackInfo: {
         message: `Failed to sync DXTR case ${event.caseId}.`,
         module: MODULE_NAME,
       },
     });
+    return { error };
   }
-  return event;
 }
 
 const ExportAndLoadCase = {

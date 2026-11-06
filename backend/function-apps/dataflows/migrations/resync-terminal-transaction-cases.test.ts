@@ -10,6 +10,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import * as ResyncTerminalTransactionCasesModule from '../../../lib/use-cases/dataflows/resync-terminal-transaction-cases';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -121,14 +122,22 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     expect(visibilityTimeout).toBeLessThanOrEqual(600);
   });
 
-  test('should route to DLQ instead of throwing when retry limit exhausted', async () => {
+  test('should route to DLQ instead of throwing when retry limit exhausted, keeping the original page events', async () => {
     const { handlePage } = await import('./resync-terminal-transaction-cases');
     const events: CaseSyncEvent[] = [{ type: 'MIGRATION', caseId: '001-25-00001' }];
-    const message: PageMessage = { events, retryCount: 10 };
+    const message: PageMessage = { events, retryCount: RATE_LIMIT_RETRY_LIMIT };
     const invocationContext = makeInvocationContext();
 
     const tooManyError = new TooManyRequestsError('RESYNC-TERMINAL-TRANSACTION-CASES');
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(tooManyError);
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockImplementation(
+      async (_context, pageEvents) => {
+        pageEvents[0].divisionChange = {
+          orphanedCaseId: '081-25-00001',
+          currentCaseId: '001-25-00001',
+        };
+        throw tooManyError;
+      },
+    );
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -137,13 +146,25 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
       expect.arrayContaining([
-        expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: 10, error: expect.anything() }),
+        expect.objectContaining({
+          type: 'QUEUE_ERROR',
+          retryCount: RATE_LIMIT_RETRY_LIMIT,
+          error: expect.anything(),
+        }),
       ]),
     );
     const [, dlqPayload] = (
       extraOutputsSetSpy.mock.calls as unknown as [{ queueName: string }, unknown][]
     ).find(([key]) => key.queueName?.includes('dlq'));
     expect(dlqPayload).toHaveLength(1);
+    const [dlqEntry] = dlqPayload as { message: { events: unknown } }[];
+    expect(dlqEntry.message.events).toEqual([
+      {
+        type: 'MIGRATION',
+        caseId: '001-25-00001',
+        divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
+      },
+    ]);
   });
 
   test('should re-throw on non-429 error', async () => {

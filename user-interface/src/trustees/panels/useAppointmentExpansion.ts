@@ -30,21 +30,30 @@ function writeStoredIds(trusteeId: string, expandedIds: Record<string, boolean>)
 
 /**
  * Expansion state is backed by sessionStorage (keyed by trusteeId) so it
- * survives navigating away to an edit form and back. An appointment with no
- * explicit user toggle yet defaults to collapsed, regardless of status.
+ * survives navigating away to an edit form and back within the same tab.
+ *
+ * An explicit user toggle, once stored, always wins. An appointment with no
+ * stored toggle falls back to a default computed from the trustee's current
+ * appointment count on every render: expanded only when the trustee has
+ * exactly one appointment, otherwise collapsed. The default is never written
+ * to storage, so it tracks the count as appointments are added or removed.
  */
-export function useAppointmentExpansion(trusteeId: string): UseAppointmentExpansion {
+export function useAppointmentExpansion(
+  trusteeId: string,
+  appointmentCount: number,
+): UseAppointmentExpansion {
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>(() =>
     readStoredIds(trusteeId),
   );
+  const defaultExpanded = appointmentCount === 1;
 
   function isExpanded(appointment: { id: string; status: AppointmentStatus }): boolean {
-    return expandedIds[appointment.id] ?? false;
+    return expandedIds[appointment.id] ?? defaultExpanded;
   }
 
   function toggleExpanded(appointment: { id: string; status: AppointmentStatus }) {
     setExpandedIds((prev) => {
-      const current = prev[appointment.id] ?? false;
+      const current = prev[appointment.id] ?? defaultExpanded;
       const next = { ...prev, [appointment.id]: !current };
       writeStoredIds(trusteeId, next);
       return next;
