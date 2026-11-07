@@ -2049,6 +2049,33 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
 
+    test('routes to dlqMessages and writes no surrogate when appointedDate is missing on an unresolved match', async () => {
+      // writeSurrogateAppointment's own assertAppointedDate guard -- the third of three call
+      // sites sharing this check (see its docblock), reached only on the no-match/ambiguous
+      // path after the verification doc is already written.
+      (
+        pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(makeUnresolvedState(0));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+      const event: TrusteeAppointmentSyncEvent = {
+        ...makeEvent('case-001', 'Ghost Trustee'),
+        appointedDate: undefined,
+      };
+
+      const { dlqMessages, successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [event],
+      );
+
+      expect(dlqMessages).toHaveLength(1);
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(successCount).toBe(0);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('TRUSTEE APPOINTMENT DATA INTEGRITY ERROR'),
+      );
+    });
+
     test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc', async () => {
       // acmsProfessionalId is a CAMS construct, not a native DXTR/ACMS field - the gateway only
       // crosses raw groupDesignator + profCode facts; this format ("{group}-{profCode}") is built
