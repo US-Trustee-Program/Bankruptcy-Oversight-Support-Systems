@@ -158,6 +158,19 @@ describe('Runtime State Repo', () => {
         }),
       );
     });
+
+    test('should throw when the decremented field is not a number', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          documentType: 'PROFESSIONAL_ID_COUNTER',
+          lastAssigned: 'not-a-number' as unknown as number,
+        });
+
+      await expect(
+        counterRepo.atomicDecrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 100000),
+      ).rejects.toThrow(CamsError);
+    });
   });
 
   describe('atomicIncrement', () => {
