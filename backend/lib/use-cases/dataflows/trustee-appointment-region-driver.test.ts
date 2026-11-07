@@ -212,6 +212,16 @@ describe('RegionDriver.runRegionDriver', () => {
   });
 
   test('only the named regions are processed; others are left untouched', async () => {
+    // Region '03' has data and its own bookmark in state, but is never named in the request --
+    // if the driver leaked state across regions, these would show it was touched anyway.
+    mockRegionStateRepo.read.mockResolvedValue(stateWith({ '03': { lastSyncDate: '2026-07-01' } }));
+    getLatestCmmapChangeDateForRegion.mockImplementation(async (_context, regionId: string) =>
+      regionId === '02' ? '2026-07-03' : '2026-07-10',
+    );
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({ '2026-07-09': makeRawRow(1, '2026-07-09', '03') }),
+    );
+
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02'],
       runDate: '2026-07-05',
@@ -220,6 +230,19 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.processedRegions).toEqual(['02']);
     expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledTimes(1);
     expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledWith(context, '02');
+    expect(getCmmapAppointmentsRaw).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      '03',
+      expect.anything(),
+    );
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalledWith(
+      'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+      'region.03.lastSyncDate',
+      expect.anything(),
+    );
   });
 
   test("each region's bookmark advances independently, without cross-contamination", async () => {
