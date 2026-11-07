@@ -667,7 +667,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     });
   });
 
-  test('does not call the region driver when deleteAll is set and deletion succeeds', async () => {
+  test('falls through to the region driver when deleteAll is set and deletion succeeds', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy } = await setupMocks();
