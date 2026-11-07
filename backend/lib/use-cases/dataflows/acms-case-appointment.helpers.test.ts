@@ -112,8 +112,11 @@ describe('buildAcmsSourceTrustee', () => {
     expect(sourceTrustee.legacy).toBeUndefined();
   });
 
-  test('collapses extra spaces when middle initial is blank', () => {
-    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: '' }));
+  test('collapses extra spaces when middle initial is a blank space', () => {
+    // A single space is truthy, so it survives filter(Boolean) and joins into 'Jane   Doe'
+    // (unlike '' default, which filter(Boolean) drops before the join) -- this is the only
+    // PROF_MI value that actually exercises removeExtraSpaces' collapsing behavior.
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: ' ' }));
 
     expect(sourceTrustee.fullName).toBe('Jane Doe');
   });
