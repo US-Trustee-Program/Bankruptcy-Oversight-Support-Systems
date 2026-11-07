@@ -10,14 +10,7 @@ import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
-import {
-  TrusteeCaseAppointmentsRepository,
-  TrusteeAppointmentsSyncState,
-  TrusteePetitionSyncState,
-  RuntimeState,
-  RuntimeStateDocumentType,
-  RuntimeStateRepository,
-} from '../gateways.types';
+import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
 import { parseCityStateZip, normalizeName } from './trustee-match.helpers';
 import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
 import { serializeState } from './trustee-match-pipeline';
@@ -32,7 +25,6 @@ import {
 } from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { randomUUID } from 'node:crypto';
 import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
@@ -198,12 +190,16 @@ export async function createNewAppointment(
   trusteeId: string,
   assignedOn: string,
   checks: CaseAppointmentChecks,
+  // Set only for an out-of-order older row (cams-fd8qd.1.8): written already closed so it never
+  // displaces the case's currently-active appointment for a different trustee.
+  unassignedOn?: string,
 ): Promise<void> {
   await appointmentsRepo.upsert({
     caseId: event.caseId,
     trusteeId,
     assignedOn,
     appointedDate: event.appointedDate,
+    ...(unassignedOn ? { unassignedOn } : {}),
     checks,
   });
   context.logger.info(
@@ -424,10 +420,40 @@ async function applyResolvedTrustee(
         { ...existingAppointment, documentType: 'CASE_APPOINTMENT' },
       );
     }
+
+    // ACMS DISP_DATE closes this same trustee's active appointment with no replacement
+    // (cams-fd8qd.1.8) — event.unassignedOn is the closure date itself, not a reference date a
+    // new appointment starts on, so it is used directly rather than via deriveUnassignedOn's
+    // "day before a new appointment" rule. Still clamped to never precede the appointment's own
+    // assignedOn, the same safety rule deriveUnassignedOn applies, for out-of-order delivery.
+    if (event.unassignedOn) {
+      const existingAssignedOnDate = existingAppointment.assignedOn.slice(0, 10);
+      const unassignedOn =
+        event.unassignedOn < existingAssignedOnDate ? existingAssignedOnDate : event.unassignedOn;
+      await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn });
+    }
     return null; // Same trustee already active — nothing further to do
   }
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
+    if (assignedOn < existingAppointment.assignedOn.slice(0, 10)) {
+      // Out-of-order: this row is older than the case's currently-active appointment for a
+      // different trustee (cams-fd8qd.1.8). The active appointment is still current and must
+      // not be displaced — write this older row already closed instead, one day before the
+      // active appointment starts (same deriveUnassignedOn clamp, roles reversed).
+      const unassignedOn = deriveUnassignedOn(existingAppointment.assignedOn, assignedOn);
+      await createNewAppointment(
+        context,
+        appointmentsRepo,
+        event,
+        trusteeId,
+        assignedOn,
+        checks,
+        unassignedOn,
+      );
+      return null;
+    }
+
     const { closed, dlqFailure } = await softCloseExistingAppointment(
       context,
       event,
@@ -569,15 +595,13 @@ export function assertSyncedCase(syncedCase: SyncedCase | undefined): SyncedCase
 function createDeps(context: ApplicationContext) {
   return {
     context,
-    casesGateway: factory.getCasesGateway(context),
     casesRepo: factory.getCasesRepository(context),
     appointmentsRepo: factory.getTrusteeAppointmentsRepository(context),
     caseAppointmentsRepo: factory.getTrusteeCaseAppointmentsRepository(context),
     trusteesRepo: factory.getTrusteesRepository(context),
     verificationRepo: factory.getTrusteeMatchVerificationRepository(context),
-    runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
-    petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
+    professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
   };
 }
 
@@ -595,6 +619,24 @@ async function matchTrusteeByVariation(
 ): Promise<string | null> {
   const bucket = await deps.variationRepo.findByFingerprint(fingerprint);
   return findByVariant(bucket, variant)?.trusteeId ?? null;
+}
+
+/**
+ * Identification step 1 (see the .feature's identification-order header comment): an ACMS event
+ * whose acmsProfessionalId is linked (verified, disposition 'linked') to exactly one CAMS
+ * trustee resolves directly from that link. Returns null for a DXTR event (no acmsProfessionalId),
+ * no link, or an ambiguous link (2+ distinct trustees) -- an ambiguous link is deliberately not
+ * used here, falling through to variation/pipeline matching exactly like any other unresolved
+ * event (see the .feature's "An ambiguous professional-id link is not used").
+ */
+async function matchTrusteeByProfessionalId(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  acmsProfessionalId: string | undefined,
+): Promise<string | null> {
+  if (!acmsProfessionalId) return null;
+  const links = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+  const distinctTrusteeIds = new Set(links.map((link) => link.camsTrusteeId));
+  return distinctTrusteeIds.size === 1 ? links[0].camsTrusteeId : null;
 }
 
 /**
@@ -687,95 +729,6 @@ async function writeSurrogateAppointment(
   });
 }
 
-async function resolveSyncState<D extends RuntimeStateDocumentType>(
-  documentType: D,
-  repo: RuntimeStateRepository<RuntimeState & { documentType: D; lastSyncDate: string }>,
-  lastSyncDate?: string,
-  reset?: boolean,
-): Promise<RuntimeState & { documentType: D; lastSyncDate: string }> {
-  if (lastSyncDate) {
-    return { id: randomUUID(), documentType, lastSyncDate };
-  }
-  if (reset) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
-  }
-  try {
-    return await repo.read(documentType);
-  } catch (_error) {
-    return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
-  }
-}
-
-async function getAppointmentEvents(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  lastSyncDate?: string,
-  reset?: boolean,
-  overrideRuntimeState?: TrusteeAppointmentsSyncState,
-) {
-  const { context } = deps;
-  try {
-    let syncState: TrusteeAppointmentsSyncState;
-    if (overrideRuntimeState !== undefined) {
-      context.logger.info(MODULE_NAME, 'Using overrideRuntimeState from start message.');
-      syncState = overrideRuntimeState;
-    } else {
-      if (!lastSyncDate && reset) {
-        context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
-      }
-      syncState = await resolveSyncState(
-        'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-        deps.runtimeStateRepo,
-        lastSyncDate,
-        reset,
-      );
-    }
-
-    const petitionSyncState = await resolveSyncState(
-      'TRUSTEE_PETITION_SYNC_STATE',
-      deps.petitionSyncStateRepo,
-      lastSyncDate,
-      reset,
-    );
-
-    const [trusteeResult, petitionResult] = await Promise.allSettled([
-      deps.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
-      deps.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate),
-    ]);
-
-    // The petition-time query is newer and less proven than the long-running TR-appointment
-    // sync, so its failure must not take down the previously-reliable TR sync or block its
-    // watermark from advancing. Settled independently rather than via Promise.all.
-    if (trusteeResult.status === 'rejected') {
-      throw trusteeResult.reason;
-    }
-    const trusteeAppointments = trusteeResult.value;
-
-    let petitionEvents: TrusteeAppointmentSyncEvent[] = [];
-    let petitionLatestSyncDate: string | undefined;
-    if (petitionResult.status === 'fulfilled') {
-      petitionEvents = petitionResult.value.events;
-      petitionLatestSyncDate = petitionResult.value.latestSyncDate;
-    } else {
-      const error = getCamsError(petitionResult.reason, MODULE_NAME);
-      context.logger.camsError(error);
-      context.logger.error(
-        MODULE_NAME,
-        'Petition-time trustee event sync failed; continuing with TR-appointment events only for this run.',
-      );
-    }
-
-    return {
-      events: [...trusteeAppointments.events, ...petitionEvents],
-      latestSyncDate: trusteeAppointments.latestSyncDate,
-      petitionLatestSyncDate,
-    };
-  } catch (originalError) {
-    const error = getCamsError(originalError, MODULE_NAME);
-    context.logger.camsError(error);
-    throw error;
-  }
-}
-
 /**
  * Per-event state shared by the name/scoring resolution steps below. Built once per event, after
  * fingerprint/variant/audit/scenarioDistribution already exist — deliberately does NOT include
@@ -813,6 +766,29 @@ type IdentityResolution =
  * isTransientInfraError/isTooManyRequestsError/isGatewayTimeoutError. Transient-error
  * classification happens exactly once, at processAppointments' own outer catch.
  */
+/**
+ * cams-fd8qd.1.9: removes the open surrogate placeholder for this case+fingerprint when an ACMS
+ * row with DISP_DATE arrives for an already-unresolved trustee. Returns whether an open surrogate
+ * was found and removed on THIS case — false means there was nothing of this fingerprint's own to
+ * clean up here (no surrogate yet for this case, only for a different one sharing the fingerprint,
+ * or none at all), so normal unresolved handling should proceed.
+ */
+async function removeOpenSurrogateForDisposedFingerprint(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  fingerprint: string,
+): Promise<boolean> {
+  const surrogates = await deps.caseAppointmentsRepo.getSurrogatesByFingerprint(fingerprint);
+  const openSurrogate = surrogates.find(
+    (appointment) => appointment.caseId === event.caseId && !appointment.unassignedOn,
+  );
+  if (!openSurrogate) {
+    return false;
+  }
+  await deps.caseAppointmentsRepo.delete(openSurrogate.id);
+  return true;
+}
+
 async function resolveTrusteeViaPipeline(
   ctx: MatchContext,
   syncedCase: SyncedCase,
@@ -849,6 +825,19 @@ async function resolveTrusteeViaPipeline(
       trusteeId: state.match.trusteeId,
       matchedBy: state.match.resolvedBy,
     };
+  }
+
+  if (event.unassignedOn) {
+    // cams-fd8qd.1.9: a CMMAP row for an already-placeholder'd fingerprint whose DISP_DATE has
+    // closed the appointment removes the open surrogate for this case+fingerprint and writes no
+    // new placeholder/task — the identity task itself is left in place (a later, still-unresolved
+    // row for the same contact details reuses it via upsertIdentityTask's existing-task check).
+    // No surrogate yet for this fingerprint on this case (its first-ever row arrived pre-closed)
+    // falls through to the normal unresolved handling below.
+    const removed = await removeOpenSurrogateForDisposedFingerprint(deps, event, fingerprint);
+    if (removed) {
+      return { outcome: 'handled' };
+    }
   }
 
   // Unresolved: the same rule the ACMS professional-id sync uses (deriveDisposition) — 2+
@@ -1277,17 +1266,25 @@ async function handleBogusTrusteeCloseOnly(
 async function handleVerificationBucketHit(
   ctx: MatchContext,
   syncedCase: SyncedCase,
-  variationTrusteeId: string | null,
+  // "Known" per the .feature's identification-order header: resolved by step 1
+  // (professional-id) or step 2 (variation) -- either already identifies the trustee, so a
+  // pending-verification bucket is irrelevant and must not short-circuit this event.
+  knownTrusteeId: string | null,
 ): Promise<boolean> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
-  if (
-    variationTrusteeId ||
-    !(await hasPendingVerificationForVariation(deps, fingerprint, variant))
-  ) {
+  if (knownTrusteeId || !(await hasPendingVerificationForVariation(deps, fingerprint, variant))) {
     return false;
   }
 
-  await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  if (event.unassignedOn) {
+    // cams-fd8qd.1.9: a CMMAP row for an already-placeholder'd fingerprint whose DISP_DATE has
+    // closed the appointment removes the open surrogate for this case+fingerprint and writes no
+    // new placeholder — the identity task (and its 'pending' verification bucket entry) is left
+    // in place, reused by a later, still-unresolved row for the same contact details.
+    await removeOpenSurrogateForDisposedFingerprint(deps, event, fingerprint);
+  } else {
+    await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  }
   scenarioDistribution.verificationBucketHitCount++;
   audit.matchOutcome = 'verification-bucket-hit';
   deps.context.logger.info(
@@ -1389,6 +1386,10 @@ async function processOneEvent(
   };
 
   try {
+    const professionalIdTrusteeId = await matchTrusteeByProfessionalId(
+      deps,
+      event.acmsProfessionalId,
+    );
     const variationTrusteeId = await matchTrusteeByVariation(deps, fingerprint, variant);
     if (variationTrusteeId) {
       scenarioDistribution.fingerprintHitCount++;
@@ -1408,13 +1409,24 @@ async function processOneEvent(
     if (bogusTrusteeOutcome) return bogusTrusteeOutcome;
 
     const ctx: MatchContext = { deps, event, fingerprint, variant, audit, scenarioDistribution };
-    if (await handleVerificationBucketHit(ctx, syncedCase, variationTrusteeId)) {
+    if (
+      await handleVerificationBucketHit(
+        ctx,
+        syncedCase,
+        professionalIdTrusteeId || variationTrusteeId,
+      )
+    ) {
       return { kind: 'none' };
     }
 
     let trusteeId: string;
     let matchedBy: string;
-    if (variationTrusteeId) {
+    if (professionalIdTrusteeId) {
+      // A verified ACMS professional-id link involved no pipeline run and no fingerprint bucket
+      // at all — checks.matchedBy names the link itself (identification step 1).
+      trusteeId = professionalIdTrusteeId;
+      matchedBy = 'professional-id';
+    } else if (variationTrusteeId) {
       // A fingerprint-bucket hit involved no pipeline run at all — checks.matchedBy names the
       // bucket, not a RESOLVE stage.
       trusteeId = variationTrusteeId;
@@ -1617,47 +1629,6 @@ async function processAppointments(
   };
 }
 
-async function storeRuntimeState(deps: SyncTrusteeCaseAppointmentsDeps, lastSyncDate: string) {
-  const { context } = deps;
-  try {
-    const newSyncState: TrusteeAppointmentsSyncState = {
-      documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-      lastSyncDate,
-    };
-    await deps.runtimeStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      'Failed while storing the trustee appointments sync runtime state.',
-    );
-    context.logger.camsError(error);
-  }
-}
-
-async function storePetitionRuntimeState(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  lastSyncDate: string,
-) {
-  const { context } = deps;
-  try {
-    const newSyncState: TrusteePetitionSyncState = {
-      documentType: 'TRUSTEE_PETITION_SYNC_STATE',
-      lastSyncDate,
-    };
-    await deps.petitionSyncStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote petition runtime state: `, newSyncState);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      'Failed while storing the trustee petition sync runtime state.',
-    );
-    context.logger.camsError(error);
-  }
-}
-
 async function deleteAll(
   deps: SyncTrusteeCaseAppointmentsDeps,
 ): Promise<{ data: { deleted: number }; error?: Error }> {
@@ -1679,10 +1650,7 @@ async function deleteAll(
 
 const SyncTrusteeCaseAppointments = {
   createDeps,
-  getAppointmentEvents,
   processAppointments,
-  storeRuntimeState,
-  storePetitionRuntimeState,
   deleteAll,
 };
 

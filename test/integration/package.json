@@ -9,12 +9,6 @@
   "scripts": {
     "api-to-dataflows-bridge": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
     "api-to-dataflows-bridge:local": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
-    "case-trustee-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts",
-    "case-trustee-appointments:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts",
-    "case-trustee-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts",
-    "migrate-case-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
-    "migrate-case-appointments:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
-    "migrate-case-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
     "fix-chapter-7-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json fix-chapter-7-appointments/scripts/run-tests.ts",
     "backfill-unassigned-on": "npx tsx --tsconfig ../../backend/tsconfig.json backfill-unassigned-on/scripts/run-tests.ts",
     "backfill-unassigned-on:prod-dump": "npx tsx --tsconfig ../../backend/tsconfig.json backfill-unassigned-on/scripts/run-prod-dump.ts",

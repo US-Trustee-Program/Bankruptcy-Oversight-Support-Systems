@@ -570,6 +570,48 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  async getLatestCmmapChangeDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined> {
+    const input: DbTableFieldSpec[] = [{ name: 'regionId', type: mssql.Char, value: regionId }];
+
+    // Mirrors getCmmapAppointmentsRaw's row-inclusion filters so the date returned here is
+    // guaranteed to have at least one matching row for a subsequent getCmmapAppointmentsRaw call.
+    const query = `
+      SELECT TOP 1 m.CDB_UPDATE_DATE
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      INNER JOIN [dbo].[CMMPR] p
+        ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
+        AND m.PROF_CODE = p.UST_PROF_CODE
+      WHERE m.DELETE_CODE != 'D'
+        AND m.PROF_CODE > 0
+        AND m.PROF_CODE < 98000
+        AND m.APPT_TYPE = 'TR'
+        AND c.DELETE_CODE != 'D'
+        AND p.DELETE_CODE != 'D'
+        AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
+          OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
+        AND m.REGION_CODE = @regionId
+      ORDER BY m.CDB_UPDATE_DATE DESC`;
+
+    type ResultType = { CDB_UPDATE_DATE: number };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const recordset = (results as mssql.IResult<ResultType>).recordset;
+      return recordset.length > 0
+        ? this.formatAcmsDateToString(recordset[0].CDB_UPDATE_DATE)
+        : undefined;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;

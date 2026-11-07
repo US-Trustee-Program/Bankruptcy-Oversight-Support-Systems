@@ -1,15 +1,12 @@
 /**
- * Shared constants for the migrate-case-appointments dataflow.
- * Must be kept in sync between handler and use-case.
+ * Shared ACMS dataflow constants. SENTINEL_TRUSTEE_ID moved to ../cases/sentinel-trustee.ts
+ * (cams-fd8qd.1.11) since migrate-case-appointments, the dataflow this file was named for, is
+ * deleted; DEFAULT_FETCH_SIZE (AcmsTrusteeAppointmentSource) and WRITE_BATCH_SIZE
+ * (migrate-trustees.ts) are still live.
  */
 
-// Sentinel trustee ID for unmapped appointments
-export const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
-
-// Rows fetched from ACMS per handleStart continuation invocation.
+// Rows fetched from ACMS per region/date page.
 export const DEFAULT_FETCH_SIZE = 2500;
-// Upper bound — matches the original hardcoded value and the ACMS query timeout budget.
-export const MAX_FETCH_SIZE = 10000;
 
 // Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
 // which is ~48KB raw. ResolvedAcmsRecord serializes to ~280 bytes with denormalized fields —

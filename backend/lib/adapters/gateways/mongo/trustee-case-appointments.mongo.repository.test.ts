@@ -14,7 +14,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
 
 describe('TrusteeCaseAppointmentsMongoRepository', () => {
   const CASE_ID = '081-24-12345';
@@ -561,23 +561,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(_capturedDocument?.dateFiled).toBe('2023-01-10');
       expect(_capturedDocument?.chapter).toBe('7');
       expect(_capturedDocument?.courtDivisionCode).toBe('ABC');
-      repo.release();
-    });
-  });
-
-  describe('upsert with movedToCaseId (migration path)', () => {
-    test('stamps movedToCaseId on document when provided', async () => {
-      const replaceOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.upsert({ ...baseAppointment, movedToCaseId: '081-24-99999' });
-
-      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
-      const writtenDoc = replaceOneSpy.mock.calls[0][1] as Record<string, unknown>;
-      expect(writtenDoc.movedToCaseId).toBe('081-24-99999');
       repo.release();
     });
   });
