@@ -2,7 +2,6 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
@@ -16,13 +15,16 @@ import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { rankCandidates } from '@common/cams/trustee-match-pipeline';
 import { CourtsUseCase } from '../courts/courts';
-import CaseManagement from '../cases/case-management';
-import { getCaseIdParts, getCaseNumber, CaseSummary } from '@common/cams/cases';
+import { getCaseIdParts, getCaseNumber } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
-import { isAppointmentMatch } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  isAppointmentMatch,
+  TrusteeAppointment,
+} from '@common/cams/trustee-appointments';
 import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
@@ -32,11 +34,6 @@ const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
 // variant (see this slice's ~2.2% fragmentation figure), not the hundreds a case-keyed model
 // used to produce. This is not real pagination; exceeding it just logs a warning.
 const AFFECTED_CASE_COUNT_SANITY_CAP = 50;
-
-// Caps simultaneous DXTR getCaseSummary lookups during approval -- AFFECTED_CASE_COUNT_SANITY_CAP
-// above only logs past 50 affected cases, it never bounds anything, so without this a large
-// fingerprint bundle would fire that many concurrent DXTR queries inside one synchronous request.
-const CASE_SUMMARY_FETCH_CONCURRENCY = 10;
 
 type VerificationListParams = {
   statusParam?: string;
@@ -117,7 +114,13 @@ export class TrusteeMatchVerificationUseCase {
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     const uniqueFingerprints = [...new Set(fingerprints)];
     const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);
+    return this.groupAffectedCaseIdsByFingerprint(context, surrogates);
+  }
 
+  private groupAffectedCaseIdsByFingerprint(
+    context: ApplicationContext,
+    surrogates: CaseAppointment[],
+  ): Map<string, string[]> {
     const affectedCaseIdsByFingerprint = new Map<string, string[]>();
     for (const surrogate of surrogates) {
       // A case can hold several placeholders for one fingerprint (one per court appointment), but
@@ -142,26 +145,25 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   /**
-   * Fetches case summaries for every affected case, capped at CASE_SUMMARY_FETCH_CONCURRENCY
-   * simultaneous lookups rather than firing one per case all at once. Preserves caseIds' order
-   * in the returned array (each batch is itself order-preserving, and batches run sequentially),
-   * so callers can zip results back to case IDs by index exactly as a single
-   * Promise.allSettled over the whole list would.
+   * Case IDs whose placeholder rows the resolved trustee's appointments do not cover, judged from
+   * the court fields stored on each row at write time (epic decision 14) -- never a DXTR lookup,
+   * which fails for a case not yet in CAMS. A row missing any court field is uncovered. A case
+   * with several placeholders is one case, uncovered if any of its rows is.
    */
-  private async fetchCaseSummariesBatched(
-    context: ApplicationContext,
-    caseManagement: CaseManagement,
-    caseIds: string[],
-  ): Promise<PromiseSettledResult<CaseSummary>[]> {
-    const results: PromiseSettledResult<CaseSummary>[] = [];
-    for (let i = 0; i < caseIds.length; i += CASE_SUMMARY_FETCH_CONCURRENCY) {
-      const batch = caseIds.slice(i, i + CASE_SUMMARY_FETCH_CONCURRENCY);
-      const batchResults = await Promise.allSettled(
-        batch.map((caseId) => caseManagement.getCaseSummary(context, caseId)),
-      );
-      results.push(...batchResults);
+  private findUncoveredCaseIds(
+    surrogates: CaseAppointment[],
+    trusteeAppointments: TrusteeAppointment[],
+  ): string[] {
+    const uncovered = new Set<string>();
+    for (const row of surrogates) {
+      const covered =
+        !!row.courtId &&
+        !!row.courtDivisionCode &&
+        !!row.chapter &&
+        isAppointmentMatch(trusteeAppointments, row.courtId, row.courtDivisionCode, row.chapter);
+      if (!covered) uncovered.add(row.caseId);
     }
-    return results;
+    return [...uncovered];
   }
 
   private resolveCourtName(
@@ -358,10 +360,12 @@ export class TrusteeMatchVerificationUseCase {
       // enqueued later deletes them, and this is the only remaining chance to read them.
       // Computed before any write below so the division check that follows can reject the
       // whole approval before anything is persisted.
-      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-        verification.fingerprint,
-      ]);
-      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      const surrogates = await factory
+        .getTrusteeCaseAppointmentsRepository(context)
+        .getSurrogatesByFingerprints([verification.fingerprint]);
+      const affectedCaseIds =
+        this.groupAffectedCaseIdsByFingerprint(context, surrogates).get(verification.fingerprint) ??
+        [];
 
       // 3. Reject the whole approval if the resolved trustee's configured divisions don't
       // cover every affected case's court+chapter+division — the same match rule the
@@ -374,44 +378,7 @@ export class TrusteeMatchVerificationUseCase {
         const trusteeAppointments = await factory
           .getTrusteeAppointmentsRepository(context)
           .getTrusteeAppointments(resolvedTrusteeId);
-        const caseManagement = new CaseManagement(context);
-        // allSettled rather than all: a lookup failure for one case (stale/closed case,
-        // transient gateway timeout) is a different failure mode than a real division
-        // mismatch -- this method's all-or-nothing behavior is specifically about division
-        // coverage, not about case-lookup reliability, so the two must surface as distinct,
-        // non-conflatable errors rather than both failing identically. Batched (not one
-        // Promise.allSettled over the whole list) so a large affected-case bundle can't fire
-        // dozens of simultaneous DXTR queries inside this one synchronous request.
-        const caseSummaryResults = await this.fetchCaseSummariesBatched(
-          context,
-          caseManagement,
-          affectedCaseIds,
-        );
-        const failedCaseIds = affectedCaseIds.filter(
-          (_caseId, index) => caseSummaryResults[index].status === 'rejected',
-        );
-        if (failedCaseIds.length > 0) {
-          throw new CamsError(MODULE_NAME, {
-            message: `Unable to verify division coverage for case(s): ${failedCaseIds.join(', ')}. Approval was not processed; retry once the lookup succeeds.`,
-          });
-        }
-        const caseSummaries = caseSummaryResults
-          .filter(
-            (result): result is PromiseFulfilledResult<CaseSummary> =>
-              result.status === 'fulfilled',
-          )
-          .map((result) => result.value);
-        const uncoveredCaseIds = caseSummaries
-          .filter(
-            (summary) =>
-              !isAppointmentMatch(
-                trusteeAppointments,
-                summary.courtId,
-                summary.courtDivisionCode,
-                summary.chapter,
-              ),
-          )
-          .map((summary) => summary.caseId);
+        const uncoveredCaseIds = this.findUncoveredCaseIds(surrogates, trusteeAppointments);
         if (uncoveredCaseIds.length > 0) {
           const trusteeLabel = resolvedTrusteeName ?? resolvedTrusteeId;
           const caseNumbers = uncoveredCaseIds.map((caseId) => getCaseNumber(caseId)).join(', ');

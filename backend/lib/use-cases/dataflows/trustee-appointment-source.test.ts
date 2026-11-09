@@ -202,5 +202,26 @@ describe('AcmsTrusteeAppointmentSource', () => {
       ]);
       expect(page.lastId).toBe('1050');
     });
+
+    test('reports a row with no CASE_FILED_DATE as a failure and still converts the other rows', async () => {
+      setupGateways([
+        makeRawRecord({ id: 1001, CASE_NUMBER: 2, CASE_FILED_DATE: null }),
+        makeRawRecord({ id: 1050, CASE_NUMBER: 1 }),
+      ]);
+
+      const source = new AcmsTrusteeAppointmentSource();
+      const page = await source.getEventsForDate(context, '02', '2026-07-01');
+
+      expect(page.events).toEqual([
+        expect.objectContaining({ caseId: '081-24-00001', dateFiled: '2019-01-10' }),
+      ]);
+      expect(page.failures).toEqual([
+        {
+          rowId: 1001,
+          caseId: '081-24-00002',
+          reason: expect.stringContaining('no CASE_FILED_DATE'),
+        },
+      ]);
+    });
   });
 });

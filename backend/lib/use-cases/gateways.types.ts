@@ -51,6 +51,7 @@ import {
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
   CaseAppointment,
+  CaseAppointmentDocumentType,
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeAppointment,
@@ -668,6 +669,12 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
+/** A placeholder row (isSurrogate) with its storage type: placed, or parked (case not in CAMS). */
+export type SurrogateAppointment = CaseAppointment & { documentType: CaseAppointmentDocumentType };
+
+/** A parked row (CASE_APPOINTMENT_UNATTACHED) with the trustee partition's _id, for cursor paging. */
+export type ParkedAppointment = CaseAppointment & { _id: string };
+
 export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getByCaseId(caseId: string): Promise<CaseAppointment[]>;
   getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
@@ -676,7 +683,11 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]>;
-  upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
+  /** documentType defaults to CASE_APPOINTMENT and is part of the natural key. */
+  upsert(
+    appointment: CaseAppointmentInput,
+    documentType?: CaseAppointmentDocumentType,
+  ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
   /** Deletes every CASE_APPOINTMENT document in both partitions; returns the case-partition count. */
@@ -699,8 +710,17 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
-  getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>>;
-  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>>;
+  /** Placeholders of both document types (placed and parked) for the fingerprint. */
+  getSurrogatesByFingerprint(fingerprint: string): Promise<Array<SurrogateAppointment>>;
+  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<SurrogateAppointment>>;
+  /** Parked rows with dateFiled >= dateFiledFrom, _id > lastId, sorted by _id (trustee partition). */
+  findParkedFiledOnOrAfter(
+    dateFiledFrom: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ParkedAppointment>>;
+  /** Count of parked rows with dateFiled equal to the given date (trustee partition). */
+  countParkedFiledOn(dateFiled: string): Promise<number>;
   existsInTrusteePartition(caseId: string, trusteeId: string, assignedOn: string): Promise<boolean>;
   findStrandedActiveInTrusteePartition(
     caseId: string,

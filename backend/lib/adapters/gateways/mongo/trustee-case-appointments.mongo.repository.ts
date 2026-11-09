@@ -4,6 +4,8 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
+  ParkedAppointment,
+  SurrogateAppointment,
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -11,6 +13,7 @@ import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-build
 import QueryPipeline from '../../../query/query-pipeline';
 import {
   CaseAppointment,
+  CaseAppointmentDocumentType,
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeCaseListItem,
@@ -60,13 +63,21 @@ function assertValidChapter(chapter: string | undefined): void {
 // here, at the read boundary, so it never leaks into any downstream caller's write payload; this
 // is the fix for a leaked-_id bug that was previously patched only at one specific write call
 // site (updateCaseAppointment) rather than at its actual source.
-function stripMongoId(document: CaseAppointmentDocument): CaseAppointment {
+function stripMongoId(document: CaseAppointmentDocument): CaseAppointmentDocument {
   const { _id: _mongoId, ...rest } = document as CaseAppointmentDocument & { _id?: unknown };
   return rest;
 }
 
+const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
+
+// Placeholders are identity-task members whether placed or parked (case not yet in CAMS).
+const SURROGATE_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
+  'CASE_APPOINTMENT',
+  'CASE_APPOINTMENT_UNATTACHED',
+];
+
 export type CaseAppointmentDocument = CaseAppointment & {
-  documentType: 'CASE_APPOINTMENT';
+  documentType: CaseAppointmentDocumentType;
   acmsProfessionalId?: string;
   reason?: string;
   movedToCaseId?: string;
@@ -354,7 +365,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return and(...conditions);
   }
 
-  async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
+  /**
+   * documentType is part of the natural key, so a parked row (CASE_APPOINTMENT_UNATTACHED) and a
+   * placed row for the same court appointment never overwrite each other.
+   */
+  async upsert(
+    appointment: CaseAppointmentInput,
+    documentType: CaseAppointmentDocumentType = 'CASE_APPOINTMENT',
+  ): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
     // Defensive strip: CaseAppointmentInput's declared type has no _id field, but TypeScript's
@@ -375,14 +393,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
 
     const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      { ...appointmentWithStatus, documentType: 'CASE_APPOINTMENT' },
+      { ...appointmentWithStatus, documentType },
       SYSTEM_USER_REFERENCE,
     );
 
     // Natural key for idempotent upsert — safe to replay on retry
     const doc = using<CaseAppointmentDocument>();
     const naturalKeyQuery = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').equals(documentType),
       doc('caseId').equals(appointment.caseId),
       doc('trusteeId').equals(appointment.trusteeId),
       doc('assignedOn').equals(appointment.assignedOn),
@@ -732,11 +750,13 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * appointments" a property of the method rather than a convention callers must remember to
    * apply themselves. Disposed (closed) surrogates are included: a case whose placeholder was
    * written already closed is still a member of its identity task and must be remapped on approval.
+   * Parked placeholders (CASE_APPOINTMENT_UNATTACHED, case not yet in CAMS) are included too, and
+   * keep their documentType so callers can tell them apart.
    */
-  async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>> {
+  async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<SurrogateAppointment>> {
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').contains(SURROGATE_DOCUMENT_TYPES),
       doc('trusteeId').equals(fingerprint),
       doc('isSurrogate').equals(true),
     );
@@ -749,16 +769,66 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * one query per fingerprint, so a caller building a list (e.g. the verification list endpoint)
    * doesn't run an N+1 query per row. Callers group the flat result by trusteeId themselves.
    */
-  async getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>> {
+  async getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<SurrogateAppointment>> {
     if (fingerprints.length === 0) return [];
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').contains(SURROGATE_DOCUMENT_TYPES),
       doc('trusteeId').contains(fingerprints),
       doc('isSurrogate').equals(true),
     );
     const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
     return results.map(stripMongoId);
+  }
+
+  /**
+   * Heal's page of parked rows: CASE_APPOINTMENT_UNATTACHED filed on or after dateFiledFrom,
+   * cursor-paginated on _id. Reads the trustee partition, where the out-of-band
+   * documentType_1_dateFiled_1 index (index-trustee-case-appointments.js) supports it. A cursor,
+   * not a shrinking set: rows whose case is still missing stay parked and would otherwise be
+   * re-read forever.
+   */
+  async findParkedFiledOnOrAfter(
+    dateFiledFrom: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ParkedAppointment>> {
+    type ParkedQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<ParkedQueryable>();
+    const conditions = [
+      doc('documentType').equals(PARKED),
+      doc('dateFiled').greaterThanOrEqual(dateFiledFrom),
+    ];
+    if (lastId) conditions.push(doc('_id').greaterThan(lastId));
+    try {
+      const sortSpec = QueryBuilder.orderBy<ParkedQueryable>(['_id', 'ASCENDING']);
+      return await this.trusteePartition
+        .adapter<ParkedQueryable>()
+        .find(and(...conditions), sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve parked case appointments.',
+      });
+    }
+  }
+
+  /**
+   * Parked rows filed on exactly dateFiled. Heal counts the rows that aged out of its window on
+   * this run (dateFiled one day before the window start) as abandoned.
+   */
+  async countParkedFiledOn(dateFiled: string): Promise<number> {
+    const doc = using<CaseAppointmentDocument>();
+    try {
+      return await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .countDocuments(
+          and(doc('documentType').equals(PARKED), doc('dateFiled').equals(dateFiled)),
+        );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to count parked case appointments.',
+      });
+    }
   }
 
   /**
@@ -904,11 +974,12 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       // index on chapter alone (see
       // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js's
       // chapter_1 index) supporting this $match. documentType is deliberately
-      // NOT part of the $match or that index: every document ever written to
-      // either partition by this repository carries documentType:
-      // 'CASE_APPOINTMENT' (verified — grep this file), so it has no
-      // discriminating value here and including it would only require a
-      // wider (and, without a compound index covering it, unindexed) match.
+      // NOT part of the $match or that index. Parked rows
+      // (CASE_APPOINTMENT_UNATTACHED, cases not yet in CAMS) still never match:
+      // this method looks for invalid legacy chapter codes, and upsert runs
+      // assertValidChapter on every write, so a parked row always carries a
+      // valid chapter. Including documentType would only require a wider
+      // (and, without a compound index covering it, unindexed) match.
       // An earlier version of this comment claimed a chapter-supporting
       // index already existed — it did not; querying an unindexed chapter
       // field on this trusteeId-sharded collection forced Cosmos to fan an

@@ -1183,14 +1183,17 @@ async function runScenarios() {
     }
   }
 
-  if (
-    result.notYetSyncedEvents.length === 1 &&
-    result.notYetSyncedEvents[0].caseId === CASES.caseNotYetSynced.caseId
-  ) {
-    pass('notYetSyncedEvents contains exactly the case-not-yet-synced event');
+  // CAMS-955 Slice 3: a case not yet in CAMS is parked (CASE_APPOINTMENT_UNATTACHED) instead of
+  // requeued. Parking needs dateFiled, which these DXTR-shaped events do not carry, so this event is
+  // dead-lettered (the DXTR source is unused until GitHub #3191).
+  const notYetSyncedCaseInDlq = result.dlqMessages.some(
+    (m) => 'caseId' in m && m.caseId === CASES.caseNotYetSynced.caseId,
+  );
+  if (notYetSyncedCaseInDlq && result.scenarioDistribution.parkedCount === 0) {
+    pass('the case-not-yet-synced event (no dateFiled) is dead-lettered, not parked');
   } else {
     fail(
-      `expected notYetSyncedEvents = [${CASES.caseNotYetSynced.caseId}], got: ${JSON.stringify(result.notYetSyncedEvents.map((e) => e.caseId))}`,
+      `expected ${CASES.caseNotYetSynced.caseId} in the DLQ and parkedCount 0, got parkedCount ${result.scenarioDistribution.parkedCount}`,
     );
   }
 

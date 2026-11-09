@@ -137,7 +137,14 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
       appointedDate: '2020-01-01',
       chapter: '7',
       courtDivisionCode: '081',
+      dateFiled: '2019-01-10',
     });
+  });
+
+  test.each([null, 0])('throws a descriptive error when CASE_FILED_DATE is %s', (filedDate) => {
+    expect(() =>
+      rawToTrusteeAppointmentSyncEvent(makeRawRecord({ CASE_FILED_DATE: filedDate }), '0208'),
+    ).toThrow('ACMS case 081-24-12345 has no CASE_FILED_DATE');
   });
 
   test("zero-pads profCode to 5 digits, matching DXTR's fixed-width profCode convention", () => {

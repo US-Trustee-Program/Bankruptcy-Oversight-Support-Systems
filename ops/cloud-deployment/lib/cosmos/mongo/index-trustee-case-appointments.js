@@ -61,10 +61,11 @@ const TARGET_INDEXES = [
   // collection on every call, which is what caused sustained RU throttling
   // in production even at a 100-document $limit (RU is charged per document
   // examined, not returned, so a small $limit doesn't bound the cost of an
-  // unindexed $match). documentType is deliberately NOT part of this index:
-  // every document this repository writes to this collection carries
-  // documentType: 'CASE_APPOINTMENT', so it has no discriminating value here
-  // and the query no longer filters on it.
+  // unindexed $match). documentType is deliberately NOT part of this index or
+  // that query: the query looks for invalid legacy chapter codes, and the only
+  // other document type (CASE_APPOINTMENT_UNATTACHED, parked rows for cases not
+  // yet in CAMS) always carries a valid chapter (upsert runs
+  // assertValidChapter), so parked rows can never match.
   {
     name: 'chapter_1',
     key: { chapter: 1 },
@@ -79,6 +80,15 @@ const TARGET_INDEXES = [
   {
     name: 'caseId_1',
     key: { caseId: 1 },
+  },
+  // Supports the trustee-appointment sync's daily heal (CAMS-955): findParkedFiledOnOrAfter
+  // (documentType CASE_APPOINTMENT_UNATTACHED, dateFiled >= window start, _id cursor) and
+  // countParkedFiledOn (documentType + dateFiled equality) in
+  // trustee-case-appointments.mongo.repository.ts. Without it both fan an unindexed scan out
+  // across every physical partition of this trusteeId-sharded collection.
+  {
+    name: 'documentType_1_dateFiled_1',
+    key: { documentType: 1, dateFiled: 1 },
   },
 ];
 

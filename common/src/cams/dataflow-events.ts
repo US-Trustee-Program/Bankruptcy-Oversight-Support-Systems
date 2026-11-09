@@ -104,6 +104,11 @@ export type TrusteeAppointmentSyncEvent = {
   /** ISO date the trustee was unassigned from the case (ACMS DISP_DATE); absent while open. */
   unassignedOn?: string;
   appointedDate?: string;
+  /**
+   * ISO date (YYYY-MM-DD) the case was filed (ACMS CMMDB CASE_FILED_DATE). The ACMS source always
+   * sets it; optional only because the DXTR source does not.
+   */
+  dateFiled?: string;
   error?: unknown;
   retryCount?: number;
   chapter?: string;

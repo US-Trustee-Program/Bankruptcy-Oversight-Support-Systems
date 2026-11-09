@@ -53,6 +53,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
   let mockHasConflictByAcmsProfessionalId: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
+  let mockGetByCaseId: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -63,12 +64,14 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     mockHasConflictByAcmsProfessionalId = vi.fn().mockResolvedValue(false);
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
+    mockGetByCaseId = vi.fn().mockResolvedValue([]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         findSentinelAppointments: mockFindSentinelAppointments,
         upsert: mockUpsert,
         delete: mockDelete,
+        getByCaseId: mockGetByCaseId,
       }),
     );
     vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -141,19 +144,76 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     );
   });
 
-  test('upsert is idempotent: healing an already-healed case (matching natural key) does not error', async () => {
-    // upsert()'s natural-key replace makes re-healing safe even if a non-sentinel appointment
-    // already exists for this case under the resolved trustee — no separate skip-write branch
-    // is needed (collapsed per design decision).
+  test('never overwrites a sync-written row: an existing appointment with the same natural key is left unchanged and the sentinel deleted', async () => {
+    // upsert() is a full replaceOne, so writing the sentinel over a row the sync already wrote
+    // would replace its checks, court fields and disposition with the sentinel's July data.
     const sentinel = makeSentinel();
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
+    mockGetByCaseId.mockResolvedValue([
+      {
+        id: 'sync-written',
+        caseId: sentinel.caseId,
+        trusteeId: 'trustee-resolved',
+        assignedOn: sentinel.assignedOn,
+        unassignedOn: '2026-08-01',
+      },
+    ]);
+
+    const result = await useCase.healPage(null, 25);
+
+    expect(mockGetByCaseId).toHaveBeenCalledWith(sentinel.caseId);
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
+    expect(result.documentsWritten).toBe(1);
+  });
+
+  test('treats a sync row on the same calendar day as the same appointment (sync writes date-only, sentinels a timestamp)', async () => {
+    const sentinel = makeSentinel(); // assignedOn '2025-01-01T00:00:00.000Z'
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
+    mockGetByCaseId.mockResolvedValue([
+      {
+        id: 'sync-written',
+        caseId: sentinel.caseId,
+        trusteeId: 'trustee-resolved',
+        assignedOn: '2025-01-01',
+      },
+    ]);
 
     await useCase.healPage(null, 25);
 
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
   });
+
+  test.each([
+    ['a different trustee', { trusteeId: 'trustee-other' }],
+    ['a different assignedOn', { assignedOn: '2024-01-01T00:00:00.000Z' }],
+  ])(
+    'heals normally when the case has an appointment for %s (not the same natural key)',
+    async (_label, override) => {
+      const sentinel = makeSentinel();
+      mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+      mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
+      mockGetByCaseId.mockResolvedValue([
+        {
+          id: 'other',
+          caseId: sentinel.caseId,
+          trusteeId: 'trustee-resolved',
+          assignedOn: sentinel.assignedOn,
+          ...override,
+        },
+      ]);
+
+      await useCase.healPage(null, 25);
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ trusteeId: 'trustee-resolved' }),
+      );
+      expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
+    },
+  );
 
   test('no match: leaves the sentinel in place, does not upsert or delete, but still advances the cursor', async () => {
     const sentinel = makeSentinel();

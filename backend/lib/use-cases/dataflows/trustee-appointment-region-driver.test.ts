@@ -31,7 +31,7 @@ function makeRawRow(id: number, changeDate: string, regionId = '02'): AcmsCaseAp
     PROF_CODE: 63,
     APPT_DATE: 20260701,
     DISP_DATE: null,
-    CASE_FILED_DATE: null,
+    CASE_FILED_DATE: 20260601,
     CURR_CASE_CHAPT: '7',
     CLOSED_BY_COURT_DATE: null,
     CLOSED_BY_UST_DATE: null,
@@ -137,8 +137,7 @@ describe('RegionDriver.runRegionDriver', () => {
       .mockResolvedValue({
         successCount: 0,
         dlqMessages: [],
-        scenarioDistribution: {} as never,
-        notYetSyncedEvents: [],
+        scenarioDistribution: { parkedCount: 0 } as never,
         retryableEvents: [],
       });
   });
@@ -393,8 +392,7 @@ describe('RegionDriver.runRegionDriver', () => {
     processAppointmentsSpy.mockResolvedValueOnce({
       successCount: 0,
       dlqMessages: [earlierDlq],
-      scenarioDistribution: {} as never,
-      notYetSyncedEvents: [],
+      scenarioDistribution: { parkedCount: 0 } as never,
       retryableEvents: [],
     });
     getCmmapAppointmentsRaw.mockImplementation(async (_context, lastId: number) => {
@@ -427,8 +425,7 @@ describe('RegionDriver.runRegionDriver', () => {
     processAppointmentsSpy.mockResolvedValueOnce({
       successCount: 0,
       dlqMessages: [completedDlq],
-      scenarioDistribution: {} as never,
-      notYetSyncedEvents: [],
+      scenarioDistribution: { parkedCount: 0 } as never,
       retryableEvents: [],
     });
     mockRegionStateRepo.setField.mockRejectedValueOnce(new TooManyRequestsError('TEST'));
@@ -515,7 +512,7 @@ describe('RegionDriver.runRegionDriver', () => {
     );
   });
 
-  test('propagates dlqMessages, retryableEvents and notYetSyncedEvents from processAppointments', async () => {
+  test('propagates dlqMessages and retryableEvents and sums parkedCount across pages', async () => {
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-01');
     const event = makeEvent('081-26-00001');
     getCmmapAppointmentsRaw.mockImplementation(
@@ -524,8 +521,7 @@ describe('RegionDriver.runRegionDriver', () => {
     processAppointmentsSpy.mockResolvedValue({
       successCount: 0,
       dlqMessages: [event],
-      scenarioDistribution: {} as never,
-      notYetSyncedEvents: [event],
+      scenarioDistribution: { parkedCount: 2 } as never,
       retryableEvents: [event],
     });
 
@@ -536,7 +532,7 @@ describe('RegionDriver.runRegionDriver', () => {
 
     expect(result.dlqMessages).toEqual([event]);
     expect(result.retryableEvents).toEqual([event]);
-    expect(result.notYetSyncedEvents).toEqual([event]);
+    expect(result.parkedCount).toBe(2);
   });
 
   test('routes a row that cannot be converted to a DLQ entry naming the row, while its sibling still processes', async () => {

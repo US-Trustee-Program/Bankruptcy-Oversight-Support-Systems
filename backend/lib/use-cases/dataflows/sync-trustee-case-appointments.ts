@@ -24,6 +24,8 @@ import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation'
 import {
   CaseAppointment,
   CaseAppointmentChecks,
+  CaseAppointmentDocumentType,
+  CaseAppointmentInput,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
@@ -90,6 +92,12 @@ type ScenarioDistribution = {
    * address/phone/email and a non-sentinel profCode.
    */
   unattributableBogusNameSkippedCount: number;
+  /**
+   * Rows written as CASE_APPOINTMENT_UNATTACHED because their case is not in CAMS yet: parked
+   * appointments (resolved trustee) and parked placeholders (unresolved). The daily heal attaches
+   * them once the case loads. Also counted in the identification counter that applied.
+   */
+  parkedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -114,12 +122,6 @@ type ProcessAppointmentsResult = {
   successCount: number;
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
   scenarioDistribution: ScenarioDistribution;
-  /**
-   * Events whose case has not yet been synced into CAMS by sync-cases (getCaseOrMovedCase
-   * returned null). Not a failure — the function-app layer requeues these with a visibility
-   * delay so sync-cases has time to catch up, instead of routing them to the DLQ immediately.
-   */
-  notYetSyncedEvents: TrusteeAppointmentSyncEvent[];
   /**
    * Events that failed on a transient infrastructure error (Cosmos RU throttling, a read/write
    * timeout) rather than a genuine match outcome. Not a failure of the matching logic itself —
@@ -203,6 +205,7 @@ export async function createNewAppointment(
     assignedOn,
     appointedDate: event.appointedDate,
     ...(unassignedOn ? { unassignedOn } : {}),
+    ...courtFieldsFromEvent(event),
     checks,
   });
   context.logger.info(
@@ -417,8 +420,11 @@ function assertAppointedDate(
  * blank/'000000'/malformed source date, which is a genuine, if rare, DXTR data-quality condition,
  * not something to silently paper over — this throws instead, loudly and unambiguously, so it
  * surfaces rather than risk a duplicate active appointment.
+ *
+ * Also used by the daily heal (heal-parked-case-appointments.ts) to attach a parked appointment
+ * once its case loads, so parked and synced appointments follow the same active-trustee rule.
  */
-async function applyResolvedTrustee(
+export async function applyResolvedTrustee(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
@@ -427,6 +433,9 @@ async function applyResolvedTrustee(
 ): Promise<TrusteeAppointmentSyncError | null> {
   assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
   const assignedOn = event.appointedDate;
+  // createNewAppointment validates again when it writes; checking here first means an invalid
+  // chapter is dead-lettered before a reassignment soft-closes the case's current appointment.
+  courtFieldsFromEvent(event);
 
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
@@ -563,6 +572,64 @@ async function applyResolvedTrustee(
   return null;
 }
 
+const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
+
+/**
+ * A parked row is healed only while its dateFiled is inside the heal window, so it can never be
+ * written without one. ACMS rows without a filed date are already source row failures
+ * (rawToTrusteeAppointmentSyncEvent); this guards any other source. Throws so processOneEvent
+ * routes the event to the DLQ, the same rule as assertAppointedDate.
+ */
+function assertDateFiledForParking(
+  event: TrusteeAppointmentSyncEvent,
+): asserts event is TrusteeAppointmentSyncEvent & { dateFiled: string } {
+  if (!event.dateFiled) {
+    throw new CamsError(MODULE_NAME, {
+      message: `Case ${event.caseId} is not in CAMS and the event has no dateFiled; cannot park it.`,
+    });
+  }
+}
+
+/**
+ * Writes the resolved trustee's appointment for a case not yet in CAMS as a parked row
+ * (CASE_APPOINTMENT_UNATTACHED). No active-trustee rule here: there is no CAMS case to settle
+ * against. The daily heal applies it (applyResolvedTrustee) once the case loads. A later row for
+ * the same court appointment (e.g. one carrying DISP_DATE) upserts the same natural key in place.
+ */
+async function parkAppointment(
+  ctx: MatchContext,
+  trusteeId: string,
+  checks: CaseAppointmentChecks,
+): Promise<null> {
+  const { deps, event, scenarioDistribution } = ctx;
+  assertAppointedDate(
+    deps.context,
+    event,
+    `trustee ${trusteeId} — event.appointedDate`,
+    'assignedOn',
+  );
+  assertDateFiledForParking(event);
+  const unassignedOn = sourceDisposition(deps.context, event, event.appointedDate);
+  await deps.caseAppointmentsRepo.upsert(
+    {
+      caseId: event.caseId,
+      trusteeId,
+      assignedOn: event.appointedDate,
+      appointedDate: event.appointedDate,
+      ...(unassignedOn ? { unassignedOn } : {}),
+      ...courtFieldsFromEvent(event),
+      checks,
+    },
+    PARKED,
+  );
+  scenarioDistribution.parkedCount++;
+  deps.context.logger.info(
+    MODULE_NAME,
+    `Parked case appointment for case ${event.caseId} (not yet in CAMS), trustee ${trusteeId}`,
+  );
+  return null;
+}
+
 /**
  * Shared auto-link sequence for the perfect-match auto-match path: apply the resolved trustee,
  * persist a new variation (when this trusteeId wasn't already known from identification step 1
@@ -593,13 +660,10 @@ async function autoLinkTrustee(
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const { context } = deps;
 
-  const softCloseFailure = await applyResolvedTrustee(
-    context,
-    event,
-    trusteeId,
-    deps.caseAppointmentsRepo,
-    checks,
-  );
+  const softCloseFailure =
+    ctx.documentType === PARKED
+      ? await parkAppointment(ctx, trusteeId, checks)
+      : await applyResolvedTrustee(context, event, trusteeId, deps.caseAppointmentsRepo, checks);
   if (!knownTrusteeId) {
     await deps.variationRepo.createVariation(
       createAuditRecord(
@@ -661,7 +725,7 @@ function createDeps(context: ApplicationContext) {
   };
 }
 
-type SyncTrusteeCaseAppointmentsDeps = ReturnType<typeof createDeps>;
+export type SyncTrusteeCaseAppointmentsDeps = ReturnType<typeof createDeps>;
 
 /**
  * Looks up a fingerprint's TRUSTEE_VARIATION bucket and verifies by variant (see
@@ -729,6 +793,23 @@ export function assertValidChapter(caseId: string, chapter: string): CaseChapter
 }
 
 /**
+ * The court fields every appointment row records at write time, taken from the source event (ACMS
+ * source data is ground truth). Read from the row by identity-task approval and remap, and needed
+ * for rows whose case is not in CAMS yet, so they never come from the CAMS case. chapter is
+ * validated so an invalid value never reaches a write.
+ */
+function courtFieldsFromEvent(
+  event: TrusteeAppointmentSyncEvent,
+): Pick<CaseAppointmentInput, 'courtId' | 'courtDivisionCode' | 'chapter' | 'dateFiled'> {
+  return {
+    courtId: event.courtId,
+    ...(event.courtDivisionCode ? { courtDivisionCode: event.courtDivisionCode } : {}),
+    ...(event.chapter ? { chapter: assertValidChapter(event.caseId, event.chapter) } : {}),
+    ...(event.dateFiled ? { dateFiled: event.dateFiled } : {}),
+  };
+}
+
+/**
  * Writes a surrogate CaseAppointment (trusteeId = fingerprint, isSurrogate: true) so that
  * "which cases are affected by this pending mismatch" is a native single-partition query.
  * A surrogate is a membership marker for a pending mismatch, NOT the case's appointment — a
@@ -746,13 +827,8 @@ export function assertValidChapter(caseId: string, chapter: string): CaseChapter
  * applyResolvedTrustee does when appointedDate is missing/unparseable, so the event surfaces via
  * the DLQ instead of silently proceeding.
  */
-async function writeSurrogateAppointment(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  event: TrusteeAppointmentSyncEvent,
-  fingerprint: string,
-  variant: string,
-  syncedCase: SyncedCase,
-): Promise<void> {
+async function writeSurrogateAppointment(ctx: MatchContext): Promise<void> {
+  const { deps, event, fingerprint, variant, documentType, scenarioDistribution } = ctx;
   assertAppointedDate(
     deps.context,
     event,
@@ -760,8 +836,10 @@ async function writeSurrogateAppointment(
     "the surrogate's assignedOn",
   );
 
+  if (documentType === PARKED) assertDateFiledForParking(event);
+
   const unassignedOn = sourceDisposition(deps.context, event, event.appointedDate);
-  await deps.caseAppointmentsRepo.upsert({
+  const placeholder: CaseAppointmentInput = {
     caseId: event.caseId,
     trusteeId: fingerprint,
     assignedOn: event.appointedDate,
@@ -769,25 +847,29 @@ async function writeSurrogateAppointment(
     ...(unassignedOn ? { unassignedOn } : {}),
     isSurrogate: true,
     variant,
-    dateFiled: syncedCase.dateFiled,
-    chapter: assertValidChapter(event.caseId, syncedCase.chapter),
-    courtDivisionCode: syncedCase.courtDivisionCode,
-  });
+    ...courtFieldsFromEvent(event),
+  };
+  if (documentType === PARKED) {
+    await deps.caseAppointmentsRepo.upsert(placeholder, PARKED);
+    scenarioDistribution.parkedCount++;
+  } else {
+    await deps.caseAppointmentsRepo.upsert(placeholder);
+  }
 }
 
 /**
  * Per-event state shared by the name/scoring resolution steps below. Built once per event, after
- * fingerprint/variant/audit/scenarioDistribution already exist — deliberately does NOT include
- * syncedCase, which is not yet known at context-build time (before the case-sync-check stage
- * runs). Baking a not-yet-known value into a shared context would reintroduce the exact "field
- * that may or may not be populated" footgun assertSyncedCase's runtime guard exists to catch;
- * syncedCase is threaded explicitly through function parameters and return values instead.
+ * fingerprint/variant/audit/scenarioDistribution already exist. Holds no CAMS case: every write
+ * takes its court fields from the event (see courtFieldsFromEvent). documentType is
+ * CASE_APPOINTMENT_UNATTACHED when the case is not in CAMS yet: identification runs unchanged and
+ * only the write parks the row.
  */
 type MatchContext = {
   deps: SyncTrusteeCaseAppointmentsDeps;
   event: TrusteeAppointmentSyncEvent;
   fingerprint: string;
   variant: string;
+  documentType: CaseAppointmentDocumentType;
   audit: MatchAuditEntry;
   scenarioDistribution: ScenarioDistribution;
 };
@@ -825,10 +907,7 @@ async function hasPlaceholderOnCase(
  * isTransientInfraError/isTooManyRequestsError/isGatewayTimeoutError. Transient-error
  * classification happens exactly once, at processAppointments' own outer catch.
  */
-async function resolveTrusteeViaPipeline(
-  ctx: MatchContext,
-  syncedCase: SyncedCase,
-): Promise<IdentityResolution> {
+async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityResolution> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const state = await runTrusteeMatchPipeline(deps.context, event.sourceTrustee);
 
@@ -867,7 +946,7 @@ async function resolveTrusteeViaPipeline(
   // (closed) placeholder and nothing else: no identity task, no match counters. The identity task
   // is left in place for a later, still-unresolved row for the same contact details.
   if (event.unassignedOn && (await hasPlaceholderOnCase(deps, event.caseId, fingerprint))) {
-    await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+    await writeSurrogateAppointment(ctx);
     return { outcome: 'handled' };
   }
 
@@ -896,7 +975,7 @@ async function resolveTrusteeViaPipeline(
     appointedDate: event.appointedDate,
   });
   if (isReVerification) scenarioDistribution.reVerificationCount++;
-  await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  await writeSurrogateAppointment(ctx);
   return { outcome: 'handled' };
 }
 
@@ -961,7 +1040,6 @@ type MatchOutcomeResolution = {
  *    reports 'success' (the name/scoring resolution itself succeeded), but processAppointments
  *    must also route dlqFailure to dlqMessages, in the same aggregation loop as every other DLQ
  *    write, rather than that write happening invisibly inside autoLinkTrustee.
- *  - 'not-yet-synced': push to notYetSyncedEvents (case not yet synced by sync-cases).
  *  - 'retryable': push to retryableEvents (transient infra error — not a genuine match failure).
  *  - 'dlq': push the given message to dlqMessages (a genuinely unclassified error).
  *  - 'none': the event was fully handled by some other terminal path (moved-case,
@@ -976,7 +1054,6 @@ type EventOutcome =
       kind: 'success';
       dlqFailure: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null;
     }
-  | { kind: 'not-yet-synced' }
   | { kind: 'retryable' }
   | { kind: 'dlq'; message: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent }
   | { kind: 'none' };
@@ -1230,9 +1307,16 @@ async function handleBogusTrusteeCloseOnly(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
   scenarioDistribution: ScenarioDistribution,
+  inCams: boolean,
 ): Promise<EventOutcome | null> {
   if (resolveSkipReason(event) !== 'sentinel-bogus-name') {
     return null;
+  }
+
+  // A case not in CAMS has no appointment to close.
+  if (!inCams) {
+    scenarioDistribution.sentinelBogusNameSkippedCount++;
+    return { kind: 'none' };
   }
 
   const { context } = deps;
@@ -1308,7 +1392,6 @@ async function handleBogusTrusteeCloseOnly(
  */
 async function handleVerificationBucketHit(
   ctx: MatchContext,
-  syncedCase: SyncedCase,
   // "Known" per the .feature's identification-order header: resolved by step 1
   // (professional-id) or step 2 (variation) -- either already identifies the trustee, so a
   // pending-verification bucket is irrelevant and must not short-circuit this event.
@@ -1322,7 +1405,7 @@ async function handleVerificationBucketHit(
   // The row's own placeholder is upserted on its natural key, carrying any disposition, so a
   // disposed row closes its matching open placeholder in place. The identity task and its
   // 'pending' verification bucket entry are left untouched.
-  await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
+  await writeSurrogateAppointment(ctx);
   scenarioDistribution.verificationBucketHitCount++;
   audit.matchOutcome = 'verification-bucket-hit';
   deps.context.logger.info(
@@ -1333,28 +1416,22 @@ async function handleVerificationBucketHit(
 }
 
 /**
- * Resolves whether this event's case is synced into CAMS and not moved, returning the SyncedCase
- * to proceed with, or a terminal EventOutcome the caller should return immediately (case not yet
- * synced by sync-cases, or the case was moved to a different caseId). Extracted alongside the
- * other whole-procedure extractions in this file for the same reason — removes two shallow but
- * independently-meaningful checks, and the nesting level they sat at inside processOneEvent's try
- * block, from the measured function.
+ * Resolves whether this event's case is in CAMS. A case sync-cases has not loaded yet is not a
+ * terminal outcome: identification runs and the write parks the row (CASE_APPOINTMENT_UNATTACHED).
+ * A case moved to a different caseId is terminal: skipped, no match attempted (epic decision 12).
  */
-async function resolveSyncedCase(
+async function resolveCaseInCams(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
 ): Promise<
-  { outcome: 'resolved'; syncedCase: SyncedCase } | { outcome: 'terminal'; result: EventOutcome }
+  { outcome: 'resolved'; inCams: boolean } | { outcome: 'terminal'; result: EventOutcome }
 > {
   const { context } = deps;
   const caseOrMovedCase = await deps.casesRepo.getCaseOrMovedCase(event.caseId);
 
   if (caseOrMovedCase === null) {
-    context.logger.info(
-      MODULE_NAME,
-      `Case ${event.caseId} not yet synced into CAMS — queuing for retry.`,
-    );
-    return { outcome: 'terminal', result: { kind: 'not-yet-synced' } };
+    context.logger.info(MODULE_NAME, `Case ${event.caseId} not yet in CAMS — parking.`);
+    return { outcome: 'resolved', inCams: false };
   }
 
   if (caseOrMovedCase.movedToCaseId) {
@@ -1365,7 +1442,7 @@ async function resolveSyncedCase(
     return { outcome: 'terminal', result: { kind: 'none' } };
   }
 
-  return { outcome: 'resolved', syncedCase: caseOrMovedCase };
+  return { outcome: 'resolved', inCams: true };
 }
 
 /**
@@ -1385,7 +1462,7 @@ function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
 
 /**
  * Processes a single trustee appointment event end to end: fingerprint lookup, case-sync/
- * moved-case resolution (resolveSyncedCase), verification-bucket-hit short-circuit
+ * moved-case resolution (resolveCaseInCams), verification-bucket-hit short-circuit
  * (handleVerificationBucketHit),
  * trustee resolution (resolveTrusteeIdByName/resolveByScoring), and match-outcome application
  * (applyMatchOutcome). Extracted from processAppointments' main loop for the same reason as every
@@ -1436,19 +1513,28 @@ async function processOneEvent(
     }
     const knownTrusteeId = professionalIdTrusteeId || variationTrusteeId;
 
-    const caseResolution = await resolveSyncedCase(deps, event);
+    const caseResolution = await resolveCaseInCams(deps, event);
     if (caseResolution.outcome === 'terminal') return caseResolution.result;
-    const syncedCase = caseResolution.syncedCase;
+    const { inCams } = caseResolution;
 
     const bogusTrusteeOutcome = await handleBogusTrusteeCloseOnly(
       deps,
       event,
       scenarioDistribution,
+      inCams,
     );
     if (bogusTrusteeOutcome) return bogusTrusteeOutcome;
 
-    const ctx: MatchContext = { deps, event, fingerprint, variant, audit, scenarioDistribution };
-    if (await handleVerificationBucketHit(ctx, syncedCase, knownTrusteeId)) {
+    const ctx: MatchContext = {
+      deps,
+      event,
+      fingerprint,
+      variant,
+      documentType: inCams ? 'CASE_APPOINTMENT' : PARKED,
+      audit,
+      scenarioDistribution,
+    };
+    if (await handleVerificationBucketHit(ctx, knownTrusteeId)) {
       return { kind: 'none' };
     }
 
@@ -1465,7 +1551,7 @@ async function processOneEvent(
       trusteeId = variationTrusteeId;
       matchedBy = 'variation';
     } else {
-      const resolution = await resolveTrusteeViaPipeline(ctx, syncedCase);
+      const resolution = await resolveTrusteeViaPipeline(ctx);
       if (resolution.outcome === 'handled') return { kind: 'none' };
       trusteeId = resolution.trusteeId;
       matchedBy = resolution.matchedBy;
@@ -1582,9 +1668,10 @@ async function processOneEventOrDlq(
  * appointment covering court+division+chapter together) as data for #3190's appointment-task
  * follow-up, not as a gate on whether to write.
  *
- * Pre-matching short-circuits (processOneEvent / resolveSyncedCase):
- * - No SYNCED_CASE document exists yet for this caseId: not-yet-synced, event queued for retry
- *   on a later pass (does not count as a failure).
+ * Case not in CAMS yet (no SYNCED_CASE document): identification runs as usual and the write
+ * parks the row as CASE_APPOINTMENT_UNATTACHED (parkedCount); the daily heal attaches it later.
+ *
+ * Pre-matching short-circuits (processOneEvent / resolveCaseInCams):
  * - The case was moved to a different caseId (movedToCaseId set): skipped entirely, no match
  *   attempted.
  * - The case's chapter is 9 or 15, which can never have a CAMS trustee appointment (see
@@ -1607,7 +1694,6 @@ async function processAppointments(
   events: TrusteeAppointmentSyncEvent[],
 ): Promise<ProcessAppointmentsResult> {
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
-  const notYetSyncedEvents: TrusteeAppointmentSyncEvent[] = [];
   const retryableEvents: TrusteeAppointmentSyncEvent[] = [];
   let successCount = 0;
   const scenarioDistribution: ScenarioDistribution = {
@@ -1625,6 +1711,7 @@ async function processAppointments(
     emptyDemographicsSkippedCount: 0,
     sentinelBogusNameSkippedCount: 0,
     unattributableBogusNameSkippedCount: 0,
+    parkedCount: 0,
   };
 
   for (const event of events) {
@@ -1635,9 +1722,6 @@ async function processAppointments(
         if (outcome.dlqFailure) {
           dlqMessages.push(outcome.dlqFailure);
         }
-        break;
-      case 'not-yet-synced':
-        notYetSyncedEvents.push(event);
         break;
       case 'retryable':
         retryableEvents.push(event);
@@ -1658,7 +1742,6 @@ async function processAppointments(
     successCount,
     dlqMessages,
     scenarioDistribution,
-    notYetSyncedEvents,
     retryableEvents,
   };
 }

@@ -281,7 +281,10 @@ export type Expect = {
   /** Number of events the SOURCE returned for this pass (grounds query-level filtering). */
   sourceEvents?: number;
   dlq?: number;
-  notYetSynced?: number;
+  /** Exact set of parked (CASE_APPOINTMENT_UNATTACHED) documents per case. Omitted case = not asserted. */
+  parked?: Record<string, ExpectedAppointment[]>;
+  /** The run's scenarioDistribution.parkedCount. */
+  parkedCount?: number;
   /** Total identity tasks in the whole collection, so a task under any name is caught. */
   tasksTotal?: number;
   /** Existing seeded appointments for these caseIds must be byte-for-byte untouched (same updatedOn). */
@@ -1534,20 +1537,52 @@ for (const n of PLACEHOLDER_NAMES) {
   const c = nextCase();
   const t1 = person('Tamarack');
   add({
-    key: 'case-not-yet-synced',
-    title: 'An appointment for a case not yet in CAMS is not written',
-    basis: 'code',
+    key: 'case-not-yet-synced-parked',
+    title: 'An appointment for a case not yet in CAMS is parked',
+    basis: 'feature',
     note:
-      'Slice 1 behavior: the event is reported not-yet-synced (requeued by the function app). Slice 3 ' +
-      'replaces this with parking (CASE_APPOINTMENT_UNATTACHED) - update this scenario then.',
-    lanes: ['ACMS', 'DXTR'],
+      'ACMS only: parking needs dateFiled, which only the ACMS source sets (the DXTR source is unused ' +
+      'until #3191). The heal (Task 6) attaches it once the case loads.',
+    lanes: ['ACMS'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
     passes: [
       {
         rows: [{ caseId: c, prof: nyProf(63, t1), apptDate: D1 }],
         changeDate: D2,
-        expect: { sourceEvents: 1, appointments: { [c]: [] }, notYetSynced: 1 },
+        expect: {
+          sourceEvents: 1,
+          appointments: { [c]: [] },
+          parked: { [c]: [{ trustee: 'T-1', assignedOn: D1, matchedBy: 'professional-id' }] },
+          parkedCount: 1,
+        },
+      },
+    ],
+  });
+}
+
+{
+  const c = nextCase();
+  const p = person('Tupelo');
+  add({
+    key: 'unknown-trustee-case-not-yet-synced-parked-placeholder',
+    title: 'An unknown trustee on a case not yet in CAMS is parked as a placeholder',
+    basis: 'feature',
+    note: 'The identity task lists the case even though the case is not in CAMS yet.',
+    lanes: ['ACMS'],
+    cases: [{ caseId: c, cams: 'absent' }],
+    cams: { trustees: [] },
+    passes: [
+      {
+        rows: [{ caseId: c, prof: nyProf(93, p), apptDate: D1 }],
+        changeDate: D2,
+        expect: {
+          sourceEvents: 1,
+          appointments: { [c]: [] },
+          parked: { [c]: [{ trustee: 'PLACEHOLDER', assignedOn: D1 }] },
+          parkedCount: 1,
+          tasks: [{ last: 'Tupelo', count: 1, source: 'ACMS', reason: 'no match' }],
+        },
       },
     ],
   });
@@ -2652,9 +2687,10 @@ export const PENDING_BEHAVIORS: { title: string; reason: string }[] = [
       'cams-fd8qd.1.7 say it falls through. The "ambiguous-link-not-used" scenario follows the latter; revisit when decided.',
   },
   {
-    title: 'Slice 3: parking (CASE_APPOINTMENT_UNATTACHED), daily heal, abandoned counts',
+    title: 'Slice 3: daily heal and abandoned counts',
     reason:
-      'Not built (cams-fd8qd.3). Add scenarios when designed; "case-not-yet-synced" changes then.',
+      'Parking is covered by the two parked scenarios. Heal (cams-fd8qd.3.7) needs a pass type that ' +
+      'loads the case into CAMS and then runs healParkedPage; the harness only runs processAppointments.',
   },
   {
     title: 'Slice 2 lanes and Slice 4 admin page',

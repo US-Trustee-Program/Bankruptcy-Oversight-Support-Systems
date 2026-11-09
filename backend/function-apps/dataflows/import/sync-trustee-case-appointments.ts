@@ -1,8 +1,9 @@
-import { app, InvocationContext, output } from '@azure/functions';
+import { app, InvocationContext, output, Timer } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
+import HealParkedCaseAppointments from '../../../lib/use-cases/dataflows/heal-parked-case-appointments';
 import RegionDriver, {
   isTransientError,
   RegionDriverResumePoint,
@@ -30,12 +31,6 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
-
-// A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
-// PageMessage.notYetSyncedRetryCount since each retry sends a new queue message) with a 4-hour
-// visibility delay, then routes to the DLQ.
-const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
-const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
 // A transient error (ACMS timeout, Cosmos throttling) requeues the run from its resume point after a
 // fixed delay. After TRANSIENT_RETRY_LIMIT requeues in a row that made no progress, the run is logged
@@ -102,9 +97,10 @@ function hasProgressed(
   );
 }
 
-// Manually triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region
-// list to fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3) -- not on
-// DEFAULT_DATAFLOWS and no timer trigger until parking/healing land (Slice 3).
+// Triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region list to
+// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). Not on DEFAULT_DATAFLOWS
+// and the sync start has no timer yet (cams-fd8qd.3.9); the 18:30 UTC heal timer is registered in
+// setup().
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Absent only on a top-level kickoff with no operator-named regions -- see the fan-out branch
    *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
@@ -126,23 +122,17 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   flushQueues?: boolean;
 };
 
+// Carries only events that hit a transient error (retryableEvents). Events for cases not yet in
+// CAMS are parked by the use case, not requeued here. A message still carrying the retired
+// notYetSyncedRetryCount field is harmless: the field is ignored and its events now park.
 type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
-  // Retry counter for the not-yet-synced-case retry policy (fixed 4-hour delay, limit
-  // CASE_NOT_YET_SYNCED_RETRY_LIMIT) — deliberately NOT named retryCount. handleRateLimitRetry
-  // (dataflows-rate-limit.ts) is a shared generic helper used by multiple dataflows that reads/
-  // writes its own transient-infra-error counter on `message.retryCount` (exponential backoff,
-  // limit RATE_LIMIT_RETRY_LIMIT) via the outer catch below. Those are two independent retry
-  // policies with different limits and delays; a generic transient error hitting the outer catch
-  // for a page that also has not-yet-synced events must not perturb this counter, and vice versa.
-  notYetSyncedRetryCount?: number;
+  // handleRateLimitRetry's own counter (shared helper, dataflows-rate-limit.ts) for a page whose
+  // whole invocation failed on a transient error.
   retryCount?: number;
   firstAttemptAt?: string;
-  // Separate retry counter for retryableEvents (transient infra errors surfaced as a business
-  // outcome from processAppointments), tracked independently from both counters above. A page can
-  // produce both kinds of retryable events in the same invocation, and they follow different
-  // retry policies (fixed 4-hour delay vs. exponential backoff) with different limits, so they
-  // cannot share one counter on a combined requeue message.
+  // Separate counter for retryableEvents (transient errors surfaced per event by
+  // processAppointments), so the two retry paths never perturb each other's limit.
   retryableRetryCount?: number;
 };
 
@@ -162,9 +152,33 @@ const DLQ = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
+const HEAL = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'heal'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+/**
+ * One page of the daily heal of parked rows (CASE_APPOINTMENT_UNATTACHED). healRunDate is the UTC
+ * date the heal timer fired and fixes the 14-day window for the whole run. lastId is absent on the
+ * first page, which is also when abandoned rows are counted.
+ */
+type HealMessage = {
+  healRunDate: string;
+  lastId?: string;
+  // Set by handleRateLimitRetry on a retried page only; never carried into a continuation.
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+// Rows healed serially per invocation (each is a few repository calls), as in
+// heal-sentinel-case-appointments.
+const HEAL_PAGE_SIZE = 25;
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HANDLE_HEAL = buildFunctionName(MODULE_NAME, 'handleHeal');
+const HEAL_TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'healTimerTrigger');
 
 function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
   const byteSize = Buffer.byteLength(JSON.stringify(event));
@@ -394,16 +408,11 @@ async function handleStart(
       }
     }
 
-    // Retryable/not-yet-synced events get their first attempt at a delayed retry via the
-    // existing PAGE queue/handlePage, which already owns the backoff/retry-limit policies for
-    // both kinds (see handlePage below) -- unchanged since before this dataflow's rewrite.
+    // Retryable events get their first attempt at a delayed retry via the PAGE queue/handlePage,
+    // which owns the backoff/retry-limit policy (see handlePage below).
     let pagesQueued = 0;
     if (result.retryableEvents.length > 0) {
       pagesQueued += (await queueEventPages(result.retryableEvents, connectionString)).pagesQueued;
-    }
-    if (result.notYetSyncedEvents.length > 0) {
-      pagesQueued += (await queueEventPages(result.notYetSyncedEvents, connectionString))
-        .pagesQueued;
     }
 
     let runNotCompleted: string | undefined;
@@ -452,7 +461,9 @@ async function handleStart(
         pagesQueued: String(pagesQueued),
         continuation: String(Boolean(result.continuation)),
         laneId: String(startMessage.laneId ?? ''),
+        parkedCount: String(result.parkedCount),
       },
+      additionalMetrics: [{ name: 'TrusteeParkedCount', value: result.parkedCount }],
     });
   } catch (originalError) {
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -498,7 +509,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 
   try {
     const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(appContext);
-    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents, retryableEvents } =
+    const { successCount, dlqMessages, scenarioDistribution, retryableEvents } =
       await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
 
     const finalDlqMessages = [...dlqMessages];
@@ -533,34 +544,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           `Rate-limit retry limit exceeded for ${retryableEvents.length} event(s) (retry count ${currentRetryableRetryCount}) — routing to DLQ.`,
         );
         finalDlqMessages.push(...retryableEvents);
-      }
-    }
-
-    if (notYetSyncedEvents.length > 0) {
-      const currentRetryCount = message.notYetSyncedRetryCount ?? 0;
-      if (currentRetryCount < CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
-        const queueClient = StorageQueueHumbleObject.fromConnectionString(
-          connectionString,
-          PAGE.queueName,
-        );
-        const retryMessage: PageMessage = {
-          events: notYetSyncedEvents,
-          notYetSyncedRetryCount: currentRetryCount + 1,
-        };
-        await queueClient.sendMessage(
-          JSON.stringify(retryMessage),
-          CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS,
-        );
-        appContext.logger.info(
-          MODULE_NAME,
-          `Requeued ${notYetSyncedEvents.length} not-yet-synced event(s) with a ${CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS}s visibility delay (retry ${currentRetryCount + 1}/${CASE_NOT_YET_SYNCED_RETRY_LIMIT}).`,
-        );
-      } else {
-        appContext.logger.error(
-          MODULE_NAME,
-          `Retry limit exceeded for ${notYetSyncedEvents.length} not-yet-synced event(s) (retry count ${currentRetryCount}) — routing to DLQ.`,
-        );
-        finalDlqMessages.push(...notYetSyncedEvents);
       }
     }
 
@@ -601,6 +584,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
           fingerprintMissCount: String(scenarioDistribution.fingerprintMissCount),
           retryableCount: String(scenarioDistribution.retryableCount),
+          parkedCount: String(scenarioDistribution.parkedCount),
         },
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
@@ -617,6 +601,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           { name: 'TrusteeFingerprintHitRate', value: fingerprintHitRate },
           { name: 'TrusteeRetryableEventCount', value: scenarioDistribution.retryableCount },
           { name: 'TrusteeRetryableRetryDepth', value: retryableRetryDepth },
+          { name: 'TrusteeParkedCount', value: scenarioDistribution.parkedCount },
         ],
       },
     );
@@ -670,6 +655,130 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   }
 }
 
+/**
+ * Daily at 18:30 UTC: starts the heal of parked rows, which attaches records whose case has loaded
+ * into CAMS since they were parked.
+ */
+async function healTimerTrigger(
+  _timer: Timer,
+  invocationContext: InvocationContext,
+): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const observability = factory.getObservability(logger);
+  const trace = observability.startTrace(invocationContext.invocationId);
+  try {
+    const healStart: HealMessage = { healRunDate: DateHelper.getTodaysIsoDate() };
+    invocationContext.extraOutputs.set(HEAL, healStart);
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'healTimerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+    });
+  } catch (error) {
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'healTimerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
+/**
+ * handleHeal
+ *
+ * Queue mechanics for one heal page (cursor continuation, rate-limit retry, telemetry); the
+ * healing rules live in heal-parked-case-appointments.ts. Abandoned rows (aged out of the window
+ * on this run) are counted once, on the first page.
+ */
+async function handleHeal(message: HealMessage, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  try {
+    const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
+    const isFirstPage = !message.lastId;
+    const abandonedCount = isFirstPage
+      ? await HealParkedCaseAppointments.countAbandoned(deps, message.healRunDate)
+      : undefined;
+    const page = await HealParkedCaseAppointments.healParkedPage(deps, {
+      healRunDate: message.healRunDate,
+      lastId: message.lastId ?? null,
+      pageSize: HEAL_PAGE_SIZE,
+    });
+
+    if (page.nextLastId !== null) {
+      const queueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        HEAL.queueName,
+      );
+      const continuation: HealMessage = {
+        healRunDate: message.healRunDate,
+        lastId: page.nextLastId,
+      };
+      await queueClient.sendMessage(JSON.stringify(continuation));
+    }
+
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHeal', context.logger, {
+      documentsWritten: page.healed,
+      documentsFailed: page.failed,
+      success: true,
+      details: {
+        healRunDate: message.healRunDate,
+        healedCount: String(page.healed),
+        stillParkedCount: String(page.stillParked),
+        failedCount: String(page.failed),
+        continuationQueued: String(page.nextLastId !== null),
+        ...(abandonedCount !== undefined ? { abandonedCount: String(abandonedCount) } : {}),
+      },
+      additionalMetrics: [
+        { name: 'TrusteeHealedCount', value: page.healed },
+        { name: 'TrusteeStillParkedCount', value: page.stillParked },
+        ...(abandonedCount !== undefined
+          ? [{ name: 'TrusteeAbandonedCount', value: abandonedCount }]
+          : []),
+      ],
+    });
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: HEAL.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleHeal',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried' || rateLimitRetryStatus === 'exhausted') {
+      const retried = rateLimitRetryStatus === 'retried';
+      completeDataflowTrace(
+        context.observability,
+        trace,
+        MODULE_NAME,
+        'handleHeal',
+        context.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: retried ? 0 : 1,
+          success: false,
+          error: retried ? 'rate-limited-requeued' : 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
+    throw error;
+  }
+}
+
 function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
@@ -684,9 +793,23 @@ function setup() {
     extraOutputs: [DLQ],
     handler: handlePage,
   });
+
+  app.storageQueue(HANDLE_HEAL, {
+    connection: HEAL.connection,
+    queueName: HEAL.queueName,
+    extraOutputs: [DLQ],
+    handler: handleHeal,
+  });
+
+  app.timer(HEAL_TIMER_TRIGGER, {
+    // Daily at 18:30 UTC (CAMS-955 Slice 3 decision 16): heals parked rows filed in the last 14 days.
+    schedule: '0 30 18 * * *',
+    extraOutputs: [HEAL],
+    handler: healTimerTrigger,
+  });
 }
 
-export { handleStart, handlePage };
+export { handleStart, handlePage, handleHeal, healTimerTrigger };
 export default {
   MODULE_NAME,
   setup,

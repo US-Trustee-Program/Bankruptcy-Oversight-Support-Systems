@@ -81,6 +81,7 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
         findSentinelAppointments: mockFindSentinelAppointments,
         upsert: mockUpsert,
         delete: mockDelete,
+        getByCaseId: vi.fn().mockResolvedValue([]),
       }),
     );
     vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -133,12 +134,31 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
       sendMessage: mockSendMessage,
     } as unknown as StorageQueueHumbleObject);
 
-    const message = makeMessage();
-    await handleHeal(message, makeInvocationContext());
+    await handleHeal(makeMessage(), makeInvocationContext());
 
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ ...message, lastId: sentinel._id }),
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ lastId: sentinel._id }));
+  });
+
+  test('a continuation carries only lastId, not the retry counters of a rate-limit-retried message', async () => {
+    // handleRateLimitRetry sets retryCount/firstAttemptAt on a requeued message; carrying them
+    // into continuations would shorten the retry budget of every later page.
+    const { handleHeal } = await import('./heal-sentinel-case-appointments');
+    const sentinel = makeSentinel({ _id: 'mongo-next' });
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
     );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handleHeal(
+      { lastId: 'mongo-prev', retryCount: 2, firstAttemptAt: '2026-11-09T00:00:00.000Z' },
+      makeInvocationContext(),
+    );
+
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ lastId: 'mongo-next' }));
   });
 
   test('advances the cursor on requeue so an unresolvable sentinel does not stall the run', async () => {
