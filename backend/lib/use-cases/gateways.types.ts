@@ -809,7 +809,8 @@ export type RuntimeStateDocumentType =
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
-  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
+  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE'
+  | 'TRUSTEE_APPOINTMENT_SYNC_RUN';
 
 export type RuntimeState = {
   id?: string;
@@ -880,6 +881,18 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
  * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
  * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
  */
+/**
+ * The one regionless sync run (kickoff plus every lane and continuation it spawns) that is
+ * currently allowed to work. A later kickoff skips while lastActivityAt is recent; each lane
+ * refreshes it, and a message whose runId is not this one stops.
+ */
+export type TrusteeAppointmentSyncRunState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN';
+  runId: string;
+  startedAt: string;
+  lastActivityAt: string;
+};
+
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
   region: Record<

@@ -3,6 +3,7 @@ import ContextCreator from '../../azure/application-context-creator';
 
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
+import TrusteeAppointmentSyncRun from '../../../lib/use-cases/dataflows/trustee-appointment-sync-run';
 import HealParkedCaseAppointments from '../../../lib/use-cases/dataflows/heal-parked-case-appointments';
 import RegionDriver, {
   isTransientError,
@@ -109,6 +110,12 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Identifies which lane a chain belongs to (trace details, fan-out logs, and the DLQ'd start
    *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
   laneId?: number;
+  /**
+   * The logical run this message belongs to: minted by a regionless kickoff and copied onto every
+   * lane, continuation and requeue it spawns. A message whose runId is no longer the current run
+   * stops (see TrusteeAppointmentSyncRun). Absent on an operator-named start, which ignores the lock.
+   */
+  runId?: string;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
   runDate?: string;
   /** Where a prior invocation that stopped early (budget or transient error) left off -- see RegionDriver's continuation. */
@@ -288,6 +295,7 @@ async function fanOutAcrossLanes(
   logger: ReturnType<typeof ContextCreator.getLogger>,
   connectionString: string,
   runDate: string,
+  runId: string,
 ): Promise<FanOutResult> {
   const regions = await RegionDriver.getAllRegionIds(context);
   const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
@@ -304,6 +312,7 @@ async function fanOutAcrossLanes(
       regions: laneRegions,
       runDate,
       laneId,
+      runId,
     };
     const jitterSeconds = pickJitterSeconds(LANE_JITTER_MIN_SECONDS, LANE_JITTER_MAX_SECONDS);
     await startQueueClient.sendMessage(JSON.stringify(laneMessage), jitterSeconds);
@@ -326,6 +335,8 @@ async function handleStart(
   const trace = observability.startTrace(invocationContext.invocationId);
   // Set once deleteAll completes, so a later requeue of this invocation does not repeat the reset.
   let deleteAllDone = false;
+  // The run this invocation belongs to, so a transient requeue of the kickoff keeps the claim it made.
+  let runId = startMessage.runId;
   try {
     const connectionString = process.env.AzureWebJobsDataflowsStorage;
     if (!connectionString) {
@@ -350,6 +361,42 @@ async function handleStart(
       return;
     }
 
+    // Only a regionless kickoff claims the run and only a lane message (regions plus runId) is
+    // checked against it; an operator-named start carries no runId and ignores the lock. This runs
+    // before deleteAll so a kickoff that is skipped never wipes appointments under an active run.
+    const runDeps = TrusteeAppointmentSyncRun.createDeps(context);
+    if (!startMessage.regions && !startMessage.resumeFrom) {
+      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps, startMessage.runId);
+      if ('activeRunId' in claim) {
+        logger.info(
+          MODULE_NAME,
+          `Run ${claim.activeRunId} is still active; this kickoff is skipped.`,
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { skipped: 'run-active', activeRunId: claim.activeRunId },
+        });
+        return;
+      }
+      runId = claim.runId;
+    } else if (startMessage.regions && startMessage.runId) {
+      if (!(await TrusteeAppointmentSyncRun.touchRun(runDeps, startMessage.runId))) {
+        logger.info(
+          MODULE_NAME,
+          `Run ${startMessage.runId} is no longer the current run; this message is dropped.`,
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { skipped: 'superseded-run', runId: startMessage.runId },
+        });
+        return;
+      }
+    }
+
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
       const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
@@ -370,7 +417,13 @@ async function handleStart(
           'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
         );
       }
-      const fanOutResult = await fanOutAcrossLanes(context, logger, connectionString, runDate);
+      const fanOutResult = await fanOutAcrossLanes(
+        context,
+        logger,
+        connectionString,
+        runDate,
+        runId!,
+      );
       const noRegionsFound =
         fanOutResult.regionsScheduled === 0
           ? 'No regions found in CAMS office data; no lanes were scheduled.'
@@ -424,6 +477,7 @@ async function handleStart(
         runDate: continuation.runDate,
         resumeFrom: continuation.resumeFrom,
         laneId: startMessage.laneId,
+        runId: startMessage.runId,
       };
       if (continuation.cause === 'invocation-budget') {
         // A budget continuation starts a fresh transient-retry streak, so it carries no count.
@@ -483,6 +537,7 @@ async function handleStart(
     // is known here, so the count simply extends the streak. deleteAll is dropped once it has run.
     await requeueAfterTransientError(invocationContext, logger, connectionString, {
       ...startMessage,
+      runId,
       transientRetryCount: (startMessage.transientRetryCount ?? 0) + 1,
       deleteAll: deleteAllDone ? undefined : startMessage.deleteAll,
     });
