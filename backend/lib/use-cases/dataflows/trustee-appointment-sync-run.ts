@@ -24,8 +24,7 @@ function createDeps(context: ApplicationContext) {
 
 type RunDeps = ReturnType<typeof createDeps>;
 
-type ClaimResult =
-  { claimed: true; runId: string } | { claimed: false; activeRunId: string };
+type ClaimResult = { claimed: true; runId: string } | { claimed: false; activeRunId: string };
 
 async function readRun(deps: RunDeps): Promise<TrusteeAppointmentSyncRunState | undefined> {
   try {
