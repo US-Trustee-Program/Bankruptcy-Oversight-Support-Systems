@@ -331,9 +331,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(1);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 11 -- already covered by
-    // AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 11.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
   });
 
   describe('Chapter 7 Elected accordion', () => {
@@ -363,9 +363,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 7 Elected -- already covered
-    // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 7 Elected.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
   });
 
   describe('Chapter 7 Panel accordion', () => {
@@ -396,9 +396,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 7 Panel -- already covered
-    // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 7 Panel.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
   });
 
   describe('Chapter 7 Off Panel accordion', () => {
@@ -511,9 +511,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 11 Subchapter V -- already
-    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 11 Subchapter V.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
   });
 
   describe('Chapter 13 Standing accordion', () => {
@@ -548,9 +548,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 13 Standing -- already
-    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 13 Standing.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
 
     test('preserves sort order interleaving Chapter 13 Standing with other appointment types', async () => {
       const appointments: TrusteeAppointment[] = [
@@ -659,8 +659,49 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
-    // useAppointmentExpansion behavior, not specific to Chapter 12 Standing -- already
-    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+    // Default expansion (expanded only when the trustee has exactly one appointment, unless the
+    // user has toggled it) and toggle mechanics are generic, not specific to Chapter 12 Standing.
+    // See useAppointmentExpansion.test.ts and the count-based default tests below.
+  });
+  describe('Count-based default expansion', () => {
+    const loneAppointment = makeAppointment('lone-appointment', {
+      chapter: '12',
+      appointmentType: 'standing',
+    });
+    const accordionButton = (id: string) => screen.getByTestId(`accordion-button-${id}`);
+
+    async function renderWithAppointments(appointments: TrusteeAppointment[]) {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+      renderComponent('trustee-123');
+      await waitFor(() => {
+        expect(accordionButton(appointments[0].id)).toBeInTheDocument();
+      });
+    }
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('a trustee with exactly one appointment sees it expanded on load', async () => {
+      await renderWithAppointments([loneAppointment]);
+
+      expect(accordionButton(loneAppointment.id)).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    test('a trustee with multiple appointments sees all of them collapsed on load', async () => {
+      await renderWithAppointments(mockAppointments);
+
+      mockAppointments.forEach((appointment) => {
+        expect(accordionButton(appointment.id)).toHaveAttribute('aria-expanded', 'false');
+      });
+    });
+
+    test('a default-expanded lone appointment collapses on the first click', async () => {
+      await renderWithAppointments([loneAppointment]);
+
+      await userEvent.click(accordionButton(loneAppointment.id));
+
+      expect(accordionButton(loneAppointment.id)).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 });

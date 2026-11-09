@@ -1,5 +1,4 @@
 import { CaseAssignment } from './assignments';
-import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
 import { TrusteeChangeSet } from './notifications';
 
@@ -36,19 +35,20 @@ export type TrusteeChangeNotificationEvent = {
   changeSet: TrusteeChangeSet;
 };
 
-/**
- * Event triggered to reload/sync a case from DXTR.
- * Processed by dataflows to update case data in MongoDB.
- */
 export type OrphanedCaseMessage = {
   orphanedCaseId: string;
   currentCaseId: string;
 };
 
+/**
+ * Event triggered to reload/sync a case from DXTR.
+ * Processed by dataflows to update case data in MongoDB.
+ * Also the body of case-sync queue messages (PAGE, DLQ, RETRY, HARD_STOP), so do not add case
+ * detail or debtor fields to it.
+ */
 export type CaseSyncEvent = {
   type: 'CASE_CHANGED' | 'MIGRATION';
   caseId: string;
-  bCase?: DxtrCase;
   error?: unknown;
   retryCount?: number;
   divisionChange?: OrphanedCaseMessage;
