@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import { CasesSyncState, LegacyCasesSyncState } from '../gateways.types';
 import { randomUUID } from 'node:crypto';
 
@@ -58,6 +59,9 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
       lastTransactionsSyncDate: latestTransactionsSyncDate,
     };
   } catch (originalError) {
+    if (isTransientInfraError(originalError)) {
+      throw originalError;
+    }
     const error = getCamsError(originalError, MODULE_NAME);
     context.logger.camsError(error);
     return { events: [] };

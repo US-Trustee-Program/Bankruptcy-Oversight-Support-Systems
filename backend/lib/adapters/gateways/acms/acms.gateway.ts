@@ -15,6 +15,7 @@ import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
+import { formatAcmsDate } from '../../../use-cases/dataflows/acms-case-appointment.helpers';
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
@@ -31,6 +32,19 @@ const ACMS_REQUEST_TIMEOUT_MS = (() => {
   }
   return parsed;
 })();
+
+// Row-inclusion filters shared by getCmmapAppointmentsRaw and getLatestCmmapChangeDateForRegion.
+// Both queries must select the same rows: a date reported by the latest-change query has to
+// match at least one row in the page query, or the region bookmark stalls. The fragment uses the
+// aliases m (CMMAP), c (CMMDB), and p (CMMPR) and binds no parameters; each query adds its own.
+export const CMMAP_ROW_INCLUSION_FILTERS = `m.DELETE_CODE != 'D'
+          AND m.PROF_CODE > 0
+          AND m.PROF_CODE < 98000
+          AND m.APPT_TYPE = 'TR'
+          AND c.DELETE_CODE != 'D'
+          AND p.DELETE_CODE != 'D'
+          AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
+            OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))`;
 
 function throwCamsError(originalError: unknown): never {
   const normalizedError =
@@ -524,14 +538,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
           AND m.PROF_CODE = p.UST_PROF_CODE
         WHERE m.id > @lastId
-          AND m.DELETE_CODE != 'D'
-          AND m.PROF_CODE > 0
-          AND m.PROF_CODE < 98000
-          AND m.APPT_TYPE = 'TR'
-          AND c.DELETE_CODE != 'D'
-          AND p.DELETE_CODE != 'D'
-          AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
-            OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
+          AND ${CMMAP_ROW_INCLUSION_FILTERS}
           ${cutoffClause}
           ${regionClause}
           ${changeDateClause}
@@ -565,6 +572,37 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         ACMS_REQUEST_TIMEOUT_MS,
       );
       return (results as mssql.IResult<AcmsCaseAppointmentRawRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getLatestCmmapChangeDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined> {
+    const input: DbTableFieldSpec[] = [{ name: 'regionId', type: mssql.Char, value: regionId }];
+
+    const query = `
+      SELECT TOP 1 m.CDB_UPDATE_DATE
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      INNER JOIN [dbo].[CMMPR] p
+        ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
+        AND m.PROF_CODE = p.UST_PROF_CODE
+      WHERE ${CMMAP_ROW_INCLUSION_FILTERS}
+        AND m.REGION_CODE = @regionId
+      ORDER BY m.CDB_UPDATE_DATE DESC`;
+
+    type ResultType = { CDB_UPDATE_DATE: number };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const recordset = (results as mssql.IResult<ResultType>).recordset;
+      return recordset.length > 0 ? formatAcmsDate(recordset[0].CDB_UPDATE_DATE) : undefined;
     } catch (originalError) {
       throwCamsError(originalError);
     }

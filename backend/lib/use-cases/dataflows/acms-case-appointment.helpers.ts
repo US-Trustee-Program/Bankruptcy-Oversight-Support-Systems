@@ -1,11 +1,12 @@
 import {
   AcmsCaseAppointmentRawRecord,
-  AcmsCaseAppointmentRecord,
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
 import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
-import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import { AcmsTrusteeProfessional, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import { formatCityStateZipCountry, removeExtraSpaces } from '../../adapters/utils/string-helper';
+import { formatAcmsZip } from './acms-trustee-variant.helpers';
 
 export function formatAcmsDate(acmsDate: number): string {
   const s = acmsDate.toString();
@@ -25,44 +26,59 @@ export function formatAcmsDate(acmsDate: number): string {
   return formatted;
 }
 
-export function rawToAppointmentRecord(
-  raw: AcmsCaseAppointmentRawRecord,
-): AcmsCaseAppointmentRecord {
+/**
+ * Builds the source-neutral trustee shape from a raw CMMPR-joined row. legacy is omitted
+ * entirely (not an empty object) when address, city/state/zip, and phone are all blank, matching
+ * toAcmsTrusteeProfessional's convention in sync-acms-professional-ids.ts. No email or fax: CMMPR
+ * has no email column, and this query does not select PROF_FAX_NBR.
+ */
+export function buildAcmsSourceTrustee(raw: AcmsCaseAppointmentRawRecord): AcmsTrusteeProfessional {
+  const fullName = removeExtraSpaces(
+    [raw.PROF_FIRST_NAME, raw.PROF_MI, raw.PROF_LAST_NAME].filter(Boolean).join(' '),
+  );
+  const cityStateZipCountry = formatCityStateZipCountry(
+    raw.PROF_CITY || undefined,
+    raw.PROF_STATE || undefined,
+    formatAcmsZip(raw.PROF_ZIP),
+    undefined,
+  );
+  // PROF_COMMERCIAL_PHONE_NBR of 0 is ACMS's "no phone" sentinel, not a real number.
+  const phone = raw.PROF_COMMERCIAL_PHONE_NBR ? String(raw.PROF_COMMERCIAL_PHONE_NBR) : undefined;
+  const address1 = raw.PROF_ADDRESS1 || undefined;
+  const address2 = raw.PROF_ADDRESS2 || undefined;
+  const hasLegacy = Boolean(address1 || address2 || cityStateZipCountry || phone);
+
   return {
-    id: raw.id,
-    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
-    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
-    assignDate: raw.APPT_DATE,
-    apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
-    unassignDate: raw.DISP_DATE,
-    caseFiledDate: raw.CASE_FILED_DATE,
-    chapter: raw.CURR_CASE_CHAPT,
-    courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
-    closedByCourtDate: raw.CLOSED_BY_COURT_DATE,
-    closedByUstDate: raw.CLOSED_BY_UST_DATE,
-    reopenedDate: raw.REOPENED_DATE,
+    firstName: raw.PROF_FIRST_NAME?.trim() || undefined,
+    middleName: raw.PROF_MI?.trim() || undefined,
+    lastName: raw.PROF_LAST_NAME?.trim() || undefined,
+    fullName: fullName ?? '',
+    ...(hasLegacy ? { legacy: { address1, address2, cityStateZipCountry, phone } } : {}),
   };
 }
 
-// Shared date/field mapping used by both the normal write path (writeRecord) and
-// the moved-case migration path (buildCaseAppointmentMigrationInput) in
-// migrate-case-appointments.ts. Throws if any ACMS date field is malformed, or if
-// chapter is not a value CAMS recognizes (e.g. 'AC') — callers are responsible for catching.
-export function buildAppointmentFields(
-  record: AcmsCaseAppointmentRecord,
-): Partial<CaseAppointmentInput> {
-  const closedDate = record.closedByCourtDate
-    ? formatAcmsDate(record.closedByCourtDate)
-    : record.closedByUstDate
-      ? formatAcmsDate(record.closedByUstDate)
-      : undefined;
+/**
+ * Maps a raw CMMAP+CMMDB+CMMPR row and its resolved courtId (see AcmsTrusteeAppointmentSource;
+ * ACMS has no COURT_ID column) into the source-neutral TrusteeAppointmentSyncEvent shape.
+ */
+export function rawToTrusteeAppointmentSyncEvent(
+  raw: AcmsCaseAppointmentRawRecord,
+  courtId: string,
+): TrusteeAppointmentSyncEvent {
   return {
-    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
-    ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
-    ...(record.chapter ? { chapter: normalizeAcmsCaseChapter(record.chapter) } : {}),
-    courtDivisionCode: record.courtDivisionCode,
-    ...(closedDate ? { closedDate } : {}),
-    ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
+    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
+    courtId,
+    source: 'ACMS',
+    sourceTrustee: buildAcmsSourceTrustee(raw),
+    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
+    groupDesignator: raw.GROUP_DESIGNATOR,
+    // Zero-padded to 5 digits, matching DXTR's own profCode (a fixed-width 5-char REC substring)
+    // -- resolveAcmsProfessionalIdForVerification in sync-trustee-case-appointments.ts crosses
+    // groupDesignator+profCode directly with a hyphen, with no padding of its own.
+    profCode: String(raw.PROF_CODE).padStart(5, '0'),
+    ...(raw.APPT_DATE ? { appointedDate: formatAcmsDate(raw.APPT_DATE) } : {}),
+    ...(raw.DISP_DATE ? { unassignedOn: formatAcmsDate(raw.DISP_DATE) } : {}),
+    ...(raw.CURR_CASE_CHAPT ? { chapter: normalizeAcmsCaseChapter(raw.CURR_CASE_CHAPT) } : {}),
+    courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
   };
 }

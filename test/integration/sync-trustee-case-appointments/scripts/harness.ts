@@ -42,6 +42,7 @@ import * as mssql from 'mssql';
 import { randomUUID } from 'crypto';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
+import { CaseTrusteeAppointmentUseCase } from '../../../../backend/lib/use-cases/cases/case-trustee-appointment.use-case';
 import { TrusteeAppointmentSource } from '../../../../backend/lib/use-cases/dataflows/trustee-appointment-source';
 import {
   buildVariant,
@@ -995,6 +996,7 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
 
 async function assertExpect(
   r: Reporter,
+  context: ApplicationContext,
   db: Db,
   expect: Expect,
   outcome: { events: number; dlq: number; notYetSynced: number },
@@ -1064,6 +1066,26 @@ async function assertExpect(
   }
   await assertUntouched(r, db, expect.untouched ?? []);
   await assertTasks(r, db, expect.tasks ?? [], expect.tasksTotal);
+  if (expect.historyRead) {
+    const { caseId, expectedLength, expectedFirstTrusteeName } = expect.historyRead;
+    r.step('Then', `getCaseTrusteeAppointmentHistory(${caseId}) returns ${expectedLength} item(s)`);
+    const { history } = await new CaseTrusteeAppointmentUseCase().getCaseTrusteeAppointmentHistory(
+      context,
+      caseId,
+    );
+    r.check(
+      history.length === expectedLength,
+      `${history.length} history item(s)`,
+      `history has ${history.length} item(s), expected ${expectedLength}`,
+    );
+    if (history.length > 0) {
+      r.check(
+        history[0].trusteeName === expectedFirstTrusteeName,
+        `trusteeName resolved: "${history[0].trusteeName}"`,
+        `trusteeName "${history[0].trusteeName}", expected "${expectedFirstTrusteeName}"`,
+      );
+    }
+  }
 }
 
 async function assertUntouched(r: Reporter, db: Db, caseIds: string[]) {
@@ -1138,7 +1160,7 @@ async function runScenarioLane(
           );
           const events = await readEvents(context, source, lane, region, pass.changeDate);
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
-          await assertExpect(r, db, expectFor(pass, s, lane), {
+          await assertExpect(r, context, db, expectFor(pass, s, lane), {
             events: events.length,
             dlq: result.dlqMessages.length,
             notYetSynced: result.notYetSyncedEvents.length,

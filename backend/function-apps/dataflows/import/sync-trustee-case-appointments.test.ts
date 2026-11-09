@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { InvocationContext, Timer } from '@azure/functions';
+import { InvocationContext } from '@azure/functions';
 import * as SyncTrusteeCaseAppointmentsModule from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
+import * as RegionDriverModule from '../../../lib/use-cases/dataflows/trustee-appointment-region-driver';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
@@ -8,7 +9,6 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
-import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -545,68 +545,34 @@ describe('sync-trustee-case-appointments handlePage', () => {
 });
 
 describe('sync-trustee-case-appointments handleStart', () => {
-  const makeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
-    ({
-      caseId,
-      courtId: '081',
-      sourceTrustee: { fullName: 'John Doe' },
-    }) as TrusteeAppointmentSyncEvent;
-
-  const makeHeavyEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
-    ({
-      caseId,
-      courtId: '081',
-      courtDivisionCode: '081',
-      chapter: '7',
-      appointedDate: '2026-07-01T00:00:00Z',
-      acmsProfessionalId: '081-999999',
-      sourceTrustee: {
-        firstName: 'Bartholomew',
-        middleName: 'Alessandro',
-        lastName: 'Winterbottom-Fitzgerald',
-        generation: 'III',
-        fullName: 'Bartholomew Alessandro Winterbottom-Fitzgerald III',
-        legacy: {
-          address1: '12345 Northwest Professional Plaza Boulevard, Suite 6789',
-          address2: 'Attn: Office of the Chapter 7 Standing Trustee',
-          address3: 'Building C, Second Floor, Mailbox 42',
-          cityStateZipCountry: 'Some Very Long City Name, CA 90210-1234 USA',
-          phone: '555-123-4567',
-          fax: '555-123-4568',
-          email: 'bartholomew.winterbottom-fitzgerald@example-trustee-office.gov',
-        },
-      },
-    }) as TrusteeAppointmentSyncEvent;
-
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
+  const emptyResult = {
+    processedRegions: ['02'],
+    dlqMessages: [],
+    retryableEvents: [],
+    notYetSyncedEvents: [],
+  };
+
   async function setupMocks(overrides?: {
-    getAppointmentEventsResult?: {
-      events: TrusteeAppointmentSyncEvent[];
-      latestSyncDate: string | undefined;
-      petitionLatestSyncDate: string | undefined;
+    runRegionDriverResult?: typeof emptyResult & {
+      continuation?: {
+        regions: string[];
+        runDate: string;
+        resumeFrom?: { regionId: string; date: string; lastId?: string };
+        cause: 'invocation-budget' | 'transient-error';
+      };
     };
     deleteAllResult?: { data: { deleted: number }; error?: Error };
   }) {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockResolvedValue(
-      overrides?.getAppointmentEventsResult ?? {
-        events: [],
-        latestSyncDate: '',
-        petitionLatestSyncDate: '',
-      },
-    );
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'storeRuntimeState').mockResolvedValue(
-      undefined,
-    );
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default,
-      'storePetitionRuntimeState',
-    ).mockResolvedValue(undefined);
+    const runRegionDriverSpy = vi
+      .spyOn(RegionDriverModule.default, 'runRegionDriver')
+      .mockResolvedValue(overrides?.runRegionDriverResult ?? emptyResult);
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
@@ -614,492 +580,448 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const fromConnectionStringSpy = vi
       .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
       .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
-    return { mockContext, mockSendMessage, fromConnectionStringSpy };
+    return { mockContext, mockSendMessage, fromConnectionStringSpy, runRegionDriverSpy };
   }
 
-  test('should queue pages and emit success telemetry when events are returned', async () => {
+  test('calls the region driver with the named regions and a default run date', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const events = Array.from({ length: 3 }, (_, i) => makeEvent(`001-25-0000${i}`));
+    const { runRegionDriverSpy, mockContext } = await setupMocks();
 
+    await handleStart({ regions: ['02', '03'] }, invocationContext);
+
+    expect(runRegionDriverSpy).toHaveBeenCalledWith(
+      mockContext,
+      expect.objectContaining({ regions: ['02', '03'], resumeFrom: undefined }),
+    );
+    const callArgs = runRegionDriverSpy.mock.calls[0][1];
+    expect(callArgs.runDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test('passes an explicit runDate and resumeFrom through unchanged', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy, mockContext } = await setupMocks();
+    const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+
+    await handleStart({ regions: ['02'], runDate: '2026-07-05', resumeFrom }, invocationContext);
+
+    expect(runRegionDriverSpy).toHaveBeenCalledWith(mockContext, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+      resumeFrom,
+    });
+  });
+
+  test('routes dlqMessages from the driver result directly to the DLQ', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const dlqEvent = makeTrusteeEvent('081-26-00001');
     const { mockSendMessage } = await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: undefined,
+      runRegionDriverResult: { ...emptyResult, dlqMessages: [dlqEvent] },
+    });
+
+    await handleStart({ regions: ['02'] }, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(dlqEvent));
+  });
+
+  test('queues retryable and not-yet-synced events for their first delayed retry via handlePage', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const retryableEvent = makeTrusteeEvent('081-26-00002');
+    const notYetSyncedEvent = makeTrusteeEvent('081-26-00003');
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        retryableEvents: [retryableEvent],
+        notYetSyncedEvents: [notYetSyncedEvent],
       },
     });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
-    await handleStart({}, invocationContext);
+    await handleStart({ regions: ['02'] }, invocationContext);
+
+    const sentBodies = mockSendMessage.mock.calls.map((call) => JSON.parse(call[0]));
+    expect(sentBodies).toContainEqual(expect.objectContaining({ events: [retryableEvent] }));
+    expect(sentBodies).toContainEqual(expect.objectContaining({ events: [notYetSyncedEvent] }));
+  });
+
+  test('re-enqueues a continuation message to the START queue when the driver escapes', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const continuation = {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+      cause: 'invocation-budget' as const,
+    };
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: { ...emptyResult, continuation },
+    });
+
+    await handleStart({ regions: ['02', '03'], runDate: '2026-07-05' }, invocationContext);
+
+    const sentBodies = mockSendMessage.mock.calls.map((call) => JSON.parse(call[0]));
+    expect(sentBodies).toContainEqual({
+      regions: continuation.regions,
+      runDate: continuation.runDate,
+      resumeFrom: continuation.resumeFrom,
+    });
+  });
+
+  test('re-enqueues a transient-error continuation with the resume point, count + 1, and a 300s delay when nothing progressed', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom,
+          cause: 'transient-error',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: 2 },
+      invocationContext,
+    );
 
     expect(mockSendMessage).toHaveBeenCalledTimes(1);
-    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ events }));
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      regions: ['02'],
+      runDate: '2026-07-05',
+      resumeFrom,
+      transientRetryCount: 3,
+    });
+    expect(delaySeconds).toBe(300);
+  });
 
-    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).toHaveBeenCalledWith(
-      expect.anything(),
-      '2025-06-01T00:00:00Z',
+  test.each([
+    {
+      description: 'the resume point moved',
+      incomingRegions: ['02'],
+      continuedResumeFrom: { regionId: '02', date: '2026-07-02', lastId: '2002' },
+      continuedRegions: ['02'],
+    },
+    {
+      description: 'fewer regions remain',
+      incomingRegions: ['02', '03'],
+      continuedResumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+      continuedRegions: ['03'],
+    },
+  ])(
+    'resets the transient retry count to 1 when $description since the incoming message',
+    async ({ incomingRegions, continuedResumeFrom, continuedRegions }) => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupMocks({
+        runRegionDriverResult: {
+          ...emptyResult,
+          continuation: {
+            regions: continuedRegions,
+            runDate: '2026-07-05',
+            resumeFrom: continuedResumeFrom,
+            cause: 'transient-error',
+          },
+        },
+      });
+
+      await handleStart(
+        {
+          regions: incomingRegions,
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          transientRetryCount: 4,
+        },
+        invocationContext,
+      );
+
+      expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(1);
+    },
+  );
+
+  test.each([
+    { incomingCount: undefined, sentCount: 1 },
+    { incomingCount: 4, sentCount: 5 },
+  ])(
+    'requeues a transient continuation with no progress when the incoming count is $incomingCount (sends $sentCount)',
+    async ({ incomingCount, sentCount }) => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+      const { mockSendMessage } = await setupMocks({
+        runRegionDriverResult: {
+          ...emptyResult,
+          continuation: {
+            regions: ['02'],
+            runDate: '2026-07-05',
+            resumeFrom,
+            cause: 'transient-error',
+          },
+        },
+      });
+
+      await handleStart(
+        { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: incomingCount },
+        invocationContext,
+      );
+
+      expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(sentCount);
+    },
+  );
+
+  test('stops without re-enqueueing or dead-lettering once the transient retry count would exceed 5, logging the stop and failing the trace', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
+      logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
     );
-    expect(telemetrySpy).toHaveBeenCalledWith(
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom,
+          cause: 'transient-error',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: 5 },
+      invocationContext,
+    );
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('Transient errors persisted through 5 requeues'),
+      expect.anything(),
+    );
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      expect.any(String),
       'handleStart',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
+      expect.objectContaining({
+        success: false,
+        error: expect.stringContaining('Transient errors persisted'),
+      }),
     );
   });
 
-  test('should store petition runtime state when petitionLatestSyncDate is returned', async () => {
+  test('treats a continuation as progress when the incoming message had no resume point', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const events = [makeEvent('001-25-00000')];
-
-    await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: '2025-05-01T00:00:00Z',
-      },
-    });
-
-    await handleStart({}, invocationContext);
-
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.storePetitionRuntimeState,
-    ).toHaveBeenCalledWith(expect.anything(), '2025-05-01T00:00:00Z');
-  });
-
-  test('should queue multiple pages when events exceed the page size', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-    const events = Array.from({ length: 101 }, (_, i) =>
-      makeEvent(`001-25-${String(i).padStart(5, '0')}`),
-    );
-
     const { mockSendMessage } = await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: undefined,
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          cause: 'transient-error',
+        },
       },
     });
 
-    await handleStart({}, invocationContext);
-
-    const pages = mockSendMessage.mock.calls.map(
-      ([body]) => JSON.parse(body as string) as { events: TrusteeAppointmentSyncEvent[] },
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 3 },
+      invocationContext,
     );
-    expect(pages).toHaveLength(2);
-    expect(pages[0].events).toHaveLength(100);
-    expect(pages[1].events).toHaveLength(1);
+
+    expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(1);
   });
 
-  test('should send each page as its own queue message, each staying under the Azure Storage Queue base64-encoded message size limit', async () => {
-    // This is the crux of the CAMS-809 production 413: pageByByteBudget correctly
-    // sizes each individual page under the budget, but the pages must each be sent
-    // as their own queue message via the imperative queue client (one sendMessage
-    // call per page). Setting the whole array of pages on a single extraOutputs
-    // binding instead would collapse them back into one oversized message — see
-    // node_modules/@azure/functions/src/converters/toRpcTypedData.ts, which
-    // JSON.stringifies any non-primitive value (including an array of pages) into
-    // ONE RpcTypedData value, i.e. one queue message, regardless of how many pages
-    // it contains.
+  test('a budget continuation carries no transient retry count, so the count resets', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const events = Array.from({ length: 150 }, (_, i) =>
-      makeHeavyEvent(`001-25-${String(i).padStart(5, '0')}`),
-    );
-
     const { mockSendMessage } = await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: undefined,
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          cause: 'invocation-budget',
+        },
       },
     });
 
-    await handleStart({}, invocationContext);
-
-    expect(mockSendMessage.mock.calls.length).toBeGreaterThan(1);
-
-    const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
-    const pages = mockSendMessage.mock.calls.map(
-      ([body]) => JSON.parse(body as string) as { events: TrusteeAppointmentSyncEvent[] },
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 3 },
+      invocationContext,
     );
-    for (const [body] of mockSendMessage.mock.calls) {
-      const encodedSize = Buffer.from(body as string).toString('base64').length;
-      expect(encodedSize).toBeLessThanOrEqual(AZURE_QUEUE_MESSAGE_LIMIT_BYTES);
-    }
 
-    const totalEventsAcrossPages = pages.reduce((sum, page) => sum + page.events.length, 0);
-    expect(totalEventsAcrossPages).toBe(events.length);
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).not.toHaveProperty('transientRetryCount');
+    expect(delaySeconds).toBeUndefined();
   });
 
-  test('should queue all well-formed events and forward a DLQ summary for an event that individually exceeds the byte budget', async () => {
-    // pageByByteBudget rejects (rather than pages) an item whose own serialized size
-    // alone exceeds the budget. handleStart still queues every page it could build
-    // from the well-formed events, and separately forwards a compact summary (not
-    // the oversized payload itself, which would risk the same byte-budget problem)
-    // for each rejected event to the DLQ — one bad event doesn't block the rest.
+  test('re-enqueues the original start message with count + 1 and a 300s delay when the handler throws a transient error, and does not dead-letter it', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const oversizedEvent = {
-      ...makeEvent('001-25-99999'),
-      sourceTrustee: { fullName: 'x'.repeat(70_000) },
-    } as TrusteeAppointmentSyncEvent;
-    const events = [makeEvent('001-25-00000'), oversizedEvent, makeEvent('001-25-00001')];
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
 
-    const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: undefined,
-      },
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
+      invocationContext,
+    );
+
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      regions: ['02'],
+      runDate: '2026-07-05',
+      transientRetryCount: 2,
     });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    expect(delaySeconds).toBe(300);
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+  });
 
-    await handleStart({}, invocationContext);
+  test('clears deleteAll on the re-enqueued message once deleteAll has succeeded, so a later failure cannot reset the run', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
 
-    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+
+    const body = JSON.parse(mockSendMessage.mock.calls[0][0]);
+    expect(body).not.toHaveProperty('deleteAll');
+    expect(body.transientRetryCount).toBe(1);
+  });
+
+  test('keeps deleteAll on the re-enqueued message when deleteAll itself failed transiently, and does not run the driver', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks({
+      deleteAllResult: { data: { deleted: 0 }, error: new TooManyRequestsError('TEST') },
+    });
+
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(JSON.parse(mockSendMessage.mock.calls[0][0])).toMatchObject({
+      deleteAll: true,
+      transientRetryCount: 1,
+    });
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+  });
+
+  test('dead-letters a non-transient error together with the start message so it can be replayed', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new Error('boom'));
+
+    await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
+
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('page'),
-    );
-    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('dlq'),
-    );
-
-    const sentMessages = mockSendMessage.mock.calls.map(
-      ([body]) => JSON.parse(body as string) as Record<string, unknown>,
-    );
-    const pageMessages = sentMessages.filter((m) => 'events' in m) as {
-      events: TrusteeAppointmentSyncEvent[];
-    }[];
-    const dlqMessages = sentMessages.filter((m) => m.type === 'QUEUE_ERROR');
-
-    expect(pageMessages.flatMap((m) => m.events)).toEqual([
-      makeEvent('001-25-00000'),
-      makeEvent('001-25-00001'),
-    ]);
-    expect(dlqMessages).toHaveLength(1);
-    expect(dlqMessages[0]).toEqual(
       expect.objectContaining({
         type: 'QUEUE_ERROR',
-        error: expect.objectContaining({
-          message: expect.stringContaining('001-25-99999'),
-        }),
+        startMessage: { regions: ['02'], runDate: '2026-07-05' },
       }),
-    );
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).toHaveBeenCalledWith(
-      expect.anything(),
-      '2025-06-01T00:00:00Z',
-    );
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: true, documentsFailed: 1 }),
     );
   });
 
-  test('should forward every event to the DLQ and queue zero pages when all events individually exceed the byte budget', async () => {
-    // Distinct from the "mixed" case above: pageByByteBudget's pages array is empty here, so
-    // the for..of page-queueing loop runs zero iterations (no queueClient.sendMessage for
-    // 'page') while still reporting success -- this is a real, previously-uncovered branch
-    // combination, not just a larger version of the mixed-rejection case.
+  test('dead-letters the re-enqueue payload when the transient re-enqueue send itself fails', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const oversizedEvents = [
-      { ...makeEvent('001-25-00000'), sourceTrustee: { fullName: 'x'.repeat(70_000) } },
-      { ...makeEvent('001-25-00001'), sourceTrustee: { fullName: 'y'.repeat(70_000) } },
-    ] as TrusteeAppointmentSyncEvent[];
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
+    mockSendMessage.mockRejectedValue(new Error('queue unavailable'));
 
-    const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({
-      getAppointmentEventsResult: {
-        events: oversizedEvents,
-        latestSyncDate: '2025-06-01T00:00:00Z',
-        petitionLatestSyncDate: undefined,
-      },
-    });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
 
-    await handleStart({}, invocationContext);
-
-    // The page queue client is still constructed (queueEventPages builds it before the
-    // page-queueing loop runs), but with zero pages to send, sendMessage is never invoked for
-    // it -- this is the zero-iteration for..of branch this test exists to cover.
-    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('page'),
-    );
-    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('dlq'),
-    );
-
-    const sentMessages = mockSendMessage.mock.calls.map(
-      ([body]) => JSON.parse(body as string) as Record<string, unknown>,
-    );
-    const pageMessages = sentMessages.filter((m) => 'events' in m);
-    const dlqMessages = sentMessages.filter((m) => m.type === 'QUEUE_ERROR');
-
-    expect(pageMessages).toHaveLength(0);
-    expect(dlqMessages).toHaveLength(2);
-
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        success: true,
-        documentsFailed: 2,
-        details: expect.objectContaining({ pagesQueued: '0' }),
+        type: 'QUEUE_ERROR',
+        startMessage: { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
       }),
     );
   });
 
-  test('should return early with success trace when no events are returned', async () => {
+  test('falls through to the region driver when deleteAll is set and deletion succeeds', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy } = await setupMocks();
 
-    const { mockSendMessage } = await setupMocks({
-      getAppointmentEventsResult: {
-        events: [],
-        latestSyncDate: undefined,
-        petitionLatestSyncDate: undefined,
-      },
-    });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
 
-    await handleStart({}, invocationContext);
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).not.toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: true }),
-    );
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(runRegionDriverSpy).toHaveBeenCalled();
   });
 
-  test('should pass reset flag to getAppointmentEvents', async () => {
+  test('routes a deleteAll failure to the DLQ and does not call the region driver', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-
-    await setupMocks();
-
-    await handleStart({ reset: true }, invocationContext);
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
-      expect.anything(),
-      undefined,
-      true,
-      undefined,
-    );
-  });
-
-  test('should pass overrideRuntimeState flag to getAppointmentEvents', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-    const override: TrusteeAppointmentsSyncState = {
-      documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-      lastSyncDate: '2024-01-01T00:00:00Z',
-    };
-
-    await setupMocks();
-
-    await handleStart({ overrideRuntimeState: override }, invocationContext);
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
-      expect.anything(),
-      undefined,
-      undefined,
-      override,
-    );
-  });
-
-  test('should call deleteAll and reset state when deleteAll flag is set', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-
-    await setupMocks({
-      getAppointmentEventsResult: {
-        events: [],
-        latestSyncDate: undefined,
-        petitionLatestSyncDate: undefined,
-      },
-    });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleStart({ deleteAll: true }, invocationContext);
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.deleteAll).toHaveBeenCalled();
-    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
-      expect.anything(),
-      undefined,
-      true,
-      undefined,
-    );
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: true }),
-    );
-  });
-
-  test('should route to DLQ and emit failure trace when deleteAll fails', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-
-    await setupMocks({ deleteAllResult: { data: { deleted: 0 }, error: new Error('DB error') } });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleStart({ deleteAll: true }, invocationContext);
-
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    expect(outputs.find(([key]) => key.queueName?.includes('dlq'))).toBeDefined();
-    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).not.toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: false, error: 'DB error' }),
-    );
-  });
-
-  test('should exit early and emit flushQueues trace when flushQueues flag is set', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-
-    await setupMocks();
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleStart({ flushQueues: true }, invocationContext);
-
-    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).not.toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: true, details: { mode: 'flushQueues' } }),
-    );
-  });
-
-  test('should route to DLQ and emit failure trace when getAppointmentEvents throws', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-
-    const mockContext = await createMockApplicationContext();
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockRejectedValue(
-      new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'DXTR unavailable' }),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleStart({}, invocationContext);
-
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    expect(outputs.find(([key]) => key.queueName?.includes('dlq'))).toBeDefined();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: false, error: 'DXTR unavailable' }),
-    );
-  });
-
-  test('should not store runtime state when latestSyncDate is undefined', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-    const events = [makeEvent('001-25-00001')];
-
-    await setupMocks({
-      getAppointmentEventsResult: {
-        events,
-        latestSyncDate: undefined,
-        petitionLatestSyncDate: undefined,
-      },
+    invocationContext.extraOutputs.set = vi.fn();
+    const { runRegionDriverSpy } = await setupMocks({
+      deleteAllResult: { data: { deleted: 0 }, error: new Error('delete failed') },
     });
 
-    await handleStart({}, invocationContext);
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
 
-    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).not.toHaveBeenCalled();
-  });
-});
-
-describe('sync-trustee-case-appointments timerTrigger', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
   });
 
-  test('should enqueue a START message and emit success telemetry', async () => {
-    const { timerTrigger } = await import('./sync-trustee-case-appointments');
+  test('discards a stale resumeFrom when deleteAll is set so the reset history is re-walked', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy } = await setupMocks();
+    const staleResumeFrom = { regionId: '02', date: '2026-08-01', lastId: '1001' };
 
-    const mockContext = await createMockApplicationContext();
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await timerTrigger({} as Timer, invocationContext);
-
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    await handleStart(
+      { regions: ['02'], deleteAll: true, resumeFrom: staleResumeFrom },
+      invocationContext,
     );
-    expect(outputs.find(([key]) => key.queueName?.includes('start'))).toBeDefined();
-    expect(telemetrySpy).toHaveBeenCalledWith(
+
+    expect(runRegionDriverSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'timerTrigger',
-      expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
+      expect.objectContaining({ resumeFrom: undefined }),
     );
   });
 
-  test('should emit failure trace and rethrow when context creation fails', async () => {
-    const { timerTrigger } = await import('./sync-trustee-case-appointments');
+  test('flushQueues short-circuits before the region driver is ever called', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy } = await setupMocks();
 
-    const mockContext = await createMockApplicationContext();
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    vi.spyOn(mockContext.observability, 'startTrace').mockReturnValue({} as never);
-    const error = new Error('context error');
-    vi.spyOn(invocationContext.extraOutputs, 'set').mockImplementationOnce(() => {
-      throw error;
-    });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    await handleStart({ regions: ['02'], flushQueues: true }, invocationContext);
 
-    await expect(timerTrigger({} as Timer, invocationContext)).rejects.toThrow('context error');
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+  });
 
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'timerTrigger',
-      expect.anything(),
-      expect.objectContaining({ success: false, error: 'context error' }),
+  test('routes to the DLQ when AzureWebJobsDataflowsStorage is missing', async () => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
     );
+    invocationContext.extraOutputs.set = vi.fn();
+
+    await handleStart({ regions: ['02'] }, invocationContext);
+
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
   });
 });

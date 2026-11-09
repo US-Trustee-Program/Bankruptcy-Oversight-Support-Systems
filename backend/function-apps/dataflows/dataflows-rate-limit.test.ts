@@ -315,9 +315,9 @@ describe('handleRateLimitRetry', () => {
     });
   });
 
-  test('DLQ exhaustion entry does not include originalMessage', async () => {
+  test('DLQ exhaustion entry records the original message', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { caseId: 'CASE-123', cursor: 'some-cursor', retryCount: 10 };
+    const message = { caseId: 'CASE-123', retryCount: 10 };
 
     await handleRateLimitRetry({
       error,
@@ -334,7 +334,7 @@ describe('handleRateLimitRetry', () => {
       mockApplicationContext.extraOutputs.set as ReturnType<typeof vi.fn>
     ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
 
-    expect(dlqMessageArray?.[0]).not.toHaveProperty('originalMessage');
+    expect(dlqMessageArray?.[0].message).toEqual(message);
   });
 
   test('throws when connectionString is empty string', async () => {

@@ -10,6 +10,7 @@ import { isTransientInfraError } from '../../../lib/common-errors/transient-infr
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry, requeueSingleEventWithBackoff } from '../dataflows-rate-limit';
+import { isQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import ModuleNames from '../module-names';
 
@@ -18,6 +19,8 @@ const PAGE_SIZE = 100;
 
 type ResyncCasesByDateStartMessage = {
   fromDate: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 type ResyncCasesByDatePageMessage = {
@@ -88,7 +91,43 @@ export async function handleStart(
 
   logger.info(MODULE_NAME, `Starting resync of cases by date with fromDate: ${fromDate}`);
 
-  const { events } = await SyncCases.getCaseIds(context, fromDate);
+  let events: CaseSyncEvent[];
+  try {
+    ({ events } = await SyncCases.getCaseIds(context, fromDate));
+  } catch (originalError) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error: originalError,
+      message,
+      checkQueueName: START.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleStart',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
+      return;
+    }
+
+    throw originalError;
+  }
 
   if (!events.length) {
     logger.info(MODULE_NAME, `No cases found since ${fromDate}. Nothing to resync.`);
@@ -208,10 +247,28 @@ export async function handlePage(
   });
 }
 
-export async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+export async function handleError(
+  event: CaseSyncEvent | QueueError,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  if (isQueueError(event)) {
+    logger.error(
+      MODULE_NAME,
+      `Queue error from ${event.module} ${event.activityName}: ${event.error.message}`,
+    );
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleError', logger, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: false,
+      details: { disposition: 'job-failure' },
+    });
+    return;
+  }
 
   const abandoned = isNotFoundError(event.error);
 
@@ -327,7 +384,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE],
+    extraOutputs: [PAGE, DLQ],
   });
 
   app.storageQueue(HANDLE_PAGE, {
@@ -341,7 +398,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {

@@ -120,8 +120,12 @@ export class TrusteeMatchVerificationUseCase {
 
     const affectedCaseIdsByFingerprint = new Map<string, string[]>();
     for (const surrogate of surrogates) {
+      // A case can hold several placeholders for one fingerprint (one per court appointment), but
+      // it is one affected case.
       const caseIds = affectedCaseIdsByFingerprint.get(surrogate.trusteeId) ?? [];
-      caseIds.push(surrogate.caseId);
+      if (!caseIds.includes(surrogate.caseId)) {
+        caseIds.push(surrogate.caseId);
+      }
       affectedCaseIdsByFingerprint.set(surrogate.trusteeId, caseIds);
     }
 

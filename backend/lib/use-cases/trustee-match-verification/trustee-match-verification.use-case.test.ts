@@ -316,6 +316,31 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
     });
 
+    test('counts a case once when it holds more than one placeholder for the same fingerprint', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-03-01' },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(1);
+      expect(result[0].affectedCaseIds).toEqual(['case-001']);
+    });
+
+    test('counts each case once per fingerprint across cases, keeping separate cases distinct', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-03-01' },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(2);
+      expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
+    });
+
     test('returns affectedCaseCount of 0 and an empty affectedCaseIds when no surrogate cases remain', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([]);
 

@@ -52,31 +52,27 @@ export function getDxtrSource(): TrusteeAppointmentSource {
 }
 
 /**
- * Seam 2: the per-region driver (cams-fd8qd.1.10, plus the CAMS-957 source switch): for each region
- * named, read its bookmark and source (ACMS unless switched to DXTR), walk change dates (catch-up from
- * 2026-07-01, a date is complete only when a later date exists, the run date itself is never read),
- * process events, and advance the bookmark.
- *
- * The harness assumes this contract; adapt this function to the as-built API rather than the harness.
+ * Seam 2: the per-region driver (cams-fd8qd.1.10). For each region named, reads its bookmark
+ * (ACMS unconditionally -- the CAMS-957 source switch is a separate, not-yet-built ticket), walks
+ * change dates (catch-up from 2026-07-01, a date is complete only when a later date exists, the
+ * run date itself is never read), processes events, and advances the bookmark.
  */
-export type RegionDriverResult = { processedRegions: string[] };
 export async function runRegionDriver(
-  _context: ApplicationContext,
-  _options: { regions: string[]; runDate: string },
-): Promise<RegionDriverResult> {
-  throw new NotImplementedError(
-    'The per-region sync driver is not built (cams-fd8qd.1.10: per-region start/continuation flow)',
-  );
+  context: ApplicationContext,
+  options: { regions: string[]; runDate: string },
+): Promise<{ processedRegions: string[] }> {
+  const { default: RegionDriver } =
+    await import('../../../../backend/lib/use-cases/dataflows/trustee-appointment-region-driver');
+  const result = await RegionDriver.runRegionDriver(context, options);
+  return { processedRegions: result.processedRegions };
 }
 
 /**
- * Seam 3 (ASSUMED SHAPE): the per-region runtime-state document, one document with a `region` map:
- * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}.
- *
- * The shape follows the .feature file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with
- * setField) and cams-rxb7a ("region.<regionId>.source"). NOTE cams-fd8qd.1.3's prose describes a `regions`
- * map instead; the beads disagree, so correct this one place when the real document exists. `source`
- * unset means ACMS. The document type is the bead's example name and must be replaced with the real one.
+ * Seam 3: the per-region runtime-state document, one document with a `region` map:
+ * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}
+ * (TrusteeAppointmentRegionSyncState, gateways.types.ts -- cams-fd8qd.1.3). Matches the .feature
+ * file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with setField) and cams-rxb7a
+ * ("region.<regionId>.source"). `source` unset means ACMS.
  */
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 

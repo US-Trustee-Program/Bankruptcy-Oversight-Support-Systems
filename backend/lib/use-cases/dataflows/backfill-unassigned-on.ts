@@ -5,7 +5,7 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import DateHelper from '@common/date-helper';
-import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../cases/sentinel-trustee';
 
 const MODULE_NAME = 'BACKFILL-UNASSIGNED-ON-USE-CASE';
 

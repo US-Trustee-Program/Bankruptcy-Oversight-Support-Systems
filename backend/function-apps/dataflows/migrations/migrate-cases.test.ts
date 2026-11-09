@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { InvocationContext } from '@azure/functions';
+import { app, InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as CasesRuntimeStateModule from '../../../lib/use-cases/dataflows/cases-runtime-state';
@@ -12,6 +12,10 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import * as MigrateCasesModule from '../../../lib/use-cases/dataflows/migrate-cases';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CasesLocalGateway } from '../../../lib/adapters/gateways/cases.local.gateway';
+import { MockMongoRepository } from '../../../lib/testing/mock-gateways/mock-mongo.repository';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -293,6 +297,37 @@ describe('migrate-cases handleStart', () => {
     expect(storeRuntimeStateSpy).toHaveBeenCalled();
   });
 
+  test('still queues pages and completes when storing runtime state fails', async () => {
+    const { handleStart } = await import('./migrate-cases');
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(MigrateCasesModule.default, 'emptyMigrationTable').mockResolvedValue({
+      success: true,
+    });
+    vi.spyOn(MigrateCasesModule.default, 'loadMigrationTable').mockResolvedValue({ data: 150 });
+    vi.spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    const loggerWarnSpy = vi.spyOn(mockContext.logger, 'warn');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    await expect(handleStart({}, invocationContext)).resolves.toBeUndefined();
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('page') }),
+      [
+        { start: 1, end: 100 },
+        { start: 101, end: 200 },
+      ],
+    );
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'MIGRATE-CASES',
+      expect.stringContaining('runtime state'),
+    );
+  });
+
   test('does nothing further and reports to DLQ when emptying the migration table fails', async () => {
     const { handleStart } = await import('./migrate-cases');
     const invocationContext = makeInvocationContext();
@@ -306,12 +341,76 @@ describe('migrate-cases handleStart', () => {
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
     await handleStart({}, invocationContext);
 
     expect(loadMigrationTableSpy).not.toHaveBeenCalled();
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
       expect.objectContaining({ error: emptyError }),
+    );
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'MIGRATE-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('reports to DLQ, queues no pages, and stores no runtime state when loading the migration table fails', async () => {
+    const { handleStart } = await import('./migrate-cases');
+    const invocationContext = makeInvocationContext();
+    const loadError = new CamsError('TEST', { message: 'failed to load table' });
+
+    vi.spyOn(MigrateCasesModule.default, 'emptyMigrationTable').mockResolvedValue({
+      success: true,
+    });
+    vi.spyOn(MigrateCasesModule.default, 'loadMigrationTable').mockResolvedValue({
+      error: loadError,
+    });
+    const storeRuntimeStateSpy = vi.spyOn(CasesRuntimeStateModule.default, 'storeRuntimeState');
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.objectContaining({ error: loadError }),
+    );
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('page') }),
+      expect.anything(),
+    );
+    expect(storeRuntimeStateSpy).not.toHaveBeenCalled();
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'MIGRATE-CASES',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('registers DLQ as an output of handleStart so its failure reports are delivered', async () => {
+    const MigrateCasesDataflow = (await import('./migrate-cases')).default;
+    const storageQueueSpy = vi.spyOn(app, 'storageQueue').mockImplementation(() => {});
+
+    MigrateCasesDataflow.setup();
+
+    const handleStartRegistration = storageQueueSpy.mock.calls.find(([name]) =>
+      name.endsWith('handleStart'),
+    );
+    expect(handleStartRegistration?.[1].extraOutputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      ]),
     );
   });
 
@@ -348,6 +447,34 @@ describe('migrate-cases handleStart', () => {
 });
 
 describe('migrate-cases handleError', () => {
+  test('routes a QueueError to HARD_STOP keeping its root cause and does not queue it for retry', async () => {
+    const { handleError } = await import('./migrate-cases');
+    const queueError = buildQueueError(
+      new CamsError('TEST', { message: 'root cause' }),
+      'MIGRATE-CASES',
+      'handlePage',
+    );
+    const invocationContext = makeInvocationContext();
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    await handleError(queueError, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const hardStopOutput = outputs.find(([key]) => key.queueName?.includes('hard-stop'));
+    expect(hardStopOutput?.[1]).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({ message: 'root cause' }),
+      }),
+    ]);
+    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
+    expect(retryOutput).toBeUndefined();
+  });
+
   test('abandons the event without queueing a retry when the error is a NotFoundError', async () => {
     const { handleError } = await import('./migrate-cases');
     const event: CaseSyncEvent = {
@@ -410,14 +537,13 @@ describe('migrate-cases handleRetry', () => {
     expect(hardStopEvent.retryCount).toBe(4);
   });
 
-  test('routes to DLQ with an export-failed disposition when exportCase returns no bCase', async () => {
+  test('routes to DLQ with an export-failed disposition when exportCase returns an error', async () => {
     const { handleRetry } = await import('./migrate-cases');
     const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
     const invocationContext = makeInvocationContext();
     const exportError = new UnknownError('TEST', { message: 'export failed' });
 
     vi.spyOn(ExportAndLoadCaseModule.default, 'exportCase').mockResolvedValue({
-      ...event,
       error: exportError,
     });
     const mockContext = await createMockApplicationContext();
@@ -436,15 +562,14 @@ describe('migrate-cases handleRetry', () => {
 
   test('routes to DLQ with a load-failed disposition when loadCase fails', async () => {
     const { handleRetry } = await import('./migrate-cases');
-    const bCase = { caseId: '001-25-00001' } as CaseSyncEvent['bCase'];
-    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001', bCase };
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
     const invocationContext = makeInvocationContext();
     const loadError = new CamsError('TEST', { message: 'load failed' });
 
-    vi.spyOn(ExportAndLoadCaseModule.default, 'loadCase').mockResolvedValue({
-      ...event,
-      error: loadError,
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportCase').mockResolvedValue({
+      caseDetail: MockData.getDxtrCase(),
     });
+    vi.spyOn(ExportAndLoadCaseModule.default, 'loadCase').mockResolvedValue({ error: loadError });
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -461,17 +586,40 @@ describe('migrate-cases handleRetry', () => {
 
   test('sets no outputs when export and load both succeed', async () => {
     const { handleRetry } = await import('./migrate-cases');
-    const bCase = { caseId: '001-25-00001' } as CaseSyncEvent['bCase'];
-    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001', bCase };
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(ExportAndLoadCaseModule.default, 'loadCase').mockResolvedValue({ ...event });
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportCase').mockResolvedValue({
+      caseDetail: MockData.getDxtrCase(),
+    });
+    vi.spyOn(ExportAndLoadCaseModule.default, 'loadCase').mockResolvedValue({});
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
     await handleRetry(event, invocationContext);
 
+    expect(extraOutputsSetSpy).not.toHaveBeenCalled();
+  });
+
+  test('loads the case that exportCase fetched, as a SYNCED_CASE, and writes nothing on success', async () => {
+    const { handleRetry } = await import('./migrate-cases');
+    const event: CaseSyncEvent = { type: 'MIGRATION', caseId: '001-25-00001' };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+      MockData.getCaseDetail({ override: { caseId: '001-25-00001' } }),
+    );
+    const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    await handleRetry(event, invocationContext);
+
+    expect(syncSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: '001-25-00001', documentType: 'SYNCED_CASE' }),
+    );
     expect(extraOutputsSetSpy).not.toHaveBeenCalled();
   });
 
@@ -486,5 +634,70 @@ describe('migrate-cases handleRetry', () => {
     );
 
     await expect(handleRetry(event, invocationContext)).rejects.toThrow('boom');
+  });
+});
+
+describe('migrate-cases failed retry keeps debtor data out of queue writes', () => {
+  beforeEach(() => {
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+  });
+
+  test('DLQ, RETRY, and HARD_STOP outputs carry no debtor name after the page fails and is retried', async () => {
+    const { handlePage, handleError, handleRetry } = await import('./migrate-cases');
+    const bCase = MockData.getCaseDetail({ override: { debtor: { name: 'REDACTION-PROBE' } } });
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(MigrateCasesModule.default, 'getPageOfCaseEvents').mockResolvedValue({
+      events: [{ type: 'MIGRATION', caseId: '001-25-00001' }],
+      error: undefined,
+    });
+    vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(bCase);
+    vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockRejectedValue(
+      new CamsError('TEST', { message: 'load failed' }),
+    );
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+    // The events are shared objects that later handlers mutate, so the spy's recorded arguments
+    // show only each event's final state. Serialize each write when its handler returns instead.
+    const serializedWrites: { queue: string; payload: string }[] = [];
+    const recordWritesDuring = async (run: () => Promise<void>) => {
+      const callsBefore = extraOutputsSetSpy.mock.calls.length;
+      await run();
+      for (const [output, payload] of extraOutputsSetSpy.mock.calls.slice(callsBefore)) {
+        serializedWrites.push({
+          queue: (output as { queueName: string }).queueName,
+          payload: JSON.stringify(payload),
+        });
+      }
+    };
+    // Each read parses fresh copies, so a handler that mutates its input cannot change the input
+    // the next step receives. This matches what the queue delivers: a JSON copy of the write.
+    const eventsWrittenTo = (queue: string): CaseSyncEvent[] =>
+      serializedWrites
+        .filter((write) => write.queue.includes(queue))
+        .flatMap((write) => JSON.parse(write.payload) as CaseSyncEvent[]);
+
+    await recordWritesDuring(() => handlePage({ start: 1, end: 100 }, invocationContext));
+    const [failedPageEvent] = eventsWrittenTo('dlq');
+    expect(failedPageEvent).toEqual(expect.objectContaining({ caseId: '001-25-00001' }));
+
+    await recordWritesDuring(() => handleError(failedPageEvent, invocationContext));
+    const [retryEvent] = eventsWrittenTo('retry');
+    expect(retryEvent).toEqual(expect.objectContaining({ caseId: '001-25-00001' }));
+
+    await recordWritesDuring(() => handleRetry(retryEvent, invocationContext));
+    const [retrySnapshot] = eventsWrittenTo('retry');
+    await recordWritesDuring(() =>
+      handleRetry({ ...retrySnapshot, retryCount: 3 }, invocationContext),
+    );
+
+    expect(eventsWrittenTo('hard-stop')).toEqual([
+      expect.objectContaining({ caseId: '001-25-00001' }),
+    ]);
+    const allWrites = serializedWrites.map((write) => write.payload).join('\n');
+    expect(allWrites).toContain('001-25-00001');
+    expect(allWrites).not.toContain('REDACTION-PROBE');
   });
 });
