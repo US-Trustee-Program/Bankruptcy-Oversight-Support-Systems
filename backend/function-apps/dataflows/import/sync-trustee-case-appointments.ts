@@ -46,8 +46,10 @@ const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
 // Fan-out lane count for a start message with no region list (see PATTERNS.md's fan-out
 // section). K independent self-requeuing lane chains bound concurrent ACMS queries to K without
 // relying on host.json queue settings (precedent: commit 5fbd22a29) -- this is not a semaphore,
-// just how many lanes handleStart splits "every region" into. Defaults to 3.
+// just how many lanes handleStart splits "every region" into. Defaults to 3, capped at
+// MAX_LANE_COUNT so a typo (e.g. 30) cannot open that many concurrent ACMS chains.
 const DEFAULT_LANE_COUNT = 3;
+const MAX_LANE_COUNT = 10;
 
 /**
  * Read fresh on every fan-out (not cached at module load, unlike e.g. ACMS_REQUEST_TIMEOUT_MS):
@@ -57,12 +59,19 @@ const DEFAULT_LANE_COUNT = 3;
 function getLaneCount(): number {
   const raw = process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
   if (!raw) return DEFAULT_LANE_COUNT;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  // Number(), not parseInt: parseInt would accept "3abc" as 3 and "2.5" as 2.
+  const parsed = Number(raw.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) {
     console.warn(
       `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}", using default ${DEFAULT_LANE_COUNT}`,
     );
     return DEFAULT_LANE_COUNT;
+  }
+  if (parsed > MAX_LANE_COUNT) {
+    console.warn(
+      `[${MODULE_NAME}] TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}" exceeds the maximum of ${MAX_LANE_COUNT}, using ${MAX_LANE_COUNT}`,
+    );
+    return MAX_LANE_COUNT;
   }
   return parsed;
 }
@@ -99,8 +108,8 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
    *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
    *  its own fixed region list. */
   regions?: string[];
-  /** Identifies which lane a chain belongs to (telemetry/DLQ/logs only) -- absent on an
-   *  operator-named Slice 1 message and on the fan-out kickoff itself. */
+  /** Identifies which lane a chain belongs to (trace details, fan-out logs, and the DLQ'd start
+   *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
   laneId?: number;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
   runDate?: string;
@@ -254,10 +263,12 @@ type FanOutResult = { lanesCreated: number; regionsScheduled: number };
  * LANE_COUNT lanes, and sends one START message per non-empty lane -- each becomes its own
  * independent chain from here on, indistinguishable from an operator-named Slice 1 message
  * except for carrying laneId. This invocation does no driver work itself. Zero regions found
- * means zero lanes are non-empty, so zero messages are sent -- no special-cased error handling.
+ * means zero lanes are non-empty, so zero messages are sent; handleStart reports that as a failed
+ * run, since CAMS office data with no regions means a misconfigured or empty DXTR source.
  */
 async function fanOutAcrossLanes(
   context: ApplicationContext,
+  logger: ReturnType<typeof ContextCreator.getLogger>,
   connectionString: string,
   runDate: string,
 ): Promise<FanOutResult> {
@@ -279,6 +290,10 @@ async function fanOutAcrossLanes(
     };
     const jitterSeconds = pickJitterSeconds(LANE_JITTER_MIN_SECONDS, LANE_JITTER_MAX_SECONDS);
     await startQueueClient.sendMessage(JSON.stringify(laneMessage), jitterSeconds);
+    logger.info(
+      MODULE_NAME,
+      `Fan-out lane ${laneId}: ${laneRegions.length} region(s) [${laneRegions.join(',')}], first message delayed ${jitterSeconds}s.`,
+    );
     lanesCreated++;
   }
 
@@ -331,11 +346,26 @@ async function handleStart(
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
 
     if (!startMessage.regions) {
-      const fanOutResult = await fanOutAcrossLanes(context, connectionString, runDate);
+      // A resume point only makes sense within a fixed region list; fanning out here would ignore
+      // it and reschedule every region. Dead-letter the malformed message instead.
+      if (startMessage.resumeFrom) {
+        throw new Error(
+          'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
+        );
+      }
+      const fanOutResult = await fanOutAcrossLanes(context, logger, connectionString, runDate);
+      const noRegionsFound =
+        fanOutResult.regionsScheduled === 0
+          ? 'No regions found in CAMS office data; no lanes were scheduled.'
+          : undefined;
+      if (noRegionsFound) {
+        logger.warn(MODULE_NAME, noRegionsFound);
+      }
       completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
+        success: noRegionsFound === undefined,
+        error: noRegionsFound,
         details: {
           lanesCreated: String(fanOutResult.lanesCreated),
           regionsScheduled: String(fanOutResult.regionsScheduled),
@@ -419,6 +449,7 @@ async function handleStart(
         processedRegions: result.processedRegions.join(','),
         pagesQueued: String(pagesQueued),
         continuation: String(Boolean(result.continuation)),
+        laneId: String(startMessage.laneId ?? ''),
       },
     });
   } catch (originalError) {
