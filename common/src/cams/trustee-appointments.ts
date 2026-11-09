@@ -282,10 +282,7 @@ export function normalizeChapter(chapter: string): string {
  * singular `divisionCode` and the current `divisionCodes` array (modern appointments,
  * including multi-division panel appointments, only populate `divisionCodes`).
  */
-export function appointmentCoversDivision(
-  appointment: TrusteeAppointment,
-  divisionCode: string,
-): boolean {
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
   return (
     appointment.divisionCode === divisionCode ||
     getDivisionCodes(appointment).includes(divisionCode)

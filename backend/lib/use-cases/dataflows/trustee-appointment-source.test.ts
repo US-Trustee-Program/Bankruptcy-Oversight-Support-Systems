@@ -2,9 +2,13 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
-import { AcmsTrusteeAppointmentSource } from './trustee-appointment-source';
+import {
+  AcmsTrusteeAppointmentSource,
+  DxtrTrusteeAppointmentSource,
+} from './trustee-appointment-source';
 import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
 import { UstpOfficeDetails } from '@common/cams/offices';
+import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { DEFAULT_FETCH_SIZE } from './migrate-case-appointments-constants';
 
 function makeRawRecord(
@@ -67,8 +71,8 @@ describe('AcmsTrusteeAppointmentSource', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   test('has source name ACMS', () => {
@@ -183,45 +187,65 @@ describe('AcmsTrusteeAppointmentSource', () => {
       expect(page.lastId).toBe('1050');
     });
 
-    test('isolates a row that cannot be converted: it becomes a failure and the other rows still convert', async () => {
-      setupGateways([
-        makeRawRecord({ id: 1001, CASE_DIV: 999, CASE_NUMBER: 2 }),
-        makeRawRecord({ id: 1050, CASE_NUMBER: 1 }),
-      ]);
+    test.each([
+      ['an unknown division', { CASE_DIV: 999 }, '999-24-00002', 'ACMS division 999'],
+      ['no CASE_FILED_DATE', { CASE_FILED_DATE: null }, '081-24-00002', 'no CASE_FILED_DATE'],
+    ])(
+      'isolates a row with %s: it becomes a failure and the other rows still convert',
+      async (_label, override, failedCaseId, reasonFragment) => {
+        setupGateways([
+          makeRawRecord({ id: 1001, CASE_NUMBER: 2, ...override }),
+          makeRawRecord({ id: 1050, CASE_NUMBER: 1 }),
+        ]);
 
-      const source = new AcmsTrusteeAppointmentSource();
-      const page = await source.getEventsForDate(context, '02', '2026-07-01');
+        const source = new AcmsTrusteeAppointmentSource();
+        const page = await source.getEventsForDate(context, '02', '2026-07-01');
 
-      expect(page.events).toEqual([expect.objectContaining({ caseId: '081-24-00001' })]);
-      expect(page.failures).toEqual([
-        {
-          rowId: 1001,
-          caseId: '999-24-00002',
-          reason: expect.stringContaining('ACMS division 999'),
-        },
-      ]);
-      expect(page.lastId).toBe('1050');
-    });
+        expect(page.events).toEqual([
+          expect.objectContaining({ caseId: '081-24-00001', dateFiled: '2019-01-10' }),
+        ]);
+        expect(page.failures).toEqual([
+          { rowId: 1001, caseId: failedCaseId, reason: expect.stringContaining(reasonFragment) },
+        ]);
+        expect(page.lastId).toBe('1050');
+      },
+    );
+  });
+});
 
-    test('reports a row with no CASE_FILED_DATE as a failure and still converts the other rows', async () => {
-      setupGateways([
-        makeRawRecord({ id: 1001, CASE_NUMBER: 2, CASE_FILED_DATE: null }),
-        makeRawRecord({ id: 1050, CASE_NUMBER: 1 }),
-      ]);
+describe('DxtrTrusteeAppointmentSource', () => {
+  let context: ApplicationContext;
 
-      const source = new AcmsTrusteeAppointmentSource();
-      const page = await source.getEventsForDate(context, '02', '2026-07-01');
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
 
-      expect(page.events).toEqual([
-        expect.objectContaining({ caseId: '081-24-00001', dateFiled: '2019-01-10' }),
-      ]);
-      expect(page.failures).toEqual([
-        {
-          rowId: 1001,
-          caseId: '081-24-00002',
-          reason: expect.stringContaining('no CASE_FILED_DATE'),
-        },
-      ]);
-    });
+  test('getLatestChangeDate is not supported', async () => {
+    await expect(new DxtrTrusteeAppointmentSource().getLatestChangeDate()).rejects.toThrow(
+      'not supported',
+    );
+  });
+
+  test('getEventsForDate returns appointment and petition events together, with no failures', async () => {
+    const appointment = { caseId: '081-24-00001' } as TrusteeAppointmentSyncEvent;
+    const petition = { caseId: '081-24-00002' } as TrusteeAppointmentSyncEvent;
+    const casesGateway = {
+      getTrusteeAppointments: vi.fn().mockResolvedValue({ events: [appointment] }),
+      getTrusteePetitionEvents: vi.fn().mockResolvedValue({ events: [petition] }),
+    };
+    vi.spyOn(factory, 'getCasesGateway').mockReturnValue(
+      casesGateway as unknown as ReturnType<typeof factory.getCasesGateway>,
+    );
+
+    const page = await new DxtrTrusteeAppointmentSource().getEventsForDate(
+      context,
+      '02',
+      '2026-07-01',
+    );
+
+    expect(page).toEqual({ events: [appointment, petition], failures: [] });
+    expect(casesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2026-07-01');
+    expect(casesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(context, '2026-07-01');
   });
 });

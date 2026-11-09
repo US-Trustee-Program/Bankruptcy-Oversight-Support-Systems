@@ -70,7 +70,8 @@ function placedPlaceholderFrom(row: ParkedAppointment): CaseAppointmentInput {
 
 /**
  * Rebuilds the event-shaped input applyResolvedTrustee takes from the stored row. Parked rows only
- * ever come from the ACMS source, and every court field was recorded when the row was written.
+ * ever come from the ACMS source. Court fields are whatever the row recorded when it was written;
+ * a missing one leaves the appointment uncovered (see attachParkedAppointment).
  */
 function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
   return {
@@ -86,7 +87,11 @@ function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
   };
 }
 
-async function attachParkedAppointment(deps: HealParkedDeps, row: ParkedAppointment) {
+/** Returns false when the old trustee's appointment could not be closed (see healParkedPage). */
+async function attachParkedAppointment(
+  deps: HealParkedDeps,
+  row: ParkedAppointment,
+): Promise<boolean> {
   const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(row.trusteeId);
   const covered =
     !!row.courtId &&
@@ -99,13 +104,14 @@ async function attachParkedAppointment(deps: HealParkedDeps, row: ParkedAppointm
     matchedTrusteeAppointment: covered,
     matchedBy: row.checks?.matchedBy ?? IDENTITY_TASK_MATCHED_BY,
   };
-  await applyResolvedTrustee(
+  const softCloseFailure = await applyResolvedTrustee(
     deps.context,
     eventFrom(row),
     row.trusteeId,
     deps.caseAppointmentsRepo,
     checks,
   );
+  return softCloseFailure === null;
 }
 
 /**
@@ -115,6 +121,11 @@ async function attachParkedAppointment(deps: HealParkedDeps, row: ParkedAppointm
  * checks.matchedTrusteeAppointment recomputed; a parked placeholder becomes a placed placeholder.
  * Then the parked row is deleted. Upsert before delete: a failed delete re-upserts the same
  * natural key next run. A row whose case is still missing (or moved) stays parked.
+ *
+ * When applyResolvedTrustee reports a permanent soft-close failure, the new appointment is already
+ * written but the previous trustee's appointment is still open. The parked row is kept and counted
+ * failed, with the error logged for manual replay (the sync dead-letters the same case). The next
+ * heal finds the new appointment active for this trustee and clears the parked row.
  *
  * Cursor-paged on _id, so rows left parked never stall progress. A transient error is rethrown
  * for the caller's rate-limit retry; any other per-row error is logged and the row left parked.
@@ -142,8 +153,14 @@ export async function healParkedPage(
 
       if (row.isSurrogate) {
         await deps.caseAppointmentsRepo.upsert(placedPlaceholderFrom(row));
-      } else {
-        await attachParkedAppointment(deps, row);
+      } else if (!(await attachParkedAppointment(deps, row))) {
+        context.logger.error(
+          MODULE_NAME,
+          `Attached parked appointment ${row.id} for case ${row.caseId}, but the previous trustee's appointment could not be closed; left parked. Manual replay required.`,
+          { caseId: row.caseId, id: row.id },
+        );
+        result.failed++;
+        continue;
       }
       await deps.caseAppointmentsRepo.delete(row.id);
       result.healed++;

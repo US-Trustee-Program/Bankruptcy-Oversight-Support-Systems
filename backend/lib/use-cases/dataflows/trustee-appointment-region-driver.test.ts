@@ -10,6 +10,31 @@ import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 
+type ScenarioDistribution = Awaited<
+  ReturnType<typeof SyncTrusteeCaseAppointments.processAppointments>
+>['scenarioDistribution'];
+
+/** A fully typed scenario distribution with every counter zero except parkedCount. */
+function scenarioWith(parkedCount = 0): ScenarioDistribution {
+  return {
+    autoMatchCount: 0,
+    autoMatchUncoveredCount: 0,
+    noMatchCount: 0,
+    multipleMatchCount: 0,
+    reVerificationCount: 0,
+    verificationBucketHitCount: 0,
+    fingerprintHitCount: 0,
+    fingerprintMissCount: 0,
+    retryableCount: 0,
+    pipelineSkippedCount: 0,
+    unappointableChapterSkippedCount: 0,
+    emptyDemographicsSkippedCount: 0,
+    sentinelBogusNameSkippedCount: 0,
+    unattributableBogusNameSkippedCount: 0,
+    parkedCount,
+  };
+}
+
 function makeEvent(caseId: string): TrusteeAppointmentSyncEvent {
   return {
     caseId,
@@ -137,7 +162,7 @@ describe('RegionDriver.runRegionDriver', () => {
       .mockResolvedValue({
         successCount: 0,
         dlqMessages: [],
-        scenarioDistribution: { parkedCount: 0 } as never,
+        scenarioDistribution: scenarioWith(),
         retryableEvents: [],
       });
   });
@@ -392,7 +417,7 @@ describe('RegionDriver.runRegionDriver', () => {
     processAppointmentsSpy.mockResolvedValueOnce({
       successCount: 0,
       dlqMessages: [earlierDlq],
-      scenarioDistribution: { parkedCount: 0 } as never,
+      scenarioDistribution: scenarioWith(),
       retryableEvents: [],
     });
     getCmmapAppointmentsRaw.mockImplementation(async (_context, lastId: number) => {
@@ -425,7 +450,7 @@ describe('RegionDriver.runRegionDriver', () => {
     processAppointmentsSpy.mockResolvedValueOnce({
       successCount: 0,
       dlqMessages: [completedDlq],
-      scenarioDistribution: { parkedCount: 0 } as never,
+      scenarioDistribution: scenarioWith(1),
       retryableEvents: [],
     });
     mockRegionStateRepo.setField.mockRejectedValueOnce(new TooManyRequestsError('TEST'));
@@ -436,6 +461,7 @@ describe('RegionDriver.runRegionDriver', () => {
     });
 
     expect(result.dlqMessages).toEqual([completedDlq]);
+    expect(result.parkedCount).toBe(1);
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
@@ -512,27 +538,39 @@ describe('RegionDriver.runRegionDriver', () => {
     );
   });
 
-  test('propagates dlqMessages and retryableEvents and sums parkedCount across pages', async () => {
-    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-01');
-    const event = makeEvent('081-26-00001');
+  test('accumulates dlqMessages, retryableEvents and parkedCount across dates', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-02');
+    const firstEvent = makeEvent('081-26-00001');
+    const secondEvent = makeEvent('081-26-00002');
     getCmmapAppointmentsRaw.mockImplementation(
-      respectingCursor({ '2026-07-01': makeRawRow(1, '2026-07-01') }),
+      respectingCursor({
+        '2026-07-01': makeRawRow(1, '2026-07-01'),
+        '2026-07-02': makeRawRow(2, '2026-07-02'),
+      }),
     );
-    processAppointmentsSpy.mockResolvedValue({
-      successCount: 0,
-      dlqMessages: [event],
-      scenarioDistribution: { parkedCount: 2 } as never,
-      retryableEvents: [event],
-    });
+    processAppointmentsSpy
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [firstEvent],
+        scenarioDistribution: scenarioWith(2),
+        retryableEvents: [firstEvent],
+      })
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [secondEvent],
+        scenarioDistribution: scenarioWith(3),
+        retryableEvents: [secondEvent],
+      });
 
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02'],
       runDate: '2026-07-05',
     });
 
-    expect(result.dlqMessages).toEqual([event]);
-    expect(result.retryableEvents).toEqual([event]);
-    expect(result.parkedCount).toBe(2);
+    expect(processAppointmentsSpy).toHaveBeenCalledTimes(2);
+    expect(result.dlqMessages).toEqual([firstEvent, secondEvent]);
+    expect(result.retryableEvents).toEqual([firstEvent, secondEvent]);
+    expect(result.parkedCount).toBe(5);
   });
 
   test('routes a row that cannot be converted to a DLQ entry naming the row, while its sibling still processes', async () => {

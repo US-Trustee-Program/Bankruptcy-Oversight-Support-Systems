@@ -97,6 +97,21 @@ describe('buildAcmsSourceTrustee', () => {
     expect(sourceTrustee.legacy?.fax).toBeUndefined();
   });
 
+  test('returns an empty fullName and no name parts when every CMMPR name field is blank', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(
+      makeRawRecord({ PROF_FIRST_NAME: '', PROF_MI: '', PROF_LAST_NAME: '' }),
+    );
+
+    expect(sourceTrustee).toEqual(
+      expect.objectContaining({
+        fullName: '',
+        firstName: undefined,
+        middleName: undefined,
+        lastName: undefined,
+      }),
+    );
+  });
+
   test('omits legacy entirely when address, city/state/zip, and phone are all blank', () => {
     const sourceTrustee = buildAcmsSourceTrustee(
       makeRawRecord({
@@ -141,6 +156,8 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
     });
   });
 
+  // 0 is the ACMS "no date" sentinel; the query maps it to NULL, but a regression there must not
+  // let the row through.
   test.each([null, 0])('throws a descriptive error when CASE_FILED_DATE is %s', (filedDate) => {
     expect(() =>
       rawToTrusteeAppointmentSyncEvent(makeRawRecord({ CASE_FILED_DATE: filedDate }), '0208'),
@@ -165,8 +182,8 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
     expect(event.unassignedOn).toBe('2021-03-01');
   });
 
-  test('omits unassignedOn when DISP_DATE is null', () => {
-    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: null }), '0208');
+  test.each([null, 0])('omits unassignedOn when DISP_DATE is %s', (dispDate) => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: dispDate }), '0208');
 
     expect(event).not.toHaveProperty('unassignedOn');
   });

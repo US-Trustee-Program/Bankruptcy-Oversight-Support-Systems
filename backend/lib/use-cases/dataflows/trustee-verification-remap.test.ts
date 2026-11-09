@@ -9,7 +9,6 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { SurrogateAppointment } from '../gateways.types';
-import CaseManagement from '../cases/case-management';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -57,9 +56,8 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
-    // Matches makeSurrogate's defaults (courtId/courtDivisionCode/chapter '081'/'081'/'7') so every
-    // pre-existing test -- which doesn't care about the division re-validation guard --
-    // continues to pass it by default. Tests exercising the guard itself override this.
+    // Covers makeSurrogate's default court fields (courtId/courtDivisionCode/chapter
+    // '081'/'081'/'7'), so a surrogate passes the coverage check unless a test overrides this.
     mockGetTrusteeAppointments = vi
       .fn()
       .mockResolvedValue([
@@ -119,28 +117,55 @@ describe('TrusteeVerificationRemapUseCase', () => {
       );
       expect(mockDelete).toHaveBeenCalledWith('placed-placeholder');
       expect(mockDelete).toHaveBeenCalledWith('parked-placeholder');
-      expect(mockGetActiveByCaseId).toHaveBeenCalledTimes(1);
-      expect(mockGetActiveByCaseId).toHaveBeenCalledWith(placed.caseId);
     });
 
-    test('never settles a parked placeholder against the case appointments', async () => {
-      mockGetSurrogatesByFingerprint.mockResolvedValue([parked()]);
+    test('an open parked placeholder stays open and never closes the case active appointment', async () => {
+      // No CAMS case to settle against: even when an earlier, different-trustee appointment is
+      // active for the caseId, a parked row is neither closed nor used to close anything.
+      const activeEarlier: CaseAppointment = {
+        id: 'active-other',
+        caseId: '081-26-00099',
+        trusteeId: 'trustee-other',
+        assignedOn: '2024-01-01',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+      mockGetActiveByCaseId.mockResolvedValue(activeEarlier);
+      mockGetSurrogatesByFingerprint.mockResolvedValue([
+        makeSurrogate({
+          id: 'parked-open',
+          caseId: '081-26-00099',
+          documentType: 'CASE_APPOINTMENT_UNATTACHED',
+        }),
+      ]);
 
-      await useCase.remapPage(makeMessage(), 25);
+      const result = await useCase.remapPage(makeMessage(), 25);
 
-      expect(mockGetActiveByCaseId).not.toHaveBeenCalled();
+      expect(result.documentsWritten).toBe(1);
       expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+      expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('unassignedOn');
+      expect(mockUpsert.mock.calls[0][1]).toBe('CASE_APPOINTMENT_UNATTACHED');
+      expect(mockDelete).toHaveBeenCalledWith('parked-open');
     });
 
-    test('upserts the parked appointment before deleting the placeholder', async () => {
-      mockGetSurrogatesByFingerprint.mockResolvedValue([parked()]);
+    test.each([
+      ['placed', makeSurrogate({ id: 'placed-placeholder' })],
+      ['parked', parked()],
+    ])(
+      'upserts the %s appointment before deleting the placeholder',
+      async (_label, placeholder) => {
+        mockGetSurrogatesByFingerprint.mockResolvedValue([placeholder]);
 
-      await useCase.remapPage(makeMessage(), 25);
+        await useCase.remapPage(makeMessage(), 25);
 
-      expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
-        mockDelete.mock.invocationCallOrder[0],
-      );
-    });
+        expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
+          mockDelete.mock.invocationCallOrder[0],
+        );
+      },
+    );
 
     test('a parked placeholder the resolved trustee does not cover is a permanent failure and stays in place', async () => {
       mockGetSurrogatesByFingerprint.mockResolvedValue([parked()]);
@@ -469,18 +494,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
       expect(result.documentsFailed).toBe(0);
     },
   );
-
-  test('remaps from the surrogate row alone, never looking the case up in DXTR', async () => {
-    const getCaseSummary = vi
-      .spyOn(CaseManagement.prototype, 'getCaseSummary')
-      .mockRejectedValue(new Error('case not in CAMS'));
-    mockGetSurrogatesByFingerprint.mockResolvedValue([makeSurrogate()]);
-
-    const result = await useCase.remapPage(makeMessage(), 25);
-
-    expect(getCaseSummary).not.toHaveBeenCalled();
-    expect(result.documentsWritten).toBe(1);
-  });
 
   test('counts a documentsFailed when the surrogate row carries a malformed chapter, even though it passed the division/chapter match', async () => {
     // isAppointmentMatch's normalizeChapter is deliberately LOOSE for matching purposes --

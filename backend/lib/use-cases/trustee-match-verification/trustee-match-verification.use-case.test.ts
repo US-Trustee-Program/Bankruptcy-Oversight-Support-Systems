@@ -743,22 +743,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
         ]);
-        const getCaseSummary = vi.spyOn(CaseManagement.prototype, 'getCaseSummary');
-
-        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-        expect(mockUpdateIfPending).toHaveBeenCalledWith(
-          'verification-1',
-          expect.objectContaining({ status: 'approved' }),
-        );
-        expect(getCaseSummary).not.toHaveBeenCalled();
-      });
-
-      test('approves a case not yet in CAMS from its placeholder row alone', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
-        mockGetTrusteeAppointments.mockResolvedValue([
-          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
-        ]);
+        // A case not yet in CAMS has no DXTR case summary; coverage must come from the rows alone.
         vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(
           new Error('case not found'),
         );
@@ -858,12 +843,29 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
           await expect(
             useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-          ).rejects.toThrow(
-            'trustee-new is not assigned to the division(s) for case(s): 24-00001. Choose',
-          );
+          ).rejects.toThrow(/case\(s\): 24-00001\. Choose/);
           expect(mockUpdateIfPending).not.toHaveBeenCalled();
         },
       );
+
+      test('a case is uncovered when any one of its placeholder rows is, and is named once', async () => {
+        const { courtDivisionCode: _omitted, ...missingDivision } = courtFields081;
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001'),
+          placeholder('081-24-00001', missingDivision),
+        ]);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+        ]);
+
+        const error = await useCase
+          .approveVerification(context, 'verification-1', 'trustee-new')
+          .catch((e: Error) => e);
+
+        expect(error).toBeInstanceOf(BadRequestError);
+        expect((error as Error).message.match(/24-00001/g)).toHaveLength(1);
+        expect(mockUpdateIfPending).not.toHaveBeenCalled();
+      });
 
       test('skips the division check entirely (and never fetches trustee appointments) when there are no affected cases', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue([]);

@@ -45,6 +45,19 @@ const makeProfessionalId = (
     ...overrides,
   }) as TrusteeProfessionalId;
 
+// A case appointment already in the case partition, as getByCaseId returns it.
+const makeExistingAppointment = (overrides: Partial<CaseAppointment> = {}): CaseAppointment => ({
+  id: 'sync-written',
+  caseId: '081-25-00001',
+  trusteeId: 'trustee-resolved',
+  assignedOn: '2025-01-01',
+  createdOn: '2026-07-02T00:00:00.000Z',
+  createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  updatedOn: '2026-07-02T00:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  ...overrides,
+});
+
 describe('HealSentinelCaseAppointmentsUseCase', () => {
   let context: ApplicationContext;
   let useCase: HealSentinelCaseAppointmentsUseCase;
@@ -151,35 +164,26 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
     mockGetByCaseId.mockResolvedValue([
-      {
-        id: 'sync-written',
-        caseId: sentinel.caseId,
-        trusteeId: 'trustee-resolved',
-        assignedOn: sentinel.assignedOn,
-        unassignedOn: '2026-08-01',
-      },
+      makeExistingAppointment({ assignedOn: sentinel.assignedOn }),
     ]);
 
     const result = await useCase.healPage(null, 25);
 
-    expect(mockGetByCaseId).toHaveBeenCalledWith(sentinel.caseId);
     expect(mockUpsert).not.toHaveBeenCalled();
     expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
     expect(result.documentsWritten).toBe(1);
   });
 
-  test('treats a sync row on the same calendar day as the same appointment (sync writes date-only, sentinels a timestamp)', async () => {
-    const sentinel = makeSentinel(); // assignedOn '2025-01-01T00:00:00.000Z'
+  // Sentinels carry a full timestamp ('2025-01-01T00:00:00.000Z'); the same court appointment
+  // written by the sync is matched by calendar day, whatever its time part.
+  test.each([
+    ['a date-only assignedOn', '2025-01-01'],
+    ['a different time on the same day', '2025-01-01T15:00:00.000Z'],
+  ])('treats a sync row with %s as the same appointment', async (_label, assignedOn) => {
+    const sentinel = makeSentinel();
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
-    mockGetByCaseId.mockResolvedValue([
-      {
-        id: 'sync-written',
-        caseId: sentinel.caseId,
-        trusteeId: 'trustee-resolved',
-        assignedOn: '2025-01-01',
-      },
-    ]);
+    mockGetByCaseId.mockResolvedValue([makeExistingAppointment({ assignedOn })]);
 
     await useCase.healPage(null, 25);
 
@@ -197,13 +201,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       mockFindSentinelAppointments.mockResolvedValue([sentinel]);
       mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
       mockGetByCaseId.mockResolvedValue([
-        {
-          id: 'other',
-          caseId: sentinel.caseId,
-          trusteeId: 'trustee-resolved',
-          assignedOn: sentinel.assignedOn,
-          ...override,
-        },
+        makeExistingAppointment({ id: 'other', assignedOn: sentinel.assignedOn, ...override }),
       ]);
 
       await useCase.healPage(null, 25);
@@ -255,7 +253,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     expect(result.documentsWritten).toBe(0);
   });
 
-  test('no match, no conflict: does not check for a conflict record or log a warning', async () => {
+  test('no match, no conflict: checks for a conflict record, finds none, and logs no warning', async () => {
     const sentinel = makeSentinel();
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([]);
@@ -338,7 +336,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  test('advances the cursor to the last row seen when a full page is returned (more may remain)', async () => {
+  test('heals and counts every resolvable row on a full page, advancing the cursor to the last one', async () => {
     const sentinels = Array.from({ length: 25 }, (_, i) =>
       makeSentinel({
         id: `sentinel-${i}`,

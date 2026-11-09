@@ -267,8 +267,29 @@ describe('SyncTrusteeCaseAppointments', () => {
           [{ ...makeEvent('case-001', 'John Doe'), ...courtFields, chapter: '99' }],
         );
 
-        expect(dlqMessages).toHaveLength(1);
+        expect(dlqMessages).toEqual([
+          expect.objectContaining({
+            error: expect.objectContaining({
+              message: expect.stringContaining('Invalid chapter value "99"'),
+            }),
+          }),
+        ]);
         expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      });
+
+      test.each([
+        ['chapter', { chapter: undefined }],
+        ['courtDivisionCode', { courtDivisionCode: undefined }],
+      ])('an event with no %s writes the row without that key', async (field, omitted) => {
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeEvent('case-001', 'John Doe'), ...courtFields, ...omitted }],
+        );
+
+        const [payload] = (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mock
+          .calls[0];
+        expect(payload).toEqual(expect.objectContaining({ caseId: 'case-001', courtId: '0208' }));
+        expect(payload).not.toHaveProperty(field);
       });
     });
 
@@ -570,6 +591,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             chapter: '7',
             dateFiled: '2026-10-30',
             checks: {
+              // Stays true while parked: documentType CASE_APPOINTMENT_UNATTACHED is what records
+              // that the case is not in CAMS yet.
               matchedCase: true,
               matchedTrustee: true,
               matchedTrusteeAppointment: true,
@@ -578,12 +601,32 @@ describe('SyncTrusteeCaseAppointments', () => {
           },
           'CASE_APPOINTMENT_UNATTACHED',
         );
-        expect(mockTrusteeCaseAppointmentsRepo.getActiveByCaseId).not.toHaveBeenCalled();
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
         expect(mockVariationRepo.createVariation).toHaveBeenCalled();
         expect(dlqMessages).toHaveLength(0);
         expect(successCount).toBe(1);
         expect(scenarioDistribution.parkedCount).toBe(1);
+      });
+
+      test('a parked appointment records matchedTrusteeAppointment false when the trustee does not cover the case', async () => {
+        vi.mocked(commonTrusteeAppointments.isAppointmentMatch).mockRestore();
+        (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [],
+        );
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [parkedEvent('John Doe')],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({ matchedTrusteeAppointment: false }),
+          }),
+          'CASE_APPOINTMENT_UNATTACHED',
+        );
+        expect(scenarioDistribution.autoMatchUncoveredCount).toBe(1);
       });
 
       test('a disposed row for a parked appointment is written closed on the same natural key', async () => {
@@ -667,17 +710,33 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(dlqMessages).toHaveLength(0);
       });
 
-      test('a parked write without dateFiled is dead-lettered, never parked', async () => {
-        const { dlqMessages, scenarioDistribution } =
-          await SyncTrusteeCaseAppointments.processAppointments(
-            SyncTrusteeCaseAppointments.createDeps(context),
-            [{ ...parkedEvent('John Doe'), dateFiled: undefined }],
-          );
+      test.each([
+        ['a resolved trustee', () => makeResolvedState('trustee-123')],
+        ['an unknown trustee (placeholder)', () => makeUnresolvedState(0)],
+      ])(
+        'a parked write for %s without dateFiled is dead-lettered, never parked',
+        async (_label, state) => {
+          (
+            pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+          ).mockResolvedValueOnce(state());
 
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
-        expect(dlqMessages).toHaveLength(1);
-        expect(scenarioDistribution.parkedCount).toBe(0);
-      });
+          const { dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              [{ ...parkedEvent('John Doe'), dateFiled: undefined }],
+            );
+
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(dlqMessages).toEqual([
+            expect.objectContaining({
+              error: expect.objectContaining({
+                message: expect.stringContaining('no dateFiled'),
+              }),
+            }),
+          ]);
+          expect(scenarioDistribution.parkedCount).toBe(0);
+        },
+      );
     });
 
     test('should skip and not error when getCaseOrMovedCase returns a transferred case', async () => {
@@ -3410,7 +3469,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
-        expect(dlqMessages).toHaveLength(1);
+        expect(dlqMessages).toEqual([
+          expect.objectContaining({
+            error: expect.objectContaining({
+              message: expect.stringContaining('Invalid chapter value "7A"'),
+            }),
+          }),
+        ]);
       });
 
       test('skips upsert when existing doc is resolved', async () => {
@@ -4078,6 +4143,7 @@ const closeFixtureEvent: TrusteeAppointmentSyncEvent = {
   courtId: '081',
   courtDivisionCode: '081',
   chapter: '7',
+  appointedDate: '2023-01-02',
   source: 'DXTR',
   sourceTrustee: { fullName: 'Jane Doe' },
 };
@@ -4282,7 +4348,7 @@ describe('softCloseExistingAppointment', () => {
       caseId: 'case-001',
       trusteeId: 'new-trustee-789',
       assignedOn: '2023-01-02T00:00:00.000Z',
-      appointedDate: undefined,
+      appointedDate: '2023-01-02',
       courtId: '081',
       courtDivisionCode: '081',
       chapter: '7',

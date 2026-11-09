@@ -666,23 +666,13 @@ async function healTimerTrigger(
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
-  try {
-    const healStart: HealMessage = { healRunDate: DateHelper.getTodaysIsoDate() };
-    invocationContext.extraOutputs.set(HEAL, healStart);
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'healTimerTrigger', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-    });
-  } catch (error) {
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'healTimerTrigger', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+  const healStart: HealMessage = { healRunDate: DateHelper.getTodaysIsoDate() };
+  invocationContext.extraOutputs.set(HEAL, healStart);
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'healTimerTrigger', logger, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+  });
 }
 
 /**

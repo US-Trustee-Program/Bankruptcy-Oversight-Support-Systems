@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { AggregationCursor } from 'mongodb';
 import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointments.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import QueryBuilder from '../../../query/query-builder';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
@@ -15,6 +16,12 @@ import {
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
+
+/** The condition on `field` in a QueryBuilder conjunction passed to the adapter. */
+function conditionOn(query: unknown, field: string) {
+  const values = (query as Record<string, unknown>).values as Record<string, unknown>[];
+  return values.find((v) => (v.leftOperand as { name: string })?.name === field);
+}
 
 describe('TrusteeCaseAppointmentsMongoRepository', () => {
   const CASE_ID = '081-24-12345';
@@ -365,7 +372,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       // Verify the 4 fields are present: documentType, caseId, trusteeId, assignedOn
       const queryStr = JSON.stringify(firstCallQuery);
-      expect(queryStr).toContain('CASE_APPOINTMENT'); // documentType
       expect(queryStr).toContain(CASE_ID); // caseId
       expect(queryStr).toContain(TRUSTEE_ID); // trusteeId
       expect(queryStr).toContain('2024-01-15'); // assignedOn
@@ -375,54 +381,37 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('should write the given documentType to both partitions and key the upsert on it', async () => {
-      const replaceOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: 'appt-new', modifiedCount: 0, upsertedCount: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.upsert(
-        { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' },
+    test.each([
+      [
+        'the given documentType',
+        'CASE_APPOINTMENT_UNATTACHED' as const,
         'CASE_APPOINTMENT_UNATTACHED',
-      );
+      ],
+      ['CASE_APPOINTMENT by default', undefined, 'CASE_APPOINTMENT'],
+    ])(
+      'should write %s to both partitions and key the upsert on it',
+      async (_label, documentType, expected) => {
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'appt-new', modifiedCount: 0, upsertedCount: 1 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
-      for (const [query, document] of replaceOneSpy.mock.calls) {
-        const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
-        const documentTypeCondition = queryValues.find(
-          (v) => (v.leftOperand as { name: string })?.name === 'documentType',
+        await repo.upsert(
+          { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' },
+          documentType,
         );
-        expect(documentTypeCondition).toEqual(
-          expect.objectContaining({
-            condition: 'EQUALS',
-            rightOperand: 'CASE_APPOINTMENT_UNATTACHED',
-          }),
-        );
-        expect(document).toEqual(
-          expect.objectContaining({ documentType: 'CASE_APPOINTMENT_UNATTACHED' }),
-        );
-      }
-      repo.release();
-    });
 
-    test('should default documentType to CASE_APPOINTMENT in the document and the natural key', async () => {
-      const replaceOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: 'appt-new', modifiedCount: 0, upsertedCount: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.upsert({ caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' });
-
-      const [query, document] = replaceOneSpy.mock.calls[0];
-      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
-      expect(
-        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'documentType'),
-      ).toEqual(expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }));
-      expect(document).toEqual(expect.objectContaining({ documentType: 'CASE_APPOINTMENT' }));
-      repo.release();
-    });
+        expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+        for (const [query, document] of replaceOneSpy.mock.calls) {
+          expect(conditionOn(query, 'documentType')).toEqual(
+            expect.objectContaining({ condition: 'EQUALS', rightOperand: expected }),
+          );
+          expect(document).toEqual(expect.objectContaining({ documentType: expected }));
+        }
+        repo.release();
+      },
+    );
 
     test('should write to case partition using replaceOne with upsert=true', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
@@ -1929,9 +1918,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         expect.objectContaining({ condition: 'EQUALS', rightOperand: FINGERPRINT }),
       );
       // Parked placeholders (cases not yet in CAMS) are identity-task members too.
-      expect(
-        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'documentType'),
-      ).toEqual(
+      expect(conditionOn(query, 'documentType')).toEqual(
         expect.objectContaining({
           condition: 'CONTAINS',
           rightOperand: ['CASE_APPOINTMENT', 'CASE_APPOINTMENT_UNATTACHED'],
@@ -2012,9 +1999,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
           rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
         }),
       );
-      expect(
-        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'documentType'),
-      ).toEqual(
+      expect(conditionOn(query, 'documentType')).toEqual(
         expect.objectContaining({
           condition: 'CONTAINS',
           rightOperand: ['CASE_APPOINTMENT', 'CASE_APPOINTMENT_UNATTACHED'],
@@ -2174,17 +2159,14 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('findParkedFiledOnOrAfter', () => {
-    function conditionOn(query: unknown, field: string) {
-      const values = (query as Record<string, unknown>).values as Record<string, unknown>[];
-      return values.find((v) => (v.leftOperand as { name: string })?.name === field);
-    }
-
     test('pages parked rows filed on or after a date by _id cursor from the trustee partition', async () => {
       const findSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue([{ ...baseAppointment, _id: 'mongo-2' }]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+      // Partition choice is part of the contract: documentType_1_dateFiled_1 exists only on the
+      // trustee partition (index-trustee-case-appointments.js).
       const trusteeAdapterSpy = vi.spyOn(repo['trusteePartition'], 'adapter');
       const caseAdapterSpy = vi.spyOn(repo['casePartition'], 'adapter');
 
@@ -2204,7 +2186,8 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(conditionOn(query, '_id')).toEqual(
         expect.objectContaining({ condition: 'GREATER_THAN', rightOperand: 'mongo-1' }),
       );
-      expect(JSON.stringify(sort)).toContain('_id');
+      // Ascending: the cursor condition is _id > lastId, so a descending sort would skip pages.
+      expect(sort).toEqual(QueryBuilder.orderBy(['_id', 'ASCENDING']));
       expect(limit).toBe(25);
       expect(trusteeAdapterSpy).toHaveBeenCalled();
       expect(caseAdapterSpy).not.toHaveBeenCalled();
@@ -2241,24 +2224,22 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         .mockResolvedValue(3);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+      // Trustee partition only: that is where documentType_1_dateFiled_1 exists.
       const trusteeAdapterSpy = vi.spyOn(repo['trusteePartition'], 'adapter');
       const caseAdapterSpy = vi.spyOn(repo['casePartition'], 'adapter');
 
       const result = await repo.countParkedFiledOn('2026-10-25');
 
       expect(result).toBe(3);
-      const values = (countSpy.mock.calls[0][0] as Record<string, unknown>).values as Record<
-        string,
-        unknown
-      >[];
-      expect(values).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            condition: 'EQUALS',
-            rightOperand: 'CASE_APPOINTMENT_UNATTACHED',
-          }),
-          expect.objectContaining({ condition: 'EQUALS', rightOperand: '2026-10-25' }),
-        ]),
+      const query = countSpy.mock.calls[0][0];
+      expect(conditionOn(query, 'documentType')).toEqual(
+        expect.objectContaining({
+          condition: 'EQUALS',
+          rightOperand: 'CASE_APPOINTMENT_UNATTACHED',
+        }),
+      );
+      expect(conditionOn(query, 'dateFiled')).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: '2026-10-25' }),
       );
       expect(trusteeAdapterSpy).toHaveBeenCalled();
       expect(caseAdapterSpy).not.toHaveBeenCalled();
