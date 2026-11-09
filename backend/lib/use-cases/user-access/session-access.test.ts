@@ -120,6 +120,58 @@ describe('sessionAccessFrom', () => {
   test('should give no roles or offices without permissions', () => {
     expect(sessionAccessFrom([], OFFICES)).toEqual({ roles: [], offices: [] });
   });
+
+  test('should still process permissions after a Super User permission', () => {
+    const access = sessionAccessFrom(
+      [
+        permission(CamsRole.SuperUser, null, null),
+        permission(CamsRole.Auditor, '3', WILMINGTON.officeCode),
+      ],
+      OFFICES,
+    );
+
+    expect(access.roles).toEqual([CamsRole.SuperUser, CamsRole.Auditor]);
+    expect(codes(access.offices)).toEqual(codes([WILMINGTON]));
+  });
+
+  test('should drop a broader active permission when a narrower one for the same role overlaps it', () => {
+    const access = sessionAccessFrom(
+      [
+        permission(CamsRole.TrialAttorney, '2', null),
+        permission(CamsRole.TrialAttorney, '2', MANHATTAN.officeCode),
+      ],
+      OFFICES,
+    );
+
+    expect(access.roles).toEqual([CamsRole.TrialAttorney]);
+    expect(codes(access.offices)).toEqual(codes([MANHATTAN]));
+  });
+
+  test('should drop a broader active permission regardless of array order', () => {
+    const access = sessionAccessFrom(
+      [
+        permission(CamsRole.TrialAttorney, '2', MANHATTAN.officeCode),
+        permission(CamsRole.TrialAttorney, '2', null),
+      ],
+      OFFICES,
+    );
+
+    expect(access.roles).toEqual([CamsRole.TrialAttorney]);
+    expect(codes(access.offices)).toEqual(codes([MANHATTAN]));
+  });
+
+  test('should not let an overlapping permission for a different role suppress it', () => {
+    const access = sessionAccessFrom(
+      [
+        permission(CamsRole.TrialAttorney, '2', null),
+        permission(CamsRole.Auditor, '2', MANHATTAN.officeCode),
+      ],
+      OFFICES,
+    );
+
+    expect(access.roles).toEqual([CamsRole.TrialAttorney, CamsRole.Auditor]);
+    expect(codes(access.offices)).toEqual(codes([MANHATTAN, BUFFALO]));
+  });
 });
 
 describe('readSessionAccess', () => {

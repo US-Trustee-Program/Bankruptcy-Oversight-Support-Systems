@@ -1,6 +1,6 @@
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { UserRoleAssignment } from '@common/cams/user-access';
+import { scopeContains, UserRoleAssignment } from '@common/cams/user-access';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 
@@ -19,11 +19,11 @@ export function sessionAccessFrom(
   const roles = new Set<CamsRoleType>();
   const grantedOfficeCodes = new Set<string>();
 
-  for (const permission of permissions) {
+  for (const permission of resolveOverlaps(permissions)) {
     roles.add(permission.role);
     if (permission.role === CamsRole.SuperUser) continue;
     for (const office of offices) {
-      if (covers(permission, office)) grantedOfficeCodes.add(office.officeCode);
+      if (scopeContains(permission, office)) grantedOfficeCodes.add(office.officeCode);
     }
   }
 
@@ -33,10 +33,24 @@ export function sessionAccessFrom(
   };
 }
 
-function covers(permission: UserRoleAssignment, office: UstpOfficeDetails): boolean {
-  if (permission.regionId === null) return true;
-  if (permission.regionId !== office.regionId) return false;
-  return permission.officeCode === null || permission.officeCode === office.officeCode;
+/**
+ * Drops any permission that a narrower active permission for the same role already supersedes.
+ *
+ * `grantPermission` creates a narrower replacement before deactivating the broader permission(s) it
+ * overlaps; if a login reads between those two writes, or the deactivation fails, the broader
+ * permission is still active alongside its replacement. Without this, the broader permission would
+ * union its scope into the session even though the grant intended to replace it.
+ */
+function resolveOverlaps(permissions: UserRoleAssignment[]): UserRoleAssignment[] {
+  return permissions.filter(
+    (permission) =>
+      !permissions.some(
+        (other) =>
+          other.role === permission.role &&
+          scopeContains(permission, other) &&
+          !scopeContains(other, permission),
+      ),
+  );
 }
 
 /**
