@@ -282,10 +282,7 @@ export function normalizeChapter(chapter: string): string {
  * singular `divisionCode` and the current `divisionCodes` array (modern appointments,
  * including multi-division panel appointments, only populate `divisionCodes`).
  */
-export function appointmentCoversDivision(
-  appointment: TrusteeAppointment,
-  divisionCode: string,
-): boolean {
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
   return (
     appointment.divisionCode === divisionCode ||
     getDivisionCodes(appointment).includes(divisionCode)
@@ -461,6 +458,14 @@ export type CaseAppointmentChecks = {
   matchedBy: string;
 };
 
+/**
+ * Storage discriminator for appointment rows. CASE_APPOINTMENT_UNATTACHED is a parked row: an
+ * appointment or placeholder for a case not yet in CAMS, written by the trustee-appointment sync
+ * and attached by its daily heal once the case loads. Parked rows never appear in case or trustee
+ * views; only identity tasks (via placeholders) and the heal read them.
+ */
+export type CaseAppointmentDocumentType = 'CASE_APPOINTMENT' | 'CASE_APPOINTMENT_UNATTACHED';
+
 export type CaseAppointmentInput = {
   caseId: string;
   trusteeId: string;
@@ -469,6 +474,7 @@ export type CaseAppointmentInput = {
   unassignedOn?: string;
   dateFiled?: string;
   chapter?: CaseChapter;
+  courtId?: string;
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
@@ -486,6 +492,7 @@ export type CaseAppointment = Auditable &
     unassignedOn?: string;
     dateFiled?: string;
     chapter?: CaseChapter;
+    courtId?: string;
     courtDivisionCode?: string;
     closedDate?: string;
     reopenedDate?: string;

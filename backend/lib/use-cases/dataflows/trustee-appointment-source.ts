@@ -135,7 +135,7 @@ export class AcmsTrusteeAppointmentSource implements TrusteeAppointmentSource {
         failures.push({
           rowId: raw.id,
           caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
-          reason: error instanceof Error ? error.message : String(error),
+          reason: (error as Error).message,
         });
       }
     }

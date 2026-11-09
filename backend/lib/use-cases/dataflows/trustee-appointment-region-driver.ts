@@ -124,7 +124,8 @@ type RegionDriverResult = {
   /** Per-record failures: sync errors and events from processAppointments, plus source rows that could not be converted. */
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | QueueError)[];
   retryableEvents: TrusteeAppointmentSyncEvent[];
-  notYetSyncedEvents: TrusteeAppointmentSyncEvent[];
+  /** Rows parked as CASE_APPOINTMENT_UNATTACHED (case not yet in CAMS), summed across pages. */
+  parkedCount: number;
   /** Present when the run stopped early; re-invoke with these exact options. */
   continuation?: RegionDriverContinuation;
 };
@@ -155,7 +156,7 @@ async function runRegionDriver(
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | QueueError)[] =
     [];
   const retryableEvents: TrusteeAppointmentSyncEvent[] = [];
-  const notYetSyncedEvents: TrusteeAppointmentSyncEvent[] = [];
+  let parkedCount = 0;
 
   let regionIndex = 0;
   let resumeAt: RegionDriverResumePoint | undefined = options.resumeFrom;
@@ -167,7 +168,7 @@ async function runRegionDriver(
     processedRegions,
     dlqMessages,
     retryableEvents,
-    notYetSyncedEvents,
+    parkedCount,
     continuation: {
       regions: options.regions.slice(index),
       runDate: options.runDate,
@@ -223,7 +224,7 @@ async function runRegionDriver(
             );
             dlqMessages.push(...result.dlqMessages);
             retryableEvents.push(...result.retryableEvents);
-            notYetSyncedEvents.push(...result.notYetSyncedEvents);
+            parkedCount += result.scenarioDistribution.parkedCount;
           }
 
           if (!page.lastId) break;
@@ -254,7 +255,7 @@ async function runRegionDriver(
     return stopAt(regionIndex, resumeAt, 'transient-error');
   }
 
-  return { processedRegions, dlqMessages, retryableEvents, notYetSyncedEvents };
+  return { processedRegions, dlqMessages, retryableEvents, parkedCount };
 }
 
 const RegionDriver = {
