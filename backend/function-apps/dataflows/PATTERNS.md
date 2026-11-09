@@ -52,3 +52,21 @@ See `backend/function-apps/dataflows/import/sync-trustee-case-appointments.ts`'s
 caller: a start message with no region list enumerates every region, splits it into lanes via
 `assignLanesRoundRobin`, and sends one jittered `START` message per non-empty lane — each then runs
 through the same single-chain code path a named-region start message already used.
+
+## Run lock for a multi-lane run
+
+**Module:** `backend/lib/use-cases/dataflows/trustee-appointment-sync-run.ts`
+
+The K-lane bound above holds within one run. A start with no `runId` (timer or operator) mints one by
+claiming a lock document in runtime state, so a second start while a run is active no-ops instead of
+adding K more chains.
+
+- `claimRun` writes a new `runId`, waits `CLAIM_CONFIRM_DELAY_MS`, then reads it back; only the start
+  whose `runId` survived a last-write-wins race proceeds.
+- Every lane message, continuation and transient requeue carries the `runId`. `touchRun` refreshes
+  `lastActivityAt` on each invocation and returns false once another run owns the lock, which stops
+  the message.
+- A lock untouched for `RUN_STALE_AFTER_MS` (2 hours) no longer counts as active, so a crashed run
+  does not block the next day's kickoff.
+
+See `sync-trustee-case-appointments.ts`'s `handleStart` for a caller.
