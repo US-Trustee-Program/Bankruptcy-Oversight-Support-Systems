@@ -87,7 +87,6 @@ function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
   };
 }
 
-/** Returns false when the old trustee's appointment could not be closed (see healParkedPage). */
 /**
  * True when the sync already wrote this court appointment as a placed row (same trustee or
  * fingerprint, same assignedOn day): it did so after the case loaded, from newer source data, so
@@ -107,6 +106,7 @@ async function isSupersededByPlacedRow(
   );
 }
 
+/** Returns false when the old trustee's appointment could not be closed (see healParkedPage). */
 async function attachParkedAppointment(
   deps: HealParkedDeps,
   row: ParkedAppointment,

@@ -70,8 +70,9 @@ function stripMongoId(document: CaseAppointmentDocument): CaseAppointmentDocumen
 
 const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
 
-// Placeholders are identity-task members whether placed or parked (case not yet in CAMS).
-const SURROGATE_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
+// Every appointment row, placed or parked (case not yet in CAMS). Placeholder lookups need both
+// (identity-task members are either), and deleteAll must clear both.
+const PLACED_AND_PARKED_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
   'CASE_APPOINTMENT',
   'CASE_APPOINTMENT_UNATTACHED',
 ];
@@ -564,7 +565,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     try {
       const doc = using<CaseAppointmentDocument>();
       // Parked rows too: a reset must not leave rows for the heal to re-attach.
-      const query = doc('documentType').contains(SURROGATE_DOCUMENT_TYPES);
+      const query = doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES);
       const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       return deleted;
@@ -763,7 +764,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<SurrogateAppointment>> {
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').contains(SURROGATE_DOCUMENT_TYPES),
+      doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
       doc('trusteeId').equals(fingerprint),
       doc('isSurrogate').equals(true),
     );
@@ -780,7 +781,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     if (fingerprints.length === 0) return [];
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').contains(SURROGATE_DOCUMENT_TYPES),
+      doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
       doc('trusteeId').contains(fingerprints),
       doc('isSurrogate').equals(true),
     );
