@@ -443,6 +443,10 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const runRegionDriverSpy = vi
       .spyOn(RegionDriverModule.default, 'runRegionDriver')
       .mockResolvedValue(overrides?.runRegionDriverResult ?? emptyResult);
+    vi.spyOn(TrusteeAppointmentSyncRun, 'claimRun').mockResolvedValue({
+      claimed: true,
+      runId: 'run-1',
+    });
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
@@ -576,6 +580,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: continuation.regions,
       runDate: continuation.runDate,
       resumeFrom: continuation.resumeFrom,
+      runId: 'run-1',
     });
   });
 
@@ -606,6 +611,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: ['02'],
       runDate: '2026-07-05',
       resumeFrom,
+      runId: 'run-1',
       transientRetryCount: 3,
     });
     expect(delaySeconds).toBe(300);
@@ -816,6 +822,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(JSON.parse(body)).toEqual({
       regions: ['02'],
       runDate: '2026-07-05',
+      runId: 'run-1',
       transientRetryCount: 2,
     });
     expect(delaySeconds).toBe(300);
@@ -885,7 +892,12 @@ describe('sync-trustee-case-appointments handleStart', () => {
       expect.anything(),
       expect.objectContaining({
         type: 'QUEUE_ERROR',
-        startMessage: { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
+        startMessage: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          runId: 'run-1',
+          transientRetryCount: 1,
+        },
       }),
     );
   });
@@ -1276,13 +1288,14 @@ describe('sync-trustee-case-appointments run lock', () => {
     expect(lanes.map((lane) => lane.runId)).toEqual(['run-7', 'run-7']);
   });
 
-  test('a requeued kickoff offers back the run id it already owns', async () => {
+  test('a requeued kickoff carrying its run id is checked against the lock instead of claiming again', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
-    const { claimRunSpy } = await setupLockMocks({});
+    const { claimRunSpy, touchRunSpy } = await setupLockMocks({});
 
     await handleStart({ runId: 'run-3' }, makeInvocationContext());
 
-    expect(claimRunSpy).toHaveBeenCalledWith(expect.anything(), 'run-3');
+    expect(claimRunSpy).not.toHaveBeenCalled();
+    expect(touchRunSpy).toHaveBeenCalledWith(expect.anything(), 'run-3');
   });
 
   test('a kickoff that hits a transient error requeues with the run id it claimed', async () => {
@@ -1356,15 +1369,49 @@ describe('sync-trustee-case-appointments run lock', () => {
     expect(sent).toContainEqual(expect.objectContaining({ laneId: 0, runId: 'run-1' }));
   });
 
-  test('an operator-named start with no run id never consults the lock', async () => {
+  test('an operator-named start with no run id claims the lock and runs', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
-    const { runRegionDriverSpy, claimRunSpy, touchRunSpy } = await setupLockMocks({});
+    const { runRegionDriverSpy, claimRunSpy, touchRunSpy } = await setupLockMocks({
+      claim: { claimed: true, runId: 'run-op' },
+    });
 
     await handleStart({ regions: ['02'] }, makeInvocationContext());
 
-    expect(claimRunSpy).not.toHaveBeenCalled();
+    expect(claimRunSpy).toHaveBeenCalledTimes(1);
     expect(touchRunSpy).not.toHaveBeenCalled();
     expect(runRegionDriverSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('an operator-named start is skipped while another run is active', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy } = await setupLockMocks({
+      claim: { claimed: false, activeRunId: 'run-active' },
+    });
+
+    await handleStart({ regions: ['02'] }, makeInvocationContext());
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+  });
+
+  test('an operator-named start passes its claimed run id to its continuation', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, mockSendMessage } = await setupLockMocks({
+      claim: { claimed: true, runId: 'run-op' },
+    });
+    runRegionDriverSpy.mockResolvedValue({
+      ...emptyDriverResult,
+      continuation: {
+        regions: ['02'],
+        runDate: '2026-07-05',
+        resumeFrom: { regionId: '02', date: '2026-07-02' },
+        cause: 'invocation-budget',
+      },
+    });
+
+    await handleStart({ regions: ['02'], runDate: '2026-07-05' }, makeInvocationContext());
+
+    const sent = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    expect(sent).toContainEqual(expect.objectContaining({ runId: 'run-op' }));
   });
 });
 

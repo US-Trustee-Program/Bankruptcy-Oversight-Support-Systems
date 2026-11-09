@@ -4,7 +4,10 @@ import factory from '../../factory';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { TrusteeAppointmentSyncRunState } from '../gateways.types';
-import TrusteeAppointmentSyncRun, { RUN_STALE_AFTER_MS } from './trustee-appointment-sync-run';
+import TrusteeAppointmentSyncRun, {
+  CLAIM_CONFIRM_DELAY_MS,
+  RUN_STALE_AFTER_MS,
+} from './trustee-appointment-sync-run';
 
 const NOW = new Date('2026-11-10T12:30:00.000Z');
 
@@ -43,64 +46,89 @@ describe('trustee appointment sync run lock', () => {
   });
 
   describe('claimRun', () => {
+    // An in-memory lock document behind read/upsert, so the confirm read sees what was written.
+    function useStore(initial?: TrusteeAppointmentSyncRunState) {
+      let store = initial;
+      read.mockImplementation(async () => {
+        if (!store) throw new NotFoundError('TEST');
+        return store;
+      });
+      upsert.mockImplementation(async (doc) => {
+        store = doc;
+      });
+      return {
+        overwrite: (doc: TrusteeAppointmentSyncRunState) => {
+          store = doc;
+        },
+        current: () => store,
+      };
+    }
+
+    async function claim(deps: Awaited<ReturnType<typeof createDeps>>) {
+      const pending = TrusteeAppointmentSyncRun.claimRun(deps);
+      await vi.advanceTimersByTimeAsync(CLAIM_CONFIRM_DELAY_MS);
+      return pending;
+    }
+
     test('claims a new run when no run has ever been recorded', async () => {
-      read.mockRejectedValue(new NotFoundError('TEST'));
+      const store = useStore();
       const deps = await createDeps();
 
-      const result = await TrusteeAppointmentSyncRun.claimRun(deps);
+      const result = await claim(deps);
 
       expect(result.claimed).toBe(true);
-      expect(upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN',
-          runId: (result as { runId: string }).runId,
-          startedAt: NOW.toISOString(),
-          lastActivityAt: NOW.toISOString(),
-        }),
-      );
+      expect(store.current()).toEqual({
+        documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN',
+        runId: (result as { runId: string }).runId,
+        startedAt: NOW.toISOString(),
+        lastActivityAt: NOW.toISOString(),
+      });
     });
 
     test('does not claim while another run was active within the stale window', async () => {
-      read.mockResolvedValue(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS + 1)));
+      useStore(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS + 1)));
       const deps = await createDeps();
 
-      const result = await TrusteeAppointmentSyncRun.claimRun(deps);
+      const result = await claim(deps);
 
       expect(result).toEqual({ claimed: false, activeRunId: 'run-a' });
       expect(upsert).not.toHaveBeenCalled();
     });
 
     test('claims a new run once the previous run has been silent for the stale window', async () => {
-      read.mockResolvedValue(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS)));
+      useStore(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS)));
       const deps = await createDeps();
 
-      const result = await TrusteeAppointmentSyncRun.claimRun(deps);
+      const result = await claim(deps);
 
       expect(result.claimed).toBe(true);
       expect((result as { runId: string }).runId).not.toEqual('run-a');
-      expect(upsert).toHaveBeenCalledTimes(1);
     });
 
-    test('lets a requeued kickoff re-claim the run it already owns', async () => {
-      read.mockResolvedValue(runState('run-a', new Date(NOW.getTime() - 1000)));
+    test('waits before confirming so a competing write has time to land', async () => {
+      useStore();
       const deps = await createDeps();
 
-      const result = await TrusteeAppointmentSyncRun.claimRun(deps, 'run-a');
+      const pending = TrusteeAppointmentSyncRun.claimRun(deps);
+      await vi.advanceTimersByTimeAsync(CLAIM_CONFIRM_DELAY_MS - 1);
+      expect(read).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await pending;
 
-      expect(result).toEqual({ claimed: true, runId: 'run-a' });
-      expect(upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ runId: 'run-a', lastActivityAt: NOW.toISOString() }),
-      );
+      expect(read).toHaveBeenCalledTimes(2);
     });
 
-    test('does not let a requeued kickoff override a different active run', async () => {
-      read.mockResolvedValue(runState('run-b', new Date(NOW.getTime() - 1000)));
+    test('loses the claim when a competing write replaced the lock before the confirm read', async () => {
+      const store = useStore();
+      upsert.mockImplementationOnce(async () => {
+        // The competitor's write lands after ours and wins.
+        store.overwrite(runState('run-competitor', NOW));
+      });
       const deps = await createDeps();
 
-      const result = await TrusteeAppointmentSyncRun.claimRun(deps, 'run-a');
+      const result = await claim(deps);
 
-      expect(result).toEqual({ claimed: false, activeRunId: 'run-b' });
-      expect(upsert).not.toHaveBeenCalled();
+      expect(result).toEqual({ claimed: false, activeRunId: 'run-competitor' });
     });
 
     test('propagates a read failure instead of treating it as no active run', async () => {
