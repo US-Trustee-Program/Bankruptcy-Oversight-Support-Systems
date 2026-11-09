@@ -16,9 +16,9 @@
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
     "mongodb": "7.7.0",
-    "mssql": "12.7.11",
+    "mssql": "12.7.13",
     "dotenv": "18.0.9",
     "applicationinsights": "3.14.0",
-    "natural": "8.2.3"
+    "natural": "8.2.6"
   }
 }
