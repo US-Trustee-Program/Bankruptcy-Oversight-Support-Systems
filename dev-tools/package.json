@@ -35,7 +35,7 @@
     "eslint-plugin-prettier": "5.5.7",
     "eslint-plugin-promise": "7.3.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.0",
+    "typescript-eslint": "8.72.1",
     "vitest": "5.0.5"
   }
 }
