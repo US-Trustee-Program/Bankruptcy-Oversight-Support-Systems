@@ -111,9 +111,9 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
    *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
   laneId?: number;
   /**
-   * The logical run this message belongs to: minted by a regionless kickoff and copied onto every
-   * lane, continuation and requeue it spawns. A message whose runId is no longer the current run
-   * stops (see TrusteeAppointmentSyncRun). Absent on an operator-named start, which ignores the lock.
+   * The logical run this message belongs to: minted by any start that has none (timer or operator)
+   * and copied onto every lane, continuation and requeue it spawns. A message whose runId is no
+   * longer the current run stops (see TrusteeAppointmentSyncRun).
    */
   runId?: string;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
@@ -361,17 +361,22 @@ async function handleStart(
       return;
     }
 
-    // Only a regionless kickoff claims the run and only a lane message (regions plus runId) is
-    // checked against it; an operator-named start carries no runId and ignores the lock. This runs
-    // before deleteAll so a kickoff that is skipped never wipes appointments under an active run.
+    // A resume point only makes sense within a fixed region list; fanning out here would ignore
+    // it and reschedule every region. Dead-letter the malformed message instead.
+    if (!startMessage.regions && startMessage.resumeFrom) {
+      throw new Error(
+        'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
+      );
+    }
+
+    // A start with no runId (timer kickoff or operator start) mints one by claiming the run; every
+    // message it spawns carries that id and is checked against it. This runs before deleteAll so a
+    // start that is skipped never wipes appointments under an active run.
     const runDeps = TrusteeAppointmentSyncRun.createDeps(context);
-    if (!startMessage.regions && !startMessage.resumeFrom) {
-      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps, startMessage.runId);
+    if (!runId) {
+      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps);
       if ('activeRunId' in claim) {
-        logger.info(
-          MODULE_NAME,
-          `Run ${claim.activeRunId} is still active; this kickoff is skipped.`,
-        );
+        logger.info(MODULE_NAME, `Run ${claim.activeRunId} is active; this start is skipped.`);
         completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
           documentsWritten: 0,
           documentsFailed: 0,
@@ -381,20 +386,18 @@ async function handleStart(
         return;
       }
       runId = claim.runId;
-    } else if (startMessage.regions && startMessage.runId) {
-      if (!(await TrusteeAppointmentSyncRun.touchRun(runDeps, startMessage.runId))) {
-        logger.info(
-          MODULE_NAME,
-          `Run ${startMessage.runId} is no longer the current run; this message is dropped.`,
-        );
-        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: true,
-          details: { skipped: 'superseded-run', runId: startMessage.runId },
-        });
-        return;
-      }
+    } else if (!(await TrusteeAppointmentSyncRun.touchRun(runDeps, runId))) {
+      logger.info(
+        MODULE_NAME,
+        `Run ${runId} is no longer the current run; this message is dropped.`,
+      );
+      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { skipped: 'superseded-run', runId },
+      });
+      return;
     }
 
     if (startMessage.deleteAll) {
@@ -410,19 +413,12 @@ async function handleStart(
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
 
     if (!startMessage.regions) {
-      // A resume point only makes sense within a fixed region list; fanning out here would ignore
-      // it and reschedule every region. Dead-letter the malformed message instead.
-      if (startMessage.resumeFrom) {
-        throw new Error(
-          'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
-        );
-      }
       const fanOutResult = await fanOutAcrossLanes(
         context,
         logger,
         connectionString,
         runDate,
-        runId!,
+        runId,
       );
       const noRegionsFound =
         fanOutResult.regionsScheduled === 0
@@ -477,7 +473,7 @@ async function handleStart(
         runDate: continuation.runDate,
         resumeFrom: continuation.resumeFrom,
         laneId: startMessage.laneId,
-        runId: startMessage.runId,
+        runId,
       };
       if (continuation.cause === 'invocation-budget') {
         // A budget continuation starts a fresh transient-retry streak, so it carries no count.

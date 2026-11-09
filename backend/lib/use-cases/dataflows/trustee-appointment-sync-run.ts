@@ -13,6 +13,9 @@ const DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_SYNC_RUN';
  */
 export const RUN_STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 
+/** How long a claim waits before reading the lock back, so a competing write can land first. */
+export const CLAIM_CONFIRM_DELAY_MS = 2000;
+
 function createDeps(context: ApplicationContext) {
   return {
     runStateRepo: factory.getRuntimeStateRepository<TrusteeAppointmentSyncRunState>(context),
@@ -40,23 +43,29 @@ function isActive(run: TrusteeAppointmentSyncRunState): boolean {
 }
 
 /**
- * Called by a regionless kickoff. Claims the run unless a different run is still active. A kickoff
- * the dataflow requeued after a transient failure passes the runId it already generated, so it can
- * pick its own run back up instead of being shut out by the claim it made earlier.
+ * Called by any start message that has no runId (a timer kickoff or an operator start). Claims the
+ * run unless a different run is still active. Two starts can pass the active check together and
+ * both write, with the last write winning, so the claim is confirmed: after a short pause it reads
+ * the lock back, and only the start whose runId survived proceeds. The other no-ops.
  */
-async function claimRun(deps: RunDeps, ownRunId?: string): Promise<ClaimResult> {
+async function claimRun(deps: RunDeps): Promise<ClaimResult> {
   const existing = await readRun(deps);
-  if (existing && isActive(existing) && existing.runId !== ownRunId) {
+  if (existing && isActive(existing)) {
     return { claimed: false, activeRunId: existing.runId };
   }
   const now = new Date().toISOString();
-  const runId = ownRunId ?? randomUUID();
+  const runId = randomUUID();
   await deps.runStateRepo.upsert({
     documentType: DOCUMENT_TYPE,
     runId,
-    startedAt: existing?.runId === runId ? existing.startedAt : now,
+    startedAt: now,
     lastActivityAt: now,
   });
+  await new Promise((resolve) => setTimeout(resolve, CLAIM_CONFIRM_DELAY_MS));
+  const confirmed = await readRun(deps);
+  if (confirmed?.runId !== runId) {
+    return { claimed: false, activeRunId: confirmed?.runId ?? 'unknown' };
+  }
   return { claimed: true, runId };
 }
 
