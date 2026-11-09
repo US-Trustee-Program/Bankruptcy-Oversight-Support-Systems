@@ -56,20 +56,22 @@ const MAX_LANE_COUNT = 10;
  * an env var this cheap to re-parse doesn't need load-time caching, and reading it fresh lets
  * tests set it per-case without vi.resetModules() gymnastics.
  */
-function getLaneCount(): number {
+function getLaneCount(logger: ReturnType<typeof ContextCreator.getLogger>): number {
   const raw = process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
   if (!raw) return DEFAULT_LANE_COUNT;
   // Number(), not parseInt: parseInt would accept "3abc" as 3 and "2.5" as 2.
   const parsed = Number(raw.trim());
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    console.warn(
-      `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}", using default ${DEFAULT_LANE_COUNT}`,
+    logger.warn(
+      MODULE_NAME,
+      `Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}", using default ${DEFAULT_LANE_COUNT}`,
     );
     return DEFAULT_LANE_COUNT;
   }
   if (parsed > MAX_LANE_COUNT) {
-    console.warn(
-      `[${MODULE_NAME}] TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}" exceeds the maximum of ${MAX_LANE_COUNT}, using ${MAX_LANE_COUNT}`,
+    logger.warn(
+      MODULE_NAME,
+      `TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}" exceeds the maximum of ${MAX_LANE_COUNT}, using ${MAX_LANE_COUNT}`,
     );
     return MAX_LANE_COUNT;
   }
@@ -273,7 +275,7 @@ async function fanOutAcrossLanes(
   runDate: string,
 ): Promise<FanOutResult> {
   const regions = await RegionDriver.getAllRegionIds(context);
-  const lanes = assignLanesRoundRobin(regions, getLaneCount());
+  const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
 
   const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
     connectionString,

@@ -1243,12 +1243,16 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
       process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = invalidValue;
       const { handleStart } = await import('./sync-trustee-case-appointments');
       const invocationContext = makeInvocationContext();
+      const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+      vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
+        logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
+      );
       const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03', '04', '05', '06']);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       await handleStart({}, invocationContext);
 
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS',
         expect.stringContaining(`Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${invalidValue}"`),
       );
       // 6 regions, so any lane count other than 3 would produce a different send count
@@ -1261,12 +1265,18 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const regions = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
+      logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
+    );
     const { mockSendMessage } = await setupFanOutMocks(regions);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await handleStart({}, invocationContext);
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('exceeds the maximum of 10'));
+    expect(logger.warn).toHaveBeenCalledWith(
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      expect.stringContaining('exceeds the maximum of 10'),
+    );
     expect(mockSendMessage).toHaveBeenCalledTimes(10);
   });
 });
