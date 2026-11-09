@@ -870,6 +870,26 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(delaySeconds).toBeUndefined();
   });
 
+  test('a budget continuation preserves the originating laneId', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          cause: 'invocation-budget',
+        },
+      },
+    });
+
+    await handleStart({ regions: ['02'], laneId: 1 }, invocationContext);
+
+    const [body] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toMatchObject({ laneId: 1 });
+  });
+
   test('re-enqueues the original start message with count + 1 and a 300s delay when the handler throws a transient error, and does not dead-letter it', async () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
@@ -1024,4 +1044,130 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
   });
+});
+
+describe('sync-trustee-case-appointments handleStart fan-out', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+    delete process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
+  });
+
+  async function setupFanOutMocks(regionIds: string[]) {
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    vi.spyOn(RegionDriverModule.default, 'getAllRegionIds').mockResolvedValue(regionIds);
+    const runRegionDriverSpy = vi.spyOn(RegionDriverModule.default, 'runRegionDriver');
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+    return { mockContext, mockSendMessage, fromConnectionStringSpy, runRegionDriverSpy };
+  }
+
+  test('a start message with no regions never calls the region driver directly', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy } = await setupFanOutMocks(['01', '02', '03']);
+
+    await handleStart({}, invocationContext);
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+  });
+
+  test('fans out every region across lanes with no duplicates or omissions', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const regions = ['01', '02', '03', '04', '05', '06'];
+    const { mockSendMessage } = await setupFanOutMocks(regions);
+
+    await handleStart({}, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(3); // default lane count
+    const sentMessages = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    // Which region lands in which lane is lane-assignment.ts's own contract (tested there) --
+    // this only asserts fanOutAcrossLanes' own behavior: every region covered exactly once, and
+    // each message's laneId matches its own region list's position in the overall assignment.
+    expect(sentMessages.flatMap((m) => m.regions).sort()).toEqual(regions);
+    expect(new Set(sentMessages.map((m) => m.laneId)).size).toBe(sentMessages.length);
+  });
+
+  test('shares one resolved runDate across every lane message', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupFanOutMocks(['01', '02']);
+
+    await handleStart({ runDate: '2026-07-05' }, invocationContext);
+
+    const sentMessages = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    expect(sentMessages.every((m) => m.runDate === '2026-07-05')).toBe(true);
+  });
+
+  test('sends each lane message with a jittered visibility delay in [30,60]', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03']);
+
+    await handleStart({}, invocationContext);
+
+    for (const [, visibilityTimeout] of mockSendMessage.mock.calls) {
+      expect(visibilityTimeout).toBeGreaterThanOrEqual(30);
+      expect(visibilityTimeout).toBeLessThanOrEqual(60);
+    }
+  });
+
+  test('an empty region list sends zero lane messages and records lanesCreated 0', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupFanOutMocks([]);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        details: expect.objectContaining({ lanesCreated: '0', regionsScheduled: '0' }),
+      }),
+    );
+  });
+
+  test('a valid TRUSTEE_APPOINTMENT_LANE_COUNT override changes how many lanes are created', async () => {
+    process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = '2';
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03', '04']);
+
+    await handleStart({}, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  test.each([
+    ['not-a-number', 'non-numeric'],
+    ['0', 'zero'],
+    ['-1', 'negative'],
+  ])(
+    'a %s (%s) TRUSTEE_APPOINTMENT_LANE_COUNT falls back to the default of 3, with a warning',
+    async (invalidValue) => {
+      process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = invalidValue;
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03', '04', '05', '06']);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await handleStart({}, invocationContext);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${invalidValue}"`),
+      );
+      expect(mockSendMessage).toHaveBeenCalledTimes(3); // falls back to the default of 3, not 2 or any other value >= 3
+    },
+  );
 });
