@@ -269,7 +269,6 @@ describe('UserAccessUseCase', () => {
       role: CamsRole.TrialAttorney,
       regionId: MANHATTAN.regionId,
       officeCode: MANHATTAN.officeCode,
-      reason: '  New hire in Manhattan  ',
     };
 
     function spyOnWrites() {
@@ -337,7 +336,7 @@ describe('UserAccessUseCase', () => {
           officeCode: MANHATTAN.officeCode,
           active: true,
         },
-        reason: 'New hire in Manhattan',
+        replacedByAssignmentId: null,
       };
 
       expect(created).toBe(true);
@@ -360,7 +359,7 @@ describe('UserAccessUseCase', () => {
             regionId: MANHATTAN.regionId,
             officeCode: MANHATTAN.officeCode,
             performedBy: performer.id,
-            reason: 'New hire in Manhattan',
+            replacedByAssignmentId: '',
           }),
         }),
         undefined,
@@ -432,7 +431,6 @@ describe('UserAccessUseCase', () => {
     });
 
     test.each([
-      { case: 'an invalid request', change: { reason: '   ' }, message: /reason is required/ },
       {
         case: 'a user who is not a CAMS user',
         change: { userId: 'stranger' },
@@ -515,7 +513,7 @@ describe('UserAccessUseCase', () => {
       expect(attemptedAudit).toEqual(
         expect.objectContaining({
           assignmentId: result.permission.id,
-          reason: 'New hire in Manhattan',
+          replacedByAssignmentId: null,
         }),
       );
       expect(errorSpy).toHaveBeenCalledWith(
@@ -709,7 +707,7 @@ describe('UserAccessUseCase', () => {
               officeCode: replaced.officeCode,
               active: false,
             },
-            reason: 'Replaced by Region 2, All: New hire in Manhattan',
+            replacedByAssignmentId: result.permission.id,
           })),
         );
         expect(traceSpy).toHaveBeenCalledTimes(3); // one CREATED, two DEACTIVATED
@@ -720,21 +718,18 @@ describe('UserAccessUseCase', () => {
           case: 'a narrower grant replaces the region-wide one',
           held: () => scopedAssignmentFor('user-a', MANHATTAN.regionId),
           grant: {},
-          label: 'Region 2, Manhattan',
         },
         {
           case: 'a narrower grant replaces the national one',
           held: () => scopedAssignmentFor('user-a', null),
           grant: {},
-          label: 'Region 2, Manhattan',
         },
         {
           case: 'a national grant replaces a region-wide one',
           held: () => scopedAssignmentFor('user-a', '3'),
           grant: NATIONAL,
-          label: 'All regions',
         },
-      ])('should replace overlapping permissions: $case', async ({ held, grant, label }) => {
+      ])('should replace overlapping permissions: $case', async ({ held, grant }) => {
         spyOnMembers();
         const existing = held();
         spyOnHeld([existing]);
@@ -744,9 +739,9 @@ describe('UserAccessUseCase', () => {
         const { result } = await useCase.grantPermission(context, { ...request, ...grant });
 
         expect(result.replaced.map((p) => p.id)).toEqual([existing.id]);
-        expect(auditWrites(createSpy).find((a) => a.action === 'DEACTIVATED')?.reason).toEqual(
-          `Replaced by ${label}: New hire in Manhattan`,
-        );
+        expect(
+          auditWrites(createSpy).find((a) => a.action === 'DEACTIVATED')?.replacedByAssignmentId,
+        ).toEqual(result.permission.id);
       });
 
       test('should finish replacing overlapping permissions after another grant wrote the same permission', async () => {

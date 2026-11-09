@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import TextArea from '@/lib/components/uswds/TextArea';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
@@ -17,7 +16,6 @@ import {
   ALL_SCOPE,
   grantableRoles,
   PermissionScope,
-  ROLE_ASSIGNMENT_REASON_MAX_LENGTH,
   RoleAssignmentGrantRequest,
   scopeLabel,
   UserRoleAssignment,
@@ -41,9 +39,19 @@ const ROLE_OPTIONS: ComboOption[] = grantableRoles
 
 type ScopeOption = ComboOption & { scope: { regionId: string; officeCode: string } };
 
+// The picker uses the ALL_SCOPE sentinel for "every region/office"; scopeLabel expects null.
+function labelFor(regionId: string, officeCode: string, officeName?: string): string {
+  const scope = {
+    regionId: regionId === ALL_SCOPE ? null : regionId,
+    officeCode: officeCode === ALL_SCOPE ? null : officeCode,
+  };
+  return scopeLabel(scope, officeName);
+}
+
 /**
- * "All regions", then each region in number order: "N - All offices" when the region has more than
- * one office, followed by its offices by name. Each option carries the grant's path segments.
+ * "All Regions", then each region in number order: "Region N - All Offices" when the region has
+ * more than one office, followed by its offices by name. Each option carries the grant's path
+ * segments. Labels share scopeLabel with the replaced-permission alert, so the two always agree.
  */
 function toScopeOptions(offices: UstpOfficeDetails[]): ScopeOption[] {
   const byRegion = new Map<string, UstpOfficeDetails[]>();
@@ -56,7 +64,7 @@ function toScopeOptions(offices: UstpOfficeDetails[]): ScopeOption[] {
   const options: ScopeOption[] = [
     {
       value: ALL_SCOPE,
-      label: 'All regions',
+      label: labelFor(ALL_SCOPE, ALL_SCOPE),
       scope: { regionId: ALL_SCOPE, officeCode: ALL_SCOPE },
     },
   ];
@@ -67,14 +75,14 @@ function toScopeOptions(offices: UstpOfficeDetails[]): ScopeOption[] {
     if (regionOffices.length > 1) {
       options.push({
         value: `region-${regionId}`,
-        label: `${regionId} - All offices`,
+        label: labelFor(regionId, ALL_SCOPE),
         scope: { regionId, officeCode: ALL_SCOPE },
       });
     }
     for (const office of regionOffices) {
       options.push({
         value: office.officeCode,
-        label: `${regionId} - ${office.officeName}`,
+        label: labelFor(regionId, office.officeCode, office.officeName),
         scope: { regionId, officeCode: office.officeCode },
       });
     }
@@ -92,7 +100,6 @@ function successMessage(
   if (replaced.length === 0) return added;
   const label = (scope: PermissionScope) =>
     scopeLabel(scope, scope.officeCode ? officeNames.get(scope.officeCode) : undefined);
-  // Wording for three or more replaced permissions isn't designed yet (Katie Cissell to confirm).
   const list = new Intl.ListFormat('en-US', { type: 'conjunction' }).format(replaced.map(label));
   const noun = replaced.length === 1 ? 'permission was' : 'permissions were';
   return `${added} Their existing ${list} ${noun} replaced by ${label(permission)}.`;
@@ -113,7 +120,6 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
     const [user, setUser] = useState<CamsUserReference | null>(null);
     const [role, setRole] = useState<CamsRoleType | null>(null);
     const [scopeValue, setScopeValue] = useState<string | null>(null);
-    const [reason, setReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [saveFailed, setSaveFailed] = useState(false);
 
@@ -127,9 +133,8 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
     const scope = isSuperUser
       ? { regionId: ALL_SCOPE, officeCode: ALL_SCOPE }
       : scopeOptions.find((option) => option.value === scopeValue)?.scope;
-    const trimmedReason = reason.trim();
     const pending =
-      user && role && scope && trimmedReason
+      user && role && scope
         ? {
             user,
             request: {
@@ -137,7 +142,6 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
               role,
               regionId: scope.regionId,
               officeCode: scope.officeCode,
-              reason: trimmedReason,
             },
           }
         : null;
@@ -152,7 +156,6 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
       officeRef.current?.clearSelections();
       setRole(null);
       setScopeValue(null);
-      setReason('');
       setIsSaving(false);
       setSaveFailed(false);
     }
@@ -272,14 +275,6 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
                 onUpdateSelection={(selections) => setScopeValue(selections[0]?.value ?? null)}
               />
             )}
-            <TextArea
-              id={`${modalId}-reason`}
-              label="Reason"
-              required
-              maxLength={ROLE_ASSIGNMENT_REASON_MAX_LENGTH}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
           </div>
         }
       />

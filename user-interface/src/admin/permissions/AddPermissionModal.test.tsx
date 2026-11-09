@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -14,27 +14,25 @@ const SUBMIT_BTN = `button-${MODAL_ID}-submit-button`;
 const CANCEL_BTN = `button-${MODAL_ID}-cancel-button`;
 const ROLE_ID = `${MODAL_ID}-role`;
 const OFFICE_ID = `${MODAL_ID}-office`;
-const REASON_ID = `textarea-${MODAL_ID}-reason`;
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
 const SEATTLE = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_18_Office_Seattle')!;
 
 const SARAH = { id: 'okta-sarah', name: 'Sarah Williams' };
-const REASON = 'New hire - Trial Attorney for Manhattan.';
 
 // Scopes in the order the modal should list them: every region, then each region in number order
 // with "All offices" (only when it has more than one office) before its offices by name.
 const SCOPE_LABELS_IN_ORDER = [
-  'All regions',
-  '2 - All offices',
-  '2 - Buffalo',
-  '2 - Manhattan',
-  '18 - Seattle',
+  'All Regions',
+  'Region 2 - All Offices',
+  'Region 2 - Buffalo',
+  'Region 2 - Manhattan',
+  'Region 18 - Seattle',
 ];
-const MANHATTAN_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('2 - Manhattan');
-const REGION_2_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('2 - All offices');
-const NATIONAL_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('All regions');
+const MANHATTAN_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('Region 2 - Manhattan');
+const REGION_2_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('Region 2 - All Offices');
+const NATIONAL_INDEX = SCOPE_LABELS_IN_ORDER.indexOf('All Regions');
 const ROLE_LABELS_IN_ORDER = [
   'Auditor',
   'Case Assignment Manager',
@@ -56,7 +54,6 @@ const GRANTED: { data: RoleAssignmentGrantResult } = {
 };
 const roleInput = () => document.querySelector(`#${ROLE_ID}-combo-box-input`);
 const officeInput = () => document.querySelector(`#${OFFICE_ID}-combo-box-input`);
-const reasonInput = () => document.querySelector(`#${REASON_ID}`);
 
 describe('AddPermissionModal', () => {
   let modalRef: React.RefObject<AddPermissionModalRef | null>;
@@ -92,16 +89,13 @@ describe('AddPermissionModal', () => {
     );
   }
 
-  async function fillIn({ role = true, office = true, reason = REASON as string | null } = {}) {
+  async function fillIn({ role = true, office = true } = {}) {
     if (role) await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, TRIAL_ATTORNEY_INDEX);
     if (office) {
       await TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, MANHATTAN_INDEX);
       // ComboBox returns focus to its input in a requestAnimationFrame after a selection. Until
       // then focus sits on the clicked option, whose keydown handler consumes Escape.
       await waitFor(() => expect(officeInput()).toHaveFocus());
-    }
-    if (reason !== null) {
-      fireEvent.change(document.querySelector(`#${REASON_ID}`)!, { target: { value: reason } });
     }
   }
 
@@ -125,15 +119,6 @@ describe('AddPermissionModal', () => {
     expect(optionLabels(OFFICE_ID)).toEqual(SCOPE_LABELS_IN_ORDER);
   });
 
-  test('should have a required reason of at most 1000 characters', async () => {
-    await openFor();
-
-    const reason = document.querySelector(`#${REASON_ID}`)!;
-    expect(reason.tagName).toBe('TEXTAREA');
-    expect(reason).toHaveAttribute('maxlength', '1000');
-    expect(reason).toBeRequired();
-  });
-
   test.each([
     {
       case: 'no role',
@@ -144,16 +129,6 @@ describe('AddPermissionModal', () => {
       case: 'no region and office',
       fields: { office: false },
       complete: () => TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, MANHATTAN_INDEX),
-    },
-    {
-      case: 'no reason',
-      fields: { reason: null },
-      complete: async () => fireEvent.change(reasonInput()!, { target: { value: REASON } }),
-    },
-    {
-      case: 'a whitespace-only reason',
-      fields: { reason: '   ' },
-      complete: async () => fireEvent.change(reasonInput()!, { target: { value: REASON } }),
     },
   ])('should keep Save disabled with $case until it is filled in', async ({ fields, complete }) => {
     await openFor();
@@ -187,7 +162,7 @@ describe('AddPermissionModal', () => {
   test('should save the grant, close, announce success and tell the caller', async () => {
     const postSpy = vi.spyOn(Api2, 'grantPermission').mockResolvedValue(GRANTED);
     await openFor();
-    await fillIn({ reason: `  ${REASON}  ` });
+    await fillIn();
 
     await userEvent.click(submitButton());
 
@@ -197,7 +172,6 @@ describe('AddPermissionModal', () => {
       role: CamsRole.TrialAttorney,
       regionId: MANHATTAN.regionId,
       officeCode: MANHATTAN.officeCode,
-      reason: REASON,
     });
     expect(globalAlert.success).toHaveBeenCalledWith(
       'New permission successfully added to Sarah Williams.',
@@ -241,9 +215,8 @@ describe('AddPermissionModal', () => {
     );
     expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     await waitFor(() => expect(submitButton()).toBeEnabled());
-    expect(reasonInput()).toHaveValue(REASON);
     expect(roleInput()).toHaveValue('Trial Attorney');
-    expect(officeInput()).toHaveValue('2 - Manhattan');
+    expect(officeInput()).toHaveValue('Region 2 - Manhattan');
     expect(globalAlert.success).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
   });
@@ -302,7 +275,6 @@ describe('AddPermissionModal', () => {
     await openFor({ id: 'okta-alex', name: 'Alex Brown' });
 
     expect(screen.getByRole('heading', { name: 'Add Permission to Alex Brown' })).toBeVisible();
-    expect(reasonInput()).toHaveValue('');
     expect(roleInput()).toHaveValue('');
     expect(officeInput()).toHaveValue('');
     expect(
@@ -428,7 +400,6 @@ describe('AddPermissionModal', () => {
       await openFor();
       await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, TRIAL_ATTORNEY_INDEX);
       await TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, index);
-      fireEvent.change(reasonInput()!, { target: { value: REASON } });
 
       await save();
 
@@ -445,8 +416,6 @@ describe('AddPermissionModal', () => {
       await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, SUPER_USER_INDEX);
 
       expect(officeField()).not.toBeInTheDocument();
-      expect(submitButton()).toBeDisabled();
-      fireEvent.change(reasonInput()!, { target: { value: REASON } });
       expect(submitButton()).toBeEnabled();
       await save();
       expect(spy).toHaveBeenCalledWith({
@@ -454,7 +423,6 @@ describe('AddPermissionModal', () => {
         role: CamsRole.SuperUser,
         regionId: 'all',
         officeCode: 'all',
-        reason: REASON,
       });
     });
 
@@ -474,7 +442,6 @@ describe('AddPermissionModal', () => {
       await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, SUPER_USER_INDEX);
 
       await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, TRIAL_ATTORNEY_INDEX);
-      fireEvent.change(reasonInput()!, { target: { value: REASON } });
 
       expect(officeField()).toBeInTheDocument();
       expect(officeInput()).toHaveValue('');
@@ -486,7 +453,7 @@ describe('AddPermissionModal', () => {
       {
         replaced: [{ regionId: '2', officeCode: MANHATTAN.officeCode }],
         message:
-          'New permission successfully added to Sarah Williams. Their existing Region 2, Manhattan permission was replaced by Region 2, All.',
+          'New permission successfully added to Sarah Williams. Their existing Region 2 - Manhattan permission was replaced by Region 2 - All Offices.',
       },
       {
         replaced: [
@@ -494,17 +461,17 @@ describe('AddPermissionModal', () => {
           { regionId: '2', officeCode: MANHATTAN.officeCode },
         ],
         message:
-          'New permission successfully added to Sarah Williams. Their existing Region 2, Buffalo and Region 2, Manhattan permissions were replaced by Region 2, All.',
+          'New permission successfully added to Sarah Williams. Their existing Region 2 - Buffalo and Region 2 - Manhattan permissions were replaced by Region 2 - All Offices.',
       },
       {
-        // Not designed yet: Katie Cissell to confirm the wording for three or more.
+        // UX-confirmed wording for three or more, 2026-11-09: the same conjunction list.
         replaced: [
           { regionId: '2', officeCode: BUFFALO.officeCode },
           { regionId: '2', officeCode: MANHATTAN.officeCode },
           { regionId: '18', officeCode: SEATTLE.officeCode },
         ],
         message:
-          'New permission successfully added to Sarah Williams. Their existing Region 2, Buffalo, Region 2, Manhattan, and Region 18, Seattle permissions were replaced by Region 2, All.',
+          'New permission successfully added to Sarah Williams. Their existing Region 2 - Buffalo, Region 2 - Manhattan, and Region 18 - Seattle permissions were replaced by Region 2 - All Offices.',
       },
     ])(
       'should name $replaced.length replaced permissions in the alert',
@@ -513,7 +480,6 @@ describe('AddPermissionModal', () => {
         await openFor();
         await TestingUtilities.toggleComboBoxItemSelection(ROLE_ID, TRIAL_ATTORNEY_INDEX);
         await TestingUtilities.toggleComboBoxItemSelection(OFFICE_ID, REGION_2_INDEX);
-        fireEvent.change(reasonInput()!, { target: { value: REASON } });
 
         await save();
 

@@ -65,18 +65,11 @@ export class UserAccessController implements CamsController {
     }
   }
 
-  /** PUT users/:userId/permissions/:role/:regionId/:officeCode, with { reason } in the body. */
+  /** PUT users/:userId/permissions/:role/:regionId/:officeCode. */
   private async grantPermission(context: ApplicationContext) {
     const { userId, role, regionId, officeCode } = context.request.params;
-    const body = context.request.body as { reason?: unknown } | undefined;
     // The use case validates the request before using it.
-    const request = {
-      userId,
-      role,
-      regionId,
-      officeCode,
-      reason: body?.reason,
-    } as RoleAssignmentGrantRequest;
+    const request = { userId, role, regionId, officeCode } as RoleAssignmentGrantRequest;
     const { result, created } = await this.useCase.grantPermission(context, request);
     return httpSuccess({ statusCode: created ? 201 : 200, body: { data: result } });
   }

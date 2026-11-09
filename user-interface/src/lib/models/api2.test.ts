@@ -729,11 +729,10 @@ describe('_Api2 functions', async () => {
       role: CamsRole.TrialAttorney,
       regionId: '2',
       officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-      reason: 'New hire',
     });
     expect(putSpy).toHaveBeenCalledWith(
       '/user-access/users/%3D%3DMOCKUSER%3Duser%40fake.com%3D%3D/permissions/TrialAttorney/2/USTP_CAMS_Region_2_Office_Manhattan',
-      { reason: 'New hire' },
+      {},
       {},
     );
   });

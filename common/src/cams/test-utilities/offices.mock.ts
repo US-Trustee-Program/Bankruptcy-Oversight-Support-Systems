@@ -3,6 +3,38 @@ import { UstpDivision, UstpOfficeDetails } from '../offices';
 import { COURT_DIVISIONS } from './courts.mock';
 
 /**
+ * A real U.S. Trustee field-office city for each region, from
+ * https://www.justice.gov/ust/us-trustee-regions-and-offices (read 2026-11-09). Used only to name
+ * the one generated catch-all office per region below; it stands in for "this region's divisions
+ * not already covered by a LEGACY_MOCK_OFFICES entry," not a specific real office, so each pick
+ * avoids the city a legacy entry for that region already uses (2: Manhattan, Buffalo; 3: Wilmington;
+ * 18: Seattle).
+ */
+const REGION_OFFICE_CITY: Record<string, string> = {
+  '1': 'Boston',
+  '2': 'Albany',
+  '3': 'Philadelphia',
+  '4': 'Alexandria',
+  '5': 'New Orleans',
+  '6': 'Dallas',
+  '7': 'Houston',
+  '8': 'Memphis',
+  '9': 'Cleveland',
+  '10': 'Indianapolis',
+  '11': 'Chicago',
+  '12': 'Des Moines',
+  '13': 'Kansas City',
+  '14': 'Phoenix',
+  '15': 'San Diego',
+  '16': 'Los Angeles',
+  '17': 'San Francisco',
+  '18': 'Spokane',
+  '19': 'Denver',
+  '20': 'Wichita',
+  '21': 'Atlanta',
+};
+
+/**
  * Generate UstpOfficeDetails from CourtDivisionDetails, grouped by region and
  * group designator. Produces one office per region with groups for each court.
  */
@@ -44,7 +76,7 @@ function buildMockOfficesFromCourtDivisions(
   return Array.from(regionMap.values()).map((region) => ({
     officeCode: `USTP_CAMS_Region_${region.regionId}_Office_Generated`,
     idpGroupName: `USTP CAMS Region ${region.regionId} Office Generated`,
-    officeName: `Region ${region.regionId}`,
+    officeName: REGION_OFFICE_CITY[region.regionId] ?? `Region ${region.regionId}`,
     groups: Array.from(region.groups.values()),
     regionId: region.regionId,
     regionName: region.regionName,

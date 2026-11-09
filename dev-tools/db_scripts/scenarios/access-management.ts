@@ -78,7 +78,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     performedAt: SEEDED_AT,
     previousState: null,
     newState: { role: assignment.role, regionId: null, officeCode: null, active: true },
-    reason: 'Seeded Super User for local/dev testing',
+    replacedByAssignmentId: null,
   };
 
   return [

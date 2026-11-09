@@ -6,7 +6,6 @@ import {
   inactiveKeyFor,
   scopeLabel,
   scopesOverlap,
-  ROLE_ASSIGNMENT_REASON_MAX_LENGTH,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
 } from './user-access';
@@ -39,17 +38,10 @@ describe('user-access', () => {
       role: CamsRole.TrialAttorney,
       regionId: '2',
       officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-      reason: 'New hire in the Manhattan office',
     };
 
     test('should accept a complete request', () => {
       expect(validateObject(roleAssignmentGrantRequestSpec, validRequest)).toEqual(VALID);
-    });
-
-    test('should accept a reason at the maximum length once trimmed', () => {
-      const reason = `  ${'x'.repeat(ROLE_ASSIGNMENT_REASON_MAX_LENGTH)}  `;
-      const request = { ...validRequest, reason };
-      expect(validateObject(roleAssignmentGrantRequestSpec, request)).toEqual(VALID);
     });
 
     test.each(CamsRoles)('should accept the role %s', (role) => {
@@ -61,8 +53,6 @@ describe('user-access', () => {
     const ROLE_REQUIRED = 'A valid role is required';
     const REGION_REQUIRED = 'A region is required';
     const OFFICE_REQUIRED = 'An office is required';
-    const REASON_REQUIRED = 'A reason is required';
-    const REASON_TOO_LONG = `Max length ${ROLE_ASSIGNMENT_REASON_MAX_LENGTH} characters`;
 
     test.each([
       { case: 'an empty userId', field: 'userId', value: '', expected: USER_REQUIRED },
@@ -87,16 +77,6 @@ describe('user-access', () => {
         expected: OFFICE_REQUIRED,
       },
       { case: 'a numeric officeCode', field: 'officeCode', value: 123, expected: OFFICE_REQUIRED },
-      { case: 'an empty reason', field: 'reason', value: '', expected: REASON_REQUIRED },
-      { case: 'a blank reason', field: 'reason', value: '   ', expected: REASON_REQUIRED },
-      { case: 'a missing reason', field: 'reason', value: undefined, expected: REASON_REQUIRED },
-      { case: 'an array reason', field: 'reason', value: ['why'], expected: REASON_REQUIRED },
-      {
-        case: 'a reason over the maximum length',
-        field: 'reason',
-        value: 'x'.repeat(ROLE_ASSIGNMENT_REASON_MAX_LENGTH + 1),
-        expected: REASON_TOO_LONG,
-      },
       { case: 'an unknown role', field: 'role', value: 'NotARole', expected: ROLE_REQUIRED },
       { case: 'a missing role', field: 'role', value: undefined, expected: ROLE_REQUIRED },
       {
@@ -158,19 +138,19 @@ describe('user-access', () => {
     });
 
     test.each([
-      { name: 'national', scope: NATIONAL, officeName: undefined, label: 'All regions' },
-      { name: 'a region', scope: REGION_2, officeName: undefined, label: 'Region 2, All' },
+      { name: 'national', scope: NATIONAL, officeName: undefined, label: 'All Regions' },
+      { name: 'a region', scope: REGION_2, officeName: undefined, label: 'Region 2 - All Offices' },
       {
         name: 'an office with its name',
         scope: MANHATTAN,
         officeName: 'Manhattan',
-        label: 'Region 2, Manhattan',
+        label: 'Region 2 - Manhattan',
       },
       {
         name: 'an office without a name',
         scope: MANHATTAN,
         officeName: undefined,
-        label: 'Region 2, USTP_CAMS_Region_2_Office_Manhattan',
+        label: 'Region 2 - USTP_CAMS_Region_2_Office_Manhattan',
       },
     ])('should label $name as "$label"', ({ scope, officeName, label }) => {
       expect(scopeLabel(scope, officeName)).toEqual(label);

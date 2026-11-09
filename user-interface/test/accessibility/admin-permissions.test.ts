@@ -66,11 +66,8 @@ test.describe('Administration > Permissions', () => {
       await option.click();
       await expect(page.locator(`#add-permission-modal-${field}-item-list`)).toBeHidden();
     }
-    // The fake API rejects a grant with this reason (mock-api2.ts grantPermission).
-    const reason = page.locator('#textarea-add-permission-modal-reason');
-    await reason.click();
-    await reason.fill('Fail this save');
-    await expect(reason).toHaveValue('Fail this save');
+    // The fake API rejects any grant to this user (mock-api2.ts grantPermission), who is always
+    // the first row in the CAMS Users table.
     const save = page.getByTestId('button-add-permission-modal-submit-button');
     await expect(save).toBeEnabled();
     await save.click();

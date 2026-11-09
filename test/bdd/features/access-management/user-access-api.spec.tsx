@@ -38,9 +38,6 @@ const SARAH: CamsUserReference = {
 const ALEX: CamsUserReference = { id: 'okta-alex', name: 'Alex Brown', email: 'alex@example.com' };
 const NOT_A_CAMS_USER = 'okta-former-employee';
 
-const GRANT_REASON =
-  'New hire - Trial Attorney for Manhattan. Request forwarded by supervisor John Davis.';
-
 function permission(
   userId: string,
   office: { regionId: string; officeCode: string },
@@ -78,7 +75,6 @@ function api(session: CamsSession, path: string, init: RequestInit = {}) {
 function grant(
   session: CamsSession,
   {
-    reason = GRANT_REASON,
     role = CamsRole.TrialAttorney as CamsRoleType,
     regionId = MANHATTAN.regionId,
     officeCode = MANHATTAN.officeCode,
@@ -87,7 +83,7 @@ function grant(
   const path = ['users', SARAH.id, 'permissions', role, regionId, officeCode]
     .map(encodeURIComponent)
     .join('/');
-  return api(session, path, { method: 'PUT', body: JSON.stringify({ reason }) });
+  return api(session, path, { method: 'PUT', body: JSON.stringify({}) });
 }
 
 function setupFor(session: CamsSession) {
@@ -175,9 +171,9 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
    * Scenario: IT SuperUser grants Trial Attorney in the Manhattan office
    *
    * GIVEN Maria is signed in and Sarah Williams is a CAMS user
-   * WHEN Maria grants Sarah Trial Attorney in Manhattan with a reason
+   * WHEN Maria grants Sarah Trial Attorney in Manhattan
    * THEN the grant is saved, assigned by Maria, with no expiry, and active
-   * AND an audit record with action CREATED, performed by Maria, with the reason, is saved
+   * AND an audit record with action CREATED, performed by Maria, is saved
    * AND Sarah's row shows the new permission
    * (The Log Analytics event for the grant is covered by the use case unit tests.)
    */
@@ -214,25 +210,13 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
         action: 'CREATED',
         performedBy: maria.user.id,
         performedAt: assignment.assignedAt,
-        reason: GRANT_REASON,
+        replacedByAssignmentId: null,
       }),
     ]);
 
     const users = await (await api(maria, 'users')).json();
     const sarah = users.data.find((user: CamsUserReference) => user.id === SARAH.id);
     expect(sarah.permissions).toEqual([assignment]);
-  });
-
-  test('should reject an invalid grant with a 400 and save nothing', async () => {
-    const maria = TestSessions.superUser();
-    const state = await setupFor(maria).withCamsUsers([SARAH]).setUpBackend();
-
-    const response = await grant(maria, { reason: '   ' });
-
-    expect(response.status).toBe(400);
-    expect((await response.json()).message).toMatch(/reason is required/i);
-    expect(state.getRoleAssignments()).toEqual([]);
-    expect(state.getRoleAssignmentAudits()).toEqual([]);
   });
 
   /**
@@ -419,7 +403,7 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
           officeCode: MANHATTAN.officeCode,
           performedBy: maria.user.id,
           performedAt: assignment.assignedAt,
-          reason: GRANT_REASON,
+          replacedByAssignmentId: null,
         }),
       },
     );
@@ -524,10 +508,13 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
           expect.objectContaining({
             assignmentId: manhattan.id,
             performedBy: maria.user.id,
-            reason: `Replaced by Region 2, All: ${GRANT_REASON}`,
+            replacedByAssignmentId: body.data.permission.id,
             newState: expect.objectContaining({ active: false }),
           }),
-          expect.objectContaining({ assignmentId: buffalo.id }),
+          expect.objectContaining({
+            assignmentId: buffalo.id,
+            replacedByAssignmentId: body.data.permission.id,
+          }),
         ]),
       );
     });

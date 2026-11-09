@@ -4,7 +4,6 @@ import {
   ALL_SCOPE,
   PermissionScope,
   RoleAssignmentGrantResult,
-  scopeLabel,
   scopesOverlap,
   CamsUsersPredicate,
   CamsUserWithPermissions,
@@ -61,7 +60,7 @@ function badRequest(message: string) {
 function resolveScope(
   request: RoleAssignmentGrantRequest,
   offices: UstpOfficeDetails[],
-): { scope: PermissionScope; officeName?: string } {
+): { scope: PermissionScope } {
   const everyRegion = request.regionId === ALL_SCOPE;
   const everyOffice = request.officeCode === ALL_SCOPE;
   if (request.role === CamsRole.SuperUser) {
@@ -81,10 +80,7 @@ function resolveScope(
   const office = offices.find((o) => o.officeCode === request.officeCode);
   if (!office) throw badRequest('The office does not exist.');
   if (office.regionId !== request.regionId) throw badRequest('The office is not in that region.');
-  return {
-    scope: { regionId: office.regionId, officeCode: office.officeCode },
-    officeName: office.officeName,
-  };
+  return { scope: { regionId: office.regionId, officeCode: office.officeCode } };
 }
 
 function stateOf(assignment: UserRoleAssignment) {
@@ -103,7 +99,7 @@ function auditEntry(
   newState: RoleAssignmentAuditEntry['newState'],
   performer: CamsUserReference,
   performedAt: string,
-  reason: string,
+  replacedByAssignmentId: string | null,
 ): RoleAssignmentAuditEntry {
   // The top-level role and scope are read from the state so the two can't disagree.
   const { role, regionId, officeCode } = newState;
@@ -122,7 +118,7 @@ function auditEntry(
     performedAt,
     previousState,
     newState,
-    reason,
+    replacedByAssignmentId,
   };
 }
 
@@ -190,11 +186,10 @@ export class UserAccessUseCase {
     }
 
     const offices = await factory.getOfficesGateway(context).getOffices(context);
-    const { scope, officeName } = resolveScope(request, offices);
+    const { scope } = resolveScope(request, offices);
     const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
     const performer = getCamsUserReference(context.session.user);
     const now = new Date().toISOString();
-    const reason = request.reason.trim();
 
     let held = await this.assignmentRepository.findActiveByUserAndRole(member.id, request.role);
     let permission = held.find((p) => p.activeKey === activeKey);
@@ -223,7 +218,7 @@ export class UserAccessUseCase {
         created = true;
         await this.writeAudit(
           context,
-          auditEntry('CREATED', inserted, null, stateOf(inserted), performer, now, reason),
+          auditEntry('CREATED', inserted, null, stateOf(inserted), performer, now, null),
         );
       } else {
         // Another grant wrote the same permission between our read and our write.
@@ -236,7 +231,6 @@ export class UserAccessUseCase {
     }
 
     const replaced: UserRoleAssignment[] = [];
-    const replacedReason = `Replaced by ${scopeLabel(scope, officeName)}: ${reason}`;
     for (const overlapping of held) {
       if (overlapping.activeKey === activeKey || !scopesOverlap(overlapping, scope)) continue;
       let deactivated: UserRoleAssignment | null;
@@ -262,7 +256,7 @@ export class UserAccessUseCase {
           stateOf(deactivated),
           performer,
           now,
-          replacedReason,
+          permission.id,
         ),
       );
     }
@@ -329,7 +323,7 @@ export class UserAccessUseCase {
             performedBy: audit.performedBy,
             performedByName: audit.performedByName,
             performedAt: audit.performedAt,
-            reason: audit.reason,
+            replacedByAssignmentId: audit.replacedByAssignmentId ?? '',
           },
           measurements: {},
         },

@@ -156,17 +156,16 @@ describe('UserAccessController', () => {
     beforeEach(() => {
       context.request.method = 'PUT';
       context.request.params = { ...GRANT_PARAMS };
-      context.request.body = { reason: 'New hire', userId: 'ignored', role: 'ignored' };
     });
 
-    test('should grant the permission named by the path, with the reason from the body', async () => {
+    test('should grant the permission named by the path', async () => {
       const spy = vi
         .spyOn(UserAccessUseCase.prototype, 'grantPermission')
         .mockResolvedValue({ result: { permission, replaced: [] }, created: true });
 
       await handle();
 
-      expect(spy).toHaveBeenCalledWith(context, { ...GRANT_PARAMS, reason: 'New hire' });
+      expect(spy).toHaveBeenCalledWith(context, GRANT_PARAMS);
     });
 
     test.each([
@@ -187,26 +186,15 @@ describe('UserAccessController', () => {
       },
     );
 
-    test('should pass an absent body to the use case as a missing reason', async () => {
-      context.request.body = undefined;
-      const spy = vi
-        .spyOn(UserAccessUseCase.prototype, 'grantPermission')
-        .mockResolvedValue({ result: { permission, replaced: [] }, created: true });
-
-      await handle();
-
-      expect(spy).toHaveBeenCalledWith(context, { ...GRANT_PARAMS, reason: undefined });
-    });
-
     test('should pass through a 400 from the use case', async () => {
       vi.spyOn(UserAccessUseCase.prototype, 'grantPermission').mockRejectedValue(
-        new BadRequestError('USER-ACCESS-USE-CASE', { message: 'A reason is required.' }),
+        new BadRequestError('USER-ACCESS-USE-CASE', { message: 'A user is required.' }),
       );
 
       const error = await getTheThrownError(handle);
 
       expect(error).toEqual(
-        expect.objectContaining({ status: 400, message: 'A reason is required.' }),
+        expect.objectContaining({ status: 400, message: 'A user is required.' }),
       );
     });
   });

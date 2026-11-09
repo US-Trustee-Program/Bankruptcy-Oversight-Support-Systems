@@ -3231,8 +3231,10 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
 // A simplified copy of the server rules (scope checks, idempotent repeats, the overlap rule) for the
 // fake API only. The server, UserAccessUseCase.grantPermission, is the source of truth.
 async function grantPermission(request: RoleAssignmentGrantRequest) {
-  // Lets the accessibility tests show the modal's save-failed state.
-  if (request.reason === 'Fail this save') {
+  // Dedicated a11y-test trigger: granting Alex Adams (always the CAMS Users table's first row)
+  // always fails, so the accessibility suite can reach the modal's save-failed state. The picker
+  // only offers real, valid grants, so there's no other deterministic way to force a failure.
+  if (request.userId === 'mock-cams-user-alex-adams') {
     throw new Error('Unable to create role assignment.');
   }
   const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);

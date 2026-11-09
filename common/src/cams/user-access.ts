@@ -36,7 +36,9 @@ type RoleAssignmentState = {
 };
 
 /**
- * An append-only record of a change to a UserRoleAssignment.
+ * An append-only record of a change to a UserRoleAssignment. A DEACTIVATED entry's
+ * replacedByAssignmentId is the id of the permission that caused it (null for CREATED, and for a
+ * DEACTIVATED entry nothing replaced, which cannot currently happen).
  */
 export type RoleAssignmentAuditEntry = {
   documentType: 'ROLE_ASSIGNMENT_AUDIT';
@@ -53,23 +55,22 @@ export type RoleAssignmentAuditEntry = {
   performedAt: string;
   previousState: RoleAssignmentState | null;
   newState: RoleAssignmentState;
-  reason: string;
+  replacedByAssignmentId: string | null;
 };
 
 /** The path segment that stands for every region or every office in a grant. */
 export const ALL_SCOPE = 'all';
 
 /**
- * A grant, as sent to PUT /user-access/users/:userId/permissions/:role/:regionId/:officeCode with
- * the reason in the body. `regionId` and `officeCode` are ALL_SCOPE for every region or office.
- * Granting a permission the user already holds changes nothing.
+ * A grant, as sent to PUT /user-access/users/:userId/permissions/:role/:regionId/:officeCode.
+ * `regionId` and `officeCode` are ALL_SCOPE for every region or office. Granting a permission the
+ * user already holds changes nothing.
  */
 export type RoleAssignmentGrantRequest = {
   userId: string;
   role: CamsRoleType;
   regionId: string;
   officeCode: string;
-  reason: string;
 };
 
 /** The outcome of a grant: the permission the user now holds, and any it replaced. */
@@ -114,8 +115,6 @@ export function inactiveKeyFor(assignmentId: string): string {
   return `inactive|${assignmentId}`;
 }
 
-export const ROLE_ASSIGNMENT_REASON_MAX_LENGTH = 1000;
-
 // Every CAMS role can be granted. (CamsRoles already leaves out PrivilegedIdentityUser.)
 export const grantableRoles = [...CamsRoles];
 
@@ -139,10 +138,14 @@ export function scopesOverlap(a: PermissionScope, b: PermissionScope): boolean {
   return scopeContains(a, b) || scopeContains(b, a);
 }
 
-/** "All regions", "Region 2, All" or "Region 2, Manhattan" (the office code if no name is known). */
+/**
+ * "All Regions", "Region 2 - All Offices" or "Region 2 - Manhattan" (the office code if no name is
+ * known). Used for both the Region and Office picker and the replaced-permission alert, so the two
+ * always agree (UX-confirmed wording, 2026-11-09).
+ */
 export function scopeLabel(scope: PermissionScope, officeName?: string): string {
-  if (scope.regionId === null) return 'All regions';
-  return `Region ${scope.regionId}, ${scope.officeCode === null ? 'All' : (officeName ?? scope.officeCode)}`;
+  if (scope.regionId === null) return 'All Regions';
+  return `Region ${scope.regionId} - ${scope.officeCode === null ? 'All Offices' : (officeName ?? scope.officeCode)}`;
 }
 
 // Rejects non-strings, empty strings and whitespace-only strings.
@@ -153,10 +156,4 @@ export const roleAssignmentGrantRequestSpec: ValidationSpec<RoleAssignmentGrantR
   role: [V.isInSet<CamsRoleType>(grantableRoles, 'A valid role is required')],
   regionId: [V.matches(NOT_BLANK, 'A region is required')],
   officeCode: [V.matches(NOT_BLANK, 'An office is required')],
-  // The length limit applies to the trimmed reason, which is what gets stored.
-  reason: [
-    V.checkFirst(V.matches(NOT_BLANK, 'A reason is required')).then(
-      V.trimmed(V.maxLength(ROLE_ASSIGNMENT_REASON_MAX_LENGTH)),
-    ),
-  ],
 };
