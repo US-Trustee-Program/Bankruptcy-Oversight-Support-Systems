@@ -220,4 +220,40 @@ describe('UsersGroupManagement tests', () => {
     expect(pimSpy).not.toHaveBeenCalled();
     expect(user).toEqual(expected);
   });
+
+  test('should list an office once when the session and the elevation both grant it', async () => {
+    context.featureFlags['privileged-identity-management'] = true;
+    // A session built from permissions holds its own copy of the office object.
+    const idpUser: CamsUser = {
+      id: 'user-a',
+      name: 'Alice Adams',
+      roles: [CamsRole.TrialAttorney],
+      offices: [{ ...manhattanOffice }],
+    };
+    const pimUser: PrivilegedIdentityUser = {
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      id: idpUser.id,
+      userId: idpUser.id,
+      name: idpUser.name,
+      claims: {
+        groups: [
+          manhattanOffice.idpGroupName,
+          wilmingtonOffice.idpGroupName,
+          'USTP CAMS Trial Attorney',
+        ],
+      },
+      expires: unexpiredDate,
+    } as PrivilegedIdentityUser;
+
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id, {
+      idpUser,
+      pimUser,
+    });
+
+    expect(user.offices.map((office) => office.officeCode)).toEqual([
+      manhattanOffice.officeCode,
+      wilmingtonOffice.officeCode,
+    ]);
+    expect(user.roles).toEqual([CamsRole.TrialAttorney]);
+  });
 });

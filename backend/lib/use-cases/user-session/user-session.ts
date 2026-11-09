@@ -13,6 +13,8 @@ import { CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
+import { UserAccessUseCase } from '../user-access/user-access';
+import { SessionAccess } from '../user-access/session-access';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -68,6 +70,31 @@ export class UserSessionUseCase {
     }
   }
 
+  /**
+   * With cams-role-assignments on, roles and offices come only from the user's active permissions;
+   * the token's AD groups are ignored. A failed read denies the session (no AD fallback).
+   */
+  private async getAccess(
+    context: ApplicationContext,
+    userId: string,
+    groups: string[],
+  ): Promise<SessionAccess & { source: 'assignments' | 'ad-groups'; permissionCount?: number }> {
+    if (!context.featureFlags['cams-role-assignments']) {
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groups);
+      const roles = UsersGroupManagement.getRolesFromGroupNames(groups);
+      return { roles, offices, source: 'ad-groups' };
+    }
+    try {
+      const access = await new UserAccessUseCase(context).getSessionAccess(context, userId);
+      return { ...access, source: 'assignments' };
+    } catch (error) {
+      context.logger.error(MODULE_NAME, `SESSION_PERMISSIONS read failed: ${error.message}`, {
+        userId,
+      });
+      throw error;
+    }
+  }
+
   private async writeSession(context: ApplicationContext, session: CamsSession) {
     context.logger.debug(MODULE_NAME, 'Putting session in cache.');
     await this.sessionCacheRepository.upsert(session);
@@ -89,11 +116,11 @@ export class UserSessionUseCase {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
-      const offices = await UsersGroupManagement.getOfficesFromGroupNames(
+      const { roles, offices, source, permissionCount } = await this.getAccess(
         context,
+        camsUserReference.id,
         verifiedJwt.claims.groups || [],
       );
-      const roles = UsersGroupManagement.getRolesFromGroupNames(verifiedJwt.claims.groups || []);
 
       // Augment the user session with additional roles if applicable.
       const user = await UsersGroupManagement.getPrivilegedIdentityUser(
@@ -112,9 +139,11 @@ export class UserSessionUseCase {
 
       context.logger.debug(
         MODULE_NAME,
-        `Creating session for ${user.name} with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
+        `Creating session for ${user.name} from ${source} with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
         {
           userId: user.id,
+          source,
+          permissionCount,
           jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
           officeCount: user.offices?.length || 0,
           roleCount: user.roles?.length || 0,

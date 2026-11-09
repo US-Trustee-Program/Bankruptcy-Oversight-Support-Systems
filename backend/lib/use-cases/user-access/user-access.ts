@@ -21,6 +21,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
+import { SessionAccess, sessionAccessFrom } from './session-access';
 import { RoleAssignmentAuditRepository, UserRoleAssignmentRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-ACCESS-USE-CASE';
@@ -262,6 +263,19 @@ export class UserAccessUseCase {
     }
 
     return { result: { permission, replaced }, created };
+  }
+
+  /**
+   * The roles and offices a new session gets from the user's active permissions (used when
+   * cams-role-assignments is on). Failures propagate: the caller denies the session.
+   */
+  async getSessionAccess(
+    context: ApplicationContext,
+    userId: string,
+  ): Promise<SessionAccess & { permissionCount: number }> {
+    const permissions = await this.assignmentRepository.findActiveByUserIds([userId]);
+    const offices = await factory.getOfficesGateway(context).getOffices(context);
+    return { ...sessionAccessFrom(permissions, offices), permissionCount: permissions.length };
   }
 
   /** The writes are sequential, not atomic: a failed audit write keeps the change. */
