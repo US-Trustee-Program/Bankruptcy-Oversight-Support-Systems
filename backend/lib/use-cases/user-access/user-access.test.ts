@@ -791,6 +791,28 @@ describe('UserAccessUseCase', () => {
         expect(audits[1].assignmentId).toEqual(manhattan.id);
       });
 
+      test('should neither list nor audit a permission another grant already replaced', async () => {
+        spyOnMembers();
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        const buffalo = assignmentFor('user-a', BUFFALO);
+        spyOnHeld([manhattan, buffalo]);
+        const { createSpy } = spyOnWrites();
+        spyOnDeactivate().mockResolvedValueOnce(null);
+
+        const { result, created } = await useCase.grantPermission(context, {
+          ...request,
+          ...REGION_2,
+        });
+
+        expect(created).toBe(true);
+        expect(result.replaced.map((p) => p.id)).toEqual([buffalo.id]);
+        const audits = auditWrites(createSpy);
+        expect(audits.map((a) => [a.action, a.assignmentId])).toEqual([
+          ['CREATED', result.permission.id],
+          ['DEACTIVATED', buffalo.id],
+        ]);
+      });
+
       test('should leave permissions that do not overlap alone', async () => {
         spyOnMembers();
         spyOnHeld([assignmentFor('user-a', BUFFALO), scopedAssignmentFor('user-a', '3')]);

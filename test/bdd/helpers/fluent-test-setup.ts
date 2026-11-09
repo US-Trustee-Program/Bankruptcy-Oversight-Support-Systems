@@ -787,8 +787,10 @@ export class TestSetup {
     );
     vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'deactivate').mockImplementation(
       async (assignment: UserRoleAssignment) => {
+        const stored = state.getRoleAssignments().find((held) => held.id === assignment.id);
+        if (!stored?.active) return null;
         const deactivated = {
-          ...assignment,
+          ...stored,
           active: false,
           activeKey: inactiveKeyFor(assignment.id),
         };

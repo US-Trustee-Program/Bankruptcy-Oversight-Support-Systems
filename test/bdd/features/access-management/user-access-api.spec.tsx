@@ -625,6 +625,43 @@ describe('Feature: IT SuperUser grants a role in an office (API)', () => {
       expect(state.getRoleAssignmentAudits().map((a) => a.action)).toEqual(['DEACTIVATED']);
     });
 
+    /**
+     * Scenario: Two grants replacing the same permission at once audit it only once
+     *
+     * GIVEN Sarah holds Trial Attorney in Manhattan
+     * AND another SuperUser's National grant replaced it a moment ago, after Maria's request had
+     *   already read Sarah's permissions
+     * WHEN Maria's Region 2 - All grant is written
+     * THEN Maria's grant succeeds without replacing Manhattan again
+     * AND Maria's grant writes no DEACTIVATED audit for Manhattan; the other grant already did
+     */
+    test('should not replace or audit a permission another grant replaced a moment ago', async () => {
+      const maria = TestSessions.superUser();
+      const manhattan = permission(SARAH.id, MANHATTAN);
+      const state = await sarahHolds(maria, [manhattan]);
+      const { UserRoleAssignmentMongoRepository } =
+        await import('../../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
+      // Maria's read sees Manhattan still active; the other grant deactivates it right after.
+      vi.spyOn(
+        UserRoleAssignmentMongoRepository.prototype,
+        'findActiveByUserAndRole',
+      ).mockImplementationOnce(async () => {
+        state.updateRoleAssignment({
+          ...manhattan,
+          active: false,
+          activeKey: `inactive|${manhattan.id}`,
+        });
+        return [manhattan];
+      });
+
+      const response = await grant(maria, REGION_2);
+
+      expect(response.status).toBe(201);
+      expect((await response.json()).data.replaced).toEqual([]);
+      expectActiveScopes(state, [[CamsRole.TrialAttorney, '2', null]]);
+      expect(state.getRoleAssignmentAudits().map((a) => a.action)).toEqual(['CREATED']);
+    });
+
     test('should grant a scope again after it was replaced', async () => {
       const maria = TestSessions.superUser();
       const state = await sarahHolds(maria, [permission(SARAH.id, MANHATTAN)]);

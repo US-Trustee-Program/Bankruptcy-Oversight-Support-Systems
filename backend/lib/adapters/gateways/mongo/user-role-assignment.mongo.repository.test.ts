@@ -78,24 +78,37 @@ describe('UserRoleAssignmentMongoRepository', () => {
   });
 
   describe('deactivate', () => {
-    test("should mark the assignment inactive and free its activeKey, filtering on the user's shard key", async () => {
-      const updateOne = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    test("should mark the assignment inactive and free its activeKey only while it is still active, filtering on the user's shard key", async () => {
+      const deactivated = { ...assignment, active: false, activeKey: `inactive|${assignment.id}` };
+      const findOneAndUpdate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(deactivated);
 
       const result = await repo.deactivate(assignment);
 
       const doc = using<UserRoleAssignment>();
-      const deactivated = { ...assignment, active: false, activeKey: `inactive|${assignment.id}` };
       expect(result).toEqual(deactivated);
-      expect(updateOne).toHaveBeenCalledWith(
-        and(doc('userId').equals(assignment.userId), doc('id').equals(assignment.id)),
-        { active: false, activeKey: `inactive|${assignment.id}` },
+      expect(findOneAndUpdate).toHaveBeenCalledWith(
+        and(
+          doc('userId').equals(assignment.userId),
+          doc('id').equals(assignment.id),
+          doc('active').equals(true),
+        ),
+        { $set: { active: false, activeKey: `inactive|${assignment.id}` } },
+        { returnDocument: 'after' },
       );
     });
 
+    test('should return null when another grant already deactivated the assignment', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const result = await repo.deactivate(assignment);
+
+      expect(result).toBeNull();
+    });
+
     test('should throw a CamsError when the update fails', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
         new Error('connection error'),
       );
 

@@ -164,6 +164,15 @@ export class UserAccessUseCase {
    * for that role whose scope overlaps it (each replaced one is deactivated with its own audit
    * record). Granting a permission the user already holds writes nothing new, but still replaces
    * any overlapping permission left behind by an earlier, partly failed grant.
+   *
+   * Concurrent grants for the same user and role:
+   * - Same scope: the unique {userId, activeKey} index keeps one; the loser re-reads and returns it.
+   * - Replacing the same permission: deactivate is a compare-and-set on active, so only one grant
+   *   lists and audits it.
+   * - Different overlapping scopes (e.g. Region 2 - All and Region 2 - Manhattan at the same
+   *   moment): both are read before either is written, so both stay active until the next grant
+   *   to that user and role converges them. Accepted: no access beyond what was granted, and the
+   *   same read-then-write gap exists in case assignment and trustee oversight assignment.
    */
   async grantPermission(
     context: ApplicationContext,
@@ -230,7 +239,7 @@ export class UserAccessUseCase {
     const replacedReason = `Replaced by ${scopeLabel(scope, officeName)}: ${reason}`;
     for (const overlapping of held) {
       if (overlapping.activeKey === activeKey || !scopesOverlap(overlapping, scope)) continue;
-      let deactivated: UserRoleAssignment;
+      let deactivated: UserRoleAssignment | null;
       try {
         deactivated = await this.assignmentRepository.deactivate(overlapping);
       } catch (error) {
@@ -241,6 +250,8 @@ export class UserAccessUseCase {
         });
         throw new CamsError(MODULE_NAME, { message: 'Unable to replace an existing permission.' });
       }
+      // Another grant replaced it after our read; that grant reports and audits it.
+      if (!deactivated) continue;
       replaced.push(deactivated);
       await this.writeAudit(
         context,
