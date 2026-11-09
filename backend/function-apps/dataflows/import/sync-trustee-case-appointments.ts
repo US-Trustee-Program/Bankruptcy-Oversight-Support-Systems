@@ -98,9 +98,9 @@ function hasProgressed(
 }
 
 // Triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region list to
-// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). The sync start is not on
-// DEFAULT_DATAFLOWS and has no timer yet (cams-fd8qd.3.9). The heal, by contrast, has its own
-// 18:30 UTC timer, registered in setup().
+// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). The sync is on
+// DEFAULT_DATAFLOWS: a 12:30 UTC timer sends the regionless start, and a separate 18:30 UTC timer
+// starts the heal. Both timers are registered in setup().
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Absent only on a top-level kickoff with no operator-named regions -- see the fan-out branch
    *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
@@ -178,6 +178,7 @@ const HEAL_PAGE_SIZE = 25;
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_HEAL = buildFunctionName(MODULE_NAME, 'handleHeal');
+const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 const HEAL_TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'healTimerTrigger');
 
 function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
@@ -656,6 +657,21 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 }
 
 /**
+ * Daily at 12:30 UTC: starts a sync with no region list, which handleStart fans out across lanes.
+ */
+async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const observability = factory.getObservability(logger);
+  const trace = observability.startTrace(invocationContext.invocationId);
+  invocationContext.extraOutputs.set(START, {});
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+  });
+}
+
+/**
  * Daily at 18:30 UTC: starts the heal of parked rows, which attaches records whose case has loaded
  * into CAMS since they were parked.
  */
@@ -792,6 +808,13 @@ function setup() {
     handler: handleHeal,
   });
 
+  app.timer(TIMER_TRIGGER, {
+    // Daily at 12:30 UTC (CAMS-955 Slice 3): regionless start that fans out across every region.
+    schedule: '0 30 12 * * *',
+    extraOutputs: [START],
+    handler: timerTrigger,
+  });
+
   app.timer(HEAL_TIMER_TRIGGER, {
     // Daily at 18:30 UTC (CAMS-955 Slice 3 decision 16): heals parked rows filed in the last 14 days.
     schedule: '0 30 18 * * *',
@@ -800,7 +823,7 @@ function setup() {
   });
 }
 
-export { handleStart, handlePage, handleHeal, healTimerTrigger };
+export { handleStart, handlePage, handleHeal, timerTrigger, healTimerTrigger };
 export default {
   MODULE_NAME,
   setup,
