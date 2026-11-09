@@ -7,11 +7,16 @@ import RegionDriver, {
   isTransientError,
   RegionDriverResumePoint,
 } from '../../../lib/use-cases/dataflows/trustee-appointment-region-driver';
+import {
+  assignLanesRoundRobin,
+  pickJitterSeconds,
+} from '../../../lib/use-cases/dataflows/lane-assignment';
 import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import DateHelper from '@common/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import {
   computeBackoffSecondsWithJitter,
@@ -38,6 +43,46 @@ const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 const TRANSIENT_RETRY_LIMIT = 5;
 const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
 
+// Fan-out lane count for a start message with no region list (see PATTERNS.md's fan-out
+// section). K independent self-requeuing lane chains bound concurrent ACMS queries to K without
+// relying on host.json queue settings (precedent: commit 5fbd22a29) -- this is not a semaphore,
+// just how many lanes handleStart splits "every region" into. Defaults to 3, capped at
+// MAX_LANE_COUNT so a typo (e.g. 30) cannot open that many concurrent ACMS chains.
+const DEFAULT_LANE_COUNT = 3;
+const MAX_LANE_COUNT = 10;
+
+/**
+ * Read fresh on every fan-out (not cached at module load, unlike e.g. ACMS_REQUEST_TIMEOUT_MS):
+ * an env var this cheap to re-parse doesn't need load-time caching, and reading it fresh lets
+ * tests set it per-case without vi.resetModules() gymnastics.
+ */
+function getLaneCount(logger: ReturnType<typeof ContextCreator.getLogger>): number {
+  const raw = process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
+  if (!raw) return DEFAULT_LANE_COUNT;
+  // Number(), not parseInt: parseInt would accept "3abc" as 3 and "2.5" as 2.
+  const parsed = Number(raw.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    logger.warn(
+      MODULE_NAME,
+      `Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}", using default ${DEFAULT_LANE_COUNT}`,
+    );
+    return DEFAULT_LANE_COUNT;
+  }
+  if (parsed > MAX_LANE_COUNT) {
+    logger.warn(
+      MODULE_NAME,
+      `TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}" exceeds the maximum of ${MAX_LANE_COUNT}, using ${MAX_LANE_COUNT}`,
+    );
+    return MAX_LANE_COUNT;
+  }
+  return parsed;
+}
+
+// A random delay on each lane's first message only, so K lanes don't all query ACMS in the same
+// instant at run start. Continuation/next-date/next-region pages carry no delay (unchanged).
+const LANE_JITTER_MIN_SECONDS = 30;
+const LANE_JITTER_MAX_SECONDS = 60;
+
 function sameResumePoint(
   a: RegionDriverResumePoint | undefined,
   b: RegionDriverResumePoint | undefined,
@@ -48,7 +93,7 @@ function sameResumePoint(
 
 /** A continuation progressed when it moved the resume point or left fewer regions to run. */
 function hasProgressed(
-  incoming: SyncTrusteeCaseAppointmentsStartMessage,
+  incoming: { regions: string[]; resumeFrom?: RegionDriverResumePoint },
   continuation: { regions: string[]; resumeFrom?: RegionDriverResumePoint },
 ): boolean {
   return (
@@ -57,10 +102,17 @@ function hasProgressed(
   );
 }
 
-// Manually triggered by an operator naming the regions to sync (cams-fd8qd.1.10) -- not on
-// DEFAULT_DATAFLOWS and no timer trigger until lanes/scheduling land (Slice 2).
+// Manually triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region
+// list to fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3) -- not on
+// DEFAULT_DATAFLOWS and no timer trigger until parking/healing land (Slice 3).
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
-  regions: string[];
+  /** Absent only on a top-level kickoff with no operator-named regions -- see the fan-out branch
+   *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
+   *  its own fixed region list. */
+  regions?: string[];
+  /** Identifies which lane a chain belongs to (trace details, fan-out logs, and the DLQ'd start
+   *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
+  laneId?: number;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
   runDate?: string;
   /** Where a prior invocation that stopped early (budget or transient error) left off -- see RegionDriver's continuation. */
@@ -188,7 +240,7 @@ async function requeueAfterTransientError(
 ): Promise<string | undefined> {
   if ((message.transientRetryCount ?? 0) > TRANSIENT_RETRY_LIMIT) {
     const description = `Transient errors persisted through ${TRANSIENT_RETRY_LIMIT} requeues; the run was not re-enqueued.`;
-    const details = `${description} Regions: ${message.regions.join(',')}. Resume point: ${JSON.stringify(message.resumeFrom ?? null)}.`;
+    const details = `${description} Regions: ${message.regions?.join(',') ?? '(fan-out: all regions)'}. Resume point: ${JSON.stringify(message.resumeFrom ?? null)}.`;
     logger.error(MODULE_NAME, details, getCamsError(new Error(details), MODULE_NAME, details));
     return description;
   }
@@ -204,6 +256,50 @@ async function requeueAfterTransientError(
     deadLetterWithStartMessage(invocationContext, sendError, message);
     return 'The transient re-enqueue failed; the run was dead-lettered with its start message.';
   }
+}
+
+type FanOutResult = { lanesCreated: number; regionsScheduled: number };
+
+/**
+ * A top-level kickoff with no region list: enumerates every CAMS region, splits it into
+ * LANE_COUNT lanes, and sends one START message per non-empty lane -- each becomes its own
+ * independent chain from here on, indistinguishable from an operator-named Slice 1 message
+ * except for carrying laneId. This invocation does no driver work itself. Zero regions found
+ * means zero lanes are non-empty, so zero messages are sent; handleStart reports that as a failed
+ * run, since CAMS office data with no regions means a misconfigured or empty DXTR source.
+ */
+async function fanOutAcrossLanes(
+  context: ApplicationContext,
+  logger: ReturnType<typeof ContextCreator.getLogger>,
+  connectionString: string,
+  runDate: string,
+): Promise<FanOutResult> {
+  const regions = await RegionDriver.getAllRegionIds(context);
+  const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
+
+  const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
+    connectionString,
+    START.queueName,
+  );
+
+  let lanesCreated = 0;
+  for (const [laneId, laneRegions] of lanes.entries()) {
+    if (laneRegions.length === 0) continue;
+    const laneMessage: SyncTrusteeCaseAppointmentsStartMessage = {
+      regions: laneRegions,
+      runDate,
+      laneId,
+    };
+    const jitterSeconds = pickJitterSeconds(LANE_JITTER_MIN_SECONDS, LANE_JITTER_MAX_SECONDS);
+    await startQueueClient.sendMessage(JSON.stringify(laneMessage), jitterSeconds);
+    logger.info(
+      MODULE_NAME,
+      `Fan-out lane ${laneId}: ${laneRegions.length} region(s) [${laneRegions.join(',')}], first message delayed ${jitterSeconds}s.`,
+    );
+    lanesCreated++;
+  }
+
+  return { lanesCreated, regionsScheduled: regions.length };
 }
 
 async function handleStart(
@@ -250,6 +346,36 @@ async function handleStart(
     }
 
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
+
+    if (!startMessage.regions) {
+      // A resume point only makes sense within a fixed region list; fanning out here would ignore
+      // it and reschedule every region. Dead-letter the malformed message instead.
+      if (startMessage.resumeFrom) {
+        throw new Error(
+          'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
+        );
+      }
+      const fanOutResult = await fanOutAcrossLanes(context, logger, connectionString, runDate);
+      const noRegionsFound =
+        fanOutResult.regionsScheduled === 0
+          ? 'No regions found in CAMS office data; no lanes were scheduled.'
+          : undefined;
+      if (noRegionsFound) {
+        logger.warn(MODULE_NAME, noRegionsFound);
+      }
+      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: noRegionsFound === undefined,
+        error: noRegionsFound,
+        details: {
+          lanesCreated: String(fanOutResult.lanesCreated),
+          regionsScheduled: String(fanOutResult.regionsScheduled),
+        },
+      });
+      return;
+    }
+
     // A resume point from before a deleteAll reset would skip the history the reset just cleared.
     const resumeFrom = startMessage.deleteAll ? undefined : startMessage.resumeFrom;
     const result = await RegionDriver.runRegionDriver(context, {
@@ -287,6 +413,7 @@ async function handleStart(
         regions: continuation.regions,
         runDate: continuation.runDate,
         resumeFrom: continuation.resumeFrom,
+        laneId: startMessage.laneId,
       };
       if (continuation.cause === 'invocation-budget') {
         // A budget continuation starts a fresh transient-retry streak, so it carries no count.
@@ -297,7 +424,10 @@ async function handleStart(
         await startQueueClient.sendMessage(JSON.stringify(continuationMessage));
       } else {
         // A continuation that advanced starts a new streak; one that did not extends the current one.
-        const transientRetryCount = hasProgressed(startMessage, continuation)
+        const transientRetryCount = hasProgressed(
+          { regions: startMessage.regions, resumeFrom: startMessage.resumeFrom },
+          continuation,
+        )
           ? 1
           : (startMessage.transientRetryCount ?? 0) + 1;
         runNotCompleted = await requeueAfterTransientError(
@@ -321,6 +451,7 @@ async function handleStart(
         processedRegions: result.processedRegions.join(','),
         pagesQueued: String(pagesQueued),
         continuation: String(Boolean(result.continuation)),
+        laneId: String(startMessage.laneId ?? ''),
       },
     });
   } catch (originalError) {

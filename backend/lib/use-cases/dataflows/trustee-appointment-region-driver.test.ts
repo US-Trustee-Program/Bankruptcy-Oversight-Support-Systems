@@ -2,6 +2,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import RegionDriver, { CUTOVER_DATE } from './trustee-appointment-region-driver';
 import SyncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 import { AcmsCaseAppointmentRawRecord, TrusteeAppointmentRegionSyncState } from '../gateways.types';
@@ -586,5 +587,68 @@ describe('RegionDriver.runRegionDriver', () => {
       'region.02.lastSyncDate',
       '2026-07-01',
     );
+  });
+});
+
+describe('RegionDriver.getAllRegionIds', () => {
+  let context: ApplicationContext;
+
+  function makeOffice(regionId: string): UstpOfficeDetails {
+    return {
+      officeCode: `OFFICE-${regionId}`,
+      officeName: `Office ${regionId}`,
+      idpGroupName: `Office ${regionId}`,
+      regionId,
+      regionName: `Region ${regionId}`,
+      groups: [],
+    };
+  }
+
+  function mockOffices(offices: UstpOfficeDetails[]) {
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+      getOffices: vi.fn().mockResolvedValue(offices),
+    } as unknown as ReturnType<typeof factory.getOfficesGateway>);
+  }
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('dedupes offices into distinct region ids', async () => {
+    mockOffices([makeOffice('02'), makeOffice('02'), makeOffice('03')]);
+
+    const regionIds = await RegionDriver.getAllRegionIds(context);
+
+    expect([...regionIds].sort()).toEqual(['02', '03']);
+  });
+
+  // UstpOfficeDetails.regionId comes back un-padded from the DXTR offices gateway
+  // (parseInt(flatOffice.regionId).toString() turns "02" into "2") -- getAllRegionIds must
+  // re-pad it so it matches the zero-padded bookmark keys (region.02.lastSyncDate) the rest
+  // of this driver reads and writes.
+  test('zero-pads an un-padded region id from the offices gateway', async () => {
+    mockOffices([makeOffice('2')]);
+
+    const regionIds = await RegionDriver.getAllRegionIds(context);
+
+    expect(regionIds).toEqual(['02']);
+  });
+
+  test('returns an empty array when CAMS office data has no offices', async () => {
+    mockOffices([]);
+
+    const regionIds = await RegionDriver.getAllRegionIds(context);
+
+    expect(regionIds).toEqual([]);
+  });
+
+  test('propagates a getOffices failure rather than swallowing it', async () => {
+    const gatewayError = new Error('DXTR connection failed');
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+      getOffices: vi.fn().mockRejectedValue(gatewayError),
+    } as unknown as ReturnType<typeof factory.getOfficesGateway>);
+
+    await expect(RegionDriver.getAllRegionIds(context)).rejects.toThrow(gatewayError);
   });
 });

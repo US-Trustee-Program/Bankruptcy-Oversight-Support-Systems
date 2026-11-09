@@ -63,6 +63,20 @@ function getSourceForRegion(): TrusteeAppointmentSource {
   return new AcmsTrusteeAppointmentSource();
 }
 
+/**
+ * Every distinct region in CAMS office data, used by the start handler's fan-out (no region list
+ * named) to schedule every region into lanes. Zero-pads each regionId to 2 digits: the DXTR
+ * offices gateway strips zero-padding (e.g. "02" -> "2"), which would otherwise silently fork a
+ * region's bookmark/lane bucket from the zero-padded key (region.02.lastSyncDate) the rest of
+ * this driver already reads and writes.
+ */
+async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
+  const officesGateway = factory.getOfficesGateway(context);
+  const offices = await officesGateway.getOffices(context);
+  const regionIds = new Set(offices.map((office) => office.regionId.padStart(2, '0')));
+  return [...regionIds];
+}
+
 function toRowFailureDlqEntry(
   regionId: string,
   changeDate: string,
@@ -247,6 +261,7 @@ const RegionDriver = {
   MODULE_NAME,
   createDeps,
   runRegionDriver,
+  getAllRegionIds,
 };
 
 export default RegionDriver;
