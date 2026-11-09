@@ -1246,6 +1246,23 @@ describe('sync-trustee-case-appointments heal', () => {
     ]).toEqual([{ healRunDate: '2026-11-09' }]);
   });
 
+  test('the heal timer records the heal run date in its trace, to correlate with handleHeal traces', async () => {
+    const { healTimerTrigger } = await import('./sync-trustee-case-appointments');
+    vi.spyOn(DateHelper, 'getTodaysIsoDate').mockReturnValue('2026-11-09');
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await healTimerTrigger({} as never, makeInvocationContext());
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'healTimerTrigger',
+      expect.anything(),
+      expect.objectContaining({ details: { healRunDate: '2026-11-09' } }),
+    );
+  });
+
   test('the first page counts abandoned rows once and reports the counts', async () => {
     const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { healPageSpy, countAbandonedSpy, telemetrySpy } = await setupHealMocks({

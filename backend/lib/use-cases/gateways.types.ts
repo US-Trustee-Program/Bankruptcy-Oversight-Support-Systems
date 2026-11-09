@@ -690,7 +690,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
-  /** Deletes every CASE_APPOINTMENT document in both partitions; returns the case-partition count. */
+  /** Deletes every appointment row (placed and parked) in both partitions; returns the case-partition count. */
   deleteAll(): Promise<number>;
   findActiveMissingAppointedDate(
     lastId: string | null,

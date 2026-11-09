@@ -98,9 +98,9 @@ function hasProgressed(
 }
 
 // Triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region list to
-// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). Not on DEFAULT_DATAFLOWS
-// and the sync start has no timer yet (cams-fd8qd.3.9); the 18:30 UTC heal timer is registered in
-// setup().
+// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). The sync start is not on
+// DEFAULT_DATAFLOWS and has no timer yet (cams-fd8qd.3.9). The heal, by contrast, has its own
+// 18:30 UTC timer, registered in setup().
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Absent only on a top-level kickoff with no operator-named regions -- see the fan-out branch
    *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
@@ -672,6 +672,7 @@ async function healTimerTrigger(
     documentsWritten: 0,
     documentsFailed: 0,
     success: true,
+    details: { healRunDate: healStart.healRunDate },
   });
 }
 

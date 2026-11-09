@@ -278,6 +278,62 @@ describe('heal-parked-case-appointments', () => {
     expect(result.healed).toBe(1);
   });
 
+  test.each([
+    ['appointment', { trusteeId: 'trustee-1' }, {}],
+    [
+      'placeholder',
+      { trusteeId: 'fp-1', isSurrogate: true, variant: 'v-1' },
+      { isSurrogate: true },
+    ],
+  ])(
+    'a parked %s superseded by a placed row the sync wrote after the case loaded is cleared without overwriting it',
+    async (_label, parkedOverride, placedOverride) => {
+      // The sync wrote this placed row, closed by a later DISP_DATE, once the case was in CAMS.
+      // Placed and parked rows have different natural keys, so attaching the open parked row would
+      // replace the closed placed row and reopen the appointment.
+      caseAppointmentsRepo.getByCaseId.mockResolvedValue([
+        makeActiveAppointment({
+          trusteeId: parkedOverride.trusteeId,
+          assignedOn: '2026-11-01',
+          unassignedOn: '2026-11-04',
+          ...placedOverride,
+        }),
+      ]);
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+        makeParkedAppointment({ ...parkedOverride, checks: undefined }),
+      ]);
+
+      const result = await run();
+
+      expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(caseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      expect(caseAppointmentsRepo.delete).toHaveBeenCalledWith('parked-1');
+      expect(result).toEqual({ healed: 1, stillParked: 0, failed: 0, nextLastId: 'mongo-1' });
+    },
+  );
+
+  test('a placed row for a different trustee or court date does not supersede the parked row', async () => {
+    caseAppointmentsRepo.getByCaseId.mockResolvedValue([
+      makeActiveAppointment({
+        trusteeId: 'trustee-1',
+        assignedOn: '2026-10-01',
+        unassignedOn: '2026-10-20',
+      }),
+      makeActiveAppointment({
+        trusteeId: 'trustee-9',
+        assignedOn: '2026-11-01',
+        unassignedOn: '2026-11-03',
+      }),
+    ]);
+    caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+    await run();
+
+    expect(caseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ trusteeId: 'trustee-1', assignedOn: '2026-11-01' }),
+    );
+  });
+
   test('a permanent soft-close failure keeps the parked row and counts it failed', async () => {
     // The newer parked appointment replaces an older active trustee. When the old appointment's
     // close fails permanently, applyResolvedTrustee still writes the new appointment but reports

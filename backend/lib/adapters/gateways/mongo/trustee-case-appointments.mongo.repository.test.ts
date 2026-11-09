@@ -835,14 +835,14 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const result = await repo.deleteAll();
 
       expect(deleteManySpy).toHaveBeenCalledTimes(2);
-      expect(deleteManySpy).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
-      );
-      expect(deleteManySpy).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
-      );
+      // Parked rows (CASE_APPOINTMENT_UNATTACHED) are cleared too, so a reset leaves nothing for
+      // the heal to re-attach.
+      const bothTypes = expect.objectContaining({
+        condition: 'CONTAINS',
+        rightOperand: ['CASE_APPOINTMENT', 'CASE_APPOINTMENT_UNATTACHED'],
+      });
+      expect(deleteManySpy).toHaveBeenNthCalledWith(1, bothTypes);
+      expect(deleteManySpy).toHaveBeenNthCalledWith(2, bothTypes);
       expect(result).toBe(7);
       repo.release();
     });
@@ -1238,6 +1238,20 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
+    test('excludes parked rows: only CASE_APPOINTMENT is in the pre-paginate $match', async () => {
+      mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      // A parked appointment (CASE_APPOINTMENT_UNATTACHED) carries the real trusteeId and a
+      // dateFiled, so without this it would list a case that is not in CAMS yet.
+      expect(findFieldInPrePaginateMatch(spy, 'documentType')).toEqual({ $eq: 'CASE_APPOINTMENT' });
+      repo.release();
+    });
+
     test('dateFiled $exists true is in the pre-paginate $match', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
@@ -1517,6 +1531,20 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const result = await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
 
       expect(result).toEqual(['081', '129']);
+      repo.release();
+    });
+
+    test('excludes parked rows from the division list', async () => {
+      mockAggregateResult(['081']);
+      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      expect(JSON.stringify(pipeline[0])).toContain('"documentType":{"$eq":"CASE_APPOINTMENT"}');
+      expect(JSON.stringify(pipeline[0])).not.toContain('UNATTACHED');
       repo.release();
     });
 

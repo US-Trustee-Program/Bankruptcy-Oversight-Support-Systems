@@ -88,6 +88,25 @@ function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
 }
 
 /** Returns false when the old trustee's appointment could not be closed (see healParkedPage). */
+/**
+ * True when the sync already wrote this court appointment as a placed row (same trustee or
+ * fingerprint, same assignedOn day): it did so after the case loaded, from newer source data, so
+ * the parked row is out of date. Placed and parked rows have different natural keys, so attaching
+ * the parked row would replace the placed row, e.g. reopening an appointment a later DISP_DATE
+ * closed. applyResolvedTrustee alone cannot see this: it only looks at the active appointment.
+ */
+async function isSupersededByPlacedRow(
+  deps: HealParkedDeps,
+  row: ParkedAppointment,
+): Promise<boolean> {
+  const placedRows = await deps.caseAppointmentsRepo.getByCaseId(row.caseId);
+  return placedRows.some(
+    (placed) =>
+      placed.trusteeId === row.trusteeId &&
+      placed.assignedOn.slice(0, 10) === row.assignedOn.slice(0, 10),
+  );
+}
+
 async function attachParkedAppointment(
   deps: HealParkedDeps,
   row: ParkedAppointment,
@@ -120,7 +139,8 @@ async function attachParkedAppointment(
  * active-trustee rule (applyResolvedTrustee, latest-wins against the case's appointments) with
  * checks.matchedTrusteeAppointment recomputed; a parked placeholder becomes a placed placeholder.
  * Then the parked row is deleted. Upsert before delete: a failed delete re-upserts the same
- * natural key next run. A row whose case is still missing (or moved) stays parked.
+ * natural key next run. A row whose case is still missing (or moved) stays parked. A row the sync
+ * already wrote as a placed row (isSupersededByPlacedRow) is deleted without writing anything.
  *
  * When applyResolvedTrustee reports a permanent soft-close failure, the new appointment is already
  * written but the previous trustee's appointment is still open. The parked row is kept and counted
@@ -151,7 +171,9 @@ export async function healParkedPage(
         continue;
       }
 
-      if (row.isSurrogate) {
+      if (await isSupersededByPlacedRow(deps, row)) {
+        // Nothing to write; clearing the stale parked row counts as healed.
+      } else if (row.isSurrogate) {
         await deps.caseAppointmentsRepo.upsert(placedPlaceholderFrom(row));
       } else if (!(await attachParkedAppointment(deps, row))) {
         context.logger.error(

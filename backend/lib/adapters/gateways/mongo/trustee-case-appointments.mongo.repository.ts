@@ -320,7 +320,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]> {
     try {
       const doc = using<CaseAppointmentDocument>();
-      const match = toMongoQuery(and(doc('trusteeId').equals(trusteeId)));
+      // Parked rows (CASE_APPOINTMENT_UNATTACHED) carry the real trusteeId but their case is not
+      // in CAMS yet, so they must not add divisions to a trustee's filter.
+      const match = toMongoQuery(
+        and(doc('documentType').equals('CASE_APPOINTMENT'), doc('trusteeId').equals(trusteeId)),
+      );
 
       const mongoAggregate = [
         { $match: match },
@@ -341,6 +345,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
+      // Parked rows (case not in CAMS yet) have the real trusteeId and a dateFiled; exclude them.
+      apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
       apptDoc.field('dateFiled').exists(),
@@ -557,7 +563,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async deleteAll(): Promise<number> {
     try {
       const doc = using<CaseAppointmentDocument>();
-      const query = doc('documentType').equals('CASE_APPOINTMENT');
+      // Parked rows too: a reset must not leave rows for the heal to re-attach.
+      const query = doc('documentType').contains(SURROGATE_DOCUMENT_TYPES);
       const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       return deleted;
