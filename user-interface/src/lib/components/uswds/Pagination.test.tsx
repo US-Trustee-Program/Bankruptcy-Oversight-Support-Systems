@@ -436,4 +436,32 @@ describe('Pagination tests', () => {
     fireEvent.click(previousPageButton!);
     expect(retrievePageSpy).toHaveBeenCalledWith({ offset: -25 });
   });
+
+  const pageCountCases = Array.from({ length: 8 }, (_, i) => i + 1).flatMap((totalPages) =>
+    Array.from({ length: totalPages }, (_, i) => ({ totalPages, currentPage: i + 1 })),
+  );
+
+  test.each(pageCountCases)(
+    'should show each page number once with $totalPages total pages on page $currentPage',
+    ({ totalPages, currentPage }) => {
+      renderWithProps({
+        paginationValues: {
+          ...defaultPagination,
+          currentPage,
+          totalPages,
+          totalCount: totalPages * 25,
+        },
+        searchPredicate: { limit: 25, offset: (currentPage - 1) * 25 },
+      });
+
+      const pageNumbers = Array.from(
+        document.querySelectorAll('.usa-pagination__page-no'),
+        (item) => item.textContent,
+      );
+      expect(new Set(pageNumbers).size).toEqual(pageNumbers.length);
+      expect(pageNumbers).toContain('1');
+      expect(pageNumbers).toContain(String(totalPages));
+      expect(pageNumbers).toContain(String(currentPage));
+    },
+  );
 });
