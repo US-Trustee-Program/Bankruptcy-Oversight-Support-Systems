@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
-import { AcmsGatewayImpl } from './acms.gateway';
+import { AcmsGatewayImpl, CMMAP_ROW_INCLUSION_FILTERS } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
@@ -752,6 +752,120 @@ describe('ACMS gateway tests', () => {
       await expect(
         gateway.getCmmapAppointmentsRaw(context, 0, 10, null, undefined, 'not-a-date'),
       ).rejects.toThrow('Invalid changeDate value: "not-a-date"');
+    });
+  });
+
+  describe('getLatestCmmapChangeDateForRegion', () => {
+    test('should return the formatted date from the first (DESC-ordered) row', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [{ CDB_UPDATE_DATE: 20260701 }] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBe('2026-07-01');
+    });
+
+    test.each([
+      { cdbUpdateDate: 20261301, description: 'month out of range' },
+      { cdbUpdateDate: 202, description: 'not 8 digits' },
+    ])(
+      'should throw instead of returning a garbage date when CDB_UPDATE_DATE is $description',
+      async ({ cdbUpdateDate }) => {
+        vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+          success: true,
+          results: { recordset: [{ CDB_UPDATE_DATE: cdbUpdateDate }] },
+          message: '',
+        });
+
+        const context = await createMockApplicationContext();
+        const gateway = new AcmsGatewayImpl(context);
+
+        await expect(
+          gateway.getLatestCmmapChangeDateForRegion(context, '02'),
+        ).rejects.toMatchObject({
+          isCamsError: true,
+          originalError: expect.stringContaining(String(cdbUpdateDate)),
+        });
+      },
+    );
+
+    test('should return undefined when the region has no matching rows', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBeUndefined();
+    });
+
+    test('should filter by region and order by CDB_UPDATE_DATE descending', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('m.REGION_CODE = @regionId');
+      expect(query).toContain('ORDER BY m.CDB_UPDATE_DATE DESC');
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ name: 'regionId', value: '02' })]),
+      );
+    });
+
+    test('should share the CMMAP row-inclusion filters with getCmmapAppointmentsRaw', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+      const latestQuery = spy.mock.calls[0][1] as string;
+
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+      const rawQuery = spy.mock.calls[1][1] as string;
+
+      expect(latestQuery).toContain(CMMAP_ROW_INCLUSION_FILTERS);
+      expect(rawQuery).toContain(CMMAP_ROW_INCLUSION_FILTERS);
+    });
+
+    test('should apply the same row-inclusion filters as getCmmapAppointmentsRaw', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain("m.DELETE_CODE != 'D'");
+      expect(query).toContain('m.PROF_CODE > 0');
+      expect(query).toContain('m.PROF_CODE < 98000');
+      expect(query).toContain("m.APPT_TYPE = 'TR'");
+      expect(query).toContain("c.DELETE_CODE != 'D'");
+      expect(query).toContain("p.DELETE_CODE != 'D'");
     });
   });
 

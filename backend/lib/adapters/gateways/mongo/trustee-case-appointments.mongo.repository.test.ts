@@ -14,7 +14,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
 
 describe('TrusteeCaseAppointmentsMongoRepository', () => {
   const CASE_ID = '081-24-12345';
@@ -565,23 +565,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('upsert with movedToCaseId (migration path)', () => {
-    test('stamps movedToCaseId on document when provided', async () => {
-      const replaceOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.upsert({ ...baseAppointment, movedToCaseId: '081-24-99999' });
-
-      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
-      const writtenDoc = replaceOneSpy.mock.calls[0][1] as Record<string, unknown>;
-      expect(writtenDoc.movedToCaseId).toBe('081-24-99999');
-      repo.release();
-    });
-  });
-
   describe('updateCaseAppointment', () => {
     test('should update both partitions and return the updated document', async () => {
       const replaceOneSpy = vi
@@ -798,6 +781,53 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       await expect(repo.delete('appt-001')).rejects.toThrow(
         'Dual-delete from trustee partition failed',
       );
+      repo.release();
+    });
+  });
+
+  describe('deleteAll', () => {
+    test('should delete case appointments from both partitions and return the case-partition count', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(5);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.deleteAll();
+
+      expect(deleteManySpy).toHaveBeenCalledTimes(2);
+      expect(deleteManySpy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
+      );
+      expect(deleteManySpy).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
+      );
+      expect(result).toBe(7);
+      repo.release();
+    });
+
+    test('should throw a wrapped error when the trustee-partition delete fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValueOnce(7)
+        .mockRejectedValueOnce(new Error('trustee partition delete failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
+      repo.release();
+    });
+
+    test('should throw a wrapped error when deletion fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValueOnce(
+        new Error('Database connection failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
       repo.release();
     });
   });
@@ -1849,6 +1879,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(trusteeIdCondition).toEqual(
         expect.objectContaining({ condition: 'EQUALS', rightOperand: FINGERPRINT }),
       );
+      // Disposed (closed) surrogates stay in the result set, so no unassignedOn condition applies.
+      expect(
+        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'unassignedOn'),
+      ).toBeUndefined();
       repo.release();
     });
 
@@ -1920,6 +1954,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
           rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
         }),
       );
+      // Disposed (closed) surrogates stay in the result set, so no unassignedOn condition applies.
+      expect(
+        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'unassignedOn'),
+      ).toBeUndefined();
       repo.release();
     });
 

@@ -10,7 +10,7 @@ import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../lib/use-cases/dataflows/trustee-professional-ids.types';
 import { HealSentinelCaseAppointmentsMessage } from '@common/cams/dataflow-events';
 import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
-import { SENTINEL_TRUSTEE_ID } from '../../lib/use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../lib/use-cases/cases/sentinel-trustee';
 
 const makeInvocationContext = (): InvocationContext =>
   ({

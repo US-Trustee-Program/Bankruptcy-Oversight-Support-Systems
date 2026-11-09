@@ -451,7 +451,8 @@ export function buildMergePayload(
  * matchedTrustee record that a case and a CAMS trustee were both identified; matchedTrusteeAppointment
  * records whether a single active appointment covered this case's court+division+chapter
  * (isAppointmentMatch); matchedBy names what resolved the trustee — a trustee-match pipeline
- * RESOLVE stage's name (PipelineMatch.resolvedBy), or 'variation' for a fingerprint-bucket hit.
+ * RESOLVE stage's name (PipelineMatch.resolvedBy), 'variation' for a fingerprint-bucket hit, or
+ * 'professional-id' for a verified ACMS professional-id link (identification step 1).
  */
 export type CaseAppointmentChecks = {
   matchedCase: boolean;

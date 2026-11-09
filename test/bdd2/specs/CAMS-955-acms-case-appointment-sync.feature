@@ -170,17 +170,17 @@ Feature: Daily ACMS trustee case appointment sync for all regions
     Then a fingerprint placeholder appointment for "fp-2" is written on case "081-26-00006"
     And a pending identity task with source "ACMS" exists with case "081-26-00006"
 
-  Scenario: Unknown trustee with a closed appointment removes the open placeholder
+  Scenario: Unknown trustee with a closed appointment closes the open placeholder
     Given case "081-26-00006" has an open placeholder for fingerprint "fp-2"
     And the CMMAP row for "fp-2" on case "081-26-00006" now has a DISP_DATE
     When the sync processes the row
-    Then the open placeholder for case "081-26-00006" and "fp-2" is deleted
+    Then the open placeholder for case "081-26-00006" and "fp-2" is closed with the DISP_DATE, not deleted
     And no new placeholder or identity task is written
 
   Scenario: Replaying a date does not duplicate placeholders or tasks
     Given region "02" was processed for 2026-07-01 with unknown-trustee rows
     When 2026-07-01 is processed again for region "02"
-    Then there is still one placeholder per case and fingerprint
+    Then there is still one placeholder per court appointment
     And there is still one pending identity task per fingerprint
 
   Scenario: An appointment on a moved case is skipped

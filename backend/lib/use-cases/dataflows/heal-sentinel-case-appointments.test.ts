@@ -8,7 +8,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from './trustee-professional-ids.types';
-import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../cases/sentinel-trustee';
 
 type SentinelAppointment = CaseAppointment & {
   _id: string;
