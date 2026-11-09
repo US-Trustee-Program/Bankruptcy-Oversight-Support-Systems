@@ -65,8 +65,15 @@ export function rawToTrusteeAppointmentSyncEvent(
   raw: AcmsCaseAppointmentRawRecord,
   courtId: string,
 ): TrusteeAppointmentSyncEvent {
+  const caseId = formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER);
+  // CMMDB is INNER JOINed and CASE_FILED_DATE is NOT NULL DEFAULT 0; the query maps 0 to NULL.
+  // A filed case without a filed date is bad source data: fail the row (it is dead-lettered)
+  // rather than park or default it, the same rule as a missing appointedDate.
+  if (!raw.CASE_FILED_DATE) {
+    throw new Error(`ACMS case ${caseId} has no CASE_FILED_DATE (CMMAP id ${raw.id}).`);
+  }
   return {
-    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
+    caseId,
     courtId,
     source: 'ACMS',
     sourceTrustee: buildAcmsSourceTrustee(raw),
@@ -80,5 +87,6 @@ export function rawToTrusteeAppointmentSyncEvent(
     ...(raw.DISP_DATE ? { unassignedOn: formatAcmsDate(raw.DISP_DATE) } : {}),
     ...(raw.CURR_CASE_CHAPT ? { chapter: normalizeAcmsCaseChapter(raw.CURR_CASE_CHAPT) } : {}),
     courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
+    dateFiled: formatAcmsDate(raw.CASE_FILED_DATE),
   };
 }

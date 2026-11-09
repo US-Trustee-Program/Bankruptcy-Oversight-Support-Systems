@@ -999,7 +999,7 @@ async function assertExpect(
   context: ApplicationContext,
   db: Db,
   expect: Expect,
-  outcome: { events: number; dlq: number; notYetSynced: number },
+  outcome: { events: number; dlq: number; parked: number },
 ) {
   // "Nothing written" is identical to "the source never returned the row" unless the read is asserted.
   const expectsNothing =
@@ -1025,44 +1025,20 @@ async function assertExpect(
       `DLQ has ${outcome.dlq}, expected ${expect.dlq}`,
     );
   }
-  if (expect.notYetSynced !== undefined) {
-    r.step('Then', `${expect.notYetSynced} event(s) are reported not yet synced`);
+  if (expect.parkedCount !== undefined) {
+    r.step('Then', `the run reports ${expect.parkedCount} parked record(s)`);
     r.check(
-      outcome.notYetSynced === expect.notYetSynced,
-      `${outcome.notYetSynced} not-yet-synced`,
-      `${outcome.notYetSynced} not-yet-synced, expected ${expect.notYetSynced}`,
+      outcome.parked === expect.parkedCount,
+      `${outcome.parked} parked`,
+      `${outcome.parked} parked, expected ${expect.parkedCount}`,
     );
   }
-  for (const [caseId, expected] of Object.entries(expect.appointments ?? {})) {
-    r.step(
-      'Then',
-      `case ${caseId} has ${expected.length === 0 ? 'no appointments' : `${expected.length} appointment(s)`}`,
-    );
-    const primary = (await db
-      .collection('case-trustee-appointments')
-      .find({ documentType: 'CASE_APPOINTMENT', caseId })
-      .toArray()) as unknown as AppointmentDoc[];
-    const secondary = (await db
-      .collection('trustee-case-appointments')
-      .find({ documentType: 'CASE_APPOINTMENT', caseId })
-      .toArray()) as unknown as AppointmentDoc[];
-    assertAppointments(r, caseId, primary, expected);
-    const key = (a: AppointmentDoc) =>
-      `${a.trusteeId}|${day(a.assignedOn)}|${day(a.unassignedOn) ?? ''}`;
-    const a = primary.map(key).sort().join(',');
-    const b = secondary.map(key).sort().join(',');
-    r.check(
-      a === b,
-      `case ${caseId}: both partitions agree`,
-      `case ${caseId}: partitions disagree [${a}] vs [${b}]`,
-    );
-    for (const doc of primary.filter((d) => !d.isSurrogate)) {
-      r.check(
-        typeof doc.checks?.matchedTrusteeAppointment === 'boolean',
-        `case ${caseId}: checks.matchedTrusteeAppointment is a boolean`,
-        `case ${caseId}: checks.matchedTrusteeAppointment is ${String(doc.checks?.matchedTrusteeAppointment)}, expected a boolean (defaults to false)`,
-      );
-    }
+  const byDocumentType: Array<[string, Record<string, ExpectedAppointment[]>]> = [
+    ['CASE_APPOINTMENT', expect.appointments ?? {}],
+    ['CASE_APPOINTMENT_UNATTACHED', expect.parked ?? {}],
+  ];
+  for (const [documentType, expectedByCase] of byDocumentType) {
+    await assertAppointmentDocuments(r, db, documentType, expectedByCase);
   }
   await assertUntouched(r, db, expect.untouched ?? []);
   await assertTasks(r, db, expect.tasks ?? [], expect.tasksTotal);
@@ -1083,6 +1059,47 @@ async function assertExpect(
         history[0].trusteeName === expectedFirstTrusteeName,
         `trusteeName resolved: "${history[0].trusteeName}"`,
         `trusteeName "${history[0].trusteeName}", expected "${expectedFirstTrusteeName}"`,
+      );
+    }
+  }
+}
+
+/** Placed (CASE_APPOINTMENT) or parked (CASE_APPOINTMENT_UNATTACHED) rows, in both partitions. */
+async function assertAppointmentDocuments(
+  r: Reporter,
+  db: Db,
+  documentType: string,
+  expectedByCase: Record<string, ExpectedAppointment[]>,
+) {
+  const label = documentType === 'CASE_APPOINTMENT' ? 'appointment' : 'parked record';
+  for (const [caseId, expected] of Object.entries(expectedByCase)) {
+    r.step(
+      'Then',
+      `case ${caseId} has ${expected.length === 0 ? `no ${label}s` : `${expected.length} ${label}(s)`}`,
+    );
+    const primary = (await db
+      .collection('case-trustee-appointments')
+      .find({ documentType, caseId })
+      .toArray()) as unknown as AppointmentDoc[];
+    const secondary = (await db
+      .collection('trustee-case-appointments')
+      .find({ documentType, caseId })
+      .toArray()) as unknown as AppointmentDoc[];
+    assertAppointments(r, caseId, primary, expected);
+    const key = (a: AppointmentDoc) =>
+      `${a.trusteeId}|${day(a.assignedOn)}|${day(a.unassignedOn) ?? ''}`;
+    const a = primary.map(key).sort().join(',');
+    const b = secondary.map(key).sort().join(',');
+    r.check(
+      a === b,
+      `case ${caseId}: both partitions agree`,
+      `case ${caseId}: partitions disagree [${a}] vs [${b}]`,
+    );
+    for (const doc of primary.filter((d) => !d.isSurrogate)) {
+      r.check(
+        typeof doc.checks?.matchedTrusteeAppointment === 'boolean',
+        `case ${caseId}: checks.matchedTrusteeAppointment is a boolean`,
+        `case ${caseId}: checks.matchedTrusteeAppointment is ${String(doc.checks?.matchedTrusteeAppointment)}, expected a boolean (defaults to false)`,
       );
     }
   }
@@ -1163,7 +1180,7 @@ async function runScenarioLane(
           await assertExpect(r, context, db, expectFor(pass, s, lane), {
             events: events.length,
             dlq: result.dlqMessages.length,
-            notYetSynced: result.notYetSyncedEvents.length,
+            parked: result.scenarioDistribution.parkedCount,
           });
         }
       } finally {
@@ -1508,7 +1525,7 @@ async function replay() {
       `  Identity tasks: ${tasks.length}  by reason: ${tally(tasks.map((t) => String(t.mismatchReason)))}  by source: ${tally(tasks.map((t) => String(t.source)))}`,
     );
     line(
-      `  DLQ: ${result.dlqMessages.length}  not-yet-synced: ${result.notYetSyncedEvents.length}  retryable: ${result.retryableEvents.length}`,
+      `  DLQ: ${result.dlqMessages.length}  parked: ${result.scenarioDistribution.parkedCount}  retryable: ${result.retryableEvents.length}`,
     );
     line(`  Distribution: ${JSON.stringify(result.scenarioDistribution)}`);
 

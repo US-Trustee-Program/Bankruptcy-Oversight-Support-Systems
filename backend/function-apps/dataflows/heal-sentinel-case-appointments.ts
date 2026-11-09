@@ -66,7 +66,10 @@ async function handleHeal(
         connectionString,
         HEAL.queueName,
       );
-      await queueClient.sendMessage(JSON.stringify({ ...message, lastId: nextLastId }));
+      // Only the cursor: retryCount/firstAttemptAt set by handleRateLimitRetry on this message
+      // belong to this page, and would shorten every later page's retry budget if carried on.
+      const continuation: HealSentinelCaseAppointmentsMessage = { lastId: nextLastId };
+      await queueClient.sendMessage(JSON.stringify(continuation));
       context.logger.info(
         MODULE_NAME,
         `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to check for more.`,

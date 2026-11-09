@@ -45,10 +45,12 @@ class HealSentinelCaseAppointmentsUseCase {
    * record if the upsert then failed. upsert()'s natural key (caseId, trusteeId, assignedOn) is
    * always used rather than an in-place update — trusteeId is the trustee partition's shard key,
    * so healing a sentinel (whose trusteeId is the shared SENTINEL_TRUSTEE_ID) into its resolved
-   * trusteeId is a genuinely new partition key and cannot be an in-place update. The same upsert
-   * call handles both "no appointment exists yet for this case" and "already healed via another
-   * path" (e.g. a live DXTR sync) identically — the natural-key replace is a no-op in the latter
-   * case, so no separate skip-write branch is needed.
+   * trusteeId is a genuinely new partition key and cannot be an in-place update.
+   *
+   * When an appointment with that natural key already exists (the sync wrote it), the sentinel is
+   * deleted without writing: upsert() is a full replace, so writing would overwrite the sync's
+   * checks, court fields and disposition with the sentinel's July migration data. The sentinel
+   * no longer needs healing, so it still counts as healed.
    *
    * The upsert payload spreads the full sentinel rather than naming an allow-list of fields.
    * migrate-case-appointments populates unassignedOn/closedDate/reopenedDate straight off ACMS's
@@ -97,18 +99,38 @@ class HealSentinelCaseAppointmentsUseCase {
       return { healed: false };
     }
 
-    const {
-      _id: _mongoId,
-      id: _id,
-      reason: _reason,
-      acmsProfessionalId: _acmsId,
-      ...rest
-    } = sentinel;
-    await this.appointmentsRepo.upsert({ ...rest, trusteeId: matches[0].camsTrusteeId });
+    const trusteeId = matches[0].camsTrusteeId;
+    if (!(await this.hasAppointmentWithNaturalKey(sentinel, trusteeId))) {
+      const {
+        _id: _mongoId,
+        id: _id,
+        reason: _reason,
+        acmsProfessionalId: _acmsId,
+        ...rest
+      } = sentinel;
+      await this.appointmentsRepo.upsert({ ...rest, trusteeId });
+    }
 
     await this.appointmentsRepo.delete(sentinel.id);
 
     return { healed: true };
+  }
+
+  /**
+   * Reads the case partition, which the dual-write writes first, so a sync-written row is seen
+   * even if its trustee-partition copy failed to write. assignedOn is compared by calendar day,
+   * the sync's own same-appointment rule (applyResolvedTrustee): sentinels carry a full timestamp,
+   * the sync writes a plain date, and the two are the same court appointment.
+   */
+  private async hasAppointmentWithNaturalKey(
+    sentinel: SentinelAppointment,
+    trusteeId: string,
+  ): Promise<boolean> {
+    const appointments = await this.appointmentsRepo.getByCaseId(sentinel.caseId);
+    return appointments.some(
+      (a) =>
+        a.trusteeId === trusteeId && a.assignedOn.slice(0, 10) === sentinel.assignedOn.slice(0, 10),
+    );
   }
 
   /**
