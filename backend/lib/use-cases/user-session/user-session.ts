@@ -13,12 +13,23 @@ import { CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
-import { UserAccessUseCase } from '../user-access/user-access';
-import { SessionAccess } from '../user-access/session-access';
+import { readSessionAccess, SessionAccess } from '../user-access/session-access';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
+const SESSION_ACCESS_MAX_ATTEMPTS = 3;
+const SESSION_ACCESS_BACKOFF_MS = [250, 500];
 
 type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
+
+// Only CamsErrors carry status and module; plain errors log them as undefined.
+function errorLogFields(error: Error & { status?: number; module?: string }) {
+  return {
+    errorType: error?.constructor?.name,
+    status: error?.status,
+    module: error?.module,
+  };
+}
 
 export class UserSessionUseCase {
   private readonly sessionCacheRepository: UserSessionCacheRepository;
@@ -70,6 +81,31 @@ export class UserSessionUseCase {
     }
   }
 
+  private async readSessionAccessWithRetry(context: ApplicationContext, userId: string) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await readSessionAccess(context, userId);
+      } catch (error) {
+        const transient = isTransientInfraError(error);
+        if (!transient || attempt >= SESSION_ACCESS_MAX_ATTEMPTS) {
+          context.logger.error(MODULE_NAME, 'SESSION_ACCESS read failed', {
+            userId,
+            ...errorLogFields(error),
+            message: error.message,
+            transient,
+          });
+          throw error;
+        }
+        context.logger.warn(
+          MODULE_NAME,
+          `SESSION_ACCESS read retry ${attempt}/${SESSION_ACCESS_MAX_ATTEMPTS}`,
+          { userId, ...errorLogFields(error) },
+        );
+        await delay(SESSION_ACCESS_BACKOFF_MS[attempt - 1]);
+      }
+    }
+  }
+
   /**
    * With cams-role-assignments on, roles and offices come only from the user's active permissions;
    * the token's AD groups are ignored. A failed read denies the session (no AD fallback).
@@ -78,21 +114,26 @@ export class UserSessionUseCase {
     context: ApplicationContext,
     userId: string,
     groups: string[],
-  ): Promise<SessionAccess & { source: 'assignments' | 'ad-groups'; permissionCount?: number }> {
+  ): Promise<SessionAccess> {
     if (!context.featureFlags['cams-role-assignments']) {
       const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groups);
       const roles = UsersGroupManagement.getRolesFromGroupNames(groups);
-      return { roles, offices, source: 'ad-groups' };
+      return { roles, offices };
     }
-    try {
-      const access = await new UserAccessUseCase(context).getSessionAccess(context, userId);
-      return { ...access, source: 'assignments' };
-    } catch (error) {
-      context.logger.error(MODULE_NAME, `SESSION_PERMISSIONS read failed: ${error.message}`, {
+    const { access, permissionCount } = await this.readSessionAccessWithRetry(context, userId);
+    context.logger.info(MODULE_NAME, 'Session access from assignments', {
+      userId,
+      permissionCount,
+      roleCount: access.roles.length,
+      officeCount: access.offices.length,
+    });
+    if (permissionCount === 0) {
+      context.logger.warn(MODULE_NAME, 'SESSION_NO_PERMISSIONS', {
         userId,
+        jwtGroupCount: groups.length,
       });
-      throw error;
     }
+    return access;
   }
 
   private async writeSession(context: ApplicationContext, session: CamsSession) {
@@ -116,7 +157,7 @@ export class UserSessionUseCase {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
-      const { roles, offices, source, permissionCount } = await this.getAccess(
+      const { roles, offices } = await this.getAccess(
         context,
         camsUserReference.id,
         verifiedJwt.claims.groups || [],
@@ -139,11 +180,9 @@ export class UserSessionUseCase {
 
       context.logger.debug(
         MODULE_NAME,
-        `Creating session for ${user.name} from ${source} with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
+        `Creating session with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
         {
           userId: user.id,
-          source,
-          permissionCount,
           jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
           officeCount: user.offices?.length || 0,
           roleCount: user.roles?.length || 0,

@@ -295,8 +295,8 @@ describe('Feature: IT SuperUser grants a role in an office (sessions)', () => {
     expect(upsertSpy).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('SESSION_PERMISSIONS read failed'),
-      { userId: sarah.user.id },
+      expect.stringContaining('SESSION_ACCESS read failed'),
+      expect.objectContaining({ userId: sarah.user.id }),
     );
   });
 

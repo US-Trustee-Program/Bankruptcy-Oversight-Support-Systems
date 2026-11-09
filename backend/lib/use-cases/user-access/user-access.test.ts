@@ -2,7 +2,6 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
@@ -12,10 +11,7 @@ import {
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
 } from '@common/cams/user-access';
-import {
-  MOCKED_USTP_OFFICE_DATA_MAP,
-  MOCKED_USTP_OFFICES_ARRAY,
-} from '@common/cams/test-utilities/offices.mock';
+import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { UserAccessUseCase, resetCamsUsersCache } from './user-access';
 import { CamsError } from '../../common-errors/cams-error';
 
@@ -874,46 +870,6 @@ describe('UserAccessUseCase', () => {
         );
         expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['CREATED']);
       });
-    });
-  });
-
-  describe('getSessionAccess', () => {
-    test("should expand the user's active permissions over the live office list", async () => {
-      const findSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
-        .mockResolvedValue([
-          assignmentFor('user-a', MANHATTAN),
-          scopedAssignmentFor('user-a', '18'),
-        ]);
-
-      const access = await useCase.getSessionAccess(context, 'user-a');
-
-      const expected = MOCKED_USTP_OFFICES_ARRAY.filter(
-        (o) => o.officeCode === MANHATTAN.officeCode || o.regionId === '18',
-      ).map((o) => o.officeCode);
-      expect(findSpy).toHaveBeenCalledWith(['user-a']);
-      expect(access.roles).toEqual([CamsRole.TrialAttorney]);
-      expect(access.permissionCount).toBe(2);
-      expect(access.offices.map((o) => o.officeCode)).toEqual(expected);
-    });
-
-    test('should fail when the permissions cannot be read', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockRejectedValue(
-        new Error('cosmos unavailable'),
-      );
-
-      await expect(useCase.getSessionAccess(context, 'user-a')).rejects.toThrow(
-        'cosmos unavailable',
-      );
-    });
-
-    test('should fail when the office list cannot be read', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
-      vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(
-        new Error('dxtr down'),
-      );
-
-      await expect(useCase.getSessionAccess(context, 'user-a')).rejects.toThrow('dxtr down');
     });
   });
 });

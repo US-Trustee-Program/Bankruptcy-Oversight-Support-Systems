@@ -13,6 +13,8 @@ import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-ga
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import * as delayModule from '@common/delay';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { CamsRole } from '@common/cams/roles';
@@ -351,45 +353,149 @@ describe('user-session.gateway test', () => {
       ]);
     });
 
-    test('should deny the session, cache nothing and log when permissions cannot be read', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockRejectedValue(
-        new Error('cosmos unavailable'),
-      );
+    test('should deny the session, cache nothing and log a non-transient read failure once', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValue(new Error('cosmos unavailable'));
       const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
       const errorSpy = vi.spyOn(context.logger, 'error');
+      const delaySpy = vi.spyOn(delayModule, 'delay');
 
       await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
 
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      expect(delaySpy).not.toHaveBeenCalled();
       expect(upsertSpy).not.toHaveBeenCalled();
-      expect(errorSpy).toHaveBeenCalledWith(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
+        userId: mockUser.id,
+        errorType: 'Error',
+        status: undefined,
+        module: undefined,
+        message: 'cosmos unavailable',
+        transient: false,
+      });
+    });
+
+    test('should retry a transient read failure and build the session on success', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce([manhattanTrialAttorney]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const delaySpy = vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(findSpy).toHaveBeenCalledTimes(2);
+      expect(delaySpy).toHaveBeenCalledWith(250);
+      expect(warnSpy).toHaveBeenCalledWith(
         'USER-SESSION-GATEWAY',
-        'SESSION_PERMISSIONS read failed: cosmos unavailable',
-        { userId: mockUser.id },
+        'SESSION_ACCESS read retry 1/3',
+        {
+          userId: mockUser.id,
+          errorType: 'TooManyRequestsError',
+          status: 429,
+          module: 'TEST',
+        },
+      );
+      expect(session.user.roles).toEqual([CamsRole.TrialAttorney]);
+    });
+
+    test('should give up after three transient failures, back off between attempts, and cache nothing', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValue(new GatewayTimeoutError('TEST'));
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+      const delaySpy = vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(gateway.lookup(context, jwtString)).rejects.toThrow(GatewayTimeoutError);
+
+      expect(findSpy).toHaveBeenCalledTimes(3);
+      expect(delaySpy.mock.calls.map(([ms]) => ms)).toEqual([250, 500]);
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
+        userId: mockUser.id,
+        errorType: 'GatewayTimeoutError',
+        status: 504,
+        module: 'TEST',
+        message: 'Gateway Timeout',
+        transient: true,
+      });
+    });
+
+    test('should log the access read from assignments at info', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([
+        manhattanTrialAttorney,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const infoSpy = vi.spyOn(context.logger, 'info');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await gateway.lookup(context, jwtString);
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'Session access from assignments',
+        {
+          userId: mockUser.id,
+          permissionCount: 1,
+          roleCount: 1,
+          officeCount: 1,
+        },
+      );
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'SESSION_NO_PERMISSIONS',
+        expect.anything(),
       );
     });
 
-    test.each([
-      { flag: true, source: 'assignments', permissionCount: 1 },
-      { flag: false, source: 'ad-groups', permissionCount: undefined },
-    ])(
-      'should log that the session came from $source',
-      async ({ flag, source, permissionCount }) => {
-        context.featureFlags['cams-role-assignments'] = flag;
-        const findSpy = vi
-          .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
-          .mockResolvedValue([manhattanTrialAttorney]);
-        vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
-        const debugSpy = vi.spyOn(context.logger, 'debug');
+    test('should warn SESSION_NO_PERMISSIONS with the JWT group count when the user has no permissions', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
 
-        await gateway.lookup(context, jwtString);
+      await gateway.lookup(context, jwtString);
 
-        const creating = debugSpy.mock.calls.find(([, message]) =>
-          String(message).startsWith('Creating session for'),
-        );
-        expect(creating?.[2]).toEqual(expect.objectContaining({ source, permissionCount }));
-        // With the flag off, permissions are not even read.
-        expect(findSpy).toHaveBeenCalledTimes(flag ? 1 : 0);
-      },
-    );
+      expect(warnSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_NO_PERMISSIONS', {
+        userId: mockUser.id,
+        jwtGroupCount: adGroups.length,
+      });
+    });
+
+    test('should log the session without the user name or the access source', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([
+        manhattanTrialAttorney,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const debugSpy = vi.spyOn(context.logger, 'debug');
+
+      await gateway.lookup(context, jwtString);
+
+      const creating = debugSpy.mock.calls.find(([, message]) =>
+        String(message).startsWith('Creating session with'),
+      );
+      expect(String(creating?.[1])).not.toContain(mockUser.name);
+      expect(creating?.[2]).toEqual({
+        userId: mockUser.id,
+        jwtGroupCount: adGroups.length,
+        officeCount: 1,
+        roleCount: 1,
+      });
+    });
+
+    test('should not read permissions when the flag is off', async () => {
+      context.featureFlags['cams-role-assignments'] = false;
+      const findSpy = vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds');
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+
+      await gateway.lookup(context, jwtString);
+
+      expect(findSpy).not.toHaveBeenCalled();
+    });
   });
 });

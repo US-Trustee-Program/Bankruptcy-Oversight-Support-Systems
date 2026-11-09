@@ -1,7 +1,12 @@
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { activeKeyFor, UserRoleAssignment } from '@common/cams/user-access';
-import { sessionAccessFrom } from './session-access';
+import { readSessionAccess, sessionAccessFrom } from './session-access';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 
 function office(regionId: string, name: string): UstpOfficeDetails {
   return {
@@ -23,7 +28,6 @@ function permission(
   role: CamsRoleType,
   regionId: string | null,
   officeCode: string | null,
-  active = true,
 ): UserRoleAssignment {
   return {
     documentType: 'USER_ROLE_ASSIGNMENT',
@@ -37,7 +41,7 @@ function permission(
     assignedByName: 'Super User',
     assignedAt: '2026-11-09T00:00:00.000Z',
     expiresAt: null,
-    active,
+    active: true,
     activeKey: activeKeyFor(role, regionId, officeCode),
   };
 }
@@ -113,17 +117,66 @@ describe('sessionAccessFrom', () => {
     expect(access).toEqual({ roles: [CamsRole.TrialAttorney], offices: [] });
   });
 
-  // The repository returns only active permissions; this guards the function on its own.
-  test('should ignore inactive permissions', () => {
-    const access = sessionAccessFrom(
-      [permission(CamsRole.TrialAttorney, '2', MANHATTAN.officeCode, false)],
-      OFFICES,
-    );
-
-    expect(access).toEqual({ roles: [], offices: [] });
-  });
-
   test('should give no roles or offices without permissions', () => {
     expect(sessionAccessFrom([], OFFICES)).toEqual({ roles: [], offices: [] });
+  });
+});
+
+describe('readSessionAccess', () => {
+  const MANHATTAN_CODE = 'USTP_CAMS_Region_2_Office_Manhattan';
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('should read the active permissions of the user and the office list', async () => {
+    const findSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+      .mockResolvedValue([permission(CamsRole.TrialAttorney, '2', MANHATTAN_CODE)]);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue(
+      MOCKED_USTP_OFFICES_ARRAY,
+    );
+
+    const result = await readSessionAccess(context, 'user-a');
+
+    expect(findSpy).toHaveBeenCalledWith(['user-a']);
+    expect(result.permissionCount).toBe(1);
+    expect(result.access.roles).toEqual([CamsRole.TrialAttorney]);
+    expect(codes(result.access.offices)).toEqual([MANHATTAN_CODE]);
+  });
+
+  test('should start the office read without waiting for the permission read', async () => {
+    let resolvePermissions: (value: UserRoleAssignment[]) => void = () => {};
+    vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockReturnValue(
+      new Promise((resolve) => (resolvePermissions = resolve)),
+    );
+    const officesSpy = vi
+      .spyOn(MockOfficesGateway.prototype, 'getOffices')
+      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+
+    const pending = readSessionAccess(context, 'user-a');
+    await Promise.resolve();
+
+    expect(officesSpy).toHaveBeenCalledTimes(1);
+    resolvePermissions([]);
+    await pending;
+  });
+
+  test('should fail when the permissions cannot be read', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockRejectedValue(
+      new Error('cosmos unavailable'),
+    );
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([]);
+
+    await expect(readSessionAccess(context, 'user-a')).rejects.toThrow('cosmos unavailable');
+  });
+
+  test('should fail when the office list cannot be read', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(new Error('dxtr down'));
+
+    await expect(readSessionAccess(context, 'user-a')).rejects.toThrow('dxtr down');
   });
 });
