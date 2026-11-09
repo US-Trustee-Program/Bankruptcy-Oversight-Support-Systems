@@ -5,13 +5,21 @@ import {
 } from '@common/cams/dataflow-events';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import factory from '../../factory';
-import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
+import { AcmsCaseAppointmentRawRecord, formatCaseId } from '../gateways.types';
 import { rawToTrusteeAppointmentSyncEvent } from './acms-case-appointment.helpers';
 import { DEFAULT_FETCH_SIZE } from './migrate-case-appointments-constants';
+
+/** A source row that could not be converted to an event. Its siblings on the same page still convert. */
+export type TrusteeAppointmentSourceRowFailure = {
+  rowId: number;
+  caseId: string;
+  reason: string;
+};
 
 /** One page of events for a single change date, paged by id within that date. */
 export type TrusteeAppointmentSourcePage = {
   events: TrusteeAppointmentSyncEvent[];
+  failures: TrusteeAppointmentSourceRowFailure[];
   /** Greatest id on this page; pass it back as lastId to fetch the next page. Absent when no more pages. */
   lastId?: string;
 };
@@ -60,7 +68,7 @@ export class DxtrTrusteeAppointmentSource implements TrusteeAppointmentSource {
       casesGateway.getTrusteeAppointments(context, changeDate),
       casesGateway.getTrusteePetitionEvents(context, changeDate),
     ]);
-    return { events: [...appointments.events, ...petitions.events] };
+    return { events: [...appointments.events, ...petitions.events], failures: [] };
   }
 }
 
@@ -111,20 +119,32 @@ export class AcmsTrusteeAppointmentSource implements TrusteeAppointmentSource {
     );
 
     if (rawRecords.length === 0) {
-      return { events: [] };
+      return { events: [], failures: [] };
     }
 
     const officesGateway = factory.getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
     const divisionCodeToCourtId = buildDivisionCodeToCourtIdMap(offices);
 
-    const events = rawRecords.map((raw) => this.toEvent(raw, divisionCodeToCourtId));
+    const events: TrusteeAppointmentSyncEvent[] = [];
+    const failures: TrusteeAppointmentSourceRowFailure[] = [];
+    for (const raw of rawRecords) {
+      try {
+        events.push(this.toEvent(raw, divisionCodeToCourtId));
+      } catch (error) {
+        failures.push({
+          rowId: raw.id,
+          caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
     const greatestId = rawRecords.reduce<number>(
       (max, raw) => (raw.id > max ? raw.id : max),
       rawRecords[0].id,
     );
 
-    return { events, lastId: String(greatestId) };
+    return { events, failures, lastId: String(greatestId) };
   }
 
   private toEvent(

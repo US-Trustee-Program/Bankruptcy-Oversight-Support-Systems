@@ -536,6 +536,20 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  async deleteAll(): Promise<number> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = doc('documentType').equals('CASE_APPOINTMENT');
+      const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      return deleted;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to delete all case appointments.',
+      });
+    }
+  }
+
   async findActiveMissingAppointedDate(
     lastId: string | null,
     limit: number,
@@ -716,14 +730,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * same trustee partition as getActiveByTrusteeIdFromTrusteePartition but filters isSurrogate
    * in the query itself, making "these rows are membership markers, not a real trustee's
    * appointments" a property of the method rather than a convention callers must remember to
-   * apply themselves.
+   * apply themselves. Disposed (closed) surrogates are included: a case whose placeholder was
+   * written already closed is still a member of its identity task and must be remapped on approval.
    */
   async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>> {
     const doc = using<CaseAppointmentDocument>();
     const query = and(
       doc('documentType').equals('CASE_APPOINTMENT'),
       doc('trusteeId').equals(fingerprint),
-      doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
     const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
@@ -741,7 +755,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     const query = and(
       doc('documentType').equals('CASE_APPOINTMENT'),
       doc('trusteeId').contains(fingerprints),
-      doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
     const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);

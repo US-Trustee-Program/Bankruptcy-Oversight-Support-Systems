@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
-import { assertValidChapter } from './sync-trustee-case-appointments';
+import { assertValidChapter, deriveUnassignedOn } from './sync-trustee-case-appointments';
 import {
   CaseAppointment,
   TrusteeAppointment,
@@ -56,6 +56,34 @@ type RemapPageResult = {
   remainingCount: number;
 };
 
+/**
+ * Latest-wins between an open copy and the case's open real appointment. The court record is
+ * ground truth, so the appointment with the later assignedOn is active and the older one is closed
+ * the day before the later one starts. Returns the copy's own unassignedOn when the existing
+ * appointment is the later one (the copy is written closed), otherwise closes the existing
+ * appointment and returns undefined (the copy stays open). An existing row for the same trustee and
+ * the same assignedOn is this same court appointment from an earlier remap, so nothing changes.
+ */
+async function settleOpenCopy(
+  repo: TrusteeCaseAppointmentsRepository,
+  copy: CaseAppointment,
+  existing: CaseAppointment | null,
+  resolvedTrusteeId: string,
+): Promise<string | undefined> {
+  if (!existing) return undefined;
+  const copyDate = copy.assignedOn.slice(0, 10);
+  const existingDate = existing.assignedOn.slice(0, 10);
+  if (existing.trusteeId === resolvedTrusteeId && existingDate === copyDate) return undefined;
+  if (existingDate > copyDate) {
+    return deriveUnassignedOn(existingDate, copy.assignedOn);
+  }
+  await repo.updateCaseAppointment({
+    ...existing,
+    unassignedOn: deriveUnassignedOn(copyDate, existing.assignedOn),
+  });
+  return undefined;
+}
+
 class TrusteeVerificationRemapUseCase {
   private readonly context: ApplicationContext;
   private readonly appointmentsRepo: TrusteeCaseAppointmentsRepository;
@@ -66,15 +94,14 @@ class TrusteeVerificationRemapUseCase {
   }
 
   /**
-   * Remaps a single surrogate CaseAppointment to the resolved real trustee: soft-close a
-   * different-trustee real appointment if one exists (a genuine real->real trustee change,
-   * a historical fact), upsert the canonical appointment under resolvedTrusteeId, then delete
-   * the surrogate. Order is soft-close -> upsert -> delete: upserting before soft-closing would
-   * transiently leave two active real rows (getActiveByCaseId's findOne would then return an
-   * arbitrary one), whereas a failed upsert after a soft-close only leaves the case showing no
-   * trustee — recoverable, and self-healing on retry since the surrogate is untouched until the
-   * upsert succeeds. assignedOn is carried from the surrogate row (not stamped fresh) so the
-   * upsert's natural key (caseId, trusteeId, assignedOn) makes retries genuinely idempotent.
+   * Records a single surrogate CaseAppointment as a real appointment for the resolved trustee. The
+   * court record is ground truth: a copy with a source disposition is written exactly as given and
+   * nothing else is touched. An open copy is settled latest-wins against the case's open real
+   * appointment (see settleOpenCopy). Order is soft-close -> upsert -> delete: upserting before
+   * soft-closing would transiently leave two active real rows, whereas a failed upsert after a
+   * soft-close only leaves the case showing no trustee, recoverable on retry since the surrogate is
+   * untouched until the upsert succeeds. assignedOn is carried from the surrogate row (not stamped
+   * fresh) so the upsert's natural key (caseId, trusteeId, assignedOn) makes retries idempotent.
    *
    * Re-validates isAppointmentMatch against a freshly-fetched case summary before remapping —
    * defense in depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
@@ -119,41 +146,40 @@ class TrusteeVerificationRemapUseCase {
     }
 
     const existingReal = await this.appointmentsRepo.getActiveByCaseId(surrogate.caseId);
+    const copyUnassignedOn =
+      surrogate.unassignedOn ??
+      (await settleOpenCopy(
+        this.appointmentsRepo,
+        surrogate,
+        existingReal,
+        message.resolvedTrusteeId,
+      ));
 
-    if (existingReal && existingReal.trusteeId !== message.resolvedTrusteeId) {
-      await this.appointmentsRepo.updateCaseAppointment({
-        ...existingReal,
-        unassignedOn: new Date().toISOString(),
-      });
-    }
-
-    if (!existingReal || existingReal.trusteeId !== message.resolvedTrusteeId) {
-      await this.appointmentsRepo.upsert({
-        caseId: surrogate.caseId,
-        trusteeId: message.resolvedTrusteeId,
-        assignedOn: surrogate.assignedOn,
-        appointedDate: surrogate.appointedDate,
-        dateFiled: surrogate.dateFiled,
-        // Fresh values, not the surrogate's: the guard above validates isAppointmentMatch
-        // against caseSummary specifically to catch a case transferred since the surrogate
-        // was created, and persisting the surrogate's own chapter/courtDivisionCode here
-        // would write back exactly the stale data that guard exists to catch.
-        chapter: assertValidChapter(surrogate.caseId, caseSummary.chapter),
-        courtDivisionCode: caseSummary.courtDivisionCode,
-      });
-    }
+    await this.appointmentsRepo.upsert({
+      caseId: surrogate.caseId,
+      trusteeId: message.resolvedTrusteeId,
+      assignedOn: surrogate.assignedOn,
+      appointedDate: surrogate.appointedDate,
+      ...(copyUnassignedOn ? { unassignedOn: copyUnassignedOn } : {}),
+      dateFiled: surrogate.dateFiled,
+      // Fresh values, not the surrogate's: the guard above validates isAppointmentMatch
+      // against caseSummary specifically to catch a case transferred since the surrogate
+      // was created, and persisting the surrogate's own chapter/courtDivisionCode here
+      // would write back exactly the stale data that guard exists to catch.
+      chapter: assertValidChapter(surrogate.caseId, caseSummary.chapter),
+      courtDivisionCode: caseSummary.courtDivisionCode,
+    });
 
     await this.appointmentsRepo.delete(surrogate.id);
   }
 
   /**
    * Remaps up to pageSize cases sharing message.fingerprint's pending mismatch from their
-   * surrogate placeholder to the resolved real trustee. Natural idempotency: a remapped case's
-   * surrogate row is deleted outright, so re-querying getSurrogatesByFingerprint(fingerprint)
-   * after a partial batch failure returns only the cases that haven't been remapped yet — no
-   * retryCount-based skip logic is needed. The one case a retry may re-encounter is one whose
-   * canonical upsert succeeded but whose surrogate delete failed; the idempotent upsert makes
-   * reprocessing it a no-op and the retry completes the delete.
+   * surrogate placeholder to the resolved real trustee. A remapped surrogate row is deleted, so
+   * re-querying getSurrogatesByFingerprint(fingerprint) after a partial batch failure returns only
+   * the placeholders not yet remapped, with no retryCount-based skip logic. A case a retry may
+   * re-encounter (its upsert succeeded but its delete failed) re-upserts the same natural key and
+   * completes the delete.
    *
    * A rate-limit error, gateway-timeout error, or case-summary lookup failure mid-page
    * rethrows immediately rather than being counted as a per-case failure — all three are

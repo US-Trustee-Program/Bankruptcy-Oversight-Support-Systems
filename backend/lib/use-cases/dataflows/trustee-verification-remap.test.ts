@@ -86,6 +86,90 @@ describe('TrusteeVerificationRemapUseCase', () => {
     useCase = new TrusteeVerificationRemapUseCase(context);
   });
 
+  test('carries a disposed surrogate unassignedOn onto the canonical appointment', async () => {
+    const surrogate = makeSurrogate({ unassignedOn: '2025-03-01' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+
+    await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ trusteeId: 'trustee-new', unassignedOn: '2025-03-01' }),
+    );
+    expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
+  });
+
+  test('a disposed surrogate is written closed and leaves a superseding active appointment untouched', async () => {
+    // makeSurrogate's assignedOn is 2025-01-01; the active appointment was assigned later, so it
+    // supersedes the surrogate. A disposed surrogate is history and must not close it.
+    const surrogate = makeSurrogate({ unassignedOn: '2025-03-01' });
+    const superseding = {
+      id: 'real-superseding',
+      caseId: surrogate.caseId,
+      trusteeId: 'trustee-superseding',
+      assignedOn: '2025-06-01T00:00:00.000Z',
+    } as CaseAppointment;
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    mockGetActiveByCaseId.mockResolvedValue(superseding);
+
+    await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trusteeId: 'trustee-new',
+        assignedOn: surrogate.assignedOn,
+        unassignedOn: '2025-03-01',
+      }),
+    );
+  });
+
+  test('an open surrogate superseded by a later active appointment is written closed the day before it, leaving that appointment untouched', async () => {
+    // In-order case: an unresolved trustee appointed 2026-01-01 (open placeholder), then trustee B
+    // appointed 2026-03-01 becomes the active appointment. Approving the placeholder as X must not
+    // end B; X's copy closes the day before B starts.
+    const surrogate = makeSurrogate({ assignedOn: '2026-01-01', appointedDate: '2026-01-01' });
+    const superseding = {
+      id: 'real-b',
+      caseId: surrogate.caseId,
+      trusteeId: 'trustee-b',
+      assignedOn: '2026-03-01',
+    } as CaseAppointment;
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    mockGetActiveByCaseId.mockResolvedValue(superseding);
+
+    await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trusteeId: 'trustee-new',
+        assignedOn: '2026-01-01',
+        unassignedOn: '2026-02-28',
+      }),
+    );
+  });
+
+  test('an open surrogate closes a same-day different-trustee appointment at its own start date (zero-length, the derived clamp)', async () => {
+    // Same-age is not superseding: the boundary is strictly later, so this row is closed. The day
+    // before the surrogate would precede the row's start, so deriveUnassignedOn clamps the close to
+    // that start date.
+    const surrogate = makeSurrogate({ assignedOn: '2026-01-01', appointedDate: '2026-01-01' });
+    const sameAge = {
+      id: 'real-same-age',
+      caseId: surrogate.caseId,
+      trusteeId: 'trustee-same-age',
+      assignedOn: '2026-01-01',
+    } as CaseAppointment;
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    mockGetActiveByCaseId.mockResolvedValue(sameAge);
+
+    await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'real-same-age', unassignedOn: '2026-01-01' }),
+    );
+  });
+
   test('remaps a single surrogate case: upserts canonical appointment then deletes surrogate', async () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
@@ -132,28 +216,70 @@ describe('TrusteeVerificationRemapUseCase', () => {
     await useCase.remapPage(makeMessage(), 25);
 
     expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'real-appt-1', unassignedOn: expect.any(String) }),
+      expect.objectContaining({ id: 'real-appt-1', unassignedOn: '2024-12-31' }),
     );
     const softCloseOrder = mockUpdateCaseAppointment.mock.invocationCallOrder[0];
     const upsertOrder = mockUpsert.mock.invocationCallOrder[0];
     expect(softCloseOrder).toBeLessThan(upsertOrder);
   });
 
-  test('skips soft-close and upsert when the existing real appointment is already the resolved trustee, but still deletes the surrogate', async () => {
+  test('re-processing a copy already recorded for the resolved trustee closes nothing, re-upserts the same key, and still deletes the surrogate', async () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     mockGetActiveByCaseId.mockResolvedValue({
       id: 'real-appt-1',
       caseId: surrogate.caseId,
       trusteeId: 'trustee-new',
-      assignedOn: '2024-01-01T00:00:00.000Z',
+      assignedOn: '2025-01-01T00:00:00.000Z',
     });
 
     await useCase.remapPage(makeMessage(), 25);
 
     expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseId: surrogate.caseId,
+        trusteeId: 'trustee-new',
+        assignedOn: surrogate.assignedOn,
+      }),
+    );
     expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
+  });
+
+  test('two court appointments for one fingerprint are both recorded for the resolved trustee, the older closed by latest-wins', async () => {
+    const older = makeSurrogate({
+      id: 'surrogate-older',
+      assignedOn: '2026-01-01',
+      appointedDate: '2026-01-01',
+    });
+    const newer = makeSurrogate({
+      id: 'surrogate-newer',
+      assignedOn: '2026-03-01',
+      appointedDate: '2026-03-01',
+    });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([older, newer]);
+    // Remapping the older copy finds no active appointment; the newer copy then finds the older
+    // copy just written for the same trustee.
+    mockGetActiveByCaseId.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'written-older',
+      caseId: older.caseId,
+      trusteeId: 'trustee-new',
+      assignedOn: '2026-01-01',
+    });
+
+    await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'written-older', unassignedOn: '2026-02-28' }),
+    );
+    expect(mockUpsert).toHaveBeenCalledTimes(2);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ trusteeId: 'trustee-new', assignedOn: '2026-01-01' }),
+    );
+    expect(mockUpsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ trusteeId: 'trustee-new', assignedOn: '2026-03-01' }),
+    );
+    expect(mockUpsert.mock.calls[1][0]).not.toHaveProperty('unassignedOn');
   });
 
   test('a failed canonical upsert leaves the surrogate untouched and counts as a failure without aborting the page', async () => {

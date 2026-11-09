@@ -1099,9 +1099,9 @@ jurisdictionScenario({
   const p = person('Oak');
   add({
     key: 'unknown-closed-removes-placeholder',
-    title: 'Unknown trustee with a closed appointment removes the open placeholder',
+    title: 'Unknown trustee with a closed appointment closes the open placeholder',
     basis: 'feature',
-    note: 'cams-fd8qd.1.9: no existing code path deletes the placeholder; the identity task itself stays.',
+    note: 'cams-fd8qd.1.9: the disposition closes the placeholder as given; it is not deleted, and the identity task itself stays.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [] },
@@ -1119,7 +1119,9 @@ jurisdictionScenario({
         changeDate: '2026-09-02',
         expect: {
           sourceEvents: 1,
-          appointments: { [c]: [] },
+          appointments: {
+            [c]: [{ trustee: 'PLACEHOLDER', assignedOn: D1, unassignedOn: '2026-09-01' }],
+          },
           tasks: [{ last: 'Oak', count: 1, source: 'ACMS' }],
           tasksTotal: 1,
         },

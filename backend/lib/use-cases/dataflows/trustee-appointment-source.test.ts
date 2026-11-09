@@ -123,7 +123,7 @@ describe('AcmsTrusteeAppointmentSource', () => {
       const source = new AcmsTrusteeAppointmentSource();
       const page = await source.getEventsForDate(context, '02', '2026-07-01');
 
-      expect(page).toEqual({ events: [] });
+      expect(page).toEqual({ events: [], failures: [] });
       expect(officesGateway.getOffices).not.toHaveBeenCalled();
     });
 
@@ -183,12 +183,24 @@ describe('AcmsTrusteeAppointmentSource', () => {
       expect(page.lastId).toBe('1050');
     });
 
-    test('throws a clear error when a row division has no matching office/court', async () => {
-      setupGateways([makeRawRecord({ CASE_DIV: 999 })], []);
+    test('isolates a row that cannot be converted: it becomes a failure and the other rows still convert', async () => {
+      setupGateways([
+        makeRawRecord({ id: 1001, CASE_DIV: 999, CASE_NUMBER: 2 }),
+        makeRawRecord({ id: 1050, CASE_NUMBER: 1 }),
+      ]);
 
       const source = new AcmsTrusteeAppointmentSource();
+      const page = await source.getEventsForDate(context, '02', '2026-07-01');
 
-      await expect(source.getEventsForDate(context, '02', '2026-07-01')).rejects.toThrow(/999/);
+      expect(page.events).toEqual([expect.objectContaining({ caseId: '081-24-00001' })]);
+      expect(page.failures).toEqual([
+        {
+          rowId: 1001,
+          caseId: '999-24-00002',
+          reason: expect.stringContaining('ACMS division 999'),
+        },
+      ]);
+      expect(page.lastId).toBe('1050');
     });
   });
 });

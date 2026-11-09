@@ -6,6 +6,8 @@ import RegionDriver, { CUTOVER_DATE } from './trustee-appointment-region-driver'
 import SyncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 import { AcmsCaseAppointmentRawRecord, TrusteeAppointmentRegionSyncState } from '../gateways.types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 
 function makeEvent(caseId: string): TrusteeAppointmentSyncEvent {
   return {
@@ -185,9 +187,9 @@ describe('RegionDriver.runRegionDriver', () => {
     );
   });
 
-  test('the run date is never read, and the bookmark advances only through non-empty, non-final dates', async () => {
+  test('the run date is never read, and the bookmark advances through every date before the newest one', async () => {
     mockRegionStateRepo.read.mockResolvedValue(stateWith({ '02': { lastSyncDate: '2026-07-01' } }));
-    // Data exists on 07-02 and on the run date itself (07-05); 07-03/07-04 are empty.
+    // The replica's newest date is the run date (07-05), which is never read; 07-02 has data and 07-03/07-04 are empty.
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-05');
     getCmmapAppointmentsRaw.mockImplementation(
       respectingCursor({ '2026-07-02': makeRawRow(1, '2026-07-02') }),
@@ -203,12 +205,56 @@ describe('RegionDriver.runRegionDriver', () => {
     for (const call of getCmmapAppointmentsRaw.mock.calls) {
       expect(call[5]).not.toBe('2026-07-05');
     }
-    expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
+    // 07-02 (data) and 07-03 (empty) are complete; 07-04 is the newest walked date and stays unbookmarked.
+    expect(mockRegionStateRepo.setField).toHaveBeenCalledTimes(2);
+    expect(mockRegionStateRepo.setField).toHaveBeenLastCalledWith(
       'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
       'region.02.lastSyncDate',
-      '2026-07-02',
+      '2026-07-03',
     );
-    expect(mockRegionStateRepo.setField).toHaveBeenCalledTimes(1);
+  });
+
+  test('a dormant span of empty dates is bookmarked through, stopping before the newest date', async () => {
+    mockRegionStateRepo.read.mockResolvedValue(stateWith({ '02': { lastSyncDate: '2026-07-01' } }));
+    // Nothing between 07-02 and 07-07; 07-08 is the newest known date and must stay unbookmarked.
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-08');
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({ '2026-07-08': makeRawRow(2, '2026-07-08') }),
+    );
+
+    await RegionDriver.runRegionDriver(context, { regions: ['02'], runDate: '2026-07-10' });
+
+    // One bookmark write per empty day, 07-02 through 07-07.
+    expect(mockRegionStateRepo.setField).toHaveBeenCalledTimes(6);
+    expect(mockRegionStateRepo.setField).toHaveBeenLastCalledWith(
+      'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+      'region.02.lastSyncDate',
+      '2026-07-07',
+    );
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalledWith(
+      'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+      'region.02.lastSyncDate',
+      '2026-07-08',
+    );
+  });
+
+  test('a second invocation after a dormant span reads only the newest date, not the empty days', async () => {
+    mockRegionStateRepo.read.mockResolvedValue(stateWith({ '02': { lastSyncDate: '2026-07-01' } }));
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-08');
+    const options = { regions: ['02'], runDate: '2026-07-10' };
+
+    await RegionDriver.runRegionDriver(context, options);
+    const bookmarkAfterFirstRun = mockRegionStateRepo.setField.mock.lastCall?.[2];
+    expect(bookmarkAfterFirstRun).toBe('2026-07-07');
+    mockRegionStateRepo.read.mockResolvedValue(
+      stateWith({ '02': { lastSyncDate: bookmarkAfterFirstRun } }),
+    );
+    getCmmapAppointmentsRaw.mockClear();
+
+    await RegionDriver.runRegionDriver(context, options);
+
+    const datesRead = new Set(getCmmapAppointmentsRaw.mock.calls.map((call) => call[5]));
+    expect(datesRead).toEqual(new Set(['2026-07-08']));
   });
 
   test('only the named regions are processed; others are left untouched', async () => {
@@ -292,8 +338,8 @@ describe('RegionDriver.runRegionDriver', () => {
     );
   });
 
-  test('falls back to the cutover date when reading region state fails (no prior document)', async () => {
-    mockRegionStateRepo.read.mockRejectedValue(new Error('not found'));
+  test('falls back to the cutover date when the region state document does not exist yet', async () => {
+    mockRegionStateRepo.read.mockRejectedValue(new NotFoundError('TEST'));
     getLatestCmmapChangeDateForRegion.mockResolvedValue(CUTOVER_DATE);
 
     await RegionDriver.runRegionDriver(context, { regions: ['02'], runDate: '2026-07-05' });
@@ -308,7 +354,18 @@ describe('RegionDriver.runRegionDriver', () => {
     );
   });
 
-  test('escapes mid-date when the invocation budget is exhausted, returning a continuation', async () => {
+  test('a read failure other than not-found propagates, and never walks from the cutover date', async () => {
+    const readError = new Error('connection reset');
+    mockRegionStateRepo.read.mockRejectedValue(readError);
+    getLatestCmmapChangeDateForRegion.mockResolvedValue(CUTOVER_DATE);
+
+    await expect(
+      RegionDriver.runRegionDriver(context, { regions: ['02'], runDate: '2026-07-05' }),
+    ).rejects.toBe(readError);
+    expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
+  });
+
+  test('escapes before reading a date when the invocation budget is exhausted, returning a continuation', async () => {
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
     getCmmapAppointmentsRaw.mockResolvedValue([]);
 
@@ -323,9 +380,115 @@ describe('RegionDriver.runRegionDriver', () => {
       regions: ['02', '03'],
       runDate: '2026-07-05',
       resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: undefined },
+      cause: 'invocation-budget',
     });
     expect(result.processedRegions).toEqual([]);
     expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
+  });
+
+  test('a timeout on a later page stops with a timeout continuation at that cursor and keeps earlier results', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    const earlierDlq = makeEvent('081-26-00009');
+    processAppointmentsSpy.mockResolvedValueOnce({
+      successCount: 0,
+      dlqMessages: [earlierDlq],
+      scenarioDistribution: {} as never,
+      notYetSyncedEvents: [],
+      retryableEvents: [],
+    });
+    getCmmapAppointmentsRaw.mockImplementation(async (_context, lastId: number) => {
+      if (lastId === 0) return [makeRawRow(1001, '2026-07-01')];
+      throw new Error('Timeout: query exceeded limit');
+    });
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+    });
+
+    expect(result.dlqMessages).toEqual([earlierDlq]);
+    expect(result.processedRegions).toEqual([]);
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001' },
+      cause: 'transient-error',
+    });
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+  });
+
+  test('a 429 on the bookmark write stops at the next date, keeping the results of the date just completed', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({ '2026-07-01': makeRawRow(1001, '2026-07-01') }),
+    );
+    const completedDlq = makeEvent('081-26-00008');
+    processAppointmentsSpy.mockResolvedValueOnce({
+      successCount: 0,
+      dlqMessages: [completedDlq],
+      scenarioDistribution: {} as never,
+      notYetSyncedEvents: [],
+      retryableEvents: [],
+    });
+    mockRegionStateRepo.setField.mockRejectedValueOnce(new TooManyRequestsError('TEST'));
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+    });
+
+    expect(result.dlqMessages).toEqual([completedDlq]);
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: undefined },
+      cause: 'transient-error',
+    });
+  });
+
+  test('a 429 on the region-state read stops before any region with the original resume point', async () => {
+    mockRegionStateRepo.read.mockRejectedValue(new TooManyRequestsError('TEST'));
+    const resumeFrom = { regionId: '03', date: '2026-07-02', lastId: '1001' };
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom,
+    });
+
+    expect(getLatestCmmapChangeDateForRegion).not.toHaveBeenCalled();
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom,
+      cause: 'transient-error',
+    });
+  });
+
+  test('a timeout on the latest-date read stops at that region with no resume point, leaving its bookmark untouched', async () => {
+    getLatestCmmapChangeDateForRegion.mockRejectedValue(new Error('Timeout: query exceeded limit'));
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+    });
+
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      cause: 'transient-error',
+    });
+    expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+  });
+
+  test('a non-timeout ACMS error propagates without a continuation', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-01');
+    getCmmapAppointmentsRaw.mockRejectedValue(new Error('Connection refused by host'));
+
+    await expect(
+      RegionDriver.runRegionDriver(context, { regions: ['02'], runDate: '2026-07-05' }),
+    ).rejects.toThrow('Connection refused by host');
   });
 
   test('resumes exactly at the given date and cursor instead of recomputing from the bookmark', async () => {
@@ -373,5 +536,55 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.dlqMessages).toEqual([event]);
     expect(result.retryableEvents).toEqual([event]);
     expect(result.notYetSyncedEvents).toEqual([event]);
+  });
+
+  test('routes a row that cannot be converted to a DLQ entry naming the row, while its sibling still processes', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-01');
+    const badRow = { ...makeRawRow(1, '2026-07-01'), CASE_DIV: 999 };
+    const goodRow = makeRawRow(2, '2026-07-01');
+    getCmmapAppointmentsRaw.mockImplementation(async (_context, lastId: number) =>
+      lastId === 0 ? [badRow, goodRow] : [],
+    );
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+    });
+
+    expect(processAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), [
+      expect.objectContaining({ caseId: '081-26-00002' }),
+    ]);
+    expect(result.dlqMessages).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        module: RegionDriver.MODULE_NAME,
+        error: expect.objectContaining({
+          message: expect.stringContaining(
+            '(case 999-26-00001, region 02, change date 2026-07-01)',
+          ),
+        }),
+      }),
+    ]);
+  });
+
+  test('a date whose only row failed still advances the bookmark past it', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({
+        '2026-07-01': { ...makeRawRow(1, '2026-07-01'), CASE_DIV: 999 },
+        '2026-07-02': makeRawRow(2, '2026-07-02'),
+      }),
+    );
+
+    await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+    });
+
+    expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
+      'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+      'region.02.lastSyncDate',
+      '2026-07-01',
+    );
   });
 });

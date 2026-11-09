@@ -562,7 +562,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
       continuation?: {
         regions: string[];
         runDate: string;
-        resumeFrom: { regionId: string; date: string; lastId?: string };
+        resumeFrom?: { regionId: string; date: string; lastId?: string };
+        cause: 'invocation-budget' | 'transient-error';
       };
     };
     deleteAllResult?: { data: { deleted: number }; error?: Error };
@@ -652,6 +653,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: ['02', '03'],
       runDate: '2026-07-05',
       resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+      cause: 'invocation-budget' as const,
     };
     const { mockSendMessage } = await setupMocks({
       runRegionDriverResult: { ...emptyResult, continuation },
@@ -665,6 +667,297 @@ describe('sync-trustee-case-appointments handleStart', () => {
       runDate: continuation.runDate,
       resumeFrom: continuation.resumeFrom,
     });
+  });
+
+  test('re-enqueues a transient-error continuation with the resume point, count + 1, and a 300s delay when nothing progressed', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom,
+          cause: 'transient-error',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: 2 },
+      invocationContext,
+    );
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      regions: ['02'],
+      runDate: '2026-07-05',
+      resumeFrom,
+      transientRetryCount: 3,
+    });
+    expect(delaySeconds).toBe(300);
+  });
+
+  test.each([
+    {
+      description: 'the resume point moved',
+      incomingRegions: ['02'],
+      continuedResumeFrom: { regionId: '02', date: '2026-07-02', lastId: '2002' },
+      continuedRegions: ['02'],
+    },
+    {
+      description: 'fewer regions remain',
+      incomingRegions: ['02', '03'],
+      continuedResumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+      continuedRegions: ['03'],
+    },
+  ])(
+    'resets the transient retry count to 1 when $description since the incoming message',
+    async ({ incomingRegions, continuedResumeFrom, continuedRegions }) => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const { mockSendMessage } = await setupMocks({
+        runRegionDriverResult: {
+          ...emptyResult,
+          continuation: {
+            regions: continuedRegions,
+            runDate: '2026-07-05',
+            resumeFrom: continuedResumeFrom,
+            cause: 'transient-error',
+          },
+        },
+      });
+
+      await handleStart(
+        {
+          regions: incomingRegions,
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          transientRetryCount: 4,
+        },
+        invocationContext,
+      );
+
+      expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(1);
+    },
+  );
+
+  test.each([
+    { incomingCount: undefined, sentCount: 1 },
+    { incomingCount: 4, sentCount: 5 },
+  ])(
+    'requeues a transient continuation with no progress when the incoming count is $incomingCount (sends $sentCount)',
+    async ({ incomingCount, sentCount }) => {
+      const { handleStart } = await import('./sync-trustee-case-appointments');
+      const invocationContext = makeInvocationContext();
+      const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+      const { mockSendMessage } = await setupMocks({
+        runRegionDriverResult: {
+          ...emptyResult,
+          continuation: {
+            regions: ['02'],
+            runDate: '2026-07-05',
+            resumeFrom,
+            cause: 'transient-error',
+          },
+        },
+      });
+
+      await handleStart(
+        { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: incomingCount },
+        invocationContext,
+      );
+
+      expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(sentCount);
+    },
+  );
+
+  test('stops without re-enqueueing or dead-lettering once the transient retry count would exceed 5, logging the stop and failing the trace', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
+      logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
+    );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom,
+          cause: 'transient-error',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', resumeFrom, transientRetryCount: 5 },
+      invocationContext,
+    );
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('Transient errors persisted through 5 requeues'),
+      expect.anything(),
+    );
+    expect(telemetrySpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.any(String),
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: false,
+        error: expect.stringContaining('Transient errors persisted'),
+      }),
+    );
+  });
+
+  test('treats a continuation as progress when the incoming message had no resume point', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          cause: 'transient-error',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 3 },
+      invocationContext,
+    );
+
+    expect(JSON.parse(mockSendMessage.mock.calls[0][0]).transientRetryCount).toBe(1);
+  });
+
+  test('a budget continuation carries no transient retry count, so the count resets', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage } = await setupMocks({
+      runRegionDriverResult: {
+        ...emptyResult,
+        continuation: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+          cause: 'invocation-budget',
+        },
+      },
+    });
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 3 },
+      invocationContext,
+    );
+
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).not.toHaveProperty('transientRetryCount');
+    expect(delaySeconds).toBeUndefined();
+  });
+
+  test('re-enqueues the original start message with count + 1 and a 300s delay when the handler throws a transient error, and does not dead-letter it', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
+
+    await handleStart(
+      { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
+      invocationContext,
+    );
+
+    const [body, delaySeconds] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      regions: ['02'],
+      runDate: '2026-07-05',
+      transientRetryCount: 2,
+    });
+    expect(delaySeconds).toBe(300);
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+  });
+
+  test('clears deleteAll on the re-enqueued message once deleteAll has succeeded, so a later failure cannot reset the run', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
+
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+
+    const body = JSON.parse(mockSendMessage.mock.calls[0][0]);
+    expect(body).not.toHaveProperty('deleteAll');
+    expect(body.transientRetryCount).toBe(1);
+  });
+
+  test('keeps deleteAll on the re-enqueued message when deleteAll itself failed transiently, and does not run the driver', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks({
+      deleteAllResult: { data: { deleted: 0 }, error: new TooManyRequestsError('TEST') },
+    });
+
+    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(JSON.parse(mockSendMessage.mock.calls[0][0])).toMatchObject({
+      deleteAll: true,
+      transientRetryCount: 1,
+    });
+    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+  });
+
+  test('dead-letters a non-transient error together with the start message so it can be replayed', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new Error('boom'));
+
+    await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
+
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        startMessage: { regions: ['02'], runDate: '2026-07-05' },
+      }),
+    );
+  });
+
+  test('dead-letters the re-enqueue payload when the transient re-enqueue send itself fails', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
+    mockSendMessage.mockRejectedValue(new Error('queue unavailable'));
+
+    await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
+
+    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        startMessage: { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
+      }),
+    );
   });
 
   test('falls through to the region driver when deleteAll is set and deletion succeeds', async () => {
@@ -689,6 +982,23 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     expect(runRegionDriverSpy).not.toHaveBeenCalled();
     expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
+  });
+
+  test('discards a stale resumeFrom when deleteAll is set so the reset history is re-walked', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const { runRegionDriverSpy } = await setupMocks();
+    const staleResumeFrom = { regionId: '02', date: '2026-08-01', lastId: '1001' };
+
+    await handleStart(
+      { regions: ['02'], deleteAll: true, resumeFrom: staleResumeFrom },
+      invocationContext,
+    );
+
+    expect(runRegionDriverSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ resumeFrom: undefined }),
+    );
   });
 
   test('flushQueues short-circuits before the region driver is ever called', async () => {

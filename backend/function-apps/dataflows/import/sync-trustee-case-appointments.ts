@@ -4,9 +4,10 @@ import ContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import RegionDriver, {
+  isTransientError,
   RegionDriverResumePoint,
 } from '../../../lib/use-cases/dataflows/trustee-appointment-region-driver';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import DateHelper from '@common/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
@@ -31,14 +32,44 @@ const PAGE_SIZE = 100;
 const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
+// A transient error (ACMS timeout, Cosmos throttling) requeues the run from its resume point after a
+// fixed delay. After TRANSIENT_RETRY_LIMIT requeues in a row that made no progress, the run is logged
+// and dropped rather than dead-lettered: a later run restarts from the last bookmark written.
+const TRANSIENT_RETRY_LIMIT = 5;
+const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
+
+function sameResumePoint(
+  a: RegionDriverResumePoint | undefined,
+  b: RegionDriverResumePoint | undefined,
+): boolean {
+  if (!a || !b) return a === b;
+  return a.regionId === b.regionId && a.date === b.date && a.lastId === b.lastId;
+}
+
+/** A continuation progressed when it moved the resume point or left fewer regions to run. */
+function hasProgressed(
+  incoming: SyncTrusteeCaseAppointmentsStartMessage,
+  continuation: { regions: string[]; resumeFrom?: RegionDriverResumePoint },
+): boolean {
+  return (
+    !sameResumePoint(incoming.resumeFrom, continuation.resumeFrom) ||
+    continuation.regions.length < incoming.regions.length
+  );
+}
+
 // Manually triggered by an operator naming the regions to sync (cams-fd8qd.1.10) -- not on
 // DEFAULT_DATAFLOWS and no timer trigger until lanes/scheduling land (Slice 2).
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   regions: string[];
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
   runDate?: string;
-  /** Where a prior, budget-exhausted invocation left off -- see RegionDriver's continuation. */
+  /** Where a prior invocation that stopped early (budget or transient error) left off -- see RegionDriver's continuation. */
   resumeFrom?: RegionDriverResumePoint;
+  /**
+   * Transient-error requeues in a row that made no progress. Reset to 1 by a continuation that
+   * advanced (moved resume point or fewer regions). Absent after a budget continuation or a fresh start.
+   */
+  transientRetryCount?: number;
   deleteAll?: boolean;
   flushQueues?: boolean;
 };
@@ -125,6 +156,56 @@ async function queueEventPages(
   return { pagesQueued: pages.length, rejectedCount: rejected.length };
 }
 
+type StartQueueError = QueueError & { startMessage: SyncTrusteeCaseAppointmentsStartMessage };
+
+/**
+ * Dead-letters an error together with the start message that produced it, so the run can be
+ * replayed by hand. QueueError has no payload slot, so the message is attached here.
+ */
+function deadLetterWithStartMessage(
+  invocationContext: InvocationContext,
+  error: CamsError,
+  startMessage: SyncTrusteeCaseAppointmentsStartMessage,
+): void {
+  const entry: StartQueueError = {
+    ...buildQueueError(error, MODULE_NAME, HANDLE_START),
+    startMessage,
+  };
+  invocationContext.extraOutputs.set(DLQ, entry);
+}
+
+/**
+ * Re-enqueues a start message for a later attempt after the transient delay. The message's count
+ * is already set by the caller. Returns undefined when the message was re-enqueued, otherwise a
+ * description of why the run was not re-enqueued (retry limit spent, or the send failed and the
+ * message was dead-lettered instead).
+ */
+async function requeueAfterTransientError(
+  invocationContext: InvocationContext,
+  logger: ReturnType<typeof ContextCreator.getLogger>,
+  connectionString: string,
+  message: SyncTrusteeCaseAppointmentsStartMessage,
+): Promise<string | undefined> {
+  if ((message.transientRetryCount ?? 0) > TRANSIENT_RETRY_LIMIT) {
+    const description = `Transient errors persisted through ${TRANSIENT_RETRY_LIMIT} requeues; the run was not re-enqueued.`;
+    const details = `${description} Regions: ${message.regions.join(',')}. Resume point: ${JSON.stringify(message.resumeFrom ?? null)}.`;
+    logger.error(MODULE_NAME, details, getCamsError(new Error(details), MODULE_NAME, details));
+    return description;
+  }
+
+  const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
+    connectionString,
+    START.queueName,
+  );
+  try {
+    await startQueueClient.sendMessage(JSON.stringify(message), TRANSIENT_REQUEUE_DELAY_SECONDS);
+    return undefined;
+  } catch (sendError) {
+    deadLetterWithStartMessage(invocationContext, sendError, message);
+    return 'The transient re-enqueue failed; the run was dead-lettered with its start message.';
+  }
+}
+
 async function handleStart(
   startMessage: SyncTrusteeCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
@@ -132,6 +213,8 @@ async function handleStart(
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
+  // Set once deleteAll completes, so a later requeue of this invocation does not repeat the reset.
+  let deleteAllDone = false;
   try {
     const connectionString = process.env.AzureWebJobsDataflowsStorage;
     if (!connectionString) {
@@ -161,25 +244,18 @@ async function handleStart(
       const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
       const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAll(deps);
       if (deleteResult.error) {
-        invocationContext.extraOutputs.set(
-          DLQ,
-          buildQueueError(getCamsError(deleteResult.error, MODULE_NAME), MODULE_NAME, HANDLE_START),
-        );
-        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: false,
-          error: deleteResult.error.message,
-        });
-        return;
+        throw deleteResult.error;
       }
+      deleteAllDone = true;
     }
 
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
+    // A resume point from before a deleteAll reset would skip the history the reset just cleared.
+    const resumeFrom = startMessage.deleteAll ? undefined : startMessage.resumeFrom;
     const result = await RegionDriver.runRegionDriver(context, {
       regions: startMessage.regions,
       runDate,
-      resumeFrom: startMessage.resumeFrom,
+      resumeFrom,
     });
 
     if (result.dlqMessages.length > 0) {
@@ -204,23 +280,43 @@ async function handleStart(
         .pagesQueued;
     }
 
+    let runNotCompleted: string | undefined;
     if (result.continuation) {
-      const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
-        connectionString,
-        START.queueName,
-      );
+      const { continuation } = result;
       const continuationMessage: SyncTrusteeCaseAppointmentsStartMessage = {
-        regions: result.continuation.regions,
-        runDate: result.continuation.runDate,
-        resumeFrom: result.continuation.resumeFrom,
+        regions: continuation.regions,
+        runDate: continuation.runDate,
+        resumeFrom: continuation.resumeFrom,
       };
-      await startQueueClient.sendMessage(JSON.stringify(continuationMessage));
+      if (continuation.cause === 'invocation-budget') {
+        // A budget continuation starts a fresh transient-retry streak, so it carries no count.
+        const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await startQueueClient.sendMessage(JSON.stringify(continuationMessage));
+      } else {
+        // A continuation that advanced starts a new streak; one that did not extends the current one.
+        const transientRetryCount = hasProgressed(startMessage, continuation)
+          ? 1
+          : (startMessage.transientRetryCount ?? 0) + 1;
+        runNotCompleted = await requeueAfterTransientError(
+          invocationContext,
+          logger,
+          connectionString,
+          {
+            ...continuationMessage,
+            transientRetryCount,
+          },
+        );
+      }
     }
 
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: result.dlqMessages.length,
-      success: true,
+      success: runNotCompleted === undefined,
+      error: runNotCompleted,
       details: {
         processedRegions: result.processedRegions.join(','),
         pagesQueued: String(pagesQueued),
@@ -234,10 +330,19 @@ async function handleStart(
       success: false,
       error: originalError instanceof Error ? originalError.message : String(originalError),
     });
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(originalError, MODULE_NAME, HANDLE_START),
-    );
+
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (!isTransientError(originalError) || !connectionString) {
+      deadLetterWithStartMessage(invocationContext, originalError, startMessage);
+      return;
+    }
+    // Requeues the original message, not a continuation: nothing about this invocation's progress
+    // is known here, so the count simply extends the streak. deleteAll is dropped once it has run.
+    await requeueAfterTransientError(invocationContext, logger, connectionString, {
+      ...startMessage,
+      transientRetryCount: (startMessage.transientRetryCount ?? 0) + 1,
+      deleteAll: deleteAllDone ? undefined : startMessage.deleteAll,
+    });
   }
 }
 

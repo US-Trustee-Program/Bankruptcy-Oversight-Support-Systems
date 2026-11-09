@@ -6,12 +6,18 @@ import {
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentRegionSyncState } from '../gateways.types';
+import { isAcmsTimeoutError } from './acms-timeout-error';
 import {
   AcmsTrusteeAppointmentSource,
+  TrusteeAppointmentSourceRowFailure,
   TrusteeAppointmentSource,
 } from './trustee-appointment-source';
 import SyncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 import { shouldEscape, DEFAULT_INVOCATION_BUDGET_MS } from './invocation-budget';
+import { buildQueueError, QueueError } from './queue-types';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { isNotFoundError } from '../../common-errors/not-found-error';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-REGION-DRIVER';
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
@@ -28,12 +34,24 @@ function createDeps(context: ApplicationContext) {
 
 type RegionDriverDeps = ReturnType<typeof createDeps>;
 
-/** Falls back to an empty region map when no document has ever been written (first-ever run). */
+/** Errors a later invocation can retry: ACMS/MSSQL timeouts, Cosmos throttling, gateway timeouts. */
+export function isTransientError(error: unknown): boolean {
+  return isAcmsTimeoutError(error) || isTransientInfraError(error);
+}
+
+/**
+ * Falls back to an empty region map only when no document has ever been written (first-ever run).
+ * Any other read failure propagates: treating a transient error as a first run would walk every
+ * region from CUTOVER_DATE and reprocess its full history.
+ */
 async function readRegionState(deps: RegionDriverDeps): Promise<TrusteeAppointmentRegionSyncState> {
   try {
     return await deps.regionStateRepo.read(REGION_STATE_DOCUMENT_TYPE);
-  } catch (_error) {
-    return { documentType: REGION_STATE_DOCUMENT_TYPE, region: {} };
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { documentType: REGION_STATE_DOCUMENT_TYPE, region: {} };
+    }
+    throw error;
   }
 }
 
@@ -43,6 +61,19 @@ async function readRegionState(deps: RegionDriverDeps): Promise<TrusteeAppointme
  */
 function getSourceForRegion(): TrusteeAppointmentSource {
   return new AcmsTrusteeAppointmentSource();
+}
+
+function toRowFailureDlqEntry(
+  regionId: string,
+  changeDate: string,
+  failure: TrusteeAppointmentSourceRowFailure,
+): QueueError {
+  const message = `ACMS row ${failure.rowId} (case ${failure.caseId}, region ${regionId}, change date ${changeDate}) could not be converted: ${failure.reason}`;
+  return buildQueueError(
+    getCamsError(new Error(message), MODULE_NAME, message),
+    MODULE_NAME,
+    'getEventsForDate',
+  );
 }
 
 export type RegionDriverResumePoint = {
@@ -62,19 +93,25 @@ type RegionDriverOptions = {
   safeThresholdMs?: number;
 };
 
+/** Why the driver stopped early: the invocation budget ran out, or a transient error was thrown. */
+type RegionDriverStopCause = 'invocation-budget' | 'transient-error';
+
 type RegionDriverContinuation = {
   regions: string[];
   runDate: string;
-  resumeFrom: RegionDriverResumePoint;
+  /** Absent when the stop happened before any date of the region was reached. */
+  resumeFrom?: RegionDriverResumePoint;
+  cause: RegionDriverStopCause;
 };
 
 type RegionDriverResult = {
   /** Regions that reached the end of their available dates this invocation (not just started). */
   processedRegions: string[];
-  dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
+  /** Per-record failures: sync errors and events from processAppointments, plus source rows that could not be converted. */
+  dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | QueueError)[];
   retryableEvents: TrusteeAppointmentSyncEvent[];
   notYetSyncedEvents: TrusteeAppointmentSyncEvent[];
-  /** Present when the invocation budget ran out mid-run; re-invoke with these exact options. */
+  /** Present when the run stopped early; re-invoke with these exact options. */
   continuation?: RegionDriverContinuation;
 };
 
@@ -85,10 +122,10 @@ type RegionDriverResult = {
  * bookmarked, since the replica could still be mid-write for it. A later run that discovers a
  * genuinely later date proves the previously-withheld date complete and bookmarks it then.
  *
- * Per-date, per-page escape via invocation-budget.ts: on escape, returns immediately with a
- * continuation identifying exactly where to resume (this region, this date, this page cursor) --
- * the bookmark never advances past an in-progress date, so a continuation never risks skipping
- * data even if its resume point is slightly stale by the time it's re-invoked.
+ * Stops early, returning a continuation, when the invocation budget runs out or a transient error
+ * is thrown. Each step records the resume point it would need before doing its work, so the
+ * continuation names exactly the work that is not yet complete. Results gathered before the stop
+ * are returned, not dropped. Other errors propagate unchanged.
  */
 async function runRegionDriver(
   context: ApplicationContext,
@@ -98,84 +135,109 @@ async function runRegionDriver(
   const eventDeps = SyncTrusteeCaseAppointments.createDeps(context);
   const startedAt = options.startedAt ?? Date.now();
   const safeThresholdMs = options.safeThresholdMs ?? DEFAULT_INVOCATION_BUDGET_MS;
-  const state = await readRegionState(deps);
   const dayBeforeRunDate = DateHelper.subtractDays(options.runDate, 1);
 
   const processedRegions: string[] = [];
-  const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
+  const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | QueueError)[] =
+    [];
   const retryableEvents: TrusteeAppointmentSyncEvent[] = [];
   const notYetSyncedEvents: TrusteeAppointmentSyncEvent[] = [];
 
-  for (let i = 0; i < options.regions.length; i++) {
-    const regionId = options.regions[i];
-    const source = getSourceForRegion();
-    const resumeHere = options.resumeFrom?.regionId === regionId ? options.resumeFrom : undefined;
+  let regionIndex = 0;
+  let resumeAt: RegionDriverResumePoint | undefined = options.resumeFrom;
+  const stopAt = (
+    index: number,
+    resumeFrom: RegionDriverResumePoint | undefined,
+    cause: RegionDriverStopCause,
+  ): RegionDriverResult => ({
+    processedRegions,
+    dlqMessages,
+    retryableEvents,
+    notYetSyncedEvents,
+    continuation: {
+      regions: options.regions.slice(index),
+      runDate: options.runDate,
+      resumeFrom,
+      cause,
+    },
+  });
 
-    const latestChangeDate = await source.getLatestChangeDate(context, regionId);
-    if (!latestChangeDate) {
-      // No data at all for this region yet -- nothing to process, nothing to bookmark.
-      processedRegions.push(regionId);
-      continue;
-    }
+  try {
+    const state = await readRegionState(deps);
 
-    // The run date itself is never read, regardless of what the replica's own latest date is.
-    const effectiveEnd = latestChangeDate < dayBeforeRunDate ? latestChangeDate : dayBeforeRunDate;
+    for (let i = 0; i < options.regions.length; i++) {
+      regionIndex = i;
+      const regionId = options.regions[i];
+      const source = getSourceForRegion();
+      const resumeHere = options.resumeFrom?.regionId === regionId ? options.resumeFrom : undefined;
+      resumeAt = resumeHere;
 
-    const bookmark = state.region[regionId]?.lastSyncDate;
-    let currentDate = resumeHere
-      ? resumeHere.date
-      : bookmark
-        ? DateHelper.addDays(bookmark, 1)
-        : CUTOVER_DATE;
-    let lastId = resumeHere?.lastId;
+      const latestChangeDate = await source.getLatestChangeDate(context, regionId);
+      if (!latestChangeDate) {
+        // No data at all for this region yet -- nothing to process, nothing to bookmark.
+        processedRegions.push(regionId);
+        continue;
+      }
 
-    while (currentDate <= effectiveEnd) {
-      let hadEvents = false;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        if (shouldEscape(startedAt, safeThresholdMs, 0)) {
-          return {
-            processedRegions,
-            dlqMessages,
-            retryableEvents,
-            notYetSyncedEvents,
-            continuation: {
-              regions: options.regions.slice(i),
-              runDate: options.runDate,
-              resumeFrom: { regionId, date: currentDate, lastId },
-            },
+      // The run date itself is never read, regardless of what the replica's own latest date is.
+      const effectiveEnd =
+        latestChangeDate < dayBeforeRunDate ? latestChangeDate : dayBeforeRunDate;
+
+      const bookmark = state.region[regionId]?.lastSyncDate;
+      let currentDate = resumeHere
+        ? resumeHere.date
+        : bookmark
+          ? DateHelper.addDays(bookmark, 1)
+          : CUTOVER_DATE;
+      let lastId = resumeHere?.lastId;
+
+      while (currentDate <= effectiveEnd) {
+        while (true) {
+          resumeAt = { regionId, date: currentDate, lastId };
+          if (shouldEscape(startedAt, safeThresholdMs, 0)) {
+            return stopAt(i, resumeAt, 'invocation-budget');
+          }
+
+          const page = await source.getEventsForDate(context, regionId, currentDate, lastId);
+          for (const failure of page.failures) {
+            dlqMessages.push(toRowFailureDlqEntry(regionId, currentDate, failure));
+          }
+          if (page.events.length > 0) {
+            const result = await SyncTrusteeCaseAppointments.processAppointments(
+              eventDeps,
+              page.events,
+            );
+            dlqMessages.push(...result.dlqMessages);
+            retryableEvents.push(...result.retryableEvents);
+            notYetSyncedEvents.push(...result.notYetSyncedEvents);
+          }
+
+          if (!page.lastId) break;
+          lastId = page.lastId;
+        }
+
+        if (currentDate < effectiveEnd) {
+          resumeAt = {
+            regionId,
+            date: DateHelper.addDays(currentDate, 1),
+            lastId: undefined,
           };
-        }
-
-        const page = await source.getEventsForDate(context, regionId, currentDate, lastId);
-        if (page.events.length > 0) {
-          hadEvents = true;
-          const result = await SyncTrusteeCaseAppointments.processAppointments(
-            eventDeps,
-            page.events,
+          await deps.regionStateRepo.setField(
+            REGION_STATE_DOCUMENT_TYPE,
+            `region.${regionId}.lastSyncDate`,
+            currentDate,
           );
-          dlqMessages.push(...result.dlqMessages);
-          retryableEvents.push(...result.retryableEvents);
-          notYetSyncedEvents.push(...result.notYetSyncedEvents);
         }
 
-        if (!page.lastId) break;
-        lastId = page.lastId;
+        currentDate = DateHelper.addDays(currentDate, 1);
+        lastId = undefined;
       }
 
-      if (hadEvents && currentDate < effectiveEnd) {
-        await deps.regionStateRepo.setField(
-          REGION_STATE_DOCUMENT_TYPE,
-          `region.${regionId}.lastSyncDate`,
-          currentDate,
-        );
-      }
-
-      currentDate = DateHelper.addDays(currentDate, 1);
-      lastId = undefined;
+      processedRegions.push(regionId);
     }
-
-    processedRegions.push(regionId);
+  } catch (error) {
+    if (!isTransientError(error)) throw error;
+    return stopAt(regionIndex, resumeAt, 'transient-error');
   }
 
   return { processedRegions, dlqMessages, retryableEvents, notYetSyncedEvents };

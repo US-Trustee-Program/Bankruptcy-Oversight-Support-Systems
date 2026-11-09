@@ -30,7 +30,7 @@ export class CaseTrusteeAppointmentUseCase {
       // by excluding placeholders, not just by "no unassignedOn".
       const current = all.find((a) => !a.unassignedOn && !isPlaceholderAppointment(a)) ?? null;
       const pastAppointments = all
-        .filter((a) => !!a.unassignedOn)
+        .filter((a) => !!a.unassignedOn && !isPlaceholderAppointment(a))
         .sort((a, b) => b.unassignedOn!.localeCompare(a.unassignedOn!));
 
       // Resolve trustee names in parallel — failures are non-fatal

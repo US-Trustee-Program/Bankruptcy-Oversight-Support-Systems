@@ -785,6 +785,53 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('deleteAll', () => {
+    test('should delete case appointments from both partitions and return the case-partition count', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(5);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.deleteAll();
+
+      expect(deleteManySpy).toHaveBeenCalledTimes(2);
+      expect(deleteManySpy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
+      );
+      expect(deleteManySpy).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ rightOperand: 'CASE_APPOINTMENT' }),
+      );
+      expect(result).toBe(7);
+      repo.release();
+    });
+
+    test('should throw a wrapped error when the trustee-partition delete fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValueOnce(7)
+        .mockRejectedValueOnce(new Error('trustee partition delete failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
+      repo.release();
+    });
+
+    test('should throw a wrapped error when deletion fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValueOnce(
+        new Error('Database connection failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
+      repo.release();
+    });
+  });
+
   describe('getAllCaseAppointments', () => {
     test('should return all appointments when lastId is null', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
@@ -1832,6 +1879,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(trusteeIdCondition).toEqual(
         expect.objectContaining({ condition: 'EQUALS', rightOperand: FINGERPRINT }),
       );
+      // Disposed (closed) surrogates stay in the result set, so no unassignedOn condition applies.
+      expect(
+        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'unassignedOn'),
+      ).toBeUndefined();
       repo.release();
     });
 
@@ -1903,6 +1954,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
           rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
         }),
       );
+      // Disposed (closed) surrogates stay in the result set, so no unassignedOn condition applies.
+      expect(
+        queryValues.find((v) => (v.leftOperand as { name: string })?.name === 'unassignedOn'),
+      ).toBeUndefined();
       repo.release();
     });
 

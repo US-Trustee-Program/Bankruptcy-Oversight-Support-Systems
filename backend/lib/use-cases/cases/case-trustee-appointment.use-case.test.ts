@@ -115,6 +115,31 @@ describe('CaseTrusteeAppointmentUseCase', () => {
       expect(result.history[0].trusteeId).toBe(past1.trusteeId);
     });
 
+    test('excludes a disposed surrogate from history, since a placeholder is never a real past trustee', async () => {
+      const disposedSurrogate: CaseAppointment = {
+        ...past1,
+        id: 'ca-disposed-surrogate',
+        trusteeId: 'c'.repeat(64),
+        isSurrogate: true,
+        variant: 'JANE|DOE||111-24|7',
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        disposedSurrogate,
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.history.map((item) => item.trusteeId)).toEqual([past1.trusteeId]);
+    });
+
     test('returns the real active appointment as current when a real appointment and a surrogate are both active on the same case', async () => {
       // A surrogate is a membership marker for a pending mismatch, not the case's
       // appointment — a case with a verified, active trustee can simultaneously have an
