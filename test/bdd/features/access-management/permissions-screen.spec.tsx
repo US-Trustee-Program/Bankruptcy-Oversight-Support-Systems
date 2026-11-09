@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
@@ -36,8 +36,6 @@ const ALEX: CamsUserReference = { id: 'okta-alex', name: 'Alex Brown', email: 'a
 const MODAL_ID = 'add-permission-modal';
 const ROLE_ID = `${MODAL_ID}-role`;
 const OFFICE_ID = `${MODAL_ID}-office`;
-const REASON =
-  'New hire - Trial Attorney for Manhattan. Request forwarded by supervisor John Davis.';
 const PERMISSIONS_ROUTE = '/admin/permissions/cams-users';
 
 function permission(
@@ -112,16 +110,9 @@ async function choose(comboBoxId: string, label: string) {
   await userEvent.click(option);
 }
 
-function typeReason(reason: string) {
-  fireEvent.change(document.querySelector(`#textarea-${MODAL_ID}-reason`)!, {
-    target: { value: reason },
-  });
-}
-
 async function fillInTrialAttorneyInManhattan() {
   await choose(ROLE_ID, 'Trial Attorney');
-  await choose(OFFICE_ID, '2 - Manhattan');
-  typeReason(REASON);
+  await choose(OFFICE_ID, 'Region 2 - Manhattan');
 }
 
 const saveButton = () => screen.getByTestId(`button-${MODAL_ID}-submit-button`);
@@ -208,7 +199,7 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
       }),
     ]);
     expect(state.getRoleAssignmentAudits()).toEqual([
-      expect.objectContaining({ action: 'CREATED', performedBy: maria.user.id, reason: REASON }),
+      expect.objectContaining({ action: 'CREATED', performedBy: maria.user.id }),
     ]);
   });
 
@@ -224,12 +215,18 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     expect(roles).toEqual(
       expect.arrayContaining(['Case Assignment Manager', 'Trial Attorney', 'Lead Trial Attorney']),
     );
+    expect(roles).toContain('Super User');
     expect(roles).not.toContain('Privileged Identity User');
-    // Super User grants arrive in Slice 3.
-    expect(roles).not.toContain('Super User');
 
+    // Region 18 has one office here, so it has no "All Offices" option.
     const offices = (await expandOptions(OFFICE_ID)).map((option) => option.textContent);
-    expect(offices).toEqual(['2 - Buffalo', '2 - Manhattan', '18 - Seattle']);
+    expect(offices).toEqual([
+      'All Regions',
+      'Region 2 - All Offices',
+      'Region 2 - Buffalo',
+      'Region 2 - Manhattan',
+      'Region 18 - Seattle',
+    ]);
   });
 
   /**
@@ -243,11 +240,7 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     expect(saveButton()).toBeDisabled();
     await choose(ROLE_ID, 'Trial Attorney');
     expect(saveButton()).toBeDisabled();
-    await choose(OFFICE_ID, '2 - Manhattan');
-    expect(saveButton()).toBeDisabled();
-    typeReason('   ');
-    expect(saveButton()).toBeDisabled();
-    typeReason(REASON);
+    await choose(OFFICE_ID, 'Region 2 - Manhattan');
     expect(saveButton()).toBeEnabled();
   });
 
@@ -318,9 +311,10 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
     ).toBeInTheDocument();
     expect(modal()).toHaveClass('is-visible');
     await waitFor(() => expect(saveButton()).toBeEnabled());
-    expect(document.querySelector(`#textarea-${MODAL_ID}-reason`)).toHaveValue(REASON);
     expect(document.querySelector(`#${ROLE_ID}-combo-box-input`)).toHaveValue('Trial Attorney');
-    expect(document.querySelector(`#${OFFICE_ID}-combo-box-input`)).toHaveValue('2 - Manhattan');
+    expect(document.querySelector(`#${OFFICE_ID}-combo-box-input`)).toHaveValue(
+      'Region 2 - Manhattan',
+    );
     expect(cellLines('Sarah Williams', 'Role')).toEqual([]);
     expect(state.getRoleAssignmentAudits()).toEqual([]);
   });
@@ -426,5 +420,47 @@ describe('Feature: IT SuperUser grants a role in an office (Permissions screen)'
       ).toBeInTheDocument();
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SLICE 3: broader grants and replaced permissions on the screen
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Scenario: A broader grant replaces the narrower ones it covers (screen)
+   */
+  test('should grant a whole region, name the replaced permission and show the result', async () => {
+    await openPermissionsAs(TestSessions.superUser(), [permission(SARAH.id, MANHATTAN)]);
+    await screen.findByRole('heading', { name: '2 CAMS Users' });
+    await openAddPermissionFor('Sarah Williams');
+
+    await choose(ROLE_ID, 'Trial Attorney');
+    await choose(OFFICE_ID, 'Region 2 - All Offices');
+    await userEvent.click(saveButton());
+
+    expect(
+      await screen.findByText(
+        'New permission successfully added to Sarah Williams. Their existing Region 2 - Manhattan permission was replaced by Region 2 - All Offices.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(cellLines('Sarah Williams', 'Office')).toEqual(['All']));
+    expect(cellLines('Sarah Williams', 'Region')).toEqual(['2']);
+  });
+
+  /**
+   * Scenario: Grant the Super User role, which has no scope (screen)
+   */
+  test('should hide Region and Office for Super User and grant it', async () => {
+    await openPermissionsAs(TestSessions.superUser());
+    await screen.findByRole('heading', { name: '2 CAMS Users' });
+    await openAddPermissionFor('Sarah Williams');
+
+    await choose(ROLE_ID, 'Super User');
+
+    expect(document.querySelector(`#${OFFICE_ID}`)).not.toBeInTheDocument();
+    await userEvent.click(saveButton());
+    await waitFor(() => expect(cellLines('Sarah Williams', 'Role')).toEqual(['Super User']));
+    expect(cellLines('Sarah Williams', 'Region')).toEqual(['All']);
+    expect(cellLines('Sarah Williams', 'Office')).toEqual(['All']);
   });
 });

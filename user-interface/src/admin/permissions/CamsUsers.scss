@@ -1,8 +1,46 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .cams-users {
   .cams-users__permission-lines {
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+}
+
+// Column proportions once CamsTable switches to its flex-row layout (CamsTable.scss's own
+// breakpoint, unchanged here): Email is the longest field by far and Name can run long too;
+// Region only ever holds a one- or two-digit number or "All", and Actions is a single icon
+// button, so neither needs an equal share of the row.
+.cams-users-table.cams-table--responsive {
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+    .col-name {
+      flex: 1.5 1 0;
+    }
+
+    .col-email {
+      flex: 2.5 1 0;
+    }
+
+    .col-role {
+      flex: 1.5 1 0;
+    }
+
+    .col-region {
+      flex: 0.7 1 0;
+      max-width: 100px;
+      white-space: nowrap;
+    }
+
+    .col-office {
+      flex: 1.2 1 0;
+    }
+
+    // A fixed pixel basis, not auto: a flex item with display: block and flex-basis: auto sizes
+    // to fill the row instead of shrinking to its content (the button is ~132px wide).
+    .col-actions {
+      flex: 0 0 190px;
+    }
   }
 }
 

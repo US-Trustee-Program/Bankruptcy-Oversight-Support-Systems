@@ -31,7 +31,7 @@ describe('RoleAssignmentAuditMongoRepository', () => {
       officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
       active: true,
     },
-    reason: 'New hire',
+    replacedByAssignmentId: null,
   };
 
   beforeEach(async () => {

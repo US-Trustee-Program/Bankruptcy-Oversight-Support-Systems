@@ -13,7 +13,7 @@ import {
 } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { UserAccessUseCase, resetCamsUsersCache } from './user-access';
-import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
@@ -45,6 +45,19 @@ function assignmentFor(
     expiresAt: null,
     active: true,
     activeKey: `TrialAttorney|${office.regionId}|${office.officeCode}`,
+  };
+}
+
+function scopedAssignmentFor(userId: string, regionId: string | null): UserRoleAssignment {
+  const role = CamsRole.TrialAttorney;
+  const scope = regionId ?? 'national';
+  return {
+    ...assignmentFor(userId, { regionId: regionId ?? '', officeCode: '' }),
+    id: `${userId}-${role}-${scope}`,
+    role,
+    regionId,
+    officeCode: null,
+    activeKey: `${role}|${regionId ?? '*'}|*`,
   };
 }
 
@@ -250,12 +263,12 @@ describe('UserAccessUseCase', () => {
     });
   });
 
-  describe('createAssignment', () => {
+  describe('grantPermission', () => {
     const request: RoleAssignmentGrantRequest = {
       userId: 'user-a',
       role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
       officeCode: MANHATTAN.officeCode,
-      reason: '  New hire in Manhattan  ',
     };
 
     function spyOnWrites() {
@@ -267,12 +280,24 @@ describe('UserAccessUseCase', () => {
       };
     }
 
-    test('should write the assignment, then its audit record, then a telemetry event', async () => {
+    const auditWrites = (createSpy: ReturnType<typeof spyOnWrites>['createSpy']) =>
+      createSpy.mock.calls
+        .map(([item]) => item)
+        .filter((item) => item.documentType === 'ROLE_ASSIGNMENT_AUDIT');
+
+    function spyOnHeld(...held: UserRoleAssignment[][]) {
+      const spy = vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserAndRole');
+      held.forEach((permissions) => spy.mockResolvedValueOnce(permissions));
+      return spy.mockResolvedValue([]);
+    }
+
+    test('should write the permission, then its audit record, then a telemetry event', async () => {
       spyOnMembers();
+      const heldSpy = spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
       const performer = getCamsUserReference(context.session.user);
 
-      const result = await useCase.createAssignment(context, request);
+      const { result, created } = await useCase.grantPermission(context, request);
 
       const expectedAssignment: UserRoleAssignment = {
         documentType: 'USER_ROLE_ASSIGNMENT',
@@ -290,10 +315,11 @@ describe('UserAccessUseCase', () => {
         active: true,
         activeKey: `TrialAttorney|${MANHATTAN.regionId}|${MANHATTAN.officeCode}`,
       };
+      const permission = result.permission;
       const expectedAudit: RoleAssignmentAuditEntry = {
         documentType: 'ROLE_ASSIGNMENT_AUDIT',
         id: expect.any(String),
-        assignmentId: result.id,
+        assignmentId: permission.id,
         action: 'CREATED',
         userId: 'user-a',
         userName: 'Alice Adams',
@@ -302,7 +328,7 @@ describe('UserAccessUseCase', () => {
         officeCode: MANHATTAN.officeCode,
         performedBy: performer.id,
         performedByName: performer.name,
-        performedAt: result.assignedAt,
+        performedAt: permission.assignedAt,
         previousState: null,
         newState: {
           role: CamsRole.TrialAttorney,
@@ -310,14 +336,16 @@ describe('UserAccessUseCase', () => {
           officeCode: MANHATTAN.officeCode,
           active: true,
         },
-        reason: 'New hire in Manhattan',
+        replacedByAssignmentId: null,
       };
 
-      expect(result).toEqual(expectedAssignment);
+      expect(created).toBe(true);
+      expect(result).toEqual({ permission: expectedAssignment, replaced: [] });
+      expect(heldSpy).toHaveBeenCalledWith('user-a', CamsRole.TrialAttorney);
       expect(createSpy).toHaveBeenCalledTimes(2);
       expect(createSpy).toHaveBeenNthCalledWith(1, expectedAssignment);
       expect(createSpy).toHaveBeenNthCalledWith(2, expectedAudit);
-      expect(createSpy.mock.calls[1][0].id).not.toEqual(result.id);
+      expect(createSpy.mock.calls[1][0].id).not.toEqual(permission.id);
       expect(traceSpy).toHaveBeenCalledWith(
         expect.anything(),
         'RoleAssignmentAudit',
@@ -325,13 +353,13 @@ describe('UserAccessUseCase', () => {
           success: true,
           properties: expect.objectContaining({
             action: 'CREATED',
-            assignmentId: result.id,
+            assignmentId: permission.id,
             userId: 'user-a',
             role: CamsRole.TrialAttorney,
             regionId: MANHATTAN.regionId,
             officeCode: MANHATTAN.officeCode,
             performedBy: performer.id,
-            reason: 'New hire in Manhattan',
+            replacedByAssignmentId: '',
           }),
         }),
         undefined,
@@ -339,30 +367,70 @@ describe('UserAccessUseCase', () => {
       );
     });
 
+    test('should change nothing when the user already holds the permission', async () => {
+      spyOnMembers();
+      const held = assignmentFor('user-a', MANHATTAN);
+      spyOnHeld([assignmentFor('user-a', BUFFALO), held]);
+      const { createSpy, traceSpy } = spyOnWrites();
+
+      const outcome = await useCase.grantPermission(context, request);
+
+      expect(outcome).toEqual({ result: { permission: held, replaced: [] }, created: false });
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(traceSpy).not.toHaveBeenCalled();
+    });
+
+    test('should treat a permission another grant just wrote as already held', async () => {
+      spyOnMembers();
+      const written = assignmentFor('user-a', MANHATTAN);
+      spyOnHeld([], [written]);
+      const { createSpy, traceSpy } = spyOnWrites();
+      createSpy.mockResolvedValueOnce(null);
+
+      const outcome = await useCase.grantPermission(context, request);
+
+      expect(outcome).toEqual({ result: { permission: written, replaced: [] }, created: false });
+      expect(auditWrites(createSpy)).toEqual([]);
+      expect(traceSpy).not.toHaveBeenCalled();
+    });
+
+    test('should fail when a duplicate permission reported by the database cannot be found', async () => {
+      spyOnMembers();
+      spyOnHeld([], []);
+      const { createSpy, traceSpy } = spyOnWrites();
+      createSpy.mockResolvedValueOnce(null);
+
+      const error = await getTheThrownError(() => useCase.grantPermission(context, request));
+
+      expect(error).toEqual(
+        expect.objectContaining({ status: 500, message: 'Unable to create role assignment.' }),
+      );
+      expect(auditWrites(createSpy)).toEqual([]);
+      expect(traceSpy).not.toHaveBeenCalled();
+    });
+
     test('should take the performer from the session, never from the request body', async () => {
       spyOnMembers();
+      spyOnHeld();
       const { createSpy } = spyOnWrites();
       const forged = {
         ...request,
         assignedBy: 'attacker',
         performedBy: 'attacker',
-        regionId: '99',
         activeKey: 'forged',
       };
 
-      const result = await useCase.createAssignment(context, forged);
+      const { result } = await useCase.grantPermission(context, forged);
 
-      expect(result.assignedBy).toEqual(context.session.user.id);
+      expect(result.permission.assignedBy).toEqual(context.session.user.id);
       expect(createSpy.mock.calls[1][0].performedBy).toEqual(context.session.user.id);
-      expect(result).not.toHaveProperty('performedBy');
-      expect(result.regionId).toEqual(MANHATTAN.regionId);
-      expect(result.activeKey).toEqual(
+      expect(result.permission).not.toHaveProperty('performedBy');
+      expect(result.permission.activeKey).toEqual(
         `TrialAttorney|${MANHATTAN.regionId}|${MANHATTAN.officeCode}`,
       );
     });
 
     test.each([
-      { case: 'an invalid request', change: { reason: '   ' }, message: /reason is required/ },
       {
         case: 'a user who is not a CAMS user',
         change: { userId: 'stranger' },
@@ -373,12 +441,43 @@ describe('UserAccessUseCase', () => {
         change: { officeCode: 'NOPE' },
         message: /^The office does not exist\.$/,
       },
+      {
+        case: 'an office outside the given region',
+        change: { regionId: SEATTLE.regionId },
+        message: /^The office is not in that region\.$/,
+      },
+      {
+        case: 'an office without its region',
+        change: { regionId: 'all' },
+        message: /^An office needs its region\.$/,
+      },
+      {
+        case: 'an unknown region',
+        change: { regionId: '99', officeCode: 'all' },
+        message: /^The region does not exist\.$/,
+      },
+      {
+        case: 'a Super User grant for one office',
+        change: { role: CamsRole.SuperUser },
+        message: /^Super User has no region or office\.$/,
+      },
+      {
+        case: 'a Super User grant for one office in every region',
+        change: { role: CamsRole.SuperUser, regionId: 'all' },
+        message: /^Super User has no region or office\.$/,
+      },
+      {
+        case: 'a Super User grant for a region',
+        change: { role: CamsRole.SuperUser, officeCode: 'all' },
+        message: /^Super User has no region or office\.$/,
+      },
     ])('should reject $case with a 400 and write nothing', async ({ change, message }) => {
       spyOnMembers();
+      spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
 
       const error = await getTheThrownError(() =>
-        useCase.createAssignment(context, { ...request, ...change }),
+        useCase.grantPermission(context, { ...request, ...change }),
       );
 
       expect(error).toEqual(expect.objectContaining({ status: 400 }));
@@ -389,7 +488,7 @@ describe('UserAccessUseCase', () => {
 
     test('should reject a missing request body with a 400 that says why', async () => {
       const error = await getTheThrownError(() =>
-        useCase.createAssignment(context, undefined as unknown as RoleAssignmentGrantRequest),
+        useCase.grantPermission(context, undefined as unknown as RoleAssignmentGrantRequest),
       );
 
       expect(error).toEqual(
@@ -397,59 +496,380 @@ describe('UserAccessUseCase', () => {
       );
     });
 
-    test('should keep the grant and log a searchable error with the audit payload when the audit write fails', async () => {
+    test('should keep the grant, log a searchable error with the audit payload, and report the audit as failed when the audit write fails', async () => {
       spyOnMembers();
+      spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
       createSpy
         .mockImplementationOnce((item) => Promise.resolve(item))
         .mockRejectedValueOnce(new Error('cosmos unavailable'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      const result = await useCase.createAssignment(context, request);
+      const { result, created } = await useCase.grantPermission(context, request);
 
       const attemptedAudit = createSpy.mock.calls[1][0];
-      expect(result).toEqual(createSpy.mock.calls[0][0]);
+      expect(created).toBe(true);
+      expect(result.permission).toEqual(createSpy.mock.calls[0][0]);
       expect(attemptedAudit).toEqual(
-        expect.objectContaining({ assignmentId: result.id, reason: 'New hire in Manhattan' }),
+        expect.objectContaining({
+          assignmentId: result.permission.id,
+          replacedByAssignmentId: null,
+        }),
       );
       expect(errorSpy).toHaveBeenCalledWith(
         'USER-ACCESS-USE-CASE',
         expect.stringContaining('ROLE_ASSIGNMENT_AUDIT write failed'),
         { audit: attemptedAudit },
       );
-      // The telemetry event still records the grant.
-      expect(traceSpy).toHaveBeenCalled();
+      // The telemetry event still records the grant, flagged as an audit that was not saved.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'RoleAssignmentAudit',
+        expect.objectContaining({ success: false }),
+        undefined,
+        expect.anything(),
+      );
     });
 
     test('should keep the grant and log when the telemetry event fails', async () => {
       spyOnMembers();
+      spyOnHeld();
       spyOnWrites().traceSpy.mockImplementation(() => {
         throw new Error('telemetry down');
       });
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      const result = await useCase.createAssignment(context, request);
+      const { result } = await useCase.grantPermission(context, request);
 
-      expect(result.userId).toEqual('user-a');
+      expect(result.permission.userId).toEqual('user-a');
       expect(errorSpy).toHaveBeenCalledWith(
         'USER-ACCESS-USE-CASE',
-        expect.stringContaining('telemetry'),
-        expect.anything(),
+        'RoleAssignmentAudit telemetry failed: telemetry down',
+        { auditId: expect.any(String) },
       );
     });
 
-    test('should write no audit record or telemetry when the assignment write fails', async () => {
+    test('should write no audit record or telemetry when the permission write fails', async () => {
       spyOnMembers();
+      spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
       createSpy.mockRejectedValue(
-        new BadRequestError('X', { message: 'This user already has that permission.' }),
+        new CamsError('X', { message: 'Unable to create role assignment.' }),
       );
 
-      await expect(useCase.createAssignment(context, request)).rejects.toThrow(
-        'This user already has that permission.',
+      await expect(useCase.grantPermission(context, request)).rejects.toThrow(
+        'Unable to create role assignment.',
       );
-      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(auditWrites(createSpy)).toEqual([]);
       expect(traceSpy).not.toHaveBeenCalled();
+    });
+
+    test('should leave overlapping permissions in place when the new permission cannot be saved', async () => {
+      spyOnMembers();
+      spyOnHeld([scopedAssignmentFor('user-a', MANHATTAN.regionId)]);
+      spyOnWrites().createSpy.mockRejectedValue(
+        new CamsError('X', { message: 'Unable to create role assignment.' }),
+      );
+      const deactivateSpy = vi.spyOn(MockMongoRepository.prototype, 'deactivate');
+
+      await expect(useCase.grantPermission(context, request)).rejects.toThrow(
+        'Unable to create role assignment.',
+      );
+      expect(deactivateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should change nothing when a Super User is granted Super User again', async () => {
+      spyOnMembers();
+      const held: UserRoleAssignment = {
+        ...scopedAssignmentFor('user-a', null),
+        role: CamsRole.SuperUser,
+        activeKey: 'SuperUser|*|*',
+      };
+      spyOnHeld([held]);
+      const { createSpy, traceSpy } = spyOnWrites();
+      const deactivateSpy = vi.spyOn(MockMongoRepository.prototype, 'deactivate');
+
+      const outcome = await useCase.grantPermission(context, {
+        ...request,
+        role: CamsRole.SuperUser,
+        regionId: 'all',
+        officeCode: 'all',
+      });
+
+      expect(outcome).toEqual({ result: { permission: held, replaced: [] }, created: false });
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(deactivateSpy).not.toHaveBeenCalled();
+      expect(traceSpy).not.toHaveBeenCalled();
+    });
+
+    describe('scopes', () => {
+      test.each([
+        {
+          scope: 'a whole region',
+          change: { officeCode: 'all' },
+          role: CamsRole.TrialAttorney,
+          expected: { regionId: MANHATTAN.regionId, officeCode: null },
+        },
+        {
+          scope: 'every region',
+          change: { regionId: 'all', officeCode: 'all' },
+          role: CamsRole.TrialAttorney,
+          expected: { regionId: null, officeCode: null },
+        },
+        {
+          scope: 'Super User, which has no region or office',
+          change: { regionId: 'all', officeCode: 'all' },
+          role: CamsRole.SuperUser,
+          expected: { regionId: null, officeCode: null },
+        },
+      ])('should grant $scope', async ({ change, role, expected }) => {
+        spyOnMembers();
+        spyOnHeld();
+        const { createSpy } = spyOnWrites();
+
+        const { result, created } = await useCase.grantPermission(context, {
+          ...request,
+          ...change,
+          role,
+        });
+
+        expect(created).toBe(true);
+        expect(result.permission).toEqual(
+          expect.objectContaining({
+            role,
+            ...expected,
+            activeKey: `${role}|${expected.regionId ?? '*'}|${expected.officeCode ?? '*'}`,
+          }),
+        );
+        expect(auditWrites(createSpy)).toEqual([
+          expect.objectContaining({ action: 'CREATED', ...expected }),
+        ]);
+      });
+    });
+
+    describe('the overlap rule', () => {
+      const REGION_2 = { regionId: MANHATTAN.regionId, officeCode: 'all' };
+      const NATIONAL = { regionId: 'all', officeCode: 'all' };
+
+      function spyOnDeactivate() {
+        return vi
+          .spyOn(MockMongoRepository.prototype, 'deactivate')
+          .mockImplementation((p: UserRoleAssignment) =>
+            Promise.resolve({ ...p, active: false, activeKey: `inactive|${p.id}` }),
+          );
+      }
+
+      test('should replace the narrower permissions a broader grant covers, each with its own audit', async () => {
+        spyOnMembers();
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        const buffalo = assignmentFor('user-a', BUFFALO);
+        const seattle = assignmentFor('user-a', SEATTLE);
+        spyOnHeld([manhattan, buffalo, seattle]);
+        const { createSpy, traceSpy } = spyOnWrites();
+        const deactivateSpy = spyOnDeactivate();
+        const performer = getCamsUserReference(context.session.user);
+
+        const { result, created } = await useCase.grantPermission(context, {
+          ...request,
+          ...REGION_2,
+        });
+
+        expect(created).toBe(true);
+        expect(deactivateSpy.mock.calls.map(([p]) => p.id)).toEqual([manhattan.id, buffalo.id]);
+        expect(result.replaced).toEqual([
+          { ...manhattan, active: false, activeKey: `inactive|${manhattan.id}` },
+          { ...buffalo, active: false, activeKey: `inactive|${buffalo.id}` },
+        ]);
+        const deactivations = auditWrites(createSpy).filter((a) => a.action === 'DEACTIVATED');
+        expect(deactivations).toEqual(
+          [manhattan, buffalo].map((replaced) => ({
+            documentType: 'ROLE_ASSIGNMENT_AUDIT',
+            id: expect.any(String),
+            assignmentId: replaced.id,
+            action: 'DEACTIVATED',
+            userId: replaced.userId,
+            userName: replaced.userName,
+            role: replaced.role,
+            regionId: replaced.regionId,
+            officeCode: replaced.officeCode,
+            performedBy: performer.id,
+            performedByName: performer.name,
+            performedAt: result.permission.assignedAt,
+            previousState: {
+              role: replaced.role,
+              regionId: replaced.regionId,
+              officeCode: replaced.officeCode,
+              active: true,
+            },
+            newState: {
+              role: replaced.role,
+              regionId: replaced.regionId,
+              officeCode: replaced.officeCode,
+              active: false,
+            },
+            replacedByAssignmentId: result.permission.id,
+          })),
+        );
+        expect(traceSpy).toHaveBeenCalledTimes(3); // one CREATED, two DEACTIVATED
+      });
+
+      test.each([
+        {
+          case: 'a narrower grant replaces the region-wide one',
+          held: () => scopedAssignmentFor('user-a', MANHATTAN.regionId),
+          grant: {},
+        },
+        {
+          case: 'a narrower grant replaces the national one',
+          held: () => scopedAssignmentFor('user-a', null),
+          grant: {},
+        },
+        {
+          case: 'a national grant replaces a region-wide one',
+          held: () => scopedAssignmentFor('user-a', '3'),
+          grant: NATIONAL,
+        },
+      ])('should replace overlapping permissions: $case', async ({ held, grant }) => {
+        spyOnMembers();
+        const existing = held();
+        spyOnHeld([existing]);
+        const { createSpy } = spyOnWrites();
+        spyOnDeactivate();
+
+        const { result } = await useCase.grantPermission(context, { ...request, ...grant });
+
+        expect(result.replaced.map((p) => p.id)).toEqual([existing.id]);
+        expect(
+          auditWrites(createSpy).find((a) => a.action === 'DEACTIVATED')?.replacedByAssignmentId,
+        ).toEqual(result.permission.id);
+      });
+
+      test('should finish replacing overlapping permissions after another grant wrote the same permission', async () => {
+        spyOnMembers();
+        const written = assignmentFor('user-a', MANHATTAN);
+        const regionWide = scopedAssignmentFor('user-a', MANHATTAN.regionId);
+        spyOnHeld([], [written, regionWide]);
+        const { createSpy } = spyOnWrites();
+        createSpy.mockResolvedValueOnce(null);
+        spyOnDeactivate();
+
+        const { result, created } = await useCase.grantPermission(context, request);
+
+        expect(created).toBe(false);
+        expect(result.permission).toEqual(written);
+        expect(result.replaced.map((p) => p.id)).toEqual([regionWide.id]);
+        expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['DEACTIVATED']);
+      });
+
+      test('should keep earlier replacements when a later one cannot be deactivated', async () => {
+        spyOnMembers();
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        const buffalo = assignmentFor('user-a', BUFFALO);
+        spyOnHeld([manhattan, buffalo]);
+        const { createSpy } = spyOnWrites();
+        const deactivateSpy = spyOnDeactivate();
+        deactivateSpy
+          .mockResolvedValueOnce({
+            ...manhattan,
+            active: false,
+            activeKey: `inactive|${manhattan.id}`,
+          })
+          .mockRejectedValueOnce(new Error('cosmos unavailable'));
+
+        const error = await getTheThrownError(() =>
+          useCase.grantPermission(context, { ...request, ...REGION_2 }),
+        );
+
+        expect(error).toEqual(expect.objectContaining({ status: 500 }));
+        const audits = auditWrites(createSpy);
+        expect(audits.map((a) => a.action)).toEqual(['CREATED', 'DEACTIVATED']);
+        expect(audits[1].assignmentId).toEqual(manhattan.id);
+      });
+
+      test('should neither list nor audit a permission another grant already replaced', async () => {
+        spyOnMembers();
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        const buffalo = assignmentFor('user-a', BUFFALO);
+        spyOnHeld([manhattan, buffalo]);
+        const { createSpy } = spyOnWrites();
+        spyOnDeactivate().mockResolvedValueOnce(null);
+
+        const { result, created } = await useCase.grantPermission(context, {
+          ...request,
+          ...REGION_2,
+        });
+
+        expect(created).toBe(true);
+        expect(result.replaced.map((p) => p.id)).toEqual([buffalo.id]);
+        const audits = auditWrites(createSpy);
+        expect(audits.map((a) => [a.action, a.assignmentId])).toEqual([
+          ['CREATED', result.permission.id],
+          ['DEACTIVATED', buffalo.id],
+        ]);
+      });
+
+      test('should leave permissions that do not overlap alone', async () => {
+        spyOnMembers();
+        spyOnHeld([assignmentFor('user-a', BUFFALO), scopedAssignmentFor('user-a', '3')]);
+        spyOnWrites();
+        const deactivateSpy = spyOnDeactivate();
+
+        const { result, created } = await useCase.grantPermission(context, request);
+
+        expect(created).toBe(true);
+        expect(result.replaced).toEqual([]);
+        expect(deactivateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should finish replacing overlapping permissions when the grant already exists', async () => {
+        spyOnMembers();
+        const regionWide = scopedAssignmentFor('user-a', MANHATTAN.regionId);
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        spyOnHeld([regionWide, manhattan]);
+        const { createSpy } = spyOnWrites();
+        const deactivateSpy = spyOnDeactivate();
+
+        const { result, created } = await useCase.grantPermission(context, {
+          ...request,
+          ...REGION_2,
+        });
+
+        expect(created).toBe(false);
+        expect(result.permission).toEqual(regionWide);
+        expect(result.replaced.map((p) => p.id)).toEqual([manhattan.id]);
+        expect(deactivateSpy).toHaveBeenCalledTimes(1);
+        expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['DEACTIVATED']);
+      });
+
+      test('should keep the grant, log both assignments and fail when a replaced permission cannot be deactivated', async () => {
+        spyOnMembers();
+        const manhattan = assignmentFor('user-a', MANHATTAN);
+        spyOnHeld([manhattan]);
+        const { createSpy } = spyOnWrites();
+        spyOnDeactivate().mockRejectedValue(new Error('cosmos unavailable'));
+        const errorSpy = vi.spyOn(context.logger, 'error');
+
+        const error = await getTheThrownError(() =>
+          useCase.grantPermission(context, { ...request, ...REGION_2 }),
+        );
+
+        const granted = createSpy.mock.calls[0][0] as UserRoleAssignment;
+        expect(granted).toEqual(
+          expect.objectContaining({ regionId: MANHATTAN.regionId, officeCode: null }),
+        );
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 500,
+            message: 'Unable to replace an existing permission.',
+          }),
+        );
+        expect(errorSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('ROLE_ASSIGNMENT_DEACTIVATION failed'),
+          { grantedAssignmentId: granted.id, replacedAssignmentId: manhattan.id },
+        );
+        expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['CREATED']);
+      });
     });
   });
 });

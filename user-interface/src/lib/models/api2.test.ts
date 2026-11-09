@@ -722,16 +722,19 @@ describe('_Api2 functions', async () => {
     });
   });
 
-  test('should call api.post with the grant when calling postRoleAssignment', () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: {} });
-    const request = {
-      userId: 'user-1',
+  test('should PUT the grant to the encoded permission path when calling grantPermission', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: {} });
+    api2.default.grantPermission({
+      userId: '==MOCKUSER=user@fake.com==',
       role: CamsRole.TrialAttorney,
+      regionId: '2',
       officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-      reason: 'New hire',
-    };
-    api2.default.postRoleAssignment(request);
-    expect(postSpy).toHaveBeenCalledWith('/user-access/assignments', request, {});
+    });
+    expect(putSpy).toHaveBeenCalledWith(
+      '/user-access/users/%3D%3DMOCKUSER%3Duser%40fake.com%3D%3D/permissions/TrialAttorney/2/USTP_CAMS_Region_2_Office_Manhattan',
+      {},
+      {},
+    );
   });
 
   test('should call api.get with limit and offset when both provided to getSoftwareBankTrustees', () => {

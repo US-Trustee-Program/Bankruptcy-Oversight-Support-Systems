@@ -570,7 +570,10 @@ export function createApp(): Application {
   };
 
   app.get('/api/user-access/:resource', handleUserAccess);
-  app.post('/api/user-access/:resource', handleUserAccess);
+  app.put(
+    '/api/user-access/users/:userId/permissions/:role/:regionId/:officeCode',
+    handleUserAccess,
+  );
 
   const handleNotificationRouting = async (req: Request, res: Response, next: NextFunction) => {
     try {

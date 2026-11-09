@@ -284,35 +284,39 @@ export function CamsUsers() {
       {/* Kept mounted while a page reloads, so focus stays on the row the user was working in. */}
       {isReady && !loadFailed && page.data.length > 0 && (
         <>
-          <CamsTable id="cams-users-table" aria-label="CAMS Users">
+          <CamsTable id="cams-users-table" className="cams-users-table" aria-label="CAMS Users">
             <CamsTableHeader>
-              <CamsTableHeaderCell>Name</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Email</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Role</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Region</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Office</CamsTableHeaderCell>
-              <CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-name">Name</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-email">Email</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-role">Role</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-region">Region</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-office">Office</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-actions">
                 <span className="usa-sr-only">Actions</span>
               </CamsTableHeaderCell>
             </CamsTableHeader>
             <CamsTableBody>
               {page.data.map((user) => (
                 <CamsTableRow key={user.id} data-testid={`cams-user-row-${user.id}`}>
-                  <CamsTableCell data-cell="Name">{user.name}</CamsTableCell>
-                  <CamsTableCell data-cell="Email">{user.email}</CamsTableCell>
-                  <CamsTableCell data-cell="Role">
+                  <CamsTableCell className="col-name" data-cell="Name">
+                    {user.name}
+                  </CamsTableCell>
+                  <CamsTableCell className="col-email" data-cell="Email">
+                    {user.email}
+                  </CamsTableCell>
+                  <CamsTableCell className="col-role" data-cell="Role">
                     <PermissionSentences permissions={user.permissions} officeName={officeName} />
                     <PermissionLines lines={user.permissions.map((p) => CamsRoleLabels[p.role])} />
                   </CamsTableCell>
-                  <CamsTableCell data-cell="Region">
+                  <CamsTableCell className="col-region" data-cell="Region">
                     <ScopeCellText hasPermissions={user.permissions.length > 0} />
                     <PermissionLines lines={user.permissions.map((p) => p.regionId ?? ALL)} />
                   </CamsTableCell>
-                  <CamsTableCell data-cell="Office">
+                  <CamsTableCell className="col-office" data-cell="Office">
                     <ScopeCellText hasPermissions={user.permissions.length > 0} />
                     <PermissionLines lines={user.permissions.map(officeLabel)} />
                   </CamsTableCell>
-                  <CamsTableCell data-cell="">
+                  <CamsTableCell className="col-actions" data-cell="">
                     <Button
                       id={`add-permission-${user.id}`}
                       uswdsStyle={UswdsButtonStyle.Unstyled}

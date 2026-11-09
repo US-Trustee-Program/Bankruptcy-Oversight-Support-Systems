@@ -40,7 +40,7 @@ import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
   RoleAssignmentGrantRequest,
-  UserRoleAssignment,
+  RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
 import LocalCache from '../utils/local-cache';
 import DateTimeUtils from '../utils/datetime';
@@ -612,11 +612,19 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
 }
 
-async function postRoleAssignment(request: RoleAssignmentGrantRequest) {
-  return api().post<UserRoleAssignment, RoleAssignmentGrantRequest>(
-    '/user-access/assignments',
-    request,
-  );
+/** Grants a permission. Granting one the user already holds changes nothing. */
+async function grantPermission(request: RoleAssignmentGrantRequest) {
+  const path = [
+    'users',
+    request.userId,
+    'permissions',
+    request.role,
+    request.regionId,
+    request.officeCode,
+  ]
+    .map(encodeURIComponent)
+    .join('/');
+  return api().put<RoleAssignmentGrantResult>(`/user-access/${path}`, {});
 }
 
 async function getSoftwareBankTrustees(
@@ -739,7 +747,7 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 
 export const _Api2 = {
   getCamsUsers,
-  postRoleAssignment,
+  grantPermission,
   getTrustees,
   getTrustee,
   getTrusteeHistory,
