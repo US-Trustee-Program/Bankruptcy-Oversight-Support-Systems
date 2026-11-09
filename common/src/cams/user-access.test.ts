@@ -152,6 +152,12 @@ describe('user-access', () => {
         officeName: undefined,
         label: 'Region 2 - USTP_CAMS_Region_2_Office_Manhattan',
       },
+      {
+        name: 'an office with an empty name',
+        scope: MANHATTAN,
+        officeName: '',
+        label: 'Region 2 - USTP_CAMS_Region_2_Office_Manhattan',
+      },
     ])('should label $name as "$label"', ({ scope, officeName, label }) => {
       expect(scopeLabel(scope, officeName)).toEqual(label);
     });

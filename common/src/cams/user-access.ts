@@ -139,13 +139,13 @@ export function scopesOverlap(a: PermissionScope, b: PermissionScope): boolean {
 }
 
 /**
- * "All Regions", "Region 2 - All Offices" or "Region 2 - Manhattan" (the office code if no name is
- * known). Used for both the Region and Office picker and the replaced-permission alert, so the two
- * always agree (UX-confirmed wording, 2026-11-09).
+ * "All Regions", "Region 2 - All Offices" or "Region 2 - Manhattan" (the office code if the name is
+ * missing or empty). Used for both the Region and Office picker and the replaced-permission alert,
+ * so the two always agree (UX-confirmed wording, 2026-11-09).
  */
 export function scopeLabel(scope: PermissionScope, officeName?: string): string {
   if (scope.regionId === null) return 'All Regions';
-  return `Region ${scope.regionId} - ${scope.officeCode === null ? 'All Offices' : (officeName ?? scope.officeCode)}`;
+  return `Region ${scope.regionId} - ${scope.officeCode === null ? 'All Offices' : officeName || scope.officeCode}`;
 }
 
 // Rejects non-strings, empty strings and whitespace-only strings.
