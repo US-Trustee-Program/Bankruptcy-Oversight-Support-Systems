@@ -1234,6 +1234,17 @@ describe('sync-trustee-case-appointments heal', () => {
       expect.objectContaining(result),
     );
 
+  test('the sync timer sends a start message with no region list so the sync fans out across lanes', async () => {
+    const { timerTrigger } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+
+    await timerTrigger({} as never, invocationContext);
+
+    expect([
+      ...(invocationContext.extraOutputs as unknown as Map<unknown, unknown>).values(),
+    ]).toEqual([{}]);
+  });
+
   test('the heal timer sends a heal start carrying the UTC date it fired', async () => {
     const { healTimerTrigger } = await import('./sync-trustee-case-appointments');
     vi.spyOn(DateHelper, 'getTodaysIsoDate').mockReturnValue('2026-11-09');
