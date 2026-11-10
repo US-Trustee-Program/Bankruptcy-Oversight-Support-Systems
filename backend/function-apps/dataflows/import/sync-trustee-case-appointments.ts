@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { app, InvocationContext, output, Timer } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
@@ -111,9 +112,9 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
    *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
   laneId?: number;
   /**
-   * The logical run this message belongs to: minted by any start that has none (timer or operator)
-   * and copied onto every lane, continuation and requeue it spawns. A message whose runId is no
-   * longer the current run stops (see TrusteeAppointmentSyncRun).
+   * The logical run this message belongs to: minted by the first start of a run (timer or operator)
+   * and copied onto every lane, continuation and requeue it spawns. A lane message whose runId no
+   * longer holds the lock stops (see TrusteeAppointmentSyncRun).
    */
   runId?: string;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
@@ -296,9 +297,16 @@ async function fanOutAcrossLanes(
   connectionString: string,
   runDate: string,
   runId: string,
+  runDeps: ReturnType<typeof TrusteeAppointmentSyncRun.createDeps>,
 ): Promise<FanOutResult> {
   const regions = await RegionDriver.getAllRegionIds(context);
   const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
+  // Recorded before any lane is sent, so the last lane to finish knows to release the lock; with
+  // no lanes the run is already over and this releases it.
+  await TrusteeAppointmentSyncRun.setLanesRemaining(
+    runDeps,
+    lanes.filter((laneRegions) => laneRegions.length > 0).length,
+  );
 
   const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
     connectionString,
@@ -335,8 +343,8 @@ async function handleStart(
   const trace = observability.startTrace(invocationContext.invocationId);
   // Set once deleteAll completes, so a later requeue of this invocation does not repeat the reset.
   let deleteAllDone = false;
-  // The run this invocation belongs to, so a transient requeue of the kickoff keeps the claim it made.
-  let runId = startMessage.runId;
+  // Minted up front so a requeue after a partly finished claim carries it and can pick its own lock back up.
+  let runId = startMessage.runId ?? randomUUID();
   try {
     const connectionString = process.env.AzureWebJobsDataflowsStorage;
     if (!connectionString) {
@@ -369,14 +377,32 @@ async function handleStart(
       );
     }
 
-    // A start with no runId (timer kickoff or operator start) mints one by claiming the run; every
-    // message it spawns carries that id and is checked against it. This runs before deleteAll so a
-    // start that is skipped never wipes appointments under an active run.
+    // Every start that is not a lane of a running sync claims the run; a lane only checks that its
+    // run still holds the lock. This runs before deleteAll so a start that is skipped never wipes
+    // appointments under an active run. The lock has no expiry: if a run dies, starts skip until an
+    // operator deletes the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document.
     const runDeps = TrusteeAppointmentSyncRun.createDeps(context);
-    if (!runId) {
-      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps);
+    if (startMessage.runId && startMessage.laneId !== undefined) {
+      if (!(await TrusteeAppointmentSyncRun.isCurrentRun(runDeps, startMessage.runId))) {
+        logger.info(
+          MODULE_NAME,
+          `Run ${startMessage.runId} no longer holds the lock; this message is dropped.`,
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { skipped: 'superseded-run', runId: startMessage.runId },
+        });
+        return;
+      }
+    } else {
+      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps, runId);
       if ('activeRunId' in claim) {
-        logger.info(MODULE_NAME, `Run ${claim.activeRunId} is active; this start is skipped.`);
+        logger.warn(
+          MODULE_NAME,
+          `Run ${claim.activeRunId} holds the lock (run-active); this start is skipped. If that run died, delete the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document after finding the cause.`,
+        );
         completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
           documentsWritten: 0,
           documentsFailed: 0,
@@ -386,18 +412,6 @@ async function handleStart(
         return;
       }
       runId = claim.runId;
-    } else if (!(await TrusteeAppointmentSyncRun.touchRun(runDeps, runId))) {
-      logger.info(
-        MODULE_NAME,
-        `Run ${runId} is no longer the current run; this message is dropped.`,
-      );
-      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-        details: { skipped: 'superseded-run', runId },
-      });
-      return;
     }
 
     if (startMessage.deleteAll) {
@@ -419,6 +433,7 @@ async function handleStart(
         connectionString,
         runDate,
         runId,
+        runDeps,
       );
       const noRegionsFound =
         fanOutResult.regionsScheduled === 0
@@ -500,6 +515,12 @@ async function handleStart(
           },
         );
       }
+    }
+
+    // A chain that ends with nothing left to continue is done; the last lane releases the lock. A
+    // chain whose continuation could not be requeued is not done, so the lock stays for an operator.
+    if (!result.continuation) {
+      await TrusteeAppointmentSyncRun.completeLane(runDeps, runId);
     }
 
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {

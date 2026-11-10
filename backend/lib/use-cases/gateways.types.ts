@@ -882,15 +882,16 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
  * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
  */
 /**
- * The one regionless sync run (kickoff plus every lane and continuation it spawns) that is
- * currently allowed to work. A later kickoff skips while lastActivityAt is recent; each lane
- * refreshes it, and a message whose runId is not this one stops.
+ * The one sync run (a kickoff plus every lane and continuation it spawns) that may work. The lock
+ * has no expiry: it is deleted when the last lane finishes cleanly, or by an operator after a run
+ * that died. While it exists, any start with a different runId skips.
  */
 export type TrusteeAppointmentSyncRunState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN';
   runId: string;
   startedAt: string;
-  lastActivityAt: string;
+  /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
+  lanesRemaining: number;
 };
 
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {

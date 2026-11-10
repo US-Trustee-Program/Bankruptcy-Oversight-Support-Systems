@@ -1,17 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { TrusteeAppointmentSyncRunState } from '../gateways.types';
 
 const DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_SYNC_RUN';
-
-/**
- * A run is treated as finished once nothing has touched it for this long. It covers one 56-minute
- * invocation budget slice and the longest transient-requeue streak (5 x 300s) with room to spare,
- * and is short enough that the next daily kickoff is never blocked by a run that already ended.
- */
-export const RUN_STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 
 /** How long a claim waits before reading the lock back, so a competing write can land first. */
 export const CLAIM_CONFIRM_DELAY_MS = 2000;
@@ -37,28 +29,28 @@ async function readRun(deps: RunDeps): Promise<TrusteeAppointmentSyncRunState | 
   }
 }
 
-function isActive(run: TrusteeAppointmentSyncRunState): boolean {
-  return Date.now() - new Date(run.lastActivityAt).getTime() < RUN_STALE_AFTER_MS;
-}
-
 /**
- * Called by any start message that has no runId (a timer kickoff or an operator start). Claims the
- * run unless a different run is still active. Two starts can pass the active check together and
- * both write, with the last write winning, so the claim is confirmed: after a short pause it reads
- * the lock back, and only the start whose runId survived proceeds. The other no-ops.
+ * Called by every start that is not a lane of a running sync (timer kickoff, operator start, or a
+ * requeue of either). The lock never expires, so a run that died keeps blocking new starts until
+ * an operator deletes the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document.
+ *
+ * The caller mints runId and keeps it on every requeue, so a start whose claim failed partway can
+ * pick its own lock back up. Two starts can both see no lock and both write, with the last write
+ * winning, so a new claim is confirmed: after a short pause it reads the lock back and only the
+ * start whose runId survived proceeds. This narrows the race window; it does not close it.
  */
-async function claimRun(deps: RunDeps): Promise<ClaimResult> {
+async function claimRun(deps: RunDeps, runId: string): Promise<ClaimResult> {
   const existing = await readRun(deps);
-  if (existing && isActive(existing)) {
-    return { claimed: false, activeRunId: existing.runId };
+  if (existing) {
+    return existing.runId === runId
+      ? { claimed: true, runId }
+      : { claimed: false, activeRunId: existing.runId };
   }
-  const now = new Date().toISOString();
-  const runId = randomUUID();
   await deps.runStateRepo.upsert({
     documentType: DOCUMENT_TYPE,
     runId,
-    startedAt: now,
-    lastActivityAt: now,
+    startedAt: new Date().toISOString(),
+    lanesRemaining: 1,
   });
   await new Promise((resolve) => setTimeout(resolve, CLAIM_CONFIRM_DELAY_MS));
   const confirmed = await readRun(deps);
@@ -68,23 +60,37 @@ async function claimRun(deps: RunDeps): Promise<ClaimResult> {
   return { claimed: true, runId };
 }
 
-/**
- * Called by every lane message. Returns true and records activity when runId is the current run;
- * false means a newer run owns the sync and this message should stop.
- */
-async function touchRun(deps: RunDeps, runId: string): Promise<boolean> {
-  const existing = await readRun(deps);
-  if (existing?.runId !== runId) {
-    return false;
+/** True while runId still holds the lock; a lane message for any other run should stop. */
+async function isCurrentRun(deps: RunDeps, runId: string): Promise<boolean> {
+  return (await readRun(deps))?.runId === runId;
+}
+
+/** Called by a fan-out before it sends lanes. With no lanes to wait on, the run is already done. */
+async function setLanesRemaining(deps: RunDeps, laneCount: number): Promise<void> {
+  if (laneCount === 0) {
+    await deps.runStateRepo.delete(DOCUMENT_TYPE);
+    return;
   }
-  await deps.runStateRepo.upsert({ ...existing, lastActivityAt: new Date().toISOString() });
-  return true;
+  await deps.runStateRepo.setField(DOCUMENT_TYPE, 'lanesRemaining', laneCount);
+}
+
+/** Called when a lane's chain finishes with nothing left to continue. The last one releases the lock. */
+async function completeLane(deps: RunDeps, runId: string): Promise<void> {
+  if (!(await isCurrentRun(deps, runId))) {
+    return;
+  }
+  const remaining = await deps.runStateRepo.atomicDecrement(DOCUMENT_TYPE, 'lanesRemaining', 0);
+  if (remaining <= 0) {
+    await deps.runStateRepo.delete(DOCUMENT_TYPE);
+  }
 }
 
 const TrusteeAppointmentSyncRun = {
   createDeps,
   claimRun,
-  touchRun,
+  isCurrentRun,
+  setLanesRemaining,
+  completeLane,
 };
 
 export default TrusteeAppointmentSyncRun;
