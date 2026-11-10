@@ -119,6 +119,6 @@ jobs:
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
           )
 
-          curl -X POST -H 'Content-type: application/json' \
+          curl --fail-with-body -X POST -H 'Content-type: application/json' \
             --data "$(jq -n --arg text "$full_message" '{text: $text}')" \
             "$SLACK_WEBHOOK_URL"
