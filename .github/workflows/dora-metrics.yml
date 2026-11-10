@@ -68,3 +68,61 @@ jobs:
         dora-metrics/data/mttr-by-period.csv
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish reports to storage
+    needs: [deployment-frequency, lead-time, change-failure-rate, mttr]
+    runs-on: ubuntu-latest
+    # The federated credential's subject names this workflow and environment;
+    # renaming either breaks Azure login until
+    # setup-dora-metrics-federated-credential.sh is re-run.
+    environment: dora-metrics
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download report artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: dora-metrics-*
+          path: reports
+          merge-multiple: true
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch storage account name from Key Vault
+        run: |
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_DORA_METRICS_STORAGE_NAME kv-ustp-cams AZ-DORA-METRICS-STORAGE-NAME
+
+      - name: Upload reports
+        run: |
+          set -euo pipefail
+          # Folder date is the run's creation date, so re-running a failed
+          # publish on a later day writes to the same folder.
+          created=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq '.created_at')
+          destination="runs/${created:0:10}-${GITHUB_RUN_ID}"
+
+          az storage blob upload-batch \
+            --account-name "${AZ_DORA_METRICS_STORAGE_NAME}" \
+            --auth-mode login \
+            --destination dora-metrics \
+            --destination-path "${destination}" \
+            --source reports \
+            --overwrite \
+            --only-show-errors
+
+          echo "Published to dora-metrics/${destination}/:" >> "${GITHUB_STEP_SUMMARY}"
+          find reports -type f -printf '- %P\n' | sort >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          GH_TOKEN: ${{ github.token }}

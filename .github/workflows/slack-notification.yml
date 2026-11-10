@@ -3,6 +3,7 @@ on:
     workflows:
       - Continuous Deployment
       - Clean up Flexion Azure Resources
+      - DORA Metrics
     types:
       - completed
 
@@ -16,11 +17,11 @@ jobs:
     # test, not an infra problem), so it stays scoped to main. Clean up
     # Flexion Azure Resources (CAMS-760) only ever does Azure teardown work —
     # any failure in it is an infra problem worth alerting on regardless of
-    # which branch's resources it was cleaning up.
+    # which branch's resources it was cleaning up. DORA Metrics runs on a
+    # schedule from main, so the head_branch check already covers it.
     if: >
-      ${{ github.event.workflow_run.conclusion == 'failure' &&
-      (github.event.workflow_run.name == 'Clean up Flexion Azure Resources' ||
-      github.event.workflow_run.head_branch == 'main') }}
+      ${{ github.event.workflow_run.conclusion == 'failure' && (github.event.workflow_run.name ==
+      'Clean up Flexion Azure Resources' || github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,6 +37,10 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
           WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          # DORA Metrics failures go to its owner, not to whoever last merged
+          # to main (the commit a scheduled run happens to be built from).
+          DORA_METRICS_OWNER_GITHUB: jharcey-flexion
+          DORA_METRICS_OWNER_EMAIL: 104930974+jharcey-flexion@users.noreply.github.com
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
@@ -51,7 +56,18 @@ jobs:
           parent_count=$(git rev-list --parents -n 1 "$head_sha" | wc -w)
           parent_count=$((parent_count - 1))
 
-          if [ "$parent_count" -eq 2 ]; then
+          if [ "$workflow_name" = "DORA Metrics" ]; then
+            # Skip commit-author mentions; tag the owner instead.
+            commits=""
+            slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r \
+              --arg email "$DORA_METRICS_OWNER_EMAIL" --arg username "$DORA_METRICS_OWNER_GITHUB" \
+              '.[] | select(.email == $email or .github == $username) | .slack // empty' | head -1)
+            if [ -n "$slack_id" ]; then
+              mentions=" <@$slack_id>"
+            else
+              echo "::warning::DORA Metrics owner not found in SLACK_USER_MAPPING; posting without a mention."
+            fi
+          elif [ "$parent_count" -eq 2 ]; then
             # This is a merge commit - get all commits from the PR
             commits=$(git log --format='%H' "$head_sha^1".."$head_sha^2")
           else
