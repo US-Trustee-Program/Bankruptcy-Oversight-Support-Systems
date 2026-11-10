@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 37
-- **Main Workflows**: 18
+- **Total Workflows**: 38
+- **Main Workflows**: 19
 - **Reusable Workflows**: 19
 
 ## Legend
@@ -1110,6 +1110,29 @@ flowchart LR
     class reusable_dast_yml_zap_dast_scan job
 ```
 
+#### Deploy DORA Metrics Storage
+
+Manual execution of `deploy-dora-metrics-storage.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_dora_metrics_storage_yml["Deploy DORA Metrics Storage"]
+    deploy_dora_metrics_storage_yml_deploy_storage["Deploy DORA Metrics Storage"]
+
+    trigger_workflow_dispatch --> deploy_dora_metrics_storage_yml
+    deploy_dora_metrics_storage_yml --> deploy_dora_metrics_storage_yml_deploy_storage
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class deploy_dora_metrics_storage_yml mainWorkflow
+    class deploy_dora_metrics_storage_yml_deploy_storage job
+```
+
 #### Deploy GitHub Pages
 
 Manual execution of `deploy-pages.yml`
@@ -1383,6 +1406,7 @@ flowchart LR
 flowchart LR
     trigger_workflow_dispatch(["workflow_dispatch"])
     deploy_sql_hub_yml["Deploy SQL Private Link Hub"]
+    deploy_dora_metrics_storage_yml["Deploy DORA Metrics Storage"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     dora_metrics_yml["DORA Metrics"]
@@ -1419,6 +1443,7 @@ flowchart LR
     slack_notification_yml["slack-notification"]
 
     trigger_workflow_dispatch --> deploy_sql_hub_yml
+    trigger_workflow_dispatch --> deploy_dora_metrics_storage_yml
     trigger_workflow_dispatch --> build_playwright_msedge_image_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> dora_metrics_yml
@@ -1459,6 +1484,7 @@ flowchart LR
     class trigger_pull_request trigger
     class trigger_workflow_run trigger
     class deploy_sql_hub_yml mainWorkflow
+    class deploy_dora_metrics_storage_yml mainWorkflow
     class build_playwright_msedge_image_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class dora_metrics_yml mainWorkflow
@@ -1482,6 +1508,9 @@ flowchart LR
 
 ### Main Workflows
 - **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
+  - Triggers: workflow_dispatch
+  - Jobs: 1
+- **Deploy DORA Metrics Storage** (`deploy-dora-metrics-storage.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
