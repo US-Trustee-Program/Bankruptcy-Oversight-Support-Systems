@@ -52,7 +52,7 @@ jobs:
         if: ${{ ! inputs.skip }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         with:
-          snyk-version: latest
+          snyk-version: v1.1308.3
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
@@ -142,7 +142,7 @@ jobs:
         if: ${{ ! inputs.skip }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         with:
-          snyk-version: latest
+          snyk-version: v1.1308.3
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
