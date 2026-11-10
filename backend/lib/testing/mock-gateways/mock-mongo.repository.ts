@@ -35,7 +35,13 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
+import {
+  AppointmentStatus,
+  Trustee,
+  TrusteeHistory,
+  TrusteeSummary,
+  ZoomInfo,
+} from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
@@ -521,6 +527,10 @@ export class MockMongoRepository
   }
 
   setPhoneticTokens(_trusteeId: string, _tokens: string[]): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  setZoomInfo(_trusteeId: string, _zoomInfo: ZoomInfo): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

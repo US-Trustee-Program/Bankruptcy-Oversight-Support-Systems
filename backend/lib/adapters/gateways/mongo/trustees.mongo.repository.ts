@@ -13,6 +13,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
   TrusteeSummary,
+  ZoomInfo,
   computeTrusteeName,
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
@@ -588,6 +589,18 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to set phonetic tokens for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
+  async setZoomInfo(trusteeId: string, zoomInfo: ZoomInfo): Promise<void> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(trusteeId));
+      await this.getAdapter<TrusteeDocument>().updateOne(query, { zoomInfo });
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to set zoom info for trustee ${trusteeId}.`,
       });
     }
   }

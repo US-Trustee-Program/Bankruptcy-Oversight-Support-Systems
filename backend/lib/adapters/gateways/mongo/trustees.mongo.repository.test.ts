@@ -1550,6 +1550,54 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('setZoomInfo', () => {
+    const zoomInfo = {
+      link: 'https://us02web.zoom.us/j/1234567890',
+      phone: '680-214-4529',
+      meetingId: '1234567890',
+      passcode: '0123456789',
+      accountEmail: 'trustee@example.com',
+    };
+
+    test('should set only the zoomInfo field for the trustee', async () => {
+      const trusteeId = 'trust-123';
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+      await repository.setZoomInfo(trusteeId, zoomInfo);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'trusteeId' },
+              rightOperand: trusteeId,
+            },
+          ],
+        },
+        { zoomInfo },
+      );
+    });
+
+    test('should handle database errors when setting zoom info', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new Error('Database update failed'),
+      );
+
+      await expect(repository.setZoomInfo('trust-123', zoomInfo)).rejects.toThrow(
+        'Failed to set zoom info for trustee trust-123',
+      );
+    });
+  });
+
   describe('createTrustee - phonetic token generation', () => {
     test('should generate and store phoneticTokens when creating trustee', async () => {
       const mockAdapter = vi

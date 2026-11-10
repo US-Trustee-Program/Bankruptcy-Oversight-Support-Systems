@@ -47,6 +47,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
   TrusteeSummary,
+  ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
@@ -648,6 +649,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   ): Promise<CamsPaginationResponse<TrusteeSummary>>;
   countTrusteesByBankAndSoftware(softwareId: string, bankId: string): Promise<number>;
   setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
+  setZoomInfo(trusteeId: string, zoomInfo: ZoomInfo): Promise<void>;
   deleteAll(): Promise<number>;
 }
 
