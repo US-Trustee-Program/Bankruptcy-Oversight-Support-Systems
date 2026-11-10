@@ -36,7 +36,9 @@ const PAGE_SIZE = 100;
 
 // A transient error (ACMS timeout, Cosmos throttling) requeues the run from its resume point after a
 // fixed delay. After TRANSIENT_RETRY_LIMIT requeues in a row that made no progress, the run is logged
-// and dropped rather than dead-lettered: a later run restarts from the last bookmark written.
+// and dropped rather than dead-lettered. The dropped lane never completes, so the run lock stays held
+// and later starts skip until an operator clears it (see TrusteeAppointmentSyncRun); the next run then
+// restarts from the last bookmark written.
 const TRANSIENT_RETRY_LIMIT = 5;
 const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
 

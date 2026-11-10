@@ -76,5 +76,15 @@ The K-lane bound above holds within one run. A lock document in runtime state
   the losing start stop at `isCurrentRun` before any write, but that start's `deleteAll`, if set,
   has already run.
 - The lock gates starts only. Page retries (`handlePage`) and the 18:30 UTC heal do not check it.
+- `claimRun` returns claimed without rewriting the lock when it already carries this `runId`, which
+  is how a requeued start resumes. A new claim writes `lanesRemaining: 1`, which is what lets an
+  operator-named single chain release the lock; a fan-out overwrites it with the lane count. The
+  lock's `runId` and `startedAt` tell an operator which run holds it and since when.
+- Replaying a dead-lettered start message: a lane message carries `runId` and `laneId`; replay it
+  without touching the lock, since its run still owns it and its completion releases the lock. A
+  kickoff or operator start carries no `runId`; delete the lock first, then replay. A lane send that
+  failed partway through a fan-out dead-letters the kickoff with the lock held; delete the lock and
+  replay the kickoff, or wait for the next daily one. Replaying in the wrong order is a logged skip,
+  not data loss.
 
 See `sync-trustee-case-appointments.ts`'s `handleStart` for a caller.
