@@ -52,3 +52,39 @@ See `backend/function-apps/dataflows/import/sync-trustee-case-appointments.ts`'s
 caller: a start message with no region list enumerates every region, splits it into lanes via
 `assignLanesRoundRobin`, and sends one jittered `START` message per non-empty lane — each then runs
 through the same single-chain code path a named-region start message already used.
+
+## Run lock for a multi-lane run
+
+**Module:** `backend/lib/use-cases/dataflows/trustee-appointment-sync-run.ts`
+
+The K-lane bound above holds within one run. A lock document in runtime state
+(`TRUSTEE_APPOINTMENT_SYNC_RUN`) keeps a second start from adding K more chains.
+
+- Every start that is not a lane of a running sync (timer kickoff, operator start, or a requeue of
+  either) mints a `runId` and calls `claimRun`. If a lock exists for a different run, the start
+  skips and logs a warning. Otherwise it writes the lock, waits `CLAIM_CONFIRM_DELAY_MS`, and reads
+  it back; only the start whose `runId` is still there proceeds.
+- Every lane message, continuation and transient requeue carries the `runId`. A lane first checks
+  `isCurrentRun` and stops if another run holds the lock.
+- The kickoff records `lanesRemaining` before it sends lanes. A lane whose chain ends with nothing
+  left to continue calls `completeLane`; the one that brings the count to zero deletes the lock.
+- The lock has no expiry. A run that dies (dead-lettered, retries exhausted, or a continuation that
+  could not be requeued) keeps the lock, and later starts skip until an operator deletes the
+  `TRUSTEE_APPOINTMENT_SYNC_RUN` document in runtime-state after finding the cause.
+- This is a best-effort guard. A competing claim can still win in a narrow window: it needs a
+  second start that read no lock before this claim's write and wrote after its read-back. Lanes of
+  the losing start stop at `isCurrentRun` before any write, but that start's `deleteAll`, if set,
+  has already run.
+- The lock gates starts only. Page retries (`handlePage`) and the 18:30 UTC heal do not check it.
+- `claimRun` returns claimed without rewriting the lock when it already carries this `runId`, which
+  is how a requeued start resumes. A new claim writes `lanesRemaining: 1`, which is what lets an
+  operator-named single chain release the lock; a fan-out overwrites it with the lane count. The
+  lock's `runId` and `startedAt` tell an operator which run holds it and since when.
+- Replaying a dead-lettered start message: a lane message carries `runId` and `laneId`; replay it
+  without touching the lock, since its run still owns it and its completion releases the lock. A
+  kickoff or operator start carries no `runId`; delete the lock first, then replay. A lane send that
+  failed partway through a fan-out dead-letters the kickoff with the lock held; delete the lock and
+  replay the kickoff, or wait for the next daily one. Replaying in the wrong order is a logged skip,
+  not data loss.
+
+See `sync-trustee-case-appointments.ts`'s `handleStart` for a caller.
