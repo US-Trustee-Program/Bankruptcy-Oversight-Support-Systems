@@ -1325,13 +1325,14 @@ describe('sync-trustee-case-appointments run lock', () => {
     const { setLanesRemainingSpy, mockSendMessage } = await setupLockMocks({
       regionIds: ['01', '02'],
     });
-    setLanesRemainingSpy.mockImplementation(async () => {
-      expect(mockSendMessage).not.toHaveBeenCalled();
-    });
 
     await handleStart({}, makeInvocationContext());
 
     expect(setLanesRemainingSpy).toHaveBeenCalledWith(expect.anything(), 2);
+    expect(mockSendMessage).toHaveBeenCalledTimes(2);
+    expect(setLanesRemainingSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSendMessage.mock.invocationCallOrder[0],
+    );
   });
 
   test('a kickoff with no regions records zero lanes so the lock is released', async () => {
