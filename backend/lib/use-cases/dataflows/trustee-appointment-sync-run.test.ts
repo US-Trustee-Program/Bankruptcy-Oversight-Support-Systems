@@ -4,41 +4,60 @@ import factory from '../../factory';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { TrusteeAppointmentSyncRunState } from '../gateways.types';
-import TrusteeAppointmentSyncRun, {
-  CLAIM_CONFIRM_DELAY_MS,
-  RUN_STALE_AFTER_MS,
-} from './trustee-appointment-sync-run';
+import TrusteeAppointmentSyncRun, { CLAIM_CONFIRM_DELAY_MS } from './trustee-appointment-sync-run';
 
-const NOW = new Date('2026-11-10T12:30:00.000Z');
-
-function runState(runId: string, lastActivityAt: Date): TrusteeAppointmentSyncRunState {
+function runState(runId: string, lanesRemaining = 1): TrusteeAppointmentSyncRunState {
   return {
     documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN',
     runId,
-    startedAt: new Date(lastActivityAt.getTime() - 60_000).toISOString(),
-    lastActivityAt: lastActivityAt.toISOString(),
+    startedAt: '2026-11-10T12:30:00.000Z',
+    lanesRemaining,
   };
 }
 
 describe('trustee appointment sync run lock', () => {
+  let store: TrusteeAppointmentSyncRunState | undefined;
   const read = vi.fn();
   const upsert = vi.fn();
+  const setField = vi.fn();
+  const atomicDecrement = vi.fn();
+  const del = vi.fn();
 
-  async function createDeps() {
+  async function createDeps(initial?: TrusteeAppointmentSyncRunState) {
+    store = initial;
+    read.mockImplementation(async () => {
+      if (!store) throw new NotFoundError('TEST');
+      return store;
+    });
+    upsert.mockImplementation(async (doc) => {
+      store = doc;
+    });
+    setField.mockImplementation(async (_type, path, value) => {
+      store = { ...store, [path]: value } as TrusteeAppointmentSyncRunState;
+    });
+    atomicDecrement.mockImplementation(async () => {
+      store = { ...store!, lanesRemaining: store!.lanesRemaining - 1 };
+      return store.lanesRemaining;
+    });
+    del.mockImplementation(async () => {
+      store = undefined;
+    });
     const context = await createMockApplicationContext();
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue({
       read,
       upsert,
+      setField,
+      atomicDecrement,
+      delete: del,
     } as never);
     return TrusteeAppointmentSyncRun.createDeps(context);
   }
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    read.mockReset();
-    upsert.mockReset();
+    [read, upsert, setField, atomicDecrement, del].forEach((fn) => fn.mockReset());
     vi.useFakeTimers();
-    vi.setSystemTime(NOW);
+    vi.setSystemTime(new Date('2026-11-10T12:30:00.000Z'));
   });
 
   afterEach(() => {
@@ -46,70 +65,49 @@ describe('trustee appointment sync run lock', () => {
   });
 
   describe('claimRun', () => {
-    // An in-memory lock document behind read/upsert, so the confirm read sees what was written.
-    function useStore(initial?: TrusteeAppointmentSyncRunState) {
-      let store = initial;
-      read.mockImplementation(async () => {
-        if (!store) throw new NotFoundError('TEST');
-        return store;
-      });
-      upsert.mockImplementation(async (doc) => {
-        store = doc;
-      });
-      return {
-        overwrite: (doc: TrusteeAppointmentSyncRunState) => {
-          store = doc;
-        },
-        current: () => store,
-      };
-    }
-
-    async function claim(deps: Awaited<ReturnType<typeof createDeps>>) {
-      const pending = TrusteeAppointmentSyncRun.claimRun(deps);
+    async function claim(deps: Awaited<ReturnType<typeof createDeps>>, runId: string) {
+      const pending = TrusteeAppointmentSyncRun.claimRun(deps, runId);
       await vi.advanceTimersByTimeAsync(CLAIM_CONFIRM_DELAY_MS);
       return pending;
     }
 
-    test('claims a new run when no run has ever been recorded', async () => {
-      const store = useStore();
+    test('claims the run with one lane remaining when no lock exists', async () => {
       const deps = await createDeps();
 
-      const result = await claim(deps);
+      const result = await claim(deps, 'run-a');
 
-      expect(result.claimed).toBe(true);
-      expect(store.current()).toEqual({
+      expect(result).toEqual({ claimed: true, runId: 'run-a' });
+      expect(store).toEqual({
         documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN',
-        runId: (result as { runId: string }).runId,
-        startedAt: NOW.toISOString(),
-        lastActivityAt: NOW.toISOString(),
+        runId: 'run-a',
+        startedAt: '2026-11-10T12:30:00.000Z',
+        lanesRemaining: 1,
       });
     });
 
-    test('does not claim while another run was active within the stale window', async () => {
-      useStore(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS + 1)));
-      const deps = await createDeps();
+    test('does not claim while a different run holds the lock, however old it is', async () => {
+      const deps = await createDeps(runState('run-a'));
+      vi.setSystemTime(new Date('2026-12-25T00:00:00.000Z'));
 
-      const result = await claim(deps);
+      const result = await claim(deps, 'run-b');
 
       expect(result).toEqual({ claimed: false, activeRunId: 'run-a' });
       expect(upsert).not.toHaveBeenCalled();
     });
 
-    test('claims a new run once the previous run has been silent for the stale window', async () => {
-      useStore(runState('run-a', new Date(NOW.getTime() - RUN_STALE_AFTER_MS)));
-      const deps = await createDeps();
+    test('lets a start that already owns the lock proceed without rewriting it', async () => {
+      const deps = await createDeps(runState('run-a', 3));
 
-      const result = await claim(deps);
+      const result = await TrusteeAppointmentSyncRun.claimRun(deps, 'run-a');
 
-      expect(result.claimed).toBe(true);
-      expect((result as { runId: string }).runId).not.toEqual('run-a');
+      expect(result).toEqual({ claimed: true, runId: 'run-a' });
+      expect(upsert).not.toHaveBeenCalled();
     });
 
     test('waits before confirming so a competing write has time to land', async () => {
-      useStore();
       const deps = await createDeps();
 
-      const pending = TrusteeAppointmentSyncRun.claimRun(deps);
+      const pending = TrusteeAppointmentSyncRun.claimRun(deps, 'run-a');
       await vi.advanceTimersByTimeAsync(CLAIM_CONFIRM_DELAY_MS - 1);
       expect(read).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(1);
@@ -119,54 +117,89 @@ describe('trustee appointment sync run lock', () => {
     });
 
     test('loses the claim when a competing write replaced the lock before the confirm read', async () => {
-      const store = useStore();
-      upsert.mockImplementationOnce(async () => {
-        // The competitor's write lands after ours and wins.
-        store.overwrite(runState('run-competitor', NOW));
-      });
       const deps = await createDeps();
+      upsert.mockImplementationOnce(async () => {
+        store = runState('run-competitor');
+      });
 
-      const result = await claim(deps);
+      const result = await claim(deps, 'run-a');
 
       expect(result).toEqual({ claimed: false, activeRunId: 'run-competitor' });
     });
 
-    test('propagates a read failure instead of treating it as no active run', async () => {
-      read.mockRejectedValue(new TooManyRequestsError('TEST'));
+    test('propagates a read failure instead of treating it as no lock', async () => {
       const deps = await createDeps();
+      read.mockRejectedValue(new TooManyRequestsError('TEST'));
 
-      await expect(TrusteeAppointmentSyncRun.claimRun(deps)).rejects.toThrow();
+      await expect(TrusteeAppointmentSyncRun.claimRun(deps, 'run-a')).rejects.toThrow();
       expect(upsert).not.toHaveBeenCalled();
     });
   });
 
-  describe('touchRun', () => {
-    test('refreshes lastActivityAt and returns true when the run is the current one', async () => {
-      const state = runState('run-a', new Date(NOW.getTime() - 5000));
-      read.mockResolvedValue(state);
-      const deps = await createDeps();
-
-      const current = await TrusteeAppointmentSyncRun.touchRun(deps, 'run-a');
-
-      expect(current).toBe(true);
-      expect(upsert).toHaveBeenCalledWith({ ...state, lastActivityAt: NOW.toISOString() });
+  describe('isCurrentRun', () => {
+    test('is true when the lock holds the run id', async () => {
+      const deps = await createDeps(runState('run-a'));
+      expect(await TrusteeAppointmentSyncRun.isCurrentRun(deps, 'run-a')).toBe(true);
     });
 
-    test('returns false and writes nothing when a different run holds the lock', async () => {
-      read.mockResolvedValue(runState('run-b', new Date(NOW.getTime() - 5000)));
-      const deps = await createDeps();
-
-      const current = await TrusteeAppointmentSyncRun.touchRun(deps, 'run-a');
-
-      expect(current).toBe(false);
-      expect(upsert).not.toHaveBeenCalled();
+    test('is false when a different run holds the lock', async () => {
+      const deps = await createDeps(runState('run-b'));
+      expect(await TrusteeAppointmentSyncRun.isCurrentRun(deps, 'run-a')).toBe(false);
     });
 
-    test('returns false when no run is recorded', async () => {
-      read.mockRejectedValue(new NotFoundError('TEST'));
+    test('is false when there is no lock', async () => {
       const deps = await createDeps();
+      expect(await TrusteeAppointmentSyncRun.isCurrentRun(deps, 'run-a')).toBe(false);
+    });
+  });
 
-      expect(await TrusteeAppointmentSyncRun.touchRun(deps, 'run-a')).toBe(false);
+  describe('setLanesRemaining', () => {
+    test('records the number of lanes the run is waiting on', async () => {
+      const deps = await createDeps(runState('run-a'));
+
+      await TrusteeAppointmentSyncRun.setLanesRemaining(deps, 3);
+
+      expect(setField).toHaveBeenCalledWith('TRUSTEE_APPOINTMENT_SYNC_RUN', 'lanesRemaining', 3);
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    test('releases the lock when there are no lanes to wait on', async () => {
+      const deps = await createDeps(runState('run-a'));
+
+      await TrusteeAppointmentSyncRun.setLanesRemaining(deps, 0);
+
+      expect(del).toHaveBeenCalledWith('TRUSTEE_APPOINTMENT_SYNC_RUN');
+      expect(setField).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('completeLane', () => {
+    test('keeps the lock while other lanes are still running', async () => {
+      const deps = await createDeps(runState('run-a', 3));
+
+      await TrusteeAppointmentSyncRun.completeLane(deps, 'run-a');
+
+      expect(store?.lanesRemaining).toBe(2);
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    test('releases the lock when the last lane completes', async () => {
+      const deps = await createDeps(runState('run-a', 1));
+
+      await TrusteeAppointmentSyncRun.completeLane(deps, 'run-a');
+
+      expect(del).toHaveBeenCalledWith('TRUSTEE_APPOINTMENT_SYNC_RUN');
+      expect(store).toBeUndefined();
+    });
+
+    test('does nothing when the lock belongs to another run or was cleared', async () => {
+      const deps = await createDeps(runState('run-b', 1));
+      await TrusteeAppointmentSyncRun.completeLane(deps, 'run-a');
+      store = undefined;
+      await TrusteeAppointmentSyncRun.completeLane(deps, 'run-a');
+
+      expect(atomicDecrement).not.toHaveBeenCalled();
+      expect(del).not.toHaveBeenCalled();
     });
   });
 });
