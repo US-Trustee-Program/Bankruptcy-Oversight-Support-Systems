@@ -57,16 +57,24 @@ through the same single-chain code path a named-region start message already use
 
 **Module:** `backend/lib/use-cases/dataflows/trustee-appointment-sync-run.ts`
 
-The K-lane bound above holds within one run. A start with no `runId` (timer or operator) mints one by
-claiming a lock document in runtime state, so a second start while a run is active no-ops instead of
-adding K more chains.
+The K-lane bound above holds within one run. A lock document in runtime state
+(`TRUSTEE_APPOINTMENT_SYNC_RUN`) keeps a second start from adding K more chains.
 
-- `claimRun` writes a new `runId`, waits `CLAIM_CONFIRM_DELAY_MS`, then reads it back; only the start
-  whose `runId` survived a last-write-wins race proceeds.
-- Every lane message, continuation and transient requeue carries the `runId`. `touchRun` refreshes
-  `lastActivityAt` on each invocation and returns false once another run owns the lock, which stops
-  the message.
-- A lock untouched for `RUN_STALE_AFTER_MS` (2 hours) no longer counts as active, so a crashed run
-  does not block the next day's kickoff.
+- Every start that is not a lane of a running sync (timer kickoff, operator start, or a requeue of
+  either) mints a `runId` and calls `claimRun`. If a lock exists for a different run, the start
+  skips and logs a warning. Otherwise it writes the lock, waits `CLAIM_CONFIRM_DELAY_MS`, and reads
+  it back; only the start whose `runId` is still there proceeds.
+- Every lane message, continuation and transient requeue carries the `runId`. A lane first checks
+  `isCurrentRun` and stops if another run holds the lock.
+- The kickoff records `lanesRemaining` before it sends lanes. A lane whose chain ends with nothing
+  left to continue calls `completeLane`; the one that brings the count to zero deletes the lock.
+- The lock has no expiry. A run that dies (dead-lettered, retries exhausted, or a continuation that
+  could not be requeued) keeps the lock, and later starts skip until an operator deletes the
+  `TRUSTEE_APPOINTMENT_SYNC_RUN` document in runtime-state after finding the cause.
+- This is a best-effort guard. A competing claim can still win in a narrow window: it needs a
+  second start that read no lock before this claim's write and wrote after its read-back. Lanes of
+  the losing start stop at `isCurrentRun` before any write, but that start's `deleteAll`, if set,
+  has already run.
+- The lock gates starts only. Page retries (`handlePage`) and the 18:30 UTC heal do not check it.
 
 See `sync-trustee-case-appointments.ts`'s `handleStart` for a caller.
