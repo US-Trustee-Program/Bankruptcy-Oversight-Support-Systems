@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as SyncTrusteeCaseAppointmentsModule from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import * as RegionDriverModule from '../../../lib/use-cases/dataflows/trustee-appointment-region-driver';
+import TrusteeAppointmentSyncRun from '../../../lib/use-cases/dataflows/trustee-appointment-sync-run';
 import HealParkedCaseAppointments from '../../../lib/use-cases/dataflows/heal-parked-case-appointments';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
@@ -442,6 +443,11 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const runRegionDriverSpy = vi
       .spyOn(RegionDriverModule.default, 'runRegionDriver')
       .mockResolvedValue(overrides?.runRegionDriverResult ?? emptyResult);
+    vi.spyOn(TrusteeAppointmentSyncRun, 'claimRun').mockResolvedValue({
+      claimed: true,
+      runId: 'run-1',
+    });
+    vi.spyOn(TrusteeAppointmentSyncRun, 'completeLane').mockResolvedValue(undefined);
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
@@ -575,6 +581,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: continuation.regions,
       runDate: continuation.runDate,
       resumeFrom: continuation.resumeFrom,
+      runId: 'run-1',
     });
   });
 
@@ -605,6 +612,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: ['02'],
       runDate: '2026-07-05',
       resumeFrom,
+      runId: 'run-1',
       transientRetryCount: 3,
     });
     expect(delaySeconds).toBe(300);
@@ -815,6 +823,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(JSON.parse(body)).toEqual({
       regions: ['02'],
       runDate: '2026-07-05',
+      runId: 'run-1',
       transientRetryCount: 2,
     });
     expect(delaySeconds).toBe(300);
@@ -884,7 +893,12 @@ describe('sync-trustee-case-appointments handleStart', () => {
       expect.anything(),
       expect.objectContaining({
         type: 'QUEUE_ERROR',
-        startMessage: { regions: ['02'], runDate: '2026-07-05', transientRetryCount: 1 },
+        startMessage: {
+          regions: ['02'],
+          runDate: '2026-07-05',
+          runId: 'run-1',
+          transientRetryCount: 1,
+        },
       }),
     );
   });
@@ -966,12 +980,25 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
     vi.spyOn(RegionDriverModule.default, 'getAllRegionIds').mockResolvedValue(regionIds);
+    const claimRunSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'claimRun')
+      .mockResolvedValue({ claimed: true, runId: 'run-1' });
+    const setLanesRemainingSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'setLanesRemaining')
+      .mockResolvedValue(undefined);
     const runRegionDriverSpy = vi.spyOn(RegionDriverModule.default, 'runRegionDriver');
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
     const fromConnectionStringSpy = vi
       .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
       .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
-    return { mockContext, mockSendMessage, fromConnectionStringSpy, runRegionDriverSpy };
+    return {
+      mockContext,
+      mockSendMessage,
+      fromConnectionStringSpy,
+      runRegionDriverSpy,
+      claimRunSpy,
+      setLanesRemainingSpy,
+    };
   }
 
   test('a start message with no regions never calls the region driver directly', async () => {
@@ -1026,8 +1053,8 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
 
     expect(deleteAllSpy).toHaveBeenCalledTimes(1);
     expect(mockSendMessage.mock.calls.map(([body]) => JSON.parse(body))).toEqual([
-      { regions: ['01'], runDate: '2026-07-05', laneId: 0 },
-      { regions: ['02'], runDate: '2026-07-05', laneId: 1 },
+      { regions: ['01'], runDate: '2026-07-05', laneId: 0, runId: 'run-1' },
+      { regions: ['02'], runDate: '2026-07-05', laneId: 1, runId: 'run-1' },
     ]);
   });
 
@@ -1189,6 +1216,268 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 });
 
+describe('sync-trustee-case-appointments run lock', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+    delete process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
+  });
+
+  const emptyDriverResult = {
+    dlqMessages: [],
+    processedRegions: [],
+    scenarioDistribution: {} as never,
+    retryableEvents: [],
+    parkedCount: 0,
+  };
+
+  async function setupLockMocks(
+    options: {
+      claim?: Awaited<ReturnType<typeof TrusteeAppointmentSyncRun.claimRun>>;
+      current?: boolean;
+      regionIds?: string[];
+    } = {},
+  ) {
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    vi.spyOn(RegionDriverModule.default, 'getAllRegionIds').mockResolvedValue(
+      options.regionIds ?? ['01', '02'],
+    );
+    const runRegionDriverSpy = vi
+      .spyOn(RegionDriverModule.default, 'runRegionDriver')
+      .mockResolvedValue(emptyDriverResult);
+    const claimRunSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'claimRun')
+      .mockResolvedValue(options.claim ?? { claimed: true, runId: 'run-1' });
+    const isCurrentRunSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'isCurrentRun')
+      .mockResolvedValue(options.current ?? true);
+    const setLanesRemainingSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'setLanesRemaining')
+      .mockResolvedValue(undefined);
+    const completeLaneSpy = vi
+      .spyOn(TrusteeAppointmentSyncRun, 'completeLane')
+      .mockResolvedValue(undefined);
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+    return {
+      runRegionDriverSpy,
+      claimRunSpy,
+      isCurrentRunSpy,
+      setLanesRemainingSpy,
+      completeLaneSpy,
+      mockSendMessage,
+    };
+  }
+
+  const continuation = {
+    regions: ['01'],
+    runDate: '2026-07-05',
+    resumeFrom: { regionId: '01', date: '2026-07-02' },
+    cause: 'invocation-budget' as const,
+  };
+
+  test('a start with no run id mints one and claims the run with it', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { claimRunSpy } = await setupLockMocks();
+
+    await handleStart({}, makeInvocationContext());
+
+    expect(claimRunSpy).toHaveBeenCalledWith(expect.anything(), expect.any(String));
+  });
+
+  test('a kickoff is skipped, with a warning, while another run holds the lock', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
+      logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
+    );
+    const { mockSendMessage, runRegionDriverSpy } = await setupLockMocks({
+      claim: { claimed: false, activeRunId: 'run-active' },
+    });
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, makeInvocationContext());
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('run-active'),
+    );
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        details: { skipped: 'run-active', activeRunId: 'run-active' },
+      }),
+    );
+  });
+
+  test('a kickoff records how many lanes it is sending before it sends any', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { setLanesRemainingSpy, mockSendMessage } = await setupLockMocks({
+      regionIds: ['01', '02'],
+    });
+
+    await handleStart({}, makeInvocationContext());
+
+    expect(setLanesRemainingSpy).toHaveBeenCalledWith(expect.anything(), 2);
+    expect(mockSendMessage).toHaveBeenCalledTimes(2);
+    expect(setLanesRemainingSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSendMessage.mock.invocationCallOrder[0],
+    );
+  });
+
+  test('a kickoff with no regions records zero lanes so the lock is released', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { setLanesRemainingSpy } = await setupLockMocks({ regionIds: [] });
+
+    await handleStart({}, makeInvocationContext());
+
+    expect(setLanesRemainingSpy).toHaveBeenCalledWith(expect.anything(), 0);
+  });
+
+  test('a lane message carries the run id the kickoff claimed', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { mockSendMessage } = await setupLockMocks({
+      claim: { claimed: true, runId: 'run-7' },
+    });
+
+    await handleStart({}, makeInvocationContext());
+
+    const lanes = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    expect(lanes.map((lane) => lane.runId)).toEqual(['run-7', 'run-7']);
+  });
+
+  test('a kickoff retry carrying its run id claims with that same id', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { claimRunSpy, isCurrentRunSpy } = await setupLockMocks();
+
+    await handleStart({ runId: 'run-3' }, makeInvocationContext());
+
+    expect(claimRunSpy).toHaveBeenCalledWith(expect.anything(), 'run-3');
+    expect(isCurrentRunSpy).not.toHaveBeenCalled();
+  });
+
+  test('a kickoff that fails before its claim completes requeues carrying the id it minted', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { claimRunSpy, mockSendMessage } = await setupLockMocks();
+    claimRunSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
+
+    await handleStart({}, makeInvocationContext());
+
+    const [body, delay] = mockSendMessage.mock.calls[0];
+    const requeued = JSON.parse(body);
+    expect(requeued.runId).toEqual(expect.any(String));
+    expect(claimRunSpy).toHaveBeenCalledWith(expect.anything(), requeued.runId);
+    expect(requeued.transientRetryCount).toBe(1);
+    expect(delay).toBe(300);
+  });
+
+  test('a lane message of the current run does the work', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, isCurrentRunSpy, claimRunSpy } = await setupLockMocks();
+
+    await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, makeInvocationContext());
+
+    expect(isCurrentRunSpy).toHaveBeenCalledWith(expect.anything(), 'run-1');
+    expect(claimRunSpy).not.toHaveBeenCalled();
+    expect(runRegionDriverSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('a lane message from a run that no longer holds the lock stops without touching any region', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, mockSendMessage, completeLaneSpy } = await setupLockMocks({
+      current: false,
+    });
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({ regions: ['01'], laneId: 0, runId: 'run-old' }, makeInvocationContext());
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(completeLaneSpy).not.toHaveBeenCalled();
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        details: { skipped: 'superseded-run', runId: 'run-old' },
+      }),
+    );
+  });
+
+  test('a lane that finishes with nothing left to continue completes its lane', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { completeLaneSpy } = await setupLockMocks();
+
+    await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, makeInvocationContext());
+
+    expect(completeLaneSpy).toHaveBeenCalledWith(expect.anything(), 'run-1');
+  });
+
+  test('a lane that continues carries the run id forward and does not complete its lane', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, mockSendMessage, completeLaneSpy } = await setupLockMocks();
+    runRegionDriverSpy.mockResolvedValue({ ...emptyDriverResult, continuation });
+
+    await handleStart(
+      { regions: ['01'], laneId: 0, runId: 'run-1', runDate: '2026-07-05' },
+      makeInvocationContext(),
+    );
+
+    const sent = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    expect(sent).toContainEqual(expect.objectContaining({ laneId: 0, runId: 'run-1' }));
+    expect(completeLaneSpy).not.toHaveBeenCalled();
+  });
+
+  test('a lane whose driver throws a non-transient error keeps the lock held', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, completeLaneSpy } = await setupLockMocks();
+    runRegionDriverSpy.mockRejectedValue(new Error('boom'));
+    const invocationContext = makeInvocationContext();
+    invocationContext.extraOutputs.set = vi.fn();
+
+    await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, invocationContext);
+
+    expect(completeLaneSpy).not.toHaveBeenCalled();
+  });
+
+  test('an operator-named start claims the lock like a timer kickoff and completes its single lane', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy, claimRunSpy, completeLaneSpy } = await setupLockMocks({
+      claim: { claimed: true, runId: 'run-op' },
+    });
+
+    await handleStart({ regions: ['02'] }, makeInvocationContext());
+
+    expect(claimRunSpy).toHaveBeenCalledTimes(1);
+    expect(runRegionDriverSpy).toHaveBeenCalledTimes(1);
+    expect(completeLaneSpy).toHaveBeenCalledWith(expect.anything(), 'run-op');
+  });
+
+  test('an operator-named start is skipped while another run holds the lock', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const { runRegionDriverSpy } = await setupLockMocks({
+      claim: { claimed: false, activeRunId: 'run-active' },
+    });
+
+    await handleStart({ regions: ['02'] }, makeInvocationContext());
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe('sync-trustee-case-appointments heal', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -1233,6 +1522,17 @@ describe('sync-trustee-case-appointments heal', () => {
       expect.anything(),
       expect.objectContaining(result),
     );
+
+  test('the sync timer sends a start message with no region list so the sync fans out across lanes', async () => {
+    const { timerTrigger } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+
+    await timerTrigger({} as never, invocationContext);
+
+    expect([
+      ...(invocationContext.extraOutputs as unknown as Map<unknown, unknown>).values(),
+    ]).toEqual([{}]);
+  });
 
   test('the heal timer sends a heal start carrying the UTC date it fired', async () => {
     const { healTimerTrigger } = await import('./sync-trustee-case-appointments');

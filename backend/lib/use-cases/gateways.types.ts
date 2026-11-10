@@ -809,7 +809,8 @@ export type RuntimeStateDocumentType =
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
-  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
+  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE'
+  | 'TRUSTEE_APPOINTMENT_SYNC_RUN';
 
 export type RuntimeState = {
   id?: string;
@@ -880,6 +881,19 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
  * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
  * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
  */
+/**
+ * The one sync run (a kickoff plus every lane and continuation it spawns) that may work. The lock
+ * has no expiry: it is deleted when the last lane finishes cleanly, or by an operator after a run
+ * that died. While it exists, any start with a different runId skips.
+ */
+export type TrusteeAppointmentSyncRunState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN';
+  runId: string;
+  startedAt: string;
+  /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
+  lanesRemaining: number;
+};
+
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
   region: Record<

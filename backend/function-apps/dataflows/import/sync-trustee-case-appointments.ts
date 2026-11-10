@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { app, InvocationContext, output, Timer } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
+import TrusteeAppointmentSyncRun from '../../../lib/use-cases/dataflows/trustee-appointment-sync-run';
 import HealParkedCaseAppointments from '../../../lib/use-cases/dataflows/heal-parked-case-appointments';
 import RegionDriver, {
   isTransientError,
@@ -34,7 +36,9 @@ const PAGE_SIZE = 100;
 
 // A transient error (ACMS timeout, Cosmos throttling) requeues the run from its resume point after a
 // fixed delay. After TRANSIENT_RETRY_LIMIT requeues in a row that made no progress, the run is logged
-// and dropped rather than dead-lettered: a later run restarts from the last bookmark written.
+// and dropped rather than dead-lettered. The dropped lane never completes, so the run lock stays held
+// and later starts skip until an operator clears it (see TrusteeAppointmentSyncRun); the next run then
+// restarts from the last bookmark written.
 const TRANSIENT_RETRY_LIMIT = 5;
 const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
 
@@ -98,9 +102,9 @@ function hasProgressed(
 }
 
 // Triggered by an operator naming regions to sync (cams-fd8qd.1.10), or with no region list to
-// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). The sync start is not on
-// DEFAULT_DATAFLOWS and has no timer yet (cams-fd8qd.3.9). The heal, by contrast, has its own
-// 18:30 UTC timer, registered in setup().
+// fan out across every CAMS region in LANE_COUNT lanes (cams-fd8qd.5.3). The sync is on
+// DEFAULT_DATAFLOWS: a 12:30 UTC timer sends the regionless start, and a separate 18:30 UTC timer
+// starts the heal. Both timers are registered in setup().
 type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Absent only on a top-level kickoff with no operator-named regions -- see the fan-out branch
    *  in handleStart. Every message past that point (operator-named, or one lane's chain) carries
@@ -109,6 +113,12 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   /** Identifies which lane a chain belongs to (trace details, fan-out logs, and the DLQ'd start
    *  message only) -- absent on an operator-named Slice 1 message and on the fan-out kickoff itself. */
   laneId?: number;
+  /**
+   * The logical run this message belongs to: minted by the first start of a run (timer or operator)
+   * and copied onto every lane, continuation and requeue it spawns. A lane message whose runId no
+   * longer holds the lock stops (see TrusteeAppointmentSyncRun).
+   */
+  runId?: string;
   /** Defaults to today when omitted; the run date itself is never read (see RegionDriver). */
   runDate?: string;
   /** Where a prior invocation that stopped early (budget or transient error) left off -- see RegionDriver's continuation. */
@@ -178,6 +188,7 @@ const HEAL_PAGE_SIZE = 25;
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_HEAL = buildFunctionName(MODULE_NAME, 'handleHeal');
+const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 const HEAL_TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'healTimerTrigger');
 
 function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
@@ -287,9 +298,17 @@ async function fanOutAcrossLanes(
   logger: ReturnType<typeof ContextCreator.getLogger>,
   connectionString: string,
   runDate: string,
+  runId: string,
+  runDeps: ReturnType<typeof TrusteeAppointmentSyncRun.createDeps>,
 ): Promise<FanOutResult> {
   const regions = await RegionDriver.getAllRegionIds(context);
   const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
+  // Recorded before any lane is sent, so the last lane to finish knows to release the lock; with
+  // no lanes the run is already over and this releases it.
+  await TrusteeAppointmentSyncRun.setLanesRemaining(
+    runDeps,
+    lanes.filter((laneRegions) => laneRegions.length > 0).length,
+  );
 
   const startQueueClient = StorageQueueHumbleObject.fromConnectionString(
     connectionString,
@@ -303,6 +322,7 @@ async function fanOutAcrossLanes(
       regions: laneRegions,
       runDate,
       laneId,
+      runId,
     };
     const jitterSeconds = pickJitterSeconds(LANE_JITTER_MIN_SECONDS, LANE_JITTER_MAX_SECONDS);
     await startQueueClient.sendMessage(JSON.stringify(laneMessage), jitterSeconds);
@@ -325,6 +345,8 @@ async function handleStart(
   const trace = observability.startTrace(invocationContext.invocationId);
   // Set once deleteAll completes, so a later requeue of this invocation does not repeat the reset.
   let deleteAllDone = false;
+  // Minted up front so a requeue after a partly finished claim carries it and can pick its own lock back up.
+  let runId = startMessage.runId ?? randomUUID();
   try {
     const connectionString = process.env.AzureWebJobsDataflowsStorage;
     if (!connectionString) {
@@ -349,6 +371,51 @@ async function handleStart(
       return;
     }
 
+    // A resume point only makes sense within a fixed region list; fanning out here would ignore
+    // it and reschedule every region. Dead-letter the malformed message instead.
+    if (!startMessage.regions && startMessage.resumeFrom) {
+      throw new Error(
+        'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
+      );
+    }
+
+    // Every start that is not a lane of a running sync claims the run; a lane only checks that its
+    // run still holds the lock. This runs before deleteAll so a start that is skipped never wipes
+    // appointments under an active run. The lock has no expiry: if a run dies, starts skip until an
+    // operator deletes the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document.
+    const runDeps = TrusteeAppointmentSyncRun.createDeps(context);
+    if (startMessage.runId && startMessage.laneId !== undefined) {
+      if (!(await TrusteeAppointmentSyncRun.isCurrentRun(runDeps, startMessage.runId))) {
+        logger.info(
+          MODULE_NAME,
+          `Run ${startMessage.runId} no longer holds the lock; this message is dropped.`,
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { skipped: 'superseded-run', runId: startMessage.runId },
+        });
+        return;
+      }
+    } else {
+      const claim = await TrusteeAppointmentSyncRun.claimRun(runDeps, runId);
+      if ('activeRunId' in claim) {
+        logger.warn(
+          MODULE_NAME,
+          `Run ${claim.activeRunId} holds the lock (run-active); this start is skipped. If that run died, delete the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document after finding the cause.`,
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { skipped: 'run-active', activeRunId: claim.activeRunId },
+        });
+        return;
+      }
+      runId = claim.runId;
+    }
+
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
       const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
@@ -362,14 +429,14 @@ async function handleStart(
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
 
     if (!startMessage.regions) {
-      // A resume point only makes sense within a fixed region list; fanning out here would ignore
-      // it and reschedule every region. Dead-letter the malformed message instead.
-      if (startMessage.resumeFrom) {
-        throw new Error(
-          'A start message with resumeFrom must carry its regions; refusing to fan out across all regions.',
-        );
-      }
-      const fanOutResult = await fanOutAcrossLanes(context, logger, connectionString, runDate);
+      const fanOutResult = await fanOutAcrossLanes(
+        context,
+        logger,
+        connectionString,
+        runDate,
+        runId,
+        runDeps,
+      );
       const noRegionsFound =
         fanOutResult.regionsScheduled === 0
           ? 'No regions found in CAMS office data; no lanes were scheduled.'
@@ -423,6 +490,7 @@ async function handleStart(
         runDate: continuation.runDate,
         resumeFrom: continuation.resumeFrom,
         laneId: startMessage.laneId,
+        runId,
       };
       if (continuation.cause === 'invocation-budget') {
         // A budget continuation starts a fresh transient-retry streak, so it carries no count.
@@ -449,6 +517,12 @@ async function handleStart(
           },
         );
       }
+    }
+
+    // A chain that ends with nothing left to continue is done; the last lane releases the lock. A
+    // chain whose continuation could not be requeued is not done, so the lock stays for an operator.
+    if (!result.continuation) {
+      await TrusteeAppointmentSyncRun.completeLane(runDeps, runId);
     }
 
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -482,6 +556,7 @@ async function handleStart(
     // is known here, so the count simply extends the streak. deleteAll is dropped once it has run.
     await requeueAfterTransientError(invocationContext, logger, connectionString, {
       ...startMessage,
+      runId,
       transientRetryCount: (startMessage.transientRetryCount ?? 0) + 1,
       deleteAll: deleteAllDone ? undefined : startMessage.deleteAll,
     });
@@ -656,6 +731,21 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 }
 
 /**
+ * Daily at 12:30 UTC: starts a sync with no region list, which handleStart fans out across lanes.
+ */
+async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const observability = factory.getObservability(logger);
+  const trace = observability.startTrace(invocationContext.invocationId);
+  invocationContext.extraOutputs.set(START, {});
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+  });
+}
+
+/**
  * Daily at 18:30 UTC: starts the heal of parked rows, which attaches records whose case has loaded
  * into CAMS since they were parked.
  */
@@ -792,6 +882,13 @@ function setup() {
     handler: handleHeal,
   });
 
+  app.timer(TIMER_TRIGGER, {
+    // Daily at 12:30 UTC (CAMS-955 Slice 3): regionless start that fans out across every region.
+    schedule: '0 30 12 * * *',
+    extraOutputs: [START],
+    handler: timerTrigger,
+  });
+
   app.timer(HEAL_TIMER_TRIGGER, {
     // Daily at 18:30 UTC (CAMS-955 Slice 3 decision 16): heals parked rows filed in the last 14 days.
     schedule: '0 30 18 * * *',
@@ -800,7 +897,7 @@ function setup() {
   });
 }
 
-export { handleStart, handlePage, handleHeal, healTimerTrigger };
+export { handleStart, handlePage, handleHeal, timerTrigger, healTimerTrigger };
 export default {
   MODULE_NAME,
   setup,
