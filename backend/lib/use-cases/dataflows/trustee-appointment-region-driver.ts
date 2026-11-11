@@ -118,7 +118,7 @@ type RegionDriverOptions = {
   runDate: string;
   /** Where the previous invocation left off, if it escaped mid-run (see continuation below). */
   resumeFrom?: RegionDriverResumePoint;
-  /** Injectable for deterministic unit tests; defaults to Date.now() in production. */
+  /** Invocation start time, so setup such as the optional delete counts against the budget; defaults to Date.now() when omitted. */
   startedAt?: number;
   /** Injectable for deterministic unit tests; defaults to DEFAULT_INVOCATION_BUDGET_MS in production. */
   safeThresholdMs?: number;
