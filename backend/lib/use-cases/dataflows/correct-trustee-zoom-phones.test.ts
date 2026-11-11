@@ -176,6 +176,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
       expect(result).toEqual({ outcome: 'converted', newValue: expected });
       expect(expected).toMatch(PHONE_REGEX);
+      expect(convertZoomPhone(expected)).toEqual({ outcome: 'alreadyValid' });
     });
 
     test.each([
