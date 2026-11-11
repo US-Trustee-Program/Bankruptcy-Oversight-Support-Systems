@@ -27,7 +27,7 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
  * handleStart
  *
  * One-time correction (CAMS-975) of trustee Zoom phones stored in a format that fails
- * PHONE_REGEX. Flagged values are logged for review; failed writes go to the DLQ.
+ * PHONE_REGEX. Flagged trustees are listed in the summary log; failed writes go to the DLQ.
  * Safe to re-run: phones already in the accepted format are left unchanged.
  */
 async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
@@ -57,15 +57,6 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 
   const { results, counts } = correctionResult.data;
 
-  results
-    .filter((r) => r.outcome === 'flagged')
-    .forEach((r) =>
-      logger.warn(
-        MODULE_NAME,
-        `Zoom phone flagged for review: trusteeId=${r.trusteeId} name="${r.trusteeName}" stored="${r.storedValue ?? ''}"`,
-      ),
-    );
-
   const failed = results.filter((r) => r.outcome === 'failed');
   if (failed.length > 0) {
     invocationContext.extraOutputs.set(
@@ -74,9 +65,14 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
     );
   }
 
+  // One trace for the whole run, so sampling keeps or drops the counts and the flagged list together.
+  const flagged = results
+    .filter((r) => r.outcome === 'flagged')
+    .map((r) => `${r.trusteeId} (${r.reason})`);
+  const flaggedList = flagged.length > 0 ? ` Flagged trustees: ${flagged.join(', ')}` : '';
   logger.info(
     MODULE_NAME,
-    `Trustee Zoom phone correction complete. Converted: ${counts.converted}, Already valid: ${counts.alreadyValid}, Flagged: ${counts.flagged}, Failed: ${counts.failed}.`,
+    `Trustee Zoom phone correction complete. Converted: ${counts.converted}, Already valid: ${counts.alreadyValid}, Flagged: ${counts.flagged}, Failed: ${counts.failed}.${flaggedList}`,
   );
 }
 

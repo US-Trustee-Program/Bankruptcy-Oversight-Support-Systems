@@ -9,24 +9,28 @@ and users cannot save a trustee's Zoom info without retyping the phone.
 
 The migration reads every trustee that has Zoom info and, for each Zoom phone:
 
-| Outcome       | What happens                                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Converted     | The phone is rewritten in the accepted format, e.g. `(680) 214-4529` → `680-214-4529`, `(680) 214-4529 x123` → `680-214-4529 x123`   |
-| Already valid | No change                                                                                                                            |
-| Flagged       | The value cannot be converted safely (wrong number of digits, letters, empty or missing). It is left unchanged and logged for review |
-| Failed        | The write failed. The trustee is sent to the dead-letter queue and the run continues                                                 |
+| Outcome       | What happens                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Converted     | The phone is rewritten in the accepted format, e.g. `(680) 214-4529` → `680-214-4529`, `(680) 214-4529 x123` → `680-214-4529 x123`                      |
+| Already valid | No change                                                                                                                                               |
+| Flagged       | The value cannot be converted safely (wrong number of digits, letters, empty or missing). It is left unchanged and listed in the run summary for review |
+| Failed        | The write failed. The trustee is sent to the dead-letter queue and the run continues                                                                    |
 
 Only the phone changes. The rest of the trustee's Zoom info is untouched, and the correction does
 **not** create trustee history entries or trustee change notifications, and does not change
 `updatedBy`/`updatedOn`.
 
 **Safe to re-run:** a second run converts nothing, because every phone it fixed is now already
-valid. Flagged values are reported again on every run.
+valid. Flagged trustees are listed again on every run.
 
 ## Run order
 
 Run in **dev**, then **staging**, then **prod**. In each environment, check the summary and the
 flagged list (see [Reviewing results](#reviewing-results)) before moving on.
+
+Start each run outside business hours. The migration writes each corrected trustee's Zoom info from
+the copy it read at the start of the run, so an edit a user makes to that trustee's Zoom info while
+the run is in progress can be overwritten.
 
 ## Running the migration
 
@@ -83,10 +87,8 @@ When the migration has run in every environment, remove `CORRECT_TRUSTEE_ZOOM_PH
 
 ## Reviewing results
 
-The review log is Application Insights. Each run writes one summary entry and one warning per
-flagged trustee.
-
-**Summary:**
+The review log is Application Insights. Each run writes a single summary entry that holds the counts
+and every flagged trustee:
 
 ```kusto
 AppTraces
@@ -97,24 +99,18 @@ AppTraces
 ```
 
 Example:
-`Trustee Zoom phone correction complete. Converted: 42, Already valid: 310, Flagged: 3, Failed: 0.`
 
-**Flagged for review:**
-
-```kusto
-AppTraces
-| where TimeGenerated > ago(1d)
-| where Message has "CORRECT-TRUSTEE-ZOOM-PHONES"
-| where Message has "Zoom phone flagged for review"
-| project TimeGenerated, Message
-| order by TimeGenerated asc
+```text
+Trustee Zoom phone correction complete. Converted: 42, Already valid: 310, Flagged: 2, Failed: 0. Flagged trustees: <id> (Zoom phone has 5 digits.), <id> (Zoom phone is empty or missing.)
 ```
 
-Example: `Zoom phone flagged for review: trusteeId=<id> name="<trustee name>" stored="214-45"`
+The entry lists only each flagged trustee's ID and reason, not the trustee's name or phone. Open the
+trustee in CAMS (`/trustees/<id>`) to see the stored phone, then fix it by editing the trustee's
+Zoom info.
 
-Fix flagged phones by editing the trustee's Zoom info in CAMS. Then compare the number of flagged
-entries with the `Flagged` count in the summary. Application Insights sampling is enabled for the
-dataflows app (`host.json`), so if any entries are missing, re-run the migration to log them again.
+Application Insights sampling is enabled for the dataflows app (`host.json`). Because the counts and
+the flagged list are one entry, sampling keeps or drops them together. If no summary appears for a
+run, re-run the migration.
 
 **Failed writes:** check `correct-trustee-zoom-phones-dlq`. Each message lists `trusteeId` and
 `error`. A message with `"type": "QUEUE_ERROR"` means the run could not load or process trustees at
