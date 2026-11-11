@@ -9,6 +9,9 @@ import {
   mergeTrusteeRecords,
   buildDistrictToDivisionsMap,
   readAllTrusteeProfessionalRecords,
+  backfillProfessionalIdsPage,
+  selectPrimaryAddress,
+  deduplicateTrusteesInPage,
 } from './migrate-trustees';
 import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
@@ -197,6 +200,32 @@ describe('Migrate Trustees Use Case', () => {
       expect(updateTrusteeSpy).not.toHaveBeenCalled();
     });
 
+    test('includes additional addresses on a newly created trustee', async () => {
+      const primary: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+      const secondary: AtsTrusteeRecord = { ID: 2, STREET: 'Secondary St' };
+      const mergedData = mergeTrusteeRecords([primary, secondary]);
+
+      const createdTrustee = { id: 'new-id', trusteeId: 'trustee-123', name: 'John Doe' };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(createdTrustee);
+
+      await upsertTrustee(context, mergedData);
+
+      expect(createTrusteeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          legacy: expect.objectContaining({ addresses: [{ address1: 'Secondary St' }] }),
+        }),
+        expect.anything(),
+      );
+    });
+
     test('should update existing trustee when found', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 1,
@@ -244,6 +273,61 @@ describe('Migrate Trustees Use Case', () => {
       expect(createTrusteeSpy).not.toHaveBeenCalled();
     });
 
+    test('merges additional addresses into an existing trustee, dropping duplicates and empty keys', async () => {
+      const primary: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+        STREET: '1 Primary Way',
+      };
+      // "streetOnly" survives buildAdditionalAddresses's filter via STREET, giving an address
+      // with address1 set and cityStateZipCountry absent.
+      const streetOnly: AtsTrusteeRecord = { ID: 2, STREET: 'New St' };
+      // "cityOnly" survives via CITY, giving an address with cityStateZipCountry set and
+      // address1 absent - and intentionally reuses the existing trustee's already-stored
+      // address below, so it must be dropped as a duplicate rather than re-added.
+      const cityOnly: AtsTrusteeRecord = { ID: 3, CITY: 'Springfield' };
+
+      const mergedData = mergeTrusteeRecords([primary, streetOnly, cityOnly]);
+      // An address with neither address1 nor cityStateZipCountry (a data-quality artifact
+      // upsertTrustee must drop rather than persist as a bare "|" dedup key).
+      mergedData.additionalAddresses.push({});
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        name: 'John Doe',
+        legacy: { truIds: ['1'], addresses: [{ cityStateZipCountry: 'Springfield' }] },
+        public: {
+          address: { address1: '', city: '', state: 'NY', zipCode: '', countryCode: 'US' as const },
+        },
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+        existingTrustee,
+      );
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(existingTrustee);
+
+      await upsertTrustee(context, mergedData);
+
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(
+        'trustee-123',
+        expect.objectContaining({
+          legacy: expect.objectContaining({
+            addresses: [{ cityStateZipCountry: 'Springfield' }, { address1: 'New St' }],
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
     test('should handle error when upsert fails', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 1,
@@ -262,6 +346,75 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to upsert trustee 1');
       expect(result.data).toBeUndefined();
+    });
+
+    test('should skip trustee with missing first name', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('without complete name and state');
+      expect(result.data).toBeUndefined();
+    });
+
+    test('should skip trustee with missing state', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+      };
+
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('without complete name and state');
+      expect(result.data).toBeUndefined();
+    });
+
+    test('should default existing TOD IDs to an empty list when the existing trustee has no legacy record', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        name: 'John Doe',
+        public: {
+          address: { address1: '', city: '', state: 'NY', zipCode: '', countryCode: 'US' as const },
+        },
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+        existingTrustee,
+      );
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(existingTrustee);
+
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.data).toEqual(existingTrustee);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(
+        'trustee-123',
+        expect.objectContaining({ legacy: expect.objectContaining({ truIds: ['1'] }) }),
+        expect.anything(),
+      );
     });
   });
 
@@ -427,6 +580,45 @@ describe('Migrate Trustees Use Case', () => {
 
       expect(result.error).toBeDefined();
       expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('backfillProfessionalIdsPage', () => {
+    // processAcmsRecord is a deliberate no-op stub (CAMS-876: sync-acms-professional-ids.ts
+    // is now the only path allowed to write a TrusteeProfessionalId) that always reports
+    // 'alreadyMapped', so every record here takes that one outcome -- the 'rateLimited'/
+    // retry/escape paths it would otherwise drive are unreachable until the stub changes.
+    const record = (acmsProfessionalId: string) => ({
+      acmsProfessionalId,
+      firstName: 'Harvey',
+      lastName: 'Barr',
+      state: 'NY',
+    });
+
+    test('counts every record as already mapped and uses the default timing options', async () => {
+      const records = [record('NY-00063'), record('NY-00064')];
+
+      const result = await backfillProfessionalIdsPage(context, records);
+
+      expect(result.data).toEqual({
+        alreadyMapped: 2,
+        created: 0,
+        unmatched: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
+      });
+    });
+
+    test('returns an empty result for an empty page', async () => {
+      const result = await backfillProfessionalIdsPage(context, []);
+
+      expect(result.data).toEqual({
+        alreadyMapped: 0,
+        created: 0,
+        unmatched: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
+      });
     });
   });
 
@@ -930,6 +1122,85 @@ describe('Migrate Trustees Use Case', () => {
       const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(2);
+      expect(result.data?.errors).toBe(0);
+    });
+
+    test('should count a trustee record with ID 0 as malformed after a successful merge', async () => {
+      // ID 0 survives mergeTrusteeRecords (0 .toString() doesn't throw, unlike
+      // undefined), so this exercises processTrusteeWithAppointments' own
+      // malformed-ID guard rather than the merge-time failure covered above.
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 0, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+      ];
+
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(0);
+      expect(result.data?.errors).toBe(1);
+    });
+
+    test('should treat missing first and last name as blank when computing the trustee display name', async () => {
+      const trustees: AtsTrusteeRecord[] = [{ ID: 99, STATE: 'NY' }];
+
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      // Missing name fails upsertTrustee's completeness check, so the trustee
+      // is counted as an error rather than processed.
+      expect(result.data?.processed).toBe(0);
+      expect(result.data?.errors).toBe(1);
+    });
+
+    test('should succeed using the A2 state when DISP_ON_WEB_A2 makes it the public address', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        {
+          ID: 7,
+          FIRST_NAME: 'Ann',
+          LAST_NAME: 'Lee',
+          DISP_ON_WEB: 'n',
+          DISP_ON_WEB_A2: 'y',
+          STATE_A2: 'CA',
+        },
+      ];
+
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-7',
+        name: 'Ann Lee',
+      });
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
     });
 
@@ -1819,6 +2090,145 @@ describe('Migrate Trustees Use Case', () => {
       await createAppointments(context, MOCK_TRUSTEE, cleanAppointments);
 
       expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+  });
+
+  describe('mergeTrusteeRecords - additional addresses', () => {
+    test('builds address1/address2 from STREET/STREET1 and omits cityStateZipCountry when city, state, and zip are all absent', () => {
+      const primary: AtsTrusteeRecord = {
+        ID: 1,
+        STREET: '1 Primary Way',
+        STREET1: 'Suite 1',
+        CITY: 'Washington',
+        STATE: 'DC',
+        ZIP: '20001',
+        ZIP_PLUS: '0001',
+        TELEPHONE: '202-555-0100',
+        EMAIL_ADDRESS: 'primary@example.com',
+        COMPANY: 'Primary Co',
+      };
+      const streetOnly: AtsTrusteeRecord = {
+        ID: 2,
+        STREET: '123 Main St',
+        STREET1: 'Suite 2',
+      };
+
+      const merged = mergeTrusteeRecords([primary, streetOnly]);
+
+      expect(merged.additionalAddresses).toEqual([
+        { address1: '123 Main St', address2: 'Suite 2' },
+      ]);
+    });
+
+    test('builds cityStateZipCountry from CITY alone and omits it when ZIP is absent', () => {
+      const primary: AtsTrusteeRecord = {
+        ID: 1,
+        STREET: '1 Primary Way',
+        STREET1: 'Suite 1',
+        CITY: 'Washington',
+        STATE: 'DC',
+        ZIP: '20001',
+        ZIP_PLUS: '0001',
+        TELEPHONE: '202-555-0100',
+        EMAIL_ADDRESS: 'primary@example.com',
+        COMPANY: 'Primary Co',
+      };
+      const cityOnly: AtsTrusteeRecord = {
+        ID: 3,
+        CITY: 'Springfield',
+      };
+
+      const merged = mergeTrusteeRecords([primary, cityOnly]);
+
+      expect(merged.additionalAddresses).toEqual([{ cityStateZipCountry: 'Springfield' }]);
+    });
+
+    test('builds cityStateZipCountry from ZIP alone when city and state are absent, appending ZIP_PLUS', () => {
+      const primary: AtsTrusteeRecord = {
+        ID: 1,
+        STREET: '1 Primary Way',
+        STREET1: 'Suite 1',
+        CITY: 'Washington',
+        STATE: 'DC',
+        ZIP: '20001',
+        ZIP_PLUS: '0001',
+        TELEPHONE: '202-555-0100',
+        EMAIL_ADDRESS: 'primary@example.com',
+        COMPANY: 'Primary Co',
+      };
+      const zipOnly: AtsTrusteeRecord = {
+        ID: 4,
+        ZIP: '12345',
+        ZIP_PLUS: '6789',
+      };
+
+      const merged = mergeTrusteeRecords([primary, zipOnly]);
+
+      expect(merged.additionalAddresses).toEqual([{ cityStateZipCountry: '12345-6789' }]);
+    });
+
+    test('builds cityStateZipCountry from STATE alone when city and zip are absent', () => {
+      const primary: AtsTrusteeRecord = { ID: 1, STREET: '1 Primary Way' };
+      const stateOnly: AtsTrusteeRecord = { ID: 5, STATE: 'VA' };
+
+      const merged = mergeTrusteeRecords([primary, stateOnly]);
+
+      expect(merged.additionalAddresses).toEqual([{ cityStateZipCountry: 'VA' }]);
+    });
+
+    test('builds cityStateZipCountry from ZIP alone without appending ZIP_PLUS when absent', () => {
+      const primary: AtsTrusteeRecord = { ID: 1, STREET: '1 Primary Way' };
+      const zipNoPlus: AtsTrusteeRecord = { ID: 6, ZIP: '99999' };
+
+      const merged = mergeTrusteeRecords([primary, zipNoPlus]);
+
+      expect(merged.additionalAddresses).toEqual([{ cityStateZipCountry: '99999' }]);
+    });
+  });
+
+  describe('deduplicateTrusteesInPage', () => {
+    test('groups trustees sharing the same firstName/lastName/state under one dedup key', () => {
+      const first: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'VA',
+      };
+      const second: AtsTrusteeRecord = {
+        ID: 2,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'VA',
+      };
+      const unrelated: AtsTrusteeRecord = {
+        ID: 3,
+        FIRST_NAME: 'Jane',
+        LAST_NAME: 'Roe',
+        STATE: 'MD',
+      };
+
+      const result = deduplicateTrusteesInPage([first, second, unrelated]);
+
+      expect(result.size).toBe(2);
+      const johnDoeGroup = [...result.values()].find((group) => group.length === 2);
+      expect(johnDoeGroup).toEqual([first, second]);
+    });
+  });
+
+  describe('selectPrimaryAddress', () => {
+    test('throws when given an empty array of records', () => {
+      expect(() => selectPrimaryAddress([])).toThrow(
+        'Cannot select primary record from empty array',
+      );
+    });
+
+    test('breaks a tie in address completeness by the lowest ID', () => {
+      const higherId: AtsTrusteeRecord = { ID: 2, STREET: '1 Main St' };
+      const lowerId: AtsTrusteeRecord = { ID: 1, STREET: '2 Main St' };
+
+      const { primary } = selectPrimaryAddress([higherId, lowerId]);
+
+      expect(primary.ID).toBe(1);
     });
   });
 });
