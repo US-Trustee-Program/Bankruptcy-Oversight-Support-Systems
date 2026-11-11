@@ -19,19 +19,22 @@ import { formatAcmsDate } from '../../../use-cases/dataflows/acms-case-appointme
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
-// ACMS read timeout in milliseconds. Defaults to 5 minutes.
-const ACMS_REQUEST_TIMEOUT_MS = (() => {
-  const raw = process.env.ACMS_REQUEST_TIMEOUT_MS;
-  if (!raw) return 300000; // 5 minutes default
+const DEFAULT_ACMS_REQUEST_TIMEOUT_MS = 300000; // 5 minutes
+
+/** ACMS read timeout in milliseconds from the raw env var value; defaults to 5 minutes. */
+export function parseAcmsTimeoutMs(raw: string | undefined): number {
+  if (!raw) return DEFAULT_ACMS_REQUEST_TIMEOUT_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     console.warn(
       `[${MODULE_NAME}] Invalid ACMS_REQUEST_TIMEOUT_MS="${raw}", using default 300000ms (5 min)`,
     );
-    return 300000;
+    return DEFAULT_ACMS_REQUEST_TIMEOUT_MS;
   }
   return parsed;
-})();
+}
+
+const ACMS_REQUEST_TIMEOUT_MS = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
 
 // Row-inclusion filters shared by getCmmapAppointmentsRaw and getLatestCmmapChangeDateForRegion.
 // Both queries must select the same rows: a date reported by the latest-change query has to
@@ -268,9 +271,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
       const caseIds = deletedCaseResults.map((r) => r.caseId);
       const latestDeletedCaseDate =
-        deletedCaseResults.length > 0
-          ? this.formatAcmsDateToString(deletedCaseResults[0].lastChangeDate)
-          : lastChangeDate;
+        this.latestValidChangeDate(context, deletedCaseResults) ?? lastChangeDate;
 
       return { caseIds, latestDeletedCaseDate };
     } catch (originalError) {
@@ -454,9 +455,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     let cutoffClause = '';
     if (cutoffDate !== null) {
       const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
-      if (!Number.isFinite(cutoffInt)) {
-        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
-      }
       input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
       cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
     }
@@ -470,9 +468,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     let changeDateClause = '';
     if (changeDate !== undefined) {
       const changeDateInt = parseInt(changeDate.replace(/-/g, ''), 10);
-      if (!Number.isFinite(changeDateInt)) {
-        throw new Error(`Invalid changeDate value: "${changeDate}"`);
-      }
       input.push({ name: 'changeDate', type: mssql.Int, value: changeDateInt });
       changeDateClause = 'AND m.CDB_UPDATE_DATE = @changeDate';
     }
@@ -613,8 +608,25 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
   }
 
-  private formatAcmsDateToString(acmsDate: number): string {
-    const dateStr = acmsDate.toString();
-    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+  /**
+   * The first valid LAST_CHANGE_DATE in DESC-ordered rows, as the next deleted-cases bookmark.
+   * A malformed date would sort first on every run and, as the bookmark, stop new deletions from
+   * being found -- so it is skipped and logged instead (its case is still archived).
+   */
+  private latestValidChangeDate(
+    context: ApplicationContext,
+    rows: { caseId: string; lastChangeDate: number }[],
+  ): string | undefined {
+    for (const row of rows) {
+      try {
+        return formatAcmsDate(row.lastChangeDate);
+      } catch {
+        context.logger.warn(
+          MODULE_NAME,
+          `Skipping malformed LAST_CHANGE_DATE ${row.lastChangeDate} on deleted case ${row.caseId} for the deleted-cases bookmark.`,
+        );
+      }
+    }
+    return undefined;
   }
 }

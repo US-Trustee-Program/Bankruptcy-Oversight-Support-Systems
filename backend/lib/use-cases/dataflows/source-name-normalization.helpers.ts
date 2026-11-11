@@ -174,10 +174,12 @@ export function isRecordDisavowed(professional: CanonicalTrusteeSource): boolean
 }
 
 /**
- * U.S. Trustee office annotations ("U.S. TRUSTEE", "(UST)"). U.S. Trustee staff are never CAMS
- * trustee records, so a UST annotation skips the record rather than stripping and matching.
+ * U.S. Trustee office annotations ("U.S. TRUSTEE", "UNITED STATES TRUSTEE", "(UST)"). U.S. Trustee
+ * staff are never CAMS trustee records, so a UST annotation skips the record rather than stripping
+ * and matching.
  */
-const UST_STAFF_PATTERN = /\(?\s*\bu\.?\s*s\.?\s*trustee\b\s*\)?|\(\s*ust\s*\)/i;
+const UST_STAFF_PATTERN =
+  /\(?\s*\bu\.?\s*s\.?\s*trustee\b\s*\)?|\bunited\s+states\s+trustee\b|\(\s*ust\s*\)/i;
 
 /**
  * Whether the raw fullName carries a UST annotation (see UST_STAFF_PATTERN); checked before any

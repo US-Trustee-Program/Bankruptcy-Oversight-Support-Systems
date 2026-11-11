@@ -80,6 +80,13 @@ export async function seedRegionState(
   db: Db,
   state: { bookmarks?: Record<string, string>; switchedToDxtr?: string[] },
 ): Promise<void> {
+  // The driver reads ACMS for every region regardless of region.<id>.source until CAMS-957
+  // (cams-rxb7a) builds the switch. Remove this guard when it lands.
+  if ((state.switchedToDxtr ?? []).length > 0) {
+    throw new NotImplementedError(
+      'Region source switch to DXTR (CAMS-957, cams-rxb7a): the driver ignores region.<id>.source',
+    );
+  }
   const region: Record<string, { lastSyncDate?: string; source?: unknown }> = {};
   for (const [id, lastSyncDate] of Object.entries(state.bookmarks ?? {})) {
     region[id] = { ...region[id], lastSyncDate };
@@ -104,4 +111,23 @@ export async function readRegionBookmark(db: Db, region: string): Promise<string
     .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
   const value = doc?.region?.[region]?.lastSyncDate as string | undefined;
   return value ? value.slice(0, 10) : undefined;
+}
+
+/**
+ * The operator delete (cams-fd8qd.32): deletes the appointments in the named regions assigned
+ * within the date range and rewinds those regions' bookmarks, as handleStart does for a start
+ * message carrying `delete`.
+ */
+export async function deleteAppointments(
+  context: ApplicationContext,
+  options: { regions: string[]; from?: string; to?: string },
+): Promise<{ deleted: number }> {
+  const { default: SyncTrusteeCaseAppointments } =
+    await import('../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments');
+  const result = await SyncTrusteeCaseAppointments.deleteAppointments(
+    SyncTrusteeCaseAppointments.createDeps(context),
+    options,
+  );
+  if (result.error) throw result.error;
+  return result.data;
 }

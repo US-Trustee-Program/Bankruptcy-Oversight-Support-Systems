@@ -71,10 +71,10 @@ The K-lane bound above holds within one run. A lock document in runtime state
 - The lock has no expiry. A run that dies (dead-lettered, retries exhausted, or a continuation that
   could not be requeued) keeps the lock, and later starts skip until an operator deletes the
   `TRUSTEE_APPOINTMENT_SYNC_RUN` document in runtime-state after finding the cause.
-- This is a best-effort guard. A competing claim can still win in a narrow window: it needs a
-  second start that read no lock before this claim's write and wrote after its read-back. Lanes of
-  the losing start stop at `isCurrentRun` before any write, but that start's `deleteAll`, if set,
-  has already run.
+- This is a best-effort guard. A competing claim can still win in a narrow window: it needs a second
+  start that read no lock before this claim's write and wrote after its read-back. Lanes of the
+  losing start stop at `isCurrentRun` before any write, but that start's `delete`, if set, has
+  already run.
 - The lock gates starts only. Page retries (`handlePage`) and the 18:30 UTC heal do not check it.
 - `claimRun` returns claimed without rewriting the lock when it already carries this `runId`, which
   is how a requeued start resumes. A new claim writes `lanesRemaining: 1`, which is what lets an
