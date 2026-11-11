@@ -1375,13 +1375,25 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         updatedBy: { id: 'system', name: 'system' },
       } as unknown as CaseAppointment & { _id: string };
 
+      const docWithTrustee = {
+        _id: 'id-with-trustee',
+        id: 'id-with-trustee',
+        caseId: '081-24-2',
+        trusteeId: 'trustee-001',
+        assignedOn: '2020-01-16',
+        createdOn: '2020-01-16T00:00:00Z',
+        updatedOn: '2020-01-16T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      } as unknown as CaseAppointment & { _id: string };
+
       const getActiveSpy = vi.fn().mockResolvedValue([]);
 
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           getAllCaseAppointments: vi
             .fn()
-            .mockResolvedValueOnce([docWithoutTrustee])
+            .mockResolvedValueOnce([docWithoutTrustee, docWithTrustee])
             .mockResolvedValue([]),
           getActiveByTrusteeIdFromTrusteePartition: getActiveSpy,
           replaceOneInTrusteePartition: vi.fn(),
@@ -1397,7 +1409,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       await MigrateCaseAppointmentsUseCase.heal(context);
 
-      expect(getActiveSpy).not.toHaveBeenCalled();
+      // Proves the batch was actually grouped and processed (not just an
+      // early return): the doc with a trusteeId reaches the per-trustee
+      // lookup, while the doc missing trusteeId is excluded from grouping
+      // entirely, so the lookup is called exactly once, for trustee-001.
+      expect(getActiveSpy).toHaveBeenCalledTimes(1);
+      expect(getActiveSpy).toHaveBeenCalledWith('trustee-001');
     });
 
     test('logs a warning and continues with a fresh state when reading heal state fails', async () => {

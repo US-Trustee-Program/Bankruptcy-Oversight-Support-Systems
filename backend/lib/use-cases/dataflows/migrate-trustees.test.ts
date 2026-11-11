@@ -1153,13 +1153,20 @@ describe('Migrate Trustees Use Case', () => {
         getOfficeName: vi.fn().mockReturnValue(''),
       };
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
 
       const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Missing name fails upsertTrustee's completeness check, so the trustee
-      // is counted as an error rather than processed.
+      // is counted as an error rather than processed. Assert on upsertTrustee's
+      // own warn log (not just the aggregate counts) to actually prove the
+      // missing names were normalized to blank strings, not left undefined.
       expect(result.data?.processed).toBe(0);
       expect(result.data?.errors).toBe(1);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('firstName="", lastName=""'),
+      );
     });
 
     test('should succeed using the A2 state when DISP_ON_WEB_A2 makes it the public address', async () => {
