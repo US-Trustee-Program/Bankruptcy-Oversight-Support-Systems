@@ -163,12 +163,21 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
   });
 
   test('resetting last audit fiscal year back to blank clears it from the save payload', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const currentYear = new Date().getFullYear();
+    const documentWithCurrentFiscalYear: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      lastAuditFiscalYear: currentYear,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: documentWithCurrentFiscalYear,
+    });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2023'));
+    await waitFor(() =>
+      expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue(String(currentYear)),
+    );
 
     await userEvent.selectOptions(screen.getByTestId('last-audit-fiscal-year'), '');
 

@@ -123,21 +123,26 @@ describe('Chapter13StandingAuditForm', () => {
     });
   });
 
-  test('save clears owned fields to null when all three are left blank', async () => {
-    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+  test('save clears owned fields to null after clearing previously populated values', async () => {
+    const documentWithOwnedFieldsSet: TrusteeUpcomingKeyDates = {
       ...existingDocument,
-      pastAudit: undefined,
-      ch13AuditCompletionYear: undefined,
-      ch13AuditCompletionStatus: undefined,
+      ch13AuditCompletionYear: 2026,
+      ch13AuditCompletionStatus: 'COMPLETE',
     };
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentWithOwnedFieldsSet });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-audit')).toHaveValue('');
+      expect(screen.getByTestId('past-audit')).toHaveValue('2025-06-30');
     });
+    expect(screen.getByTestId('audit-completion-year')).toHaveValue('2026');
+    expect(screen.getByTestId('audit-completion-status')).toHaveValue('COMPLETE');
+
+    fireEvent.change(screen.getByTestId('past-audit'), { target: { value: '' } });
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), '');
 
     const saveButton = screen.getByTestId('button-save-chapter13-standing-audit-key-dates');
     expect(saveButton).not.toBeDisabled();

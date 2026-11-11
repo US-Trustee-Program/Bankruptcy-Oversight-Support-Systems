@@ -117,6 +117,10 @@ describe('Session', () => {
     await waitFor(() => {
       const alertHeading = document.querySelector('.usa-alert__heading');
       expect(alertHeading).toHaveTextContent('Access Denied');
+      const alertText = document.querySelector('.usa-alert__text');
+      expect(alertText).toHaveTextContent(
+        'Access to this application is denied without successful authentication.',
+      );
     });
   });
 

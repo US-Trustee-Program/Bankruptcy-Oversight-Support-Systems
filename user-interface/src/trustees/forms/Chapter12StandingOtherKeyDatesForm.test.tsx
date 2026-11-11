@@ -145,6 +145,41 @@ describe('Chapter12StandingOtherKeyDatesForm', () => {
     expect(screen.getByTestId('id-expiration')).toHaveValue('');
   });
 
+  test('save clears owned fields to null when all three are left blank', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      id: 'doc-002',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lease-expiration')).toHaveValue('');
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-chapter12-standing-other'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          leaseExpiration: null,
+          pastBackgroundQuestion: null,
+          idExpiration: null,
+        }),
+      );
+    });
+  });
+
   test.each([
     ['lease-expiration', 'leaseExpiration', '2029-03-01'],
     ['past-background-question', 'pastBackgroundQuestion', '2024-01-15'],
