@@ -527,3 +527,10 @@ export type CaseDenormalizedFields = {
   chapter: CaseChapter;
   courtDivisionCode: string;
 };
+
+/** One region's case-appointment source, for the Case Appointments admin page (CAMS-955 Slice 4). */
+export type RegionCaseAppointmentSource = {
+  regionId: string;
+  regionName: string;
+  source: 'ACMS' | 'DXTR';
+};

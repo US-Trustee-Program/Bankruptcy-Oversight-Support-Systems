@@ -55,6 +55,7 @@ import {
 } from '@common/cams/trustees';
 import {
   CaseTrusteeAppointmentHistory,
+  RegionCaseAppointmentSource,
   TrusteeAppointment,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
@@ -556,6 +557,10 @@ async function getPrivilegedIdentityUsers() {
   return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<CamsUserReference[]>(path);
 }
 
+async function getCaseAppointmentSources() {
+  return api().get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
+}
+
 async function getPrivilegedIdentityUser(userId: string) {
   const path = `/dev-tools/privileged-identity/${userId}`;
   return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
@@ -763,6 +768,7 @@ export const _Api2 = {
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
+  getCaseAppointmentSources,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

@@ -38,6 +38,10 @@ vi.mock('./notification-routing/NotificationRouting', () => ({
   NotificationRouting: () => <div data-testid="mocked-notification-routing" />,
 }));
 
+vi.mock('./trustee-task-regions/TrusteeTaskRegions', () => ({
+  TrusteeTaskRegions: () => <div data-testid="mocked-trustee-task-regions" />,
+}));
+
 vi.mock('./bankruptcy-software/BankruptcySoftwareDetail', () => ({
   BankruptcySoftwareDetail: () => <div data-testid="mocked-bankruptcy-software-detail" />,
 }));
@@ -94,6 +98,7 @@ describe('Admin screen tests', () => {
   test.each([
     ['bankruptcy-software', '/admin/bankruptcy-software', 'bankruptcy-software-nav-link'],
     ['privileged-identity', '/admin/privileged-identity', 'privileged-identity-nav-link'],
+    ['trustee-task-regions', '/admin/trustee-task-regions', 'trustee-task-regions-nav-link'],
     ['case-reload', '/admin/case-reload', 'case-reload-nav-link'],
     ['banks', '/admin/banks', 'banks-nav-link'],
     ['notification-routing', '/admin/notification-routing', 'notification-routing-nav-link'],
@@ -106,6 +111,11 @@ describe('Admin screen tests', () => {
   test('should render Banks component when navigating to /admin/banks', () => {
     renderAtPath('/admin/banks');
     expect(screen.getByTestId('mocked-banks')).toBeInTheDocument();
+  });
+
+  test('should render TrusteeTaskRegions component when navigating to /admin/trustee-task-regions', () => {
+    renderAtPath('/admin/trustee-task-regions');
+    expect(screen.getByTestId('mocked-trustee-task-regions')).toBeInTheDocument();
   });
 
   test('should render BankDetail component when navigating to /admin/banks/:bankId', () => {

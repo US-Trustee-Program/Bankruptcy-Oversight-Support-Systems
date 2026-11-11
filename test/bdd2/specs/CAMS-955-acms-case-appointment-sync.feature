@@ -267,21 +267,21 @@ Feature: Daily ACMS trustee case appointment sync for all regions
   # SLICE 4: Read-only admin page shows each region's appointment source
   # Dependencies: Slice 1 (reads the same runtime-state document)
   # User Value: A SuperUser can see which source each region's case appointments come from
-  Scenario: A SuperUser views the Case Appointments admin page
+  Scenario: A SuperUser views the Trustee Task Regions admin page
     Given I am logged in as a SuperUser
-    When I open Administration > Case Appointments
+    When I open Administration > Trustee Task Regions
     Then I see a table with columns "Region" and "Source"
     And every region from CAMS office data has a row
 
   Scenario: A region still on ACMS
     Given region "02" has no source set in runtime-state
-    When I view the Case Appointments admin page
+    When I view the Trustee Task Regions admin page
     Then region "02" shows a disabled "Change to DXTR" button
     And no "ACMS" label is shown
 
   Scenario: A region switched to DXTR
     Given region "03" has source "DXTR" in runtime-state
-    When I view the Case Appointments admin page
+    When I view the Trustee Task Regions admin page
     Then region "03" shows "Using DXTR"
 
   Scenario: Non-SuperUsers cannot read region sources
