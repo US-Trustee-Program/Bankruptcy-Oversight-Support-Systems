@@ -8,7 +8,7 @@ export type ReceivedQueueMessage = {
 
 export class StorageQueueHumbleObject {
   private client: QueueClient;
-  private queueEnsured = false;
+  private queueReady?: Promise<unknown>;
 
   private constructor(client: QueueClient) {
     this.client = client;
@@ -36,10 +36,15 @@ export class StorageQueueHumbleObject {
     // create its queue lazily — sendMessage() 404s (QueueNotFound) if the queue has
     // never been created. createIfNotExists() no-ops cleanly if it already exists, so
     // this is safe to call once per instance before the first send.
-    if (!this.queueEnsured) {
-      await this.client.createIfNotExists();
-      this.queueEnsured = true;
+    // The in-flight create is stored so concurrent first sends share one call. A failed create
+    // clears it, so the next send tries again.
+    if (!this.queueReady) {
+      this.queueReady = this.client.createIfNotExists().catch((error: unknown) => {
+        this.queueReady = undefined;
+        throw error;
+      });
     }
+    await this.queueReady;
 
     // The REST API requires XML-safe content; base64 is the standard encoding per the docs.
     const encoded = Buffer.from(messageContent).toString('base64');

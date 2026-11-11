@@ -14,6 +14,7 @@ import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import { DEFAULT_INVOCATION_BUDGET_MS } from '../../../lib/use-cases/dataflows/invocation-budget';
+import type * as ResyncModule from './resync-cases-by-date';
 const makeInvocationContext = (): InvocationContext =>
   ({
     invocationId: 'test-id',
@@ -131,11 +132,38 @@ function outputFor(invocationContext: InvocationContext, queueName: string): unk
   return entry?.[1];
 }
 
-describe('resync-cases-by-date handleStart', () => {
-  beforeEach(() => {
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-  });
+beforeEach(() => {
+  process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+});
 
+describe('resync-cases-by-date handler configuration', () => {
+  test.each([
+    {
+      handler: 'handleStart',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleStart({ fromDate: '2024-01-01' }, context),
+    },
+    {
+      handler: 'handleWriter',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleWriter({ runId: 'run-1', laneId: 0 }, context),
+    },
+    {
+      handler: 'handleRetry',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleRetry({ type: 'CASE_CHANGED', caseId: '001-25-00001' }, context),
+    },
+  ])('$handler rejects when AzureWebJobsDataflowsStorage is not set', async ({ invoke }) => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+    const module = await import('./resync-cases-by-date');
+
+    await expect(invoke(module, makeInvocationContext())).rejects.toThrow(
+      'Missing required environment variable: AzureWebJobsDataflowsStorage',
+    );
+  });
+});
+
+describe('resync-cases-by-date handleStart', () => {
   afterEach(() => {
     setLaneCount(undefined);
   });
@@ -334,11 +362,7 @@ describe('resync-cases-by-date handleError', () => {
 
     await handleError(event, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
-    expect(retryOutput).toBeUndefined();
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 
   test('clears the error and queues the event for retry when the error is not a NotFoundError', async () => {
@@ -454,6 +478,28 @@ describe('resync-cases-by-date handleRetry', () => {
     expect(hardStopEvent.retryCount).toBe(4);
   });
 
+  test('routes a retry result carrying both an error and a division change to DLQ, not FIX', async () => {
+    const { handleRetry } = await import('./resync-cases-by-date');
+    const event: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
+    const invocationContext = makeInvocationContext();
+    const camsError = new CamsError('TEST', { message: 'case sync failed' });
+    const divisionChange = { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' };
+
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([
+      { ...event, error: camsError, divisionChange },
+    ]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleRetry(event, invocationContext);
+
+    expect(outputFor(invocationContext, DLQ_QUEUE)).toEqual([
+      expect.objectContaining({ error: camsError }),
+    ]);
+    expect(outputFor(invocationContext, FIX_QUEUE_NAME)).toBeUndefined();
+  });
+
   test('routes to FIX when the retry detects a division change', async () => {
     const { handleRetry } = await import('./resync-cases-by-date');
     const event: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
@@ -520,7 +566,6 @@ describe('resync-cases-by-date handleWriter', () => {
   const divisionChange = { orphanedCaseId: '081-25-00001', currentCaseId: CASE_A };
 
   beforeEach(() => {
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
     // A very high target keeps the pacing sleep at zero so these tests do not wait on real time.
     process.env[TARGET_RU_ENV] = '1e15';
   });
@@ -588,6 +633,56 @@ describe('resync-cases-by-date handleWriter', () => {
     expect(pageDeleted).toBeGreaterThan(queues.log.indexOf(`send:${DLQ_QUEUE}`));
   });
 
+  test('routes an event carrying both a division change and an error to DLQ, not FIX', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    stubExportAndLoad((event) => {
+      event.divisionChange = divisionChange;
+      event.error = new CamsError('TEST', { message: 'bad' });
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        caseId: CASE_A,
+        error: expect.objectContaining({ message: 'bad' }),
+      }),
+    ]);
+    expect(queues.get(FIX_QUEUE_NAME).sent).toEqual([]);
+  });
+
+  test('re-sends the lane without delay when the budget runs out after a page closes, leaving the next page queued', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B)] });
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) event.divisionChange = divisionChange;
+    });
+    // Publishing A's division change runs while its page is being closed. The clock then passes
+    // the budget with no page open.
+    vi.spyOn(queues.get(FIX_QUEUE_NAME), 'sendMessage').mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + DEFAULT_INVOCATION_BUDGET_MS);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([
+      JSON.stringify({ events: [caseEvent(CASE_B)] }),
+    ]);
+    const [laneSend] = queues.get(WRITER_QUEUE).sent;
+    expect(JSON.parse(laneSend.text)).toEqual(writerMessage);
+    expect(laneSend.visibilityTimeout).toBeUndefined();
+  });
+
   test('keeps pulling pages in one invocation until the page queue is empty', async () => {
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
@@ -630,7 +725,8 @@ describe('resync-cases-by-date handleWriter', () => {
     expect(sentJson(queues.get(FIX_QUEUE_NAME))).toEqual([divisionChange]);
     const [laneSend] = queues.get(WRITER_QUEUE).sent;
     expect(JSON.parse(laneSend.text)).toEqual(writerMessage);
-    expect(laneSend.visibilityTimeout).toBeGreaterThanOrEqual(1);
+    expect(laneSend.visibilityTimeout).toBeGreaterThanOrEqual(5);
+    expect(laneSend.visibilityTimeout).toBeLessThanOrEqual(10);
     expect(queues.log.indexOf(`send:${PAGE_QUEUE}`)).toBeLessThan(
       queues.log.indexOf(`delete:${PAGE_QUEUE}`),
     );
@@ -706,9 +802,8 @@ describe('resync-cases-by-date handleWriter', () => {
     const queues = stubQueues();
     await givenContext();
     seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
-    // Case A takes long enough that elapsed time plus the next case's estimated cost (this case's
-    // duration plus the 5 s margin) reaches the budget exactly.
-    const slowCaseMs = (DEFAULT_INVOCATION_BUDGET_MS - 5_000) / 2;
+    // A single case that uses the whole invocation budget leaves no room for B.
+    const slowCaseMs = DEFAULT_INVOCATION_BUDGET_MS;
     const exportSpy = stubExportAndLoad((event) => {
       if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
     });
@@ -728,14 +823,14 @@ describe('resync-cases-by-date handleWriter', () => {
     expect(laneSend.visibilityTimeout).toBeUndefined();
   });
 
-  test('closes the page and sends the lane without an empty-check when the last case ends at the invocation budget boundary', async () => {
+  test('closes the open page and re-sends the lane without an empty-check when the last case runs past the invocation budget', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
     await givenContext();
     seedPage(queues, { events: [caseEvent(CASE_A)] });
-    const slowCaseMs = (DEFAULT_INVOCATION_BUDGET_MS - 5_000) / 2;
+    const slowCaseMs = DEFAULT_INVOCATION_BUDGET_MS;
     stubExportAndLoad((event) => {
       if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
     });
@@ -756,9 +851,7 @@ describe('resync-cases-by-date handleWriter', () => {
     const infoSpy = vi.spyOn(context.logger, 'info');
     seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
     seedPage(queues, { events: [caseEvent(CASE_D)] });
-    // Case A takes 200 s. The lease check allows 270 s (300 s lease minus a 30 s margin), and the
-    // next case is estimated at 205 s, so the lease check escapes after A. The 56-minute invocation
-    // budget is not reached.
+    // One 200 s case is past the page lease threshold and far inside the invocation budget.
     const slowCaseMs = 200_000;
     const exportSpy = stubExportAndLoad((event) => {
       if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
@@ -900,10 +993,6 @@ describe('computePacingSleepMs', () => {
 });
 
 describe('resync-cases-by-date handleStart page splitting', () => {
-  beforeEach(() => {
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-  });
-
   test('splits cases into pages of 100 and sends every page with no expiry', async () => {
     const { handleStart } = await import('./resync-cases-by-date');
     const events: CaseSyncEvent[] = Array.from({ length: 250 }, (_, index) => ({
