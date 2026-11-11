@@ -44,6 +44,7 @@ import {
 } from '@common/cams/trustees';
 import {
   CaseTrusteeAppointmentHistory,
+  RegionCaseAppointmentSource,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
@@ -1928,6 +1929,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
         offices: [],
       },
     };
+  } else if (path.match(/\/dev-tools\/case-appointment-source/)) {
+    response = {
+      data: mockedCaseAppointmentSources(),
+    };
   } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
     response = {
       data: [caseDetails],
@@ -2661,6 +2666,24 @@ async function getRoleAndOfficeGroupNames() {
 
 async function getPrivilegedIdentityUsers() {
   return get<CamsUserReference[]>('/dev-tools/privileged-identity');
+}
+
+/** Every distinct region in the mocked office data, each defaulting to ACMS (none have switched to DXTR). */
+function mockedCaseAppointmentSources(): RegionCaseAppointmentSource[] {
+  const regionNamesById = new Map<string, string>();
+  for (const office of MOCKED_USTP_OFFICES_ARRAY) {
+    const regionId = office.regionId.padStart(2, '0');
+    if (!regionNamesById.has(regionId)) {
+      regionNamesById.set(regionId, office.regionName);
+    }
+  }
+  return [...regionNamesById.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([regionId, regionName]) => ({ regionId, regionName, source: 'ACMS' as const }));
+}
+
+async function getCaseAppointmentSources() {
+  return get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
 async function getPrivilegedIdentityUser(userId: string) {
@@ -3404,6 +3427,7 @@ const MockApi2 = {
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
+  getCaseAppointmentSources,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

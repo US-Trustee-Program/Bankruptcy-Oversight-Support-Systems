@@ -96,6 +96,7 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.default.getPrivilegedIdentityUser, 'some-id', api);
     await callApiFunction(api2.default.deletePrivilegedIdentityUser, 'some-id', api);
     await callApiFunction(api2.default.getRoleAndOfficeGroupNames, 'some-id', api);
+    await callApiFunction(api2.default.getCaseAppointmentSources, null, api);
     await callApiFunction(api2.default.getTrustees, null, api);
     await callApiFunction(api2.default.getTrustee, 'some-id', api);
     await callApiFunction(api2.default.getTrusteeHistory, 'some-id', api);
