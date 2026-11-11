@@ -280,6 +280,9 @@ export type Expect = {
   tasks?: ExpectedTask[];
   /** Number of events the SOURCE returned for this pass (grounds query-level filtering). */
   sourceEvents?: number;
+  /** Rows the ACMS query returns, when it differs from sourceEvents (rows the source cannot
+   *  convert are reported as failures, not events -- cams-fd8qd.24). Defaults to sourceEvents. */
+  sourceRows?: number;
   dlq?: number;
   /** Exact set of parked (CASE_APPOINTMENT_UNATTACHED) documents per case. Omitted case = not asserted. */
   parked?: Record<string, ExpectedAppointment[]>;
@@ -1471,12 +1474,9 @@ const PLACEHOLDER_NAMES: {
     last: 'Trustee (NY)',
     basis: 'decision',
     note:
-      'MAINTAINER DECISION (PR 3263 review): this is a US Trustee, so the matching pipeline must filter it. FAILS ' +
-      'TODAY on the DXTR lane: it writes a placeholder and an identity task. Cause: "ny" is not in ' +
-      'NON_PERSON_ONLY_WORDS (source-name-normalization.helpers.ts), so shouldSkipAsNotAPerson is false, and ' +
-      'UST_STAFF_PATTERN needs "U.S. Trustee". Fix it in the pipeline gate, NOT by loosening isUnattributableBogusName\'s ' +
-      '!hasFirstName rule: "trustee" is itself a bogus keyword, so that would skip real trustees. The "(NY)" shape ' +
-      'and the first/last split are NOT evidenced by the export (its UNITED STATES TRUSTEE names are already skipped).',
+      'MAINTAINER DECISION (PR 3263 review): this is a US Trustee, so the matching pipeline must filter it. ' +
+      'UST_STAFF_PATTERN (source-name-normalization.helpers.ts) matches the spelled-out "United States Trustee" ' +
+      'as well as "U.S. Trustee" and "(UST)", so the pipeline skips it as U.S. Trustee staff (cams-fd8qd.37).',
   },
 ];
 
@@ -1598,8 +1598,9 @@ for (const n of PLACEHOLDER_NAMES) {
     title: 'A record that fails on every attempt goes to the dead-letter queue alone',
     basis: 'feature',
     note:
-      'CURR_CASE_CHAPT "AC" is not a chapter CAMS recognizes (acms-case-appointment.helpers.ts). The other ' +
-      'record on the page is still processed.',
+      'CURR_CASE_CHAPT "AC" is not a chapter CAMS recognizes (acms-case-appointment.helpers.ts). Since ' +
+      'cams-fd8qd.24 the source reports the row as a conversion failure instead of an event, and the driver ' +
+      'sends it to the DLQ alone. The other record on the page is still processed.',
     lanes: ['ACMS'],
     cases: [{ caseId: cBad, acmsChapterRaw: 'AC' }, { caseId: cGood }],
     cams: {
@@ -1617,7 +1618,8 @@ for (const n of PLACEHOLDER_NAMES) {
         ],
         changeDate: D2,
         expect: {
-          sourceEvents: 2,
+          sourceRows: 2,
+          sourceEvents: 1,
           dlq: 1,
           appointments: { [cBad]: [], [cGood]: [{ trustee: 'T-2', assignedOn: D1 }] },
         },
@@ -1704,10 +1706,11 @@ for (const raw of ['7A', '7N']) {
   add({
     key: 'closed-and-reopened-case-dates',
     title: 'Case closed and reopen dates are carried onto the appointment',
-    basis: 'code',
+    basis: 'decision',
     note:
-      'buildAppointmentFields: closedDate from CLOSED_BY_COURT_DATE (else CLOSED_BY_UST_DATE); reopenedDate ' +
-      'from the CMMKE OCO key event. 78% of real appointments are on closed cases.',
+      'cams-fd8qd.37 (Matt Stankey, 2026-11-11): the ACMS row is the source. rawToTrusteeAppointmentSyncEvent ' +
+      'takes closedDate from CLOSED_BY_COURT_DATE (else CLOSED_BY_UST_DATE) and reopenedDate from the CMMKE OCO ' +
+      'key event; the repository derives caseStatus from them. 78% of real appointments are on closed cases.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, closedByCourt: '2026-05-01', reopenedOn: '2026-06-10' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1738,8 +1741,8 @@ for (const raw of ['7A', '7N']) {
   add({
     key: 'closed-by-ust-only',
     title: 'A case closed only by the UST carries that closed date',
-    basis: 'code',
-    note: 'buildAppointmentFields falls back to CLOSED_BY_UST_DATE when the court date is 0.',
+    basis: 'decision',
+    note: 'cams-fd8qd.37: rawToTrusteeAppointmentSyncEvent falls back to CLOSED_BY_UST_DATE when the court date is 0.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, closedByUst: '2026-06-15' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -2374,6 +2377,11 @@ export type DriverScenario = {
   switchedToDxtr?: string[];
   runDate: string;
   regions: string[];
+  /**
+   * An operator's delete, run for `regions` before the driver (cams-fd8qd.32): the appointments in
+   * those regions assigned within the range are deleted and the bookmarks rewound.
+   */
+  delete?: { from?: string; to?: string };
   expect: {
     /** Exact appointments per case that must have been written (content, not just presence). */
     written: Record<string, ExpectedAppointment[]>;
@@ -2383,6 +2391,8 @@ export type DriverScenario = {
     bookmarks: Record<string, string>;
     /** Cases whose seeded appointments must still be present and untouched. */
     kept?: string[];
+    /** Cases with no appointment left in either partition (deleted and not replaced). */
+    deleted?: string[];
     tasks?: ExpectedTask[];
     tasksTotal?: number;
   };
@@ -2399,6 +2409,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
   const c03b = nextCase(OTHER_DIVISION);
   const c03late = nextCase(OTHER_DIVISION);
   const c04 = nextCase(THIRD_DIVISION);
+  const cUtica = nextCase(UTICA_DIVISION);
   const t1 = person('Cottonwood');
   const t3 = person('Cypresswood', { state: 'PA', city: 'Harrisburg', zip: '17101' });
   const t4 = person('Cedarbark', { state: 'TX', city: 'Dallas', zip: '75201' });
@@ -2480,7 +2491,10 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       key: 'driver-run-date-never-read',
       title: 'Rows changed on the run date are never read',
       basis: 'feature',
-      note: `${BOOKMARK_RULE} The run-date row proves 07-02 is complete without ever being read itself.`,
+      note:
+        `${BOOKMARK_RULE} The run-date row is never read, but it proves the days before it are complete, so ` +
+        'the driver reads through 07-04 (the day before the run date). The bookmark advances through every ' +
+        'date before that last date, empty ones included (cams-fd8qd.27), so it ends at 07-03.',
       cases: casesAll,
       cams: camsBase,
       rows: [acmsRow(c0702, '2026-07-02'), acmsRow(cRun, '2026-07-05')],
@@ -2490,7 +2504,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       expect: {
         written: { [c0702]: by('T-1', ACMS_ASSIGNED) },
         notWritten: [cRun],
-        bookmarks: { [REGION]: '2026-07-02' },
+        bookmarks: { [REGION]: '2026-07-03' },
       },
     },
     {
@@ -2660,6 +2674,84 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
           },
         ],
         tasksTotal: 1,
+      },
+    },
+    {
+      key: 'driver-delete-region-date-range-replaces',
+      title:
+        "An operator's delete removes a region's appointments in a date range and the sync replaces them",
+      basis: 'decision',
+      note:
+        'cams-fd8qd.32 (Matt Stankey, 2026-11-11): operators delete by region and assignedOn range, whatever ' +
+        'loaded the row. The seeded rows have no courtId, like rows from the pre-2026-07-01 migration. ' +
+        `Region ${REGION} covers divisions 081 and 066, so both are deleted. Its bookmark (09-30) is rewound to ` +
+        `07-31, so the run re-reads 08-01 onward; without the delete case ${c0630} would end with two rows. ` +
+        BOOKMARK_RULE,
+      cases: [...casesAll, { caseId: cUtica }],
+      cams: {
+        ...camsBase,
+        existing: [
+          { caseId: c0630, trustee: 'T-OLD', assignedOn: '2026-08-05' },
+          { caseId: cUtica, trustee: 'T-OLD', assignedOn: '2026-08-20' },
+          { caseId: c0701, trustee: 'T-1', assignedOn: '2026-06-15' },
+          { caseId: c0702, trustee: 'T-1', assignedOn: '2026-10-05' },
+          { caseId: c03a, trustee: 'T-3', assignedOn: '2026-08-15' },
+        ],
+      },
+      rows: [
+        acmsRow(c0630, '2026-08-10', { apptDate: '2026-08-10' }),
+        acmsRow(c02late, '2026-08-12', { apptDate: '2026-08-12' }),
+      ],
+      bookmarks: { [REGION]: '2026-09-30', [OTHER_REGION]: '2026-09-30' },
+      runDate: '2026-10-10',
+      regions: [REGION],
+      delete: { from: '2026-08-01', to: '2026-09-30' },
+      expect: {
+        written: {
+          [c0630]: by('T-1', '2026-08-10'),
+          [c02late]: by('T-1', '2026-08-12'),
+        },
+        notWritten: [],
+        deleted: [cUtica],
+        kept: [c0701, c0702, c03a],
+        bookmarks: { [REGION]: '2026-08-11', [OTHER_REGION]: '2026-09-30' },
+      },
+    },
+    {
+      key: 'driver-delete-whole-region-replays-from-cutover',
+      title:
+        "An operator's delete with no dates clears a region and the sync rebuilds it from 2026-07-01",
+      basis: 'decision',
+      note:
+        `cams-fd8qd.32: with no dates, every appointment in the region goes, including one assigned before ` +
+        `2026-07-01, and its bookmark is cleared so the run starts at 2026-07-01. Region ${REGION} is untouched. ` +
+        BOOKMARK_RULE,
+      cases: casesAll,
+      cams: {
+        ...camsBase,
+        existing: [
+          { caseId: c03a, trustee: 'T-3', assignedOn: '2026-05-01' },
+          { caseId: c03b, trustee: 'T-OLD', assignedOn: '2026-07-15' },
+          { caseId: c0701, trustee: 'T-1', assignedOn: '2026-06-15' },
+        ],
+      },
+      rows: [
+        acmsRow(c03late, '2026-07-01', { prof: prof03 }),
+        acmsRow(c03b, '2026-07-02', { prof: prof03 }),
+      ],
+      bookmarks: { [REGION]: '2026-07-20', [OTHER_REGION]: '2026-07-20' },
+      runDate: '2026-07-25',
+      regions: [OTHER_REGION],
+      delete: {},
+      expect: {
+        written: {
+          [c03late]: by('T-3', ACMS_ASSIGNED),
+          [c03b]: by('T-3', ACMS_ASSIGNED),
+        },
+        notWritten: [],
+        deleted: [c03a],
+        kept: [c0701],
+        bookmarks: { [OTHER_REGION]: '2026-07-01', [REGION]: '2026-07-20' },
       },
     },
   ];

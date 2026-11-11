@@ -5,7 +5,11 @@ import {
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
-import { TrusteeAppointmentRegionSyncState } from '../gateways.types';
+import {
+  regionBookmarkPath,
+  toRegionId,
+  TrusteeAppointmentRegionSyncState,
+} from '../gateways.types';
 import { isAcmsTimeoutError } from './acms-timeout-error';
 import {
   AcmsTrusteeAppointmentSource,
@@ -73,7 +77,7 @@ function getSourceForRegion(): TrusteeAppointmentSource {
 async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
   const officesGateway = factory.getOfficesGateway(context);
   const offices = await officesGateway.getOffices(context);
-  const regionIds = new Set(offices.map((office) => office.regionId.padStart(2, '0')));
+  const regionIds = new Set(offices.map((office) => toRegionId(office.regionId)));
   return [...regionIds];
 }
 
@@ -96,6 +100,11 @@ export type RegionDriverResumePoint = {
   lastId?: string;
 };
 
+type RegionDriverRecordResults = {
+  dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | QueueError)[];
+  retryableEvents: TrusteeAppointmentSyncEvent[];
+};
+
 type RegionDriverOptions = {
   regions: string[];
   runDate: string;
@@ -105,6 +114,14 @@ type RegionDriverOptions = {
   startedAt?: number;
   /** Injectable for deterministic unit tests; defaults to DEFAULT_INVOCATION_BUDGET_MS in production. */
   safeThresholdMs?: number;
+  /**
+   * Receives each finished date's results before the date's bookmark is written, so results for
+   * a bookmarked date (never re-read) are delivered before the bookmark makes them unrecoverable
+   * (cams-fd8qd.33). Results it receives are not returned again. If it throws a transient error
+   * the bookmark is not written and the continuation re-reads the whole date. Without it, results
+   * accumulate and are returned.
+   */
+  onDateComplete?: (results: RegionDriverRecordResults) => Promise<void>;
 };
 
 /** Why the driver stopped early: the invocation budget ran out, or a transient error was thrown. */
@@ -157,6 +174,14 @@ async function runRegionDriver(
     [];
   const retryableEvents: TrusteeAppointmentSyncEvent[] = [];
   let parkedCount = 0;
+  // The current date's results, until the date finishes and they are handed off.
+  let dateResults: RegionDriverRecordResults = { dlqMessages: [], retryableEvents: [] };
+  const handOffDateResults =
+    options.onDateComplete ??
+    (async (results: RegionDriverRecordResults) => {
+      dlqMessages.push(...results.dlqMessages);
+      retryableEvents.push(...results.retryableEvents);
+    });
 
   let regionIndex = 0;
   let resumeAt: RegionDriverResumePoint | undefined = options.resumeFrom;
@@ -166,8 +191,8 @@ async function runRegionDriver(
     cause: RegionDriverStopCause,
   ): RegionDriverResult => ({
     processedRegions,
-    dlqMessages,
-    retryableEvents,
+    dlqMessages: [...dlqMessages, ...dateResults.dlqMessages],
+    retryableEvents: [...retryableEvents, ...dateResults.retryableEvents],
     parkedCount,
     continuation: {
       regions: options.regions.slice(index),
@@ -215,21 +240,30 @@ async function runRegionDriver(
 
           const page = await source.getEventsForDate(context, regionId, currentDate, lastId);
           for (const failure of page.failures) {
-            dlqMessages.push(toRowFailureDlqEntry(regionId, currentDate, failure));
+            dateResults.dlqMessages.push(toRowFailureDlqEntry(regionId, currentDate, failure));
           }
           if (page.events.length > 0) {
             const result = await SyncTrusteeCaseAppointments.processAppointments(
               eventDeps,
               page.events,
             );
-            dlqMessages.push(...result.dlqMessages);
-            retryableEvents.push(...result.retryableEvents);
+            dateResults.dlqMessages.push(...result.dlqMessages);
+            dateResults.retryableEvents.push(...result.retryableEvents);
             parkedCount += result.scenarioDistribution.parkedCount;
           }
 
           if (!page.lastId) break;
           lastId = page.lastId;
         }
+
+        // If the hand-off fails, re-read the whole date: its results are dropped here, and
+        // re-reading regenerates them (writes are idempotent). A hand-off that failed part-way
+        // already sent some messages, so the re-read sends those again: a duplicate DLQ entry or
+        // retry page, which is harmless because processing an event twice writes the same rows.
+        resumeAt = { regionId, date: currentDate, lastId: undefined };
+        const finishedDateResults = dateResults;
+        dateResults = { dlqMessages: [], retryableEvents: [] };
+        await handOffDateResults(finishedDateResults);
 
         if (currentDate < effectiveEnd) {
           resumeAt = {
@@ -239,7 +273,7 @@ async function runRegionDriver(
           };
           await deps.regionStateRepo.setField(
             REGION_STATE_DOCUMENT_TYPE,
-            `region.${regionId}.lastSyncDate`,
+            regionBookmarkPath(regionId),
             currentDate,
           );
         }

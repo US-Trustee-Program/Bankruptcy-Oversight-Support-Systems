@@ -4,6 +4,8 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
+  CaseAppointmentDeleteFilter,
+  CaseAppointmentUpsertOptions,
   ParkedAppointment,
   SurrogateAppointment,
   TrusteeCaseAppointmentsRepository,
@@ -36,7 +38,7 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
 const CASES_COLLECTION = 'cases';
 
-const { using, and, orderBy } = QueryBuilder;
+const { using, and, or, orderBy } = QueryBuilder;
 const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
@@ -71,11 +73,15 @@ function stripMongoId(document: CaseAppointmentDocument): CaseAppointmentDocumen
 const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
 
 // Every appointment row, placed or parked (case not yet in CAMS). Placeholder lookups need both
-// (identity-task members are either), and deleteAll must clear both.
+// (identity-task members are either), and deleteCaseAppointments must clear both.
 const PLACED_AND_PARKED_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
   'CASE_APPOINTMENT',
   'CASE_APPOINTMENT_UNATTACHED',
 ];
+
+// Dates upsert never clears once recorded; see upsert.
+const STICKY_DATE_FIELDS = ['unassignedOn', 'closedDate', 'reopenedDate'] as const;
+type StickyDateField = (typeof STICKY_DATE_FIELDS)[number];
 
 export type CaseAppointmentDocument = CaseAppointment & {
   documentType: CaseAppointmentDocumentType;
@@ -379,6 +385,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async upsert(
     appointment: CaseAppointmentInput,
     documentType: CaseAppointmentDocumentType = 'CASE_APPOINTMENT',
+    options: CaseAppointmentUpsertOptions = {},
   ): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
@@ -391,18 +398,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       _id?: unknown;
     };
 
-    // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointmentWithoutMongoId,
     };
-    if (appointment.dateFiled) {
-      appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
-    }
-
-    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      { ...appointmentWithStatus, documentType },
-      SYSTEM_USER_REFERENCE,
-    );
 
     // Natural key for idempotent upsert — safe to replay on retry
     const doc = using<CaseAppointmentDocument>();
@@ -411,6 +409,34 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('caseId').equals(appointment.caseId),
       doc('trusteeId').equals(appointment.trusteeId),
       doc('assignedOn').equals(appointment.assignedOn),
+    );
+
+    // Dates already recorded are never cleared (cams-fd8qd.35, PR #3283 review): a replayed older
+    // event for the same court appointment can lack unassignedOn, closedDate or reopenedDate, and
+    // writing it as given would reopen the appointment or flip its caseStatus. Only a row missing
+    // one of them pays for this read.
+    if (STICKY_DATE_FIELDS.some((field) => !appointmentWithStatus[field])) {
+      const stored = await this.findStoredStickyDates(naturalKeyQuery, appointment);
+      for (const field of STICKY_DATE_FIELDS) {
+        if (!appointmentWithStatus[field] && stored?.[field]) {
+          appointmentWithStatus[field] = stored[field];
+        }
+      }
+    }
+    // A caller-derived close date applies only when the source and the stored row give none, so it
+    // never replaces a court disposition.
+    if (!appointmentWithStatus.unassignedOn && options.fallbackUnassignedOn) {
+      appointmentWithStatus.unassignedOn = options.fallbackUnassignedOn;
+    }
+
+    // caseStatus follows the merged dates, whenever dateFiled is present (an enriched doc).
+    if (appointmentWithStatus.dateFiled) {
+      appointmentWithStatus.caseStatus = isCaseClosed(appointmentWithStatus) ? 'CLOSED' : 'OPEN';
+    }
+
+    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
+      { ...appointmentWithStatus, documentType },
+      SYSTEM_USER_REFERENCE,
     );
 
     let result: CaseAppointment;
@@ -442,6 +468,22 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
 
     return result;
+  }
+
+  private async findStoredStickyDates(
+    naturalKeyQuery: ConditionOrConjunction<CaseAppointmentDocument>,
+    appointment: CaseAppointmentInput,
+  ): Promise<Pick<CaseAppointmentDocument, StickyDateField> | undefined> {
+    try {
+      const [stored] = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .find(naturalKeyQuery, undefined, 1);
+      return stored;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to read case appointment for case ${appointment.caseId}.`,
+      });
+    }
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
@@ -561,17 +603,30 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  async deleteAll(): Promise<number> {
+  async deleteCaseAppointments(filter: CaseAppointmentDeleteFilter): Promise<number> {
+    if (filter.divisionCodes?.length === 0) return 0;
     try {
       const doc = using<CaseAppointmentDocument>();
-      // Parked rows too: a reset must not leave rows for the heal to re-attach.
-      const query = doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES);
+      // Parked rows too: a delete must not leave rows for the heal to re-attach.
+      const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
+        doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
+      ];
+      if (filter.divisionCodes) {
+        // A caseId starts with its division code (081-24-12345): one anchored prefix per division,
+        // as cases.mongo.repository does for division filters.
+        conditions.push(
+          or(...filter.divisionCodes.map((code) => doc('caseId').regex(`^${code}-`))),
+        );
+      }
+      if (filter.from) conditions.push(doc('assignedOn').greaterThanOrEqual(filter.from));
+      if (filter.to) conditions.push(doc('assignedOn').lessThanOrEqual(filter.to));
+      const query = and(...conditions);
       const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       return deleted;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to delete all case appointments.',
+        message: 'Failed to delete case appointments.',
       });
     }
   }

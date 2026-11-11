@@ -109,6 +109,13 @@ export type TrusteeAppointmentSyncEvent = {
    * sets it; optional only because the DXTR source does not.
    */
   dateFiled?: string;
+  /**
+   * ISO date the case was closed (ACMS CLOSED_BY_COURT_DATE, else CLOSED_BY_UST_DATE) and reopened
+   * (ACMS CMMKE reopen key event); absent when the case was never closed or reopened. The
+   * appointment's caseStatus is derived from them.
+   */
+  closedDate?: string;
+  reopenedDate?: string;
   error?: unknown;
   retryCount?: number;
   chapter?: string;

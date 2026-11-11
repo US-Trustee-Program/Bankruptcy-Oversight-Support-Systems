@@ -205,11 +205,11 @@ Feature: Daily ACMS trustee case appointment sync for all regions
     Then every region in CAMS office data is scheduled
 
   Scenario: Regions are spread across lanes and every region is processed
-    Given 21 regions in CAMS office data and 3 lanes
+    Given 21 regions in CAMS office data and 4 lanes
     When the sync starts
     Then each lane holds a fixed list of regions assigned round-robin
     And each lane processes its regions one after another
-    And at most 3 ACMS queries run at once
+    And at most 4 ACMS queries run at once
 
   Scenario: Overlapping lanes write no duplicates
     Given two lanes process region "02" for 2026-07-01 at the same time

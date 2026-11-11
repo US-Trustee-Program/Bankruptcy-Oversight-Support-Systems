@@ -72,6 +72,8 @@ export function rawToTrusteeAppointmentSyncEvent(
   if (!raw.CASE_FILED_DATE) {
     throw new Error(`ACMS case ${caseId} has no CASE_FILED_DATE (CMMAP id ${raw.id}).`);
   }
+  // The court's closing is authoritative; the UST's is used when the court has not closed it.
+  const closedDate = raw.CLOSED_BY_COURT_DATE || raw.CLOSED_BY_UST_DATE;
   return {
     caseId,
     courtId,
@@ -88,5 +90,7 @@ export function rawToTrusteeAppointmentSyncEvent(
     ...(raw.CURR_CASE_CHAPT ? { chapter: normalizeAcmsCaseChapter(raw.CURR_CASE_CHAPT) } : {}),
     courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
     dateFiled: formatAcmsDate(raw.CASE_FILED_DATE),
+    ...(closedDate ? { closedDate: formatAcmsDate(closedDate) } : {}),
+    ...(raw.REOPENED_DATE ? { reopenedDate: formatAcmsDate(raw.REOPENED_DATE) } : {}),
   };
 }

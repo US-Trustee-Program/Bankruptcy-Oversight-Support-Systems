@@ -46,8 +46,15 @@ describe('formatAcmsDate', () => {
     expect(() => formatAcmsDate(202)).toThrow('Invalid ACMS date format');
   });
 
+  // new Date('2020-02-31') silently rolls over to 2020-03-02, so an invalid-Date check alone
+  // would accept this.
   test('throws for a value that is not a real calendar date', () => {
     expect(() => formatAcmsDate(20200231)).toThrow('Invalid date');
+  });
+
+  test('accepts February 29 in a leap year and rejects it in other years', () => {
+    expect(formatAcmsDate(20240229)).toBe('2024-02-29');
+    expect(() => formatAcmsDate(20250229)).toThrow('Invalid date');
   });
 
   test('throws for a negative value with 8 characters', () => {
@@ -174,6 +181,48 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
     const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ APPT_DATE: 0 }), '0208');
 
     expect(event).not.toHaveProperty('appointedDate');
+  });
+
+  // The repository derives caseStatus from closedDate/reopenedDate, so without them every
+  // appointment the sync writes would read as OPEN (cams-fd8qd.37).
+  test('prefers the court closed date over the UST closed date', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: 20260501, CLOSED_BY_UST_DATE: 20260415 }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-05-01');
+  });
+
+  // 0 is the ACMS "no date" value: the query maps the court date's 0 to NULL, but a regression
+  // there must not hide the UST date.
+  test.each([null, 0])('uses the UST closed date when CLOSED_BY_COURT_DATE is %s', (courtDate) => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: courtDate, CLOSED_BY_UST_DATE: 20260615 }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-06-15');
+  });
+
+  test('carries the reopened date', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: 20260501, REOPENED_DATE: 20260610 }),
+      '0208',
+    );
+
+    expect(event.reopenedDate).toBe('2026-06-10');
+  });
+
+  // REOPENED_DATE comes from MAX(ORIGINAL_OCC_DATE) with no 0-to-NULL mapping, so 0 can arrive.
+  test.each([null, 0])('omits closedDate and reopenedDate for a case never closed (%s)', (none) => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: none, CLOSED_BY_UST_DATE: none, REOPENED_DATE: none }),
+      '0208',
+    );
+
+    expect(event).not.toHaveProperty('closedDate');
+    expect(event).not.toHaveProperty('reopenedDate');
   });
 
   test('includes unassignedOn when DISP_DATE is present and non-zero', () => {
