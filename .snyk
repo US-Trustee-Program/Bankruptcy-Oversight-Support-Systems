@@ -76,6 +76,130 @@ ignore:
           nor server actions, so exploitability remains low in the
           interim.
         expires: 2026-10-14T00:00:00.000Z
+  SNYK-JS-AZUREMSALNODE-22409043:
+    - '*':
+        reason: >-
+          Insufficiently Protected Credentials (CVE-2026-108470) in
+          @azure/msal-node@6.0.0, a new finding distinct from the
+          already-ignored SNYK-JS-AZUREMSALNODE-21689163 (CVE-2026-109461)
+          above — that one is the authorization-code/acquireTokenByCode
+          origin-validation bug fixed in 7.1.0; this one is a separate
+          credential-protection issue Snyk first flagged 2026-11-11,
+          affecting all @azure/msal-node versions before 7.0.1. Snyk's CVSS
+          vector marks user interaction as required (partial), consistent
+          with an interactive/browser auth-code flow. Not reachable in
+          CAMS: every @azure/identity call site — the explicit
+          DefaultAzureCredential in
+          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
+          and the azure-active-directory-default auth type used by
+          mssql/tedious across backend, dev-tools, and test/e2e — resolves
+          to DefaultAzureCredential's non-interactive client-credential/
+          managed-identity token acquisition, never an interactive or
+          authorization-code flow requiring user interaction. Fix is
+          @azure/identity 4.14.1 (published 2026-10-29, bumps msal-node to
+          ^7.1.0), which Snyk's own "Issues to fix by upgrading" output
+          confirms, but it's blocked by CAMS's 14-day minimum npm
+          release-age policy (.npmrc min-release-age=14) until
+          2026-11-12. Bump the dev-tools @azure/identity dependency to
+          4.14.1 (and pin @azure/msal-node to an embargo-cleared 7.1.x via
+          override, since ^7.1.0 would otherwise resolve to the still-
+          embargoed 7.2.1) and remove this ignore, plus
+          SNYK-JS-AZUREMSALNODE-21689163 above (also fixed by the same
+          bump), once the embargo lifts.
+        expires: 2026-11-13T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409009:
+    - '*':
+        reason: >-
+          Regular Expression Denial of Service (ReDoS, CVE-2026-125333) in
+          node-forge@1.4.2's forge.http _trimString() header/cookie
+          trimming — one of 5 new node-forge vulnerabilities Snyk first
+          flagged 2026-11-11 against the 1.4.2 we bumped to for the prior
+          14-CVE batch (see the now-removed SNYK-JS-NODEFORGE-22113938
+          entry's history). Not reachable in CAMS: as established for
+          that prior batch, the only node-forge call path is transitive
+          via @okta/okta-sdk-nodejs@8.2.0 > node-jose@2.2.0, reached
+          solely through backend/lib/humble-objects/okta-humble.ts
+          signing DPoP proofs with jose.JWS.createSign on our own RSA key
+          — forge.http is never loaded or invoked anywhere in that path
+          or elsewhere in CAMS. Fixed in 1.4.3 (published 2026-11-04),
+          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
+          min-release-age=14) until 2026-11-18. Bump the root package.json
+          node-forge override to 1.4.3 and remove this ignore (and the 4
+          below) once the embargo lifts.
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409010:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is a
+          forge.tls client NULL-pointer crash on a crafted ServerHello
+          when session is null; CAMS never exercises forge.tls, only
+          node-jose's sign-only RSA path). NULL Pointer Dereference, High
+          Severity (CVE-2026-125334). Fixed in 1.4.3; also embargoed until
+          2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409011:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is
+          ed25519.verify() accepting small-order public keys, a
+          signature-forgery bug; CAMS's only node-forge call path signs
+          with an RSA key via jose.JWS.createSign/pki.sign(), never
+          touches ed25519 verify or any Ed25519 key). Improper
+          Verification of Cryptographic Signature, Medium Severity
+          (CVE-2026-125335). Fixed in 1.4.3; also embargoed until
+          2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409013:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is an
+          uncaught-exception crash in forge.tls when a ServerHello's
+          compression_method is unsupported; CAMS never exercises
+          forge.tls). Uncaught Exception, High Severity (CVE-2026-125332).
+          Fixed in 1.4.3; also embargoed until 2026-11-18 (CAMS .npmrc
+          min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409017:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is
+          pki.verifyCertificateChain() ignoring X.509 name constraints,
+          a CA-scope bypass in forge.tls peer verification; CAMS never
+          calls verifyCertificateChain or parses any certificate via
+          node-forge — our only call path signs with our own private key,
+          never verifies). Improper Certificate Validation, Critical
+          Severity (CVE-2026-125336). Fixed in 1.4.3; also embargoed
+          until 2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-FASTXMLPARSER-22409021:
+    - '*':
+        reason: >-
+          Inefficient Algorithmic Complexity (CVE pending, Snyk ID
+          SNYK-JS-FASTXMLPARSER-22409021) in fast-xml-parser@5.7.3's
+          readStopNodeData(): a crafted stop-node body with many
+          unclosed '<a' fragments causes quadratic rescanning that can
+          block the event loop. Only applications that set the
+          non-default `stopNodes` parser option are exploitable. Not
+          reachable in CAMS: fast-xml-parser is not a direct dependency —
+          its only consumers are @azure/core-xml (via
+          @azure/storage-blob@12.34.0 and @azure/storage-queue@12.32.0),
+          which builds its XMLParser/XMLBuilder options internally
+          (checked node_modules/@azure/core-xml's parseOptionsFor
+          helpers) and never sets `stopNodes`. Fixed in 5.12.0 (published
+          2026-11-03), blocked by CAMS's 14-day minimum npm release-age
+          policy (.npmrc min-release-age=14) until 2026-11-17. No direct
+          override is in place today since fast-xml-parser isn't pinned
+          elsewhere; add one bumping to 5.12.0 and remove this ignore once
+          the embargo lifts.
+        expires: 2026-11-18T00:00:00.000Z
   SNYK-JS-AZUREMSALNODE-21689163:
     - '*':
         reason: >-
