@@ -786,8 +786,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   /**
-   * Scoped to a real trusteeId (its original purpose — see migrate-case-appointments.ts's
-   * caller). For the fingerprint-keyed surrogate lookup, use getSurrogatesByFingerprint
+   * Scoped to a real trusteeId. For the fingerprint-keyed surrogate lookup, use getSurrogatesByFingerprint
    * instead, which filters isSurrogate in the query itself rather than leaving callers to
    * post-filter by convention.
    */
@@ -933,9 +932,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * getActiveByCaseId (casePartition-only) sees nothing active for this case at all — the whole
    * reassignment-repair branch in applyResolvedTrustee is skipped, createNewAppointment runs
    * directly for the new trustee, and the old trustee's trusteePartition row is left permanently
-   * active with no telemetry. migrate-case-appointments.ts's heal job cannot catch this either,
-   * since it only scans casePartition-active documents forward, not stale trusteePartition rows
-   * for a trustee who is no longer the active one. Scoped by caseId (not trusteeId, this
+   * active with no telemetry. Scoped by caseId (not trusteeId, this
    * collection's shard key), so this fans out across trusteePartition's physical partitions —
    * acceptable here since it only runs on the narrow reassignment path, not a hot path.
    */

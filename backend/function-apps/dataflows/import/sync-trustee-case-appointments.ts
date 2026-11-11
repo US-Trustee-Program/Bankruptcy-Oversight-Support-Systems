@@ -362,6 +362,9 @@ async function handleStart(
   startMessage: SyncTrusteeCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
 ) {
+  // Captured before any awaited work so setup (including the optional delete) counts against the
+  // region driver's invocation budget, which must end before the host functionTimeout.
+  const startedAt = Date.now();
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
@@ -531,6 +534,7 @@ async function handleStart(
       runDate,
       resumeFrom,
       onDateComplete: sendRecordResults,
+      startedAt,
     });
     await sendRecordResults(result);
 

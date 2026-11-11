@@ -568,7 +568,26 @@ describe('sync-trustee-case-appointments handleStart', () => {
       runDate: '2026-07-05',
       resumeFrom,
       onDateComplete: expect.any(Function),
+      startedAt: expect.any(Number),
     });
+  });
+
+  test('starts the region driver budget clock before the delete runs, so the delete counts against it', async () => {
+    const fifteenMinutes = 15 * 60 * 1000;
+    let now = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const { runRegionDriverSpy, deleteAppointmentsSpy } = await setupMocks();
+    deleteAppointmentsSpy.mockImplementation(async () => {
+      now += fifteenMinutes;
+      return { data: { deleted: 0 } };
+    });
+
+    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, makeInvocationContext());
+
+    expect(runRegionDriverSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ startedAt: 1_000_000 }),
+    );
   });
 
   test.each([

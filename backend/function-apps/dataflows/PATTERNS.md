@@ -83,8 +83,8 @@ The K-lane bound above holds within one run. A lock document in runtime state
 - Replaying a dead-lettered start message: a lane message carries `runId` and `laneId`; replay it
   without touching the lock, since its run still owns it and its completion releases the lock. A
   kickoff or operator start carries no `runId`; delete the lock first, then replay. A lane send that
-  failed partway through a fan-out dead-letters the kickoff with the lock held; delete the lock and
-  replay the kickoff, or wait for the next daily one. Replaying in the wrong order is a logged skip,
-  not data loss.
+  failed partway through a fan-out dead-letters the kickoff with the lock held; delete the lock,
+  then replay the kickoff. Waiting for the next daily kickoff does not recover: it finds the lock
+  held and skips with `run-active`. Replaying in the wrong order is a logged skip, not data loss.
 
 See `sync-trustee-case-appointments.ts`'s `handleStart` for a caller.
