@@ -11,6 +11,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import {
+  regionBookmarkPath,
+  toRegionId,
   TrusteeAppointmentRegionSyncState,
   TrusteeCaseAppointmentsRepository,
 } from '../gateways.types';
@@ -196,11 +198,14 @@ export async function createNewAppointment(
   trusteeId: string,
   assignedOn: string,
   checks: CaseAppointmentChecks,
-  // Set only for an out-of-order older row (cams-fd8qd.1.8): written already closed so it never
-  // displaces the case's currently-active appointment for a different trustee.
+  // The source's own disposition (DISP_DATE), recorded as given.
   unassignedOn?: string,
+  // Set only for an out-of-order older row with no source disposition (cams-fd8qd.1.8): a derived
+  // close so it never displaces the case's currently-active appointment. Used only when no
+  // disposition is already stored, so it never replaces a court date (PR #3283 review).
+  fallbackUnassignedOn?: string,
 ): Promise<void> {
-  await appointmentsRepo.upsert({
+  const appointment = {
     caseId: event.caseId,
     trusteeId,
     assignedOn,
@@ -208,7 +213,12 @@ export async function createNewAppointment(
     ...(unassignedOn ? { unassignedOn } : {}),
     ...courtFieldsFromEvent(event),
     checks,
-  });
+  };
+  if (fallbackUnassignedOn) {
+    await appointmentsRepo.upsert(appointment, 'CASE_APPOINTMENT', { fallbackUnassignedOn });
+  } else {
+    await appointmentsRepo.upsert(appointment);
+  }
   context.logger.info(
     MODULE_NAME,
     `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
@@ -491,10 +501,9 @@ export async function applyResolvedTrustee(
     if (assignedOn < existingAppointment.assignedOn.slice(0, 10)) {
       // Out-of-order: this row is older than the case's currently-active appointment (cams-fd8qd.1.8). The active appointment is still current and must
       // not be displaced. The court's own disposition for this row is recorded as given; only
-      // when the source gives none is the row closed one day before the active appointment starts.
-      const unassignedOn =
-        sourceDisposition(context, event, assignedOn) ??
-        deriveUnassignedOn(existingAppointment.assignedOn, assignedOn);
+      // when the source gives none, and none is stored, is the row closed one day before the
+      // active appointment starts.
+      const disposition = sourceDisposition(context, event, assignedOn);
       await createNewAppointment(
         context,
         appointmentsRepo,
@@ -502,7 +511,8 @@ export async function applyResolvedTrustee(
         trusteeId,
         assignedOn,
         checks,
-        unassignedOn,
+        disposition,
+        disposition ? undefined : deriveUnassignedOn(existingAppointment.assignedOn, assignedOn),
       );
       return null;
     }
@@ -1770,7 +1780,7 @@ async function divisionCodesForRegions(
 ): Promise<string[]> {
   const offices = await deps.officesGateway.getOffices(deps.context);
   const codes = offices
-    .filter((office) => regions.includes(office.regionId.padStart(2, '0')))
+    .filter((office) => regions.includes(toRegionId(office.regionId)))
     .flatMap((office) => office.groups.flatMap((group) => group.divisions))
     .map((division) => division.divisionCode);
   return [...new Set(codes)];
@@ -1798,7 +1808,7 @@ async function rewindRegionBookmarks(
     if (bookmark && (rewindTo === null || bookmark > rewindTo)) {
       await deps.regionStateRepo.setField(
         'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
-        `region.${regionId}.lastSyncDate`,
+        regionBookmarkPath(regionId),
         rewindTo,
       );
     }

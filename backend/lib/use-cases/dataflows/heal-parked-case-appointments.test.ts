@@ -260,8 +260,11 @@ describe('heal-parked-case-appointments', () => {
     await run();
 
     expect(caseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+    // The derived close is a fallback, so a court disposition already stored is never replaced.
     expect(caseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ trusteeId: 'trustee-1', unassignedOn: '2026-11-04' }),
+      expect.objectContaining({ trusteeId: 'trustee-1' }),
+      'CASE_APPOINTMENT',
+      { fallbackUnassignedOn: '2026-11-04' },
     );
   });
 

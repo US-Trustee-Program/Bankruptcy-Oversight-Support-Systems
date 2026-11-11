@@ -5,7 +5,11 @@ import {
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
-import { TrusteeAppointmentRegionSyncState } from '../gateways.types';
+import {
+  regionBookmarkPath,
+  toRegionId,
+  TrusteeAppointmentRegionSyncState,
+} from '../gateways.types';
 import { isAcmsTimeoutError } from './acms-timeout-error';
 import {
   AcmsTrusteeAppointmentSource,
@@ -73,7 +77,7 @@ function getSourceForRegion(): TrusteeAppointmentSource {
 async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
   const officesGateway = factory.getOfficesGateway(context);
   const offices = await officesGateway.getOffices(context);
-  const regionIds = new Set(offices.map((office) => office.regionId.padStart(2, '0')));
+  const regionIds = new Set(offices.map((office) => toRegionId(office.regionId)));
   return [...regionIds];
 }
 
@@ -253,7 +257,9 @@ async function runRegionDriver(
         }
 
         // If the hand-off fails, re-read the whole date: its results are dropped here, and
-        // re-reading regenerates them (writes are idempotent).
+        // re-reading regenerates them (writes are idempotent). A hand-off that failed part-way
+        // already sent some messages, so the re-read sends those again: a duplicate DLQ entry or
+        // retry page, which is harmless because processing an event twice writes the same rows.
         resumeAt = { regionId, date: currentDate, lastId: undefined };
         const finishedDateResults = dateResults;
         dateResults = { dlqMessages: [], retryableEvents: [] };
@@ -267,7 +273,7 @@ async function runRegionDriver(
           };
           await deps.regionStateRepo.setField(
             REGION_STATE_DOCUMENT_TYPE,
-            `region.${regionId}.lastSyncDate`,
+            regionBookmarkPath(regionId),
             currentDate,
           );
         }

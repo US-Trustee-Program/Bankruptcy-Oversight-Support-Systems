@@ -210,6 +210,51 @@ async function queueEventPages(
   return { pagesQueued: pages.length, rejectedCount: rejected.length };
 }
 
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const DELETE_KEYS = new Set(['from', 'to']);
+
+/**
+ * Why a start message's delete request cannot run as written, or undefined when it can. A
+ * malformed request is dead-lettered rather than run with a silently different scope: an unknown
+ * key would be ignored, a non-ISO date compares wrongly against assignedOn, and an unpadded
+ * region matches no office (PR #3283 review). The retired deleteAll flag is rejected so it is not
+ * silently ignored.
+ */
+function invalidDeleteRequest(
+  startMessage: SyncTrusteeCaseAppointmentsStartMessage,
+): string | undefined {
+  if ('deleteAll' in startMessage) {
+    return 'deleteAll was replaced by delete: { from?, to? }, scoped by regions';
+  }
+  const request: unknown = startMessage.delete;
+  if (request === undefined) return undefined;
+  if (typeof request !== 'object' || request === null || Array.isArray(request)) {
+    return 'delete must be an object with optional from and to';
+  }
+  const unknownKeys = Object.keys(request).filter((key) => !DELETE_KEYS.has(key));
+  if (unknownKeys.length > 0) return `unknown key(s) ${unknownKeys.join(', ')}`;
+  const { from, to } = request as { from?: unknown; to?: unknown };
+  for (const [name, value] of [
+    ['from', from],
+    ['to', to],
+  ] as const) {
+    if (
+      value !== undefined &&
+      (typeof value !== 'string' ||
+        !ISO_DATE_ONLY.test(value) ||
+        !DateHelper.isValidDateString(value))
+    ) {
+      return `${name} must be a YYYY-MM-DD date`;
+    }
+  }
+  if (typeof from === 'string' && typeof to === 'string' && from > to) {
+    return 'from is after to';
+  }
+  const badRegions = (startMessage.regions ?? []).filter((regionId) => !/^\d{2}$/.test(regionId));
+  if (badRegions.length > 0) return `region id(s) ${badRegions.join(', ')} must be two digits`;
+  return undefined;
+}
+
 type StartQueueError = QueueError & { startMessage: SyncTrusteeCaseAppointmentsStartMessage };
 
 /**
@@ -322,6 +367,7 @@ async function handleStart(
   const trace = observability.startTrace(invocationContext.invocationId);
   // Set once the delete completes, so a later requeue of this invocation does not repeat it.
   let deleteDone = false;
+  let deleteDetails: Record<string, string> = {};
   // Minted up front so a requeue after a partly finished claim carries it and can pick its own lock back up.
   let runId = startMessage.runId ?? randomUUID();
   try {
@@ -346,6 +392,11 @@ async function handleStart(
         details: { mode: 'flushQueues' },
       });
       return;
+    }
+
+    const invalidDelete = invalidDeleteRequest(startMessage);
+    if (invalidDelete) {
+      throw new Error(`Invalid delete request: ${invalidDelete}`);
     }
 
     // A resume point only makes sense within a fixed region list; fanning out here would ignore
@@ -404,6 +455,15 @@ async function handleStart(
         throw deleteResult.error;
       }
       deleteDone = true;
+      // Recorded on this run's trace so an operator can see what the delete removed. The count is
+      // the case partition's (the trustee partition holds the same rows).
+      deleteDetails = {
+        deleted: String(deleteResult.data.deleted),
+        deleteScope: JSON.stringify({
+          regions: startMessage.regions ?? 'all',
+          ...startMessage.delete,
+        }),
+      };
     }
 
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
@@ -432,6 +492,7 @@ async function handleStart(
         details: {
           lanesCreated: String(fanOutResult.lanesCreated),
           regionsScheduled: String(fanOutResult.regionsScheduled),
+          ...deleteDetails,
         },
       });
       return;
@@ -527,6 +588,7 @@ async function handleStart(
         continuation: String(Boolean(result.continuation)),
         laneId: String(startMessage.laneId ?? ''),
         parkedCount: String(result.parkedCount),
+        ...deleteDetails,
       },
       additionalMetrics: [{ name: 'TrusteeParkedCount', value: result.parkedCount }],
     });

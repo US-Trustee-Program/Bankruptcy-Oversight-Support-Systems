@@ -683,10 +683,18 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]>;
-  /** documentType defaults to CASE_APPOINTMENT and is part of the natural key. */
+  /**
+   * Writes the appointment by its natural key (documentType, caseId, trusteeId, assignedOn);
+   * documentType defaults to CASE_APPOINTMENT. Dates already recorded on the stored row --
+   * unassignedOn, closedDate, reopenedDate -- are never cleared: an input without one keeps the
+   * stored value, and caseStatus is derived from the merged dates. options.fallbackUnassignedOn
+   * applies only when neither the input nor the stored row has an unassignedOn. To change a
+   * recorded disposition, use updateCaseAppointment.
+   */
   upsert(
     appointment: CaseAppointmentInput,
     documentType?: CaseAppointmentDocumentType,
+    options?: CaseAppointmentUpsertOptions,
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
@@ -895,6 +903,24 @@ export type TrusteeAppointmentSyncRunState = RuntimeState & {
   startedAt: string;
   /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
   lanesRemaining: number;
+};
+
+/**
+ * A region id as the region sync state keys it: two digits. The DXTR offices gateway strips the
+ * zero padding (e.g. "02" -> "2"), which would otherwise fork a region's bookmark.
+ */
+export function toRegionId(regionId: string): string {
+  return regionId.padStart(2, '0');
+}
+
+/** The setField path of a region's bookmark in TrusteeAppointmentRegionSyncState. */
+export function regionBookmarkPath(regionId: string): string {
+  return `region.${regionId}.lastSyncDate`;
+}
+
+export type CaseAppointmentUpsertOptions = {
+  /** A derived close date, used only when neither the input nor the stored row has one. */
+  fallbackUnassignedOn?: string;
 };
 
 export type CaseAppointmentDeleteFilter = {

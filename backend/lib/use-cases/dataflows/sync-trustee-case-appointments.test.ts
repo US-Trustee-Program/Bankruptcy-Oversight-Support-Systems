@@ -2131,14 +2131,20 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+        // The derived close is only a fallback, so a court disposition already stored for this
+        // row is never replaced by it (PR #3283 review).
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
             caseId: 'case-001',
             trusteeId: 'trustee-123',
             assignedOn: '2024-01-15',
-            unassignedOn: '2024-01-31',
           }),
+          'CASE_APPOINTMENT',
+          { fallbackUnassignedOn: '2024-01-31' },
         );
+        expect(
+          (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0],
+        ).not.toHaveProperty('unassignedOn');
       });
 
       test('a newer record for the same trustee closes the existing appointment and opens the new one (latest wins)', async () => {
@@ -2201,14 +2207,20 @@ describe('SyncTrusteeCaseAppointments', () => {
         // The currently-active appointment is left untouched — it is not displaced.
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
         // The older row is written already closed, one day before the active appointment starts.
+        // The derived close is only a fallback, so a court disposition already stored for this
+        // row is never replaced by it (PR #3283 review).
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
             caseId: 'case-001',
             trusteeId: 'trustee-123',
             assignedOn: '2024-01-15',
-            unassignedOn: '2024-01-31',
           }),
+          'CASE_APPOINTMENT',
+          { fallbackUnassignedOn: '2024-01-31' },
         );
+        expect(
+          (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0],
+        ).not.toHaveProperty('unassignedOn');
       });
 
       test('records an older out-of-order row with its own DISP_DATE as given, instead of the derived close', async () => {

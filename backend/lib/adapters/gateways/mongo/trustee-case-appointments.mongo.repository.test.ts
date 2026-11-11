@@ -359,6 +359,107 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
+    // PR #3283 review: a replayed older event can also lack the case's closed or reopened date;
+    // writing it as given would drop them and recompute caseStatus from the stale event.
+    test.each([
+      {
+        label: 'a closed case reads as CLOSED',
+        stored: { closedDate: '2024-05-01' },
+        incoming: {},
+        expected: { closedDate: '2024-05-01', caseStatus: 'CLOSED' },
+      },
+      {
+        label: 'a reopened case reads as OPEN',
+        stored: { closedDate: '2024-05-01', reopenedDate: '2024-06-01' },
+        incoming: { closedDate: '2024-05-01' },
+        expected: { closedDate: '2024-05-01', reopenedDate: '2024-06-01', caseStatus: 'OPEN' },
+      },
+    ])(
+      'keeps stored case dates a replayed row lacks, so $label',
+      async ({ stored, incoming, expected }) => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+          { ...baseAppointment, documentType: 'CASE_APPOINTMENT', ...stored },
+        ]);
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        await repo.upsert({
+          caseId: CASE_ID,
+          trusteeId: TRUSTEE_ID,
+          assignedOn: '2024-01-15',
+          dateFiled: '2024-01-02',
+          ...incoming,
+        });
+
+        for (const [, document] of replaceOneSpy.mock.calls) {
+          expect(document).toEqual(expect.objectContaining(expected));
+        }
+
+        repo.release();
+      },
+    );
+
+    test.each([
+      ['keeps a stored court date over the fallback', '2024-06-30', '2024-06-30'],
+      ['uses the fallback when no date is stored', undefined, '2024-02-29'],
+    ])('fallbackUnassignedOn %s', async (_label, storedUnassignedOn, expected) => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
+        storedUnassignedOn
+          ? [
+              {
+                ...baseAppointment,
+                documentType: 'CASE_APPOINTMENT',
+                unassignedOn: storedUnassignedOn,
+              },
+            ]
+          : [],
+      );
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsert(
+        { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' },
+        'CASE_APPOINTMENT',
+        { fallbackUnassignedOn: '2024-02-29' },
+      );
+
+      for (const [, document] of replaceOneSpy.mock.calls) {
+        expect(document).toEqual(expect.objectContaining({ unassignedOn: expected }));
+      }
+
+      repo.release();
+    });
+
+    test('skips the read when the row carries unassignedOn, closedDate and reopenedDate', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'appt-001',
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsert({
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+        unassignedOn: '2024-07-31',
+        closedDate: '2024-05-01',
+        reopenedDate: '2024-06-01',
+      });
+
+      expect(findSpy).not.toHaveBeenCalled();
+
+      repo.release();
+    });
+
     test('writes the incoming unassignedOn over a different stored one', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
         { ...baseAppointment, documentType: 'CASE_APPOINTMENT', unassignedOn: '2024-06-30' },
@@ -955,16 +1056,29 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result).toBe(7);
     });
 
+    /** Whether the delete query's caseId division filter (an OR of anchored regexes) matches. */
+    function divisionFilterMatches(query: unknown, caseId: string): boolean {
+      const values = (query as { values: Record<string, unknown>[] }).values;
+      const orGroup = values.find((v) => v.conjunction === 'OR') as
+        | { values: { leftOperand: { name: string }; condition: string; rightOperand: string }[] }
+        | undefined;
+      expect(orGroup).toBeDefined();
+      return orGroup!.values.some(
+        (condition) =>
+          condition.leftOperand.name === 'caseId' &&
+          condition.condition === 'REGEX' &&
+          new RegExp(condition.rightOperand).test(caseId),
+      );
+    }
+
     test('limits the delete to cases in the given divisions', async () => {
       const { deleteManySpy } = await deleteWith({ divisionCodes: ['081', '087'] });
 
-      const caseIdCondition = conditionOn(deleteManySpy.mock.calls[0][0], 'caseId');
-      expect(caseIdCondition).toEqual(expect.objectContaining({ condition: 'REGEX' }));
-      const pattern = new RegExp(caseIdCondition!.rightOperand as string);
-      expect(pattern.test('081-24-12345')).toBe(true);
-      expect(pattern.test('087-24-12345')).toBe(true);
-      expect(pattern.test('091-24-12345')).toBe(false);
-      expect(pattern.test('108-24-12345')).toBe(false);
+      const query = deleteManySpy.mock.calls[0][0];
+      expect(divisionFilterMatches(query, '081-24-12345')).toBe(true);
+      expect(divisionFilterMatches(query, '087-24-12345')).toBe(true);
+      expect(divisionFilterMatches(query, '091-24-12345')).toBe(false);
+      expect(divisionFilterMatches(query, '108-24-12345')).toBe(false);
     });
 
     test('deletes nothing when given an empty division list', async () => {
@@ -1008,7 +1122,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       const query = deleteManySpy.mock.calls[0][0];
       expect(conditionOn(query, 'documentType')).toBeDefined();
-      expect(conditionOn(query, 'caseId')).toEqual(expect.objectContaining({ condition: 'REGEX' }));
+      expect(divisionFilterMatches(query, '081-24-12345')).toBe(true);
       const values = (query as { values: Record<string, unknown>[] }).values;
       expect(
         values.filter((v) => (v.leftOperand as { name: string })?.name === 'assignedOn'),

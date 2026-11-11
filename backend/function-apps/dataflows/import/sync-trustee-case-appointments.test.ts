@@ -1037,6 +1037,77 @@ describe('sync-trustee-case-appointments handleStart', () => {
     });
   });
 
+  // A malformed delete must not run with a silently different scope (PR #3283 review).
+  test.each([
+    ['an unknown key', { regions: ['02'], delete: { frm: '2026-08-01' } }],
+    ['a date not in YYYY-MM-DD form', { regions: ['02'], delete: { to: '2026/01/01' } }],
+    ['an impossible date', { regions: ['02'], delete: { from: '2026-02-30' } }],
+    ['from after to', { regions: ['02'], delete: { from: '2026-09-01', to: '2026-08-01' } }],
+    ['a region id that is not two digits', { regions: ['2'], delete: { from: '2026-08-01' } }],
+    ['a delete that is not an object', { regions: ['02'], delete: true }],
+    ['the retired deleteAll flag', { regions: ['02'], deleteAll: true }],
+  ])('dead-letters a start message with %s, deleting nothing', async (_label, startMessage) => {
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    const { deleteAppointmentsSpy, runRegionDriverSpy } = await setupMocks();
+    const claimRunSpy = vi.spyOn(TrusteeAppointmentSyncRun, 'claimRun');
+
+    await handleStart(startMessage as never, invocationContext);
+
+    expect(deleteAppointmentsSpy).not.toHaveBeenCalled();
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(claimRunSpy).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.objectContaining({ type: 'QUEUE_ERROR', startMessage }),
+    );
+  });
+
+  // An operator checks what a delete removed from the run's trace, not just the log line.
+  test.each<[string, { regions?: string[]; delete: { from?: string; to?: string } }]>([
+    ['named regions', { regions: ['02'], delete: { from: '2026-08-01' } }],
+    ['every region (fan-out)', { delete: {} }],
+  ])('records the delete scope and count in the trace for %s', async (_label, startMessage) => {
+    const { deleteAppointmentsSpy } = await setupMocks({ deleteResult: { data: { deleted: 7 } } });
+    vi.spyOn(RegionDriverModule.default, 'getAllRegionIds').mockResolvedValue(['01']);
+    vi.spyOn(TrusteeAppointmentSyncRun, 'setLanesRemaining').mockResolvedValue(undefined);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart(startMessage, makeInvocationContext());
+
+    expect(deleteAppointmentsSpy).toHaveBeenCalledTimes(1);
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        details: expect.objectContaining({
+          deleted: '7',
+          deleteScope: JSON.stringify({
+            regions: startMessage.regions ?? 'all',
+            ...startMessage.delete,
+          }),
+        }),
+      }),
+    );
+  });
+
+  test('accepts a delete with only from, only to, or both', async () => {
+    const { deleteAppointmentsSpy } = await setupMocks();
+
+    for (const range of [
+      { from: '2026-08-01' },
+      { to: '2026-08-31' },
+      { from: '2026-08-01', to: '2026-08-01' },
+    ]) {
+      await handleStart({ regions: ['02'], delete: range }, makeInvocationContext());
+    }
+
+    expect(deleteAppointmentsSpy).toHaveBeenCalledTimes(3);
+  });
+
   test('routes a delete failure to the DLQ and does not call the region driver', async () => {
     const invocationContext = makeInvocationContext();
     const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
