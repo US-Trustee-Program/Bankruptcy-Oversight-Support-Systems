@@ -124,7 +124,7 @@ export const grantableRoles = [...CamsRoles];
  */
 export type PermissionScope = { regionId: string | null; officeCode: string | null };
 
-function scopeContains(outer: PermissionScope, inner: PermissionScope): boolean {
+export function scopeContains(outer: PermissionScope, inner: PermissionScope): boolean {
   if (outer.regionId === null) return true;
   if (outer.regionId !== inner.regionId) return false;
   return outer.officeCode === null || outer.officeCode === inner.officeCode;

@@ -13,10 +13,14 @@ import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-ga
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import * as delayModule from '@common/delay';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { CamsRole } from '@common/cams/roles';
 import { UsersRepository } from '../gateways.types';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
+import { UserRoleAssignment } from '@common/cams/user-access';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -66,6 +70,8 @@ describe('user-session.gateway test', () => {
       env: { CAMS_LOGIN_PROVIDER: provider, CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
     context.featureFlags['privileged-identity-management'] = true;
+    // These tests cover sessions built from AD groups; the flag-on path is tested below.
+    context.featureFlags['cams-role-assignments'] = false;
     gateway = new UserSessionUseCase(context);
 
     vi.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
@@ -261,5 +267,235 @@ describe('user-session.gateway test', () => {
     expect(session.user.offices).toEqual([]);
 
     expect(upsertSpy).toHaveBeenCalled();
+  });
+
+  describe('with cams-role-assignments on', () => {
+    const MANHATTAN = MOCKED_USTP_OFFICES_ARRAY.find(
+      (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
+    )!;
+    const manhattanTrialAttorney: UserRoleAssignment = {
+      documentType: 'USER_ROLE_ASSIGNMENT',
+      id: 'assignment-1',
+      userId: mockUser.id,
+      userName: mockUser.name,
+      role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
+      officeCode: MANHATTAN.officeCode,
+      assignedBy: 'super-1',
+      assignedByName: 'Super User',
+      assignedAt: '2026-11-09T00:00:00.000Z',
+      expiresAt: null,
+      active: true,
+      activeKey: `TrialAttorney|${MANHATTAN.regionId}|${MANHATTAN.officeCode}`,
+    };
+    // AD groups that would grant a different role and office if they were still used.
+    const adGroups = ['USTP CAMS Region 2 Office Buffalo', 'USTP CAMS Case Assignment Manager'];
+
+    beforeEach(() => {
+      context.featureFlags['cams-role-assignments'] = true;
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+      getUserSpy.mockResolvedValue({
+        user: mockUser,
+        jwt: { ...camsJwt, claims: { ...claims, groups: adGroups } },
+      });
+    });
+
+    test("should take roles and offices from the user's active permissions, not AD groups", async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockResolvedValue([manhattanTrialAttorney]);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(mockCamsSession);
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(findSpy).toHaveBeenCalledWith([mockUser.id]);
+      expect(session.user.roles).toEqual([CamsRole.TrialAttorney]);
+      expect(session.user.offices.map((office) => office.officeCode)).toEqual([
+        MANHATTAN.officeCode,
+      ]);
+      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ user: session.user }));
+    });
+
+    test('should give a user without permissions no roles or offices', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(session.user.roles).toEqual([]);
+      expect(session.user.offices).toEqual([]);
+    });
+
+    test('should still layer Privileged Identity on top', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([
+        manhattanTrialAttorney,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const elevation = {
+        documentType: 'PRIVILEGED_IDENTITY_USER',
+        id: mockUser.id,
+        userId: mockUser.id,
+        name: mockUser.name,
+        claims: { groups: ['USTP CAMS Case Assignment Manager', MANHATTAN.idpGroupName] },
+        expires: '2999-01-01T00:00:00.000Z',
+      };
+      vi.spyOn(factory, 'getUsersRepository').mockReturnValue({
+        getPrivilegedIdentityUser: vi.fn().mockResolvedValue(elevation),
+      } as unknown as UsersRepository);
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(session.user.roles).toEqual([CamsRole.TrialAttorney, CamsRole.CaseAssignmentManager]);
+      expect(session.user.offices.map((office) => office.officeCode)).toEqual([
+        MANHATTAN.officeCode,
+      ]);
+    });
+
+    test('should deny the session, cache nothing and log a non-transient read failure once', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValue(new Error('cosmos unavailable'));
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+      const errorSpy = vi.spyOn(context.logger, 'error');
+      const delaySpy = vi.spyOn(delayModule, 'delay');
+
+      await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
+
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      expect(delaySpy).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
+        userId: mockUser.id,
+        errorType: 'Error',
+        status: undefined,
+        module: undefined,
+        message: 'cosmos unavailable',
+        transient: false,
+      });
+    });
+
+    test('should retry a transient read failure and build the session on success', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce([manhattanTrialAttorney]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const delaySpy = vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(findSpy).toHaveBeenCalledTimes(2);
+      expect(delaySpy).toHaveBeenCalledWith(250);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'SESSION_ACCESS read retry 1/3',
+        {
+          userId: mockUser.id,
+          errorType: 'TooManyRequestsError',
+          status: 429,
+          module: 'TEST',
+        },
+      );
+      expect(session.user.roles).toEqual([CamsRole.TrialAttorney]);
+    });
+
+    test('should give up after three transient failures, back off between attempts, and cache nothing', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValue(new GatewayTimeoutError('TEST'));
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+      const delaySpy = vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(gateway.lookup(context, jwtString)).rejects.toThrow(GatewayTimeoutError);
+
+      expect(findSpy).toHaveBeenCalledTimes(3);
+      expect(delaySpy.mock.calls.map(([ms]) => ms)).toEqual([250, 500]);
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
+        userId: mockUser.id,
+        errorType: 'GatewayTimeoutError',
+        status: 504,
+        module: 'TEST',
+        message: 'Gateway Timeout',
+        transient: true,
+      });
+    });
+
+    test('should log the access read from assignments at info', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([
+        manhattanTrialAttorney,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const infoSpy = vi.spyOn(context.logger, 'info');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await gateway.lookup(context, jwtString);
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'Session access from assignments',
+        {
+          userId: mockUser.id,
+          permissionCount: 1,
+          roleCount: 1,
+          officeCount: 1,
+        },
+      );
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'SESSION_NO_PERMISSIONS',
+        expect.anything(),
+      );
+    });
+
+    test('should warn SESSION_NO_PERMISSIONS with the JWT group count when the user has no permissions', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await gateway.lookup(context, jwtString);
+
+      expect(warnSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_NO_PERMISSIONS', {
+        userId: mockUser.id,
+        jwtGroupCount: adGroups.length,
+      });
+    });
+
+    test('should log the session without the user name or the access source', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([
+        manhattanTrialAttorney,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      const debugSpy = vi.spyOn(context.logger, 'debug');
+
+      await gateway.lookup(context, jwtString);
+
+      const creating = debugSpy.mock.calls.find(([, message]) =>
+        String(message).startsWith('Creating session with'),
+      );
+      expect(String(creating?.[1])).not.toContain(mockUser.name);
+      expect(creating?.[2]).toEqual({
+        userId: mockUser.id,
+        jwtGroupCount: adGroups.length,
+        officeCount: 1,
+        roleCount: 1,
+      });
+    });
+
+    test('should not read permissions when the flag is off', async () => {
+      context.featureFlags['cams-role-assignments'] = false;
+      const findSpy = vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds');
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+
+      await gateway.lookup(context, jwtString);
+
+      expect(findSpy).not.toHaveBeenCalled();
+    });
   });
 });
