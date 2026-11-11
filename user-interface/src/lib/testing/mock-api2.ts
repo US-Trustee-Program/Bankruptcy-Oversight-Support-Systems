@@ -2679,7 +2679,12 @@ function mockedCaseAppointmentSources(): RegionCaseAppointmentSource[] {
   }
   return [...regionNamesById.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([regionId, regionName]) => ({ regionId, regionName, source: 'ACMS' as const }));
+    .map(([regionId, regionName]) => ({
+      regionId,
+      regionName,
+      // One DXTR region so the fake API shows both source states on the admin page.
+      source: regionId === '03' ? ('DXTR' as const) : ('ACMS' as const),
+    }));
 }
 
 async function getCaseAppointmentSources() {
