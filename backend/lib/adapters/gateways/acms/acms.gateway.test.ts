@@ -602,6 +602,15 @@ describe('ACMS gateway tests', () => {
         300000,
       );
     });
+
+    test('should throw when cutoff date does not parse to a finite number', async () => {
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getCmmapAppointmentsRaw(context, 0, 10, 'not-a-date')).rejects.toThrow(
+        'Invalid cutoffDate value: "not-a-date"',
+      );
+    });
   });
 
   describe('getTrusteeProfessionalRecordsPage', () => {
@@ -894,6 +903,52 @@ describe('ACMS gateway tests', () => {
       await expect(gateway.getActiveAppointmentsForProfessional(context, 'NY', 63)).rejects.toThrow(
         CamsError,
       );
+    });
+  });
+
+  describe('ACMS_REQUEST_TIMEOUT_MS override', () => {
+    const originalValue = process.env.ACMS_REQUEST_TIMEOUT_MS;
+
+    afterEach(() => {
+      if (originalValue === undefined) {
+        delete process.env.ACMS_REQUEST_TIMEOUT_MS;
+      } else {
+        process.env.ACMS_REQUEST_TIMEOUT_MS = originalValue;
+      }
+    });
+
+    test('falls back to the 300000ms default when the override is not a valid positive integer', async () => {
+      process.env.ACMS_REQUEST_TIMEOUT_MS = 'not-a-number';
+      vi.resetModules();
+      const { AbstractMssqlClient: FreshAbstractMssqlClient } =
+        await import('../abstract-mssql-client');
+      const { AcmsGatewayImpl: FreshAcmsGatewayImpl } = await import('./acms.gateway');
+      const spy = vi
+        .spyOn(FreshAbstractMssqlClient.prototype, 'executeQuery')
+        .mockResolvedValue({ success: true, results: { recordset: [] }, message: '' });
+
+      const context = await createMockApplicationContext();
+      const gateway = new FreshAcmsGatewayImpl(context);
+      await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(spy).toHaveBeenCalledWith(context, expect.any(String), [], 300000);
+    });
+
+    test('uses the override value when it is a valid positive integer', async () => {
+      process.env.ACMS_REQUEST_TIMEOUT_MS = '120000';
+      vi.resetModules();
+      const { AbstractMssqlClient: FreshAbstractMssqlClient } =
+        await import('../abstract-mssql-client');
+      const { AcmsGatewayImpl: FreshAcmsGatewayImpl } = await import('./acms.gateway');
+      const spy = vi
+        .spyOn(FreshAbstractMssqlClient.prototype, 'executeQuery')
+        .mockResolvedValue({ success: true, results: { recordset: [] }, message: '' });
+
+      const context = await createMockApplicationContext();
+      const gateway = new FreshAcmsGatewayImpl(context);
+      await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(spy).toHaveBeenCalledWith(context, expect.any(String), [], 120000);
     });
   });
 });
