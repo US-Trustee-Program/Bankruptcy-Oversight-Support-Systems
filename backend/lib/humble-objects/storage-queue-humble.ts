@@ -6,6 +6,12 @@ export type ReceivedQueueMessage = {
   messageText: string;
 };
 
+function isStalePopReceiptError(error: RestError): boolean {
+  return (
+    error.statusCode === 404 || (error.statusCode === 400 && error.code === 'PopReceiptMismatch')
+  );
+}
+
 export class StorageQueueHumbleObject {
   private client: QueueClient;
   private queueReady?: Promise<unknown>;
@@ -70,16 +76,17 @@ export class StorageQueueHumbleObject {
   }
 
   /**
-   * Returns false when the service answers 404: the pop receipt is stale because another reader
-   * received the message after its visibility timeout, or the message was already deleted.
-   * Any other failure throws.
+   * Returns false when the service rejects a stale pop receipt, which means another reader received
+   * the message after its visibility timeout, or the message was already deleted. The service answers
+   * 404 (MessageNotFound) or 400 (PopReceiptMismatch); Azurite 3.37.0 answers 400, and the docs do not
+   * settle which one the live service returns, so both are handled. Any other failure throws.
    */
   async deleteMessage(messageId: string, popReceipt: string): Promise<boolean> {
     try {
       await this.client.deleteMessage(messageId, popReceipt);
       return true;
     } catch (error) {
-      if (error instanceof RestError && error.statusCode === 404) {
+      if (error instanceof RestError && isStalePopReceiptError(error)) {
         return false;
       }
       throw error;

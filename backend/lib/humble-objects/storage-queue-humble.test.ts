@@ -183,6 +183,32 @@ describe('StorageQueueHumbleObject', () => {
     await expect(humble.deleteMessage('message-1', 'receipt-1')).resolves.toBe(false);
   });
 
+  test('reports false instead of throwing when the service answers 400 PopReceiptMismatch (another reader received the message)', async () => {
+    deleteMessageMock.mockRejectedValue(
+      new RestError('The pop receipt does not match.', {
+        statusCode: 400,
+        code: 'PopReceiptMismatch',
+      }),
+    );
+    const humble = StorageQueueHumbleObject.fromConnectionString(connectionString, 'my-queue');
+
+    await expect(humble.deleteMessage('message-1', 'receipt-1')).resolves.toBe(false);
+  });
+
+  test('rethrows a 400 whose code is not PopReceiptMismatch', async () => {
+    deleteMessageMock.mockRejectedValue(
+      new RestError('The query parameter value is invalid.', {
+        statusCode: 400,
+        code: 'InvalidQueryParameterValue',
+      }),
+    );
+    const humble = StorageQueueHumbleObject.fromConnectionString(connectionString, 'my-queue');
+
+    await expect(humble.deleteMessage('message-1', 'receipt-1')).rejects.toThrow(
+      'The query parameter value is invalid.',
+    );
+  });
+
   test('rethrows any other delete failure', async () => {
     deleteMessageMock.mockRejectedValue(
       new RestError('Internal server error', { statusCode: 500 }),
