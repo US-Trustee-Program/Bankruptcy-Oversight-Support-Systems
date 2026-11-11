@@ -64,3 +64,31 @@ describe('Api2 cache disabled', () => {
     expect(cacheSetSpy).not.toHaveBeenCalled();
   });
 });
+
+// Region sources change when a region switches to DXTR and are SuperUser-only, so a cached copy
+// could show a stale source or outlive the session that was allowed to read it.
+describe('getCaseAppointmentSources is not cached', () => {
+  beforeAll(() => {
+    vi.stubGlobal('localStorage', mockLocalStorage);
+  });
+
+  test('should GET the region sources from the API even when the cache holds a response', async () => {
+    mockConfiguration({ disableLocalCache: false });
+    const cacheModule = await import('../utils/local-cache');
+    const apiModule = await import('./api');
+    const api2Module = await import('./api2');
+
+    vi.spyOn(cacheModule.default, 'isCacheEnabled').mockReturnValue(true);
+    vi.spyOn(cacheModule.default, 'get').mockReturnValue({
+      expiresAfter: Number.MAX_SAFE_INTEGER,
+      value: { data: [{ regionId: 'stale' }] },
+    });
+    const cacheSetSpy = vi.spyOn(cacheModule.default, 'set').mockResolvedValue(true);
+    const fetchSpy = vi.spyOn(apiModule.default, 'get').mockResolvedValue({ data: [] });
+
+    await api2Module.default.getCaseAppointmentSources();
+
+    expect(fetchSpy).toHaveBeenCalledWith('/dev-tools/case-appointment-source', {});
+    expect(cacheSetSpy).not.toHaveBeenCalled();
+  });
+});
