@@ -9,7 +9,7 @@ import {
 import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
-import { DEFAULT_FETCH_SIZE } from './migrate-case-appointments-constants';
+import { DEFAULT_FETCH_SIZE } from './sync-trustee-case-appointments-constants';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},

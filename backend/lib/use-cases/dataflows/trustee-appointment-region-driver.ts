@@ -29,6 +29,14 @@ const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 /** The nationwide July 2026 case-appointment migration cutover -- a region's first run starts here. */
 export const CUTOVER_DATE = '2026-07-01';
 
+/**
+ * Worst-case wall-clock cost of one page: an ACMS read can take up to the gateway's request
+ * timeout (5 minutes by default), then its events are written to Cosmos. A page is not started
+ * unless this much budget remains, so a slow page cannot carry the invocation past the host's
+ * functionTimeout and get killed and redelivered.
+ */
+export const PAGE_STEP_COST_MS = 6 * 60 * 1000;
+
 function createDeps(context: ApplicationContext) {
   return {
     context,
@@ -234,7 +242,7 @@ async function runRegionDriver(
       while (currentDate <= effectiveEnd) {
         while (true) {
           resumeAt = { regionId, date: currentDate, lastId };
-          if (shouldEscape(startedAt, safeThresholdMs, 0)) {
+          if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {
             return stopAt(i, resumeAt, 'invocation-budget');
           }
 

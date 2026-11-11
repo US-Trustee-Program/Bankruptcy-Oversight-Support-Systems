@@ -34,7 +34,7 @@ const HEAL_PAGE_SIZE = 25;
  * invariants). Those live in HealSentinelCaseAppointmentsUseCase.healPage.
  *
  * Started manually by sending an initial message to the HEAL queue (same on-demand convention as
- * trustee-verification-remap and migrate-case-appointments) — there is no timer trigger. Re-run
+ * trustee-verification-remap) — there is no timer trigger. Re-run
  * as needed as trustee-professional-ids mapping data improves.
  */
 async function handleHeal(

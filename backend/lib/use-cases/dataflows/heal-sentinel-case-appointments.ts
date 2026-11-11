@@ -53,7 +53,7 @@ class HealSentinelCaseAppointmentsUseCase {
    * no longer needs healing, so it still counts as healed.
    *
    * The upsert payload spreads the full sentinel rather than naming an allow-list of fields.
-   * migrate-case-appointments populates unassignedOn/closedDate/reopenedDate straight off ACMS's
+   * migrate-case-appointments populated unassignedOn/closedDate/reopenedDate straight off ACMS's
    * own historical record, uncorrelated with why a row became a sentinel in the first place (that
    * only depends on whether the professional ID resolved) — so a sentinel can genuinely represent
    * an already-closed or -reopened case. upsert() is a full replaceOne with no merge against the

@@ -3,7 +3,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import RegionDriver, { CUTOVER_DATE } from './trustee-appointment-region-driver';
+import RegionDriver, { CUTOVER_DATE, PAGE_STEP_COST_MS } from './trustee-appointment-region-driver';
 import SyncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 import { AcmsCaseAppointmentRawRecord, TrusteeAppointmentRegionSyncState } from '../gateways.types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
@@ -411,6 +411,23 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
   });
 
+  test('does not start a page that could run past the invocation budget, even with time left', async () => {
+    const fiveMinutesMs = 5 * 60 * 1000;
+    const budgetMs = 56 * 60 * 1000;
+    vi.spyOn(Date, 'now').mockReturnValue(budgetMs - fiveMinutesMs);
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+      startedAt: 0,
+      safeThresholdMs: budgetMs,
+    });
+
+    expect(result.continuation?.cause).toEqual('invocation-budget');
+    expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
+  });
+
   test('a later region that exhausts the budget continues with only the regions not yet finished', async () => {
     let now = 0;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
@@ -427,7 +444,7 @@ describe('RegionDriver.runRegionDriver', () => {
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      safeThresholdMs: 1_000,
+      safeThresholdMs: PAGE_STEP_COST_MS + 1_000,
     });
 
     expect(result.processedRegions).toEqual(['02']);
@@ -458,7 +475,7 @@ describe('RegionDriver.runRegionDriver', () => {
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      safeThresholdMs: 1_000,
+      safeThresholdMs: PAGE_STEP_COST_MS + 1_000,
     });
 
     expect(processAppointmentsSpy).toHaveBeenCalledTimes(1);

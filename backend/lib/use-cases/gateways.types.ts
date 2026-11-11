@@ -387,9 +387,8 @@ export interface AcmsGateway {
   ): Promise<AcmsActiveAppointment[]>;
   /**
    * regionId and changeDate are optional, additive WHERE filters (CMMAP.REGION_CODE and
-   * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, they leave
-   * the existing cutoffDate-scoped, all-regions behavior relied on by migrate-case-appointments.ts
-   * unchanged.
+   * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, the query spans
+   * all regions and dates. No production caller omits them (cams-fd8qd.38).
    */
   getCmmapAppointmentsRaw(
     context: ApplicationContext,

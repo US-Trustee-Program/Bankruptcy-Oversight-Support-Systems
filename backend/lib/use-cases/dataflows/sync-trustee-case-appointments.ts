@@ -462,7 +462,7 @@ export async function applyResolvedTrustee(
     // event requeued as retryable, and without this check the retry would land here and
     // silently treat the case as already handled, permanently diverging trusteePartition (which
     // backs a trustee's case list) with no telemetry or DLQ trace. Repair it directly via the
-    // same idempotent primitive migrate-case-appointments.ts's heal job already uses, rather
+    // idempotent replaceOneInTrusteePartition primitive, rather
     // than re-running the full soft-close/create sequence, which casePartition already proves
     // is unnecessary here.
     const inSync = await appointmentsRepo.existsInTrusteePartition(

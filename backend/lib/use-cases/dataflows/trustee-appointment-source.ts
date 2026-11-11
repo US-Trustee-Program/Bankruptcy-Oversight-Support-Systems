@@ -7,7 +7,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import factory from '../../factory';
 import { AcmsCaseAppointmentRawRecord, formatCaseId } from '../gateways.types';
 import { rawToTrusteeAppointmentSyncEvent } from './acms-case-appointment.helpers';
-import { DEFAULT_FETCH_SIZE } from './migrate-case-appointments-constants';
+import { DEFAULT_FETCH_SIZE } from './sync-trustee-case-appointments-constants';
 
 /** A source row that could not be converted to an event. Its siblings on the same page still convert. */
 export type TrusteeAppointmentSourceRowFailure = {
