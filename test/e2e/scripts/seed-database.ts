@@ -30,6 +30,8 @@ import {
   computeFingerprint,
 } from '../../../backend/lib/use-cases/dataflows/trustee-variant.helpers';
 import { generateSearchTokens } from '../../../backend/lib/adapters/utils/phonetic-helper';
+import { CamsRole, CamsRoleType } from '../../../common/src/cams/roles';
+import { activeKeyFor, UserRoleAssignment } from '../../../common/src/cams/user-access';
 
 const MODULE_NAME = 'SEED-MONGO-E2E';
 
@@ -51,6 +53,8 @@ const COLLECTIONS = [
   'trustee-match-verification',
   'trustees',
   'user-groups',
+  'user-role-assignments',
+  'role-assignment-audit',
 ];
 
 type MongoDocument = Record<string, unknown>;
@@ -283,6 +287,48 @@ async function ensureTrusteeMatchVerificationIndex(db: ReturnType<MongoClient['d
     .createIndex({ fingerprint: 1, variant: 1, documentType: 1 }, { unique: true });
 }
 
+/**
+ * Mirrors the unique {userId, activeKey} index from cosmos-collections.bicep
+ * (userRoleAssignmentsCollection), so a duplicate grant is rejected in e2e as it is in Cosmos.
+ */
+async function ensureUserRoleAssignmentIndex(db: ReturnType<MongoClient['db']>) {
+  await db
+    .collection('user-role-assignments')
+    .createIndex({ userId: 1, activeKey: 1 }, { unique: true });
+}
+
+/**
+ * With `cams-role-assignments` on, a session's roles and offices come only from the user's active
+ * permissions, not from Okta groups. These give the e2e Okta user (OKTA_USER_NAME) what the specs
+ * need: Data Verifier with an office for Data Verification, Trustee Admin for Trustees. Manhattan
+ * holds the fixture cases (division 081). regionId and officeCode match the office list's format.
+ *
+ * E2E_OKTA_USER_ID is that account's Okta user id (the userinfo `sub`); it defaults to the
+ * "E2E Test" account in the Flexion dev Okta org.
+ */
+const E2E_OKTA_USER_ID = process.env.E2E_OKTA_USER_ID?.trim() || '00uxy9tq2inP2J6BQ697';
+const E2E_USER_ROLES: CamsRoleType[] = [CamsRole.DataVerifier, CamsRole.TrusteeAdmin];
+const E2E_USER_REGION_ID = '2';
+const E2E_USER_OFFICE_CODE = 'USTP_CAMS_Region_2_Office_Manhattan';
+
+function e2eUserPermissions(): UserRoleAssignment[] {
+  return E2E_USER_ROLES.map((role) => ({
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id: `e2e-role-assignment-${role}`,
+    userId: E2E_OKTA_USER_ID,
+    userName: 'E2E Test',
+    role,
+    regionId: E2E_USER_REGION_ID,
+    officeCode: E2E_USER_OFFICE_CODE,
+    assignedBy: 'SYSTEM_SEED',
+    assignedByName: 'E2E Seeder',
+    assignedAt: '2026-01-01T00:00:00.000Z',
+    expiresAt: null,
+    active: true,
+    activeKey: activeKeyFor(role, E2E_USER_REGION_ID, E2E_USER_OFFICE_CODE),
+  }));
+}
+
 async function main() {
   const fixturePath = resolve(__dirname, '../fixtures/mongo-fixture.json');
 
@@ -318,6 +364,7 @@ async function main() {
     console.log(`[${MODULE_NAME}] ✓ Collections cleared`);
 
     await ensureTrusteeMatchVerificationIndex(db);
+    await ensureUserRoleAssignmentIndex(db);
 
     const scenarios = resolveFindingsScenarios(
       fixture.collections['trustee-match-verification'] ?? [],
@@ -325,6 +372,7 @@ async function main() {
     // Scenario trustees are fictional fixture data, so they skip the PII regeneration.
     const seededDocs = (collName: string): MongoDocument[] => {
       if (collName === 'trustee-match-verification') return scenarios.tasks;
+      if (collName === 'user-role-assignments') return e2eUserPermissions();
       const docs = applyFakerPii(collName, fixture.collections[collName] ?? []);
       if (collName === 'trustees') return [...docs, ...scenarios.trustees];
       if (collName === 'trustee-case-appointments') return [...docs, ...scenarios.surrogates];
