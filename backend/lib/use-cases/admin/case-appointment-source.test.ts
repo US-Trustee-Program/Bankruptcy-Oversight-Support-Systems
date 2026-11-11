@@ -1,11 +1,20 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import factory from '../../factory';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { TrusteeAppointmentRegionSyncState } from '../gateways.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { getCaseAppointmentSources } from './case-appointment-source';
+
+const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
+
+const DXTR_SOURCE = {
+  system: 'DXTR' as const,
+  updatedOn: '2026-07-01T00:00:00Z',
+  updatedBy: { id: 'u', name: 'U' },
+};
 
 function makeOffice(regionId: string, regionName = `Region ${regionId}`): UstpOfficeDetails {
   return {
@@ -21,36 +30,41 @@ function makeOffice(regionId: string, regionName = `Region ${regionId}`): UstpOf
 function stateWith(
   region: TrusteeAppointmentRegionSyncState['region'],
 ): TrusteeAppointmentRegionSyncState {
-  return { documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', region };
+  return { documentType: REGION_STATE_DOCUMENT_TYPE, region };
+}
+
+function mockOffices(offices: UstpOfficeDetails[]) {
+  vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue(offices);
+}
+
+/** Answers only for the region sync-state document; any other document type is not found. */
+function mockRegionState(state: TrusteeAppointmentRegionSyncState) {
+  vi.spyOn(MockMongoRepository.prototype, 'read').mockImplementation(async (documentType) => {
+    if (documentType === REGION_STATE_DOCUMENT_TYPE) {
+      return state;
+    }
+    throw new NotFoundError('TEST');
+  });
 }
 
 describe('getCaseAppointmentSources', () => {
   let context: ApplicationContext;
-  let mockRegionStateRepo: { read: ReturnType<typeof vi.fn> };
-
-  function mockOffices(offices: UstpOfficeDetails[]) {
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue(offices),
-    } as unknown as ReturnType<typeof factory.getOfficesGateway>);
-  }
-
-  function mockRegionState(state: TrusteeAppointmentRegionSyncState) {
-    mockRegionStateRepo.read.mockResolvedValue(state);
-  }
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-
-    mockRegionStateRepo = { read: vi.fn().mockResolvedValue(stateWith({})) };
-    vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
-      mockRegionStateRepo as unknown as ReturnType<typeof factory.getRuntimeStateRepository>,
-    );
+    mockRegionState(stateWith({}));
   });
 
-  test('defaults a region with no source set in runtime-state to ACMS', async () => {
+  test.each([
+    { description: 'has no runtime-state entry', region: {} },
+    {
+      description: 'has a sync bookmark but no source',
+      region: { '02': { lastSyncDate: '2026-07-01' } },
+    },
+  ])('defaults a region that $description to ACMS', async ({ region }) => {
     mockOffices([makeOffice('02')]);
-    mockRegionState(stateWith({}));
+    mockRegionState(stateWith(region));
 
     const sources = await getCaseAppointmentSources(context);
 
@@ -59,30 +73,26 @@ describe('getCaseAppointmentSources', () => {
 
   test('reports DXTR for a region with a source set in runtime-state', async () => {
     mockOffices([makeOffice('03')]);
-    mockRegionState(
-      stateWith({
-        '03': {
-          source: {
-            system: 'DXTR',
-            updatedOn: '2026-07-01T00:00:00Z',
-            updatedBy: { id: 'u', name: 'U' },
-          },
-        },
-      }),
-    );
+    mockRegionState(stateWith({ '03': { lastSyncDate: '2026-07-01', source: DXTR_SOURCE } }));
 
     const sources = await getCaseAppointmentSources(context);
 
     expect(sources).toEqual([{ regionId: '03', regionName: 'Region 03', source: 'DXTR' }]);
   });
 
-  test('dedupes offices into distinct regions, sorted by region id', async () => {
-    mockOffices([makeOffice('03'), makeOffice('02'), makeOffice('02')]);
-    mockRegionState(stateWith({}));
+  test('dedupes offices into distinct regions, sorted by region id, keeping the first region name', async () => {
+    mockOffices([
+      makeOffice('03'),
+      makeOffice('2', 'NEW YORK'),
+      makeOffice('02', 'NEW YORK (second office)'),
+    ]);
 
     const sources = await getCaseAppointmentSources(context);
 
-    expect(sources.map((s) => s.regionId)).toEqual(['02', '03']);
+    expect(sources).toEqual([
+      { regionId: '02', regionName: 'NEW YORK', source: 'ACMS' },
+      { regionId: '03', regionName: 'Region 03', source: 'ACMS' },
+    ]);
   });
 
   // UstpOfficeDetails.regionId comes back un-padded from the DXTR offices gateway, but the
@@ -90,17 +100,7 @@ describe('getCaseAppointmentSources', () => {
   // must re-pad it to look up the right key.
   test('zero-pads an un-padded region id from the offices gateway to match runtime-state keys', async () => {
     mockOffices([makeOffice('2', 'Region 2')]);
-    mockRegionState(
-      stateWith({
-        '02': {
-          source: {
-            system: 'DXTR',
-            updatedOn: '2026-07-01T00:00:00Z',
-            updatedBy: { id: 'u', name: 'U' },
-          },
-        },
-      }),
-    );
+    mockRegionState(stateWith({ '02': { source: DXTR_SOURCE } }));
 
     const sources = await getCaseAppointmentSources(context);
 
@@ -109,7 +109,6 @@ describe('getCaseAppointmentSources', () => {
 
   test('returns an empty list when CAMS office data has no offices', async () => {
     mockOffices([]);
-    mockRegionState(stateWith({}));
 
     const sources = await getCaseAppointmentSources(context);
 
@@ -118,26 +117,41 @@ describe('getCaseAppointmentSources', () => {
 
   test('treats a never-written runtime-state document as every region defaulting to ACMS', async () => {
     mockOffices([makeOffice('02')]);
-    mockRegionStateRepo.read.mockRejectedValue(new NotFoundError('TEST'));
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError('TEST'));
 
     const sources = await getCaseAppointmentSources(context);
 
     expect(sources).toEqual([{ regionId: '02', regionName: 'Region 02', source: 'ACMS' }]);
   });
 
-  test('propagates a getOffices failure rather than swallowing it', async () => {
-    const gatewayError = new Error('DXTR connection failed');
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockRejectedValue(gatewayError),
-    } as unknown as ReturnType<typeof factory.getOfficesGateway>);
+  test.each([
+    {
+      description: 'a getOffices failure',
+      arrange: () =>
+        vi
+          .spyOn(MockOfficesGateway.prototype, 'getOffices')
+          .mockRejectedValue(new Error('DXTR connection failed')),
+      message: 'DXTR connection failed',
+    },
+    {
+      description: 'a non-NotFound runtime-state read failure',
+      arrange: () => {
+        mockOffices([makeOffice('02')]);
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+          new Error('Cosmos throttled'),
+        );
+      },
+      message: 'Cosmos throttled',
+    },
+  ])('wraps $description in a CamsError for this module', async ({ arrange, message }) => {
+    arrange();
 
-    await expect(getCaseAppointmentSources(context)).rejects.toThrow();
-  });
-
-  test('propagates a non-NotFound runtime-state read failure', async () => {
-    mockOffices([makeOffice('02')]);
-    mockRegionStateRepo.read.mockRejectedValue(new Error('Cosmos throttled'));
-
-    await expect(getCaseAppointmentSources(context)).rejects.toThrow();
+    await expect(getCaseAppointmentSources(context)).rejects.toEqual(
+      expect.objectContaining({
+        isCamsError: true,
+        module: 'CASE-APPOINTMENT-SOURCE-USE-CASE',
+        originalError: expect.stringContaining(message),
+      }),
+    );
   });
 });

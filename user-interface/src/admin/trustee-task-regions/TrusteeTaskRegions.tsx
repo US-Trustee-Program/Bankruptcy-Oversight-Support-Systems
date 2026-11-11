@@ -26,15 +26,13 @@ export function TrusteeTaskRegions() {
   async function loadSources() {
     try {
       const response = await Api2.getCaseAppointmentSources();
-      setSources(response.data as RegionCaseAppointmentSource[]);
-      setLoadError(null);
+      setSources(response.data);
     } catch (error) {
       setLoadError((error as Error).message);
     }
   }
 
   useEffect(() => {
-    setIsLoaded(false);
     loadSources().then(() => setIsLoaded(true));
   }, []);
 

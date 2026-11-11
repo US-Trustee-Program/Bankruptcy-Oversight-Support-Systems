@@ -24,27 +24,28 @@ describe('CaseAppointmentSourceController', () => {
   });
 
   describe('authorization', () => {
-    test('throws ForbiddenError when user lacks SuperUser role', async () => {
-      context.session.user.roles = [CamsRole.TrialAttorney];
-      context.request.method = 'GET';
+    test.each([
+      { description: 'lacks the SuperUser role', roles: [CamsRole.TrialAttorney], method: 'GET' },
+      { description: 'has no roles', roles: [], method: 'GET' },
+      { description: 'has an undefined roles list', roles: undefined, method: 'GET' },
+      { description: 'lacks the SuperUser role on a non-GET method', roles: [], method: 'PUT' },
+    ] as const)(
+      'should throw ForbiddenError without reading sources when the user $description',
+      async ({ roles, method }) => {
+        context.session.user.roles = roles ? [...roles] : undefined;
+        context.request.method = method;
+        const useCaseSpy = vi.spyOn(caseAppointmentSourceUseCase, 'getCaseAppointmentSources');
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.FORBIDDEN }),
-      );
-    });
-
-    test('throws ForbiddenError when user has no roles', async () => {
-      context.session.user.roles = [];
-      context.request.method = 'GET';
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.FORBIDDEN }),
-      );
-    });
+        await expect(controller.handleRequest(context)).rejects.toThrow(
+          expect.objectContaining({ status: HttpStatusCodes.FORBIDDEN }),
+        );
+        expect(useCaseSpy).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('handleRequest', () => {
-    test('returns every region source on GET', async () => {
+    test('should return the use case results with meta.self on GET', async () => {
       context.request.method = 'GET';
       vi.spyOn(caseAppointmentSourceUseCase, 'getCaseAppointmentSources').mockResolvedValue(
         mockSources,
@@ -53,10 +54,10 @@ describe('CaseAppointmentSourceController', () => {
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(result.body.data).toEqual(mockSources);
+      expect(result.body).toEqual({ meta: { self: context.request.url }, data: mockSources });
     });
 
-    test('returns method not allowed for a non-GET method', async () => {
+    test('should return method not allowed for a non-GET method', async () => {
       context.request.method = 'PUT';
 
       const result = await controller.handleRequest(context);
@@ -64,12 +65,12 @@ describe('CaseAppointmentSourceController', () => {
       expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
     });
 
-    test('propagates a use case failure', async () => {
+    test('should rethrow a use case failure unchanged', async () => {
       context.request.method = 'GET';
       const error = new Error('Cosmos throttled');
       vi.spyOn(caseAppointmentSourceUseCase, 'getCaseAppointmentSources').mockRejectedValue(error);
 
-      await expect(controller.handleRequest(context)).rejects.toThrow();
+      await expect(controller.handleRequest(context)).rejects.toBe(error);
     });
   });
 });

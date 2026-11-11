@@ -7,6 +7,7 @@ import { RegionCaseAppointmentSource } from '@common/cams/trustee-appointments';
 const mockSources: RegionCaseAppointmentSource[] = [
   { regionId: '02', regionName: 'NEW YORK', source: 'ACMS' },
   { regionId: '03', regionName: 'PHILADELPHIA', source: 'DXTR' },
+  { regionId: '10', regionName: 'INDIANAPOLIS', source: 'ACMS' },
 ];
 
 function renderComponent() {
@@ -52,6 +53,7 @@ describe('TrusteeTaskRegions component', () => {
     await waitFor(() => {
       expect(screen.getByText('2')).toBeInTheDocument();
       expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getByText('10')).toBeInTheDocument();
       expect(screen.queryByText('02')).not.toBeInTheDocument();
     });
   });
@@ -74,13 +76,14 @@ describe('TrusteeTaskRegions component', () => {
     });
   });
 
-  test('should show error alert when fetch fails', async () => {
+  test('should show the load error message instead of the table when fetch fails', async () => {
     vi.spyOn(Api2, 'getCaseAppointmentSources').mockRejectedValue(new Error('network error'));
     renderComponent();
     await waitFor(() => {
-      expect(
-        screen.getByTestId('alert-container-trustee-task-regions-load-error'),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('alert-message-trustee-task-regions-load-error')).toHaveTextContent(
+        'Failed to load region sources. network error',
+      );
     });
+    expect(screen.queryByTestId('trustee-task-regions-table')).not.toBeInTheDocument();
   });
 });

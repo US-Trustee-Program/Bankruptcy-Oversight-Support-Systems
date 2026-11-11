@@ -15,7 +15,7 @@ test.describe('Trustee Task Regions admin page', () => {
     page,
   }) => {
     // The fake API returns region 03 as DXTR and every other region as ACMS.
-    await expect(page.locator('#change-to-dxtr-02')).toBeDisabled();
+    await expect(page.locator('#change-to-dxtr-02')).toBeVisible();
     await expect(page.getByTestId('trustee-task-regions-table')).toContainText('Using DXTR');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();

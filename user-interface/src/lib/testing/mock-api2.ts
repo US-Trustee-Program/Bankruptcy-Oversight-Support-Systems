@@ -2668,7 +2668,7 @@ async function getPrivilegedIdentityUsers() {
   return get<CamsUserReference[]>('/dev-tools/privileged-identity');
 }
 
-/** Every distinct region in the mocked office data, each defaulting to ACMS (none have switched to DXTR). */
+/** Every distinct region in the mocked office data: region 03 on DXTR, every other region on ACMS. */
 function mockedCaseAppointmentSources(): RegionCaseAppointmentSource[] {
   const regionNamesById = new Map<string, string>();
   for (const office of MOCKED_USTP_OFFICES_ARRAY) {
