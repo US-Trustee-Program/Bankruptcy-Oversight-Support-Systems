@@ -50,13 +50,13 @@
     "eslint-plugin-promise": "7.3.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.0"
+    "typescript-eslint": "8.72.1"
   },
   "dependencies": {
     "@azure/functions": "4.17.0",
     "@faker-js/faker": "10.5.0",
     "mongodb": "7.7.0",
-    "mssql": "12.7.11",
+    "mssql": "12.7.13",
     "ts-node": "10.9.2",
     "tsx": "4.23.15"
   }
