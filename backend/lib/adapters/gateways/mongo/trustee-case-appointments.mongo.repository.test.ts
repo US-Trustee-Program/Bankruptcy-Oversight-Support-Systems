@@ -330,9 +330,11 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     // cams-fd8qd.35: a replayed older event for the same court appointment carries no
     // disposition; writing it as given would reopen an appointment the court closed.
     test('keeps a stored unassignedOn when the incoming row has none', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { ...baseAppointment, documentType: 'CASE_APPOINTMENT', unassignedOn: '2024-06-30' },
-      ]);
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([
+          { ...baseAppointment, documentType: 'CASE_APPOINTMENT', unassignedOn: '2024-06-30' },
+        ]);
       const replaceOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
@@ -346,6 +348,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       });
 
       expect(result.unassignedOn).toBe('2024-06-30');
+      // The stored row read is the same appointment the write replaces (its natural key), so a
+      // closure is never carried over from another appointment or document type.
+      expect(findSpy.mock.calls[0][0]).toEqual(replaceOneSpy.mock.calls[0][0]);
       expect(replaceOneSpy).toHaveBeenCalledTimes(2);
       for (const [, document] of replaceOneSpy.mock.calls) {
         expect(document).toEqual(expect.objectContaining({ unassignedOn: '2024-06-30' }));
@@ -354,8 +359,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('writes the incoming unassignedOn without reading the stored row', async () => {
-      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+    test('writes the incoming unassignedOn over a different stored one', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, documentType: 'CASE_APPOINTMENT', unassignedOn: '2024-06-30' },
+      ]);
       const replaceOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
@@ -369,15 +376,35 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         unassignedOn: '2024-07-31',
       });
 
-      expect(findSpy).not.toHaveBeenCalled();
-      expect(replaceOneSpy.mock.calls[0][1]).toEqual(
-        expect.objectContaining({ unassignedOn: '2024-07-31' }),
-      );
+      for (const [, document] of replaceOneSpy.mock.calls) {
+        expect(document).toEqual(expect.objectContaining({ unassignedOn: '2024-07-31' }));
+      }
 
       repo.release();
     });
 
-    test('writes an open row when no stored row for the natural key is closed', async () => {
+    // A failed read must not fall through to writing the row open (cams-fd8qd.35).
+    test('does not write when reading the stored row fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('read failed'),
+      );
+      const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.upsert({ caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' }),
+      ).rejects.toThrow(`Failed to read case appointment for case ${CASE_ID}`);
+      expect(replaceOneSpy).not.toHaveBeenCalled();
+
+      repo.release();
+    });
+
+    test.each([
+      ['no stored row', []],
+      ['a stored open row', [{ ...baseAppointment, documentType: 'CASE_APPOINTMENT' }]],
+    ])('writes an open row when there is %s', async (_label, stored) => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(stored);
       const replaceOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: 'appt-new', modifiedCount: 0, upsertedCount: 1 });
@@ -386,7 +413,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await repo.upsert({ caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' });
 
-      expect(replaceOneSpy.mock.calls[0][1]).not.toHaveProperty('unassignedOn');
+      for (const [, document] of replaceOneSpy.mock.calls) {
+        expect(document).not.toHaveProperty('unassignedOn');
+      }
 
       repo.release();
     });
@@ -904,14 +933,15 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
       const result = await repo.deleteCaseAppointments(filter);
       repo.release();
+      // Both partitions get the same filter, so neither is left with rows the other dropped.
+      expect(deleteManySpy).toHaveBeenCalledTimes(2);
+      expect(deleteManySpy.mock.calls[0][0]).toEqual(deleteManySpy.mock.calls[1][0]);
       return { deleteManySpy, result };
     }
 
     test('deletes placed and parked rows from both partitions and returns the case-partition count', async () => {
       const { deleteManySpy, result } = await deleteWith({});
 
-      expect(deleteManySpy).toHaveBeenCalledTimes(2);
-      expect(deleteManySpy.mock.calls[0][0]).toEqual(deleteManySpy.mock.calls[1][0]);
       // Parked rows (CASE_APPOINTMENT_UNATTACHED) are cleared too, so nothing is left for the
       // heal to re-attach.
       expect(conditionOn(deleteManySpy.mock.calls[0][0], 'documentType')).toEqual(
@@ -957,10 +987,32 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const onAssignedOn = values.filter(
         (v) => (v.leftOperand as { name: string })?.name === 'assignedOn',
       );
-      expect(onAssignedOn).toEqual([
-        expect.objectContaining({ condition: 'GREATER_THAN_OR_EQUAL', rightOperand: '2026-08-01' }),
-        expect.objectContaining({ condition: 'LESS_THAN_OR_EQUAL', rightOperand: '2026-09-30' }),
-      ]);
+      expect(onAssignedOn).toHaveLength(2);
+      expect(onAssignedOn).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            condition: 'GREATER_THAN_OR_EQUAL',
+            rightOperand: '2026-08-01',
+          }),
+          expect.objectContaining({ condition: 'LESS_THAN_OR_EQUAL', rightOperand: '2026-09-30' }),
+        ]),
+      );
+    });
+
+    test('applies the division and date filters together', async () => {
+      const { deleteManySpy } = await deleteWith({
+        divisionCodes: ['081'],
+        from: '2026-08-01',
+        to: '2026-09-30',
+      });
+
+      const query = deleteManySpy.mock.calls[0][0];
+      expect(conditionOn(query, 'documentType')).toBeDefined();
+      expect(conditionOn(query, 'caseId')).toEqual(expect.objectContaining({ condition: 'REGEX' }));
+      const values = (query as { values: Record<string, unknown>[] }).values;
+      expect(
+        values.filter((v) => (v.leftOperand as { name: string })?.name === 'assignedOn'),
+      ).toHaveLength(2);
     });
 
     test('should throw a wrapped error when the trustee-partition delete fails', async () => {
@@ -976,7 +1028,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('should throw a wrapped error when deletion fails', async () => {
+    test('should throw a wrapped error when the case-partition delete fails', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValueOnce(
         new Error('Database connection failed'),
       );

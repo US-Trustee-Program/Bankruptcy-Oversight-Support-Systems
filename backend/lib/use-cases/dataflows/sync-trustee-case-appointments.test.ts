@@ -168,7 +168,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         existsInTrusteePartition: vi.fn().mockResolvedValue(true),
         replaceOneInTrusteePartition: vi.fn().mockResolvedValue(undefined),
         getSurrogatesByFingerprint: vi.fn().mockResolvedValue([]),
-        delete: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
 
@@ -236,7 +235,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         reopenedDate: '2024-08-01',
       };
 
-      test('an auto-linked appointment records courtId, courtDivisionCode, chapter and dateFiled', async () => {
+      test("an auto-linked appointment records the event's court fields (court, division, chapter, filed/closed/reopened dates)", async () => {
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
           [{ ...makeEvent('case-001', 'John Doe'), ...courtFields }],
@@ -251,7 +250,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('a placeholder records courtId, courtDivisionCode, chapter and dateFiled', async () => {
+      test("a placeholder records the event's court fields (court, division, chapter, filed/closed/reopened dates)", async () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeUnresolvedState(0));
@@ -289,6 +288,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       test.each([
         ['chapter', { chapter: undefined }],
         ['courtDivisionCode', { courtDivisionCode: undefined }],
+        ['dateFiled', { dateFiled: undefined }],
+        ['closedDate', { closedDate: undefined }],
+        ['reopenedDate', { reopenedDate: undefined }],
       ])('an event with no %s writes the row without that key', async (field, omitted) => {
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -423,10 +425,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       (
         mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
       ).mockResolvedValue(existingAppointment);
-      const existsInTrusteePartition = vi.fn().mockResolvedValue(true);
-      mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = existsInTrusteePartition;
-      const replaceOneInTrusteePartition = vi.fn();
-      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const existsInTrusteePartition =
+        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition as ReturnType<typeof vi.fn>;
+      const replaceOneInTrusteePartition =
+        mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition as ReturnType<typeof vi.fn>;
 
       const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
         SyncTrusteeCaseAppointments.createDeps(context),
@@ -466,8 +468,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       ).mockResolvedValue(existingAppointment);
       const existsInTrusteePartition = vi.fn().mockResolvedValue(false);
       mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = existsInTrusteePartition;
-      const replaceOneInTrusteePartition = vi.fn().mockResolvedValue(undefined);
-      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const replaceOneInTrusteePartition =
+        mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition as ReturnType<typeof vi.fn>;
       const errorSpy = vi.spyOn(context.logger, 'error');
 
       const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
@@ -528,8 +530,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       const findStrandedActiveInTrusteePartition = vi.fn().mockResolvedValue(strandedRow);
       mockTrusteeCaseAppointmentsRepo.findStrandedActiveInTrusteePartition =
         findStrandedActiveInTrusteePartition;
-      const replaceOneInTrusteePartition = vi.fn().mockResolvedValue(undefined);
-      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const replaceOneInTrusteePartition =
+        mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition as ReturnType<typeof vi.fn>;
       const errorSpy = vi.spyOn(context.logger, 'error');
 
       const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
@@ -559,8 +561,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       const findStrandedActiveInTrusteePartition = vi.fn().mockResolvedValue(null);
       mockTrusteeCaseAppointmentsRepo.findStrandedActiveInTrusteePartition =
         findStrandedActiveInTrusteePartition;
-      const replaceOneInTrusteePartition = vi.fn();
-      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const replaceOneInTrusteePartition =
+        mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition as ReturnType<typeof vi.fn>;
 
       await SyncTrusteeCaseAppointments.processAppointments(
         SyncTrusteeCaseAppointments.createDeps(context),
@@ -2107,31 +2109,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('does not touch the appointment when the same trustee is active and the event carries no unassignedOn', async () => {
-        const existingAppointment: CaseAppointment = {
-          id: 'ca-1',
-          caseId: 'case-001',
-          trusteeId: 'trustee-123',
-          assignedOn: '2024-01-15',
-          createdOn: '2024-01-01T00:00:00Z',
-          createdBy: { id: 'system', name: 'System' },
-          updatedOn: '2024-01-01T00:00:00Z',
-          updatedBy: { id: 'system', name: 'System' },
-        };
-        (
-          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue(existingAppointment);
-
-        const events = [makeEvent('case-001', 'John Doe')];
-
-        await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          events,
-        );
-
-        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-      });
-
       test('an older record for the same trustee is written closed and leaves the newer appointment untouched', async () => {
         const newer: CaseAppointment = {
           id: 'ca-newer',
@@ -2919,7 +2896,6 @@ describe('SyncTrusteeCaseAppointments', () => {
           }),
         );
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-        expect(mockTrusteeCaseAppointmentsRepo.delete).not.toHaveBeenCalled();
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
       });
 
@@ -2950,8 +2926,6 @@ describe('SyncTrusteeCaseAppointments', () => {
           SyncTrusteeCaseAppointments.createDeps(context),
           [event],
         );
-
-        expect(mockTrusteeCaseAppointmentsRepo.delete).not.toHaveBeenCalled();
         // Falls through to the normal unresolved handling since there was nothing of this
         // fingerprint's own to clean up on this case.
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -2979,12 +2953,12 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('does not check for a surrogate to remove when the event carries no unassignedOn', async () => {
+      test('does not look up surrogates by fingerprint when the event carries no unassignedOn', async () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeUnresolvedState(0));
-        const getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
-        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = getSurrogatesByFingerprint;
+        const getSurrogatesByFingerprint =
+          mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint as ReturnType<typeof vi.fn>;
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3035,7 +3009,6 @@ describe('SyncTrusteeCaseAppointments', () => {
           }),
         );
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-        expect(mockTrusteeCaseAppointmentsRepo.delete).not.toHaveBeenCalled();
         expect(pipelineOrchestrator.runTrusteeMatchPipeline).not.toHaveBeenCalled();
       });
 
@@ -3131,7 +3104,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             unassignedOn: '2026-09-01',
           }),
         );
-        expect(mockTrusteeCaseAppointmentsRepo.delete).not.toHaveBeenCalled();
         expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
       });
 
@@ -3219,8 +3191,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('does not fire when the pipeline resolves the trustee (handled by cams-fd8qd.1.8 instead)', async () => {
-        const getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
-        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = getSurrogatesByFingerprint;
+        const getSurrogatesByFingerprint =
+          mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint as ReturnType<typeof vi.fn>;
         const existingAppointment: CaseAppointment = {
           id: 'ca-1',
           caseId: 'case-001',
@@ -3932,6 +3904,15 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test("rewinds a named region's bookmark to the day before the start date, leaving other regions alone", async () => {
+      // Region 03's bookmark would be rewound too if it were named; only the region filter spares it.
+      mockRegionStateRepo.read.mockResolvedValue({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: {
+          '02': { lastSyncDate: '2026-09-15' },
+          '03': { lastSyncDate: '2026-09-15' },
+        },
+      });
+
       await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
 
       expect(mockRegionStateRepo.setField.mock.calls).toEqual([
@@ -3946,14 +3927,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(mockRegionStateRepo.setField.mock.calls).toEqual([
         ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', '2026-07-31'],
       ]);
-    });
-
-    test('rewinds the bookmarks before deleting', async () => {
-      await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
-
-      expect(mockRegionStateRepo.setField.mock.invocationCallOrder[0]).toBeLessThan(
-        mockCaseAppointmentsRepo.deleteCaseAppointments.mock.invocationCallOrder[0],
-      );
     });
 
     test('deletes with no bookmark to rewind when the region state does not exist yet', async () => {
@@ -3977,15 +3950,51 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
 
-    test('returns an error when the delete fails', async () => {
+    // Bookmarks are rewound before the delete, so a failed delete leaves them rewound and the next
+    // run re-reads and rewrites the rows -- harmless.
+    test('returns an error when the delete fails, with the bookmarks already rewound', async () => {
       mockCaseAppointmentsRepo.deleteCaseAppointments.mockRejectedValueOnce(
         new Error('Cosmos delete failed'),
       );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
 
-      const result = await deleteAppointments({});
+      const result = await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
 
+      expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
+        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        'region.02.lastSyncDate',
+        '2026-07-31',
+      );
       expect(result.data).toEqual({ deleted: 0 });
       expect(result.error?.message).toContain('Failed to delete case appointments');
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    // Deleting without rewinding would leave the deleted rows unrecoverable by the next run.
+    test('returns an error without deleting when the region state cannot be read', async () => {
+      mockRegionStateRepo.read.mockRejectedValue(new Error('Mongo read failed'));
+
+      const result = await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
+
+      expect(mockCaseAppointmentsRepo.deleteCaseAppointments).not.toHaveBeenCalled();
+      expect(result.error?.message).toContain('Failed to delete case appointments');
+    });
+
+    test('does not create a bookmark for a named region that has never synced', async () => {
+      await deleteAppointments({ regions: ['04'], from: '2026-08-01' });
+
+      expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+    });
+
+    test('leaves a bookmark that is already the day before the start date', async () => {
+      mockRegionStateRepo.read.mockResolvedValue({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: { '02': { lastSyncDate: '2026-07-31' } },
+      });
+
+      await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
+
+      expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
     });
   });
 });

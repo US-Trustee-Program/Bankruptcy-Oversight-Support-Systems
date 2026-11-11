@@ -23,7 +23,10 @@ describe('parseAcmsTimeoutMs', () => {
   });
 
   test('uses a positive whole number of milliseconds as given', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     expect(parseAcmsTimeoutMs('60000')).toBe(60000);
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   test.each(['abc', '0', '-5'])('defaults to 5 minutes, with a warning, for %j', (raw) => {
@@ -495,18 +498,26 @@ describe('ACMS gateway tests', () => {
     });
 
     test('keeps the given bookmark when no returned date is valid', async () => {
+      // Both sort above the bookmark, as the query's LAST_CHANGE_DATE > @lastChangeDate requires.
       vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: { recordset: [{ caseId: '081-24-00001', lastChangeDate: 0 }] },
+        results: {
+          recordset: [
+            { caseId: '081-24-00001', lastChangeDate: 20261399 },
+            { caseId: '081-24-00002', lastChangeDate: 20260230 },
+          ],
+        },
         message: '',
       });
       const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
       const gateway = new AcmsGatewayImpl(context);
 
       const result = await gateway.getDeletedCaseIds(context, '2026-03-12');
 
-      expect(result.caseIds).toEqual(['081-24-00001']);
+      expect(result.caseIds).toEqual(['081-24-00001', '081-24-00002']);
       expect(result.latestDeletedCaseDate).toBe('2026-03-12');
+      expect(warnSpy).toHaveBeenCalledTimes(2);
     });
 
     test.each([
@@ -600,9 +611,7 @@ describe('ACMS gateway tests', () => {
       // Assert the actual configured value is threaded through, not just any positive number —
       // ACMS_REQUEST_TIMEOUT_MS defaults to 300000ms (5 min) when the env var is unset.
       const timeoutArg = spy.mock.calls[0][3];
-      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
-        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
-        : 300000;
+      const expectedTimeout = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
       expect(timeoutArg).toBe(expectedTimeout);
     });
 
@@ -736,9 +745,9 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain('m.PROF_CODE = p.UST_PROF_CODE');
     });
 
-    // The region and change-date filters each pair a clause with a bound parameter. Without the
-    // clause, a region's sync would read every region's rows; the omit tests below prove an unused
-    // parameter never leaves a dangling @name in the query.
+    // The region and change-date filters each pair a clause with a bound parameter: without the
+    // clause, a region's sync would read every region's rows, or every change date's. (Every caller
+    // passes both today; the omit tests below cover the optional signature until it is tightened.)
     test('should include region filter clause when regionId is provided', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
@@ -904,9 +913,10 @@ describe('ACMS gateway tests', () => {
     });
 
     // These are the rows the sync treats as appointments: not deleted (appointment, case or
-    // professional), a real professional code (not 0 or a 98000+ sentinel), and a trustee
-    // appointment. The test above proves both queries use this one fragment.
-    test('should apply the same row-inclusion filters as getCmmapAppointmentsRaw', async () => {
+    // professional), a real professional code (not 0 or a 98000+ sentinel), a trustee
+    // appointment, and a case still open or closed after 2018. The test above proves both queries
+    // use this one fragment.
+    test('should select live trustee appointments with real professional codes on cases open or closed after 2018', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
@@ -924,6 +934,10 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain("m.APPT_TYPE = 'TR'");
       expect(query).toContain("c.DELETE_CODE != 'D'");
       expect(query).toContain("p.DELETE_CODE != 'D'");
+      expect(query).toContain(
+        'c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101',
+      );
+      expect(query).toContain('c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0');
     });
   });
 
@@ -964,9 +978,7 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain('UST_PROF_CODE > @lastUstProfCode');
 
       const timeoutArg = spy.mock.calls[0][3];
-      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
-        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
-        : 300000;
+      const expectedTimeout = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
       expect(timeoutArg).toBe(expectedTimeout);
     });
 

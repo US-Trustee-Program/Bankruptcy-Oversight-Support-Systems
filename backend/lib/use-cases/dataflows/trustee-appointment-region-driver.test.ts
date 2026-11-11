@@ -414,18 +414,19 @@ describe('RegionDriver.runRegionDriver', () => {
   test('a later region that exhausts the budget continues with only the regions not yet finished', async () => {
     let now = 0;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
-    getLatestCmmapChangeDateForRegion.mockImplementation(async (_context, regionId: string) => {
-      if (regionId === '03') now = 5_000; // region '02' finished within budget; '03' runs out
-      return '2026-07-02';
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-02');
+    const region02 = respectingCursor({ '2026-07-01': makeRawRow(1, '2026-07-01') });
+    getCmmapAppointmentsRaw.mockImplementation(async (...args) => {
+      const rows = await region02(...(args as Parameters<typeof region02>));
+      // Region '02''s last read (its newest date, 07-02, comes back empty) finishes it within
+      // budget; the budget is spent by the time region '03' starts.
+      if (args[5] === '2026-07-02') now = 5_000;
+      return rows;
     });
-    getCmmapAppointmentsRaw.mockImplementation(
-      respectingCursor({ '2026-07-01': makeRawRow(1, '2026-07-01') }),
-    );
 
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      startedAt: 0,
       safeThresholdMs: 1_000,
     });
 
@@ -447,7 +448,9 @@ describe('RegionDriver.runRegionDriver', () => {
     let now = 0;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
-    getCmmapAppointmentsRaw.mockImplementation(async () => {
+    // Only the first page has a row (later calls get the beforeEach default, []), so a broken
+    // budget check fails an assertion instead of paging forever.
+    getCmmapAppointmentsRaw.mockImplementationOnce(async () => {
       now = 5_000;
       return [makeRawRow(1001, '2026-07-01')];
     });
@@ -455,7 +458,6 @@ describe('RegionDriver.runRegionDriver', () => {
     const result = await RegionDriver.runRegionDriver(context, {
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      startedAt: 0,
       safeThresholdMs: 1_000,
     });
 
@@ -495,12 +497,12 @@ describe('RegionDriver.runRegionDriver', () => {
         scenarioDistribution: scenarioWith(),
         retryableEvents: [retryForDay2],
       });
-    const order: string[] = [];
+    const order: unknown[] = [];
     const onDateComplete = vi.fn(async (results) => {
-      order.push(`results:${JSON.stringify(results)}`);
+      order.push({ results });
     });
     mockRegionStateRepo.setField.mockImplementation(async (_type, _path, date) => {
-      order.push(`bookmark:${date}`);
+      order.push({ bookmark: date });
     });
 
     const result = await RegionDriver.runRegionDriver(context, {
@@ -510,11 +512,11 @@ describe('RegionDriver.runRegionDriver', () => {
     });
 
     expect(order).toEqual([
-      `results:${JSON.stringify({ dlqMessages: [dlqForDay1], retryableEvents: [] })}`,
-      'bookmark:2026-07-01',
-      `results:${JSON.stringify({ dlqMessages: [], retryableEvents: [retryForDay2] })}`,
-      'bookmark:2026-07-02',
-      `results:${JSON.stringify({ dlqMessages: [], retryableEvents: [] })}`,
+      { results: { dlqMessages: [dlqForDay1], retryableEvents: [] } },
+      { bookmark: '2026-07-01' },
+      { results: { dlqMessages: [], retryableEvents: [retryForDay2] } },
+      { bookmark: '2026-07-02' },
+      { results: { dlqMessages: [], retryableEvents: [] } },
     ]);
     // Already handed off, so not returned a second time.
     expect(result.dlqMessages).toEqual([]);
@@ -530,7 +532,7 @@ describe('RegionDriver.runRegionDriver', () => {
       successCount: 0,
       dlqMessages: [makeEvent('081-26-00001')],
       scenarioDistribution: scenarioWith(),
-      retryableEvents: [],
+      retryableEvents: [makeEvent('081-26-00002')],
     });
 
     const result = await RegionDriver.runRegionDriver(context, {
@@ -549,6 +551,54 @@ describe('RegionDriver.runRegionDriver', () => {
     // The date is re-read from its start, which regenerates its results -- returning these too
     // would send them twice.
     expect(result.dlqMessages).toEqual([]);
+    expect(result.retryableEvents).toEqual([]);
+  });
+
+  // A part-read date is resumed from its page cursor, so its pages already read are never read
+  // again: their results come back on the result, not through onDateComplete.
+  test("a stop part-way through a date returns that date's results, while finished dates were handed off", async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(
+      async (_context, lastId: number, _size, _cutoff, _region, changeDate: string) => {
+        if (changeDate === '2026-07-01' && lastId === 0) return [makeRawRow(1, '2026-07-01')];
+        if (changeDate === '2026-07-02' && lastId === 0) return [makeRawRow(2, '2026-07-02')];
+        if (changeDate === '2026-07-02') throw new Error('Timeout: query exceeded limit');
+        return [];
+      },
+    );
+    const finishedDlq = makeEvent('081-26-00001');
+    const partialDlq = makeEvent('081-26-00002');
+    processAppointmentsSpy
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [finishedDlq],
+        scenarioDistribution: scenarioWith(),
+        retryableEvents: [],
+      })
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [partialDlq],
+        scenarioDistribution: scenarioWith(),
+        retryableEvents: [],
+      });
+    const onDateComplete = vi.fn().mockResolvedValue(undefined);
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+      onDateComplete,
+    });
+
+    expect(onDateComplete.mock.calls).toEqual([
+      [{ dlqMessages: [finishedDlq], retryableEvents: [] }],
+    ]);
+    expect(result.dlqMessages).toEqual([partialDlq]);
+    expect(result.continuation).toEqual({
+      regions: ['02'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '2' },
+      cause: 'transient-error',
+    });
   });
 
   test('a timeout on a later page stops with a timeout continuation at that cursor and keeps earlier results', async () => {

@@ -153,17 +153,22 @@ describe('shouldSkipAsUstStaff', () => {
     'ALDRIC VEXMORE (UST)',
     'ALDRIC VEXMORE U.S. TRUSTEE',
     'US TRUSTEE',
-    // Spelled out, as ACMS and DXTR both carry it (maintainer decision, PR 3263 review).
+    // Spelled out, as ACMS and DXTR both carry it (maintainer decision, PR 3263 review). The
+    // name-plus-annotation rows are skipped only by the spelled-out branch: a real name is never
+    // "not a person".
     'United States Trustee (NY)',
-    'UNITED STATES TRUSTEE',
+    'ALDRIC VEXMORE, UNITED STATES TRUSTEE',
+    'ALDRIC VEXMORE - United States Trustee',
   ])('skips a U.S. Trustee annotation: "%s"', (fullName) => {
     expect(shouldSkipAsUstStaff(fullName)).toBe(true);
   });
 
-  test.each(['ALDRIC VEXMORE', 'ALDRIC USTRAND', 'ALDRIC STATES TRUSTEE'])(
-    'does not skip "%s"',
-    (fullName) => {
-      expect(shouldSkipAsUstStaff(fullName)).toBe(false);
-    },
-  );
+  test.each([
+    'ALDRIC VEXMORE',
+    'ALDRIC USTRAND',
+    'ALDRIC STATES TRUSTEE',
+    'ALDRIC VEXMORE TRUSTEE',
+  ])('does not skip "%s"', (fullName) => {
+    expect(shouldSkipAsUstStaff(fullName)).toBe(false);
+  });
 });

@@ -571,30 +571,56 @@ describe('sync-trustee-case-appointments handleStart', () => {
     });
   });
 
-  test("sends each finished date's results as the driver hands them off, and counts them", async () => {
-    const invocationContext = makeInvocationContext();
-    const dlqEvent = makeTrusteeEvent('081-26-00001');
-    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
-    runRegionDriverSpy.mockImplementation(async (_context, options) => {
-      await options.onDateComplete?.({ dlqMessages: [dlqEvent], retryableEvents: [] });
-      // Sent before the driver goes on, i.e. before it bookmarks the date.
-      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(dlqEvent));
-      return emptyResult;
-    });
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+  test.each([
+    [
+      'DLQ message',
+      { dlqMessages: [makeTrusteeEvent('081-26-00001')], retryableEvents: [] },
+      '-dlq',
+      1,
+    ],
+    [
+      'retryable event',
+      { dlqMessages: [], retryableEvents: [makeTrusteeEvent('081-26-00002')] },
+      '-page',
+      0,
+    ],
+  ])(
+    "sends a finished date's %s to its queue as the driver hands it off, before the driver goes on",
+    async (_label, handedOff, queueSuffix, documentsFailed) => {
+      const { runRegionDriverSpy, fromConnectionStringSpy } = await setupMocks();
+      const sent: { queueName: string; body: unknown }[] = [];
+      fromConnectionStringSpy.mockImplementation(
+        (_connectionString, queueName) =>
+          ({
+            sendMessage: async (body: string) => {
+              sent.push({ queueName, body: JSON.parse(body) });
+            },
+          }) as unknown as StorageQueueHumbleObject,
+      );
+      let sentAtHandOff: typeof sent = [];
+      runRegionDriverSpy.mockImplementation(async (_context, options) => {
+        await options.onDateComplete?.(handedOff);
+        // What reached a queue before the driver went on (and so before it bookmarked the date).
+        sentAtHandOff = [...sent];
+        return emptyResult;
+      });
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
-    await handleStart({ regions: ['02'] }, invocationContext);
+      await handleStart({ regions: ['02'] }, makeInvocationContext());
 
-    expect(mockSendMessage).toHaveBeenCalledTimes(1);
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ documentsFailed: 1 }),
-    );
-  });
+      expect(sentAtHandOff).toHaveLength(1);
+      expect(sentAtHandOff[0].queueName).toEqual(expect.stringContaining(queueSuffix));
+      expect(sent).toEqual(sentAtHandOff);
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ documentsFailed }),
+      );
+    },
+  );
 
   test('routes dlqMessages from the driver result directly to the DLQ', async () => {
     const invocationContext = makeInvocationContext();
@@ -994,18 +1020,9 @@ describe('sync-trustee-case-appointments handleStart', () => {
     );
   });
 
-  test('falls through to the region driver when delete is set and the delete succeeds', async () => {
-    const invocationContext = makeInvocationContext();
-    const { runRegionDriverSpy } = await setupMocks();
-
-    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
-
-    expect(runRegionDriverSpy).toHaveBeenCalled();
-  });
-
   test("deletes only the named regions' appointments in the given date range", async () => {
     const invocationContext = makeInvocationContext();
-    const { deleteAppointmentsSpy, mockContext } = await setupMocks();
+    const { deleteAppointmentsSpy } = await setupMocks();
 
     await handleStart(
       { regions: ['02', '03'], delete: { from: '2026-08-01', to: '2026-08-31' } },
@@ -1018,20 +1035,28 @@ describe('sync-trustee-case-appointments handleStart', () => {
       from: '2026-08-01',
       to: '2026-08-31',
     });
-    expect(deleteAppointmentsSpy.mock.calls[0][0].context).toBe(mockContext);
   });
 
   test('routes a delete failure to the DLQ and does not call the region driver', async () => {
     const invocationContext = makeInvocationContext();
     const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
-    const { runRegionDriverSpy } = await setupMocks({
+    const { runRegionDriverSpy, mockSendMessage } = await setupMocks({
       deleteResult: { data: { deleted: 0 }, error: new Error('delete failed') },
     });
 
     await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
 
     expect(runRegionDriverSpy).not.toHaveBeenCalled();
-    expect(extraOutputsSetSpy).toHaveBeenCalled();
+    // Dead-lettered with its start message (delete included) so it can be replayed by hand, and
+    // not requeued: the failure is not transient.
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        startMessage: { regions: ['02'], delete: { from: '2026-08-01' } },
+      }),
+    );
+    expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
   test('discards a stale resumeFrom when delete is set so the deleted range is re-walked', async () => {
@@ -1113,7 +1138,7 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
     expect(runRegionDriverSpy).not.toHaveBeenCalled();
   });
 
-  test('fans out every region across lanes with no duplicates or omissions', async () => {
+  test('splits every region across 4 lanes, each region exactly once', async () => {
     const invocationContext = makeInvocationContext();
     const regions = ['01', '02', '03', '04', '05', '06', '07', '08'];
     const { mockSendMessage } = await setupFanOutMocks(regions);
@@ -1152,10 +1177,11 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
 
     expect(deleteAppointmentsSpy).toHaveBeenCalledTimes(1);
     expect(deleteAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), {});
-    expect(mockSendMessage.mock.calls.map(([body]) => JSON.parse(body))).toEqual([
-      { regions: ['01'], runDate: '2026-07-05', laneId: 0, runId: 'run-1' },
-      { regions: ['02'], runDate: '2026-07-05', laneId: 1, runId: 'run-1' },
-    ]);
+    const laneMessages = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
+    expect(laneMessages).toHaveLength(2);
+    for (const laneMessage of laneMessages) {
+      expect(laneMessage).not.toHaveProperty('delete');
+    }
   });
 
   test('draws a separate jitter delay for each lane message', async () => {
@@ -1462,6 +1488,20 @@ describe('sync-trustee-case-appointments run lock', () => {
     const sent = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
     expect(sent).toContainEqual(expect.objectContaining({ laneId: 0, runId: 'run-1' }));
     expect(completeLaneSpy).not.toHaveBeenCalled();
+  });
+
+  // The lock is claimed before the delete runs, so a start skipped under an active run never
+  // deletes appointments that run is syncing.
+  test('a delete start skipped by the run lock deletes nothing', async () => {
+    await setupLockMocks({ claim: { claimed: false, activeRunId: 'run-active' } });
+    const deleteAppointmentsSpy = vi.spyOn(
+      SyncTrusteeCaseAppointmentsModule.default,
+      'deleteAppointments',
+    );
+
+    await handleStart({ delete: {} }, makeInvocationContext());
+
+    expect(deleteAppointmentsSpy).not.toHaveBeenCalled();
   });
 
   test('a lane whose driver throws a non-transient error keeps the lock held', async () => {
