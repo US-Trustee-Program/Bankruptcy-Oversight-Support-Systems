@@ -12,7 +12,7 @@ export type ZoomPhoneConversion =
   | { outcome: 'converted'; newValue: string }
   | { outcome: 'flagged'; reason: string };
 
-const EXTENSION_SUFFIX = /^(.*?)\s*(?:x|ext\.?|extension)\s*(\d+)$/i;
+const EXTENSION_SUFFIX = /^(.*?)\s*(?:x|ext\.?|extension[:.]?)\s*(\d+)$/i;
 const NUMBER_PART_CHARACTERS = /^\+?[\d\s().-]+$/;
 
 /**

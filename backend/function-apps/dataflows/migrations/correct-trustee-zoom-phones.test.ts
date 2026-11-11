@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, MockInstance } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import { Trustee } from '@common/cams/trustees';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -29,6 +29,8 @@ const dlqOutputs = (invocationContext: InvocationContext) =>
 describe('correct-trustee-zoom-phones migration', () => {
   let context: ApplicationContext;
   let invocationContext: InvocationContext;
+  let warn: MockInstance;
+  let info: MockInstance;
   const trustees: Trustee[] = [MockData.getTrustee({ trusteeId: 'trustee-001' })];
 
   const summary = (results: CorrectionResults['results']): CorrectionResults => {
@@ -42,6 +44,8 @@ describe('correct-trustee-zoom-phones migration', () => {
     context = await createMockApplicationContext();
     invocationContext = makeInvocationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
+    warn = vi.spyOn(context.logger, 'warn');
+    info = vi.spyOn(context.logger, 'info');
     vi.spyOn(CorrectTrusteeZoomPhonesUseCase, 'getTrusteesWithZoomInfo').mockResolvedValue({
       data: trustees,
     });
@@ -79,8 +83,6 @@ describe('correct-trustee-zoom-phones migration', () => {
         },
       ]),
     });
-    const warn = vi.spyOn(context.logger, 'warn');
-    const info = vi.spyOn(context.logger, 'info');
 
     await handleStart({}, invocationContext);
 
@@ -124,7 +126,6 @@ describe('correct-trustee-zoom-phones migration', () => {
         },
       ]),
     });
-    const info = vi.spyOn(context.logger, 'info');
 
     await handleStart({}, invocationContext);
 
@@ -150,6 +151,8 @@ describe('correct-trustee-zoom-phones migration', () => {
     expect(dlqOutputs(invocationContext)).toEqual([
       expect.objectContaining({ type: 'QUEUE_ERROR', module: MODULE_NAME, error }),
     ]);
+    expect(warn).not.toHaveBeenCalled();
+    expect(info).not.toHaveBeenCalled();
   });
 
   test('should send a queue error to the DLQ when the correction fails', async () => {
@@ -161,5 +164,7 @@ describe('correct-trustee-zoom-phones migration', () => {
     expect(dlqOutputs(invocationContext)).toEqual([
       expect.objectContaining({ type: 'QUEUE_ERROR', module: MODULE_NAME, error }),
     ]);
+    expect(warn).not.toHaveBeenCalled();
+    expect(info).not.toHaveBeenCalled();
   });
 });

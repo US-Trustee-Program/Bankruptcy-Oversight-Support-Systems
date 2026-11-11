@@ -57,6 +57,9 @@ describe('CorrectTrusteeZoomPhones use case', () => {
     test('should convert, skip, and flag phones and report counts', async () => {
       const setZoomInfo = vi.spyOn(repo, 'setZoomInfo').mockResolvedValue(undefined);
       const updateTrustee = vi.spyOn(TrusteesUseCase.prototype, 'updateTrustee');
+      const createTrusteeHistory = vi
+        .spyOn(repo, 'createTrusteeHistory')
+        .mockResolvedValue(undefined);
       const trustees = [
         trusteeWithPhone('trustee-001', '(680) 214-4529'),
         trusteeWithPhone('trustee-002', '680-214-4529'),
@@ -85,13 +88,13 @@ describe('CorrectTrusteeZoomPhones use case', () => {
           trusteeId: 'trustee-003',
           storedValue: '214-45',
           outcome: 'flagged',
-          reason: expect.any(String),
+          reason: 'Zoom phone has 5 digits.',
         }),
         expect.objectContaining({
           trusteeId: 'trustee-004',
           storedValue: undefined,
           outcome: 'flagged',
-          reason: expect.any(String),
+          reason: 'Zoom phone is empty or missing.',
         }),
       ]);
       expect(setZoomInfo).toHaveBeenCalledTimes(1);
@@ -100,6 +103,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         phone: '680-214-4529',
       });
       expect(updateTrustee).not.toHaveBeenCalled();
+      expect(createTrusteeHistory).not.toHaveBeenCalled();
     });
 
     test('should record a failed write and continue with the remaining trustees', async () => {
@@ -168,6 +172,8 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       ['6802144529', '680-214-4529'],
       ['(680) 214-4529 ext. 55', '680-214-4529 x55'],
       ['(680) 214-4529 extension 55', '680-214-4529 x55'],
+      ['(680) 214-4529 extension: 55', '680-214-4529 x55'],
+      ['(680) 214-4529 extension. 55', '680-214-4529 x55'],
       ['1 (680) 214-4529', '1-680-214-4529'],
       ['+1 (680) 214-4529', '1-680-214-4529'],
       [' 680-214-4529 ', '680-214-4529'],
@@ -179,22 +185,23 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       expect(convertZoomPhone(expected)).toEqual({ outcome: 'alreadyValid' });
     });
 
-    test.each([
-      ['214-45'],
-      ['680-214-452'],
-      ['2-680-214-4529'],
-      ['680-214-45299'],
-      ['CALL-ME-NOW'],
-      ['(680) 214-4529 x1234567'],
-      ['+2 (680) 214-4529'],
-      [''],
-      ['   '],
-      [undefined],
-    ])('should flag %j for review', (stored) => {
-      const result = convertZoomPhone(stored);
+    const EMPTY = 'Zoom phone is empty or missing.';
+    const UNEXPECTED = 'Zoom phone contains unexpected characters.';
+    const BAD_FORMAT = 'Converted Zoom phone does not match the phone format.';
 
-      expect(result.outcome).toBe('flagged');
-      expect(result).toHaveProperty('reason', expect.any(String));
+    test.each([
+      ['214-45', 'Zoom phone has 5 digits.'],
+      ['680-214-452', 'Zoom phone has 9 digits.'],
+      ['2-680-214-4529', 'Zoom phone has 11 digits.'],
+      ['680-214-45299', 'Zoom phone has 11 digits.'],
+      ['+2 (680) 214-4529', 'Zoom phone has 11 digits.'],
+      ['CALL-ME-NOW', UNEXPECTED],
+      ['(680) 214-4529 x1234567', BAD_FORMAT],
+      ['', EMPTY],
+      ['   ', EMPTY],
+      [undefined, EMPTY],
+    ])('should flag %j for review: %s', (stored, reason) => {
+      expect(convertZoomPhone(stored)).toEqual({ outcome: 'flagged', reason });
     });
   });
 });

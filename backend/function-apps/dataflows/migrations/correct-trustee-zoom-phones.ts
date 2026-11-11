@@ -45,7 +45,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 
   const correctionResult = await CorrectTrusteeZoomPhonesUseCase.correctZoomPhones(
     context,
-    trusteesResult.data ?? [],
+    trusteesResult.data,
   );
   if (correctionResult.error) {
     invocationContext.extraOutputs.set(
