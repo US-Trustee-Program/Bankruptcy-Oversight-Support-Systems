@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './TrusteeTaskRegions.scss';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -49,32 +50,36 @@ export function TrusteeTaskRegions() {
         />
       )}
       {isLoaded && !loadError && (
-        <CamsTable aria-label="Trustee Task Regions" data-testid="trustee-task-regions-table">
-          <CamsTableHeader>
-            <CamsTableHeaderCell>Region</CamsTableHeaderCell>
-            <CamsTableHeaderCell>Source</CamsTableHeaderCell>
-          </CamsTableHeader>
-          <CamsTableBody>
-            {sources.map((source) => (
-              <CamsTableRow key={source.regionId}>
-                <CamsTableCell data-cell="Region">{formatRegionId(source.regionId)}</CamsTableCell>
-                <CamsTableCell data-cell="Source">
-                  {source.source === 'DXTR' ? (
-                    'Using DXTR'
-                  ) : (
-                    <Button
-                      id={`change-to-dxtr-${source.regionId}`}
-                      uswdsStyle={UswdsButtonStyle.Default}
-                      disabled
-                    >
-                      Change to DXTR
-                    </Button>
-                  )}
-                </CamsTableCell>
-              </CamsTableRow>
-            ))}
-          </CamsTableBody>
-        </CamsTable>
+        <div className="trustee-task-regions-table-container">
+          <CamsTable aria-label="Trustee Task Regions" data-testid="trustee-task-regions-table">
+            <CamsTableHeader>
+              <CamsTableHeaderCell>Region</CamsTableHeaderCell>
+              <CamsTableHeaderCell>Source</CamsTableHeaderCell>
+            </CamsTableHeader>
+            <CamsTableBody>
+              {sources.map((source) => (
+                <CamsTableRow key={source.regionId}>
+                  <CamsTableCell data-cell="Region">
+                    {formatRegionId(source.regionId)}
+                  </CamsTableCell>
+                  <CamsTableCell data-cell="Source">
+                    {source.source === 'DXTR' ? (
+                      'Using DXTR'
+                    ) : (
+                      <Button
+                        id={`change-to-dxtr-${source.regionId}`}
+                        uswdsStyle={UswdsButtonStyle.Default}
+                        disabled
+                      >
+                        Change to DXTR
+                      </Button>
+                    )}
+                  </CamsTableCell>
+                </CamsTableRow>
+              ))}
+            </CamsTableBody>
+          </CamsTable>
+        </div>
       )}
     </div>
   );

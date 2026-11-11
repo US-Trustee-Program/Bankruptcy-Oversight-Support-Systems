@@ -558,10 +558,7 @@ async function getPrivilegedIdentityUsers() {
 }
 
 async function getCaseAppointmentSources() {
-  const path = '/dev-tools/case-appointment-source';
-  return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<
-    RegionCaseAppointmentSource[]
-  >(path);
+  return api().get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
 async function getPrivilegedIdentityUser(userId: string) {
