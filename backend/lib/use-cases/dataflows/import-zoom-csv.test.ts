@@ -178,7 +178,10 @@ describe('import-zoom-csv', () => {
       );
     });
 
-    test('should reject malformed passcode and not update trustee', async () => {
+    test.each([
+      { field: 'passcode', override: { passcode: 'abc123' } },
+      { field: 'phone', override: { phone: '(680) 214-4529' } },
+    ])('should reject malformed $field and not update trustee', async ({ override }) => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
@@ -188,7 +191,7 @@ describe('import-zoom-csv', () => {
         .mockResolvedValue(MOCK_TRUSTEE);
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      const result = await processZoomMatchedRow(context, { ...row, passcode: 'abc123' });
+      const result = await processZoomMatchedRow(context, { ...row, ...override });
 
       expect(result.outcome).toBe('error');
       expect(updateSpy).not.toHaveBeenCalled();

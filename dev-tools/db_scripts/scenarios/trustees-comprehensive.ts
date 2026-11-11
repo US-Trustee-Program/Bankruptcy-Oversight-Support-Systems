@@ -2,7 +2,7 @@
  * Scenario: trustees-comprehensive
  * Database: cams only
  *
- * Seeds 35 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
+ * Seeds 41 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
  *   - New York: 35 trustees, using only division codes 081 (Southern District,
@@ -31,6 +31,10 @@
  *   - Multi-court trustee (1 trustee): Patricia Manhattan holds 6 separate
  *     single-division appointments across NY, CA, ID, and IA courts
  *   - Mix of active and inactive statuses
+ *
+ * Zoom Phone Correction (CAMS-975):
+ *   - 6 Zoomfix trustees (seed-trustee-cams975-01..06) with Zoom phones in the
+ *     format the Zoom Info Import stored before validation, plus one valid phone
  *
  * NOTE: Uses CAMS-only seeding pattern - no DXTR seeding required.
  */
@@ -1202,6 +1206,44 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       status: 'active',
     }),
   );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CAMS-975: Zoom phones stored in a non-conforming format
+  // ═══════════════════════════════════════════════════════════════════════════
+  // The Zoom Info Import stored unvalidated phones like "(680) 214-4529", which fail
+  // PHONE_REGEX and block saving Zoom info. These trustees reproduce that state for the
+  // CORRECT-TRUSTEE-ZOOM-PHONES migration (docs/operations/correct-trustee-zoom-phones.md).
+  // Every other Zoom field is valid, so only the phone can block a save. mongoUpsert
+  // bypasses validation, so the bad phones are stored as written; re-seeding restores
+  // them for another pass. No appointments: the Zoom edit form does not need any.
+  const cams975ZoomPhones: Array<{ firstName: string; phone: string }> = [
+    { firstName: 'Alpha', phone: '(680) 214-4529' }, // converts to 680-214-4529
+    { firstName: 'Bravo', phone: '(680)214-4529' }, // converts to 680-214-4529
+    { firstName: 'Charlie', phone: '(680) 214-4529 x123' }, // converts to 680-214-4529 x123
+    { firstName: 'Delta', phone: '214-45' }, // flagged for review
+    { firstName: 'Echo', phone: '' }, // flagged for review
+    { firstName: 'Foxtrot', phone: '680-214-4529' }, // already valid
+  ];
+  cams975ZoomPhones.forEach(({ firstName, phone }, index) => {
+    const n = String(index + 1).padStart(2, '0');
+    trustees.push(
+      createTrustee({
+        id: `seed-trustee-cams975-${n}`,
+        firstName,
+        lastName: 'Zoomfix',
+        status: 'active',
+        state: 'NY',
+        city: 'New York',
+        zoomInfo: {
+          link: `https://zoom.us/j/68021445${n}`,
+          phone,
+          meetingId: `68021445${n}`,
+          passcode: `00000000${n}`,
+          accountEmail: `${firstName.toLowerCase()}.zoomfix@example.com`,
+        },
+      }),
+    );
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Return Operations
