@@ -31,6 +31,7 @@ import {
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import DateHelper from '@common/date-helper';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -722,6 +723,7 @@ function createDeps(context: ApplicationContext) {
     variationRepo: factory.getTrusteeVariationRepository(context),
     professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
     regionStateRepo: factory.getRuntimeStateRepository<TrusteeAppointmentRegionSyncState>(context),
+    officesGateway: factory.getOfficesGateway(context),
   };
 }
 
@@ -800,12 +802,18 @@ export function assertValidChapter(caseId: string, chapter: string): CaseChapter
  */
 function courtFieldsFromEvent(
   event: TrusteeAppointmentSyncEvent,
-): Pick<CaseAppointmentInput, 'courtId' | 'courtDivisionCode' | 'chapter' | 'dateFiled'> {
+): Pick<
+  CaseAppointmentInput,
+  'courtId' | 'courtDivisionCode' | 'chapter' | 'dateFiled' | 'closedDate' | 'reopenedDate'
+> {
   return {
     courtId: event.courtId,
     ...(event.courtDivisionCode ? { courtDivisionCode: event.courtDivisionCode } : {}),
     ...(event.chapter ? { chapter: assertValidChapter(event.caseId, event.chapter) } : {}),
     ...(event.dateFiled ? { dateFiled: event.dateFiled } : {}),
+    // The repository derives caseStatus from these (cams-fd8qd.37).
+    ...(event.closedDate ? { closedDate: event.closedDate } : {}),
+    ...(event.reopenedDate ? { reopenedDate: event.reopenedDate } : {}),
   };
 }
 
@@ -1746,24 +1754,84 @@ async function processAppointments(
   };
 }
 
-async function deleteAll(
+type DeleteAppointmentsOptions = {
+  /** Regions whose appointments are deleted; every region when absent. */
+  regions?: string[];
+  /** Only appointments assigned on or after this ISO date. */
+  from?: string;
+  /** Only appointments assigned on or before this ISO date. */
+  to?: string;
+};
+
+/** Division codes (a caseId's leading code) of the given regions, from CAMS office data. */
+async function divisionCodesForRegions(
   deps: SyncTrusteeCaseAppointmentsDeps,
+  regions: string[],
+): Promise<string[]> {
+  const offices = await deps.officesGateway.getOffices(deps.context);
+  const codes = offices
+    .filter((office) => regions.includes(office.regionId.padStart(2, '0')))
+    .flatMap((office) => office.groups.flatMap((group) => group.divisions))
+    .map((division) => division.divisionCode);
+  return [...new Set(codes)];
+}
+
+/**
+ * Rewinds each affected region's bookmark to the day before `from` (or clears it with no `from`)
+ * so the next run re-reads the source from there and replaces what was deleted. A bookmark that
+ * is already earlier is left alone.
+ */
+async function rewindRegionBookmarks(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  options: DeleteAppointmentsOptions,
+): Promise<void> {
+  let state: TrusteeAppointmentRegionSyncState;
+  try {
+    state = await deps.regionStateRepo.read('TRUSTEE_APPOINTMENT_REGION_SYNC_STATE');
+  } catch (error) {
+    if (isNotFoundError(error)) return;
+    throw error;
+  }
+  const rewindTo = options.from ? DateHelper.subtractDays(options.from, 1) : null;
+  for (const regionId of options.regions ?? Object.keys(state.region)) {
+    const bookmark = state.region[regionId]?.lastSyncDate;
+    if (bookmark && (rewindTo === null || bookmark > rewindTo)) {
+      await deps.regionStateRepo.setField(
+        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        `region.${regionId}.lastSyncDate`,
+        rewindTo,
+      );
+    }
+  }
+}
+
+/**
+ * Deletes the appointments an operator names -- by region and by assignedOn date range, both
+ * optional -- regardless of how each row was first loaded, and rewinds the regions' bookmarks so
+ * the sync replaces them. Bookmarks are rewound first: if the delete then fails, the next run
+ * re-reads and rewrites the rows, which is harmless.
+ */
+async function deleteAppointments(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  options: DeleteAppointmentsOptions,
 ): Promise<{ data: { deleted: number }; error?: Error }> {
   const { context } = deps;
   try {
-    await deps.regionStateRepo.delete('TRUSTEE_APPOINTMENT_REGION_SYNC_STATE');
-    const deleted = await deps.caseAppointmentsRepo.deleteAll();
+    await rewindRegionBookmarks(deps, options);
+    const deleted = await deps.caseAppointmentsRepo.deleteCaseAppointments({
+      ...(options.regions
+        ? { divisionCodes: await divisionCodesForRegions(deps, options.regions) }
+        : {}),
+      ...(options.from ? { from: options.from } : {}),
+      ...(options.to ? { to: options.to } : {}),
+    });
     context.logger.info(
       MODULE_NAME,
-      `deleteAll: removed ${deleted} case appointment records and reset region sync state.`,
+      `deleteAppointments: removed ${deleted} case appointment records (regions ${options.regions?.join(',') ?? 'all'}, assigned ${options.from ?? 'any'} to ${options.to ?? 'any'}) and rewound region bookmarks.`,
     );
     return { data: { deleted } };
   } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      'Failed to delete all case appointments.',
-    );
+    const error = getCamsError(originalError, MODULE_NAME, 'Failed to delete case appointments.');
     context.logger.camsError(error);
     return { data: { deleted: 0 }, error };
   }
@@ -1772,7 +1840,7 @@ async function deleteAll(
 const SyncTrusteeCaseAppointments = {
   createDeps,
   processAppointments,
-  deleteAll,
+  deleteAppointments,
 };
 
 export default SyncTrusteeCaseAppointments;

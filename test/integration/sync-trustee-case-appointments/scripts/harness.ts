@@ -81,6 +81,7 @@ import {
   runRegionDriver,
   seedRegionState,
   readRegionBookmark,
+  deleteAppointments,
 } from './bindings';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -830,6 +831,33 @@ async function seedEventDerivedState(
 // Source read (the "When")
 // ---------------------------------------------------------------------------
 
+/**
+ * Every page the source returns for one region and change date: the converted events, and the rows
+ * it could not convert. Production (the region driver) sends each failure to the DLQ on its own
+ * (cams-fd8qd.24), so the harness counts them as DLQ entries.
+ */
+async function readSource(
+  context: ApplicationContext,
+  source: TrusteeAppointmentSource,
+  lane: Lane,
+  region: string,
+  changeDate: string,
+): Promise<{ events: TrusteeAppointmentSyncEvent[]; failures: number }> {
+  // The DXTR read is "transactions AFTER this date" (TX_DATE > start), so ask from the day before.
+  const readDate = lane === 'DXTR' ? DateHelper.subtractDays(changeDate, 1) : changeDate;
+  const events: TrusteeAppointmentSyncEvent[] = [];
+  let failures = 0;
+  let lastId: string | undefined;
+  for (let page = 0; page < 10000; page += 1) {
+    const result = await source.getEventsForDate(context, region, readDate, lastId);
+    events.push(...result.events);
+    failures += result.failures.length;
+    if (!result.lastId) return { events, failures };
+    lastId = result.lastId;
+  }
+  throw new Error('Source paging did not terminate after 10000 pages');
+}
+
 async function readEvents(
   context: ApplicationContext,
   source: TrusteeAppointmentSource,
@@ -837,17 +865,7 @@ async function readEvents(
   region: string,
   changeDate: string,
 ): Promise<TrusteeAppointmentSyncEvent[]> {
-  // The DXTR read is "transactions AFTER this date" (TX_DATE > start), so ask from the day before.
-  const readDate = lane === 'DXTR' ? DateHelper.subtractDays(changeDate, 1) : changeDate;
-  const events: TrusteeAppointmentSyncEvent[] = [];
-  let lastId: string | undefined;
-  for (let page = 0; page < 10000; page += 1) {
-    const result = await source.getEventsForDate(context, region, readDate, lastId);
-    events.push(...result.events);
-    if (!result.lastId) return events;
-    lastId = result.lastId;
-  }
-  throw new Error('Source paging did not terminate after 10000 pages');
+  return (await readSource(context, source, lane, region, changeDate)).events;
 }
 
 // ---------------------------------------------------------------------------
@@ -1175,11 +1193,17 @@ async function runScenarioLane(
             'When',
             `${s.passes.length > 1 ? `pass ${i + 1}: ` : ''}the ${lane} source is read for region ${region} on ${pass.changeDate} and the sync runs (${pass.rows.length} source row(s))`,
           );
-          const events = await readEvents(context, source, lane, region, pass.changeDate);
+          const { events, failures } = await readSource(
+            context,
+            source,
+            lane,
+            region,
+            pass.changeDate,
+          );
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
           await assertExpect(r, context, db, expectFor(pass, s, lane), {
             events: events.length,
-            dlq: result.dlqMessages.length,
+            dlq: failures + result.dlqMessages.length,
             parked: result.scenarioDistribution.parkedCount,
           });
         }
@@ -1224,11 +1248,12 @@ async function runQueryGrounding(context: ApplicationContext, s: Scenario): Prom
           region,
           pass.changeDate,
         );
-        r.step('Then', `${pass.expect.sourceEvents} row(s) are returned`);
+        const expectedRows = pass.expect.sourceRows ?? pass.expect.sourceEvents;
+        r.step('Then', `${expectedRows} row(s) are returned`);
         r.check(
-          rows.length === pass.expect.sourceEvents,
+          rows.length === expectedRows,
           `${rows.length} row(s)`,
-          `returned ${rows.length}, expected ${pass.expect.sourceEvents}`,
+          `returned ${rows.length}, expected ${expectedRows}`,
         );
       }
     } finally {
@@ -1261,7 +1286,17 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
       await renderDxtr(dxtr, s.cases, dxtrRows, s.runDate);
       await seedRegionState(db, { bookmarks: s.bookmarks, switchedToDxtr: s.switchedToDxtr });
 
-      r.step('When', `the driver runs on ${s.runDate} for region(s) ${s.regions.join(', ')}`);
+      if (s.delete) {
+        r.step(
+          'When',
+          `an operator deletes region(s) ${s.regions.join(', ')} appointments assigned ${s.delete.from ?? 'any time'} to ${s.delete.to ?? 'any time'}`,
+        );
+        await deleteAppointments(context, { regions: s.regions, ...s.delete });
+      }
+      r.step(
+        s.delete ? 'And' : 'When',
+        `the driver runs on ${s.runDate} for region(s) ${s.regions.join(', ')}`,
+      );
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
 
       for (const [caseId, expected] of Object.entries(s.expect.written)) {
@@ -1279,6 +1314,13 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) is untouched`);
         const n = await db.collection('case-trustee-appointments').countDocuments({ caseId });
         r.check(n === 0, 'untouched', `${n} appointment(s) written`);
+      }
+      for (const caseId of s.expect.deleted ?? []) {
+        r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) has no appointment left`);
+        const n =
+          (await db.collection('case-trustee-appointments').countDocuments({ caseId })) +
+          (await db.collection('trustee-case-appointments').countDocuments({ caseId }));
+        r.check(n === 0, 'deleted from both partitions', `${n} appointment(s) remain`);
       }
       await assertUntouched(r, db, s.expect.kept ?? []);
       for (const [region, expected] of Object.entries(s.expect.bookmarks)) {
@@ -1606,9 +1648,10 @@ async function run() {
     }
   }
 
-  if (!only && (!lane || lane === 'ACMS')) {
-    line('\n=== Region driver: bookmark, catch-up and source routing ===');
-    for (const d of DRIVER_SCENARIOS) {
+  const drivers = DRIVER_SCENARIOS.filter((d) => !only || d.key === only);
+  if (drivers.length > 0 && (!lane || lane === 'ACMS')) {
+    line('\n=== Region driver: bookmark, catch-up, source routing and operator delete ===');
+    for (const d of drivers) {
       if (region && !d.regions.includes(region)) continue;
       await runDriverScenario(context, d);
     }

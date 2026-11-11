@@ -778,6 +778,10 @@ export class MockMongoRepository
     return Promise.resolve(count);
   }
 
+  deleteCaseAppointments(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
+  }
+
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }

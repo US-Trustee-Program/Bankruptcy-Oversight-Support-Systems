@@ -12,6 +12,14 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import DateHelper from '@common/date-helper';
+import { computeBackoffSeconds, RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
+import {
+  handleHeal,
+  handlePage,
+  handleStart,
+  healTimerTrigger,
+  timerTrigger,
+} from './sync-trustee-case-appointments';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -54,7 +62,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should process events and emit success telemetry', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001'), makeTrusteeEvent('001-25-00002')];
     const message = { events };
     const invocationContext = makeInvocationContext();
@@ -90,7 +97,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should surface fingerprintHitCount/fingerprintMissCount in the dataflow-run summary and metrics', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [
       makeTrusteeEvent('001-25-00001'),
       makeTrusteeEvent('001-25-00002'),
@@ -138,6 +144,89 @@ describe('sync-trustee-case-appointments handlePage', () => {
     );
   });
 
+  test('reports each scenario count and the auto-match rate in the dataflow-run summary and metrics', async () => {
+    const events = Array.from({ length: 8 }, (_, i) => makeTrusteeEvent(`001-25-0000${i + 1}`));
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
+      successCount: 8,
+      dlqMessages: [],
+      scenarioDistribution: {
+        ...makeEmptyScenarioDistribution(),
+        autoMatchCount: 2,
+        autoMatchUncoveredCount: 1,
+        noMatchCount: 3,
+        multipleMatchCount: 4,
+        pipelineSkippedCount: 5,
+        reVerificationCount: 6,
+        verificationBucketHitCount: 7,
+      },
+      retryableEvents: [],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePage({ events }, makeInvocationContext());
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handlePage',
+      expect.anything(),
+      expect.objectContaining({
+        details: expect.objectContaining({
+          totalEvents: '8',
+          autoMatchCount: '2',
+          autoMatchUncoveredCount: '1',
+          noMatchCount: '3',
+          multipleMatchCount: '4',
+          pipelineSkippedCount: '5',
+          reVerificationCount: '6',
+          verificationBucketHitCount: '7',
+        }),
+        additionalMetrics: expect.arrayContaining([
+          { name: 'TrusteeAutoMatchRate', value: 25 },
+          { name: 'TrusteeTotalEventsProcessed', value: 8 },
+          { name: 'TrusteePipelineSkippedCount', value: 5 },
+          { name: 'TrusteeReVerificationCount', value: 6 },
+          { name: 'TrusteeVerificationBucketHitCount', value: 7 },
+        ]),
+      }),
+    );
+  });
+
+  test('reports zero rates, not NaN, for a page with no events', async () => {
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      retryableEvents: [],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePage({ events: [] }, makeInvocationContext());
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handlePage',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        details: expect.objectContaining({ totalEvents: '0' }),
+        additionalMetrics: expect.arrayContaining([
+          { name: 'TrusteeAutoMatchRate', value: 0 },
+          { name: 'TrusteeFingerprintHitRate', value: 0 },
+        ]),
+      }),
+    );
+  });
+
   test.each([
     {
       field: 'retryableCount',
@@ -148,7 +237,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   ])(
     'should surface $field in the dataflow-run summary and metrics',
     async ({ field, metric, retryableEvents }) => {
-      const { handlePage } = await import('./sync-trustee-case-appointments');
       vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
         successCount: 1,
         dlqMessages: [],
@@ -181,7 +269,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
 
   test('should throw when AzureWebJobsDataflowsStorage is not configured', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events };
     const invocationContext = makeInvocationContext();
@@ -192,7 +279,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events, retryCount: 0 };
     const invocationContext = makeInvocationContext();
@@ -226,7 +312,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events, retryCount: 10 };
     const invocationContext = makeInvocationContext();
@@ -259,7 +344,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should re-throw on non-429 error', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events };
     const invocationContext = makeInvocationContext();
@@ -276,8 +360,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should requeue retryableEvents with an exponential backoff (+/-10% jitter) visibility delay and an incremented retryableRetryCount', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
-    const { computeBackoffSeconds } = await import('../dataflows-rate-limit');
     // Stub the jitter entropy source so the visibility timeout is deterministic. This asserts an
     // exact value again (rand=0 -> low end of the jitter band), but against
     // computeBackoffSecondsWithJitter's contract rather than the pre-jitter formula, so it stays
@@ -318,7 +400,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should surface the incoming retryableRetryCount as a retry-depth metric when requeuing', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const retryableEvent = makeTrusteeEvent('001-25-00005');
     // Page arrives already at retry depth 3 -- a prior invocation requeued it twice before.
     const message = { events: [retryableEvent], retryableRetryCount: 3 };
@@ -355,8 +436,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should route retryableEvents to DLQ instead of retrying once the rate-limit retry limit is exceeded', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
-    const { RATE_LIMIT_RETRY_LIMIT } = await import('../dataflows-rate-limit');
     const retryableEvent = makeTrusteeEvent('001-25-00005');
     const message = { events: [retryableEvent], retryableRetryCount: RATE_LIMIT_RETRY_LIMIT };
     const invocationContext = makeInvocationContext();
@@ -390,7 +469,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
   });
 
   test('should not retry or DLQ a transferred-case skip', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
     const message = { events: [makeTrusteeEvent('001-25-00004')] };
     const invocationContext = makeInvocationContext();
 
@@ -436,7 +514,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
         cause: 'invocation-budget' | 'transient-error';
       };
     };
-    deleteAllResult?: { data: { deleted: number }; error?: Error };
+    deleteResult?: { data: { deleted: number }; error?: Error };
   }) {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -448,18 +526,23 @@ describe('sync-trustee-case-appointments handleStart', () => {
       runId: 'run-1',
     });
     vi.spyOn(TrusteeAppointmentSyncRun, 'completeLane').mockResolvedValue(undefined);
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll').mockResolvedValue(
-      overrides?.deleteAllResult ?? { data: { deleted: 0 } },
-    );
+    const deleteAppointmentsSpy = vi
+      .spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAppointments')
+      .mockResolvedValue(overrides?.deleteResult ?? { data: { deleted: 0 } });
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
     const fromConnectionStringSpy = vi
       .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
       .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
-    return { mockContext, mockSendMessage, fromConnectionStringSpy, runRegionDriverSpy };
+    return {
+      mockContext,
+      mockSendMessage,
+      fromConnectionStringSpy,
+      runRegionDriverSpy,
+      deleteAppointmentsSpy,
+    };
   }
 
   test('calls the region driver with the named regions and a default run date', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy, mockContext } = await setupMocks();
 
@@ -474,7 +557,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('passes an explicit runDate and resumeFrom through unchanged', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy, mockContext } = await setupMocks();
     const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
@@ -485,11 +567,36 @@ describe('sync-trustee-case-appointments handleStart', () => {
       regions: ['02'],
       runDate: '2026-07-05',
       resumeFrom,
+      onDateComplete: expect.any(Function),
     });
   });
 
+  test("sends each finished date's results as the driver hands them off, and counts them", async () => {
+    const invocationContext = makeInvocationContext();
+    const dlqEvent = makeTrusteeEvent('081-26-00001');
+    const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
+    runRegionDriverSpy.mockImplementation(async (_context, options) => {
+      await options.onDateComplete?.({ dlqMessages: [dlqEvent], retryableEvents: [] });
+      // Sent before the driver goes on, i.e. before it bookmarks the date.
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(dlqEvent));
+      return emptyResult;
+    });
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({ regions: ['02'] }, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ documentsFailed: 1 }),
+    );
+  });
+
   test('routes dlqMessages from the driver result directly to the DLQ', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const dlqEvent = makeTrusteeEvent('081-26-00001');
     const { mockSendMessage } = await setupMocks({
@@ -502,7 +609,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('queues retryable events onto the page queue for handlePage to retry', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const retryableEvent = makeTrusteeEvent('081-26-00002');
     const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({
       runRegionDriverResult: { ...emptyResult, retryableEvents: [retryableEvent] },
@@ -519,7 +625,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('dead-letters a retryable event too large for one queue message instead of paging it', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const oversized = {
       ...makeTrusteeEvent('081-26-00009'),
       sourceTrustee: { fullName: 'x'.repeat(70_000) },
@@ -541,7 +646,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('reports the parked count in the trace details', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     await setupMocks({ runRegionDriverResult: { ...emptyResult, parkedCount: 4 } });
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
@@ -562,7 +666,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('re-enqueues a continuation message to the START queue when the driver escapes', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const continuation = {
       regions: ['02', '03'],
@@ -586,7 +689,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('re-enqueues a transient-error continuation with the resume point, count + 1, and a 300s delay when nothing progressed', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
     const { mockSendMessage } = await setupMocks({
@@ -634,7 +736,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   ])(
     'resets the transient retry count to 1 when $description since the incoming message',
     async ({ incomingRegions, continuedResumeFrom, continuedRegions }) => {
-      const { handleStart } = await import('./sync-trustee-case-appointments');
       const invocationContext = makeInvocationContext();
       const { mockSendMessage } = await setupMocks({
         runRegionDriverResult: {
@@ -668,7 +769,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   ])(
     'requeues a transient continuation with no progress when the incoming count is $incomingCount (sends $sentCount)',
     async ({ incomingCount, sentCount }) => {
-      const { handleStart } = await import('./sync-trustee-case-appointments');
       const invocationContext = makeInvocationContext();
       const resumeFrom = { regionId: '02', date: '2026-07-02', lastId: '1001' };
       const { mockSendMessage } = await setupMocks({
@@ -693,9 +793,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
   );
 
   test('stops without re-enqueueing or dead-lettering once the transient retry count would exceed 5, logging the stop and failing the trace', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
     vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
       logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
@@ -720,7 +819,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     );
 
     expect(mockSendMessage).not.toHaveBeenCalled();
-    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.stringContaining('Transient errors persisted through 5 requeues'),
@@ -740,7 +839,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('treats a continuation as progress when the incoming message had no resume point', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupMocks({
       runRegionDriverResult: {
@@ -763,7 +861,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('a budget continuation carries no transient retry count, so the count resets', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupMocks({
       runRegionDriverResult: {
@@ -788,7 +885,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('a budget continuation preserves the originating laneId', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupMocks({
       runRegionDriverResult: {
@@ -808,9 +904,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('re-enqueues the original start message with count + 1 and a 300s delay when the handler throws a transient error, and does not dead-letter it', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
     runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
 
@@ -827,50 +922,47 @@ describe('sync-trustee-case-appointments handleStart', () => {
       transientRetryCount: 2,
     });
     expect(delaySeconds).toBe(300);
-    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).not.toHaveBeenCalled();
   });
 
-  test('clears deleteAll on the re-enqueued message once deleteAll has succeeded, so a later failure cannot reset the run', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test('clears delete on the re-enqueued message once the delete has succeeded, so a later failure cannot repeat it', async () => {
     const invocationContext = makeInvocationContext();
     const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
     runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
 
-    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
 
     const body = JSON.parse(mockSendMessage.mock.calls[0][0]);
-    expect(body).not.toHaveProperty('deleteAll');
+    expect(body).not.toHaveProperty('delete');
     expect(body.transientRetryCount).toBe(1);
   });
 
-  test('keeps deleteAll on the re-enqueued message when deleteAll itself failed transiently, and does not run the driver', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test('keeps delete on the re-enqueued message when the delete itself failed transiently, and does not run the driver', async () => {
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const { mockSendMessage, runRegionDriverSpy } = await setupMocks({
-      deleteAllResult: { data: { deleted: 0 }, error: new TooManyRequestsError('TEST') },
+      deleteResult: { data: { deleted: 0 }, error: new TooManyRequestsError('TEST') },
     });
 
-    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
 
     expect(runRegionDriverSpy).not.toHaveBeenCalled();
     expect(JSON.parse(mockSendMessage.mock.calls[0][0])).toMatchObject({
-      deleteAll: true,
+      delete: { from: '2026-08-01' },
       transientRetryCount: 1,
     });
-    expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).not.toHaveBeenCalled();
   });
 
   test('dead-letters a non-transient error together with the start message so it can be replayed', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const { runRegionDriverSpy } = await setupMocks();
     runRegionDriverSpy.mockRejectedValue(new Error('boom'));
 
     await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
 
-    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         type: 'QUEUE_ERROR',
@@ -880,16 +972,15 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('dead-letters the re-enqueue payload when the transient re-enqueue send itself fails', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const { mockSendMessage, runRegionDriverSpy } = await setupMocks();
     runRegionDriverSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
     mockSendMessage.mockRejectedValue(new Error('queue unavailable'));
 
     await handleStart({ regions: ['02'], runDate: '2026-07-05' }, invocationContext);
 
-    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         type: 'QUEUE_ERROR',
@@ -903,38 +994,53 @@ describe('sync-trustee-case-appointments handleStart', () => {
     );
   });
 
-  test('falls through to the region driver when deleteAll is set and deletion succeeds', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test('falls through to the region driver when delete is set and the delete succeeds', async () => {
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy } = await setupMocks();
 
-    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
+    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
 
     expect(runRegionDriverSpy).toHaveBeenCalled();
   });
 
-  test('routes a deleteAll failure to the DLQ and does not call the region driver', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test("deletes only the named regions' appointments in the given date range", async () => {
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
-    const { runRegionDriverSpy } = await setupMocks({
-      deleteAllResult: { data: { deleted: 0 }, error: new Error('delete failed') },
+    const { deleteAppointmentsSpy, mockContext } = await setupMocks();
+
+    await handleStart(
+      { regions: ['02', '03'], delete: { from: '2026-08-01', to: '2026-08-31' } },
+      invocationContext,
+    );
+
+    expect(deleteAppointmentsSpy).toHaveBeenCalledTimes(1);
+    expect(deleteAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), {
+      regions: ['02', '03'],
+      from: '2026-08-01',
+      to: '2026-08-31',
     });
-
-    await handleStart({ regions: ['02'], deleteAll: true }, invocationContext);
-
-    expect(runRegionDriverSpy).not.toHaveBeenCalled();
-    expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
+    expect(deleteAppointmentsSpy.mock.calls[0][0].context).toBe(mockContext);
   });
 
-  test('discards a stale resumeFrom when deleteAll is set so the reset history is re-walked', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test('routes a delete failure to the DLQ and does not call the region driver', async () => {
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    const { runRegionDriverSpy } = await setupMocks({
+      deleteResult: { data: { deleted: 0 }, error: new Error('delete failed') },
+    });
+
+    await handleStart({ regions: ['02'], delete: { from: '2026-08-01' } }, invocationContext);
+
+    expect(runRegionDriverSpy).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).toHaveBeenCalled();
+  });
+
+  test('discards a stale resumeFrom when delete is set so the deleted range is re-walked', async () => {
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy } = await setupMocks();
     const staleResumeFrom = { regionId: '02', date: '2026-08-01', lastId: '1001' };
 
     await handleStart(
-      { regions: ['02'], deleteAll: true, resumeFrom: staleResumeFrom },
+      { regions: ['02'], delete: { from: '2026-08-01' }, resumeFrom: staleResumeFrom },
       invocationContext,
     );
 
@@ -945,7 +1051,6 @@ describe('sync-trustee-case-appointments handleStart', () => {
   });
 
   test('flushQueues short-circuits before the region driver is ever called', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy } = await setupMocks();
 
@@ -956,16 +1061,15 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
   test('routes to the DLQ when AzureWebJobsDataflowsStorage is missing', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
 
     await handleStart({ regions: ['02'] }, invocationContext);
 
-    expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
+    expect(extraOutputsSetSpy).toHaveBeenCalled();
   });
 });
 
@@ -973,7 +1077,6 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-    delete process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
   });
 
   async function setupFanOutMocks(regionIds: string[]) {
@@ -1002,7 +1105,6 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   }
 
   test('a start message with no regions never calls the region driver directly', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { runRegionDriverSpy } = await setupFanOutMocks(['01', '02', '03']);
 
@@ -1012,24 +1114,22 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 
   test('fans out every region across lanes with no duplicates or omissions', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    const regions = ['01', '02', '03', '04', '05', '06'];
+    const regions = ['01', '02', '03', '04', '05', '06', '07', '08'];
     const { mockSendMessage } = await setupFanOutMocks(regions);
 
     await handleStart({}, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalledTimes(3); // default lane count
+    expect(mockSendMessage).toHaveBeenCalledTimes(4); // LANE_COUNT
     const sentMessages = mockSendMessage.mock.calls.map(([body]) => JSON.parse(body));
     // Which region lands in which lane is lane-assignment.ts's own contract (tested there) --
     // this only asserts fanOutAcrossLanes' own behavior: every region covered exactly once, and
     // each message's laneId is its lane's position in the assignment.
     expect(sentMessages.flatMap((m) => m.regions).sort()).toEqual(regions);
-    expect(sentMessages.map((m) => m.laneId)).toEqual([0, 1, 2]);
+    expect(sentMessages.map((m) => m.laneId)).toEqual([0, 1, 2, 3]);
   });
 
   test('resolves a default runDate once at kickoff and shares it across every lane message', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupFanOutMocks(['01', '02']);
     vi.spyOn(DateHelper, 'getTodaysIsoDate').mockReturnValue('2026-07-05');
@@ -1041,17 +1141,17 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
     expect(sentMessages.map((m) => m.runDate)).toEqual(['2026-07-05', '2026-07-05']);
   });
 
-  test('a deleteAll kickoff resets once and sends lane messages that do not carry deleteAll', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
+  test('a delete kickoff deletes once across every region and sends lane messages that do not carry delete', async () => {
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupFanOutMocks(['01', '02']);
-    const deleteAllSpy = vi
-      .spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll')
+    const deleteAppointmentsSpy = vi
+      .spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAppointments')
       .mockResolvedValue({ data: { deleted: 0 } });
 
-    await handleStart({ deleteAll: true, runDate: '2026-07-05' }, invocationContext);
+    await handleStart({ delete: {}, runDate: '2026-07-05' }, invocationContext);
 
-    expect(deleteAllSpy).toHaveBeenCalledTimes(1);
+    expect(deleteAppointmentsSpy).toHaveBeenCalledTimes(1);
+    expect(deleteAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), {});
     expect(mockSendMessage.mock.calls.map(([body]) => JSON.parse(body))).toEqual([
       { regions: ['01'], runDate: '2026-07-05', laneId: 0, runId: 'run-1' },
       { regions: ['02'], runDate: '2026-07-05', laneId: 1, runId: 'run-1' },
@@ -1059,7 +1159,6 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 
   test('draws a separate jitter delay for each lane message', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03']);
     vi.spyOn(Math, 'random')
@@ -1073,7 +1172,6 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 
   test('an empty region list sends zero lane messages and reports a failed run', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const { mockSendMessage } = await setupFanOutMocks([]);
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
@@ -1096,23 +1194,21 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 
   test('dead-letters a start message that has resumeFrom but no regions instead of fanning out', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const { mockSendMessage } = await setupFanOutMocks(['01', '02']);
     const startMessage = { resumeFrom: { regionId: '02', date: '2026-08-01' } };
 
     await handleStart(startMessage, invocationContext);
 
     expect(mockSendMessage).not.toHaveBeenCalled();
-    expect(invocationContext.extraOutputs.set).toHaveBeenCalledWith(
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR', startMessage }),
     );
   });
 
   test('logs the fan-out fallback label when transient retries are exhausted on a kickoff', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
     vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
@@ -1134,7 +1230,6 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
   });
 
   test('logs each lane assignment with its laneId, regions, and jitter delay', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
     vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
@@ -1154,73 +1249,12 @@ describe('sync-trustee-case-appointments handleStart fan-out', () => {
       'Fan-out lane 1: 1 region(s) [02], first message delayed 30s.',
     );
   });
-
-  test('a valid TRUSTEE_APPOINTMENT_LANE_COUNT override changes how many lanes are created', async () => {
-    process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = '2';
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-    const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03', '04']);
-
-    await handleStart({}, invocationContext);
-
-    expect(mockSendMessage).toHaveBeenCalledTimes(2);
-  });
-
-  test.each([
-    ['not-a-number', 'non-numeric'],
-    ['0', 'zero'],
-    ['-1', 'negative'],
-    ['2abc', 'numeric prefix'],
-    ['2.5', 'non-integer'],
-  ])(
-    'a %s (%s) TRUSTEE_APPOINTMENT_LANE_COUNT falls back to the default of 3, with a warning',
-    async (invalidValue) => {
-      process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = invalidValue;
-      const { handleStart } = await import('./sync-trustee-case-appointments');
-      const invocationContext = makeInvocationContext();
-      const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-      vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
-        logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
-      );
-      const { mockSendMessage } = await setupFanOutMocks(['01', '02', '03', '04', '05', '06']);
-
-      await handleStart({}, invocationContext);
-
-      expect(logger.warn).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-        expect.stringContaining(`Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${invalidValue}"`),
-      );
-      // 6 regions, so any lane count other than 3 would produce a different send count
-      expect(mockSendMessage).toHaveBeenCalledTimes(3);
-    },
-  );
-
-  test('caps TRUSTEE_APPOINTMENT_LANE_COUNT at 10, with a warning', async () => {
-    process.env.TRUSTEE_APPOINTMENT_LANE_COUNT = '30';
-    const { handleStart } = await import('./sync-trustee-case-appointments');
-    const invocationContext = makeInvocationContext();
-    const regions = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-    vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
-      logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
-    );
-    const { mockSendMessage } = await setupFanOutMocks(regions);
-
-    await handleStart({}, invocationContext);
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      expect.stringContaining('exceeds the maximum of 10'),
-    );
-    expect(mockSendMessage).toHaveBeenCalledTimes(10);
-  });
 });
 
 describe('sync-trustee-case-appointments run lock', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-    delete process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
   });
 
   const emptyDriverResult = {
@@ -1280,7 +1314,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   };
 
   test('a start with no run id mints one and claims the run with it', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { claimRunSpy } = await setupLockMocks();
 
     await handleStart({}, makeInvocationContext());
@@ -1289,7 +1322,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a kickoff is skipped, with a warning, while another run holds the lock', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
     vi.spyOn(ApplicationContextCreator, 'getLogger').mockReturnValue(
       logger as unknown as ReturnType<typeof ApplicationContextCreator.getLogger>,
@@ -1321,7 +1353,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a kickoff records how many lanes it is sending before it sends any', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { setLanesRemainingSpy, mockSendMessage } = await setupLockMocks({
       regionIds: ['01', '02'],
     });
@@ -1336,7 +1367,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a kickoff with no regions records zero lanes so the lock is released', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { setLanesRemainingSpy } = await setupLockMocks({ regionIds: [] });
 
     await handleStart({}, makeInvocationContext());
@@ -1345,7 +1375,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane message carries the run id the kickoff claimed', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { mockSendMessage } = await setupLockMocks({
       claim: { claimed: true, runId: 'run-7' },
     });
@@ -1357,7 +1386,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a kickoff retry carrying its run id claims with that same id', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { claimRunSpy, isCurrentRunSpy } = await setupLockMocks();
 
     await handleStart({ runId: 'run-3' }, makeInvocationContext());
@@ -1367,7 +1395,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a kickoff that fails before its claim completes requeues carrying the id it minted', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { claimRunSpy, mockSendMessage } = await setupLockMocks();
     claimRunSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
 
@@ -1382,7 +1409,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane message of the current run does the work', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy, isCurrentRunSpy, claimRunSpy } = await setupLockMocks();
 
     await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, makeInvocationContext());
@@ -1393,7 +1419,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane message from a run that no longer holds the lock stops without touching any region', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy, mockSendMessage, completeLaneSpy } = await setupLockMocks({
       current: false,
     });
@@ -1418,7 +1443,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane that finishes with nothing left to continue completes its lane', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { completeLaneSpy } = await setupLockMocks();
 
     await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, makeInvocationContext());
@@ -1427,7 +1451,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane that continues carries the run id forward and does not complete its lane', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy, mockSendMessage, completeLaneSpy } = await setupLockMocks();
     runRegionDriverSpy.mockResolvedValue({ ...emptyDriverResult, continuation });
 
@@ -1442,11 +1465,9 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('a lane whose driver throws a non-transient error keeps the lock held', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy, completeLaneSpy } = await setupLockMocks();
     runRegionDriverSpy.mockRejectedValue(new Error('boom'));
     const invocationContext = makeInvocationContext();
-    invocationContext.extraOutputs.set = vi.fn();
 
     await handleStart({ regions: ['01'], laneId: 0, runId: 'run-1' }, invocationContext);
 
@@ -1454,7 +1475,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('an operator-named start claims the lock like a timer kickoff and completes its single lane', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy, claimRunSpy, completeLaneSpy } = await setupLockMocks({
       claim: { claimed: true, runId: 'run-op' },
     });
@@ -1467,7 +1487,6 @@ describe('sync-trustee-case-appointments run lock', () => {
   });
 
   test('an operator-named start is skipped while another run holds the lock', async () => {
-    const { handleStart } = await import('./sync-trustee-case-appointments');
     const { runRegionDriverSpy } = await setupLockMocks({
       claim: { claimed: false, activeRunId: 'run-active' },
     });
@@ -1524,30 +1543,29 @@ describe('sync-trustee-case-appointments heal', () => {
     );
 
   test('the sync timer sends a start message with no region list so the sync fans out across lanes', async () => {
-    const { timerTrigger } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
 
     await timerTrigger({} as never, invocationContext);
 
-    expect([
-      ...(invocationContext.extraOutputs as unknown as Map<unknown, unknown>).values(),
-    ]).toEqual([{}]);
+    expect(extraOutputsSetSpy).toHaveBeenCalledTimes(1);
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(expect.anything(), {});
   });
 
   test('the heal timer sends a heal start carrying the UTC date it fired', async () => {
-    const { healTimerTrigger } = await import('./sync-trustee-case-appointments');
     vi.spyOn(DateHelper, 'getTodaysIsoDate').mockReturnValue('2026-11-09');
     const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
 
     await healTimerTrigger({} as never, invocationContext);
 
-    expect([
-      ...(invocationContext.extraOutputs as unknown as Map<unknown, unknown>).values(),
-    ]).toEqual([{ healRunDate: '2026-11-09' }]);
+    expect(extraOutputsSetSpy).toHaveBeenCalledTimes(1);
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(expect.anything(), {
+      healRunDate: '2026-11-09',
+    });
   });
 
   test('the heal timer records the heal run date in its trace, to correlate with handleHeal traces', async () => {
-    const { healTimerTrigger } = await import('./sync-trustee-case-appointments');
     vi.spyOn(DateHelper, 'getTodaysIsoDate').mockReturnValue('2026-11-09');
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
@@ -1564,7 +1582,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('the first page counts abandoned rows once and reports the counts', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { healPageSpy, countAbandonedSpy, telemetrySpy } = await setupHealMocks({
       healed: 2,
       stillParked: 1,
@@ -1601,7 +1618,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('a continuation page does not count abandoned rows again', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { countAbandonedSpy, healPageSpy, telemetrySpy } = await setupHealMocks();
 
     await handleHeal({ healRunDate: '2026-11-09', lastId: 'mongo-4' }, makeInvocationContext());
@@ -1620,7 +1636,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('a non-empty page sends a continuation to the heal queue carrying only the run date and cursor', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { mockSendMessage, fromConnectionStringSpy } = await setupHealMocks();
 
     await handleHeal(
@@ -1645,7 +1660,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('an empty page ends the run with no continuation', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { mockSendMessage } = await setupHealMocks({
       healed: 0,
       stillParked: 0,
@@ -1659,7 +1673,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('a transient error requeues the page on the heal queue through the rate-limit retry', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { healPageSpy, mockSendMessage, fromConnectionStringSpy, telemetrySpy } =
       await setupHealMocks();
     healPageSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
@@ -1677,7 +1690,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('routes the page to the DLQ once the rate-limit retry limit is exhausted', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { mockContext, healPageSpy, telemetrySpy } = await setupHealMocks();
     healPageSpy.mockRejectedValue(new TooManyRequestsError('TEST'));
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
@@ -1696,7 +1708,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('rethrows a non-transient error', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     const { healPageSpy } = await setupHealMocks();
     healPageSpy.mockRejectedValue(new CamsError('TEST', { message: 'boom' }));
 
@@ -1706,7 +1717,6 @@ describe('sync-trustee-case-appointments heal', () => {
   });
 
   test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
-    const { handleHeal } = await import('./sync-trustee-case-appointments');
     delete process.env.AzureWebJobsDataflowsStorage;
 
     await expect(

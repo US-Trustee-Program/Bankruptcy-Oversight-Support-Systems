@@ -46,8 +46,15 @@ describe('formatAcmsDate', () => {
     expect(() => formatAcmsDate(202)).toThrow('Invalid ACMS date format');
   });
 
+  // new Date('2020-02-31') does not fail: it rolls over to 2020-03-02. Only the round-trip
+  // comparison in formatAcmsDate rejects these day-overflow dates.
   test('throws for a value that is not a real calendar date', () => {
     expect(() => formatAcmsDate(20200231)).toThrow('Invalid date');
+  });
+
+  test('accepts February 29 in a leap year and rejects it in other years', () => {
+    expect(formatAcmsDate(20240229)).toBe('2024-02-29');
+    expect(() => formatAcmsDate(20250229)).toThrow('Invalid date');
   });
 
   test('throws for a negative value with 8 characters', () => {
@@ -174,6 +181,38 @@ describe('rawToTrusteeAppointmentSyncEvent', () => {
     const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ APPT_DATE: 0 }), '0208');
 
     expect(event).not.toHaveProperty('appointedDate');
+  });
+
+  // The repository derives caseStatus from closedDate/reopenedDate, so without them every
+  // appointment the sync writes would read as OPEN (cams-fd8qd.37).
+  test("carries the case's court closed date and reopened date", () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({
+        CLOSED_BY_COURT_DATE: 20260501,
+        CLOSED_BY_UST_DATE: 20260415,
+        REOPENED_DATE: 20260610,
+      }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-05-01');
+    expect(event.reopenedDate).toBe('2026-06-10');
+  });
+
+  test('uses the UST closed date when the case has no court closed date', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: null, CLOSED_BY_UST_DATE: 20260615 }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-06-15');
+  });
+
+  test('omits closedDate and reopenedDate for an open case', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord(), '0208');
+
+    expect(event).not.toHaveProperty('closedDate');
+    expect(event).not.toHaveProperty('reopenedDate');
   });
 
   test('includes unassignedOn when DISP_DATE is present and non-zero', () => {

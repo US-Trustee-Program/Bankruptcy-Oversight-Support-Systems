@@ -411,6 +411,146 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
   });
 
+  test('a later region that exhausts the budget continues with only the regions not yet finished', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    getLatestCmmapChangeDateForRegion.mockImplementation(async (_context, regionId: string) => {
+      if (regionId === '03') now = 5_000; // region '02' finished within budget; '03' runs out
+      return '2026-07-02';
+    });
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({ '2026-07-01': makeRawRow(1, '2026-07-01') }),
+    );
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      startedAt: 0,
+      safeThresholdMs: 1_000,
+    });
+
+    expect(result.processedRegions).toEqual(['02']);
+    expect(result.continuation).toEqual({
+      regions: ['03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '03', date: CUTOVER_DATE, lastId: undefined },
+      cause: 'invocation-budget',
+    });
+    expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
+      'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+      'region.02.lastSyncDate',
+      '2026-07-01',
+    );
+  });
+
+  test('exhausting the budget after a page continues from that page cursor, not the start of the date', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(async () => {
+      now = 5_000;
+      return [makeRawRow(1001, '2026-07-01')];
+    });
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      startedAt: 0,
+      safeThresholdMs: 1_000,
+    });
+
+    expect(processAppointmentsSpy).toHaveBeenCalledTimes(1);
+    expect(result.processedRegions).toEqual([]);
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001' },
+      cause: 'invocation-budget',
+    });
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+  });
+
+  // cams-fd8qd.33: a bookmarked date is never re-read, so its results must reach their queues
+  // before the bookmark moves past it -- not only at the end of the invocation.
+  test("hands each finished date's results to onDateComplete before advancing its bookmark", async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({
+        '2026-07-01': makeRawRow(1, '2026-07-01'),
+        '2026-07-02': makeRawRow(2, '2026-07-02'),
+      }),
+    );
+    const dlqForDay1 = makeEvent('081-26-00001');
+    const retryForDay2 = makeEvent('081-26-00002');
+    processAppointmentsSpy
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [dlqForDay1],
+        scenarioDistribution: scenarioWith(),
+        retryableEvents: [],
+      })
+      .mockResolvedValueOnce({
+        successCount: 0,
+        dlqMessages: [],
+        scenarioDistribution: scenarioWith(),
+        retryableEvents: [retryForDay2],
+      });
+    const order: string[] = [];
+    const onDateComplete = vi.fn(async (results) => {
+      order.push(`results:${JSON.stringify(results)}`);
+    });
+    mockRegionStateRepo.setField.mockImplementation(async (_type, _path, date) => {
+      order.push(`bookmark:${date}`);
+    });
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+      onDateComplete,
+    });
+
+    expect(order).toEqual([
+      `results:${JSON.stringify({ dlqMessages: [dlqForDay1], retryableEvents: [] })}`,
+      'bookmark:2026-07-01',
+      `results:${JSON.stringify({ dlqMessages: [], retryableEvents: [retryForDay2] })}`,
+      'bookmark:2026-07-02',
+      `results:${JSON.stringify({ dlqMessages: [], retryableEvents: [] })}`,
+    ]);
+    // Already handed off, so not returned a second time.
+    expect(result.dlqMessages).toEqual([]);
+    expect(result.retryableEvents).toEqual([]);
+  });
+
+  test('a transient failure handing off results leaves the bookmark and resumes the whole date', async () => {
+    getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
+    getCmmapAppointmentsRaw.mockImplementation(
+      respectingCursor({ '2026-07-01': makeRawRow(1001, '2026-07-01') }),
+    );
+    processAppointmentsSpy.mockResolvedValueOnce({
+      successCount: 0,
+      dlqMessages: [makeEvent('081-26-00001')],
+      scenarioDistribution: scenarioWith(),
+      retryableEvents: [],
+    });
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      onDateComplete: vi.fn().mockRejectedValue(new TooManyRequestsError('TEST')),
+    });
+
+    expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+    expect(result.continuation).toEqual({
+      regions: ['02', '03'],
+      runDate: '2026-07-05',
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: undefined },
+      cause: 'transient-error',
+    });
+    // The date is re-read from its start, which regenerates its results -- returning these too
+    // would send them twice.
+    expect(result.dlqMessages).toEqual([]);
+  });
+
   test('a timeout on a later page stops with a timeout continuation at that cursor and keeps earlier results', async () => {
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
     const earlierDlq = makeEvent('081-26-00009');

@@ -1,3 +1,4 @@
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -162,6 +163,12 @@ describe('SyncTrusteeCaseAppointments', () => {
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         findStrandedActiveInTrusteePartition: vi.fn().mockResolvedValue(null),
+        // Partition-repair and surrogate-cleanup defaults: both partitions agree, and no
+        // surrogates exist. Tests that exercise those paths override these.
+        existsInTrusteePartition: vi.fn().mockResolvedValue(true),
+        replaceOneInTrusteePartition: vi.fn().mockResolvedValue(undefined),
+        getSurrogatesByFingerprint: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
 
@@ -225,6 +232,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         courtDivisionCode: '082',
         chapter: '13',
         dateFiled: '2023-11-20',
+        closedDate: '2024-06-30',
+        reopenedDate: '2024-08-01',
       };
 
       test('an auto-linked appointment records courtId, courtDivisionCode, chapter and dateFiled', async () => {
@@ -1864,32 +1873,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
-    test('should skip when existing appointment has the same trusteeId', async () => {
-      const existingAppointment: CaseAppointment = {
-        id: 'ca-1',
-        caseId: 'case-001',
-        trusteeId: 'trustee-123',
-        assignedOn: '2024-01-15T00:00:00Z',
-        createdOn: '2024-01-01T00:00:00Z',
-        createdBy: { id: 'system', name: 'System' },
-        updatedOn: '2024-01-01T00:00:00Z',
-        updatedBy: { id: 'system', name: 'System' },
-      };
-      (
-        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(existingAppointment);
-
-      const events = [makeEvent('case-001', 'John Doe')];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
-    });
-
     test('should soft-close old and create new when trustee changes, aligning unassignedOn to one day before the new assignedOn', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-old',
@@ -2002,7 +1985,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
         ).mockResolvedValue(existingAppointment);
-        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
 
         const event = { ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-03-01' };
 
@@ -2035,7 +2017,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
         ).mockResolvedValue(existingAppointment);
-        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
 
         // An out-of-order DISP_DATE older than the appointment's own assignedOn.
         const warnSpy = vi.spyOn(context.logger, 'warn');
@@ -2140,7 +2121,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
         ).mockResolvedValue(existingAppointment);
-        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
 
         const events = [makeEvent('case-001', 'John Doe')];
 
@@ -2923,7 +2903,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
           .fn()
           .mockResolvedValue([openSurrogate]);
-        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -2966,7 +2945,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
           .fn()
           .mockResolvedValue([otherCaseSurrogate]);
-        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -2983,7 +2961,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeUnresolvedState(0));
-        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
 
         const event = { ...makeEvent('case-001', 'Ghost Trustee'), unassignedOn: '2026-09-01' };
 
@@ -3042,7 +3019,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
           .fn()
           .mockResolvedValue([openSurrogate]);
-        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3072,7 +3048,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           { documentType: 'TRUSTEE_MATCH_VERIFICATION', fingerprint, variant, status: 'pending' },
         ]);
-        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3094,7 +3069,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeUnresolvedState(0));
-        mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
         const warnSpy = vi.spyOn(context.logger, 'warn');
 
         // makeEvent's appointedDate is 2024-01-15, which becomes the placeholder's assignedOn.
@@ -3142,7 +3116,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint = vi
           .fn()
           .mockResolvedValue([closedSurrogate]);
-        mockTrusteeCaseAppointmentsRepo.delete = vi.fn().mockResolvedValue(undefined);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3261,7 +3234,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
         ).mockResolvedValue(existingAppointment);
-        mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = vi.fn().mockResolvedValue(true);
 
         const event = { ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-03-01' };
 
@@ -3882,81 +3854,138 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
   });
 
-  describe('deleteAll', () => {
+  describe('deleteAppointments', () => {
     let context: ApplicationContext;
-    let mockAppointmentsRepo: { deleteAll: ReturnType<typeof vi.fn> };
-    let mockCaseAppointmentsRepo: { deleteAll: ReturnType<typeof vi.fn> };
-    let mockRegionStateRepo: { delete: ReturnType<typeof vi.fn> };
+    let mockCaseAppointmentsRepo: { deleteCaseAppointments: ReturnType<typeof vi.fn> };
+    let mockRegionStateRepo: {
+      read: ReturnType<typeof vi.fn>;
+      setField: ReturnType<typeof vi.fn>;
+    };
+
+    const office = (regionId: string, divisionCodes: string[]) => ({
+      regionId,
+      groups: [{ divisions: divisionCodes.map((divisionCode) => ({ divisionCode })) }],
+    });
 
     beforeEach(async () => {
       vi.restoreAllMocks();
       if (context) await closeDeferred(context);
       context = await createMockApplicationContext();
 
-      mockAppointmentsRepo = { deleteAll: vi.fn().mockResolvedValue(0) };
-      mockCaseAppointmentsRepo = { deleteAll: vi.fn().mockResolvedValue(3) };
-      mockRegionStateRepo = { delete: vi.fn().mockResolvedValue(undefined) };
+      mockCaseAppointmentsRepo = { deleteCaseAppointments: vi.fn().mockResolvedValue(3) };
+      mockRegionStateRepo = {
+        read: vi.fn().mockResolvedValue({
+          documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+          region: {
+            '02': { lastSyncDate: '2026-09-15' },
+            '03': { lastSyncDate: '2026-07-20' },
+          },
+        }),
+        setField: vi.fn().mockResolvedValue(undefined),
+      };
 
-      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-        mockAppointmentsRepo as unknown as TrusteeAppointmentsRepository,
-      );
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         mockCaseAppointmentsRepo as unknown as TrusteeCaseAppointmentsRepository,
       );
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         mockRegionStateRepo as unknown as RuntimeStateRepository<TrusteeAppointmentRegionSyncState>,
       );
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+        // Region 2 has two offices; '2' is un-padded the way the DXTR offices gateway returns it.
+        getOffices: vi
+          .fn()
+          .mockResolvedValue([
+            office('2', ['081', '087']),
+            office('02', ['087']),
+            office('03', ['091']),
+          ]),
+      } as unknown as ReturnType<typeof factory.getOfficesGateway>);
     });
 
-    test('should return the count of deleted case appointments', async () => {
-      const result = await SyncTrusteeCaseAppointments.deleteAll(
+    const deleteAppointments = (
+      options: Parameters<typeof SyncTrusteeCaseAppointments.deleteAppointments>[1],
+    ) =>
+      SyncTrusteeCaseAppointments.deleteAppointments(
         SyncTrusteeCaseAppointments.createDeps(context),
+        options,
       );
 
+    test('with no bounds, deletes every appointment and clears every region bookmark', async () => {
+      const result = await deleteAppointments({});
+
+      expect(result).toEqual({ data: { deleted: 3 } });
+      expect(mockCaseAppointmentsRepo.deleteCaseAppointments).toHaveBeenCalledWith({});
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', null],
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.03.lastSyncDate', null],
+      ]);
+    });
+
+    test("limits the delete to the named regions' divisions and the given dates", async () => {
+      await deleteAppointments({ regions: ['02'], from: '2026-08-01', to: '2026-08-31' });
+
+      expect(mockCaseAppointmentsRepo.deleteCaseAppointments).toHaveBeenCalledWith({
+        divisionCodes: ['081', '087'],
+        from: '2026-08-01',
+        to: '2026-08-31',
+      });
+    });
+
+    test("rewinds a named region's bookmark to the day before the start date, leaving other regions alone", async () => {
+      await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
+
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', '2026-07-31'],
+      ]);
+    });
+
+    test('never moves a bookmark that is already before the start date', async () => {
+      await deleteAppointments({ from: '2026-08-01' });
+
+      // Region 03's bookmark (2026-07-20) already precedes 2026-08-01.
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', '2026-07-31'],
+      ]);
+    });
+
+    test('rewinds the bookmarks before deleting', async () => {
+      await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
+
+      expect(mockRegionStateRepo.setField.mock.invocationCallOrder[0]).toBeLessThan(
+        mockCaseAppointmentsRepo.deleteCaseAppointments.mock.invocationCallOrder[0],
+      );
+    });
+
+    test('deletes with no bookmark to rewind when the region state does not exist yet', async () => {
+      mockRegionStateRepo.read.mockRejectedValue(new NotFoundError('TEST'));
+
+      const result = await deleteAppointments({ from: '2026-08-01' });
+
+      expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
       expect(result).toEqual({ data: { deleted: 3 } });
     });
 
-    test('should delete case appointments and leave trustee appointments untouched', async () => {
-      await SyncTrusteeCaseAppointments.deleteAll(SyncTrusteeCaseAppointments.createDeps(context));
-
-      expect(mockCaseAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
-      expect(mockAppointmentsRepo.deleteAll).not.toHaveBeenCalled();
-    });
-
-    test('should reset the region sync state before deleting case appointments', async () => {
-      await SyncTrusteeCaseAppointments.deleteAll(SyncTrusteeCaseAppointments.createDeps(context));
-
-      expect(mockRegionStateRepo.delete).toHaveBeenCalledWith(
-        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
-      );
-      expect(mockRegionStateRepo.delete.mock.invocationCallOrder[0]).toBeLessThan(
-        mockCaseAppointmentsRepo.deleteAll.mock.invocationCallOrder[0],
-      );
-    });
-
-    test('should skip case appointment deletion and return an error when the region sync state reset fails', async () => {
-      mockRegionStateRepo.delete.mockRejectedValueOnce(new Error('Mongo delete failed'));
-
-      const result = await SyncTrusteeCaseAppointments.deleteAll(
-        SyncTrusteeCaseAppointments.createDeps(context),
-      );
-
-      expect(mockCaseAppointmentsRepo.deleteAll).not.toHaveBeenCalled();
-      expect(result.data).toEqual({ deleted: 0 });
-      expect(result.error?.message).toContain('Failed to delete all case appointments');
-    });
-
-    test('should log and return zero-deleted with error when the repo throws', async () => {
-      mockCaseAppointmentsRepo.deleteAll.mockRejectedValueOnce(new Error('Cosmos delete failed'));
+    test('returns an error without deleting when a bookmark rewind fails', async () => {
+      mockRegionStateRepo.setField.mockRejectedValueOnce(new Error('Mongo write failed'));
       const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
 
-      const result = await SyncTrusteeCaseAppointments.deleteAll(
-        SyncTrusteeCaseAppointments.createDeps(context),
+      const result = await deleteAppointments({ regions: ['02'], from: '2026-08-01' });
+
+      expect(mockCaseAppointmentsRepo.deleteCaseAppointments).not.toHaveBeenCalled();
+      expect(result.data).toEqual({ deleted: 0 });
+      expect(result.error?.message).toContain('Failed to delete case appointments');
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('returns an error when the delete fails', async () => {
+      mockCaseAppointmentsRepo.deleteCaseAppointments.mockRejectedValueOnce(
+        new Error('Cosmos delete failed'),
       );
 
+      const result = await deleteAppointments({});
+
       expect(result.data).toEqual({ deleted: 0 });
-      expect(result.error?.message).toContain('Failed to delete all case appointments');
-      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+      expect(result.error?.message).toContain('Failed to delete case appointments');
     });
   });
 });

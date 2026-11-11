@@ -149,14 +149,21 @@ describe('isRecordDisavowed', () => {
 });
 
 describe('shouldSkipAsUstStaff', () => {
-  test.each(['ALDRIC VEXMORE (UST)', 'ALDRIC VEXMORE U.S. TRUSTEE', 'US TRUSTEE'])(
-    'skips a U.S. Trustee annotation: "%s"',
+  test.each([
+    'ALDRIC VEXMORE (UST)',
+    'ALDRIC VEXMORE U.S. TRUSTEE',
+    'US TRUSTEE',
+    // Spelled out, as ACMS and DXTR both carry it (maintainer decision, PR 3263 review).
+    'United States Trustee (NY)',
+    'UNITED STATES TRUSTEE',
+  ])('skips a U.S. Trustee annotation: "%s"', (fullName) => {
+    expect(shouldSkipAsUstStaff(fullName)).toBe(true);
+  });
+
+  test.each(['ALDRIC VEXMORE', 'ALDRIC USTRAND', 'ALDRIC STATES TRUSTEE'])(
+    'does not skip "%s"',
     (fullName) => {
-      expect(shouldSkipAsUstStaff(fullName)).toBe(true);
+      expect(shouldSkipAsUstStaff(fullName)).toBe(false);
     },
   );
-
-  test.each(['ALDRIC VEXMORE', 'ALDRIC USTRAND'])('does not skip "%s"', (fullName) => {
-    expect(shouldSkipAsUstStaff(fullName)).toBe(false);
-  });
 });

@@ -10,11 +10,11 @@ Use it to guide development: a scenario that fails is a target, not a mistake. A
 
 ## What it checks
 
-| Group      | What                                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `query`    | ACMS fixtures through the **production** `AcmsGateway.getCmmapAppointmentsRaw` (filters, region, change date). Passes today.      |
-| `scenario` | source → sync → CAMS state, per lane (`ACMS`, `DXTR`), many shared for source parity. DXTR runs today; ACMS is `NOT IMPLEMENTED`. |
-| `driver`   | per-region bookmark, catch-up from 2026-07-01, run-date exclusion, named regions, per-region ACMS/DXTR source routing (CAMS-957). |
+| Group      | What                                                                                                                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `query`    | ACMS fixtures through the **production** `AcmsGateway.getCmmapAppointmentsRaw` (filters, region, change date). Passes today.                                                                             |
+| `scenario` | source → sync → CAMS state, per lane (`ACMS`, `DXTR`), many shared for source parity. DXTR runs today; ACMS is `NOT IMPLEMENTED`.                                                                        |
+| `driver`   | per-region bookmark, catch-up from 2026-07-01, run-date exclusion, named regions, per-region ACMS/DXTR source routing (CAMS-957), operator delete by region and date range then replace (cams-fd8qd.32). |
 
 `npm run sync-trustee-case-appointments -- list` and the run summary print the current counts.
 
@@ -130,6 +130,7 @@ npm run sync-trustee-case-appointments -- run
 npm run sync-trustee-case-appointments -- run --lane DXTR     # or ACMS
 npm run sync-trustee-case-appointments -- run --region 03
 npm run sync-trustee-case-appointments -- run --only known-by-variation
+npm run sync-trustee-case-appointments -- run --only driver-delete-region-date-range-replaces   # a driver scenario
 npm run sync-trustee-case-appointments -- run --verbose       # show production log lines
 npm run sync-trustee-case-appointments -- clean
 
@@ -172,19 +173,19 @@ images are pinned (`mongo:7.0.37`, `azure-sql-edge:1.0.7`).
 
 ## Open findings the harness already surfaced
 
-- **The matching pipeline should filter "United States Trustee (NY)"** (maintainer decision) but
-  does not: on the DXTR lane it writes a placeholder and an identity task. Cause: `ny` is not in
-  `NON_PERSON_ONLY_WORDS` (`source-name-normalization.helpers.ts`), so `shouldSkipAsNotAPerson` is
-  false, and `UST_STAFF_PATTERN` needs "U.S. Trustee". Fix it in the pipeline gate; loosening
-  `isUnattributableBogusName`'s `!hasFirstName` rule would skip real trustees because `trustee` is
-  itself a bogus keyword. The "(NY)" shape and the first/last split are not evidenced by the export,
-  whose UNITED STATES TRUSTEE names are already skipped. Scenario
-  `administrative-placeholder-united-states-trustee` fails today; its bare sibling passes.
 - **Ambiguous professional-id link.** `cams-nd7ns` says 2+ links is an integrity error that goes
   straight to a "multiple linked trustees" task; the `.feature` and `cams-fd8qd.1.7` say it falls
   through to variation and the pipeline. Scenario `ambiguous-link-not-used` follows the latter.
 - **Bookmark rule for DXTR** is new production behavior (above); `cams-rxb7a` should state it.
 - No open bead exists for `AcmsTrusteeAppointmentSource` itself.
+- **Region switch to DXTR (CAMS-957) is not built.** The driver reads ACMS for every region, so
+  `seedRegionState` throws `NotImplementedError` for a scenario that switches a region and the four
+  switch scenarios report `NOT IMPLEMENTED`. Remove that guard in `bindings.ts` when `cams-rxb7a`
+  lands.
+
+Resolved (cams-fd8qd.37): "United States Trustee (NY)" is now skipped as U.S. Trustee staff
+(`UST_STAFF_PATTERN` matches the spelled-out form); the ACMS sync carries the case's closed and
+reopened dates, so `caseStatus` is derived from them.
 
 ## Not covered (and why)
 

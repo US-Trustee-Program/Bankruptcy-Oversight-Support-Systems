@@ -690,8 +690,11 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
-  /** Deletes every appointment row (placed and parked) in both partitions; returns the case-partition count. */
-  deleteAll(): Promise<number>;
+  /**
+   * Deletes appointment rows (placed and parked) in both partitions; returns the case-partition
+   * count. Each filter field narrows the delete; an empty filter deletes every row.
+   */
+  deleteCaseAppointments(filter: CaseAppointmentDeleteFilter): Promise<number>;
   findActiveMissingAppointedDate(
     lastId: string | null,
     limit: number,
@@ -892,6 +895,15 @@ export type TrusteeAppointmentSyncRunState = RuntimeState & {
   startedAt: string;
   /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
   lanesRemaining: number;
+};
+
+export type CaseAppointmentDeleteFilter = {
+  /** Only cases in these divisions (a caseId's leading code). An empty list deletes nothing. */
+  divisionCodes?: string[];
+  /** Only appointments with assignedOn on or after this ISO date. */
+  from?: string;
+  /** Only appointments with assignedOn on or before this ISO date. */
+  to?: string;
 };
 
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {

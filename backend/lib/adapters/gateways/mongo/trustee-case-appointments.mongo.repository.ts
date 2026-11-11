@@ -4,6 +4,7 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
+  CaseAppointmentDeleteFilter,
   ParkedAppointment,
   SurrogateAppointment,
   TrusteeCaseAppointmentsRepository,
@@ -71,7 +72,7 @@ function stripMongoId(document: CaseAppointmentDocument): CaseAppointmentDocumen
 const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
 
 // Every appointment row, placed or parked (case not yet in CAMS). Placeholder lookups need both
-// (identity-task members are either), and deleteAll must clear both.
+// (identity-task members are either), and deleteCaseAppointments must clear both.
 const PLACED_AND_PARKED_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
   'CASE_APPOINTMENT',
   'CASE_APPOINTMENT_UNATTACHED',
@@ -399,11 +400,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
     }
 
-    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      { ...appointmentWithStatus, documentType },
-      SYSTEM_USER_REFERENCE,
-    );
-
     // Natural key for idempotent upsert — safe to replay on retry
     const doc = using<CaseAppointmentDocument>();
     const naturalKeyQuery = and(
@@ -411,6 +407,19 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('caseId').equals(appointment.caseId),
       doc('trusteeId').equals(appointment.trusteeId),
       doc('assignedOn').equals(appointment.assignedOn),
+    );
+
+    // A source disposition is never overwritten (cams-fd8qd.35): a replayed older event for the
+    // same court appointment carries no unassignedOn, and writing it as given would reopen an
+    // appointment the court closed. Only open rows pay for this read.
+    if (!appointmentWithStatus.unassignedOn) {
+      const storedUnassignedOn = await this.findStoredUnassignedOn(naturalKeyQuery, appointment);
+      if (storedUnassignedOn) appointmentWithStatus.unassignedOn = storedUnassignedOn;
+    }
+
+    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
+      { ...appointmentWithStatus, documentType },
+      SYSTEM_USER_REFERENCE,
     );
 
     let result: CaseAppointment;
@@ -442,6 +451,22 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
 
     return result;
+  }
+
+  private async findStoredUnassignedOn(
+    naturalKeyQuery: ConditionOrConjunction<CaseAppointmentDocument>,
+    appointment: CaseAppointmentInput,
+  ): Promise<string | undefined> {
+    try {
+      const [stored] = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .find(naturalKeyQuery, undefined, 1);
+      return stored?.unassignedOn;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to read case appointment for case ${appointment.caseId}.`,
+      });
+    }
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
@@ -561,17 +586,25 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  async deleteAll(): Promise<number> {
+  async deleteCaseAppointments(filter: CaseAppointmentDeleteFilter): Promise<number> {
+    if (filter.divisionCodes?.length === 0) return 0;
     try {
       const doc = using<CaseAppointmentDocument>();
-      // Parked rows too: a reset must not leave rows for the heal to re-attach.
-      const query = doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES);
+      // Parked rows too: a delete must not leave rows for the heal to re-attach.
+      const conditions = [doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES)];
+      if (filter.divisionCodes) {
+        // A caseId starts with its division code (081-24-12345).
+        conditions.push(doc('caseId').regex(`^(${filter.divisionCodes.join('|')})-`));
+      }
+      if (filter.from) conditions.push(doc('assignedOn').greaterThanOrEqual(filter.from));
+      if (filter.to) conditions.push(doc('assignedOn').lessThanOrEqual(filter.to));
+      const query = and(...conditions);
       const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
       return deleted;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to delete all case appointments.',
+        message: 'Failed to delete case appointments.',
       });
     }
   }

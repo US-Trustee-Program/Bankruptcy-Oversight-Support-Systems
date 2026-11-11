@@ -45,37 +45,9 @@ const TRANSIENT_REQUEUE_DELAY_SECONDS = 300;
 // Fan-out lane count for a start message with no region list (see PATTERNS.md's fan-out
 // section). K independent self-requeuing lane chains bound concurrent ACMS queries to K without
 // relying on host.json queue settings (precedent: commit 5fbd22a29) -- this is not a semaphore,
-// just how many lanes handleStart splits "every region" into. Defaults to 3, capped at
-// MAX_LANE_COUNT so a typo (e.g. 30) cannot open that many concurrent ACMS chains.
-const DEFAULT_LANE_COUNT = 3;
-const MAX_LANE_COUNT = 10;
-
-/**
- * Read fresh on every fan-out (not cached at module load, unlike e.g. ACMS_REQUEST_TIMEOUT_MS):
- * an env var this cheap to re-parse doesn't need load-time caching, and reading it fresh lets
- * tests set it per-case without vi.resetModules() gymnastics.
- */
-function getLaneCount(logger: ReturnType<typeof ContextCreator.getLogger>): number {
-  const raw = process.env.TRUSTEE_APPOINTMENT_LANE_COUNT;
-  if (!raw) return DEFAULT_LANE_COUNT;
-  // Number(), not parseInt: parseInt would accept "3abc" as 3 and "2.5" as 2.
-  const parsed = Number(raw.trim());
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    logger.warn(
-      MODULE_NAME,
-      `Invalid TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}", using default ${DEFAULT_LANE_COUNT}`,
-    );
-    return DEFAULT_LANE_COUNT;
-  }
-  if (parsed > MAX_LANE_COUNT) {
-    logger.warn(
-      MODULE_NAME,
-      `TRUSTEE_APPOINTMENT_LANE_COUNT="${raw}" exceeds the maximum of ${MAX_LANE_COUNT}, using ${MAX_LANE_COUNT}`,
-    );
-    return MAX_LANE_COUNT;
-  }
-  return parsed;
-}
+// just how many lanes handleStart splits "every region" into. A code constant rather than an
+// environment variable, so the value is reviewed and deployed with the code.
+const LANE_COUNT = 4;
 
 // A random delay on each lane's first message only, so K lanes don't all query ACMS in the same
 // instant at run start. Continuation/next-date/next-region pages carry no delay (unchanged).
@@ -128,7 +100,12 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
    * advanced (moved resume point or fewer regions). Absent after a budget continuation or a fresh start.
    */
   transientRetryCount?: number;
-  deleteAll?: boolean;
+  /**
+   * Deletes appointments before syncing, and rewinds the bookmarks so the sync replaces them.
+   * Scoped by this message's regions (every region when absent) and by assignedOn date range
+   * (both bounds optional, inclusive). An empty object deletes every appointment in scope.
+   */
+  delete?: { from?: string; to?: string };
   flushQueues?: boolean;
 };
 
@@ -302,7 +279,7 @@ async function fanOutAcrossLanes(
   runDeps: ReturnType<typeof TrusteeAppointmentSyncRun.createDeps>,
 ): Promise<FanOutResult> {
   const regions = await RegionDriver.getAllRegionIds(context);
-  const lanes = assignLanesRoundRobin(regions, getLaneCount(logger));
+  const lanes = assignLanesRoundRobin(regions, LANE_COUNT);
   // Recorded before any lane is sent, so the last lane to finish knows to release the lock; with
   // no lanes the run is already over and this releases it.
   await TrusteeAppointmentSyncRun.setLanesRemaining(
@@ -343,8 +320,8 @@ async function handleStart(
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
-  // Set once deleteAll completes, so a later requeue of this invocation does not repeat the reset.
-  let deleteAllDone = false;
+  // Set once the delete completes, so a later requeue of this invocation does not repeat it.
+  let deleteDone = false;
   // Minted up front so a requeue after a partly finished claim carries it and can pick its own lock back up.
   let runId = startMessage.runId ?? randomUUID();
   try {
@@ -380,7 +357,7 @@ async function handleStart(
     }
 
     // Every start that is not a lane of a running sync claims the run; a lane only checks that its
-    // run still holds the lock. This runs before deleteAll so a start that is skipped never wipes
+    // run still holds the lock. This runs before the delete so a start that is skipped never deletes
     // appointments under an active run. The lock has no expiry: if a run dies, starts skip until an
     // operator deletes the TRUSTEE_APPOINTMENT_SYNC_RUN runtime-state document.
     const runDeps = TrusteeAppointmentSyncRun.createDeps(context);
@@ -416,14 +393,17 @@ async function handleStart(
       runId = claim.runId;
     }
 
-    if (startMessage.deleteAll) {
-      logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
+    if (startMessage.delete) {
+      logger.info(MODULE_NAME, 'delete requested — deleting case appointment records.');
       const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
-      const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAll(deps);
+      const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAppointments(deps, {
+        ...(startMessage.regions ? { regions: startMessage.regions } : {}),
+        ...startMessage.delete,
+      });
       if (deleteResult.error) {
         throw deleteResult.error;
       }
-      deleteAllDone = true;
+      deleteDone = true;
     }
 
     const runDate = startMessage.runDate ?? DateHelper.getTodaysIsoDate();
@@ -457,30 +437,41 @@ async function handleStart(
       return;
     }
 
-    // A resume point from before a deleteAll reset would skip the history the reset just cleared.
-    const resumeFrom = startMessage.deleteAll ? undefined : startMessage.resumeFrom;
+    // A resume point from before the delete would skip the range the delete just cleared.
+    const resumeFrom = startMessage.delete ? undefined : startMessage.resumeFrom;
+    // Each date's results are sent before the driver bookmarks the date (cams-fd8qd.33); results
+    // for a date the driver did not finish come back on the result and are sent below.
+    let dlqMessagesSent = 0;
+    let pagesQueued = 0;
+    const sendRecordResults = async (records: {
+      dlqMessages: unknown[];
+      retryableEvents: TrusteeAppointmentSyncEvent[];
+    }) => {
+      if (records.dlqMessages.length > 0) {
+        const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          DLQ.queueName,
+        );
+        for (const dlqMessage of records.dlqMessages) {
+          await dlqQueueClient.sendMessage(JSON.stringify(dlqMessage));
+        }
+        dlqMessagesSent += records.dlqMessages.length;
+      }
+      // Retryable events get their first attempt at a delayed retry via the PAGE queue/handlePage,
+      // which owns the backoff/retry-limit policy (see handlePage below).
+      if (records.retryableEvents.length > 0) {
+        pagesQueued += (await queueEventPages(records.retryableEvents, connectionString))
+          .pagesQueued;
+      }
+    };
+
     const result = await RegionDriver.runRegionDriver(context, {
       regions: startMessage.regions,
       runDate,
       resumeFrom,
+      onDateComplete: sendRecordResults,
     });
-
-    if (result.dlqMessages.length > 0) {
-      const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
-        connectionString,
-        DLQ.queueName,
-      );
-      for (const dlqMessage of result.dlqMessages) {
-        await dlqQueueClient.sendMessage(JSON.stringify(dlqMessage));
-      }
-    }
-
-    // Retryable events get their first attempt at a delayed retry via the PAGE queue/handlePage,
-    // which owns the backoff/retry-limit policy (see handlePage below).
-    let pagesQueued = 0;
-    if (result.retryableEvents.length > 0) {
-      pagesQueued += (await queueEventPages(result.retryableEvents, connectionString)).pagesQueued;
-    }
+    await sendRecordResults(result);
 
     let runNotCompleted: string | undefined;
     if (result.continuation) {
@@ -527,7 +518,7 @@ async function handleStart(
 
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
-      documentsFailed: result.dlqMessages.length,
+      documentsFailed: dlqMessagesSent,
       success: runNotCompleted === undefined,
       error: runNotCompleted,
       details: {
@@ -553,12 +544,12 @@ async function handleStart(
       return;
     }
     // Requeues the original message, not a continuation: nothing about this invocation's progress
-    // is known here, so the count simply extends the streak. deleteAll is dropped once it has run.
+    // is known here, so the count simply extends the streak. delete is dropped once it has run.
     await requeueAfterTransientError(invocationContext, logger, connectionString, {
       ...startMessage,
       runId,
       transientRetryCount: (startMessage.transientRetryCount ?? 0) + 1,
-      deleteAll: deleteAllDone ? undefined : startMessage.deleteAll,
+      delete: deleteDone ? undefined : startMessage.delete,
     });
   }
 }

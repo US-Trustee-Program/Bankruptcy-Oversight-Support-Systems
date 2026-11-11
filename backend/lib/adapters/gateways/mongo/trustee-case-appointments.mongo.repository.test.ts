@@ -322,6 +322,75 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('upsert', () => {
+    beforeEach(() => {
+      // No stored row for the natural key unless a test says otherwise.
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    });
+
+    // cams-fd8qd.35: a replayed older event for the same court appointment carries no
+    // disposition; writing it as given would reopen an appointment the court closed.
+    test('keeps a stored unassignedOn when the incoming row has none', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, documentType: 'CASE_APPOINTMENT', unassignedOn: '2024-06-30' },
+      ]);
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.upsert({
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+      });
+
+      expect(result.unassignedOn).toBe('2024-06-30');
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+      for (const [, document] of replaceOneSpy.mock.calls) {
+        expect(document).toEqual(expect.objectContaining({ unassignedOn: '2024-06-30' }));
+      }
+
+      repo.release();
+    });
+
+    test('writes the incoming unassignedOn without reading the stored row', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsert({
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+        unassignedOn: '2024-07-31',
+      });
+
+      expect(findSpy).not.toHaveBeenCalled();
+      expect(replaceOneSpy.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ unassignedOn: '2024-07-31' }),
+      );
+
+      repo.release();
+    });
+
+    test('writes an open row when no stored row for the natural key is closed', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-new', modifiedCount: 0, upsertedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsert({ caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' });
+
+      expect(replaceOneSpy.mock.calls[0][1]).not.toHaveProperty('unassignedOn');
+
+      repo.release();
+    });
+
     test('should reject an invalid chapter value without writing to Mongo', async () => {
       const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
       const context = await createMockApplicationContext();
@@ -823,28 +892,75 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('deleteAll', () => {
-    test('should delete case appointments from both partitions and return the case-partition count', async () => {
+  describe('deleteCaseAppointments', () => {
+    async function deleteWith(
+      filter: Parameters<TrusteeCaseAppointmentsMongoRepository['deleteCaseAppointments']>[0],
+    ) {
       const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockResolvedValueOnce(7)
         .mockResolvedValueOnce(5);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+      const result = await repo.deleteCaseAppointments(filter);
+      repo.release();
+      return { deleteManySpy, result };
+    }
 
-      const result = await repo.deleteAll();
+    test('deletes placed and parked rows from both partitions and returns the case-partition count', async () => {
+      const { deleteManySpy, result } = await deleteWith({});
 
       expect(deleteManySpy).toHaveBeenCalledTimes(2);
-      // Parked rows (CASE_APPOINTMENT_UNATTACHED) are cleared too, so a reset leaves nothing for
-      // the heal to re-attach.
-      const bothTypes = expect.objectContaining({
-        condition: 'CONTAINS',
-        rightOperand: ['CASE_APPOINTMENT', 'CASE_APPOINTMENT_UNATTACHED'],
-      });
-      expect(deleteManySpy).toHaveBeenNthCalledWith(1, bothTypes);
-      expect(deleteManySpy).toHaveBeenNthCalledWith(2, bothTypes);
+      expect(deleteManySpy.mock.calls[0][0]).toEqual(deleteManySpy.mock.calls[1][0]);
+      // Parked rows (CASE_APPOINTMENT_UNATTACHED) are cleared too, so nothing is left for the
+      // heal to re-attach.
+      expect(conditionOn(deleteManySpy.mock.calls[0][0], 'documentType')).toEqual(
+        expect.objectContaining({
+          condition: 'CONTAINS',
+          rightOperand: ['CASE_APPOINTMENT', 'CASE_APPOINTMENT_UNATTACHED'],
+        }),
+      );
+      expect(conditionOn(deleteManySpy.mock.calls[0][0], 'caseId')).toBeUndefined();
+      expect(conditionOn(deleteManySpy.mock.calls[0][0], 'assignedOn')).toBeUndefined();
       expect(result).toBe(7);
+    });
+
+    test('limits the delete to cases in the given divisions', async () => {
+      const { deleteManySpy } = await deleteWith({ divisionCodes: ['081', '087'] });
+
+      const caseIdCondition = conditionOn(deleteManySpy.mock.calls[0][0], 'caseId');
+      expect(caseIdCondition).toEqual(expect.objectContaining({ condition: 'REGEX' }));
+      const pattern = new RegExp(caseIdCondition!.rightOperand as string);
+      expect(pattern.test('081-24-12345')).toBe(true);
+      expect(pattern.test('087-24-12345')).toBe(true);
+      expect(pattern.test('091-24-12345')).toBe(false);
+      expect(pattern.test('108-24-12345')).toBe(false);
+    });
+
+    test('deletes nothing when given an empty division list', async () => {
+      const deleteManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.deleteCaseAppointments({ divisionCodes: [] });
+
+      expect(deleteManySpy).not.toHaveBeenCalled();
+      expect(result).toBe(0);
       repo.release();
+    });
+
+    test('limits the delete to appointments assigned within the given dates, inclusive', async () => {
+      const { deleteManySpy } = await deleteWith({ from: '2026-08-01', to: '2026-09-30' });
+
+      const values = (deleteManySpy.mock.calls[0][0] as { values: Record<string, unknown>[] })
+        .values;
+      const onAssignedOn = values.filter(
+        (v) => (v.leftOperand as { name: string })?.name === 'assignedOn',
+      );
+      expect(onAssignedOn).toEqual([
+        expect.objectContaining({ condition: 'GREATER_THAN_OR_EQUAL', rightOperand: '2026-08-01' }),
+        expect.objectContaining({ condition: 'LESS_THAN_OR_EQUAL', rightOperand: '2026-09-30' }),
+      ]);
     });
 
     test('should throw a wrapped error when the trustee-partition delete fails', async () => {
@@ -854,7 +970,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
+      await expect(repo.deleteCaseAppointments({})).rejects.toThrow(
+        'Failed to delete case appointments.',
+      );
       repo.release();
     });
 
@@ -865,7 +983,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.deleteAll()).rejects.toThrow('Failed to delete all case appointments.');
+      await expect(repo.deleteCaseAppointments({})).rejects.toThrow(
+        'Failed to delete case appointments.',
+      );
       repo.release();
     });
   });
