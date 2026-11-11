@@ -109,6 +109,53 @@ describe('Chapter13StandingAuditForm', () => {
     expect(screen.getByTestId('audit-completion-status')).toHaveValue('');
   });
 
+  test('renders an empty past-audit field when the existing document does not have it set', async () => {
+    const documentMissingPastAudit: TrusteeUpcomingKeyDates = {
+      ...existingDocument,
+      pastAudit: undefined,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingPastAudit });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toHaveValue('');
+    });
+  });
+
+  test('save clears owned fields to null when all three are left blank', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      ...existingDocument,
+      pastAudit: undefined,
+      ch13AuditCompletionYear: undefined,
+      ch13AuditCompletionStatus: undefined,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toHaveValue('');
+    });
+
+    const saveButton = screen.getByTestId('button-save-chapter13-standing-audit-key-dates');
+    expect(saveButton).not.toBeDisabled();
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          pastAudit: null,
+          ch13AuditCompletionYear: null,
+          ch13AuditCompletionStatus: null,
+        }),
+      );
+    });
+  });
+
   test('Save button is disabled when past-audit has an invalid date', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
     renderComponent();

@@ -122,6 +122,29 @@ describe('Chapter12StandingOtherKeyDatesForm', () => {
     expect(screen.getByTestId('id-expiration')).toHaveValue('');
   });
 
+  test('shows empty inputs when the existing document does not have these fields set', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      id: 'doc-002',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-chapter12-standing-other')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('lease-expiration')).toHaveValue('');
+    expect(screen.getByTestId('past-background-question')).toHaveValue('');
+    expect(screen.getByTestId('id-expiration')).toHaveValue('');
+  });
+
   test.each([
     ['lease-expiration', 'leaseExpiration', '2029-03-01'],
     ['past-background-question', 'pastBackgroundQuestion', '2024-01-15'],

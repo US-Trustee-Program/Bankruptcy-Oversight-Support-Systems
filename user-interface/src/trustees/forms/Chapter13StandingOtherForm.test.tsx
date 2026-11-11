@@ -103,6 +103,65 @@ describe('Chapter13StandingOtherForm', () => {
     expect(screen.getByTestId('last-compensation-study-year')).toHaveValue('2024');
   });
 
+  test('renders empty inputs when the existing document does not have these fields set', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      id: 'doc-002',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lease-expiration')).toHaveValue('');
+    });
+    expect(screen.getByTestId('past-background-question')).toHaveValue('');
+    expect(screen.getByTestId('id-expiration')).toHaveValue('');
+    expect(screen.getByTestId('last-compensation-study-month')).toHaveValue('');
+    expect(screen.getByTestId('last-compensation-study-year')).toHaveValue('');
+  });
+
+  test('save clears owned fields to null when all four are left blank', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      id: 'doc-002',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByTestId('lease-expiration')).toHaveValue('');
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-chapter13-standing-other-key-dates'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          leaseExpiration: null,
+          pastBackgroundQuestion: null,
+          idExpiration: null,
+          lastCompensationStudy: null,
+        }),
+      );
+    });
+  });
+
   test('saves a merged input preserving fields this form does not edit', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
