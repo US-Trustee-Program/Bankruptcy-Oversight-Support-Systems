@@ -284,6 +284,22 @@ describe('normalizeSourceName', () => {
   });
 });
 
+describe('normalizeSourceName - missing raw name parts', () => {
+  test('recovers gracefully when the raw record has no first or last name at all', async () => {
+    const state = await normalizeSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ fullName: '', firstName: undefined, lastName: undefined }),
+      ),
+    );
+
+    expect(state.sourceNormalized.firstName).toBe('');
+    // lastNameSurnameCandidates('') returns [] for an empty surname, so destructuring its first
+    // element yields undefined here, not '' - firstName and lastName are recovered by different
+    // helpers (splitGivenName vs lastNameSurnameCandidates) with different empty-input contracts.
+    expect(state.sourceNormalized.lastName).toBeUndefined();
+  });
+});
+
 describe('recallBySurnameExact', () => {
   let context: ApplicationContext;
 
@@ -367,6 +383,38 @@ describe('recallBySurnameExact', () => {
       camsStack: [{ message: 'recallBySurnameExact failed' }],
     });
     expect(result.match).toBeNull();
+  });
+
+  test('searches nothing and adds no candidates when the source has no last name at all', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const state = await normalizeSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ fullName: '', firstName: undefined, lastName: undefined }),
+      ),
+    );
+
+    const result = await recallBySurnameExact(context)(state);
+
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(result.candidates.size).toBe(0);
+  });
+
+  test('deduplicates a trustee found under both the primary surname and a surname alternate', async () => {
+    const moon = makeTrustee({ trusteeId: 't1', firstName: 'Aldric', lastName: 'Moon' });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => (token === 'moon' || token === 'reyes' ? [moon] : []),
+    );
+
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Aldric Moon', firstName: 'Aldric', lastName: 'Moon' }),
+    );
+    state.sourceNormalized.lastName = 'moon';
+    state.sourceNormalized.lastNameAlternates = ['reyes'];
+
+    const result = await recallBySurnameExact(context)(state);
+
+    expect([...result.candidates.keys()]).toEqual(['t1']);
   });
 });
 
@@ -572,6 +620,44 @@ describe('recallByAnchoredLevenshtein', () => {
   test('records a gateway failure on state.error, rather than throwing', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockRejectedValue(
       new Error('Mongo timeout'),
+    );
+
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFullName,
+        firstName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFirstName,
+        lastName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsLastName,
+      }),
+    );
+
+    const result = await recallByAnchoredLevenshtein(context)(state);
+
+    expect(result.error).toMatchObject({
+      isCamsError: true,
+      camsStack: [{ message: 'recallByAnchoredLevenshtein failed' }],
+    });
+    expect(result.match).toBeNull();
+  });
+
+  test('does nothing when the source has no first or last name to anchor on', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: '', firstName: undefined, lastName: undefined }),
+    );
+
+    const result = await recallByAnchoredLevenshtein(context)(state);
+
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(result.candidates.size).toBe(0);
+  });
+
+  test('records a gateway failure from the second (first-name-anchored) search direction, rather than throwing', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === FIRST_NAME_SPELLING_VARIANT_PAIR.acmsLastName) return [];
+        throw new Error('Mongo timeout');
+      },
     );
 
     const state = createInitialState(
@@ -1134,6 +1220,114 @@ describe('scoreCandidate - name-match facet', () => {
       doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
+
+  // These three bypass normalizeSourceName, since scoreCandidate accepts sourceNormalized
+  // directly and a caller is not required to have normalized it first.
+  test('fails outright when the source record has no first name at all', async () => {
+    const state = createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Vexmore' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Someone', lastName: 'Vexmore' })),
+      'test',
+    );
+
+    scoreCandidate({ lastName: 'Vexmore' }, candidate);
+
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: false });
+  });
+
+  test('fails outright when the source record has no last name at all', async () => {
+    const state = createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
+      'test',
+    );
+
+    scoreCandidate({ firstName: 'John' }, candidate);
+
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: false });
+  });
+
+  test('treats an unnormalized, absent source middle name as blank rather than crashing', async () => {
+    const state = createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
+      'test',
+    );
+
+    // addCandidate normalizes camsNormalized's name fields to lowercase (see
+    // cloneNormalizableFields), so sourceNormalized here must already be lowercase too -
+    // scoreCandidate does no case-folding of its own, only the absent middleName is under test.
+    scoreCandidate({ firstName: 'john', lastName: 'doe' }, candidate);
+
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: true, quality: 'exact' });
+  });
+
+  test('treats a candidate with no first name at all as blank rather than crashing', async () => {
+    const state = await normalizeSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Doe' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: undefined, lastName: 'Doe' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.camsNormalized.firstName).toBe('');
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: false });
+  });
+
+  test('treats a candidate whose last name carries no usable surname token as blank, rather than crashing', async () => {
+    const state = await normalizeSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Doe' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: '' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.camsNormalized.lastName).toBeUndefined();
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: false });
+  });
+
+  test('matches via a source first-name alias when the primary first names are unrelated', async () => {
+    const state = createInitialState(makeDxtrTrustee({ firstName: 'Victor', lastName: 'Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Hank', lastName: 'Doe' })),
+      'test',
+    );
+
+    scoreCandidate(
+      { firstName: 'victor', firstNameAlternates: ['hank'], lastName: 'doe' },
+      candidate,
+    );
+
+    expect(candidate.scores.doesNameMatch).toEqual({ pass: true, quality: 'strong' });
+  });
+
+  test('matches via a source last-name alias when the primary last names are unrelated', async () => {
+    const state = createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Smith' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Jones' })),
+      'test',
+    );
+
+    scoreCandidate(
+      { firstName: 'john', lastName: 'smith', lastNameAlternates: ['jones'] },
+      candidate,
+    );
+
+    expect(candidate.scores.doesNameMatch?.pass).toBe(true);
+  });
 });
 
 describe('scoreCandidate - similarity-diagnostics facet', () => {
@@ -1166,6 +1360,20 @@ describe('scoreCandidate - similarity-diagnostics facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(candidate.camsNormalized.name).toBe('obrien smith');
+  });
+
+  test('records a zero similarity and match rate when the source record has no full name at all', async () => {
+    const state = createInitialState(makeDxtrTrustee({ fullName: undefined as unknown as string }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'John Doe' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.memo.get('fullNameSimilarity')).toEqual([{ key: '|john doe', value: 0 }]);
+    expect(candidate.memo.get('tokenNameMatchRate')).toEqual([{ key: '|john doe', value: 0 }]);
   });
 });
 
@@ -1648,6 +1856,32 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(candidate.scores.doesZipCodeMatch).toBeUndefined();
+  });
+
+  test('records no city/state scores when a zip-less ACMS address has a state but no city at all', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: GENERIC_ACMS_FULL_NAME,
+        legacy: { cityStateZipCountry: 'WA' },
+      }),
+    );
+    const candidate = addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.scores.doesStateMatch).toBeUndefined();
+    expect(candidate.scores.doesCityMatch).toBeUndefined();
   });
 });
 

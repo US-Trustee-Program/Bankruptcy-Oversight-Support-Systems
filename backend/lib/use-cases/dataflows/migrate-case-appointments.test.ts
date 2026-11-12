@@ -193,6 +193,28 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         'ACMS unavailable',
       );
     });
+
+    test('apptDate is null when raw APPT_DATE is 0 (unassigned sentinel)', async () => {
+      setupAcmsGateway([makeRawRecord({ APPT_DATE: 0 })]);
+      setupProfessionalIdsRepo([]);
+
+      const result = await MigrateCaseAppointmentsUseCase.readPage(context, null, 10);
+
+      expect(result.records[0].apptDate).toBeNull();
+    });
+
+    test('reuses the cached professional-id map on a second call, skipping findAll', async () => {
+      const findAllSpy = vi.fn().mockResolvedValue([makeProfessionalId()]);
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { findAll: findAllSpy }),
+      );
+      setupAcmsGateway([makeRawRecord()]);
+
+      await MigrateCaseAppointmentsUseCase.readPage(context, null, 10);
+      await MigrateCaseAppointmentsUseCase.readPage(context, 1001, 10);
+
+      expect(findAllSpy).toHaveBeenCalledOnce();
+    });
   });
 
   describe('writePage', () => {
@@ -336,6 +358,80 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.successCount).toBe(0);
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].reason).toContain('Invalid ACMS chapter value');
+    });
+
+    test('returns failure when a date field is a valid-looking but non-existent calendar date', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ assignDate: 20200230 }), // Feb 30 does not exist
+      ]);
+
+      expect(result.successCount).toBe(0);
+      expect(result.failures[0].reason).toContain('Invalid date');
+    });
+
+    test('includes unassignedOn when unassignDate is set', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ unassignDate: 20210301 }),
+      ]);
+
+      expect(upsertSpy.mock.calls[0][0]).toHaveProperty('unassignedOn', '2021-03-01');
+    });
+
+    test('omits dateFiled, courtDivisionCode, and chapter when their source fields are falsy', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ caseFiledDate: null, courtDivisionCode: '', chapter: '' }),
+      ]);
+
+      const input = upsertSpy.mock.calls[0][0];
+      expect(input).not.toHaveProperty('dateFiled');
+      expect(input).not.toHaveProperty('courtDivisionCode');
+      expect(input).not.toHaveProperty('chapter');
+    });
+
+    test('includes closedDate from closedByCourtDate when set', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ closedByCourtDate: 20220401 }),
+      ]);
+
+      expect(upsertSpy.mock.calls[0][0]).toHaveProperty('closedDate', '2022-04-01');
+    });
+
+    test('falls back to closedByUstDate for closedDate when closedByCourtDate is absent', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ closedByCourtDate: null, closedByUstDate: 20220501 }),
+      ]);
+
+      expect(upsertSpy.mock.calls[0][0]).toHaveProperty('closedDate', '2022-05-01');
+    });
+
+    test('includes reopenedDate when set', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ reopenedDate: 20220601 }),
+      ]);
+
+      expect(upsertSpy.mock.calls[0][0]).toHaveProperty('reopenedDate', '2022-06-01');
     });
   });
 
@@ -610,6 +706,86 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.successCount).toBe(1);
       expect(upsertSpy).toHaveBeenCalledOnce();
     });
+
+    test('pushes to failures when getCaseOrMovedCase rejects with a non-Error value', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockRejectedValue(
+        'cosmos string rejection',
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord(),
+      ]);
+
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].reason).toContain('cosmos string rejection');
+    });
+
+    test('moved-case write uses the sentinel trustee id when trusteeId is null', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue({
+        movedToCaseId: '081-24-99999',
+      } as SyncedCase);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ trusteeId: null }),
+      ]);
+
+      expect(result.successCount).toBe(1);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ trusteeId: '00000000-0000-0000-0000-000000000000' }),
+      );
+    });
+
+    test('escapes before writing a moved case when the threshold is already exceeded', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue({
+        movedToCaseId: '081-24-99999',
+      } as SyncedCase);
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(
+        context,
+        [makeResolvedRecord()],
+        { safeThresholdMs: 0 },
+      );
+
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(result.remaining).toHaveLength(1);
+      expect(result.successCount).toBe(0);
+    });
+
+    test('returns failure when the moved-case write throws', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue({
+        movedToCaseId: '081-24-99999',
+      } as SyncedCase);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new Error('moved-case write failed'),
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord(),
+      ]);
+
+      expect(result.successCount).toBe(0);
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].reason).toContain('moved-case write failed');
+    });
+
+    test('returns failure when the moved-case write rejects with a non-Error value', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue({
+        movedToCaseId: '081-24-99999',
+      } as SyncedCase);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        'moved-case string rejection',
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord(),
+      ]);
+
+      expect(result.failures[0].reason).toContain('moved-case string rejection');
+    });
   });
 
   describe('updateMigrationState', () => {
@@ -742,6 +918,41 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
     });
+
+    test('skips the internal read when a prefetched state is provided', async () => {
+      const readSpy = vi.fn();
+      const upsertSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { read: readSpy, upsert: upsertSpy }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.updateMigrationState(
+        context,
+        { lastId: 100, status: 'IN_PROGRESS' },
+        null,
+      );
+
+      expect(readSpy).not.toHaveBeenCalled();
+      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ lastId: 100 }));
+    });
+
+    test('returns an error when the internal read throws a non-NotFound error', async () => {
+      const upsertSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('cosmos unavailable')),
+          upsert: upsertSpy,
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+        lastId: 100,
+        status: 'IN_PROGRESS',
+      });
+
+      expect(result.error).toBeDefined();
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('readMigrationState', () => {
@@ -821,6 +1032,18 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           atomicIncrement: vi.fn().mockRejectedValue(new Error('cosmos throttled')),
+        }) as never,
+      );
+
+      await expect(
+        MigrateCaseAppointmentsUseCase.incrementMetric(context, 'failedCount', 1),
+      ).resolves.toBeUndefined();
+    });
+
+    test('swallows a non-Error rejection and does not throw', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          atomicIncrement: vi.fn().mockRejectedValue('cosmos string rejection'),
         }) as never,
       );
 
@@ -1138,6 +1361,196 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       await MigrateCaseAppointmentsUseCase.heal(context);
 
       expect(replaceOneSpy).not.toHaveBeenCalled();
+    });
+
+    test('skips docs that have no trusteeId when grouping for repair', async () => {
+      const docWithoutTrustee = {
+        _id: 'id-no-trustee',
+        id: 'id-no-trustee',
+        caseId: '081-24-1',
+        assignedOn: '2020-01-15',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      } as unknown as CaseAppointment & { _id: string };
+
+      const docWithTrustee = {
+        _id: 'id-with-trustee',
+        id: 'id-with-trustee',
+        caseId: '081-24-2',
+        trusteeId: 'trustee-001',
+        assignedOn: '2020-01-16',
+        createdOn: '2020-01-16T00:00:00Z',
+        updatedOn: '2020-01-16T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      } as unknown as CaseAppointment & { _id: string };
+
+      const getActiveSpy = vi.fn().mockResolvedValue([]);
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi
+            .fn()
+            .mockResolvedValueOnce([docWithoutTrustee, docWithTrustee])
+            .mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: getActiveSpy,
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      // Proves the batch was actually grouped and processed (not just an
+      // early return): the doc with a trusteeId reaches the per-trustee
+      // lookup, while the doc missing trusteeId is excluded from grouping
+      // entirely, so the lookup is called exactly once, for trustee-001.
+      expect(getActiveSpy).toHaveBeenCalledTimes(1);
+      expect(getActiveSpy).toHaveBeenCalledWith('trustee-001');
+    });
+
+    test('logs a warning and continues with a fresh state when reading heal state fails', async () => {
+      const logWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('cosmos unavailable')),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        'MIGRATE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('Failed to read heal state'),
+      );
+    });
+
+    test('logs a warning with a stringified reason when reading heal state rejects with a non-Error value', async () => {
+      const logWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue('cosmos string rejection'),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        'MIGRATE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('cosmos string rejection'),
+      );
+    });
+
+    test('logs a warning but does not throw when persisting heal state fails', async () => {
+      const logWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockRejectedValue(new Error('cosmos write failed')),
+        }) as never,
+      );
+
+      await expect(MigrateCaseAppointmentsUseCase.heal(context)).resolves.toBeUndefined();
+
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        'MIGRATE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('Failed to update heal state'),
+      );
+    });
+
+    test('logs a warning with a stringified reason when persisting heal state rejects with a non-Error value', async () => {
+      const logWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockRejectedValue('cosmos string rejection'),
+        }) as never,
+      );
+
+      await expect(MigrateCaseAppointmentsUseCase.heal(context)).resolves.toBeUndefined();
+
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        'MIGRATE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('cosmos string rejection'),
+      );
+    });
+
+    test('generates a fresh startedAt when approaching timeout on the very first check with no prior heal state', async () => {
+      const upsertHealStateSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          // Advance the clock past the threshold while "reading" state, so the very
+          // first timeout check (before any batch is fetched) already fires with
+          // healState still null -- the one path where startedAt has no prior value.
+          read: vi.fn(async () => {
+            vi.advanceTimersByTime(56 * 60 * 1000 + 2000);
+            throw new NotFoundError('test');
+          }),
+          upsert: upsertHealStateSpy,
+        }) as never,
+      );
+
+      const resultPromise = MigrateCaseAppointmentsUseCase.heal(context);
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(upsertHealStateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ startedAt: expect.any(String) }),
+      );
     });
   });
 });

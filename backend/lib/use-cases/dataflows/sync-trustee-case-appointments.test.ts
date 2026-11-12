@@ -449,6 +449,47 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(successCount).toBe(1);
     });
 
+    test('falls back to the stranded row itself when no matching closed row is found in case history', async () => {
+      // Same repair path as the test above, but getByCaseId's history has nothing matching this
+      // trusteeId/assignedOn pair (e.g. the casePartition row was deleted rather than soft-closed),
+      // so the repair must copy the stranded row as-is instead of a closed row's unassignedOn.
+      const strandedRow: CaseAppointment = {
+        id: 'ca-old',
+        caseId: 'case-001',
+        trusteeId: 'trustee-old',
+        assignedOn: '2023-06-01',
+        createdOn: '2023-06-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2023-06-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+      (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+        [],
+      );
+      const findStrandedActiveInTrusteePartition = vi.fn().mockResolvedValue(strandedRow);
+      mockTrusteeCaseAppointmentsRepo.findStrandedActiveInTrusteePartition =
+        findStrandedActiveInTrusteePartition;
+      const replaceOneInTrusteePartition = vi.fn().mockResolvedValue(undefined);
+      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+
+      const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(replaceOneInTrusteePartition).toHaveBeenCalledWith(
+        { caseId: 'case-001', trusteeId: 'trustee-old', assignedOn: '2023-06-01' },
+        expect.objectContaining({
+          ...strandedRow,
+          documentType: 'CASE_APPOINTMENT',
+        }),
+      );
+      expect(successCount).toBe(1);
+    });
+
     test('does not repair trusteePartition when no stranded row exists for this case', async () => {
       (
         mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
@@ -1335,6 +1376,37 @@ describe('SyncTrusteeCaseAppointments', () => {
             profCode: '12345',
           },
         ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
+    describe('defensive fullName fallback when dxtrTrustee.fullName is missing', () => {
+      // No producer sends dxtrTrustee.fullName as null/undefined today (the type requires a
+      // string); this stands in for malformed legacy data defensively guarded against by the
+      // `dxtrTrustee.fullName ?? ''` fallback in resolveSkipReason, isSentinelWithNoIdentity, and
+      // isBogusTrusteeName alike. A sentinel profCode plus usable contact info routes through
+      // isSentinelWithNoIdentity (reached here, since contact info short-circuits it to false
+      // before it can disqualify the event) on the way to the same fallback in
+      // isUnattributableBogusName.
+      test('treats a missing fullName as an empty name rather than throwing', async () => {
+        const events = [
+          {
+            ...makeEvent('case-001', 'Ignored'),
+            dxtrTrustee: {
+              fullName: undefined,
+              lastName: undefined,
+              legacy: { phone: '555-123-4567' },
+            },
+            profCode: '00000',
+          },
+        ] as unknown as TrusteeAppointmentSyncEvent[];
 
         const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
