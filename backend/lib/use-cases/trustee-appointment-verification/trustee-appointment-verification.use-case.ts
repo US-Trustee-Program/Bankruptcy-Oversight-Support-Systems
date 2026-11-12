@@ -21,6 +21,33 @@ export type AppointmentTaskWrite = {
   checks?: CaseAppointmentChecks;
 };
 
+type AppointmentTaskCandidate = AppointmentTaskWrite & {
+  courtId: string;
+  courtDivisionCode: string;
+  chapter: string;
+  checks: CaseAppointmentChecks;
+};
+
+/**
+ * The appointment-task predicate: an attached (CASE_APPOINTMENT) write whose case and trustee
+ * were both identified, that no active appointment covers, with court, division and chapter all
+ * present. Exported so a caller can skip fetching the trustee's appointments when no task applies.
+ */
+export function isAppointmentTaskCandidate(
+  appointment: AppointmentTaskWrite,
+): appointment is AppointmentTaskCandidate {
+  const { courtId, courtDivisionCode, chapter, documentType, checks } = appointment;
+  return (
+    documentType === 'CASE_APPOINTMENT' &&
+    !!checks?.matchedCase &&
+    checks.matchedTrustee &&
+    !checks.matchedTrusteeAppointment &&
+    !!courtId &&
+    !!courtDivisionCode &&
+    !!chapter
+  );
+}
+
 /**
  * CAMS-956: an attached case appointment whose case and trustee were both identified, but whose
  * trustee holds no active appointment covering the case's court, division and chapter, belongs to
@@ -40,19 +67,8 @@ export async function openOrJoinAppointmentTask(
   trusteeAppointments: TrusteeAppointment[],
   user: CamsUserReference = SYSTEM_USER_REFERENCE,
 ): Promise<void> {
-  const { caseId, trusteeId, courtId, courtDivisionCode, chapter, documentType, checks } =
-    appointment;
-  if (
-    documentType !== 'CASE_APPOINTMENT' ||
-    !checks?.matchedCase ||
-    !checks.matchedTrustee ||
-    checks.matchedTrusteeAppointment ||
-    !courtId ||
-    !courtDivisionCode ||
-    !chapter
-  ) {
-    return;
-  }
+  if (!isAppointmentTaskCandidate(appointment)) return;
+  const { caseId, trusteeId, courtId, courtDivisionCode, chapter } = appointment;
 
   const reason: AppointmentTaskReason = hasAppointmentForCase(
     trusteeAppointments,
