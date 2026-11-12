@@ -15,22 +15,39 @@ import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
+import { formatAcmsDate } from '../../../use-cases/dataflows/acms-case-appointment.helpers';
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
-// ACMS read timeout in milliseconds. Defaults to 5 minutes.
-const ACMS_REQUEST_TIMEOUT_MS = (() => {
-  const raw = process.env.ACMS_REQUEST_TIMEOUT_MS;
-  if (!raw) return 300000; // 5 minutes default
+const DEFAULT_ACMS_REQUEST_TIMEOUT_MS = 300000; // 5 minutes
+
+/** ACMS read timeout in milliseconds from the raw env var value; defaults to 5 minutes. */
+export function parseAcmsTimeoutMs(raw: string | undefined): number {
+  if (!raw) return DEFAULT_ACMS_REQUEST_TIMEOUT_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     console.warn(
       `[${MODULE_NAME}] Invalid ACMS_REQUEST_TIMEOUT_MS="${raw}", using default 300000ms (5 min)`,
     );
-    return 300000;
+    return DEFAULT_ACMS_REQUEST_TIMEOUT_MS;
   }
   return parsed;
-})();
+}
+
+const ACMS_REQUEST_TIMEOUT_MS = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
+
+// Row-inclusion filters shared by getCmmapAppointmentsRaw and getLatestCmmapChangeDateForRegion.
+// Both queries must select the same rows: a date reported by the latest-change query has to
+// match at least one row in the page query, or the region bookmark stalls. The fragment uses the
+// aliases m (CMMAP), c (CMMDB), and p (CMMPR) and binds no parameters; each query adds its own.
+export const CMMAP_ROW_INCLUSION_FILTERS = `m.DELETE_CODE != 'D'
+          AND m.PROF_CODE > 0
+          AND m.PROF_CODE < 98000
+          AND m.APPT_TYPE = 'TR'
+          AND c.DELETE_CODE != 'D'
+          AND p.DELETE_CODE != 'D'
+          AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
+            OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))`;
 
 function throwCamsError(originalError: unknown): never {
   const normalizedError =
@@ -254,9 +271,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
       const caseIds = deletedCaseResults.map((r) => r.caseId);
       const latestDeletedCaseDate =
-        deletedCaseResults.length > 0
-          ? this.formatAcmsDateToString(deletedCaseResults[0].lastChangeDate)
-          : lastChangeDate;
+        this.latestValidChangeDate(context, deletedCaseResults) ?? lastChangeDate;
 
       return { caseIds, latestDeletedCaseDate };
     } catch (originalError) {
@@ -429,6 +444,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     lastId: number,
     pageSize: number,
     cutoffDate: string | null,
+    regionId?: string,
+    changeDate?: string,
   ): Promise<AcmsCaseAppointmentRawRecord[]> {
     const input: DbTableFieldSpec[] = [
       { name: 'lastId', type: mssql.BigInt, value: lastId },
@@ -438,17 +455,31 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     let cutoffClause = '';
     if (cutoffDate !== null) {
       const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
-      if (!Number.isFinite(cutoffInt)) {
-        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
-      }
       input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
       cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
     }
 
-    // Paginate the CMMAP+CMMDB join first (inner query), then join CMMKE against
+    let regionClause = '';
+    if (regionId !== undefined) {
+      input.push({ name: 'regionId', type: mssql.Char, value: regionId });
+      regionClause = 'AND m.REGION_CODE = @regionId';
+    }
+
+    let changeDateClause = '';
+    if (changeDate !== undefined) {
+      const changeDateInt = parseInt(changeDate.replace(/-/g, ''), 10);
+      input.push({ name: 'changeDate', type: mssql.Int, value: changeDateInt });
+      changeDateClause = 'AND m.CDB_UPDATE_DATE = @changeDate';
+    }
+
+    // Paginate the CMMAP+CMMDB+CMMPR join first (inner query), then join CMMKE against
     // only the paged rows. Without this subquery pattern the LEFT OUTER JOIN on
     // CMMKE — a table with millions of rows — must be evaluated before pagination,
     // causing SQL timeouts at scale.
+    //
+    // PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (same
+    // exclusion as getTrusteeProfessionalRecordsPage) -- those codes have no real CMMPR row,
+    // so without this filter the INNER JOIN below would silently drop their appointment rows.
     const query = `
       SELECT
         x.id,
@@ -463,6 +494,17 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.CURR_CASE_CHAPT,
         CASE WHEN x.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE x.CLOSED_BY_COURT_DATE END AS CLOSED_BY_COURT_DATE,
         CASE WHEN x.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE x.CLOSED_BY_UST_DATE END AS CLOSED_BY_UST_DATE,
+        x.REGION_CODE,
+        x.CDB_UPDATE_DATE,
+        x.PROF_FIRST_NAME,
+        x.PROF_LAST_NAME,
+        x.PROF_MI,
+        x.PROF_ADDRESS1,
+        x.PROF_ADDRESS2,
+        x.PROF_CITY,
+        x.PROF_STATE,
+        x.PROF_ZIP,
+        x.PROF_COMMERCIAL_PHONE_NBR,
         MAX(ke.ORIGINAL_OCC_DATE) AS REOPENED_DATE
       FROM (
         SELECT
@@ -470,21 +512,25 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
           m.GROUP_DESIGNATOR, m.PROF_CODE,
           m.APPT_DATE, m.DISP_DATE,
+          m.REGION_CODE, m.CDB_UPDATE_DATE,
           c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
-          c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
+          c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE,
+          p.PROF_FIRST_NAME, p.PROF_LAST_NAME, p.PROF_MI,
+          p.PROF_ADDRESS1, p.PROF_ADDRESS2, p.PROF_CITY, p.PROF_STATE,
+          p.PROF_ZIP, p.PROF_COMMERCIAL_PHONE_NBR
         FROM [dbo].[CMMAP] m
         INNER JOIN [dbo].[CMMDB] c
           ON m.CASE_DIV = c.CASE_DIV
           AND m.CASE_YEAR = c.CASE_YEAR
           AND m.CASE_NUMBER = c.CASE_NUMBER
+        INNER JOIN [dbo].[CMMPR] p
+          ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
+          AND m.PROF_CODE = p.UST_PROF_CODE
         WHERE m.id > @lastId
-          AND m.DELETE_CODE != 'D'
-          AND m.PROF_CODE > 0
-          AND m.APPT_TYPE = 'TR'
-          AND c.DELETE_CODE != 'D'
-          AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
-            OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
+          AND ${CMMAP_ROW_INCLUSION_FILTERS}
           ${cutoffClause}
+          ${regionClause}
+          ${changeDateClause}
         ORDER BY m.id
         OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY
       ) AS x
@@ -498,7 +544,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.id, x.CASE_DIV, x.CASE_YEAR, x.CASE_NUMBER,
         x.GROUP_DESIGNATOR, x.PROF_CODE, x.APPT_DATE, x.DISP_DATE,
         x.CASE_FILED_DATE, x.CURR_CASE_CHAPT,
-        x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE
+        x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE,
+        x.REGION_CODE, x.CDB_UPDATE_DATE,
+        x.PROF_FIRST_NAME, x.PROF_LAST_NAME, x.PROF_MI,
+        x.PROF_ADDRESS1, x.PROF_ADDRESS2, x.PROF_CITY, x.PROF_STATE,
+        x.PROF_ZIP, x.PROF_COMMERCIAL_PHONE_NBR
       ORDER BY x.id`;
 
     // Large fetch: set per-request timeout to ACMS_REQUEST_TIMEOUT_MS to accommodate
@@ -516,13 +566,61 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  async getLatestCmmapChangeDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined> {
+    const input: DbTableFieldSpec[] = [{ name: 'regionId', type: mssql.Char, value: regionId }];
+
+    const query = `
+      SELECT TOP 1 m.CDB_UPDATE_DATE
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      INNER JOIN [dbo].[CMMPR] p
+        ON m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR
+        AND m.PROF_CODE = p.UST_PROF_CODE
+      WHERE ${CMMAP_ROW_INCLUSION_FILTERS}
+        AND m.REGION_CODE = @regionId
+      ORDER BY m.CDB_UPDATE_DATE DESC`;
+
+    type ResultType = { CDB_UPDATE_DATE: number };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const recordset = (results as mssql.IResult<ResultType>).recordset;
+      return recordset.length > 0 ? formatAcmsDate(recordset[0].CDB_UPDATE_DATE) : undefined;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
   }
 
-  private formatAcmsDateToString(acmsDate: number): string {
-    const dateStr = acmsDate.toString();
-    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+  /**
+   * The first valid LAST_CHANGE_DATE in DESC-ordered rows, as the next deleted-cases bookmark.
+   * A malformed date would sort first on every run and, as the bookmark, stop new deletions from
+   * being found -- so it is skipped and logged instead (its case is still archived).
+   */
+  private latestValidChangeDate(
+    context: ApplicationContext,
+    rows: { caseId: string; lastChangeDate: number }[],
+  ): string | undefined {
+    for (const row of rows) {
+      try {
+        return formatAcmsDate(row.lastChangeDate);
+      } catch {
+        context.logger.warn(
+          MODULE_NAME,
+          `Skipping malformed LAST_CHANGE_DATE ${row.lastChangeDate} on deleted case ${row.caseId} for the deleted-cases bookmark.`,
+        );
+      }
+    }
+    return undefined;
   }
 }

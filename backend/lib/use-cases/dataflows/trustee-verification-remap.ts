@@ -2,16 +2,14 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
-import { assertValidChapter } from './sync-trustee-case-appointments';
+import { assertValidChapter, deriveUnassignedOn } from './sync-trustee-case-appointments';
 import {
   CaseAppointment,
   TrusteeAppointment,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
-import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
-import CaseManagement from '../cases/case-management';
-import { CaseSummary } from '@common/cams/cases';
+import { SurrogateAppointment, TrusteeCaseAppointmentsRepository } from '../gateways.types';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
 
@@ -27,18 +25,6 @@ const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
  * never deletes its surrogate and there's no cursor to skip past it).
  */
 class RemapDivisionMismatchError extends Error {}
-
-/**
- * A getCaseSummary failure is a DXTR lookup problem, not a division mismatch -- it carries no
- * information about whether the trustee covers the case at all, so it must never be counted
- * toward RemapPageResult.permanentFailureCount (which drives handleRemap's continuation
- * decision). Treated the same as isTooManyRequestsError/isGatewayTimeoutError: rethrown to
- * abort the page and let the queue's own retry/poison-queue mechanism handle it, rather than
- * being silently conflated with a genuine permanent mismatch (reviewer-verified: a transient
- * getCaseSummary failure against a fully covering trustee previously produced the exact same
- * per-case failure count as a real mismatch).
- */
-class RemapCaseSummaryLookupError extends Error {}
 
 type RemapPageResult = {
   documentsWritten: number;
@@ -56,6 +42,34 @@ type RemapPageResult = {
   remainingCount: number;
 };
 
+/**
+ * Latest-wins between an open copy and the case's open real appointment. The court record is
+ * ground truth, so the appointment with the later assignedOn is active and the older one is closed
+ * the day before the later one starts. Returns the copy's own unassignedOn when the existing
+ * appointment is the later one (the copy is written closed), otherwise closes the existing
+ * appointment and returns undefined (the copy stays open). An existing row for the same trustee and
+ * the same assignedOn is this same court appointment from an earlier remap, so nothing changes.
+ */
+async function settleOpenCopy(
+  repo: TrusteeCaseAppointmentsRepository,
+  copy: CaseAppointment,
+  existing: CaseAppointment | null,
+  resolvedTrusteeId: string,
+): Promise<string | undefined> {
+  if (!existing) return undefined;
+  const copyDate = copy.assignedOn.slice(0, 10);
+  const existingDate = existing.assignedOn.slice(0, 10);
+  if (existing.trusteeId === resolvedTrusteeId && existingDate === copyDate) return undefined;
+  if (existingDate > copyDate) {
+    return deriveUnassignedOn(existingDate, copy.assignedOn);
+  }
+  await repo.updateCaseAppointment({
+    ...existing,
+    unassignedOn: deriveUnassignedOn(copyDate, existing.assignedOn),
+  });
+  return undefined;
+}
+
 class TrusteeVerificationRemapUseCase {
   private readonly context: ApplicationContext;
   private readonly appointmentsRepo: TrusteeCaseAppointmentsRepository;
@@ -66,81 +80,77 @@ class TrusteeVerificationRemapUseCase {
   }
 
   /**
-   * Remaps a single surrogate CaseAppointment to the resolved real trustee: soft-close a
-   * different-trustee real appointment if one exists (a genuine real->real trustee change,
-   * a historical fact), upsert the canonical appointment under resolvedTrusteeId, then delete
-   * the surrogate. Order is soft-close -> upsert -> delete: upserting before soft-closing would
-   * transiently leave two active real rows (getActiveByCaseId's findOne would then return an
-   * arbitrary one), whereas a failed upsert after a soft-close only leaves the case showing no
-   * trustee — recoverable, and self-healing on retry since the surrogate is untouched until the
-   * upsert succeeds. assignedOn is carried from the surrogate row (not stamped fresh) so the
-   * upsert's natural key (caseId, trusteeId, assignedOn) makes retries genuinely idempotent.
+   * Records a single surrogate CaseAppointment as a real appointment for the resolved trustee. The
+   * court record is ground truth: a copy with a source disposition is written exactly as given and
+   * nothing else is touched. An open copy is settled latest-wins against the case's open real
+   * appointment (see settleOpenCopy). Order is soft-close -> upsert -> delete: upserting before
+   * soft-closing would transiently leave two active real rows, whereas a failed upsert after a
+   * soft-close only leaves the case showing no trustee, recoverable on retry since the surrogate is
+   * untouched until the upsert succeeds. assignedOn is carried from the surrogate row (not stamped
+   * fresh) so the upsert's natural key (caseId, trusteeId, assignedOn) makes retries idempotent.
    *
-   * Re-validates isAppointmentMatch against a freshly-fetched case summary before remapping —
-   * defense in depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
+   * Re-validates isAppointmentMatch against the court fields stored on the surrogate row at write
+   * time (epic decision 14; no DXTR lookup, which fails for a case not yet in CAMS) — defense in
+   * depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
    * between its own division-check snapshot and the TRUSTEE_VARIATION write that stops new
    * surrogates from joining this fingerprint's bucket. A surrogate admitted into the bucket
    * during that window would otherwise never have passed any division check at all. A mismatch
    * here throws RemapDivisionMismatchError, which remapPage's caller treats as a permanent
    * per-case failure (not an ordinary retryable one): the surrogate is left in place rather than
    * silently remapped to a division the trustee isn't assigned to, but it's also excluded from
-   * the count that drives further continuation, since retrying it can never succeed.
+   * the count that drives further continuation, since retrying it can never succeed. A row
+   * missing any court field is uncovered for the same reason.
    *
-   * The getCaseSummary lookup itself is wrapped separately: a failure there says nothing about
-   * division coverage, so it's rethrown as RemapCaseSummaryLookupError -- treated the same as a
-   * rate-limit/gateway-timeout error (batch-level abort, let the queue's own retry handle it)
-   * rather than risk being conflated with a genuine permanent mismatch.
+   * A parked placeholder (CASE_APPOINTMENT_UNATTACHED: the case is not in CAMS yet) passes the same
+   * coverage check, then stays parked with only its trustee changed: there is no CAMS case to
+   * settle against, so no getActiveByCaseId/settleOpenCopy. The daily heal attaches it under the
+   * active-trustee rule once the case loads. Same upsert -> delete order, so a retry re-upserts the
+   * same natural key.
    */
   private async remapSurrogateAppointment(
-    surrogate: CaseAppointment,
+    surrogate: SurrogateAppointment,
     message: TrusteeVerificationRemapMessage,
     trusteeAppointments: TrusteeAppointment[],
   ): Promise<void> {
-    const caseManagement = new CaseManagement(this.context);
-    let caseSummary: CaseSummary;
-    try {
-      caseSummary = await caseManagement.getCaseSummary(this.context, surrogate.caseId);
-    } catch (lookupError) {
-      throw new RemapCaseSummaryLookupError(
-        `Unable to look up case summary for ${surrogate.caseId}: ${(lookupError as Error).message}`,
-      );
-    }
+    const { courtId, courtDivisionCode, chapter } = surrogate;
     if (
-      !isAppointmentMatch(
-        trusteeAppointments,
-        caseSummary.courtId,
-        caseSummary.courtDivisionCode,
-        caseSummary.chapter,
-      )
+      !courtId ||
+      !courtDivisionCode ||
+      !chapter ||
+      !isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter)
     ) {
       throw new RemapDivisionMismatchError(
         `Resolved trustee ${message.resolvedTrusteeId} is not assigned to the division for case ${surrogate.caseId} -- skipping remap.`,
       );
     }
 
-    const existingReal = await this.appointmentsRepo.getActiveByCaseId(surrogate.caseId);
+    const isParked = surrogate.documentType === 'CASE_APPOINTMENT_UNATTACHED';
+    const copyUnassignedOn =
+      surrogate.unassignedOn ??
+      (isParked
+        ? undefined
+        : await settleOpenCopy(
+            this.appointmentsRepo,
+            surrogate,
+            await this.appointmentsRepo.getActiveByCaseId(surrogate.caseId),
+            message.resolvedTrusteeId,
+          ));
 
-    if (existingReal && existingReal.trusteeId !== message.resolvedTrusteeId) {
-      await this.appointmentsRepo.updateCaseAppointment({
-        ...existingReal,
-        unassignedOn: new Date().toISOString(),
-      });
-    }
-
-    if (!existingReal || existingReal.trusteeId !== message.resolvedTrusteeId) {
-      await this.appointmentsRepo.upsert({
-        caseId: surrogate.caseId,
-        trusteeId: message.resolvedTrusteeId,
-        assignedOn: surrogate.assignedOn,
-        appointedDate: surrogate.appointedDate,
-        dateFiled: surrogate.dateFiled,
-        // Fresh values, not the surrogate's: the guard above validates isAppointmentMatch
-        // against caseSummary specifically to catch a case transferred since the surrogate
-        // was created, and persisting the surrogate's own chapter/courtDivisionCode here
-        // would write back exactly the stale data that guard exists to catch.
-        chapter: assertValidChapter(surrogate.caseId, caseSummary.chapter),
-        courtDivisionCode: caseSummary.courtDivisionCode,
-      });
+    const copy = {
+      caseId: surrogate.caseId,
+      trusteeId: message.resolvedTrusteeId,
+      assignedOn: surrogate.assignedOn,
+      appointedDate: surrogate.appointedDate,
+      ...(copyUnassignedOn ? { unassignedOn: copyUnassignedOn } : {}),
+      dateFiled: surrogate.dateFiled,
+      chapter: assertValidChapter(surrogate.caseId, chapter),
+      courtId,
+      courtDivisionCode,
+    };
+    if (isParked) {
+      await this.appointmentsRepo.upsert(copy, 'CASE_APPOINTMENT_UNATTACHED');
+    } else {
+      await this.appointmentsRepo.upsert(copy);
     }
 
     await this.appointmentsRepo.delete(surrogate.id);
@@ -148,15 +158,14 @@ class TrusteeVerificationRemapUseCase {
 
   /**
    * Remaps up to pageSize cases sharing message.fingerprint's pending mismatch from their
-   * surrogate placeholder to the resolved real trustee. Natural idempotency: a remapped case's
-   * surrogate row is deleted outright, so re-querying getSurrogatesByFingerprint(fingerprint)
-   * after a partial batch failure returns only the cases that haven't been remapped yet — no
-   * retryCount-based skip logic is needed. The one case a retry may re-encounter is one whose
-   * canonical upsert succeeded but whose surrogate delete failed; the idempotent upsert makes
-   * reprocessing it a no-op and the retry completes the delete.
+   * surrogate placeholder to the resolved real trustee. A remapped surrogate row is deleted, so
+   * re-querying getSurrogatesByFingerprint(fingerprint) after a partial batch failure returns only
+   * the placeholders not yet remapped, with no retryCount-based skip logic. A case a retry may
+   * re-encounter (its upsert succeeded but its delete failed) re-upserts the same natural key and
+   * completes the delete.
    *
-   * A rate-limit error, gateway-timeout error, or case-summary lookup failure mid-page
-   * rethrows immediately rather than being counted as a per-case failure — all three are
+   * A rate-limit or gateway-timeout error mid-page rethrows immediately rather than being
+   * counted as a per-case failure — both are
    * conditions the caller must back off and retry (same convention as isTransientInfraError in
    * sync-trustee-case-appointments.ts), not a permanent failure for the one case that happened to hit it
    * while the rest of the page is untouched. A genuine division mismatch, by contrast, is
@@ -188,11 +197,7 @@ class TrusteeVerificationRemapUseCase {
         await this.remapSurrogateAppointment(surrogate, message, trusteeAppointments);
         documentsWritten++;
       } catch (perCaseError) {
-        if (
-          isTooManyRequestsError(perCaseError) ||
-          isGatewayTimeoutError(perCaseError) ||
-          perCaseError instanceof RemapCaseSummaryLookupError
-        ) {
+        if (isTooManyRequestsError(perCaseError) || isGatewayTimeoutError(perCaseError)) {
           throw perCaseError;
         }
         if (perCaseError instanceof RemapDivisionMismatchError) {

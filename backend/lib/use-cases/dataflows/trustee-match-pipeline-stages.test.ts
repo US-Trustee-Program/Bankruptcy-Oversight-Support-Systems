@@ -119,6 +119,7 @@ describe('skipAdministrativePlaceholder', () => {
     'JORDAN R DOE - U S TRUSTEE',
     'TAYLOR QUILL (UST)',
     'MORGAN R VELLACOTT - U S TRUSTEE',
+    'JORDAN R DOE - UNITED STATES TRUSTEE',
   ])('sets state.skip for a UST-annotated name "%s"', async (fullName) => {
     const state = createInitialState(makeDxtrTrustee({ fullName }));
 

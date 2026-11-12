@@ -27,8 +27,6 @@ import {
   RuntimeStateRepository,
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsRepository,
-  TrusteeAppointmentsSyncState,
-  TrusteePetitionSyncState,
   TrusteeStaffRepository,
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
@@ -135,8 +133,6 @@ let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
-let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
-let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
 
@@ -351,25 +347,6 @@ const getCaseAppointmentDateBackfillStateRepo = (
       getRuntimeStateRepository<CaseAppointmentDateBackfillState>(context);
   }
   return caseAppointmentDateBackfillStateRepo;
-};
-
-const getTrusteeAppointmentsSyncStateRepo = (
-  context: ApplicationContext,
-): RuntimeStateRepository<TrusteeAppointmentsSyncState> => {
-  if (!trusteeAppointmentsSyncStateRepo) {
-    trusteeAppointmentsSyncStateRepo =
-      getRuntimeStateRepository<TrusteeAppointmentsSyncState>(context);
-  }
-  return trusteeAppointmentsSyncStateRepo;
-};
-
-const getTrusteePetitionSyncStateRepo = (
-  context: ApplicationContext,
-): RuntimeStateRepository<TrusteePetitionSyncState> => {
-  if (!trusteePetitionSyncStateRepo) {
-    trusteePetitionSyncStateRepo = getRuntimeStateRepository<TrusteePetitionSyncState>(context);
-  }
-  return trusteePetitionSyncStateRepo;
 };
 
 const getTrusteeNotesMetricsSyncStateRepo = (
@@ -698,8 +675,6 @@ const factory = {
   getCasesSyncStateRepo,
   getPhoneticBackfillStateRepo,
   getCaseAppointmentDateBackfillStateRepo,
-  getTrusteeAppointmentsSyncStateRepo,
-  getTrusteePetitionSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,

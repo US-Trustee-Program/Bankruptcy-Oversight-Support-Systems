@@ -282,10 +282,7 @@ export function normalizeChapter(chapter: string): string {
  * singular `divisionCode` and the current `divisionCodes` array (modern appointments,
  * including multi-division panel appointments, only populate `divisionCodes`).
  */
-export function appointmentCoversDivision(
-  appointment: TrusteeAppointment,
-  divisionCode: string,
-): boolean {
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
   return (
     appointment.divisionCode === divisionCode ||
     getDivisionCodes(appointment).includes(divisionCode)
@@ -451,7 +448,8 @@ export function buildMergePayload(
  * matchedTrustee record that a case and a CAMS trustee were both identified; matchedTrusteeAppointment
  * records whether a single active appointment covered this case's court+division+chapter
  * (isAppointmentMatch); matchedBy names what resolved the trustee — a trustee-match pipeline
- * RESOLVE stage's name (PipelineMatch.resolvedBy), or 'variation' for a fingerprint-bucket hit.
+ * RESOLVE stage's name (PipelineMatch.resolvedBy), 'variation' for a fingerprint-bucket hit, or
+ * 'professional-id' for a verified ACMS professional-id link (identification step 1).
  */
 export type CaseAppointmentChecks = {
   matchedCase: boolean;
@@ -459,6 +457,14 @@ export type CaseAppointmentChecks = {
   matchedTrusteeAppointment: boolean;
   matchedBy: string;
 };
+
+/**
+ * Storage discriminator for appointment rows. CASE_APPOINTMENT_UNATTACHED is a parked row: an
+ * appointment or placeholder for a case not yet in CAMS, written by the trustee-appointment sync
+ * and attached by its daily heal once the case loads. Parked rows never appear in case or trustee
+ * views; only identity tasks (via placeholders) and the heal read them.
+ */
+export type CaseAppointmentDocumentType = 'CASE_APPOINTMENT' | 'CASE_APPOINTMENT_UNATTACHED';
 
 export type CaseAppointmentInput = {
   caseId: string;
@@ -468,6 +474,7 @@ export type CaseAppointmentInput = {
   unassignedOn?: string;
   dateFiled?: string;
   chapter?: CaseChapter;
+  courtId?: string;
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
@@ -485,6 +492,7 @@ export type CaseAppointment = Auditable &
     unassignedOn?: string;
     dateFiled?: string;
     chapter?: CaseChapter;
+    courtId?: string;
     courtDivisionCode?: string;
     closedDate?: string;
     reopenedDate?: string;
@@ -518,4 +526,11 @@ export type CaseDenormalizedFields = {
   caseStatus: 'OPEN' | 'CLOSED';
   chapter: CaseChapter;
   courtDivisionCode: string;
+};
+
+/** One region's case-appointment source, for the Case Appointments admin page (CAMS-955 Slice 4). */
+export type RegionCaseAppointmentSource = {
+  regionId: string;
+  regionName: string;
+  source: 'ACMS' | 'DXTR';
 };

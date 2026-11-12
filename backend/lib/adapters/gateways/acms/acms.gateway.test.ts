@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
-import { AcmsGatewayImpl } from './acms.gateway';
+import { AcmsGatewayImpl, CMMAP_ROW_INCLUSION_FILTERS, parseAcmsTimeoutMs } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
@@ -10,7 +10,45 @@ import {
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
 
+describe('parseAcmsTimeoutMs', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test.each([undefined, ''])('defaults to 5 minutes when the value is %j', (raw) => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(parseAcmsTimeoutMs(raw)).toBe(300000);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('uses a positive whole number of milliseconds as given', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(parseAcmsTimeoutMs('60000')).toBe(60000);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test.each(['abc', '0', '-5'])('defaults to 5 minutes, with a warning, for %j', (raw) => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(parseAcmsTimeoutMs(raw)).toBe(300000);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`Invalid ACMS_REQUEST_TIMEOUT_MS="${raw}"`),
+    );
+  });
+});
+
+// Why these tests assert on SQL text: executeQuery is mocked and returns canned rows whatever the
+// query says, so a filter, join, cursor or ordering can only be checked by reading the query.
+// Each SQL-text assertion names the data rule it protects; one that protects nothing should go.
+// They will break on a neutral SQL refactor (renaming an alias, reordering clauses) -- update the
+// expected fragment then, but keep the rule.
 describe('ACMS gateway tests', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const chapters = [
     { chapter: '9', inputVariable: '09' },
     { chapter: '11', inputVariable: '11' },
@@ -176,6 +214,40 @@ describe('ACMS gateway tests', () => {
     expect(result).toEqual(expectedResult);
   });
 
+  test('should exclude a row that is self-referential to the lead case', async () => {
+    const leadCaseId = '0000000000';
+    const databaseResult: AcmsConsolidationMemberCase[] = [
+      {
+        caseId: '000-00-00000',
+        consolidationDate: '20240201',
+        consolidationType: 'S',
+      },
+      {
+        caseId: '000-00-11111',
+        consolidationDate: '20240201',
+        consolidationType: 'S',
+      },
+    ];
+
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: { recordset: databaseResult },
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getConsolidationDetails(context, leadCaseId);
+
+    expect(result.memberCases).toEqual([
+      {
+        caseId: '000-00-11111',
+        consolidationDate: '2024-02-01',
+        consolidationType: 'substantive',
+      },
+    ]);
+  });
+
   test('should wrap non-Error thrown values in CamsError', async () => {
     vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue('plain string error');
 
@@ -221,6 +293,35 @@ describe('ACMS gateway tests', () => {
     [
       'getDeletedCaseIds',
       (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getDeletedCaseIds(ctx, '2026-01-01'),
+    ],
+    [
+      'getTrusteeProfessionalIds',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getTrusteeProfessionalIds(ctx, 'John', 'Doe', 'CA'),
+    ],
+    [
+      'getAllTrusteeProfessionalRecords',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getAllTrusteeProfessionalRecords(ctx),
+    ],
+    [
+      'getTrusteeProfessionalRecordsPage',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getTrusteeProfessionalRecordsPage(ctx, 'NY', 0, 500),
+    ],
+    [
+      'getActiveAppointmentsForProfessional',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getActiveAppointmentsForProfessional(ctx, 'NY', 63),
+    ],
+    [
+      'getCmmapAppointmentsRaw',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getCmmapAppointmentsRaw(ctx, 0, 10, null, '02', '2026-07-01'),
+    ],
+    [
+      'getLatestCmmapChangeDateForRegion',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getLatestCmmapChangeDateForRegion(ctx, '02'),
     ],
   ] as [string, GwInvoke][])(
     'should throw CamsError when executeQuery fails in %s',
@@ -371,38 +472,80 @@ describe('ACMS gateway tests', () => {
       expect(result.latestDeletedCaseDate).toBe('2026-03-12');
     });
 
-    test('should handle various date formats correctly', async () => {
-      const testCases = [
-        { input: '2018-01-01', expected: 20180101 },
-        { input: '2026-12-31', expected: 20261231 },
-        { input: '2020-02-29', expected: 20200229 },
-      ];
+    // A malformed LAST_CHANGE_DATE sorts first (DESC) every run; used as the bookmark it would
+    // stop new deletions from ever being found. It is skipped for the bookmark, and logged, but
+    // its case is still returned for archiving.
+    test('skips a malformed newest date for the bookmark, logging it, and still returns its case', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: {
+          recordset: [
+            { caseId: '081-24-00001', lastChangeDate: 20261399 },
+            { caseId: '081-24-00002', lastChangeDate: 20260314 },
+          ],
+        },
+        message: '',
+      });
+      const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const gateway = new AcmsGatewayImpl(context);
 
-      for (const testCase of testCases) {
-        const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-          success: true,
-          results: { recordset: [] },
-          message: '',
-        });
+      const result = await gateway.getDeletedCaseIds(context, '2026-03-12');
 
-        const context = await createMockApplicationContext();
-        const gateway = new AcmsGatewayImpl(context);
+      expect(result.caseIds).toEqual(['081-24-00001', '081-24-00002']);
+      expect(result.latestDeletedCaseDate).toBe('2026-03-14');
+      expect(warnSpy).toHaveBeenCalledWith('ACMS-GATEWAY', expect.stringContaining('081-24-00001'));
+    });
 
-        await gateway.getDeletedCaseIds(context, testCase.input);
+    test('keeps the given bookmark when no returned date is valid', async () => {
+      // Both sort above the bookmark, as the query's LAST_CHANGE_DATE > @lastChangeDate requires.
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: {
+          recordset: [
+            { caseId: '081-24-00001', lastChangeDate: 20261399 },
+            { caseId: '081-24-00002', lastChangeDate: 20260230 },
+          ],
+        },
+        message: '',
+      });
+      const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const gateway = new AcmsGatewayImpl(context);
 
-        expect(spy).toHaveBeenCalledWith(
-          context,
-          expect.any(String),
-          expect.arrayContaining([
-            expect.objectContaining({
-              name: 'lastChangeDate',
-              value: testCase.expected,
-            }),
-          ]),
-        );
+      const result = await gateway.getDeletedCaseIds(context, '2026-03-12');
 
-        vi.restoreAllMocks();
-      }
+      expect(result.caseIds).toEqual(['081-24-00001', '081-24-00002']);
+      expect(result.latestDeletedCaseDate).toBe('2026-03-12');
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test.each([
+      { input: '2018-01-01', expected: 20180101 },
+      { input: '2026-12-31', expected: 20261231 },
+      { input: '2020-02-29', expected: 20200229 },
+    ])('should convert $input to $expected', async ({ input, expected }) => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await gateway.getDeletedCaseIds(context, input);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'lastChangeDate',
+            value: expected,
+          }),
+        ]),
+      );
     });
   });
 
@@ -434,19 +577,6 @@ describe('ACMS gateway tests', () => {
       const result = await gateway.getTrusteeProfessionalIds(context, 'Unknown', 'Trustee', 'TX');
 
       expect(result).toEqual([]);
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getTrusteeProfessionalIds(context, 'John', 'Doe', 'CA')).rejects.toThrow(
-        CamsError,
-      );
     });
   });
 
@@ -481,9 +611,7 @@ describe('ACMS gateway tests', () => {
       // Assert the actual configured value is threaded through, not just any positive number —
       // ACMS_REQUEST_TIMEOUT_MS defaults to 300000ms (5 min) when the env var is unset.
       const timeoutArg = spy.mock.calls[0][3];
-      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
-        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
-        : 300000;
+      const expectedTimeout = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
       expect(timeoutArg).toBe(expectedTimeout);
     });
 
@@ -499,17 +627,6 @@ describe('ACMS gateway tests', () => {
       const result = await gateway.getAllTrusteeProfessionalRecords(context);
 
       expect(result).toEqual([]);
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getAllTrusteeProfessionalRecords(context)).rejects.toThrow(CamsError);
     });
   });
 
@@ -548,6 +665,9 @@ describe('ACMS gateway tests', () => {
       expect(result[0].DISP_DATE).toBeNull();
     });
 
+    // Case ids and professional ids are formatted in TypeScript (formatCaseId,
+    // formatAcmsProfessionalId) from the raw component columns. Formatting them in SQL as well
+    // would give two definitions of the same id that could drift apart.
     test('should not include CONCAT or CAST in the SQL query', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
@@ -565,6 +685,9 @@ describe('ACMS gateway tests', () => {
       expect(query).not.toContain('RIGHT(');
     });
 
+    // Keyset paging on m.id: the region driver resumes a date from the last id it saw, so the
+    // cursor clause and its lastId parameter must both be present or a resumed page repeats or
+    // skips rows.
     test('should paginate using m.id cursor', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
@@ -603,13 +726,218 @@ describe('ACMS gateway tests', () => {
       );
     });
 
-    test('should throw when cutoff date does not parse to a finite number', async () => {
+    // A professional is identified by the compound key (GROUP_DESIGNATOR, PROF_CODE); PROF_CODE
+    // alone is reused across groups, so joining on it alone attaches the wrong trustee's name.
+    test('should join CMMPR for trustee name/contact fields', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
       const context = await createMockApplicationContext();
       const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
 
-      await expect(gateway.getCmmapAppointmentsRaw(context, 0, 10, 'not-a-date')).rejects.toThrow(
-        'Invalid cutoffDate value: "not-a-date"',
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('INNER JOIN [dbo].[CMMPR] p');
+      expect(query).toContain('m.GROUP_DESIGNATOR = p.GROUP_DESIGNATOR');
+      expect(query).toContain('m.PROF_CODE = p.UST_PROF_CODE');
+    });
+
+    // The region and change-date filters each pair a clause with a bound parameter: without the
+    // clause, a region's sync would read every region's rows, or every change date's. (Every caller
+    // passes both today; the omit tests below cover the optional signature until it is tightened.)
+    test('should include region filter clause when regionId is provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null, '02');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.REGION_CODE = @regionId'),
+        expect.arrayContaining([expect.objectContaining({ name: 'regionId', value: '02' })]),
+        300000,
       );
+    });
+
+    test('should omit region filter clause when regionId is not provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('@regionId');
+    });
+
+    test('should include change date filter clause when changeDate is provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null, undefined, '2026-07-01');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.CDB_UPDATE_DATE = @changeDate'),
+        expect.arrayContaining([expect.objectContaining({ name: 'changeDate', value: 20260701 })]),
+        300000,
+      );
+    });
+
+    test('should omit change date filter clause when changeDate is not provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('@changeDate');
+    });
+  });
+
+  describe('getLatestCmmapChangeDateForRegion', () => {
+    test('should return the formatted date from the first (DESC-ordered) row', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [{ CDB_UPDATE_DATE: 20260701 }] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBe('2026-07-01');
+    });
+
+    test.each([
+      { cdbUpdateDate: 20261301, description: 'month out of range' },
+      { cdbUpdateDate: 202, description: 'not 8 digits' },
+    ])(
+      'should throw instead of returning a garbage date when CDB_UPDATE_DATE is $description',
+      async ({ cdbUpdateDate }) => {
+        vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+          success: true,
+          results: { recordset: [{ CDB_UPDATE_DATE: cdbUpdateDate }] },
+          message: '',
+        });
+
+        const context = await createMockApplicationContext();
+        const gateway = new AcmsGatewayImpl(context);
+
+        await expect(
+          gateway.getLatestCmmapChangeDateForRegion(context, '02'),
+        ).rejects.toMatchObject({
+          isCamsError: true,
+          originalError: expect.stringContaining(String(cdbUpdateDate)),
+        });
+      },
+    );
+
+    test('should return undefined when the region has no matching rows', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      expect(result).toBeUndefined();
+    });
+
+    // The driver reads TOP 1 as the region's newest change date. Ascending order would return the
+    // oldest date instead, and the region would never catch up.
+    test('should filter by region and order by CDB_UPDATE_DATE descending', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('m.REGION_CODE = @regionId');
+      expect(query).toContain('ORDER BY m.CDB_UPDATE_DATE DESC');
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ name: 'regionId', value: '02' })]),
+      );
+    });
+
+    test('should share the CMMAP row-inclusion filters with getCmmapAppointmentsRaw', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+      const latestQuery = spy.mock.calls[0][1] as string;
+
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+      const rawQuery = spy.mock.calls[1][1] as string;
+
+      expect(latestQuery).toContain(CMMAP_ROW_INCLUSION_FILTERS);
+      expect(rawQuery).toContain(CMMAP_ROW_INCLUSION_FILTERS);
+    });
+
+    // These are the rows the sync treats as appointments: not deleted (appointment, case or
+    // professional), a real professional code (not 0 or a 98000+ sentinel), a trustee
+    // appointment, and a case still open or closed after 2018. The test above proves both queries
+    // use this one fragment.
+    test('should select live trustee appointments with real professional codes on cases open or closed after 2018', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getLatestCmmapChangeDateForRegion(context, '02');
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain("m.DELETE_CODE != 'D'");
+      expect(query).toContain('m.PROF_CODE > 0');
+      expect(query).toContain('m.PROF_CODE < 98000');
+      expect(query).toContain("m.APPT_TYPE = 'TR'");
+      expect(query).toContain("c.DELETE_CODE != 'D'");
+      expect(query).toContain("p.DELETE_CODE != 'D'");
+      expect(query).toContain(
+        'c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101',
+      );
+      expect(query).toContain('c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0');
     });
   });
 
@@ -642,15 +970,15 @@ describe('ACMS gateway tests', () => {
 
       expect(result).toEqual(dbResults);
 
+      // Only trustees (PROF_TYPE 'TR'), only the requested group, resumed after the last
+      // UST_PROF_CODE seen -- the professional-id sync bookmarks each group by that code.
       const query = spy.mock.calls[0][1] as string;
       expect(query).toContain("PROF_TYPE = 'TR'");
       expect(query).toContain('GROUP_DESIGNATOR = @groupDesignator');
       expect(query).toContain('UST_PROF_CODE > @lastUstProfCode');
 
       const timeoutArg = spy.mock.calls[0][3];
-      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
-        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
-        : 300000;
+      const expectedTimeout = parseAcmsTimeoutMs(process.env.ACMS_REQUEST_TIMEOUT_MS);
       expect(timeoutArg).toBe(expectedTimeout);
     });
 
@@ -797,19 +1125,6 @@ describe('ACMS gateway tests', () => {
 
       expect(result).toEqual([]);
     });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(
-        gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500),
-      ).rejects.toThrow(CamsError);
-    });
   });
 
   describe('getActiveAppointmentsForProfessional', () => {
@@ -845,6 +1160,9 @@ describe('ACMS gateway tests', () => {
       expect(result).toEqual(dbResults);
     });
 
+    // Active appointments for one professional, identified by the compound key (group, code).
+    // CMMDB joins on the full case key (division, year, number): any one part alone matches
+    // other cases. Disposed and deleted rows are not active appointments.
     test.each([
       ['scope to the given group', 'GROUP_DESIGNATOR = @groupDesignator'],
       ['scope to the given professional', 'PROF_CODE = @ustProfCode'],
@@ -889,19 +1207,6 @@ describe('ACMS gateway tests', () => {
           expect.objectContaining({ name: 'groupDesignator', value: 'UT' }),
           expect.objectContaining({ name: 'ustProfCode', value: 5321 }),
         ]),
-      );
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getActiveAppointmentsForProfessional(context, 'NY', 63)).rejects.toThrow(
-        CamsError,
       );
     });
   });

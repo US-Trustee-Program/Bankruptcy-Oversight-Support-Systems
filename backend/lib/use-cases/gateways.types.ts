@@ -51,6 +51,7 @@ import {
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
   CaseAppointment,
+  CaseAppointmentDocumentType,
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeAppointment,
@@ -242,22 +243,6 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
-export type AcmsCaseAppointmentRecord = {
-  id: number;
-  caseId: string;
-  acmsProfessionalId: string;
-  assignDate: number;
-  apptDate: number | null;
-  unassignDate: number | null;
-  // Case metadata from CMMDB/CMMKE — no Cosmos lookup required during migration
-  caseFiledDate: number | null;
-  chapter: string | null;
-  courtDivisionCode: string;
-  closedByCourtDate: number | null;
-  closedByUstDate: number | null;
-  reopenedDate: number | null;
-};
-
 export type AcmsCaseAppointmentRawRecord = {
   id: number;
   CASE_DIV: number;
@@ -273,6 +258,20 @@ export type AcmsCaseAppointmentRawRecord = {
   CLOSED_BY_COURT_DATE: number | null;
   CLOSED_BY_UST_DATE: number | null;
   REOPENED_DATE: number | null;
+  // Region/change-date columns from CMMAP, used for the per-region ACMS source
+  REGION_CODE: string;
+  CDB_UPDATE_DATE: number;
+  // Trustee name/contact fields from the CMMPR join. No email column exists on CMMPR
+  // (confirmed against acms-schema) -- legacy.email stays undefined for ACMS.
+  PROF_FIRST_NAME: string;
+  PROF_LAST_NAME: string;
+  PROF_MI: string;
+  PROF_ADDRESS1: string;
+  PROF_ADDRESS2: string;
+  PROF_CITY: string;
+  PROF_STATE: string;
+  PROF_ZIP: number;
+  PROF_COMMERCIAL_PHONE_NBR: number;
 };
 
 /**
@@ -386,12 +385,28 @@ export interface AcmsGateway {
     groupDesignator: string,
     ustProfCode: number,
   ): Promise<AcmsActiveAppointment[]>;
+  /**
+   * regionId and changeDate are optional, additive WHERE filters (CMMAP.REGION_CODE and
+   * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, the query spans
+   * all regions and dates. No production caller omits them (cams-fd8qd.38).
+   */
   getCmmapAppointmentsRaw(
     context: ApplicationContext,
     lastId: number,
     pageSize: number,
     cutoffDate: string | null,
+    regionId?: string,
+    changeDate?: string,
   ): Promise<AcmsCaseAppointmentRawRecord[]>;
+  /**
+   * Most recent CMMAP.CDB_UPDATE_DATE (ISO) for the region, among rows that would actually be
+   * returned by getCmmapAppointmentsRaw for that date (same row-inclusion filters), or undefined
+   * when the region has no matching rows.
+   */
+  getLatestCmmapChangeDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined>;
 }
 
 export interface AtsGateway {
@@ -653,10 +668,11 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
-export type CaseAppointmentMigrationInput = CaseAppointmentInput & {
-  movedToCaseId?: string;
-  acmsProfessionalId?: string;
-};
+/** A placeholder row (isSurrogate) with its storage type: placed, or parked (case not in CAMS). */
+export type SurrogateAppointment = CaseAppointment & { documentType: CaseAppointmentDocumentType };
+
+/** A parked row (CASE_APPOINTMENT_UNATTACHED) with the trustee partition's _id, for cursor paging. */
+export type ParkedAppointment = CaseAppointment & { _id: string };
 
 export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getByCaseId(caseId: string): Promise<CaseAppointment[]>;
@@ -666,11 +682,26 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]>;
+  /**
+   * Writes the appointment by its natural key (documentType, caseId, trusteeId, assignedOn);
+   * documentType defaults to CASE_APPOINTMENT. Dates already recorded on the stored row --
+   * unassignedOn, closedDate, reopenedDate -- are never cleared: an input without one keeps the
+   * stored value, and caseStatus is derived from the merged dates. options.fallbackUnassignedOn
+   * applies only when neither the input nor the stored row has an unassignedOn. To change a
+   * recorded disposition, use updateCaseAppointment.
+   */
   upsert(
-    appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
+    appointment: CaseAppointmentInput,
+    documentType?: CaseAppointmentDocumentType,
+    options?: CaseAppointmentUpsertOptions,
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
+  /**
+   * Deletes appointment rows (placed and parked) in both partitions; returns the case-partition
+   * count. Each filter field narrows the delete; an empty filter deletes every row.
+   */
+  deleteCaseAppointments(filter: CaseAppointmentDeleteFilter): Promise<number>;
   findActiveMissingAppointedDate(
     lastId: string | null,
     limit: number,
@@ -689,8 +720,17 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
-  getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>>;
-  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>>;
+  /** Placeholders of both document types (placed and parked) for the fingerprint. */
+  getSurrogatesByFingerprint(fingerprint: string): Promise<Array<SurrogateAppointment>>;
+  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<SurrogateAppointment>>;
+  /** Parked rows with dateFiled >= dateFiledFrom, _id > lastId, sorted by _id (trustee partition). */
+  findParkedFiledOnOrAfter(
+    dateFiledFrom: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ParkedAppointment>>;
+  /** Count of parked rows with dateFiled equal to the given date (trustee partition). */
+  countParkedFiledOn(dateFiled: string): Promise<number>;
   existsInTrusteePartition(caseId: string, trusteeId: string, assignedOn: string): Promise<boolean>;
   findStrandedActiveInTrusteePartition(
     caseId: string,
@@ -772,17 +812,15 @@ export type RuntimeStateDocumentType =
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
   | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
-  | 'MIGRATE_CASE_APPOINTMENTS_STATE'
-  | 'HEAL_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
-  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
-  | 'TRUSTEE_PETITION_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
   | 'PROFESSIONAL_ID_COUNTER'
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
-  | 'ACS_BOUNCE_POLL_STATE';
+  | 'ACS_BOUNCE_POLL_STATE'
+  | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE'
+  | 'TRUSTEE_APPOINTMENT_SYNC_RUN';
 
 export type RuntimeState = {
   id?: string;
@@ -832,42 +870,6 @@ export type CaseAppointmentDateBackfillState = RuntimeState & {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 };
 
-export type MigrateCaseAppointmentsState = RuntimeState & {
-  documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
-  lastId: number | null;
-  // Atomically incremented counters — accumulate across resume attempts
-  processedCount: number;
-  failedCount: number;
-  reEnqueuedCount: number;
-  acmsQueryRetries: number;
-  resumeAttempts: number;
-  readingCompleted: boolean;
-
-  startedAt: string;
-  lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-};
-
-export type HealCaseAppointmentsState = RuntimeState & {
-  documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
-  lastId: string | null;
-  status: 'IN_PROGRESS' | 'COMPLETED';
-  startedAt: string;
-  lastUpdatedAt: string;
-  repairedCount: number;
-  checkedCount: number;
-};
-
-export type TrusteeAppointmentsSyncState = RuntimeState & {
-  documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
-  lastSyncDate: string;
-};
-
-export type TrusteePetitionSyncState = RuntimeState & {
-  documentType: 'TRUSTEE_PETITION_SYNC_STATE';
-  lastSyncDate: string;
-};
-
 /**
  * Sync cursor for sync-acms-professional-ids.ts. UST_PROF_CODE is only monotonically
  * increasing WITHIN a GROUP_DESIGNATOR, never globally, so the bookmark is a per-group map
@@ -876,6 +878,73 @@ export type TrusteePetitionSyncState = RuntimeState & {
 export type AcmsProfessionalIdSyncState = RuntimeState & {
   documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE';
   lastUstProfCodeByGroup: Record<string, number>;
+};
+
+/**
+ * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
+ * (cams-fd8qd.1.10, the per-region driver). One document, one key per region, each written
+ * independently with RuntimeStateRepository.setField's dotted path (e.g.
+ * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
+ * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a
+ * (which disagreed with an earlier draft of this type that nested it under a `regions` key).
+ *
+ * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
+ * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
+ */
+/**
+ * The one sync run (a kickoff plus every lane and continuation it spawns) that may work. The lock
+ * has no expiry: it is deleted when the last lane finishes cleanly, or by an operator after a run
+ * that died. While it exists, any start with a different runId skips.
+ */
+export type TrusteeAppointmentSyncRunState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENT_SYNC_RUN';
+  runId: string;
+  startedAt: string;
+  /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
+  lanesRemaining: number;
+};
+
+/**
+ * A region id as the region sync state keys it: two digits. The DXTR offices gateway strips the
+ * zero padding (e.g. "02" -> "2"), which would otherwise fork a region's bookmark.
+ */
+export function toRegionId(regionId: string): string {
+  return regionId.padStart(2, '0');
+}
+
+/** The setField path of a region's bookmark in TrusteeAppointmentRegionSyncState. */
+export function regionBookmarkPath(regionId: string): string {
+  return `region.${regionId}.lastSyncDate`;
+}
+
+export type CaseAppointmentUpsertOptions = {
+  /** A derived close date, used only when neither the input nor the stored row has one. */
+  fallbackUnassignedOn?: string;
+};
+
+export type CaseAppointmentDeleteFilter = {
+  /** Only cases in these divisions (a caseId's leading code). An empty list deletes nothing. */
+  divisionCodes?: string[];
+  /** Only appointments with assignedOn on or after this ISO date. */
+  from?: string;
+  /** Only appointments with assignedOn on or before this ISO date. */
+  to?: string;
+};
+
+export type TrusteeAppointmentRegionSyncState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
+  region: Record<
+    string,
+    {
+      /** Latest fully-processed change date (ISO) for this region; a partly-loaded day never counts. */
+      lastSyncDate?: string;
+      source?: {
+        system: 'DXTR';
+        updatedOn: string;
+        updatedBy: CamsUserReference;
+      };
+    }
+  >;
 };
 
 export type TrusteeNotesMetricsState = RuntimeState & {

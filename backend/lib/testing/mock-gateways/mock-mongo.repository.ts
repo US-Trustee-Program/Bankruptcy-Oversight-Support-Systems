@@ -29,6 +29,7 @@ import {
   TrusteeUpcomingKeyDatesRepository,
   TrusteeProfessionalIdsRepository,
   TrusteeVariationRepository,
+  SurrogateAppointment,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -417,12 +418,20 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
-  getSurrogatesByFingerprint(..._ignore: any[]): Promise<CaseAppointment[]> {
+  getSurrogatesByFingerprint(..._ignore: any[]): Promise<SurrogateAppointment[]> {
     return Promise.resolve([]);
   }
 
-  getSurrogatesByFingerprints(..._ignore: any[]): Promise<CaseAppointment[]> {
+  getSurrogatesByFingerprints(..._ignore: any[]): Promise<SurrogateAppointment[]> {
     return Promise.resolve([]);
+  }
+
+  findParkedFiledOnOrAfter(..._ignore: any[]): Promise<any[]> {
+    return Promise.resolve([]);
+  }
+
+  countParkedFiledOn(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
   }
   findAppointmentIdPairsByChapter(
     ..._ignore: any[]
@@ -767,6 +776,10 @@ export class MockMongoRepository
     const count = this.professionalIds.size;
     this.professionalIds.clear();
     return Promise.resolve(count);
+  }
+
+  deleteCaseAppointments(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
   }
 
   markAsMoved(..._ignore: any[]): Promise<void> {

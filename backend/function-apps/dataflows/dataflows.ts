@@ -17,7 +17,6 @@ import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
 import MigrateOrderTypeToTaskType from './migrations/migrate-ordertype-to-tasktype';
 import MigrateConsolidations from './migrations/migrate-consolidations';
-import MigrateCaseAppointments from './migrations/migrate-case-appointments';
 import MigrateTrustees from './migrations/migrate-trustees';
 import ResyncCasesByDate from './migrations/resync-cases-by-date';
 import ResyncRemainingCases from './migrations/resync-remaining-cases';
@@ -112,7 +111,6 @@ dataflows.register(
   HealSentinelCaseAppointments,
   ImportZoomCsv,
   MigrateAssignees,
-  MigrateCaseAppointments,
   MigrateCases,
   MigrateChildCasesToMemberCases,
   MigrateOrderTypeToTaskType,
@@ -149,7 +147,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
-  // SyncTrusteeCaseAppointments, // TODO Re-enable after division 1 enhancement is complete.
+  SyncTrusteeCaseAppointments,
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,

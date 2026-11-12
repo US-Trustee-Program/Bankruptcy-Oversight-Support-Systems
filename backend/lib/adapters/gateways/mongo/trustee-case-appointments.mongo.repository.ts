@@ -4,7 +4,10 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
-  CaseAppointmentMigrationInput,
+  CaseAppointmentDeleteFilter,
+  CaseAppointmentUpsertOptions,
+  ParkedAppointment,
+  SurrogateAppointment,
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -12,6 +15,7 @@ import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-build
 import QueryPipeline from '../../../query/query-pipeline';
 import {
   CaseAppointment,
+  CaseAppointmentDocumentType,
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeCaseListItem,
@@ -22,7 +26,7 @@ import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
 import { classifyRateLimitError } from './utils/mongo-adapter';
-import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
@@ -34,7 +38,7 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
 const CASES_COLLECTION = 'cases';
 
-const { using, and, orderBy } = QueryBuilder;
+const { using, and, or, orderBy } = QueryBuilder;
 const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
@@ -61,13 +65,26 @@ function assertValidChapter(chapter: string | undefined): void {
 // here, at the read boundary, so it never leaks into any downstream caller's write payload; this
 // is the fix for a leaked-_id bug that was previously patched only at one specific write call
 // site (updateCaseAppointment) rather than at its actual source.
-function stripMongoId(document: CaseAppointmentDocument): CaseAppointment {
+function stripMongoId(document: CaseAppointmentDocument): CaseAppointmentDocument {
   const { _id: _mongoId, ...rest } = document as CaseAppointmentDocument & { _id?: unknown };
   return rest;
 }
 
+const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
+
+// Every appointment row, placed or parked (case not yet in CAMS). Placeholder lookups need both
+// (identity-task members are either), and deleteCaseAppointments must clear both.
+const PLACED_AND_PARKED_DOCUMENT_TYPES: CaseAppointmentDocumentType[] = [
+  'CASE_APPOINTMENT',
+  'CASE_APPOINTMENT_UNATTACHED',
+];
+
+// Dates upsert never clears once recorded; see upsert.
+const STICKY_DATE_FIELDS = ['unassignedOn', 'closedDate', 'reopenedDate'] as const;
+type StickyDateField = (typeof STICKY_DATE_FIELDS)[number];
+
 export type CaseAppointmentDocument = CaseAppointment & {
-  documentType: 'CASE_APPOINTMENT';
+  documentType: CaseAppointmentDocumentType;
   acmsProfessionalId?: string;
   reason?: string;
   movedToCaseId?: string;
@@ -310,7 +327,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]> {
     try {
       const doc = using<CaseAppointmentDocument>();
-      const match = toMongoQuery(and(doc('trusteeId').equals(trusteeId)));
+      // Parked rows (CASE_APPOINTMENT_UNATTACHED) carry the real trusteeId but their case is not
+      // in CAMS yet, so they must not add divisions to a trustee's filter.
+      const match = toMongoQuery(
+        and(doc('documentType').equals('CASE_APPOINTMENT'), doc('trusteeId').equals(trusteeId)),
+      );
 
       const mongoAggregate = [
         { $match: match },
@@ -331,6 +352,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
+      // Parked rows (case not in CAMS yet) have the real trusteeId and a dateFiled; exclude them.
+      apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
       apptDoc.field('dateFiled').exists(),
@@ -355,8 +378,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return and(...conditions);
   }
 
+  /**
+   * documentType is part of the natural key, so a parked row (CASE_APPOINTMENT_UNATTACHED) and a
+   * placed row for the same court appointment never overwrite each other.
+   */
   async upsert(
-    appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
+    appointment: CaseAppointmentInput,
+    documentType: CaseAppointmentDocumentType = 'CASE_APPOINTMENT',
+    options: CaseAppointmentUpsertOptions = {},
   ): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
@@ -365,30 +394,49 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     // raw read result into this parameter would carry _id through undetected otherwise. See
     // stripMongoId's comment for why this partition's _id must never leak into either partition's
     // replaceOne payload below.
-    const { _id: _mongoId, ...appointmentWithoutMongoId } = appointment as (
-      CaseAppointmentInput | CaseAppointmentMigrationInput
-    ) & { _id?: unknown };
+    const { _id: _mongoId, ...appointmentWithoutMongoId } = appointment as CaseAppointmentInput & {
+      _id?: unknown;
+    };
 
-    // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointmentWithoutMongoId,
     };
-    if (appointment.dateFiled) {
-      appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
-    }
-
-    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      { ...appointmentWithStatus, documentType: 'CASE_APPOINTMENT' },
-      SYSTEM_USER_REFERENCE,
-    );
 
     // Natural key for idempotent upsert — safe to replay on retry
     const doc = using<CaseAppointmentDocument>();
     const naturalKeyQuery = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').equals(documentType),
       doc('caseId').equals(appointment.caseId),
       doc('trusteeId').equals(appointment.trusteeId),
       doc('assignedOn').equals(appointment.assignedOn),
+    );
+
+    // Dates already recorded are never cleared (cams-fd8qd.35, PR #3283 review): a replayed older
+    // event for the same court appointment can lack unassignedOn, closedDate or reopenedDate, and
+    // writing it as given would reopen the appointment or flip its caseStatus. Only a row missing
+    // one of them pays for this read.
+    if (STICKY_DATE_FIELDS.some((field) => !appointmentWithStatus[field])) {
+      const stored = await this.findStoredStickyDates(naturalKeyQuery, appointment);
+      for (const field of STICKY_DATE_FIELDS) {
+        if (!appointmentWithStatus[field] && stored?.[field]) {
+          appointmentWithStatus[field] = stored[field];
+        }
+      }
+    }
+    // A caller-derived close date applies only when the source and the stored row give none, so it
+    // never replaces a court disposition.
+    if (!appointmentWithStatus.unassignedOn && options.fallbackUnassignedOn) {
+      appointmentWithStatus.unassignedOn = options.fallbackUnassignedOn;
+    }
+
+    // caseStatus follows the merged dates, whenever dateFiled is present (an enriched doc).
+    if (appointmentWithStatus.dateFiled) {
+      appointmentWithStatus.caseStatus = isCaseClosed(appointmentWithStatus) ? 'CLOSED' : 'OPEN';
+    }
+
+    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
+      { ...appointmentWithStatus, documentType },
+      SYSTEM_USER_REFERENCE,
     );
 
     let result: CaseAppointment;
@@ -420,6 +468,22 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
 
     return result;
+  }
+
+  private async findStoredStickyDates(
+    naturalKeyQuery: ConditionOrConjunction<CaseAppointmentDocument>,
+    appointment: CaseAppointmentInput,
+  ): Promise<Pick<CaseAppointmentDocument, StickyDateField> | undefined> {
+    try {
+      const [stored] = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .find(naturalKeyQuery, undefined, 1);
+      return stored;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to read case appointment for case ${appointment.caseId}.`,
+      });
+    }
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
@@ -535,6 +599,34 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       );
       throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
         message: `Dual-delete from trustee partition failed for appointment ${id}.`,
+      });
+    }
+  }
+
+  async deleteCaseAppointments(filter: CaseAppointmentDeleteFilter): Promise<number> {
+    if (filter.divisionCodes?.length === 0) return 0;
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      // Parked rows too: a delete must not leave rows for the heal to re-attach.
+      const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
+        doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
+      ];
+      if (filter.divisionCodes) {
+        // A caseId starts with its division code (081-24-12345): one anchored prefix per division,
+        // as cases.mongo.repository does for division filters.
+        conditions.push(
+          or(...filter.divisionCodes.map((code) => doc('caseId').regex(`^${code}-`))),
+        );
+      }
+      if (filter.from) conditions.push(doc('assignedOn').greaterThanOrEqual(filter.from));
+      if (filter.to) conditions.push(doc('assignedOn').lessThanOrEqual(filter.to));
+      const query = and(...conditions);
+      const deleted = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      return deleted;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to delete case appointments.',
       });
     }
   }
@@ -694,8 +786,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   /**
-   * Scoped to a real trusteeId (its original purpose — see migrate-case-appointments.ts's
-   * caller). For the fingerprint-keyed surrogate lookup, use getSurrogatesByFingerprint
+   * Scoped to a real trusteeId. For the fingerprint-keyed surrogate lookup, use getSurrogatesByFingerprint
    * instead, which filters isSurrogate in the query itself rather than leaving callers to
    * post-filter by convention.
    */
@@ -719,14 +810,16 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * same trustee partition as getActiveByTrusteeIdFromTrusteePartition but filters isSurrogate
    * in the query itself, making "these rows are membership markers, not a real trustee's
    * appointments" a property of the method rather than a convention callers must remember to
-   * apply themselves.
+   * apply themselves. Disposed (closed) surrogates are included: a case whose placeholder was
+   * written already closed is still a member of its identity task and must be remapped on approval.
+   * Parked placeholders (CASE_APPOINTMENT_UNATTACHED, case not yet in CAMS) are included too, and
+   * keep their documentType so callers can tell them apart.
    */
-  async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>> {
+  async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<SurrogateAppointment>> {
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
       doc('trusteeId').equals(fingerprint),
-      doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
     const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
@@ -738,17 +831,66 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * one query per fingerprint, so a caller building a list (e.g. the verification list endpoint)
    * doesn't run an N+1 query per row. Callers group the flat result by trusteeId themselves.
    */
-  async getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>> {
+  async getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<SurrogateAppointment>> {
     if (fingerprints.length === 0) return [];
     const doc = using<CaseAppointmentDocument>();
     const query = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('documentType').contains(PLACED_AND_PARKED_DOCUMENT_TYPES),
       doc('trusteeId').contains(fingerprints),
-      doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
     const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
     return results.map(stripMongoId);
+  }
+
+  /**
+   * Heal's page of parked rows: CASE_APPOINTMENT_UNATTACHED filed on or after dateFiledFrom,
+   * cursor-paginated on _id. Reads the trustee partition, where the out-of-band
+   * documentType_1_dateFiled_1 index (index-trustee-case-appointments.js) supports it. A cursor,
+   * not a shrinking set: rows whose case is still missing stay parked and would otherwise be
+   * re-read forever.
+   */
+  async findParkedFiledOnOrAfter(
+    dateFiledFrom: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ParkedAppointment>> {
+    type ParkedQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<ParkedQueryable>();
+    const conditions = [
+      doc('documentType').equals(PARKED),
+      doc('dateFiled').greaterThanOrEqual(dateFiledFrom),
+    ];
+    if (lastId) conditions.push(doc('_id').greaterThan(lastId));
+    try {
+      const sortSpec = QueryBuilder.orderBy<ParkedQueryable>(['_id', 'ASCENDING']);
+      return await this.trusteePartition
+        .adapter<ParkedQueryable>()
+        .find(and(...conditions), sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve parked case appointments.',
+      });
+    }
+  }
+
+  /**
+   * Parked rows filed on exactly dateFiled. Heal counts the rows that aged out of its window on
+   * this run (dateFiled one day before the window start) as abandoned.
+   */
+  async countParkedFiledOn(dateFiled: string): Promise<number> {
+    const doc = using<CaseAppointmentDocument>();
+    try {
+      return await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .countDocuments(
+          and(doc('documentType').equals(PARKED), doc('dateFiled').equals(dateFiled)),
+        );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to count parked case appointments.',
+      });
+    }
   }
 
   /**
@@ -790,9 +932,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * getActiveByCaseId (casePartition-only) sees nothing active for this case at all — the whole
    * reassignment-repair branch in applyResolvedTrustee is skipped, createNewAppointment runs
    * directly for the new trustee, and the old trustee's trusteePartition row is left permanently
-   * active with no telemetry. migrate-case-appointments.ts's heal job cannot catch this either,
-   * since it only scans casePartition-active documents forward, not stale trusteePartition rows
-   * for a trustee who is no longer the active one. Scoped by caseId (not trusteeId, this
+   * active with no telemetry. Scoped by caseId (not trusteeId, this
    * collection's shard key), so this fans out across trusteePartition's physical partitions —
    * acceptable here since it only runs on the narrow reassignment path, not a hot path.
    */
@@ -894,11 +1034,12 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       // index on chapter alone (see
       // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js's
       // chapter_1 index) supporting this $match. documentType is deliberately
-      // NOT part of the $match or that index: every document ever written to
-      // either partition by this repository carries documentType:
-      // 'CASE_APPOINTMENT' (verified — grep this file), so it has no
-      // discriminating value here and including it would only require a
-      // wider (and, without a compound index covering it, unindexed) match.
+      // NOT part of the $match or that index. Parked rows
+      // (CASE_APPOINTMENT_UNATTACHED, cases not yet in CAMS) still never match:
+      // this method looks for invalid legacy chapter codes, and upsert runs
+      // assertValidChapter on every write, so a parked row always carries a
+      // valid chapter. Including documentType would only require a wider
+      // (and, without a compound index covering it, unindexed) match.
       // An earlier version of this comment claimed a chapter-supporting
       // index already existed — it did not; querying an unindexed chapter
       // field on this trusteeId-sharded collection forced Cosmos to fan an

@@ -272,7 +272,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
 CAMS uses two patterns for populating Cosmos:
 
 1. **Direct seed** — Data written directly to Cosmos via seed scripts (e.g., cases, banks, assignments)
-2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g., `MigrateCaseAppointmentsUseCase` reads ACMS.CMMAP → writes Cosmos case_appointments)
+2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g., `SyncTrusteeCaseAppointments` reads ACMS.CMMAP → writes Cosmos case_appointments)
 
 Which pattern to use is determined per-feature during test data planning.
 

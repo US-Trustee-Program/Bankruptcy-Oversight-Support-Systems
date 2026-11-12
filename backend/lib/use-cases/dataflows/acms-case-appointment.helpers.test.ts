@@ -1,0 +1,257 @@
+import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
+import {
+  buildAcmsSourceTrustee,
+  formatAcmsDate,
+  rawToTrusteeAppointmentSyncEvent,
+} from './acms-case-appointment.helpers';
+
+function makeRawRecord(
+  override: Partial<AcmsCaseAppointmentRawRecord> = {},
+): AcmsCaseAppointmentRawRecord {
+  return {
+    id: 1001,
+    CASE_DIV: 81,
+    CASE_YEAR: 24,
+    CASE_NUMBER: 12345,
+    GROUP_DESIGNATOR: 'NY',
+    PROF_CODE: 63,
+    APPT_DATE: 20200101,
+    DISP_DATE: null,
+    CASE_FILED_DATE: 20190110,
+    CURR_CASE_CHAPT: '7',
+    CLOSED_BY_COURT_DATE: null,
+    CLOSED_BY_UST_DATE: null,
+    REOPENED_DATE: null,
+    REGION_CODE: '02',
+    CDB_UPDATE_DATE: 20200101,
+    PROF_FIRST_NAME: 'Jane',
+    PROF_LAST_NAME: 'Doe',
+    PROF_MI: '',
+    PROF_ADDRESS1: '123 Main St',
+    PROF_ADDRESS2: '',
+    PROF_CITY: 'Anytown',
+    PROF_STATE: 'NY',
+    PROF_ZIP: 100010000,
+    PROF_COMMERCIAL_PHONE_NBR: 2125551234,
+    ...override,
+  };
+}
+
+describe('formatAcmsDate', () => {
+  test('formats an 8-digit YYYYMMDD integer as an ISO date', () => {
+    expect(formatAcmsDate(20200615)).toBe('2020-06-15');
+  });
+
+  test('throws for a value with fewer than 8 digits', () => {
+    expect(() => formatAcmsDate(202)).toThrow('Invalid ACMS date format');
+  });
+
+  // new Date('2020-02-31') silently rolls over to 2020-03-02, so an invalid-Date check alone
+  // would accept this.
+  test('throws for a value that is not a real calendar date', () => {
+    expect(() => formatAcmsDate(20200231)).toThrow('Invalid date');
+  });
+
+  test('accepts February 29 in a leap year and rejects it in other years', () => {
+    expect(formatAcmsDate(20240229)).toBe('2024-02-29');
+    expect(() => formatAcmsDate(20250229)).toThrow('Invalid date');
+  });
+
+  test('throws for a negative value with 8 characters', () => {
+    expect(() => formatAcmsDate(-1000000)).toThrow('Invalid ACMS date format');
+  });
+
+  test('throws for a month outside the valid calendar range', () => {
+    expect(() => formatAcmsDate(20201301)).toThrow('Invalid date');
+  });
+});
+
+describe('buildAcmsSourceTrustee', () => {
+  test('builds fullName and legacy contact fields from CMMPR fields', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord());
+
+    expect(sourceTrustee).toEqual({
+      firstName: 'Jane',
+      middleName: undefined,
+      lastName: 'Doe',
+      fullName: 'Jane Doe',
+      legacy: {
+        address1: '123 Main St',
+        address2: undefined,
+        cityStateZipCountry: 'Anytown NY 10001-0000',
+        phone: '2125551234',
+      },
+    });
+  });
+
+  test('includes middle initial in fullName when present', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: 'Q' }));
+
+    expect(sourceTrustee.middleName).toBe('Q');
+    expect(sourceTrustee.fullName).toBe('Jane Q Doe');
+  });
+
+  test('treats a phone of 0 as absent', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_COMMERCIAL_PHONE_NBR: 0 }));
+
+    expect(sourceTrustee.legacy?.phone).toBeUndefined();
+  });
+
+  test('never sets email or fax (no such columns on this query)', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord());
+
+    expect(sourceTrustee.legacy?.email).toBeUndefined();
+    expect(sourceTrustee.legacy?.fax).toBeUndefined();
+  });
+
+  test('returns an empty fullName and no name parts when every CMMPR name field is blank', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(
+      makeRawRecord({ PROF_FIRST_NAME: '', PROF_MI: '', PROF_LAST_NAME: '' }),
+    );
+
+    expect(sourceTrustee).toEqual(
+      expect.objectContaining({
+        fullName: '',
+        firstName: undefined,
+        middleName: undefined,
+        lastName: undefined,
+      }),
+    );
+  });
+
+  test('omits legacy entirely when address, city/state/zip, and phone are all blank', () => {
+    const sourceTrustee = buildAcmsSourceTrustee(
+      makeRawRecord({
+        PROF_ADDRESS1: '',
+        PROF_ADDRESS2: '',
+        PROF_CITY: '',
+        PROF_STATE: '',
+        PROF_ZIP: 0,
+        PROF_COMMERCIAL_PHONE_NBR: 0,
+      }),
+    );
+
+    expect(sourceTrustee.legacy).toBeUndefined();
+  });
+
+  test('collapses extra spaces when middle initial is a blank space', () => {
+    // A single space is truthy, so it survives filter(Boolean) and joins into 'Jane   Doe'
+    // (unlike '' default, which filter(Boolean) drops before the join) -- this is the only
+    // PROF_MI value that actually exercises removeExtraSpaces' collapsing behavior.
+    const sourceTrustee = buildAcmsSourceTrustee(makeRawRecord({ PROF_MI: ' ' }));
+
+    expect(sourceTrustee.fullName).toBe('Jane Doe');
+  });
+});
+
+describe('rawToTrusteeAppointmentSyncEvent', () => {
+  test('maps a raw record and courtId into a source-neutral ACMS sync event', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord(), '0208');
+
+    expect(event).toEqual({
+      caseId: '081-24-12345',
+      courtId: '0208',
+      source: 'ACMS',
+      sourceTrustee: buildAcmsSourceTrustee(makeRawRecord()),
+      acmsProfessionalId: 'NY-00063',
+      groupDesignator: 'NY',
+      profCode: '00063',
+      appointedDate: '2020-01-01',
+      chapter: '7',
+      courtDivisionCode: '081',
+      dateFiled: '2019-01-10',
+    });
+  });
+
+  // 0 is the ACMS "no date" sentinel; the query maps it to NULL, but a regression there must not
+  // let the row through.
+  test.each([null, 0])('throws a descriptive error when CASE_FILED_DATE is %s', (filedDate) => {
+    expect(() =>
+      rawToTrusteeAppointmentSyncEvent(makeRawRecord({ CASE_FILED_DATE: filedDate }), '0208'),
+    ).toThrow('ACMS case 081-24-12345 has no CASE_FILED_DATE');
+  });
+
+  test("zero-pads profCode to 5 digits, matching DXTR's fixed-width profCode convention", () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ PROF_CODE: 7 }), '0208');
+
+    expect(event.profCode).toBe('00007');
+  });
+
+  test('omits appointedDate when APPT_DATE is 0', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ APPT_DATE: 0 }), '0208');
+
+    expect(event).not.toHaveProperty('appointedDate');
+  });
+
+  // The repository derives caseStatus from closedDate/reopenedDate, so without them every
+  // appointment the sync writes would read as OPEN (cams-fd8qd.37).
+  test('prefers the court closed date over the UST closed date', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: 20260501, CLOSED_BY_UST_DATE: 20260415 }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-05-01');
+  });
+
+  // 0 is the ACMS "no date" value: the query maps the court date's 0 to NULL, but a regression
+  // there must not hide the UST date.
+  test.each([null, 0])('uses the UST closed date when CLOSED_BY_COURT_DATE is %s', (courtDate) => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: courtDate, CLOSED_BY_UST_DATE: 20260615 }),
+      '0208',
+    );
+
+    expect(event.closedDate).toBe('2026-06-15');
+  });
+
+  test('carries the reopened date', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: 20260501, REOPENED_DATE: 20260610 }),
+      '0208',
+    );
+
+    expect(event.reopenedDate).toBe('2026-06-10');
+  });
+
+  // REOPENED_DATE comes from MAX(ORIGINAL_OCC_DATE) with no 0-to-NULL mapping, so 0 can arrive.
+  test.each([null, 0])('omits closedDate and reopenedDate for a case never closed (%s)', (none) => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CLOSED_BY_COURT_DATE: none, CLOSED_BY_UST_DATE: none, REOPENED_DATE: none }),
+      '0208',
+    );
+
+    expect(event).not.toHaveProperty('closedDate');
+    expect(event).not.toHaveProperty('reopenedDate');
+  });
+
+  test('includes unassignedOn when DISP_DATE is present and non-zero', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: 20210301 }), '0208');
+
+    expect(event.unassignedOn).toBe('2021-03-01');
+  });
+
+  test.each([null, 0])('omits unassignedOn when DISP_DATE is %s', (dispDate) => {
+    const event = rawToTrusteeAppointmentSyncEvent(makeRawRecord({ DISP_DATE: dispDate }), '0208');
+
+    expect(event).not.toHaveProperty('unassignedOn');
+  });
+
+  test('omits chapter when CURR_CASE_CHAPT is null', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CURR_CASE_CHAPT: null }),
+      '0208',
+    );
+
+    expect(event).not.toHaveProperty('chapter');
+  });
+
+  test('normalizes a zero-padded chapter', () => {
+    const event = rawToTrusteeAppointmentSyncEvent(
+      makeRawRecord({ CURR_CASE_CHAPT: '09' }),
+      '0208',
+    );
+
+    expect(event.chapter).toBe('9');
+  });
+});
