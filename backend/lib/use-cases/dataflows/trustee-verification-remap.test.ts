@@ -88,6 +88,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
       .mockResolvedValue(undefined);
     vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
       openOrJoin: mockOpenOrJoin,
+      search: vi.fn(),
       release: vi.fn(),
     });
 

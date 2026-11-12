@@ -72,6 +72,36 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
     });
   });
 
+  describe('search', () => {
+    test('finds appointment tasks with any of the given statuses', async () => {
+      const task = { id: 'task-1', status: 'pending' };
+      const find = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([task]);
+
+      const result = await repository.search({ status: ['pending'] });
+
+      expect(result).toEqual([task]);
+      expect(find).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+          },
+          { condition: 'CONTAINS', leftOperand: { name: 'status' }, rightOperand: ['pending'] },
+        ],
+      });
+    });
+
+    test('wraps a failed find', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.search({ status: ['pending'] })).rejects.toThrow(
+        'Failed to find trustee appointment tasks.',
+      );
+    });
+  });
+
   describe('openOrJoin', () => {
     test('upserts one document keyed by the tuple, adding the case to caseIds', async () => {
       const findOneAndUpdate = vi

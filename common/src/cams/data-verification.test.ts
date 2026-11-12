@@ -8,8 +8,10 @@ import {
   computeTaskDate,
   isConsolidationOrder,
   isTransferOrder,
+  isTrusteeAppointmentVerification,
   isTrusteeMatchVerification,
 } from './data-verification';
+import { TrusteeAppointmentVerificationListItem } from './trustee-appointment-verification';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -156,5 +158,37 @@ describe('computeTaskDate', () => {
       taskDate: undefined,
     };
     expect(computeTaskDate(verification)).toBe('');
+  });
+});
+
+const appointmentTask: TrusteeAppointmentVerificationListItem = {
+  id: 'task-1',
+  documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+  taskType: 'trustee-appointment',
+  trusteeId: 'trustee-1',
+  courtId: '081',
+  courtName: 'Southern District of New York',
+  divisionCode: '081',
+  courtDivisionName: 'Manhattan',
+  chapter: '7',
+  reason: 'no-appointment',
+  status: 'pending',
+  taskDate: '2025-04-01T00:00:00.000Z',
+  caseCount: 2,
+};
+
+describe('isTrusteeAppointmentVerification', () => {
+  test('should return true for an appointment task', () => {
+    expect(isTrusteeAppointmentVerification(appointmentTask)).toBe(true);
+  });
+
+  test('should return false for an identity task', () => {
+    expect(isTrusteeAppointmentVerification(baseVerification)).toBe(false);
+  });
+});
+
+describe('computeTaskDate for an appointment task', () => {
+  test('returns the task date, which is when the task was created', () => {
+    expect(computeTaskDate(appointmentTask)).toBe('2025-04-01T00:00:00.000Z');
   });
 });

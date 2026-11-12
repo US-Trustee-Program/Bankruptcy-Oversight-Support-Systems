@@ -6,12 +6,12 @@ import { assertValidChapter, deriveUnassignedOn } from './sync-trustee-case-appo
 import {
   CaseAppointment,
   CaseAppointmentChecks,
+  IDENTITY_TASK_MATCHED_BY,
   TrusteeAppointment,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { SurrogateAppointment, TrusteeCaseAppointmentsRepository } from '../gateways.types';
-import { IDENTITY_TASK_MATCHED_BY } from './heal-parked-case-appointments';
 import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';

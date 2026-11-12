@@ -35,3 +35,26 @@ export type TrusteeAppointmentVerification = Auditable &
     caseIds: string[];
     status: OrderStatus;
   };
+
+/**
+ * One appointment task as the Data Verification queue lists it. Court and division names are
+ * resolved by the backend when known; the UI falls back to courtId/divisionCode. taskDate is when
+ * the task was opened (createdOn), the sort key every queue row shares.
+ */
+export type TrusteeAppointmentVerificationListItem = Pick<
+  TrusteeAppointmentVerification,
+  | 'id'
+  | 'documentType'
+  | 'taskType'
+  | 'trusteeId'
+  | 'courtId'
+  | 'divisionCode'
+  | 'chapter'
+  | 'reason'
+  | 'status'
+> & {
+  courtName?: string;
+  courtDivisionName?: string;
+  taskDate: string;
+  caseCount: number;
+};

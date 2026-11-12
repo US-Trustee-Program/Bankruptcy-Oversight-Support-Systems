@@ -11,6 +11,7 @@ export const taskType = new Map<DataVerificationItemType, string>([
   ['transfer', 'Transfer'],
   ['consolidation', 'Consolidation'],
   ['trustee-match', 'Trustee Identity'],
+  ['trustee-appointment', 'Trustee Appointment'],
 ]);
 
 export const consolidationTypeMap = new Map<ConsolidationType, string>([

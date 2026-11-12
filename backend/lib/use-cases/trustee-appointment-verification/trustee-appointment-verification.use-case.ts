@@ -8,7 +8,13 @@ import {
   hasAppointmentForCase,
   TrusteeAppointment,
 } from '@common/cams/trustee-appointments';
-import { AppointmentTaskReason } from '@common/cams/trustee-appointment-verification';
+import {
+  AppointmentTaskReason,
+  TrusteeAppointmentVerification,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { CourtsUseCase } from '../courts/courts';
 
 /** The case-appointment write a caller just made, as far as the appointment-task rule needs it. */
 export type AppointmentTaskWrite = {
@@ -87,4 +93,44 @@ export async function openOrJoinAppointmentTask(
       reason,
       user,
     );
+}
+
+function toListItem(
+  task: TrusteeAppointmentVerification,
+  courts: CourtDivisionDetails[],
+): TrusteeAppointmentVerificationListItem {
+  const division = courts.find(
+    (c) => c.courtId === task.courtId && c.courtDivisionCode === task.divisionCode,
+  );
+  const courtName = (division ?? courts.find((c) => c.courtId === task.courtId))?.courtName;
+  return {
+    id: task.id,
+    documentType: task.documentType,
+    taskType: task.taskType,
+    trusteeId: task.trusteeId,
+    courtId: task.courtId,
+    ...(courtName ? { courtName } : {}),
+    divisionCode: task.divisionCode,
+    ...(division ? { courtDivisionName: division.courtDivisionName } : {}),
+    chapter: task.chapter,
+    reason: task.reason,
+    status: task.status,
+    taskDate: task.createdOn,
+    caseCount: task.caseIds.length,
+  };
+}
+
+/**
+ * The open (pending) appointment tasks for the Data Verification queue, with court and division
+ * names resolved from the courts list. A name that can't be resolved is left out; the queue then
+ * shows the court id or division code instead.
+ */
+export async function listAppointmentTasks(
+  context: ApplicationContext,
+): Promise<TrusteeAppointmentVerificationListItem[]> {
+  const tasks = await factory
+    .getTrusteeAppointmentVerificationRepository(context)
+    .search({ status: ['pending'] });
+  const courts = await new CourtsUseCase().getCourts(context);
+  return tasks.map((task) => toListItem(task, courts));
 }

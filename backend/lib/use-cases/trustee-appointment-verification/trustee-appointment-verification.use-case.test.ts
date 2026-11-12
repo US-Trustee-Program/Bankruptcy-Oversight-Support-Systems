@@ -7,8 +7,12 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CaseAppointmentChecks } from '@common/cams/trustee-appointments';
 import {
   AppointmentTaskWrite,
+  listAppointmentTasks,
   openOrJoinAppointmentTask,
 } from './trustee-appointment-verification.use-case';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 
 const uncoveredChecks: CaseAppointmentChecks = {
   matchedCase: true,
@@ -118,5 +122,108 @@ describe('openOrJoinAppointmentTask', () => {
     await expect(openOrJoinAppointmentTask(context, appointment, [])).rejects.toThrow(
       'write failed',
     );
+  });
+});
+
+describe('listAppointmentTasks', () => {
+  let context: ApplicationContext;
+
+  const task: TrusteeAppointmentVerification = {
+    id: 'task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    divisionCode: '1',
+    chapter: '7',
+    reason: 'no-appointment',
+    caseIds: ['081-24-00001', '081-24-00002'],
+    status: 'pending',
+    createdOn: '2026-11-01T00:00:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+  };
+
+  const court = (overrides: Partial<CourtDivisionDetails>): CourtDivisionDetails => ({
+    ...MockData.getCourts()[0],
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('lists pending tasks with court and division names and the number of cases', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+      court({
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '7',
+        courtDivisionName: 'White Plains',
+      }),
+      court({
+        courtId: '091',
+        courtName: 'Eastern District of New York',
+        courtDivisionCode: '1',
+        courtDivisionName: 'Brooklyn',
+      }),
+      court({
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '1',
+        courtDivisionName: 'Manhattan',
+      }),
+    ]);
+
+    const result = await listAppointmentTasks(context);
+
+    expect(search).toHaveBeenCalledWith({ status: ['pending'] });
+    expect(result).toEqual([
+      {
+        id: 'task-1',
+        documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+        taskType: 'trustee-appointment',
+        trusteeId: 'trustee-1',
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        divisionCode: '1',
+        courtDivisionName: 'Manhattan',
+        chapter: '7',
+        reason: 'no-appointment',
+        status: 'pending',
+        taskDate: '2026-11-01T00:00:00.000Z',
+        caseCount: 2,
+      },
+    ]);
+  });
+
+  test('names the court but not the division when only the court is known', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+      court({
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+      }),
+    ]);
+
+    const [item] = await listAppointmentTasks(context);
+
+    expect(item.courtName).toBe('Southern District of New York');
+    expect(item.courtDivisionName).toBeUndefined();
+  });
+
+  test('leaves both names out when the court is unknown', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+
+    const [item] = await listAppointmentTasks(context);
+
+    expect(item).not.toHaveProperty('courtName');
+    expect(item).not.toHaveProperty('courtDivisionName');
   });
 });

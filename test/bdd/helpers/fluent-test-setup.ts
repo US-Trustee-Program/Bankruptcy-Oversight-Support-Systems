@@ -39,6 +39,7 @@ import type {
   ConsolidationTo,
 } from '@common/cams/events';
 import type { Trustee, TrusteeHistory } from '@common/cams/trustees';
+import type { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
@@ -91,6 +92,7 @@ export class TestSetup {
   private trustees: Trustee[] = [];
   private trusteeHistory: Map<string, TrusteeHistory[]> = new Map();
   private featureFlags: Record<string, boolean> = {};
+  private trusteeAppointmentTasks: TrusteeAppointmentVerification[] = [];
   private customSpies: Record<string, Record<string, unknown>> = {};
 
   private constructor(session: CamsSession) {
@@ -396,6 +398,25 @@ export class TestSetup {
   }
 
   /**
+   * Provide the trustee appointment tasks (CAMS-956) the Data Verification queue lists.
+   * This will mock the TrusteeAppointmentVerificationMongoRepository search() method.
+   *
+   * @param tasks Appointment task documents (defaults to empty array)
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(TestSessions.dataVerifier())
+   *   .withFeatureFlag('trustee-verification-enabled')
+   *   .withTrusteeAppointmentTasks([task])
+   *   .renderAt('/data-verification');
+   * ```
+   */
+  withTrusteeAppointmentTasks(tasks: TrusteeAppointmentVerification[] = []): TestSetup {
+    this.trusteeAppointmentTasks = tasks;
+    return this;
+  }
+
+  /**
    * Enable a feature flag for the test.
    * Feature flags control access to features in the application.
    *
@@ -665,6 +686,11 @@ export class TestSetup {
       // Session cache
       UserSessionCacheMongoRepository: {
         read: vi.fn().mockResolvedValue(this.session),
+      },
+
+      // Trustee appointment tasks (CAMS-956)
+      TrusteeAppointmentVerificationMongoRepository: {
+        search: vi.fn().mockResolvedValue(this.trusteeAppointmentTasks),
       },
 
       // Custom spies
