@@ -37,8 +37,8 @@ type RoleAssignmentState = {
 
 /**
  * An append-only record of a change to a UserRoleAssignment. A DEACTIVATED entry's
- * replacedByAssignmentId is the id of the permission that caused it (null for CREATED, and for a
- * DEACTIVATED entry nothing replaced, which cannot currently happen).
+ * replacedByAssignmentId is the id of the newer permission that replaced it, or null when the
+ * permission was revoked rather than replaced. It is always null for CREATED.
  */
 export type RoleAssignmentAuditEntry = {
   documentType: 'ROLE_ASSIGNMENT_AUDIT';
