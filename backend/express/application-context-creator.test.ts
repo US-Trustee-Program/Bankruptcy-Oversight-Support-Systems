@@ -114,6 +114,27 @@ describe('Express Application Context Creator', () => {
       expect(camsRequest.url).toEqual('http://localhost:7071/cases');
     });
 
+    test('falls back to localhost:7071 when the host header resolves to an empty string', () => {
+      const request = createMockExpressRequest({ host: '' });
+
+      const camsRequest = ContextCreator.expressToCamsHttpRequest(request);
+
+      expect(camsRequest.url).toEqual('http://localhost:7071/cases');
+    });
+
+    test('drops a header whose value is neither a string nor an array', () => {
+      const request = createMockExpressRequest({
+        headers: {
+          authorization: 'Bearer token',
+          'x-undefined': undefined as unknown as string,
+        },
+      });
+
+      const camsRequest = ContextCreator.expressToCamsHttpRequest(request);
+
+      expect(camsRequest.headers).toEqual({ authorization: 'Bearer token' });
+    });
+
     test('wraps an unexpected error via getCamsError', () => {
       const request = {
         get headers(): Request['headers'] {

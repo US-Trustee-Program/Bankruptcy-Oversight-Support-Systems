@@ -112,6 +112,23 @@ describe('orders controller tests', () => {
     expect(updateOrderSpy).toHaveBeenCalledWith(applicationContext, id, orderTransfer);
   });
 
+  test('should update an order without calling updateTransferOrder when taskType is not transfer', async () => {
+    const updateOrderSpy = vi.spyOn(OrdersUseCase.prototype, 'updateTransferOrder');
+    applicationContext.request = mockCamsHttpRequest();
+    const nonTransferAction = {
+      ...orderTransfer,
+      taskType: 'other',
+    } as unknown as TransferOrderAction;
+    const expectedResult: CamsHttpResponseInit = {
+      headers: commonHeaders,
+      statusCode: HttpStatusCodes.NO_CONTENT,
+    };
+    const controller = new OrdersController(applicationContext);
+    const result = await controller.updateOrder(applicationContext, id, nonTransferAction);
+    expect(result).toEqual(expectedResult);
+    expect(updateOrderSpy).not.toHaveBeenCalled();
+  });
+
   test('should throw BadRequestError when updating an order and the id does not match data.id', async () => {
     applicationContext.request = mockCamsHttpRequest();
     const expectedError = new BadRequestError('ORDERS-CONTROLLER', {
@@ -215,6 +232,70 @@ describe('orders controller tests', () => {
     await expect(controller.rejectConsolidation(applicationContext)).rejects.toThrow(CamsError);
   });
 
+  test('should reject consolidation successfully when rejected cases are provided', async () => {
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
+      ...mockConsolidationOrder,
+      rejectedCases: [mockConsolidationOrder.memberCases[0].caseId],
+    };
+    const rejectConsolidationSpy = vi
+      .spyOn(OrdersUseCase.prototype, 'rejectConsolidation')
+      .mockResolvedValue([mockConsolidationOrder]);
+    const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionRejection });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    const actualResult = await controller.rejectConsolidation(applicationContext);
+
+    expect(rejectConsolidationSpy).toHaveBeenCalledWith(
+      applicationContext,
+      mockConsolidationOrderActionRejection,
+    );
+    const expectedBody: ResponseBody<ConsolidationOrder[]> = { data: [mockConsolidationOrder] };
+    expect(actualResult).toEqual({
+      headers: commonHeaders,
+      statusCode: HttpStatusCodes.OK,
+      body: expectedBody,
+    });
+  });
+
+  test('should return undefined from rejectConsolidation when the body is not a rejection', async () => {
+    const request = mockCamsHttpRequest({ body: {} });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    await expect(controller.rejectConsolidation(applicationContext)).resolves.toBeUndefined();
+  });
+
+  test('should wrap a non-CamsError from rejectConsolidation in an UnknownError', async () => {
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
+      ...mockConsolidationOrder,
+      rejectedCases: [mockConsolidationOrder.memberCases[0].caseId],
+    };
+    vi.spyOn(OrdersUseCase.prototype, 'rejectConsolidation').mockRejectedValue(new Error('boom'));
+    const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionRejection });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    await expect(controller.rejectConsolidation(applicationContext)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: boom'),
+      }),
+    );
+  });
+
+  test('should return undefined from approveConsolidation when the body is not an approval', async () => {
+    const request = mockCamsHttpRequest({ body: {} });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    await expect(controller.approveConsolidation(applicationContext)).resolves.toBeUndefined();
+  });
+
   test('should call approve consolidation', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
     const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
@@ -289,6 +370,35 @@ describe('orders controller exception tests', () => {
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
+  });
+
+  test('should dispatch to sync orders through handleRequest', async () => {
+    const syncOrdersSpy = vi
+      .spyOn(OrdersUseCase.prototype, 'syncOrders')
+      .mockResolvedValue(syncResponse);
+    const request = mockCamsHttpRequest({ url: 'http://mockhost/api/sync-orders' });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    const result = await controller.handleRequest(applicationContext);
+
+    expect(syncOrdersSpy).toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        body: { data: syncResponse },
+      }),
+    );
+  });
+
+  test('should return undefined through handleRequest when the orders method is unsupported', async () => {
+    const request = mockCamsHttpRequest({
+      url: 'http://mockhost/api/orders',
+      method: 'DELETE',
+    });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    await expect(controller.handleRequest(applicationContext)).resolves.toBeUndefined();
   });
 
   test('should throw unknown error when path is invalid', async () => {
