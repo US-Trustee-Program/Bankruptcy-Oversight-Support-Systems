@@ -10,6 +10,8 @@
     "lint:fix": "eslint . --fix",
     "seed:local": "tsx --env-file=.env-dev-local runner.ts",
     "seed:main": "tsx --env-file=.env-dev-main runner.ts",
+    "superuser:grant": "tsx --env-file=.env-dev-local superuser/superuser.ts grant",
+    "superuser:revoke": "tsx --env-file=.env-dev-local superuser/superuser.ts revoke",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npx tsc --noEmit",

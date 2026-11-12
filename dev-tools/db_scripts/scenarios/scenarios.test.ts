@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
 
 beforeEach(() => {
@@ -31,9 +31,6 @@ import { generate as generateConsolidationScenarios } from './consolidation-scen
 import { generate as generateTrusteeData } from './trustee-data.js';
 import { generate as generateAdminData } from './admin-data.js';
 import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
-import { generate as generateAccessManagement } from './access-management.js';
-import { activeKeyFor } from '@common/cams/user-access.js';
-import { CamsRole } from '@common/cams/roles.js';
 
 // Fixed IDs used across all tests so assertions are deterministic
 const CH7_IDS: GeneratedCaseId = {
@@ -796,130 +793,5 @@ describe('trustee-case-list scenario', () => {
       expect((a.appointedDate as string).endsWith('-15')).toBe(true);
       expect((dateFiled as string).endsWith('-01')).toBe(true);
     }
-  });
-});
-
-// ─── access-management ───────────────────────────────────────────────────────
-
-describe('access-management scenario', () => {
-  const SEED_ENV_VARS = ['SEED_SUPERUSER_ID', 'SEED_SUPERUSER_NAME', 'SEED_SUPERUSER_EMAIL'];
-  let savedEnv: Record<string, string | undefined>;
-
-  beforeEach(() => {
-    savedEnv = Object.fromEntries(SEED_ENV_VARS.map((key) => [key, process.env[key]]));
-    SEED_ENV_VARS.forEach((key) => delete process.env[key]);
-  });
-
-  afterEach(() => {
-    SEED_ENV_VARS.forEach((key) => {
-      if (savedEnv[key] === undefined) delete process.env[key];
-      else process.env[key] = savedEnv[key];
-    });
-  });
-
-  async function operations() {
-    return generateAccessManagement({
-      generateCaseId: () => {
-        throw new Error('access-management should not call generateCaseId');
-      },
-    } as SeedContext);
-  }
-
-  function documentIn(ops: SeedOperation[], collection: string) {
-    const op = ops.find((o) => o.collectionOrTable === collection);
-    expect(op?.data).toHaveLength(1);
-    return op!.data[0];
-  }
-
-  test('writes one assignment and one audit record to Cosmos', async () => {
-    const ops = await operations();
-
-    expect(ops).toHaveLength(2);
-    expect(ops.every((o) => o.db === 'cams')).toBe(true);
-    expect(ops.map((o) => o.collectionOrTable).sort()).toEqual([
-      'role-assignment-audit',
-      'user-role-assignments',
-    ]);
-  });
-
-  test('assignment is an active, unscoped Super User grant for the Flexion Team account by default', async () => {
-    const assignment = documentIn(await operations(), 'user-role-assignments');
-
-    expect(assignment).toEqual({
-      documentType: 'USER_ROLE_ASSIGNMENT',
-      id: 'seed-role-assignment-superuser-001',
-      userId: '00uxy2nwugG682IKt697',
-      userName: 'Flexion Team',
-      email: 'doj-ustp-cms-team@flexion.us',
-      role: CamsRole.SuperUser,
-      regionId: null,
-      officeCode: null,
-      assignedBy: 'SYSTEM_SEED',
-      assignedByName: 'Test Data Seeder',
-      assignedAt: '2026-01-01T00:00:00.000Z',
-      expiresAt: null,
-      active: true,
-      activeKey: activeKeyFor(CamsRole.SuperUser, null, null),
-    });
-    expect(assignment.activeKey).toBe('SuperUser|*|*');
-  });
-
-  test('audit record is a CREATED entry for the seeded assignment', async () => {
-    const ops = await operations();
-    const assignment = documentIn(ops, 'user-role-assignments');
-    const audit = documentIn(ops, 'role-assignment-audit');
-
-    expect(audit).toEqual({
-      documentType: 'ROLE_ASSIGNMENT_AUDIT',
-      id: 'seed-role-assignment-audit-superuser-001',
-      assignmentId: assignment.id,
-      action: 'CREATED',
-      userId: assignment.userId,
-      userName: assignment.userName,
-      role: CamsRole.SuperUser,
-      regionId: null,
-      officeCode: null,
-      performedBy: 'SYSTEM_SEED',
-      performedByName: 'Test Data Seeder',
-      performedAt: assignment.assignedAt,
-      previousState: null,
-      newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
-      reason: 'Seeded Super User for local/dev testing',
-    });
-  });
-
-  test('user identity comes from SEED_SUPERUSER_* environment variables when set', async () => {
-    process.env.SEED_SUPERUSER_ID = 'okta-00u123';
-    process.env.SEED_SUPERUSER_NAME = 'Dev Person';
-    process.env.SEED_SUPERUSER_EMAIL = 'dev.person@example.com';
-
-    const ops = await operations();
-    const assignment = documentIn(ops, 'user-role-assignments');
-    const audit = documentIn(ops, 'role-assignment-audit');
-
-    expect(assignment).toMatchObject({
-      userId: 'okta-00u123',
-      userName: 'Dev Person',
-      email: 'dev.person@example.com',
-    });
-    expect(audit).toMatchObject({ userId: 'okta-00u123', userName: 'Dev Person' });
-  });
-
-  test('blank SEED_SUPERUSER_* environment variables fall back to the Flexion Team account', async () => {
-    process.env.SEED_SUPERUSER_ID = '';
-    process.env.SEED_SUPERUSER_NAME = ' ';
-    process.env.SEED_SUPERUSER_EMAIL = '';
-
-    const assignment = documentIn(await operations(), 'user-role-assignments');
-
-    expect(assignment).toMatchObject({
-      userId: '00uxy2nwugG682IKt697',
-      userName: 'Flexion Team',
-      email: 'doj-ustp-cms-team@flexion.us',
-    });
-  });
-
-  test('generates identical documents on every run so reseeding upserts in place', async () => {
-    expect(await operations()).toEqual(await operations());
   });
 });

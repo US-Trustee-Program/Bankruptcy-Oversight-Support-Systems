@@ -55,12 +55,12 @@ onto `AppointmentAccordion`.
 
 ### Administrative Data
 
-| Scenario                  | Source Script                                    | What It Tests                                                                                                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Banks**                 | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                                                                                                                                                                                              |
-| **Bankruptcy Software**   | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                                                                                                                                                                   |
-| **User Groups**           | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                                                                                                                                                          |
-| **Super User Permission** | `access-management.ts`                           | One active, unscoped Super User role assignment plus its CREATED audit record, for reaching Administration > Permissions when `cams-role-assignments` is on. Defaults to the Flexion Team account; see [Super User Permission](#super-user-permission) |
+| Scenario                  | Source Script                                        | What It Tests                                                                                                                                                                                                                           |
+| ------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Banks**                 | `admin-data.ts`                                      | Active and inactive banks. Active: "Test Bank of America"                                                                                                                                                                               |
+| **Bankruptcy Software**   | `admin-data.ts`                                      | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                                                                                                                                                    |
+| **User Groups**           | Synced from production via `sync-user-groups.ts`     | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                                                                                                                                           |
+| **Super User Permission** | `superuser/superuser.ts` (`npm run superuser:grant`) | Grants or revokes an unscoped Super User (with audit records) for reaching Administration > Permissions when `cams-role-assignments` is on. Not a scenario. Local Mongo by default; see [Super User Permission](#super-user-permission) |
 
 ## Key Test Records
 
@@ -137,23 +137,38 @@ Each case has 3 docket entries (petition, commencement notice, 341 meeting).
 
 ### Super User Permission
 
-**Script:** `access-management.ts` (CAMS-940). Writes `seed-role-assignment-superuser-001` to
-`user-role-assignments` (role `SuperUser`, `regionId`/`officeCode` null, `activeKey`
-`SuperUser|*|*`, `assignedBy` `SYSTEM_SEED`) and `seed-role-assignment-audit-superuser-001` to
-`role-assignment-audit`.
+**Commands:** `npm run superuser:grant` and `npm run superuser:revoke` in `dev-tools`
+(`dev-tools/superuser/superuser.ts`, CAMS-940). Not a seed scenario: each grant writes a new
+`seed-superuser-<uuid>` document to `user-role-assignments` (role `SuperUser`,
+`regionId`/`officeCode` null, `activeKey` `SuperUser|*|*`, `assignedBy` `SYSTEM_SEED`) plus a
+CREATED entry in `role-assignment-audit`. Granting a user who already holds Super User writes
+nothing. Revoking deactivates the permission (`active: false`, `activeKey` `inactive|<id>`) and
+writes a DEACTIVATED audit entry; nothing is deleted, so a later grant keeps the history. Because
+the ids start with `seed-`, `npm run unseed:local` removes them with the rest of the seed data.
 
-The seeded user defaults to the shared Flexion Team account (`doj-ustp-cms-team@flexion.us`) in the
-Flexion dev Okta org. To seed a different user, set these before running the scenario:
+By default the commands write to the `cams` database of a **local** Mongo only:
+`MONGO_CONNECTION_STRING` must name `localhost`, `127.0.0.1`, `::1` or the Podman `mongodb` service,
+or the command exits before connecting. To target a shared Cosmos account (a Flexion branch deploy,
+or the USTP pipeline step), name it explicitly:
 
-| Variable               | Default                        | Meaning                                                                                   |
+```shell
+cd dev-tools
+MONGO_CONNECTION_STRING='<that account's connection string>' SEED_SUPERUSER_ID='<Okta user id>' \
+  npx tsx superuser/superuser.ts grant --cosmos-host <account>.mongo.cosmos.azure.us --database cams
+```
+
+Every host in the connection string must equal `--cosmos-host`, and `SEED_SUPERUSER_ID` is required
+in that mode.
+
+| Variable               | Default (local only)           | Meaning                                                                                   |
 | ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
 | `SEED_SUPERUSER_ID`    | `00uxy2nwugG682IKt697`         | Okta user id: the access token's `uid` claim, which CAMS also uses as the session user id |
 | `SEED_SUPERUSER_NAME`  | `Flexion Team`                 | Display name                                                                              |
 | `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us` | Email                                                                                     |
 
-Ids and timestamps are fixed, so re-running replaces the same two documents. If the user already
-holds an active Super User assignment created another way (for example, through the Permissions
-screen), the unique `{userId, activeKey}` index rejects the seeded insert.
+There is no Okta "USTP Cams Users" check, so a mistyped id writes a permission nobody can use;
+revoke it. A session is cached for the life of its token, so a grant or revoke takes effect at the
+user's next login.
 
 ### Bank and Software Assignments
 
@@ -178,7 +193,6 @@ npm run seed:local -- --scenario=trustees-comprehensive
 npm run seed:local -- --scenario=oversight-assignments
 npm run seed:local -- --scenario=dxtr-historical-trustees
 npm run seed:local -- --scenario=trustee-case-list
-npm run seed:local -- --scenario=access-management
 ```
 
 For complete usage instructions, see [dev-tools/README.md](../../dev-tools/README.md).

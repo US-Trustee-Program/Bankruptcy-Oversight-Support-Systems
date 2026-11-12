@@ -43,7 +43,6 @@ vi.mock('mssql', () => ({
 }));
 
 // Import all scenario generators
-import { generate as generateAccessManagement } from './access-management.js';
 import { generate as generateAdminData } from './admin-data.js';
 import { generate as generateCasesFuzzySearch } from './cases-fuzzy-search.js';
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
@@ -63,7 +62,6 @@ import { generate as generateNotificationRouting } from './notification-routing.
 
 // Array of all scenarios to validate
 const SCENARIOS = [
-  { name: 'access-management', generate: generateAccessManagement },
   { name: 'admin-data', generate: generateAdminData },
   { name: 'cases-fuzzy-search', generate: generateCasesFuzzySearch },
   { name: 'ch11-with-transfer-orders', generate: generateCh11WithTransferOrders },
