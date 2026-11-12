@@ -84,6 +84,38 @@ describe('import-zoom-csv', () => {
       );
     });
 
+    test('should return empty array when content is empty', () => {
+      const rows = parseZoomMatchedTsvFile('');
+      expect(rows).toEqual([]);
+    });
+
+    test('should default blank optional cells to empty string', () => {
+      const headerWithBlankRow = [SAMPLE_MATCHED_TSV.split('\n')[0], '\t'.repeat(14) + 'X'].join(
+        '\n',
+      );
+
+      const rows = parseZoomMatchedTsvFile(headerWithBlankRow);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toEqual({
+        zoomName: '',
+        zoomEmail: '',
+        meetingId: '',
+        passcode: '',
+        phone: '',
+        link: '',
+        outcome: '',
+        strategy: '',
+        atsTruIds: '',
+        matchedNames: '',
+        matchCount: '',
+        similarity: '',
+        activeStatus: '',
+        statusCodes: '',
+        ambiguousCandidates: 'X',
+      });
+    });
+
     test('should handle multiple ATS TRU_IDs', () => {
       const multipleIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
@@ -182,6 +214,20 @@ describe('import-zoom-csv', () => {
       expect(updateSpy).toHaveBeenCalledOnce();
     });
 
+    test('should skip phonetic token search when zoom name has no searchable tokens', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([]);
+      const phoneticSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens')
+        .mockResolvedValue([]);
+
+      const result = await processZoomMatchedRow(context, { ...row, zoomName: '' });
+
+      expect(result.outcome).toBe('unmatched');
+      expect(phoneticSpy).not.toHaveBeenCalled();
+    });
+
     test('should return unmatched when TRU_ID and fallback both fail', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
@@ -228,6 +274,131 @@ describe('import-zoom-csv', () => {
       expect(result.outcome).toBe('ambiguous');
       expect(result.matchedTrusteeId).toBeUndefined();
       expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should set accountEmail to undefined when zoom email is blank', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+
+      await processZoomMatchedRow(context, { ...row, zoomEmail: '' });
+
+      const [, updateArgs] = updateSpy.mock.calls[0] as unknown as [
+        string,
+        { zoomInfo: Record<string, unknown> },
+      ];
+      expect(updateArgs).toMatchObject({
+        zoomInfo: {
+          meetingId: '123456789',
+          passcode: '1234567890',
+          phone: '123-456-7890',
+          link: 'https://zoom.us/j/123456789',
+        },
+      });
+      expect(updateArgs.zoomInfo).not.toHaveProperty('accountEmail');
+    });
+
+    test('should disambiguate multiple fallback candidates by matching email', async () => {
+      const otherTrustee = {
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-789',
+        public: { ...MOCK_TRUSTEE.public, email: '' },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+        otherTrustee,
+        MOCK_TRUSTEE,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      const result = await processZoomMatchedRow(context, row);
+
+      expect(result.outcome).toBe('matched');
+      expect(result.matchedTrusteeId).toBe('trustee-456');
+      expect(updateSpy).toHaveBeenCalledOnce();
+      expect(infoSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('FALLBACK: Found trustee by exact name + email'),
+      );
+    });
+
+    test('should move to the next strategy when email cannot disambiguate multiple candidates', async () => {
+      const candidateA = {
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-A',
+        public: { ...MOCK_TRUSTEE.public, email: 'a@example.com' },
+      };
+      const candidateB = {
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-B',
+        public: { ...MOCK_TRUSTEE.public, email: 'b@example.com' },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+        candidateA,
+        candidateB,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([
+        MOCK_TRUSTEE,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await processZoomMatchedRow(context, {
+        ...row,
+        zoomEmail: 'nomatch@example.com',
+      });
+
+      expect(result.outcome).toBe('matched');
+      expect(result.matchedTrusteeId).toBe('trustee-456');
+      expect(updateSpy).toHaveBeenCalledOnce();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('cannot disambiguate'),
+      );
+    });
+
+    test('should move to the next strategy when no zoom email is available to disambiguate', async () => {
+      const candidateA = { ...MOCK_TRUSTEE, trusteeId: 'trustee-A' };
+      const candidateB = { ...MOCK_TRUSTEE, trusteeId: 'trustee-B' };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+        candidateA,
+        candidateB,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([
+        candidateA,
+        candidateB,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue([
+        candidateA,
+        candidateB,
+      ]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      const result = await processZoomMatchedRow(context, { ...row, zoomEmail: '' });
+
+      expect(result.outcome).toBe('unmatched');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('cannot disambiguate'),
+      );
+      expect(infoSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('No trustee found for name'),
+      );
     });
 
     test('should return error when repo throws', async () => {
