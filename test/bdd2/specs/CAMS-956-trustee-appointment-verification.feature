@@ -1,6 +1,6 @@
 # Ticket: CAMS-956 (GitHub #3190)
 # Beads epic: cams-0yr5n
-# Total Slices: 5
+# Total Slices: 4
 # Depends on: CAMS-955 (GitHub #3189, the ACMS/DXTR sync that writes CASE_APPOINTMENT records with
 #             checks.matchedTrusteeAppointment); team review of the verifier action (now resolved in this
 #             issue's text as "refresh, then auto-resolve")
@@ -8,7 +8,8 @@
 #           (remapSurrogateAppointment throws on an uncovered case) are removed/replaced in Slice 1.
 #           Gates F/G (TrusteeMatchVerificationAccordion/TrusteeSearchModal disable Match Trustee and
 #           Confirm Appointment for uncovered cases) are addressed in Slice 4.
-# Backfill scope decision (2026-11-12, Fritz Madden): open case appointments only, not closed ones.
+# No backfill (2026-11-12, Fritz Madden): CAMS-955 has not yet accumulated any uncovered rows in
+# production, so there is nothing existing to migrate. The issue's backfill AC is dropped as moot.
 Feature: Trustee case appointment verification
   As a data verifier
   I want a task whenever a trustee's case appointment isn't supported by an active trustee appointment
@@ -83,6 +84,12 @@ Feature: Trustee case appointment verification
     When a case appointment is written for trustee "T-1" in that court, division and chapter with
       checks.matchedTrusteeAppointment false
     Then the appointment task's reason is "appointment inactive"
+
+  Scenario: The sync's own write opens or joins a task, superseding CAMS-955's "no task is created"
+    Given the ACMS/DXTR sync writes a case appointment with checks.matchedTrusteeAppointment false
+    When the sync's write completes
+    Then an appointment task opens or is joined for that trustee, court, division and chapter
+    And this replaces CAMS-955's prior behavior of writing the appointment with no task
 
   Scenario: The remap writes the real appointment and opens or joins a task instead of throwing
     Given the trustee-match verification remap is writing the real appointment for a trustee with no
@@ -239,30 +246,3 @@ Feature: Trustee case appointment verification
     When a data verifier views that case in the preview
     Then Match Trustee and Confirm Appointment are enabled
     And they are not disabled the way CAMS-905 gates F and G used to disable them
-
-  # SLICE 5: Backfill
-  # Dependencies: Slice 1 (the predicate and task-creation logic must exist)
-  # User Value: Open cases CAMS-955 already synced before this ticket shipped get appointment-task
-  #             coverage too, not only newly written ones.
-
-  Scenario: Deploying runs a one-time backfill over existing open case appointments
-    Given CASE_APPOINTMENT records already exist from before this ticket shipped, matching the predicate,
-      on open cases
-    When this ticket's backfill runs on deploy
-    Then an appointment task opens or is joined for each one, exactly as if it had just been written
-
-  Scenario: The backfill excludes placeholders and parked records
-    Given existing placeholder appointments and existing CASE_APPOINTMENT_UNATTACHED records
-    When the backfill runs
-    Then neither joins or opens an appointment task
-
-  Scenario: The backfill excludes closed case appointments
-    Given a closed CASE_APPOINTMENT record that would otherwise match the predicate
-    When the backfill runs
-    Then no appointment task is opened or joined for it
-
-  Scenario: Replaying the backfill writes no duplicates
-    Given the backfill has already run once
-    When the backfill runs again
-    Then no duplicate appointment tasks are created
-    And no case is listed twice on any appointment task
