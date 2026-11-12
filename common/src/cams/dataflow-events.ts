@@ -168,15 +168,3 @@ export type TrusteeMigrationStartEvent = {
    */
   importAll?: boolean;
 };
-
-/**
- * Grants or revokes an unscoped Super User permission (CAMS-940 Slice 5). Sent to the
- * SUPERUSER-ACCESS queue by an operator or the Azure DevOps step, never by the app. runId ties the
- * message to its SUPERUSER_ACCESS_OUTCOME log line; requestedBy names who asked, for the audit.
- */
-export type SuperUserAccessMessage = {
-  action: 'grant' | 'revoke';
-  userId: string;
-  runId: string;
-  requestedBy: string;
-};

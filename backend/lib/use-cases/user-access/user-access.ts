@@ -54,44 +54,33 @@ function badRequest(message: string) {
 }
 
 /**
- * Turns the path's region and office into a scope. Super User has no region or office; 'all' means
- * every region or every office in the region.
+ * Turns the path's region and office into a scope, checking them against the office list. Super
+ * User has no region or office; 'all' means every region or every office in the region.
  */
-function scopeFromPath(request: RoleAssignmentGrantRequest): PermissionScope {
+function resolveScope(
+  request: RoleAssignmentGrantRequest,
+  offices: UstpOfficeDetails[],
+): { scope: PermissionScope } {
   const everyRegion = request.regionId === ALL_SCOPE;
   const everyOffice = request.officeCode === ALL_SCOPE;
   if (request.role === CamsRole.SuperUser) {
     if (!everyRegion || !everyOffice) throw badRequest('Super User has no region or office.');
-    return { regionId: null, officeCode: null };
+    return { scope: { regionId: null, officeCode: null } };
   }
   if (everyRegion) {
     if (!everyOffice) throw badRequest('An office needs its region.');
-    return { regionId: null, officeCode: null };
+    return { scope: { regionId: null, officeCode: null } };
   }
-  if (everyOffice) return { regionId: request.regionId, officeCode: null };
-  return { regionId: request.regionId, officeCode: request.officeCode };
-}
-
-/** Checks a scope against the live office list. Only granting needs this; revoking does not. */
-function assertScopeExists(scope: PermissionScope, offices: UstpOfficeDetails[]) {
-  if (scope.regionId === null) return;
-  if (scope.officeCode === null) {
-    if (!offices.some((o) => o.regionId === scope.regionId)) {
+  if (everyOffice) {
+    if (!offices.some((o) => o.regionId === request.regionId)) {
       throw badRequest('The region does not exist.');
     }
-    return;
+    return { scope: { regionId: request.regionId, officeCode: null } };
   }
-  const office = offices.find((o) => o.officeCode === scope.officeCode);
+  const office = offices.find((o) => o.officeCode === request.officeCode);
   if (!office) throw badRequest('The office does not exist.');
-  if (office.regionId !== scope.regionId) throw badRequest('The office is not in that region.');
-}
-
-function validateRequest(request: RoleAssignmentGrantRequest) {
-  const validation = validateObject(roleAssignmentGrantRequestSpec, request);
-  if (!validation.valid) {
-    const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
-    throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
-  }
+  if (office.regionId !== request.regionId) throw badRequest('The office is not in that region.');
+  return { scope: { regionId: office.regionId, officeCode: office.officeCode } };
 }
 
 function stateOf(assignment: UserRoleAssignment) {
@@ -180,26 +169,26 @@ export class UserAccessUseCase {
    *   moment): both are read before either is written, so both stay active until the next grant
    *   to that user and role converges them. Accepted: no access beyond what was granted, and the
    *   same read-then-write gap exists in case assignment and trustee oversight assignment.
-   *
-   * The performer recorded on the permission and its audit records defaults to the session user;
-   * pass one when there is no session, as for a pipeline call.
    */
   async grantPermission(
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
-    performer?: CamsUserReference,
   ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
-    validateRequest(request);
-    const scope = scopeFromPath(request);
+    const validation = validateObject(roleAssignmentGrantRequestSpec, request);
+    if (!validation.valid) {
+      const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
+      throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
+    }
 
     const member = (await this.getMembers(context)).find((m) => m.id === request.userId);
     if (!member) {
       throw new BadRequestError(MODULE_NAME, { message: 'The user is not a CAMS user.' });
     }
 
-    assertScopeExists(scope, await factory.getOfficesGateway(context).getOffices(context));
+    const offices = await factory.getOfficesGateway(context).getOffices(context);
+    const { scope } = resolveScope(request, offices);
     const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
-    const actor = performer ?? getCamsUserReference(context.session.user);
+    const performer = getCamsUserReference(context.session.user);
     const now = new Date().toISOString();
 
     let held = await this.assignmentRepository.findActiveByUserAndRole(member.id, request.role);
@@ -216,8 +205,8 @@ export class UserAccessUseCase {
         role: request.role,
         regionId: scope.regionId,
         officeCode: scope.officeCode,
-        assignedBy: actor.id,
-        assignedByName: actor.name,
+        assignedBy: performer.id,
+        assignedByName: performer.name,
         assignedAt: now,
         expiresAt: null,
         active: true,
@@ -229,7 +218,7 @@ export class UserAccessUseCase {
         created = true;
         await this.writeAudit(
           context,
-          auditEntry('CREATED', inserted, null, stateOf(inserted), actor, now, null),
+          auditEntry('CREATED', inserted, null, stateOf(inserted), performer, now, null),
         );
       } else {
         // Another grant wrote the same permission between our read and our write.
@@ -265,7 +254,7 @@ export class UserAccessUseCase {
           overlapping,
           stateOf(overlapping),
           stateOf(deactivated),
-          actor,
+          performer,
           now,
           permission.id,
         ),
@@ -273,56 +262,6 @@ export class UserAccessUseCase {
     }
 
     return { result: { permission, replaced }, created };
-  }
-
-  /**
-   * Revokes one permission: deactivates it (its activeKey is freed, so it can be granted again) and
-   * writes a DEACTIVATED audit record that nothing replaced. Nothing is deleted. Returns
-   * { revoked: null } when the user doesn't hold it, including when a concurrent call deactivated
-   * it first. Unlike granting, the user need not still be in "USTP Cams Users", and the office need
-   * not still exist. The performer defaults to the session user, as for grantPermission.
-   */
-  async revokePermission(
-    context: ApplicationContext,
-    request: RoleAssignmentGrantRequest,
-    performer?: CamsUserReference,
-  ): Promise<{ revoked: UserRoleAssignment | null }> {
-    validateRequest(request);
-    const scope = scopeFromPath(request);
-    const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
-    const actor = performer ?? getCamsUserReference(context.session.user);
-
-    const held = await this.assignmentRepository.findActiveByUserAndRole(
-      request.userId,
-      request.role,
-    );
-    const permission = held.find((p) => p.activeKey === activeKey);
-    if (!permission) return { revoked: null };
-
-    let revoked: UserRoleAssignment | null;
-    try {
-      revoked = await this.assignmentRepository.deactivate(permission);
-    } catch (error) {
-      context.logger.error(MODULE_NAME, `${DEACTIVATION_FAILED_MESSAGE}: ${error.message}`, {
-        revokedAssignmentId: permission.id,
-      });
-      throw new CamsError(MODULE_NAME, { message: 'Unable to revoke the permission.' });
-    }
-    if (!revoked) return { revoked: null };
-
-    await this.writeAudit(
-      context,
-      auditEntry(
-        'DEACTIVATED',
-        permission,
-        stateOf(permission),
-        stateOf(revoked),
-        actor,
-        new Date().toISOString(),
-        null,
-      ),
-    );
-    return { revoked };
   }
 
   /** The writes are sequential, not atomic: a failed audit write keeps the change. */

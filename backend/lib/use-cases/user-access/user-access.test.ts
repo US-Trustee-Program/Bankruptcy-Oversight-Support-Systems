@@ -82,34 +82,6 @@ describe('UserAccessUseCase', () => {
       .mockResolvedValue({ id: 'group-1', name: 'USTP Cams Users', users });
   }
 
-  function spyOnWrites() {
-    return {
-      createSpy: vi
-        .spyOn(MockMongoRepository.prototype, 'create')
-        .mockImplementation((item) => Promise.resolve(item)),
-      traceSpy: vi.spyOn(context.observability, 'completeTrace'),
-    };
-  }
-
-  const auditWrites = (createSpy: ReturnType<typeof spyOnWrites>['createSpy']) =>
-    createSpy.mock.calls
-      .map(([item]) => item)
-      .filter((item) => item.documentType === 'ROLE_ASSIGNMENT_AUDIT');
-
-  function spyOnHeld(...held: UserRoleAssignment[][]) {
-    const spy = vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserAndRole');
-    held.forEach((permissions) => spy.mockResolvedValueOnce(permissions));
-    return spy.mockResolvedValue([]);
-  }
-
-  function spyOnDeactivate() {
-    return vi
-      .spyOn(MockMongoRepository.prototype, 'deactivate')
-      .mockImplementation((p: UserRoleAssignment) =>
-        Promise.resolve({ ...p, active: false, activeKey: `inactive|${p.id}` }),
-      );
-  }
-
   describe('getCamsUsers', () => {
     test('should return a page of members ordered by name with the total count', async () => {
       spyOnMembers();
@@ -298,6 +270,26 @@ describe('UserAccessUseCase', () => {
       regionId: MANHATTAN.regionId,
       officeCode: MANHATTAN.officeCode,
     };
+
+    function spyOnWrites() {
+      return {
+        createSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'create')
+          .mockImplementation((item) => Promise.resolve(item)),
+        traceSpy: vi.spyOn(context.observability, 'completeTrace'),
+      };
+    }
+
+    const auditWrites = (createSpy: ReturnType<typeof spyOnWrites>['createSpy']) =>
+      createSpy.mock.calls
+        .map(([item]) => item)
+        .filter((item) => item.documentType === 'ROLE_ASSIGNMENT_AUDIT');
+
+    function spyOnHeld(...held: UserRoleAssignment[][]) {
+      const spy = vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserAndRole');
+      held.forEach((permissions) => spy.mockResolvedValueOnce(permissions));
+      return spy.mockResolvedValue([]);
+    }
 
     test('should write the permission, then its audit record, then a telemetry event', async () => {
       spyOnMembers();
@@ -494,29 +486,6 @@ describe('UserAccessUseCase', () => {
       expect(traceSpy).not.toHaveBeenCalled();
     });
 
-    test('should record an explicitly given performer, even when there is no session', async () => {
-      spyOnMembers();
-      spyOnHeld();
-      const { createSpy } = spyOnWrites();
-      const pipeline: CamsUserReference = { id: 'SYSTEM_PIPELINE', name: 'Azure DevOps pipeline' };
-      const noSession = { ...context, session: undefined } as unknown as ApplicationContext;
-
-      const { result } = await useCase.grantPermission(noSession, request, pipeline);
-
-      expect(result.permission).toEqual(
-        expect.objectContaining({
-          assignedBy: 'SYSTEM_PIPELINE',
-          assignedByName: 'Azure DevOps pipeline',
-        }),
-      );
-      expect(auditWrites(createSpy)).toEqual([
-        expect.objectContaining({
-          performedBy: 'SYSTEM_PIPELINE',
-          performedByName: 'Azure DevOps pipeline',
-        }),
-      ]);
-    });
-
     test('should reject a missing request body with a 400 that says why', async () => {
       const error = await getTheThrownError(() =>
         useCase.grantPermission(context, undefined as unknown as RoleAssignmentGrantRequest),
@@ -681,6 +650,14 @@ describe('UserAccessUseCase', () => {
     describe('the overlap rule', () => {
       const REGION_2 = { regionId: MANHATTAN.regionId, officeCode: 'all' };
       const NATIONAL = { regionId: 'all', officeCode: 'all' };
+
+      function spyOnDeactivate() {
+        return vi
+          .spyOn(MockMongoRepository.prototype, 'deactivate')
+          .mockImplementation((p: UserRoleAssignment) =>
+            Promise.resolve({ ...p, active: false, activeKey: `inactive|${p.id}` }),
+          );
+      }
 
       test('should replace the narrower permissions a broader grant covers, each with its own audit', async () => {
         spyOnMembers();
@@ -893,287 +870,6 @@ describe('UserAccessUseCase', () => {
         );
         expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['CREATED']);
       });
-    });
-  });
-
-  describe('revokePermission', () => {
-    const request: RoleAssignmentGrantRequest = {
-      userId: 'user-a',
-      role: CamsRole.TrialAttorney,
-      regionId: MANHATTAN.regionId,
-      officeCode: MANHATTAN.officeCode,
-    };
-    const superUserRequest: RoleAssignmentGrantRequest = {
-      userId: 'user-a',
-      role: CamsRole.SuperUser,
-      regionId: 'all',
-      officeCode: 'all',
-    };
-
-    function superUserFor(userId: string): UserRoleAssignment {
-      return {
-        ...assignmentFor(userId, MANHATTAN),
-        id: `${userId}-super-user`,
-        role: CamsRole.SuperUser,
-        regionId: null,
-        officeCode: null,
-        activeKey: 'SuperUser|*|*',
-      };
-    }
-
-    test('should deactivate the permission and write its audit record and a telemetry event', async () => {
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date('2026-11-12T00:00:00.000Z'));
-      const held = assignmentFor('user-a', MANHATTAN);
-      const heldSpy = spyOnHeld([assignmentFor('user-a', BUFFALO), held]);
-      const deactivateSpy = spyOnDeactivate();
-      const { createSpy, traceSpy } = spyOnWrites();
-      const performer = getCamsUserReference(context.session.user);
-
-      const { revoked } = await useCase.revokePermission(context, request);
-
-      const expectedRevoked = { ...held, active: false, activeKey: `inactive|${held.id}` };
-      const expectedAudit: RoleAssignmentAuditEntry = {
-        documentType: 'ROLE_ASSIGNMENT_AUDIT',
-        id: expect.any(String),
-        assignmentId: held.id,
-        action: 'DEACTIVATED',
-        userId: 'user-a',
-        userName: held.userName,
-        role: CamsRole.TrialAttorney,
-        regionId: MANHATTAN.regionId,
-        officeCode: MANHATTAN.officeCode,
-        performedBy: performer.id,
-        performedByName: performer.name,
-        performedAt: '2026-11-12T00:00:00.000Z',
-        previousState: {
-          role: CamsRole.TrialAttorney,
-          regionId: MANHATTAN.regionId,
-          officeCode: MANHATTAN.officeCode,
-          active: true,
-        },
-        newState: {
-          role: CamsRole.TrialAttorney,
-          regionId: MANHATTAN.regionId,
-          officeCode: MANHATTAN.officeCode,
-          active: false,
-        },
-        replacedByAssignmentId: null,
-      };
-
-      expect(revoked).toEqual(expectedRevoked);
-      expect(heldSpy).toHaveBeenCalledWith('user-a', CamsRole.TrialAttorney);
-      expect(deactivateSpy).toHaveBeenCalledTimes(1);
-      expect(deactivateSpy).toHaveBeenCalledWith(held);
-      expect(createSpy).toHaveBeenCalledTimes(1);
-      expect(createSpy).toHaveBeenCalledWith(expectedAudit);
-      expect(traceSpy).toHaveBeenCalledWith(
-        expect.anything(),
-        'RoleAssignmentAudit',
-        expect.objectContaining({
-          success: true,
-          properties: expect.objectContaining({
-            action: 'DEACTIVATED',
-            assignmentId: held.id,
-            replacedByAssignmentId: '',
-          }),
-        }),
-        undefined,
-        expect.anything(),
-      );
-    });
-
-    test('should revoke an unscoped Super User permission', async () => {
-      const held = superUserFor('user-a');
-      const heldSpy = spyOnHeld([held]);
-      const deactivateSpy = spyOnDeactivate();
-      const { createSpy } = spyOnWrites();
-
-      const { revoked } = await useCase.revokePermission(context, superUserRequest);
-
-      expect(heldSpy).toHaveBeenCalledWith('user-a', CamsRole.SuperUser);
-      expect(deactivateSpy).toHaveBeenCalledWith(held);
-      expect(revoked).toEqual(expect.objectContaining({ id: held.id, active: false }));
-      expect(auditWrites(createSpy)).toEqual([
-        expect.objectContaining({
-          action: 'DEACTIVATED',
-          role: CamsRole.SuperUser,
-          regionId: null,
-          officeCode: null,
-        }),
-      ]);
-    });
-
-    test('should change nothing and report it when the user does not hold the permission', async () => {
-      spyOnHeld([assignmentFor('user-a', BUFFALO)]);
-      const deactivateSpy = spyOnDeactivate();
-      const { createSpy, traceSpy } = spyOnWrites();
-
-      const outcome = await useCase.revokePermission(context, request);
-
-      expect(outcome).toEqual({ revoked: null });
-      expect(deactivateSpy).not.toHaveBeenCalled();
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(traceSpy).not.toHaveBeenCalled();
-    });
-
-    test('should neither report nor audit a permission another call deactivated first', async () => {
-      const held = assignmentFor('user-a', MANHATTAN);
-      spyOnHeld([held]);
-      const deactivateSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'deactivate')
-        .mockResolvedValue(null);
-      const { createSpy, traceSpy } = spyOnWrites();
-
-      const outcome = await useCase.revokePermission(context, request);
-
-      expect(deactivateSpy).toHaveBeenCalledWith(held);
-      expect(outcome).toEqual({ revoked: null });
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(traceSpy).not.toHaveBeenCalled();
-    });
-
-    test('should revoke a user who is no longer in USTP Cams Users', async () => {
-      spyOnMembers([]);
-      spyOnHeld([assignmentFor('user-a', MANHATTAN)]);
-      spyOnDeactivate();
-      spyOnWrites();
-
-      const { revoked } = await useCase.revokePermission(context, request);
-
-      expect(revoked).toEqual(expect.objectContaining({ userId: 'user-a', active: false }));
-    });
-
-    test('should revoke only the exact scope and leave overlapping permissions alone', async () => {
-      const regionWide = scopedAssignmentFor('user-a', MANHATTAN.regionId);
-      const manhattan = assignmentFor('user-a', MANHATTAN);
-      spyOnHeld([regionWide, manhattan]);
-      const deactivateSpy = spyOnDeactivate();
-      const { createSpy } = spyOnWrites();
-
-      await useCase.revokePermission(context, { ...request, officeCode: 'all' });
-
-      expect(deactivateSpy).toHaveBeenCalledTimes(1);
-      expect(deactivateSpy).toHaveBeenCalledWith(regionWide);
-      expect(auditWrites(createSpy)).toEqual([
-        expect.objectContaining({ assignmentId: regionWide.id, replacedByAssignmentId: null }),
-      ]);
-    });
-
-    test('should revoke a permission for an office that is no longer in the office list', async () => {
-      const closed = { regionId: '2', officeCode: 'USTP_CAMS_Region_2_Office_Closed' };
-      spyOnHeld([assignmentFor('user-a', closed)]);
-      spyOnDeactivate();
-      spyOnWrites();
-
-      const { revoked } = await useCase.revokePermission(context, { ...request, ...closed });
-
-      expect(revoked).toEqual(
-        expect.objectContaining({ officeCode: closed.officeCode, active: false }),
-      );
-    });
-
-    test('should record an explicitly given performer, even when there is no session', async () => {
-      spyOnHeld([superUserFor('user-a')]);
-      spyOnDeactivate();
-      const { createSpy } = spyOnWrites();
-      const pipeline: CamsUserReference = { id: 'SYSTEM_PIPELINE', name: 'Azure DevOps pipeline' };
-      const noSession = { ...context, session: undefined } as unknown as ApplicationContext;
-
-      await useCase.revokePermission(noSession, superUserRequest, pipeline);
-
-      expect(auditWrites(createSpy)).toEqual([
-        expect.objectContaining({
-          performedBy: 'SYSTEM_PIPELINE',
-          performedByName: 'Azure DevOps pipeline',
-        }),
-      ]);
-    });
-
-    test.each([
-      {
-        caseName: 'a Super User with an office',
-        body: {
-          ...superUserRequest,
-          regionId: MANHATTAN.regionId,
-          officeCode: MANHATTAN.officeCode,
-        },
-        message: 'Super User has no region or office.',
-      },
-      {
-        caseName: 'an office without its region',
-        body: { ...request, regionId: 'all' },
-        message: 'An office needs its region.',
-      },
-    ])('should reject $caseName with a 400 and change nothing', async ({ body, message }) => {
-      const heldSpy = spyOnHeld();
-      const { createSpy } = spyOnWrites();
-
-      const error = await getTheThrownError(() => useCase.revokePermission(context, body));
-
-      expect(error).toEqual(expect.objectContaining({ status: 400, message }));
-      expect(heldSpy).not.toHaveBeenCalled();
-      expect(createSpy).not.toHaveBeenCalled();
-    });
-
-    test('should reject an unknown role with a 400 that says why and change nothing', async () => {
-      const heldSpy = spyOnHeld();
-
-      const error = await getTheThrownError(() =>
-        useCase.revokePermission(context, {
-          ...request,
-          role: 'NotARole' as RoleAssignmentGrantRequest['role'],
-        }),
-      );
-
-      expect(error).toEqual(
-        expect.objectContaining({ status: 400, message: '$.role: A valid role is required.' }),
-      );
-      expect(heldSpy).not.toHaveBeenCalled();
-    });
-
-    test('should log the permission and fail when it cannot be deactivated', async () => {
-      const held = assignmentFor('user-a', MANHATTAN);
-      spyOnHeld([held]);
-      spyOnDeactivate().mockRejectedValue(new Error('cosmos unavailable'));
-      const { createSpy } = spyOnWrites();
-      const errorSpy = vi.spyOn(context.logger, 'error');
-
-      const error = await getTheThrownError(() => useCase.revokePermission(context, request));
-
-      expect(error).toEqual(
-        expect.objectContaining({ status: 500, message: 'Unable to revoke the permission.' }),
-      );
-      expect(errorSpy).toHaveBeenCalledWith(
-        'USER-ACCESS-USE-CASE',
-        expect.stringContaining('ROLE_ASSIGNMENT_DEACTIVATION failed'),
-        { revokedAssignmentId: held.id },
-      );
-      expect(createSpy).not.toHaveBeenCalled();
-    });
-
-    test('should keep the revoke and log a searchable error with the audit payload when the audit write fails', async () => {
-      spyOnHeld([assignmentFor('user-a', MANHATTAN)]);
-      spyOnDeactivate();
-      const { createSpy, traceSpy } = spyOnWrites();
-      createSpy.mockRejectedValueOnce(new Error('cosmos unavailable'));
-      const errorSpy = vi.spyOn(context.logger, 'error');
-
-      const { revoked } = await useCase.revokePermission(context, request);
-
-      expect(revoked).toEqual(expect.objectContaining({ active: false }));
-      expect(errorSpy).toHaveBeenCalledWith(
-        'USER-ACCESS-USE-CASE',
-        expect.stringContaining('ROLE_ASSIGNMENT_AUDIT write failed'),
-        { audit: createSpy.mock.calls[0][0] },
-      );
-      expect(traceSpy).toHaveBeenCalledWith(
-        expect.anything(),
-        'RoleAssignmentAudit',
-        expect.objectContaining({ success: false }),
-        undefined,
-        expect.anything(),
-      );
     });
   });
 });
