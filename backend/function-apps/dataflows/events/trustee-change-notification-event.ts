@@ -4,7 +4,7 @@ import {
   TRUSTEE_CHANGE_NOTIFICATION_DLQ,
   TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
 } from '../../../lib/storage-queues';
-import { buildFunctionName } from '../dataflows-common';
+import { buildFunctionName, serializeError } from '../dataflows-common';
 import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
 import ContextCreator from '../../azure/application-context-creator';
 import { TrusteeChangeNotificationUseCase } from '../../../lib/use-cases/notifications/trustee-change-notification';
@@ -12,13 +12,6 @@ import { NOTIFICATION_SEND_FAILURE_TAG } from '../../../lib/use-cases/notificati
 
 const MODULE_NAME = ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
-
-function serializeError(error: unknown): { name?: string; message: string; stack?: string } {
-  if (error instanceof Error) {
-    return { name: error.name, message: error.message, stack: error.stack };
-  }
-  return { message: String(error) };
-}
 
 async function handler(
   event: TrusteeChangeNotificationEvent,

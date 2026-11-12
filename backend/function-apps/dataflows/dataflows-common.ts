@@ -99,6 +99,17 @@ export function buildContainerName(moduleName: string, direction: 'in' | 'out'):
 }
 
 /**
+ * A queue output is serialised to JSON, which drops a plain Error's message and stack. Use this
+ * before writing an error to a DLQ.
+ */
+export function serializeError(error: unknown): { name?: string; message: string; stack?: string } {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { message: String(error) };
+}
+
+/**
  * buildHttpTrigger
  *
  * Wraps the provided function within a closure containing boiler-plate

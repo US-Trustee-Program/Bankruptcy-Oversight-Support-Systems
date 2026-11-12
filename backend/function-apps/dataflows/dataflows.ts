@@ -3,6 +3,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import SuperUserAccess from './events/superuser-access';
 import TrusteeChangeNotificationEvent from './events/trustee-change-notification-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
@@ -121,6 +122,7 @@ dataflows.register(
   ResyncCasesByDate,
   ResyncRemainingCases,
   ResyncTerminalTransactionCases,
+  SuperUserAccess,
   SyncCases,
   SyncDeletedCases,
   SyncOfficeStaff,

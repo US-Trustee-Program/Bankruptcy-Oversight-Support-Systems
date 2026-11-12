@@ -73,3 +73,13 @@ export const HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS, 'DLQ'),
   connection,
 });
+
+export const SUPERUSER_ACCESS_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.SUPERUSER_ACCESS),
+  connection,
+});
+
+export const SUPERUSER_ACCESS_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.SUPERUSER_ACCESS, 'DLQ'),
+  connection,
+});
