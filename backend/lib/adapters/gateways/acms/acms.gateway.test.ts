@@ -934,6 +934,23 @@ describe('ACMS gateway tests', () => {
       expect(spy).toHaveBeenCalledWith(context, expect.any(String), [], 300000);
     });
 
+    test('falls back to the 300000ms default when the override is zero or negative', async () => {
+      process.env.ACMS_REQUEST_TIMEOUT_MS = '-5000';
+      vi.resetModules();
+      const { AbstractMssqlClient: FreshAbstractMssqlClient } =
+        await import('../abstract-mssql-client');
+      const { AcmsGatewayImpl: FreshAcmsGatewayImpl } = await import('./acms.gateway');
+      const spy = vi
+        .spyOn(FreshAbstractMssqlClient.prototype, 'executeQuery')
+        .mockResolvedValue({ success: true, results: { recordset: [] }, message: '' });
+
+      const context = await createMockApplicationContext();
+      const gateway = new FreshAcmsGatewayImpl(context);
+      await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(spy).toHaveBeenCalledWith(context, expect.any(String), [], 300000);
+    });
+
     test('uses the override value when it is a valid positive integer', async () => {
       process.env.ACMS_REQUEST_TIMEOUT_MS = '120000';
       vi.resetModules();

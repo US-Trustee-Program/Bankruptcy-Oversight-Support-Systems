@@ -217,12 +217,28 @@ describe('AppInsightsObservability', () => {
     // the real SDK's setup()/start() in-process (unsafe side effects for a
     // unit test). See cams-npm-packages / cams-testing-unit for the
     // vi.mock-vs-require limitation.
+    const originalConnectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+
     afterEach(() => {
-      delete process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+      if (originalConnectionString === undefined) {
+        delete process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+      } else {
+        process.env.APPLICATIONINSIGHTS_CONNECTION_STRING = originalConnectionString;
+      }
     });
 
     test('returns null and logs when no defaultClient exists and the connection string is unset', () => {
       delete process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+
+      // This test only works because nothing else in this file ever provides
+      // a connection string to getOrInitializeAppInsightsClient, so the real
+      // SDK's defaultClient getter (which can't be reset directly -- it has
+      // no setter) stays unset for the lifetime of this file's isolated
+      // Vitest worker. Trip this precondition loudly rather than silently
+      // misattributing a failure to production code if that ever changes.
+      /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+      expect(require('applicationinsights').defaultClient).toBeUndefined();
+
       const gatewayWithDefaultFactory = new AppInsightsObservability(mockLogger);
       const trace = gatewayWithDefaultFactory.startTrace(TEST_INVOCATION_ID);
       const completion: TraceCompletion = { success: false, properties: {}, measurements: {} };
