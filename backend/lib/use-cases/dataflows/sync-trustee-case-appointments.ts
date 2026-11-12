@@ -34,6 +34,7 @@ import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases
 import { BadRequestError } from '../../common-errors/bad-request';
 import DateHelper from '@common/date-helper';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -1002,8 +1003,10 @@ async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityRes
  * by always writing the real case appointment, recording what was checked (checks.matchedBy,
  * checks.matchedTrusteeAppointment) rather than gating the write on coverage. Decision 1a
  * (2026-10-27): no more IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS identity tasks — an
- * uncovered or inactive-appointment match still auto-links, with checks.matchedTrusteeAppointment
- * recording the fact for #3190's appointment-task follow-up to consume.
+ * uncovered or inactive-appointment match still auto-links. CAMS-956: an uncovered attached write
+ * then opens or joins the trustee appointment task for its court, division and chapter
+ * (openOrJoinAppointmentTask, which skips parked and covered writes). Skipped when the previous
+ * trustee's soft-close permanently failed; the DLQ replay of that event reaches this call again.
  *
  * Same never-catch rule as resolveTrusteeViaPipeline above.
  */
@@ -1033,6 +1036,21 @@ async function applyResolvedMatch(
     `Match: case ${event.caseId} auto-linked to trustee ${trusteeId} (matchedBy: ${matchedBy}, matchedTrusteeAppointment: ${checks.matchedTrusteeAppointment})`,
     checks,
   );
+  if (!dlqFailure) {
+    await openOrJoinAppointmentTask(
+      deps.context,
+      {
+        caseId: event.caseId,
+        trusteeId,
+        courtId: event.courtId,
+        courtDivisionCode: event.courtDivisionCode,
+        chapter: event.chapter,
+        documentType: ctx.documentType,
+        checks,
+      },
+      trusteeAppointments,
+    );
+  }
   return { outcome: 'auto-linked', dlqFailure };
 }
 
@@ -1683,8 +1701,8 @@ async function processOneEventOrDlq(
  * removed the old appointment-coverage gate that used to send an uncovered or inactive-only
  * match to a human-review identity task (IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS no longer
  * exist). checks.matchedTrusteeAppointment records isAppointmentMatch's result (a SINGLE active
- * appointment covering court+division+chapter together) as data for #3190's appointment-task
- * follow-up, not as a gate on whether to write.
+ * appointment covering court+division+chapter together), not as a gate on whether to write; an
+ * uncovered attached write then opens or joins a trustee appointment task (CAMS-956).
  *
  * Case not in CAMS yet (no SYNCED_CASE document): identification runs as usual and the write
  * parks the row as CASE_APPOINTMENT_UNATTACHED (parkedCount); the daily heal attaches it later.

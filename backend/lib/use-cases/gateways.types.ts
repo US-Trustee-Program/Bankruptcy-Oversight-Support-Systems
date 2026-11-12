@@ -63,6 +63,10 @@ import {
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
 import {
+  AppointmentTaskKey,
+  AppointmentTaskReason,
+} from '@common/cams/trustee-appointment-verification';
+import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -1069,6 +1073,20 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
+}
+
+export interface TrusteeAppointmentVerificationRepository extends Releasable {
+  /**
+   * Opens the appointment task for `key`, or joins `caseId` to it if one already exists, in one
+   * atomic upsert. Adding a case that is already in the task is a no-op for caseIds; `reason`
+   * and the updated audit fields are overwritten on every call.
+   */
+  openOrJoin(
+    key: AppointmentTaskKey,
+    caseId: string,
+    reason: AppointmentTaskReason,
+    user: CamsUserReference,
+  ): Promise<void>;
 }
 
 export interface UserGroupsRepository extends Releasable {

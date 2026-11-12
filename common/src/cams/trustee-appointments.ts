@@ -289,6 +289,19 @@ function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode
   );
 }
 
+function appointmentCoversCase(
+  appointment: TrusteeAppointment,
+  courtId: string,
+  divisionCode: string,
+  normalizedChapter: string,
+): boolean {
+  return (
+    appointment.courtId === courtId &&
+    appointmentCoversDivision(appointment, divisionCode) &&
+    normalizeChapter(appointment.chapter) === normalizedChapter
+  );
+}
+
 /**
  * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
  * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
@@ -305,10 +318,24 @@ export function isAppointmentMatch(
   const normalizedChapter = normalizeChapter(chapter);
   return appointments.some(
     (a) =>
-      a.status === 'active' &&
-      a.courtId === courtId &&
-      appointmentCoversDivision(a, divisionCode) &&
-      normalizeChapter(a.chapter) === normalizedChapter,
+      a.status === 'active' && appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
+  );
+}
+
+/**
+ * Same court + division + chapter rule as isAppointmentMatch, but for an appointment of ANY
+ * status. Distinguishes a trustee who has no appointment for a case's court/division/chapter
+ * from one whose appointment exists but is not active (CAMS-956 appointment-task reason).
+ */
+export function hasAppointmentForCase(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+  chapter: string,
+): boolean {
+  const normalizedChapter = normalizeChapter(chapter);
+  return appointments.some((a) =>
+    appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
   );
 }
 
@@ -443,8 +470,9 @@ export function buildMergePayload(
 }
 
 /**
- * Per-write evidence of what a case-appointment resolution actually checked, for #3190's
- * appointment-task follow-up to consume (shape per #3189's checks definition). matchedCase and
+ * Per-write evidence of what a case-appointment resolution actually checked (shape per #3189's
+ * checks definition); CAMS-956's openOrJoinAppointmentTask reads it to decide whether the write
+ * belongs to a trustee appointment task. matchedCase and
  * matchedTrustee record that a case and a CAMS trustee were both identified; matchedTrusteeAppointment
  * records whether a single active appointment covered this case's court+division+chapter
  * (isAppointmentMatch); matchedBy names what resolved the trustee — a trustee-match pipeline
