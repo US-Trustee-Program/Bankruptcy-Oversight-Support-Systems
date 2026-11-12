@@ -135,6 +135,67 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('');
   });
 
+  test('shows empty inputs when the existing document does not have these fields set', async () => {
+    const documentMissingOwnedFields: TrusteeUpcomingKeyDates = {
+      id: 'doc-002',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingOwnedFields });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-chapter7-panel-audit-field-exam')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('');
+    expect(screen.getByTestId('upcoming-exam-audit-type')).toHaveValue('');
+    expect(screen.getByTestId('past-audit')).toHaveValue('');
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
+    expect(screen.getByTestId('past-field-exam')).toHaveValue('');
+    expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('');
+    expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('');
+  });
+
+  test('resetting last audit fiscal year back to blank clears it from the save payload', async () => {
+    const currentYear = new Date().getFullYear();
+    const documentWithCurrentFiscalYear: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      lastAuditFiscalYear: currentYear,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: documentWithCurrentFiscalYear,
+    });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue(String(currentYear)),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('last-audit-fiscal-year'), '');
+
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          lastAuditFiscalYear: null,
+        }),
+      );
+    });
+  });
+
   test('save calls PUT with all owned fields while preserving other fields, then navigates', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
