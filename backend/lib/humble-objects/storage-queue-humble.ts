@@ -4,6 +4,8 @@ export type ReceivedQueueMessage = {
   messageId: string;
   popReceipt: string;
   messageText: string;
+  /** How many times the message has been received, counting this receive. */
+  dequeueCount: number;
 };
 
 function isStalePopReceiptError(error: RestError): boolean {
@@ -72,6 +74,7 @@ export class StorageQueueHumbleObject {
       messageId: item.messageId,
       popReceipt: item.popReceipt,
       messageText: Buffer.from(item.messageText, 'base64').toString('utf-8'),
+      dequeueCount: item.dequeueCount,
     };
   }
 

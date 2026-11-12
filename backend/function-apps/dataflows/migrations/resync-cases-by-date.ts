@@ -50,6 +50,10 @@ const PAGE_LEASE_SECONDS = 300;
 const PAGE_LEASE_SAFETY_MARGIN_MS = 30_000;
 // Cost assumed for the first case of an invocation, before any case has been measured.
 const SEED_CASE_COST_MS = 10_000;
+// Matches maxDequeueCount in host.json. Pages are received through the SDK rather than a queue
+// trigger, so the host's poison handling does not cover them; a page received more times than
+// this without being closed goes to DLQ instead of being synced again.
+const PAGE_MAX_DEQUEUE_COUNT = 5;
 const CASE_COST_MARGIN_MS = 5_000;
 const EMPTY_QUEUE_RECHECK_SECONDS = 30;
 const RATE_LIMIT_PAUSE_SECONDS = 5;
@@ -58,7 +62,7 @@ const LOST_CASES_EVENT = 'ResyncCasesByDateLostCases';
 
 type LaneOutcome = 'completed-lane' | 'escaped' | 'rate-limited' | 'waiting' | 'error';
 
-type PageOutcome = 'completed' | 'escaped' | 'rate-limited' | 'lease-expiring';
+type PageOutcome = 'completed' | 'escaped' | 'rate-limited' | 'lease-expiring' | 'poisoned';
 
 type PageEvent = Pick<CaseSyncEvent, 'type' | 'caseId'>;
 
@@ -331,17 +335,22 @@ async function publishResults(queues: LaneRun['queues'], results: CaseSyncEvent[
   ]);
 }
 
+function isPoisoned(page: OpenPage): boolean {
+  return page.receipt.dequeueCount > PAGE_MAX_DEQUEUE_COUNT;
+}
+
 /**
  * Puts the cases a lane did not finish back on the PAGE queue with the retry count bumped. Once a
- * page has used RATE_LIMIT_RETRY_LIMIT retries, its unfinished cases go to DLQ and a telemetry
- * event names them instead.
+ * page has used RATE_LIMIT_RETRY_LIMIT retries, or has been received more than
+ * PAGE_MAX_DEQUEUE_COUNT times, its unfinished cases go to DLQ and a telemetry event names them
+ * instead.
  */
 async function putBackOrLose(run: LaneRun, page: OpenPage, unfinished: PageEvent[]) {
   const retryCount = page.body.retryCount ?? 0;
   const firstAttemptAt = page.body.firstAttemptAt ?? new Date().toISOString();
   const events = unfinished.map(({ type, caseId }) => ({ type, caseId }));
 
-  if (retryCount < RATE_LIMIT_RETRY_LIMIT) {
+  if (!isPoisoned(page) && retryCount < RATE_LIMIT_RETRY_LIMIT) {
     const continuation: ResyncCasesByDatePageMessage = {
       events,
       retryCount: retryCount + 1,
@@ -351,8 +360,11 @@ async function putBackOrLose(run: LaneRun, page: OpenPage, unfinished: PageEvent
     return;
   }
 
+  const reason = isPoisoned(page)
+    ? `Page was received ${page.receipt.dequeueCount} times without being closed`
+    : `Page retry limit of ${RATE_LIMIT_RETRY_LIMIT} reached`;
   const error = new CamsError(MODULE_NAME, {
-    message: `Page retry limit of ${RATE_LIMIT_RETRY_LIMIT} reached; ${events.length} cases were not synced.`,
+    message: `${reason}; ${events.length} cases were not synced.`,
   });
   const lostPage = {
     ...buildQueueError(error, MODULE_NAME, 'handleWriter'),
@@ -490,6 +502,12 @@ async function drainPages(run: LaneRun): Promise<LaneOutcome> {
         msSlept: 0,
         transientCount: 0,
       };
+    }
+
+    if (isPoisoned(page)) {
+      await endPage(run, page, page.body.events, 'poisoned');
+      page = undefined;
+      continue;
     }
 
     if (page.nextIndex >= page.body.events.length) {

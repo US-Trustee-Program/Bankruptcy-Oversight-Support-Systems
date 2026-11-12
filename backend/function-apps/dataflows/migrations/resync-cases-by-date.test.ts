@@ -36,6 +36,7 @@ type StoredMessage = {
   popReceipt: string;
   messageText: string;
   leased: boolean;
+  dequeueCount: number;
 };
 
 /**
@@ -56,12 +57,16 @@ class FakeQueue {
     return this.stored.map((message) => message.messageText);
   }
 
-  seed(messageText: string, { leased = false }: { leased?: boolean } = {}) {
+  seed(
+    messageText: string,
+    { leased = false, dequeueCount = 0 }: { leased?: boolean; dequeueCount?: number } = {},
+  ) {
     this.stored.push({
       messageId: `${this.name}-${++this.sequence}`,
       popReceipt: 'receipt',
       messageText,
       leased,
+      dequeueCount,
     });
   }
 
@@ -75,10 +80,12 @@ class FakeQueue {
     const message = this.stored.find((candidate) => !candidate.leased);
     if (!message) return undefined;
     message.leased = true;
+    message.dequeueCount += 1;
     return {
       messageId: message.messageId,
       popReceipt: message.popReceipt,
       messageText: message.messageText,
+      dequeueCount: message.dequeueCount,
     };
   }
 
@@ -592,8 +599,8 @@ describe('resync-cases-by-date handleWriter', () => {
     return queue.sent.map(({ text }) => JSON.parse(text));
   }
 
-  function seedPage(queues: FakeQueues, body: PageMessage) {
-    queues.get(PAGE_QUEUE).seed(JSON.stringify(body));
+  function seedPage(queues: FakeQueues, body: PageMessage, { dequeueCount = 0 } = {}) {
+    queues.get(PAGE_QUEUE).seed(JSON.stringify(body), { dequeueCount });
   }
 
   async function givenContext() {
@@ -753,6 +760,7 @@ describe('resync-cases-by-date handleWriter', () => {
       expect.objectContaining({
         type: 'QUEUE_ERROR',
         retryCount: RATE_LIMIT_RETRY_LIMIT,
+        error: expect.objectContaining({ message: expect.stringContaining('retry limit') }),
         message: {
           events: [caseEvent(CASE_B), caseEvent(CASE_C)],
           retryCount: RATE_LIMIT_RETRY_LIMIT,
@@ -975,6 +983,64 @@ describe('resync-cases-by-date handleWriter', () => {
 
     expect(queues.log).toEqual([]);
     expect(queues.get(PAGE_QUEUE).remaining).toHaveLength(1);
+  });
+
+  test('sends a page to DLQ without syncing it once it has been received more times than the poison limit, then keeps pulling pages', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    // Five earlier deliveries never finished the page; this receive is the sixth.
+    seedPage(
+      queues,
+      { events: [caseEvent(CASE_A), caseEvent(CASE_B)], firstAttemptAt: FIRST_ATTEMPT_AT },
+      { dequeueCount: 5 },
+    );
+    seedPage(queues, { events: [caseEvent(CASE_C)] });
+    const exportSpy = stubExportAndLoad();
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_C]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({
+          message: expect.stringContaining('without being closed'),
+        }),
+        message: {
+          events: [caseEvent(CASE_A), caseEvent(CASE_B)],
+          retryCount: 0,
+          firstAttemptAt: FIRST_ATTEMPT_AT,
+        },
+      }),
+    ]);
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'ResyncCasesByDateLostCases',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({ caseIds: `${CASE_A},${CASE_B}` }),
+        measurements: { caseCount: 2 },
+      }),
+      undefined,
+      expect.anything(),
+    );
+  });
+
+  test('still syncs a page received exactly as many times as the poison limit', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] }, { dequeueCount: 4 });
+    const exportSpy = stubExportAndLoad();
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A]);
+    expect(queues.get(DLQ_QUEUE).sent).toEqual([]);
   });
 });
 

@@ -135,13 +135,14 @@ describe('StorageQueueHumbleObject', () => {
     });
   });
 
-  test('receives one message, hidden for the given visibility timeout, with its text decoded', async () => {
+  test('receives one message, hidden for the given visibility timeout, with its text decoded and its delivery count', async () => {
     receiveMessagesMock.mockResolvedValue({
       receivedMessageItems: [
         {
           messageId: 'message-1',
           popReceipt: 'receipt-1',
           messageText: Buffer.from(JSON.stringify({ foo: 'bar' })).toString('base64'),
+          dequeueCount: 3,
         },
       ],
     });
@@ -157,6 +158,7 @@ describe('StorageQueueHumbleObject', () => {
       messageId: 'message-1',
       popReceipt: 'receipt-1',
       messageText: JSON.stringify({ foo: 'bar' }),
+      dequeueCount: 3,
     });
   });
 
