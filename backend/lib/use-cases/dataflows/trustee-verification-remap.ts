@@ -5,38 +5,20 @@ import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { assertValidChapter, deriveUnassignedOn } from './sync-trustee-case-appointments';
 import {
   CaseAppointment,
+  CaseAppointmentChecks,
   TrusteeAppointment,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { SurrogateAppointment, TrusteeCaseAppointmentsRepository } from '../gateways.types';
+import { IDENTITY_TASK_MATCHED_BY } from './heal-parked-case-appointments';
+import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
-
-/**
- * A division/chapter mismatch found by remapSurrogateAppointment's defense-in-depth
- * re-validation is a PERMANENT condition -- the resolved trustee's appointments won't change
- * between remap attempts, so retrying this exact surrogate again will fail identically forever.
- * Distinguished from a generic per-case failure (CamsError/plain Error from a Cosmos write,
- * which genuinely might succeed on retry) so remapPage/handleRemap can stop re-queuing a page
- * that can never make progress, rather than looping on it indefinitely (reviewer-flagged on PR
- * #3090: a bundle larger than REMAP_PAGE_SIZE whose trustee doesn't cover any of it would
- * otherwise re-select and re-fail the identical first page forever, since a permanent failure
- * never deletes its surrogate and there's no cursor to skip past it).
- */
-class RemapDivisionMismatchError extends Error {}
 
 type RemapPageResult = {
   documentsWritten: number;
   documentsFailed: number;
-  /**
-   * Count of surrogates in this page whose resolved trustee does not cover their
-   * court+chapter+division, per the defense-in-depth re-validation below. Excluded from
-   * documentsFailed (which represents failures that might succeed on retry) specifically so
-   * handleRemap can tell "nothing in this page can ever succeed" from "something here might
-   * work next time" when deciding whether to requeue a continuation.
-   */
-  permanentFailureCount: number;
   totalCandidates: number;
   pageSize: number;
   remainingCount: number;
@@ -89,23 +71,19 @@ class TrusteeVerificationRemapUseCase {
    * untouched until the upsert succeeds. assignedOn is carried from the surrogate row (not stamped
    * fresh) so the upsert's natural key (caseId, trusteeId, assignedOn) makes retries idempotent.
    *
-   * Re-validates isAppointmentMatch against the court fields stored on the surrogate row at write
-   * time (epic decision 14; no DXTR lookup, which fails for a case not yet in CAMS) — defense in
-   * depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
-   * between its own division-check snapshot and the TRUSTEE_VARIATION write that stops new
-   * surrogates from joining this fingerprint's bucket. A surrogate admitted into the bucket
-   * during that window would otherwise never have passed any division check at all. A mismatch
-   * here throws RemapDivisionMismatchError, which remapPage's caller treats as a permanent
-   * per-case failure (not an ordinary retryable one): the surrogate is left in place rather than
-   * silently remapped to a division the trustee isn't assigned to, but it's also excluded from
-   * the count that drives further continuation, since retrying it can never succeed. A row
-   * missing any court field is uncovered for the same reason.
+   * Coverage is checked with isAppointmentMatch against the court fields stored on the surrogate
+   * row at write time (epic decision 14; no DXTR lookup, which fails for a case not yet in CAMS);
+   * a row missing any court field is uncovered. The result is recorded on the copy as
+   * checks.matchedTrusteeAppointment and never blocks the write (CAMS-956). After the upsert, an
+   * uncovered attached copy opens or joins the trustee appointment task (openOrJoinAppointmentTask
+   * skips covered copies, parked copies, and copies missing a court field). Order is
+   * upsert -> task -> delete, so a failed task write leaves the surrogate for the next attempt,
+   * which re-runs every step idempotently.
    *
-   * A parked placeholder (CASE_APPOINTMENT_UNATTACHED: the case is not in CAMS yet) passes the same
-   * coverage check, then stays parked with only its trustee changed: there is no CAMS case to
-   * settle against, so no getActiveByCaseId/settleOpenCopy. The daily heal attaches it under the
-   * active-trustee rule once the case loads. Same upsert -> delete order, so a retry re-upserts the
-   * same natural key.
+   * A parked placeholder (CASE_APPOINTMENT_UNATTACHED: the case is not in CAMS yet) stays parked
+   * with only its trustee and checks changed: there is no CAMS case to settle against, so no
+   * getActiveByCaseId/settleOpenCopy. The daily heal attaches it under the active-trustee rule once
+   * the case loads, recomputing coverage and opening the task then.
    */
   private async remapSurrogateAppointment(
     surrogate: SurrogateAppointment,
@@ -113,16 +91,16 @@ class TrusteeVerificationRemapUseCase {
     trusteeAppointments: TrusteeAppointment[],
   ): Promise<void> {
     const { courtId, courtDivisionCode, chapter } = surrogate;
-    if (
-      !courtId ||
-      !courtDivisionCode ||
-      !chapter ||
-      !isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter)
-    ) {
-      throw new RemapDivisionMismatchError(
-        `Resolved trustee ${message.resolvedTrusteeId} is not assigned to the division for case ${surrogate.caseId} -- skipping remap.`,
-      );
-    }
+    const checks: CaseAppointmentChecks = {
+      matchedCase: true,
+      matchedTrustee: true,
+      matchedTrusteeAppointment:
+        !!courtId &&
+        !!courtDivisionCode &&
+        !!chapter &&
+        isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
+      matchedBy: surrogate.checks?.matchedBy ?? IDENTITY_TASK_MATCHED_BY,
+    };
 
     const isParked = surrogate.documentType === 'CASE_APPOINTMENT_UNATTACHED';
     const copyUnassignedOn =
@@ -143,15 +121,19 @@ class TrusteeVerificationRemapUseCase {
       appointedDate: surrogate.appointedDate,
       ...(copyUnassignedOn ? { unassignedOn: copyUnassignedOn } : {}),
       dateFiled: surrogate.dateFiled,
-      chapter: assertValidChapter(surrogate.caseId, chapter),
-      courtId,
-      courtDivisionCode,
+      ...(chapter ? { chapter: assertValidChapter(surrogate.caseId, chapter) } : {}),
+      ...(courtId ? { courtId } : {}),
+      ...(courtDivisionCode ? { courtDivisionCode } : {}),
+      checks,
     };
+    const documentType = isParked ? 'CASE_APPOINTMENT_UNATTACHED' : 'CASE_APPOINTMENT';
     if (isParked) {
-      await this.appointmentsRepo.upsert(copy, 'CASE_APPOINTMENT_UNATTACHED');
+      await this.appointmentsRepo.upsert(copy, documentType);
     } else {
       await this.appointmentsRepo.upsert(copy);
     }
+
+    await openOrJoinAppointmentTask(this.context, { ...copy, documentType }, trusteeAppointments);
 
     await this.appointmentsRepo.delete(surrogate.id);
   }
@@ -168,11 +150,8 @@ class TrusteeVerificationRemapUseCase {
    * counted as a per-case failure — both are
    * conditions the caller must back off and retry (same convention as isTransientInfraError in
    * sync-trustee-case-appointments.ts), not a permanent failure for the one case that happened to hit it
-   * while the rest of the page is untouched. A genuine division mismatch, by contrast, is
-   * counted in permanentFailureCount rather than documentsFailed or rethrown: it's a real
-   * per-case outcome (the surrogate is correctly left unremapped), but retrying it can never
-   * succeed, so it must not look like "might work next time" to handleRemap's continuation
-   * decision.
+   * while the rest of the page is untouched. Any other per-case error is counted in
+   * documentsFailed and its surrogate left for the next attempt.
    */
   async remapPage(
     message: TrusteeVerificationRemapMessage,
@@ -183,14 +162,13 @@ class TrusteeVerificationRemapUseCase {
     const remainingCount = surrogates.length - page.length;
 
     // Fetched once per page, not per surrogate -- resolvedTrusteeId is fixed for the whole
-    // message, so every surrogate in this page re-validates against the same appointment set.
+    // message, so every surrogate in this page is checked against the same appointment set.
     const trusteeAppointments = await factory
       .getTrusteeAppointmentsRepository(this.context)
       .getTrusteeAppointments(message.resolvedTrusteeId);
 
     let documentsWritten = 0;
     let documentsFailed = 0;
-    let permanentFailureCount = 0;
 
     for (const surrogate of page) {
       try {
@@ -199,15 +177,6 @@ class TrusteeVerificationRemapUseCase {
       } catch (perCaseError) {
         if (isTooManyRequestsError(perCaseError) || isGatewayTimeoutError(perCaseError)) {
           throw perCaseError;
-        }
-        if (perCaseError instanceof RemapDivisionMismatchError) {
-          permanentFailureCount++;
-          this.context.logger.error(
-            MODULE_NAME,
-            `Case ${surrogate.caseId} for fingerprint ${message.fingerprint} is permanently uncovered by the resolved trustee — its surrogate row is left in place, but will not be retried by this continuation.`,
-            perCaseError,
-          );
-          continue;
         }
         documentsFailed++;
         this.context.logger.error(
@@ -221,7 +190,6 @@ class TrusteeVerificationRemapUseCase {
     return {
       documentsWritten,
       documentsFailed,
-      permanentFailureCount,
       totalCandidates: surrogates.length,
       pageSize: page.length,
       remainingCount,

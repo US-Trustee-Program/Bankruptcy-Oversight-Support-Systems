@@ -306,7 +306,7 @@ function appointmentCoversCase(
  * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
  * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
  * backend's auto-match pipeline, trustee-search filtering, verification-approval enforcement,
- * and remap re-validation. Living here keeps every caller from drifting into disagreeing about
+ * and the remap's recorded coverage check. Living here keeps every caller from drifting into disagreeing about
  * what counts as coverage.
  */
 export function isAppointmentMatch(
