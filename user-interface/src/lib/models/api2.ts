@@ -23,6 +23,7 @@ import {
   EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
+import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
@@ -484,6 +485,13 @@ async function getTrusteeMatchVerifications(params?: { status?: string }) {
   return api().get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`, query);
 }
 
+async function getTrusteeAppointmentVerifications() {
+  return api().get<TrusteeAppointmentVerificationListItem[]>(
+    `/trustee-appointment-verification`,
+    {},
+  );
+}
+
 async function getTrusteeMatchVerificationDetail(id: string) {
   return api().get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
 }
@@ -763,6 +771,7 @@ export const _Api2 = {
   searchTrustees,
   getTrusteeMatchVerifications,
   getTrusteeMatchVerificationDetail,
+  getTrusteeAppointmentVerifications,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

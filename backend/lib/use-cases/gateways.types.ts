@@ -65,6 +65,7 @@ import {
 import {
   AppointmentTaskKey,
   AppointmentTaskReason,
+  TrusteeAppointmentVerification,
 } from '@common/cams/trustee-appointment-verification';
 import {
   TrusteeUpcomingKeyDates,
@@ -1087,6 +1088,8 @@ export interface TrusteeAppointmentVerificationRepository extends Releasable {
     reason: AppointmentTaskReason,
     user: CamsUserReference,
   ): Promise<void>;
+  /** Appointment tasks with any of the given statuses, unsorted (callers sort for display). */
+  search(predicate: { status: OrderStatus[] }): Promise<TrusteeAppointmentVerification[]>;
 }
 
 export interface UserGroupsRepository extends Releasable {

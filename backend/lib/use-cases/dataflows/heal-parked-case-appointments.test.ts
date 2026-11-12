@@ -469,6 +469,7 @@ describe('heal-parked-case-appointments', () => {
         .mockResolvedValue(undefined);
       vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
         openOrJoin,
+        search: vi.fn(),
         release: vi.fn(),
       });
     });

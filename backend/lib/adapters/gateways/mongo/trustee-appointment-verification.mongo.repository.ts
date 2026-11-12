@@ -12,6 +12,7 @@ import {
   TrusteeAppointmentVerification,
 } from '@common/cams/trustee-appointment-verification';
 import { CamsUserReference } from '@common/cams/users';
+import { OrderStatus } from '@common/cams/orders';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointment-verification';
@@ -52,6 +53,26 @@ export class TrusteeAppointmentVerificationMongoRepository
 
   public release(): void {
     TrusteeAppointmentVerificationMongoRepository.dropInstance();
+  }
+
+  /**
+   * Unsorted: the collection indexes only _id and the task key, and Cosmos cannot sort on an
+   * unindexed field. The Data Verification queue sorts every task type by task date itself.
+   */
+  async search(predicate: { status: OrderStatus[] }): Promise<TrusteeAppointmentVerification[]> {
+    try {
+      const doc = using<TrusteeAppointmentVerification>();
+      return await this.getAdapter<TrusteeAppointmentVerification>().find(
+        and(
+          doc('documentType').equals(TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE),
+          doc('status').contains(predicate.status),
+        ),
+      );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee appointment tasks.',
+      });
+    }
   }
 
   /**

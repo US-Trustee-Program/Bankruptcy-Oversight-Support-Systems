@@ -305,9 +305,9 @@ function appointmentCoversCase(
 /**
  * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
  * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
- * backend's auto-match pipeline, trustee-search filtering, verification-approval enforcement,
- * and the remap's recorded coverage check. Living here keeps every caller from drifting into disagreeing about
- * what counts as coverage.
+ * backend's auto-match pipeline, trustee-search filtering, and the coverage result that
+ * identity-task approval and the remap record (CAMS-956 appointment tasks). Living here keeps
+ * every caller from drifting into disagreeing about what counts as coverage.
  */
 export function isAppointmentMatch(
   appointments: TrusteeAppointment[],
@@ -352,8 +352,8 @@ export type AppointmentCoverageCase = {
  * the same trustee demographic string across several filings), and a trustee resolving one of
  * them isn't guaranteed to hold a covering appointment for all of them -- same district,
  * different chapter is a routine split, so the cases a trustee does not cover need handling of
- * their own. TrusteeMatchVerificationUseCase.approveVerification enforces coverage on approval
- * independently of this function.
+ * their own. TrusteeMatchVerificationUseCase.approveVerification checks coverage per placeholder
+ * row independently of this function, opening an appointment task for each uncovered case.
  */
 export function getUncoveredCases<T extends AppointmentCoverageCase>(
   appointments: TrusteeAppointment[],
@@ -479,6 +479,9 @@ export function buildMergePayload(
  * RESOLVE stage's name (PipelineMatch.resolvedBy), 'variation' for a fingerprint-bucket hit, or
  * 'professional-id' for a verified ACMS professional-id link (identification step 1).
  */
+/** checks.matchedBy for an appointment whose trustee a data verifier resolved on an identity task. */
+export const IDENTITY_TASK_MATCHED_BY = 'identity-task';
+
 export type CaseAppointmentChecks = {
   matchedCase: boolean;
   matchedTrustee: boolean;

@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { BadRequestError } from '../../common-errors/bad-request';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
@@ -15,17 +14,20 @@ import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { rankCandidates } from '@common/cams/trustee-match-pipeline';
 import { CourtsUseCase } from '../courts/courts';
-import { getCaseIdParts, getCaseNumber } from '@common/cams/cases';
+import { getCaseIdParts } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 import {
   CaseAppointment,
+  IDENTITY_TASK_MATCHED_BY,
   isAppointmentMatch,
   TrusteeAppointment,
 } from '@common/cams/trustee-appointments';
 import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
+import { SurrogateAppointment } from '../gateways.types';
+import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -145,25 +147,61 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   /**
-   * Case IDs whose placeholder rows the resolved trustee's appointments do not cover, judged from
-   * the court fields stored on each row at write time (epic decision 14) -- never a DXTR lookup,
-   * which fails for a case not yet in CAMS. A row missing any court field is uncovered. A case
-   * with several placeholders is one case, uncovered if any of its rows is.
+   * Opens or joins a trustee appointment task (CAMS-956) for each placeholder row the resolved
+   * trustee's appointments do not cover. Coverage is judged from the court fields stored on each
+   * row at write time (epic decision 14) -- never a DXTR lookup, which fails for a case not yet in
+   * CAMS. openOrJoinAppointmentTask skips parked rows, covered rows and rows missing a court field.
+   * A case with several placeholder rows may be joined more than once; the task upsert makes the
+   * repeat a no-op.
+   *
+   * Runs after the approval is recorded, so a failed approval leaves no task. A failed task write
+   * is logged rather than failing the approval: the remap enqueued for this approval writes each
+   * real appointment and opens or joins the same task again.
    */
-  private findUncoveredCaseIds(
-    surrogates: CaseAppointment[],
+  private async openAppointmentTasks(
+    context: ApplicationContext,
+    surrogates: SurrogateAppointment[],
+    resolvedTrusteeId: string,
     trusteeAppointments: TrusteeAppointment[],
-  ): string[] {
-    const uncovered = new Set<string>();
+    userRef: CamsUserReference,
+  ): Promise<void> {
     for (const row of surrogates) {
-      const covered =
-        !!row.courtId &&
-        !!row.courtDivisionCode &&
-        !!row.chapter &&
-        isAppointmentMatch(trusteeAppointments, row.courtId, row.courtDivisionCode, row.chapter);
-      if (!covered) uncovered.add(row.caseId);
+      const { caseId, courtId, courtDivisionCode, chapter } = row;
+      try {
+        await openOrJoinAppointmentTask(
+          context,
+          {
+            caseId,
+            trusteeId: resolvedTrusteeId,
+            courtId,
+            courtDivisionCode,
+            chapter,
+            documentType:
+              row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
+                ? 'CASE_APPOINTMENT_UNATTACHED'
+                : 'CASE_APPOINTMENT',
+            checks: {
+              matchedCase: true,
+              matchedTrustee: true,
+              matchedTrusteeAppointment:
+                !!courtId &&
+                !!courtDivisionCode &&
+                !!chapter &&
+                isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
+              matchedBy: IDENTITY_TASK_MATCHED_BY,
+            },
+          },
+          trusteeAppointments,
+          userRef,
+        );
+      } catch (originalError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to open or join the trustee appointment task for case ${caseId} and trustee ${resolvedTrusteeId} after approving the identity task; the remap retries it.`,
+          originalError,
+        );
+      }
     }
-    return [...uncovered];
   }
 
   private resolveCourtName(
@@ -358,8 +396,6 @@ export class TrusteeMatchVerificationUseCase {
 
       // 2. Snapshot affected case IDs while surrogates are still live — the remap job
       // enqueued later deletes them, and this is the only remaining chance to read them.
-      // Computed before any write below so the division check that follows can reject the
-      // whole approval before anything is persisted.
       const surrogates = await factory
         .getTrusteeCaseAppointmentsRepository(context)
         .getSurrogatesByFingerprints([verification.fingerprint]);
@@ -367,26 +403,17 @@ export class TrusteeMatchVerificationUseCase {
         this.groupAffectedCaseIdsByFingerprint(context, surrogates).get(verification.fingerprint) ??
         [];
 
-      // 3. Reject the whole approval if the resolved trustee's configured divisions don't
-      // cover every affected case's court+chapter+division — the same match rule the
-      // auto-match pipeline already trusts (isAppointmentMatch). A single fingerprint can
-      // affect multiple cases, potentially spanning different divisions within the same
-      // court, so this must check every affected case, not just verification.caseId. This
-      // is necessarily all-or-nothing: approval is one atomic status flip for the whole
-      // verification, so there's no partial-approval option if only some cases match.
-      if (affectedCaseIds.length > 0) {
-        const trusteeAppointments = await factory
-          .getTrusteeAppointmentsRepository(context)
-          .getTrusteeAppointments(resolvedTrusteeId);
-        const uncoveredCaseIds = this.findUncoveredCaseIds(surrogates, trusteeAppointments);
-        if (uncoveredCaseIds.length > 0) {
-          const trusteeLabel = resolvedTrusteeName ?? resolvedTrusteeId;
-          const caseNumbers = uncoveredCaseIds.map((caseId) => getCaseNumber(caseId)).join(', ');
-          throw new BadRequestError(MODULE_NAME, {
-            message: `${trusteeLabel} is not assigned to the division(s) for case(s): ${caseNumbers}. Choose a different candidate or search for a trustee whose appointments cover these cases.`,
-          });
-        }
-      }
+      // 3. Fetch the resolved trustee's appointments for the coverage check in step 5b. An
+      // uncovered case never blocks the approval (CAMS-956, replacing CAMS-905's rejection); it
+      // opens or joins a trustee appointment task instead. A single fingerprint can affect
+      // several cases across divisions, so every placeholder row is checked, not just
+      // verification.caseId.
+      const trusteeAppointments =
+        affectedCaseIds.length > 0
+          ? await factory
+              .getTrusteeAppointmentsRepository(context)
+              .getTrusteeAppointments(resolvedTrusteeId)
+          : [];
 
       // 4. Record the resolved fingerprint/variant mapping so future auto-matching
       // short-circuits on it — mirrors autoLinkTrustee's TRUSTEE_VARIATION write on the
@@ -438,6 +465,16 @@ export class TrusteeMatchVerificationUseCase {
       if (!approvedNow) {
         throw pendingVerificationNotFound(id);
       }
+
+      // 5b. Open or join an appointment task for each uncovered case, now that the approval is
+      // recorded, so the task is visible as soon as approval returns.
+      await this.openAppointmentTasks(
+        context,
+        surrogates,
+        resolvedTrusteeId,
+        trusteeAppointments,
+        userRef,
+      );
 
       // 6. Enqueue the async batch remap now that the approval is durably recorded. Every
       // surrogate CaseAppointment sharing this fingerprint (not just verification.caseId)

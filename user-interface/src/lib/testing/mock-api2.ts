@@ -27,6 +27,7 @@ import {
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
+import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -915,6 +916,24 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   toListItem(trusteeMatchVerificationDetail),
   toListItem(trusteeMatchVerificationCaselessDetail),
   toListItem(trusteeMatchVerificationManyCandidatesDetail),
+];
+
+const trusteeAppointmentVerifications: TrusteeAppointmentVerificationListItem[] = [
+  {
+    id: 'appointment-task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    taskDate: '2026-11-01T00:00:00.000Z',
+    caseCount: 1,
+  },
 ];
 
 const orders = [
@@ -1937,6 +1956,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
+  } else if (path.match(/\/trustee-appointment-verification/)) {
+    response = {
+      data: trusteeAppointmentVerifications,
+    };
   } else if (path.match(/\/trustee-match-verification\/(.+)/)) {
     const id = path.match(/\/trustee-match-verification\/(.+)/)![1];
     response = {
@@ -2564,6 +2587,12 @@ async function getTrusteeMatchVerifications(_params?: {
   offset?: number;
 }): Promise<ResponseBody<TrusteeMatchVerificationListItem[]>> {
   return get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`);
+}
+
+async function getTrusteeAppointmentVerifications(): Promise<
+  ResponseBody<TrusteeAppointmentVerificationListItem[]>
+> {
+  return get<TrusteeAppointmentVerificationListItem[]>(`/trustee-appointment-verification`);
 }
 
 async function getTrusteeMatchVerificationDetail(
@@ -3427,6 +3456,7 @@ const MockApi2 = {
   searchTrustees,
   getTrusteeMatchVerifications,
   getTrusteeMatchVerificationDetail,
+  getTrusteeAppointmentVerifications,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

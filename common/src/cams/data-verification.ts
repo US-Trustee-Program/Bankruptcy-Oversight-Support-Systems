@@ -3,8 +3,10 @@ import {
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from './trustee-match-verification';
+import { TrusteeAppointmentVerificationListItem } from './trustee-appointment-verification';
 
-export type DataVerificationItem = Order | TrusteeMatchVerificationListItem;
+export type DataVerificationItem =
+  Order | TrusteeMatchVerificationListItem | TrusteeAppointmentVerificationListItem;
 export type DataVerificationItemType = DataVerificationItem['taskType'];
 
 export function isTransferOrder(item: DataVerificationItem): item is TransferOrder {
@@ -21,6 +23,12 @@ export function isTrusteeMatchVerification(
   return item.taskType === 'trustee-match';
 }
 
+export function isTrusteeAppointmentVerification(
+  item: DataVerificationItem,
+): item is TrusteeAppointmentVerificationListItem {
+  return item.taskType === 'trustee-appointment';
+}
+
 // TODO: The backfill path (TrusteeMatchVerification branch) duck-types via 'createdOn' in item
 // because TrusteeMatchVerification is structurally incompatible with TrusteeMatchVerificationListItem.
 // Give the backfill path its own narrower helper instead of overloading this function.
@@ -34,6 +42,9 @@ export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerific
     // value, not a display string. Callers that render dates use formatDate, which
     // returns INVALID_DATE_FALLBACK for nullish inputs.
     return date instanceof Date ? date.toISOString() : (date ?? '');
+  }
+  if (item.taskType === 'trustee-appointment') {
+    return item.taskDate;
   }
   return (item as Order).orderDate;
 }

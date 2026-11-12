@@ -4,6 +4,7 @@ import {
   CaseAppointment,
   CaseAppointmentChecks,
   CaseAppointmentInput,
+  IDENTITY_TASK_MATCHED_BY,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -23,9 +24,6 @@ const MODULE_NAME = 'HEAL-PARKED-CASE-APPOINTMENTS-USE-CASE';
 
 /** Parked rows filed within this many days of the heal run date are healed; older ones are abandoned. */
 const HEAL_WINDOW_DAYS = 14;
-
-/** matchedBy for an appointment an identity-task approval resolved (remap), when none was recorded. */
-export const IDENTITY_TASK_MATCHED_BY = 'identity-task';
 
 export type HealParkedDeps = Pick<
   SyncTrusteeCaseAppointmentsDeps,
