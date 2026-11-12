@@ -18,7 +18,6 @@ import { MongoClient } from 'mongodb';
 import { readdirSync, statSync } from 'fs';
 import { dirname, join, relative, resolve, sep } from 'path';
 import { fileURLToPath } from 'url';
-import { migrateLegacyDocuments } from './db_scripts/lib/migrate-legacy-documents.js';
 import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
 import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
@@ -361,7 +360,6 @@ async function main() {
       sharedMongoClient = new MongoClient(connectionString);
       await sharedMongoClient.connect();
       console.log(`[${MODULE_NAME}] Connected to MongoDB (reusing connection)\n`);
-      await migrateLegacyDocuments(sharedMongoClient.db('cams'));
     }
 
     // Run all scripts and collect validation errors
