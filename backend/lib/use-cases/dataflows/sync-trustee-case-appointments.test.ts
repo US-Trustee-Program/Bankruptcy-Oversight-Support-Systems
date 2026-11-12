@@ -1,4 +1,5 @@
 import { NotFoundError } from '../../common-errors/not-found-error';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -19,6 +20,7 @@ import {
   TrusteeAppointmentRegionSyncState,
   TrusteeAppointmentsRepository,
   TrusteeCaseAppointmentsRepository,
+  TrusteeAppointmentVerificationRepository,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeVariationRepository,
@@ -38,6 +40,7 @@ import { TooManyRequestsError } from '../../common-errors/too-many-requests-erro
 import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { SyncedCase } from '@common/cams/cases';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 /** Builds a resolved TrusteePipelineState (state.match set) for mocking runTrusteeMatchPipeline. */
 function makeResolvedState(trusteeId: string, resolvedBy = 'resolveByPhone'): TrusteePipelineState {
@@ -103,6 +106,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
     let mockVariationRepo: Partial<TrusteeVariationRepository>;
     let mockProfessionalIdsRepo: Partial<TrusteeProfessionalIdsRepository>;
+    let mockAppointmentVerificationRepo: Partial<TrusteeAppointmentVerificationRepository>;
 
     const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => {
       const [firstName, ...rest] = fullName.split(' ');
@@ -217,10 +221,158 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
         mockProfessionalIdsRepo as TrusteeProfessionalIdsRepository,
       );
+      mockAppointmentVerificationRepo = {
+        openOrJoin: vi.fn().mockResolvedValue(undefined),
+        release: vi.fn(),
+      };
+      vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue(
+        mockAppointmentVerificationRepo as TrusteeAppointmentVerificationRepository,
+      );
       vi.spyOn(pipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         makeResolvedState('trustee-123'),
       );
       vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
+    });
+
+    describe('appointment task (CAMS-956)', () => {
+      const expectedKey = {
+        trusteeId: 'trustee-123',
+        courtId: '081',
+        divisionCode: '081',
+        chapter: '7',
+      };
+
+      beforeEach(() => {
+        vi.mocked(commonTrusteeAppointments.isAppointmentMatch).mockRestore();
+      });
+
+      test("opens or joins an appointment task for the event's court, division and chapter after an uncovered write", async () => {
+        const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({ matchedTrusteeAppointment: false }),
+          }),
+        );
+        expect(mockAppointmentVerificationRepo.openOrJoin).toHaveBeenCalledWith(
+          expectedKey,
+          'case-001',
+          'no-appointment',
+          SYSTEM_USER_REFERENCE,
+        );
+        expect(successCount).toBe(1);
+      });
+
+      test("derives the task reason from the trustee's appointments", async () => {
+        (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            MockData.getTrusteeAppointment({
+              trusteeId: 'trustee-123',
+              courtId: '081',
+              divisionCodes: ['081'],
+              chapter: '7',
+              status: 'inactive',
+            }),
+          ],
+        );
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(mockAppointmentVerificationRepo.openOrJoin).toHaveBeenCalledWith(
+          expectedKey,
+          'case-001',
+          'appointment-inactive',
+          SYSTEM_USER_REFERENCE,
+        );
+      });
+
+      test('does not open a task when an active appointment covers the case', async () => {
+        (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            MockData.getTrusteeAppointment({
+              trusteeId: 'trustee-123',
+              courtId: '081',
+              divisionCodes: ['081'],
+              chapter: '7',
+              status: 'active',
+            }),
+          ],
+        );
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
+      });
+
+      test('does not open a task for an uncovered parked write', async () => {
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeEvent('case-001', 'John Doe'), source: 'ACMS', dateFiled: '2026-10-30' }],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.anything(),
+          'CASE_APPOINTMENT_UNATTACHED',
+        );
+        expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
+      });
+
+      test('does not open a task when the soft-close of the previous trustee permanently failed', async () => {
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+          id: 'ca-old',
+          caseId: 'case-001',
+          trusteeId: 'old-trustee',
+          assignedOn: '2024-01-01T00:00:00Z',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        });
+        (
+          mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+        ).mockRejectedValue(new Error('Cosmos write failed'));
+
+        const { dlqMessages } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(dlqMessages).toEqual([
+          expect.objectContaining({ mismatchReason: 'SOFT_CLOSE_WRITE_FAILED' }),
+        ]);
+        expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
+      });
+
+      test('routes a throttled task write to retryableEvents like any other write', async () => {
+        (mockAppointmentVerificationRepo.openOrJoin as ReturnType<typeof vi.fn>).mockRejectedValue(
+          new TooManyRequestsError('TEST', { message: 'Throttled.' }),
+        );
+
+        const { dlqMessages, retryableEvents, successCount } =
+          await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [makeEvent('case-001', 'John Doe')],
+          );
+
+        expect(retryableEvents).toEqual([expect.objectContaining({ caseId: 'case-001' })]);
+        expect(dlqMessages).toHaveLength(0);
+        expect(successCount).toBe(0);
+      });
     });
 
     describe('court fields come from the event, not the CAMS case', () => {

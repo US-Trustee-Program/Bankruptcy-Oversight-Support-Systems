@@ -39,6 +39,7 @@ import type { TrusteeStaffMongoRepository as TrusteeStaffMongoRepositoryType } f
 import type { ListsMongoRepository as ListsMongoRepositoryType } from './adapters/gateways/mongo/lists.mongo.repository';
 import type { TrusteeUpcomingKeyDatesMongoRepository as TrusteeUpcomingKeyDatesMongoRepositoryType } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import type { TrusteeMatchVerificationMongoRepository as TrusteeMatchVerificationMongoRepositoryType } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
+import type { TrusteeAppointmentVerificationMongoRepository as TrusteeAppointmentVerificationMongoRepositoryType } from './adapters/gateways/mongo/trustee-appointment-verification.mongo.repository';
 import type { TrusteeProfessionalIdsMongoRepository as TrusteeProfessionalIdsMongoRepositoryType } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import type { BanksMongoRepository as BanksMongoRepositoryType } from './adapters/gateways/mongo/banks.mongo.repository';
 import type { BankruptcySoftwareMongoRepository as BankruptcySoftwareMongoRepositoryType } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
@@ -92,6 +93,7 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
   let ListsMongoRepository: Constructor<ListsMongoRepositoryType>;
   let TrusteeUpcomingKeyDatesMongoRepository: Constructor<TrusteeUpcomingKeyDatesMongoRepositoryType>;
   let TrusteeMatchVerificationMongoRepository: Constructor<TrusteeMatchVerificationMongoRepositoryType>;
+  let TrusteeAppointmentVerificationMongoRepository: Constructor<TrusteeAppointmentVerificationMongoRepositoryType>;
   let TrusteeProfessionalIdsMongoRepository: Constructor<TrusteeProfessionalIdsMongoRepositoryType>;
   let AzureBlobObjectStorageGateway: Constructor<AzureBlobObjectStorageGatewayType>;
   let AcmsGatewayImpl: Constructor<AcmsGatewayImplType>;
@@ -155,6 +157,8 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
       await import('./adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository'));
     ({ TrusteeMatchVerificationMongoRepository } =
       await import('./adapters/gateways/mongo/trustee-match-verification.mongo.repository'));
+    ({ TrusteeAppointmentVerificationMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-appointment-verification.mongo.repository'));
     ({ TrusteeProfessionalIdsMongoRepository } =
       await import('./adapters/gateways/mongo/trustee-professional-ids.mongo.repository'));
     ({ AzureBlobObjectStorageGateway } =
@@ -208,6 +212,10 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
     ['getListsGateway', () => ListsMongoRepository],
     ['getTrusteeUpcomingKeyDatesRepository', () => TrusteeUpcomingKeyDatesMongoRepository],
     ['getTrusteeMatchVerificationRepository', () => TrusteeMatchVerificationMongoRepository],
+    [
+      'getTrusteeAppointmentVerificationRepository',
+      () => TrusteeAppointmentVerificationMongoRepository,
+    ],
     ['getTrusteeProfessionalIdsRepository', () => TrusteeProfessionalIdsMongoRepository],
     ['getObjectStorageGateway', () => AzureBlobObjectStorageGateway],
     ['getAcmsGateway', () => AcmsGatewayImpl],
@@ -354,6 +362,7 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
     ['getListsGateway', () => MockMongoRepository],
     ['getTrusteeUpcomingKeyDatesRepository', () => MockMongoRepository],
     ['getTrusteeMatchVerificationRepository', () => MockMongoRepository],
+    ['getTrusteeAppointmentVerificationRepository', () => MockMongoRepository],
     ['getTrusteeProfessionalIdsRepository', () => MockMongoRepository],
     ['getObjectStorageGateway', () => AzureBlobObjectStorageGateway],
     ['getAcmsGateway', () => AcmsGatewayImpl],

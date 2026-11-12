@@ -395,6 +395,7 @@ const MONGO_COLLECTIONS = [
   'trustee-professional-ids',
   'trustee-variation',
   'trustee-match-verification',
+  'trustee-appointment-verification',
   'case-trustee-appointments',
   'trustee-case-appointments',
   'runtime-state',

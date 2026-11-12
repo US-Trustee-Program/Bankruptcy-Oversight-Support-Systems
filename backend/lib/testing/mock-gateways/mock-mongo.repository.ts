@@ -23,6 +23,7 @@ import {
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteeMatchVerificationRepository,
+  TrusteeAppointmentVerificationRepository,
   TrusteeNotesRepository,
   TrusteesRepository,
   TrusteeStaffRepository,
@@ -80,6 +81,7 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeStaffRepository,
     TrusteeMatchVerificationRepository,
+    TrusteeAppointmentVerificationRepository,
     TrusteeVariationRepository,
     TrusteeNotesRepository,
     TrusteeProfessionalIdsRepository,
@@ -813,6 +815,11 @@ export class MockMongoRepository
     const created: TrusteeVariation = { id: crypto.randomUUID(), ...item };
     this.trusteeVariations.push(created);
     return Promise.resolve(created);
+  }
+
+  // ── TrusteeAppointmentVerificationRepository ──────────────────────────────
+  openOrJoin(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────
