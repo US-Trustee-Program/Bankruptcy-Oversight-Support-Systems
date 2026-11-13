@@ -62,7 +62,6 @@ type ZoomPhoneCorrectionResult = {
   outcome: ZoomPhoneCorrectionOutcome;
   newValue?: string;
   reason?: string;
-  error?: string;
   // Carried on flagged results so the review report identifies the trustee and the bad value.
   trusteeName?: string;
   storedPhone?: string;
@@ -164,12 +163,14 @@ async function runCorrectionPass(
           convertedThisPass++;
           results.push({ trusteeId, outcome: 'converted', newValue });
         } catch (originalError) {
-          results.push({
-            trusteeId,
-            outcome: 'failed',
-            newValue,
-            error: originalError instanceof Error ? originalError.message : String(originalError),
-          });
+          // Only the message is logged: the adapter attaches the query and the Zoom info,
+          // passcode included, to the errors it throws.
+          const reason = originalError instanceof Error ? originalError.message : originalError;
+          logger.error(
+            MODULE_NAME,
+            `Failed to write the corrected Zoom phone for trustee ${trusteeId}: ${reason}`,
+          );
+          results.push({ trusteeId, outcome: 'failed', newValue });
         }
       }
     }

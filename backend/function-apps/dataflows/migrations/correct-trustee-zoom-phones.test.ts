@@ -13,7 +13,7 @@ import CorrectTrusteeZoomPhonesDataflow, { handleStart } from './correct-trustee
 
 const MODULE_NAME = 'CORRECT-TRUSTEE-ZOOM-PHONES';
 const START_QUEUE_NAME = buildQueueName(MODULE_NAME, 'start');
-const DLQ_QUEUE_NAME = buildQueueName(MODULE_NAME, 'dlq');
+const REPORT_LOCATION = 'migration-files/correct-trustee-zoom-phones-flagged.csv';
 // The handler adds a fixed 30 second delay to the backoff the use case recommends.
 const CONTINUATION_DELAY_SECONDS = 30;
 const BACKOFF_SECONDS = 120;
@@ -24,19 +24,14 @@ const makeInvocationContext = (): InvocationContext =>
   ({
     invocationId: 'test-id',
     functionName: 'correct-trustee-zoom-phones',
-    extraOutputs: new Map(),
     log: vi.fn(),
   }) as unknown as InvocationContext;
-
-const queueOutputs = (invocationContext: InvocationContext) =>
-  Array.from(
-    (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-  ).map(([binding, payload]) => [binding.queueName, payload]);
 
 describe('correct-trustee-zoom-phones migration', () => {
   let context: ApplicationContext;
   let invocationContext: InvocationContext;
   let info: MockInstance;
+  let logError: MockInstance;
   let runPass: MockInstance;
   let writeReport: MockInstance;
   const originalStorage = process.env.AzureWebJobsDataflowsStorage;
@@ -55,10 +50,11 @@ describe('correct-trustee-zoom-phones migration', () => {
     invocationContext = makeInvocationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
     info = vi.spyOn(context.logger, 'info');
+    logError = vi.spyOn(context.logger, 'error');
     runPass = vi.spyOn(CorrectTrusteeZoomPhonesUseCase, 'runCorrectionPass');
     writeReport = vi
       .spyOn(CorrectTrusteeZoomPhonesUseCase, 'writeFlaggedReport')
-      .mockResolvedValue('migration-files/correct-trustee-zoom-phones-flagged.csv');
+      .mockResolvedValue(REPORT_LOCATION);
   });
 
   afterEach(() => {
@@ -66,7 +62,7 @@ describe('correct-trustee-zoom-phones migration', () => {
     else process.env.AzureWebJobsDataflowsStorage = originalStorage;
   });
 
-  test('should record the flagged trustees in the report and the summary log, not the DLQ', async () => {
+  test('should record the flagged trustees in the report and the summary log', async () => {
     const results: Summary['results'] = [
       { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
       { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
@@ -91,9 +87,9 @@ describe('correct-trustee-zoom-phones migration', () => {
       MODULE_NAME,
       'Trustee Zoom phone correction complete. Converted: 1, Already valid: 1, Flagged: 2, Failed: 0. ' +
         'Flagged trustees: trustee-003 (Zoom phone has 5 digits.), trustee-004 (Zoom phone is empty or missing.) ' +
-        'Flagged report: migration-files/correct-trustee-zoom-phones-flagged.csv',
+        `Flagged report: ${REPORT_LOCATION}`,
     );
-    expect(queueOutputs(invocationContext)).toEqual([]);
+    expect(logError).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -114,79 +110,62 @@ describe('correct-trustee-zoom-phones migration', () => {
     },
   );
 
-  test('should send failed trustees to the DLQ', async () => {
+  test('should list the failed trustees in the summary log', async () => {
     runPass.mockResolvedValue(
       complete(
         [
-          {
-            trusteeId: 'trustee-001',
-            outcome: 'failed',
-            newValue: '680-214-4529',
-            error: 'Update failed',
-          },
-          { trusteeId: 'trustee-002', outcome: 'converted', newValue: '555-123-4567' },
+          { trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' },
+          { trusteeId: 'trustee-002', outcome: 'failed', newValue: '555-123-4567' },
+          { trusteeId: 'trustee-003', outcome: 'converted', newValue: '555-987-6543' },
         ],
-        { converted: 1, alreadyValid: 0, flagged: 0, failed: 1 },
+        { converted: 1, alreadyValid: 0, flagged: 0, failed: 2 },
       ),
     );
 
     await handleStart({}, invocationContext);
 
-    expect(queueOutputs(invocationContext)).toEqual([
-      [DLQ_QUEUE_NAME, [{ trusteeId: 'trustee-001', error: 'Update failed' }]],
-    ]);
-    expect(info).toHaveBeenCalledWith(MODULE_NAME, expect.stringContaining('Failed: 1'));
+    expect(info).toHaveBeenCalledWith(
+      MODULE_NAME,
+      expect.stringContaining('Failed: 2. Failed trustees: trustee-001, trustee-002'),
+    );
   });
 
-  test('should still report the counts and send failures plus a queue error to the DLQ when the report cannot be written', async () => {
+  test('should log an error and stop when the pass fails', async () => {
+    runPass.mockResolvedValue({
+      error: new CamsError(MODULE_NAME, { message: 'Failed to correct.' }),
+    });
+
+    await handleStart({}, invocationContext);
+
+    expect(logError).toHaveBeenCalledWith(
+      MODULE_NAME,
+      'Trustee Zoom phone correction failed. Failed to correct.',
+    );
+    expect(writeReport).not.toHaveBeenCalled();
+    expect(info).not.toHaveBeenCalled();
+  });
+
+  test('should log an error but still report the counts and the flagged trustees when the report cannot be written', async () => {
     runPass.mockResolvedValue(
       complete(
-        [
-          { trusteeId: 'trustee-001', outcome: 'failed', error: 'Update failed' },
-          { trusteeId: 'trustee-002', outcome: 'flagged', reason: 'Zoom phone has 5 digits.' },
-        ],
-        { converted: 0, alreadyValid: 0, flagged: 1, failed: 1 },
+        [{ trusteeId: 'trustee-002', outcome: 'flagged', reason: 'Zoom phone has 5 digits.' }],
+        { converted: 0, alreadyValid: 0, flagged: 1, failed: 0 },
       ),
     );
     writeReport.mockRejectedValue(new Error('Storage unavailable'));
 
     await handleStart({}, invocationContext);
 
-    expect(queueOutputs(invocationContext)).toEqual([
-      [
-        DLQ_QUEUE_NAME,
-        [
-          { trusteeId: 'trustee-001', error: 'Update failed' },
-          expect.objectContaining({
-            type: 'QUEUE_ERROR',
-            module: MODULE_NAME,
-            error: expect.objectContaining({ message: 'Storage unavailable' }),
-          }),
-        ],
-      ],
-    ]);
+    expect(logError).toHaveBeenCalledWith(
+      MODULE_NAME,
+      'Flagged phones report could not be written. Storage unavailable',
+    );
     const message = String(info.mock.calls[0][1]);
-    expect(message).toContain('Flagged: 1, Failed: 1');
     expect(message).toContain('Flagged trustees: trustee-002 (Zoom phone has 5 digits.)');
     expect(message).not.toContain('Flagged report:');
   });
 
-  test('should send a queue error to the DLQ when the pass fails', async () => {
-    const error = new CamsError(MODULE_NAME, { message: 'Failed to correct.' });
-    runPass.mockResolvedValue({ error });
-
-    await handleStart({}, invocationContext);
-
-    expect(queueOutputs(invocationContext)).toEqual([
-      [
-        DLQ_QUEUE_NAME,
-        expect.objectContaining({ type: 'QUEUE_ERROR', module: MODULE_NAME, error }),
-      ],
-    ]);
-    expect(info).not.toHaveBeenCalled();
-  });
-
-  test('should register handleStart on the start queue with the DLQ as an output', () => {
+  test('should register handleStart on the start queue without a dead-letter output', () => {
     const storageQueue = vi.spyOn(app, 'storageQueue').mockImplementation(() => {});
 
     CorrectTrusteeZoomPhonesDataflow.setup();
@@ -195,12 +174,9 @@ describe('correct-trustee-zoom-phones migration', () => {
     const [name, options] = storageQueue.mock.calls[0];
     expect(name).toEqual(`${MODULE_NAME}-handleStart`);
     expect(options).toEqual(
-      expect.objectContaining({
-        queueName: START_QUEUE_NAME,
-        handler: handleStart,
-        extraOutputs: [expect.objectContaining({ queueName: DLQ_QUEUE_NAME })],
-      }),
+      expect.objectContaining({ queueName: START_QUEUE_NAME, handler: handleStart }),
     );
+    expect(options).not.toHaveProperty('extraOutputs');
   });
 
   describe('when the pass escapes because the invocation budget is spent', () => {
@@ -234,51 +210,45 @@ describe('correct-trustee-zoom-phones migration', () => {
       );
     });
 
-    test('should neither write to the DLQ nor log a completion summary', async () => {
+    test('should keep the continuation message far below the 64 KB queue message limit', async () => {
+      await handleStart({}, invocationContext);
+
+      const body = sendMessage.mock.calls[0][0] as string;
+      expect(Buffer.from(body).toString('base64').length).toBeLessThan(100);
+    });
+
+    test('should neither report a completion nor write the report', async () => {
       await handleStart({}, invocationContext);
 
       expect(writeReport).not.toHaveBeenCalled();
-      expect(queueOutputs(invocationContext)).toEqual([]);
+      expect(logError).not.toHaveBeenCalled();
       expect(info).not.toHaveBeenCalledWith(
         MODULE_NAME,
         expect.stringContaining('correction complete'),
       );
     });
 
-    test('should send a queue error to the DLQ when the continuation cannot be enqueued', async () => {
+    test('should log an error saying to re-run when the continuation cannot be enqueued', async () => {
       sendMessage.mockRejectedValue(new Error('Queue unavailable'));
 
       await handleStart({}, invocationContext);
 
-      expect(queueOutputs(invocationContext)).toEqual([
-        [
-          DLQ_QUEUE_NAME,
-          expect.objectContaining({
-            type: 'QUEUE_ERROR',
-            module: MODULE_NAME,
-            error: expect.objectContaining({ message: 'Queue unavailable' }),
-          }),
-        ],
-      ]);
+      expect(logError).toHaveBeenCalledWith(
+        MODULE_NAME,
+        'Continuation could not be enqueued; re-run the migration. Converted so far: 7. Queue unavailable',
+      );
     });
 
-    test('should send a queue error to the DLQ when the storage connection is not configured', async () => {
+    test('should log an error when the storage connection is not configured', async () => {
       delete process.env.AzureWebJobsDataflowsStorage;
 
       await handleStart({}, invocationContext);
 
       expect(sendMessage).not.toHaveBeenCalled();
-      expect(queueOutputs(invocationContext)).toEqual([
-        [
-          DLQ_QUEUE_NAME,
-          expect.objectContaining({
-            type: 'QUEUE_ERROR',
-            error: expect.objectContaining({
-              message: expect.stringContaining('AzureWebJobsDataflowsStorage'),
-            }),
-          }),
-        ],
-      ]);
+      expect(logError).toHaveBeenCalledWith(
+        MODULE_NAME,
+        expect.stringContaining('AzureWebJobsDataflowsStorage'),
+      );
     });
   });
 });

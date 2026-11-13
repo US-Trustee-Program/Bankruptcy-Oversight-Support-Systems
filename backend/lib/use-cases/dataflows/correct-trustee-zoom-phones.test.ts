@@ -88,7 +88,8 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       expect(createTrusteeHistory).not.toHaveBeenCalled();
     });
 
-    test('should record a failed write and continue with the remaining trustees', async () => {
+    test('should record a failed write, log only its message, and continue with the remaining trustees', async () => {
+      const logError = vi.spyOn(context.logger, 'error');
       const setZoomInfo = vi
         .spyOn(repo, 'setZoomInfo')
         .mockRejectedValueOnce(new Error('Update failed'))
@@ -101,24 +102,25 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
 
       expect(setZoomInfo).toHaveBeenCalledTimes(2);
+      expect(logError).toHaveBeenCalledTimes(1);
+      expect(logError).toHaveBeenCalledWith(
+        'CORRECT-TRUSTEE-ZOOM-PHONES-USE-CASE',
+        'Failed to write the corrected Zoom phone for trustee trustee-001: Update failed',
+      );
       expect(result.data).toEqual({
         kind: 'complete',
         summary: {
           counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 1 },
           results: [
-            {
-              trusteeId: 'trustee-001',
-              outcome: 'failed',
-              newValue: '680-214-4529',
-              error: 'Update failed',
-            },
+            { trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' },
             { trusteeId: 'trustee-002', outcome: 'converted', newValue: '555-123-4567' },
           ],
         },
       });
     });
 
-    test('should record the text of a write failure that is not an Error', async () => {
+    test('should log the text of a write failure that is not an Error', async () => {
+      const logError = vi.spyOn(context.logger, 'error');
       vi.spyOn(repo, 'setZoomInfo').mockRejectedValueOnce('plain string');
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
         trusteeWithPhone('trustee-001', '(680) 214-4529'),
@@ -130,16 +132,13 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         kind: 'complete',
         summary: {
           counts: { converted: 0, alreadyValid: 0, flagged: 0, failed: 1 },
-          results: [
-            {
-              trusteeId: 'trustee-001',
-              outcome: 'failed',
-              newValue: '680-214-4529',
-              error: 'plain string',
-            },
-          ],
+          results: [{ trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' }],
         },
       });
+      expect(logError).toHaveBeenCalledWith(
+        'CORRECT-TRUSTEE-ZOOM-PHONES-USE-CASE',
+        'Failed to write the corrected Zoom phone for trustee trustee-001: plain string',
+      );
     });
 
     test('should return empty results and zero counts when there are no trustees', async () => {
@@ -332,7 +331,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
         flagged('trustee-003', 'Pat Poe', '214-45'),
         flagged('trustee-004', 'Sam Moe', undefined, 'Zoom phone is empty or missing.'),
-        { trusteeId: 'trustee-005', outcome: 'failed', error: 'Update failed' },
+        { trusteeId: 'trustee-005', outcome: 'failed', newValue: '555-123-4567' },
       ]);
 
       expect(writeObject).toHaveBeenCalledWith(

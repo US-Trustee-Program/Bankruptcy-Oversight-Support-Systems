@@ -35,7 +35,7 @@ which requeues a whole message rather than waiting inside the invocation.
   memory, and writes each record that needs repair with its own sequential call. At this size the
   cost is a few minutes and a small, self-paced RU load; bulk writes would need new adapter code for
   no benefit.
-- **A 429 never reaches the DLQ.** Wrap every Cosmos call in
+- **A 429 is never a failure.** Wrap every Cosmos call in
   `retryOnRateLimit(operation, { startedAt, safeThresholdMs, baseDelayMs, onBackoff })`. It sleeps
   and retries in place on `TooManyRequestsError` (first wait is twice `baseDelayMs`, doubling to a
   10-minute cap) and rethrows anything else. Wrap the read and each write separately so a throttled
@@ -46,20 +46,23 @@ which requeues a whole message rather than waiting inside the invocation.
 - **Continuation state is only what cannot be re-derived.** The next invocation re-reads the data,
   and records already repaired no longer need repair, so it finds the remaining work itself and
   there is no cursor or unwritten-batch hand-off. The state carries only what the final report needs
-  (here, a count of repairs made earlier). The handler enqueues the continuation on the dataflow's
-  own start queue with a visibility delay of a fixed 30 seconds plus `backoffSeconds`.
+  (here, a count of repairs made earlier, about 40 bytes encoded), so it cannot approach the queue
+  message limit below. The handler enqueues the continuation on the dataflow's own start queue with
+  a visibility delay of a fixed 30 seconds plus `backoffSeconds`.
   `StorageQueueHumbleObject.sendMessage` Base64-encodes the body and creates the queue if missing.
 - **The run ends when a pass finishes without an escape.** That pass is the final one: it recomputes
   every outcome from current data and writes the single completion log entry. Outcomes derived from
   data (already valid, flagged) are never accumulated across continuations, so they cannot be
   double-counted; adjust only for repairs that earlier passes made and this pass now reads as
   already valid.
-- **DLQ only for what a re-run might not fix.** A write that fails for a non-429 reason is recorded
-  as failed and the pass moves on; the failures go to the DLQ as `{ id, error }`. A run-level error,
-  including failing to enqueue the continuation, goes to the DLQ as a queue error. Several DLQ
-  messages in one invocation must go out as one array, because `extraOutputs.set` for the same
-  binding replaces the earlier value.
-- **Records that need a human go to a CSV, never the DLQ.** Written with
+- **Errors are logged, not dead-lettered.** A one-time run has no consumer for a DLQ, and a DLQ
+  message cannot carry many records (see Queue message size below). Log each failed write at Error
+  level with the record id and the message text only, never the error object: the Mongo adapter
+  attaches the query and the item being written to the errors it throws. List the failed ids in the
+  one completion entry, so sampling cannot hide which records failed. A run-level error (the read
+  failing, the report or the continuation not written) is also an Error log that says what the
+  operator does next, which is re-run.
+- **Records that need a human go to a CSV.** Written with
   `factory.getObjectStorageGateway(context).writeObject(CAMS_OBJECT_CONTAINER ?? 'migration-files', blobName, content)`,
   as `import-zoom-csv.ts` does for its report. Overwrite the same blob each run so it always
   reflects the latest run, and write the header alone when nothing needs review so an old report is
@@ -67,18 +70,44 @@ which requeues a whole message rather than waiting inside the invocation.
   Quote cells containing commas, quotes, or line breaks, and prefix a value starting with `=`, `+`,
   `-` or `@` with `'` because the data being reported is arbitrary. The one completion log entry
   also lists each such record's id and reason, so review does not depend on the file alone, and
-  sampling keeps or drops the counts and the list together. A failure to write the report is a
-  run-level DLQ error, and the completion log omits the report location.
+  sampling keeps or drops the counts and the list together. A failure to write the report is logged
+  as an Error, and the completion log omits the report location.
 - **Re-running is the recovery path.** Repaired records are skipped and the report is regenerated,
   so an operator who finds failures, a missing report, or a stuck run starts it again.
-
-Not extracted yet: `migrate-case-appointments.ts` and `migrate-trustees.ts` still carry their own
-copies of the backoff curve and `sleep`.
 
 See `backend/function-apps/dataflows/migrations/correct-trustee-zoom-phones.ts` and
 `backend/lib/use-cases/dataflows/correct-trustee-zoom-phones.ts` (`runCorrectionPass`,
 `writeFlaggedReport`) for a caller. `fix-chapter-7-appointments.ts` uses the same backoff curve for
 an unbounded, loop-until-empty variant.
+
+## Queue message size (64 KB)
+
+**Module:** `backend/function-apps/dataflows/dataflows-paging.ts`
+
+An Azure Storage Queue message body is capped at 65,536 bytes after Base64 encoding, which both the
+Functions storage queue binding and `StorageQueueHumbleObject.sendMessage` apply. Anything that puts
+a variable number of records into one message needs to measure it, as a fixed record count is only a
+guess about record size.
+
+- `pageByByteBudget(items, maxPageSize?)` returns `{ pages, rejected }`. Each page stays within a
+  JSON budget of `floor(65536 × 3/4) − 1024` bytes (about 48 KB), which leaves room for Base64 and
+  an envelope. It measures `Buffer.byteLength(JSON.stringify(page))` of the candidate page itself,
+  not the sum of the item sizes: the array's own commas and brackets add up, and summing them let a
+  page through that caused a production `RequestBodyTooLarge` (413). An item too large to fit alone
+  is returned in `rejected` and is never placed on a page. `maxPageSize` also caps the item count.
+- `extraOutputs.set(binding, value)` sends exactly one queue message per invocation, whatever the
+  value. Setting an array of pre-built pages collapses them into one oversized message. Send each
+  page as its own message with `StorageQueueHumbleObject.fromConnectionString(...).sendMessage`, and
+  report each rejected item separately.
+- The best fix is not needing it: keep continuation state to a few scalars, and send per-record
+  output to logs or object storage rather than to a queue, as the migration pattern above does.
+- There is no helper for a single unpaged message, so when a message's size is a design assumption,
+  pin it with a test that checks `Buffer.byteLength` of the serialized body.
+
+See `queueEventPages` in `backend/function-apps/dataflows/import/sync-trustee-case-appointments.ts`
+for a caller that pages events and dead-letters rejected ones, and `handleReader` in
+`backend/function-apps/dataflows/migrations/fix-chapter-7-appointments.ts` for escape-hatch writer
+pages.
 
 ## Fan-out across K lanes + capacity
 

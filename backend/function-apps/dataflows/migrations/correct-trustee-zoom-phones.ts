@@ -9,7 +9,6 @@ import CorrectTrusteeZoomPhonesUseCase, {
 } from '../../../lib/use-cases/dataflows/correct-trustee-zoom-phones';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 
@@ -18,11 +17,6 @@ const MODULE_NAME = ModuleNames.CORRECT_TRUSTEE_ZOOM_PHONES;
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
-  connection: STORAGE_QUEUE_CONNECTION,
-});
-
-const DLQ = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'dlq'),
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -43,9 +37,9 @@ const CONTINUATION_DELAY_SECONDS = 30;
  * One-time correction of trustee Zoom phones stored in a format that fails PHONE_REGEX. A pass
  * backs off in place when Cosmos throttles it (429). If the backoff would not fit in the
  * invocation budget, the remaining work is handed to a continuation message on the start queue
- * that carries the state forward, rather than to the DLQ. Flagged trustees are listed in the
- * summary log and in a CSV report in object storage; only writes that failed for another reason
- * go to the DLQ.
+ * that carries the state forward. There is no dead-letter queue: flagged trustees are listed in
+ * the summary log and in a CSV report in object storage, and every failure is logged as an error
+ * for App Insights.
  * Safe to re-run: phones already in the accepted format are left unchanged.
  */
 async function handleStart(
@@ -61,36 +55,32 @@ async function handleStart(
     { startedAt: Date.now() },
   );
   if (outcome.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(outcome.error, MODULE_NAME, HANDLE_START),
-    );
+    logger.error(MODULE_NAME, `Trustee Zoom phone correction failed. ${outcome.error.message}`);
     return;
   }
 
   if (outcome.data.kind === 'escape') {
-    await enqueueContinuation(outcome.data, invocationContext, logger);
+    await enqueueContinuation(outcome.data, logger);
     return;
   }
 
   const { results, counts } = outcome.data.summary;
 
-  const dlqMessages: unknown[] = results
-    .filter((r) => r.outcome === 'failed')
-    .map((r) => ({ trusteeId: r.trusteeId, error: r.error }));
-
   let reportLocation: string | undefined;
   try {
     reportLocation = await CorrectTrusteeZoomPhonesUseCase.writeFlaggedReport(context, results);
   } catch (originalError) {
-    dlqMessages.push(buildQueueError(originalError, MODULE_NAME, HANDLE_START));
-  }
-  if (dlqMessages.length > 0) {
-    invocationContext.extraOutputs.set(DLQ, dlqMessages);
+    logger.error(
+      MODULE_NAME,
+      `Flagged phones report could not be written. ${errorText(originalError)}`,
+    );
   }
 
-  // One trace for the whole run, so sampling keeps or drops the counts and the flagged list
-  // together. Only ID and reason are logged; the report carries the name and stored phone.
+  // One trace for the whole run, so sampling keeps or drops the counts and the trustee lists
+  // together. Only IDs and reasons are logged; the report carries the name and stored phone, and
+  // each failed write also logged its own error.
+  const failed = results.filter((r) => r.outcome === 'failed').map((r) => r.trusteeId);
+  const failedList = failed.length > 0 ? ` Failed trustees: ${failed.join(', ')}` : '';
   const flagged = results
     .filter((r) => r.outcome === 'flagged')
     .map((r) => `${r.trusteeId} (${r.reason})`);
@@ -98,13 +88,14 @@ async function handleStart(
   const reportNote = reportLocation ? ` Flagged report: ${reportLocation}` : '';
   logger.info(
     MODULE_NAME,
-    `Trustee Zoom phone correction complete. Converted: ${counts.converted}, Already valid: ${counts.alreadyValid}, Flagged: ${counts.flagged}, Failed: ${counts.failed}.${flaggedList}${reportNote}`,
+    `Trustee Zoom phone correction complete. Converted: ${counts.converted}, Already valid: ${counts.alreadyValid}, Flagged: ${counts.flagged}, Failed: ${counts.failed}.${failedList}${flaggedList}${reportNote}`,
   );
 }
 
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 async function enqueueContinuation(
   escape: Extract<CorrectionPassOutcome, { kind: 'escape' }>,
-  invocationContext: InvocationContext,
   logger: LoggerImpl,
 ) {
   try {
@@ -123,9 +114,9 @@ async function enqueueContinuation(
       `Throttled past the invocation budget. Continuing in ${delaySeconds}s. Converted so far: ${escape.state.converted}.`,
     );
   } catch (originalError) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(originalError, MODULE_NAME, HANDLE_START),
+    logger.error(
+      MODULE_NAME,
+      `Continuation could not be enqueued; re-run the migration. Converted so far: ${escape.state.converted}. ${errorText(originalError)}`,
     );
   }
 }
@@ -135,7 +126,6 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [DLQ],
   });
 }
 

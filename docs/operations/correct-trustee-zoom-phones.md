@@ -14,8 +14,8 @@ The migration reads every trustee that has Zoom info and, for each Zoom phone:
 | Converted     | The phone is rewritten in the accepted format, e.g. `(680) 214-4529` → `680-214-4529`, `(680) 214-4529 x123` → `680-214-4529 x123`                                |
 | Already valid | No change                                                                                                                                                         |
 | Flagged       | The value cannot be converted safely (wrong number of digits, letters, empty or missing). It is left unchanged and listed in the flagged phones report for review |
-| Failed        | The write failed for a reason other than throttling. The trustee is sent to the dead-letter queue and the run continues                                           |
-| Throttled     | Cosmos DB rate limited (429) a read or write. The migration waits and retries in place, backing off up to 10 minutes. Nothing goes to the dead-letter queue       |
+| Failed        | The write failed for a reason other than throttling. The failure is logged as an error and the run continues                                                      |
+| Throttled     | Cosmos DB rate limited (429) a read or write. The migration waits and retries in place, backing off up to 10 minutes. It is not a failure                         |
 
 Only the phone changes. The rest of the trustee's Zoom info is untouched, and the correction does
 **not** create trustee history entries or trustee change notifications, and does not change
@@ -71,7 +71,6 @@ account:
 | Queue                               | Purpose                                                                               |
 | ----------------------------------- | ------------------------------------------------------------------------------------- |
 | `correct-trustee-zoom-phones-start` | A message here runs one pass. A throttled run adds its own continuation messages here |
-| `correct-trustee-zoom-phones-dlq`   | Failed writes and run errors                                                          |
 
 The queue trigger expects Base64-encoded messages (`{}` is `e30=`):
 
@@ -111,8 +110,8 @@ Example:
 Trustee Zoom phone correction complete. Converted: 42, Already valid: 310, Flagged: 2, Failed: 0. Flagged trustees: <id> (Zoom phone has 5 digits.), <id> (Zoom phone is empty or missing.) Flagged report: migration-files/correct-trustee-zoom-phones-flagged.csv
 ```
 
-The entry lists only each flagged trustee's ID and reason, not the name or phone. The report below
-adds those.
+The entry lists only each flagged or failed trustee's ID (and the reason for flagged ones), not the
+name or phone. The report below adds those for flagged trustees.
 
 **Flagged phones report:** the trustees whose phone could not be converted are written to
 `correct-trustee-zoom-phones-flagged.csv` in the object storage container named by
@@ -141,15 +140,28 @@ that begins with `=`, `+`, `-` or `@` is written with a leading `'` so spreadshe
 read it as a formula. The file contains trustee names and phone numbers, so it has the access of the
 storage account. Fix each trustee's phone by editing the trustee's Zoom info in CAMS.
 
-If the summary reports a flagged count but no report location, the report could not be written. The
-dead-letter queue then holds a `QUEUE_ERROR` message with the cause, and the flagged IDs are still
-in the summary entry. Fix the cause and re-run.
+**Errors:** there is no dead-letter queue. Every failure is an Error-level trace in Application
+Insights (severity 3 or higher in `AppTraces`):
+
+```kusto
+AppTraces
+| where TimeGenerated > ago(1d)
+| where Message has "CORRECT-TRUSTEE-ZOOM-PHONES"
+| where SeverityLevel >= 3
+| project TimeGenerated, Message
+```
+
+| Error message starts with                       | Meaning                                                                                   |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `Failed to write the corrected Zoom phone for…` | One trustee's write failed. The trustee is also listed under `Failed trustees` in summary |
+| `Flagged phones report could not be written.`   | The report is missing; the flagged IDs are still in the summary entry                     |
+| `Continuation could not be enqueued;`           | A throttled run could not continue; the entry says how many were corrected so far         |
+| `Trustee Zoom phone correction failed.`         | The run could not read the trustees at all. Nothing was written                           |
+
+For any of these, fix the cause and re-run the migration: it is idempotent and retries only the
+phones that are still invalid. Only the error message is logged, never the stored Zoom info.
 
 Application Insights sampling is enabled for the dataflows app (`host.json`). Because the counts and
-the flagged list are one entry, sampling keeps or drops them together. If no summary appears for a
-run, the report file is still the complete record; re-run the migration to confirm the counts.
-
-**Failed writes:** check `correct-trustee-zoom-phones-dlq`. Each message lists `trusteeId` and
-`error`. Re-run the migration: it is idempotent and retries only the phones that are still invalid.
-A message with `"type": "QUEUE_ERROR"` means the run could not load or process trustees at all. Fix
-the cause and re-run.
+the trustee lists are one entry, sampling keeps or drops them together. If no summary appears for a
+run, the report file is still the complete record of flagged trustees; re-run the migration to
+confirm the counts.
