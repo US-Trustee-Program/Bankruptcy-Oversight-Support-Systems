@@ -372,3 +372,25 @@ describe('trustee-match-all-scenarios (seeded candidate trustees)', () => {
     }
   });
 });
+
+describe('Data Verification screen compatibility', () => {
+  test('every seeded verification has the fields the screen destructures and no pre-rename dxtrTrustee', async () => {
+    const ops = await generate(context());
+    const verifications = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data);
+
+    expect(verifications.length).toBeGreaterThan(0);
+    for (const doc of verifications) {
+      expect(doc).not.toHaveProperty('dxtrTrustee');
+      expect(doc).toMatchObject({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        taskType: 'trustee-match',
+        sourceTrustee: { fullName: expect.any(String) },
+        findings: { candidates: expect.any(Array) },
+        fingerprint: expect.any(String),
+        variant: expect.any(String),
+      });
+    }
+  });
+});
