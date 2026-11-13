@@ -34,7 +34,9 @@ function AppointmentRow({ appointment }: { appointment: TrusteeAppointmentWithAg
         {division}
       </td>
       <td data-label="Chapter">
-        {!agreement.matchesChapter && <DifferenceIcon description={differsDescription('Chapter')} />}
+        {!agreement.matchesChapter && (
+          <DifferenceIcon description={differsDescription('Chapter')} />
+        )}
         {formatChapterType(appointment.chapter)}
       </td>
       <td data-label="Type">{formatAppointmentType(appointment.appointmentType)}</td>
@@ -82,7 +84,10 @@ export function AppointmentsTable({ appointments }: Readonly<AppointmentsTablePr
         A warning icon marks information that differs from the court, division, chapter or status of
         these cases.
       </p>
-      <table className="usa-table usa-table--borderless appointments-table" aria-label="Appointments">
+      <table
+        className="usa-table usa-table--borderless appointments-table"
+        aria-label="Appointments"
+      >
         <thead>
           <tr>
             <th scope="col">District</th>

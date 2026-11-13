@@ -33,6 +33,14 @@ function makeAppointment(
   };
 }
 
+const COLUMNS = ['District', 'Division', 'Chapter', 'Type', 'Status'] as const;
+type Column = (typeof COLUMNS)[number];
+
+/** The body-row cell under the given column header (first data row). */
+function cell(column: Column): HTMLElement {
+  return screen.getAllByRole('cell')[COLUMNS.indexOf(column)];
+}
+
 describe('AppointmentsTable', () => {
   test('replaces the table with a message when the trustee has no appointments', () => {
     render(<AppointmentsTable appointments={[]} />);
@@ -53,7 +61,7 @@ describe('AppointmentsTable', () => {
   });
 
   test('renders each appointment value in its own column', () => {
-    const { container } = render(
+    render(
       <AppointmentsTable
         appointments={[
           makeAppointment({ divisionCode: '1', chapter: '7', appointmentType: 'panel' }),
@@ -61,7 +69,6 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    const cell = (label: string) => container.querySelector(`td[data-label="${label}"]`);
     expect(cell('District')).toHaveTextContent('Southern District of New York');
     expect(cell('Division')).toHaveTextContent('1');
     expect(cell('Chapter')).toHaveTextContent('7');
@@ -70,33 +77,27 @@ describe('AppointmentsTable', () => {
   });
 
   test('formats a subchapter V chapter slug for display', () => {
-    const { container } = render(
-      <AppointmentsTable appointments={[makeAppointment({ chapter: '11-subchapter-v' })]} />,
-    );
+    render(<AppointmentsTable appointments={[makeAppointment({ chapter: '11-subchapter-v' })]} />);
 
-    expect(container.querySelector('td[data-label="Chapter"]')).toHaveTextContent(
-      '11 Subchapter V',
-    );
+    expect(cell('Chapter')).toHaveTextContent('11 Subchapter V');
   });
 
   test('falls back to the court id in the District column when the court name is unknown', () => {
-    const { container } = render(
+    render(
       <AppointmentsTable
         appointments={[makeAppointment({ courtName: undefined, courtId: '081' })]}
       />,
     );
 
-    expect(container.querySelector('td[data-label="District"]')).toHaveTextContent('081');
+    expect(cell('District')).toHaveTextContent('081');
   });
 
   test('shows the resolved division name in the Division column when the backend provides one', () => {
-    const { container } = render(
+    render(
       <AppointmentsTable appointments={[makeAppointment({ courtDivisionName: 'Foley Square' })]} />,
     );
 
-    expect(container.querySelector('td[data-label="Division"]')).toHaveTextContent(
-      'Foley Square',
-    );
+    expect(cell('Division')).toHaveTextContent('Foley Square');
   });
 
   test('renders appointments in the order given, without re-sorting', () => {
@@ -119,12 +120,12 @@ describe('AppointmentsTable', () => {
     expect(rows[2]).toHaveTextContent('13');
   });
 
-  test.each<{ flag: keyof AppointmentAgreement; cell: string }>([
-    { flag: 'matchesCourt', cell: 'District' },
-    { flag: 'matchesDivision', cell: 'Division' },
-    { flag: 'matchesChapter', cell: 'Chapter' },
-    { flag: 'isActive', cell: 'Status' },
-  ])('marks only the $cell cell with a warning icon when $flag is false', ({ flag, cell }) => {
+  test.each<{ flag: keyof AppointmentAgreement; column: Column }>([
+    { flag: 'matchesCourt', column: 'District' },
+    { flag: 'matchesDivision', column: 'Division' },
+    { flag: 'matchesChapter', column: 'Chapter' },
+    { flag: 'isActive', column: 'Status' },
+  ])('marks only the $column cell with a warning icon when $flag is false', ({ flag, column }) => {
     const matchingAgreement: AppointmentAgreement = {
       matchesCourt: true,
       matchesDivision: true,
@@ -133,7 +134,7 @@ describe('AppointmentsTable', () => {
       score: 4,
     };
 
-    const { container } = render(
+    render(
       <AppointmentsTable
         appointments={[
           makeAppointment({ agreement: { ...matchingAgreement, [flag]: false, score: 3 } }),
@@ -141,21 +142,18 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    const targetCell = container.querySelector(`td[data-label="${cell}"]`) as HTMLElement;
+    const targetCell = cell(column);
     expect(
-      within(targetCell).getByRole('img', { name: `${cell} differs from these cases` }),
+      within(targetCell).getByRole('img', { name: `${column} differs from these cases` }),
     ).toBeInTheDocument();
 
-    container.querySelectorAll('td').forEach((td) => {
-      if (td === targetCell) return;
-      expect(td.querySelector('[role="img"]')).not.toBeInTheDocument();
-    });
+    expect(screen.getAllByRole('img')).toHaveLength(1);
   });
 
   test('shows no warning icon when every field matches the tuple', () => {
-    const { container } = render(<AppointmentsTable appointments={[makeAppointment()]} />);
+    render(<AppointmentsTable appointments={[makeAppointment()]} />);
 
-    expect(container.querySelector('[role="img"]')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   test('shows the key line explaining the warning icon', () => {
