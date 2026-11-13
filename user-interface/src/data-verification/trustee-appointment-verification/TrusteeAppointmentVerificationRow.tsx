@@ -1,3 +1,4 @@
+import './TrusteeAppointmentVerificationRow.scss';
 import { useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
