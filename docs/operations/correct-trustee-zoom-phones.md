@@ -3,7 +3,7 @@
 ## Overview
 
 A one-time migration for CAMS-975. From 2026-04-03 to 2026-10-06 the Zoom Info Import stored trustee
-Zoom phones without validation, so some environments hold values like `(680) 214-4529`. Those values
+Zoom phones without validation, so some environments hold values like `(555) 010-0123`. Those values
 fail the Zoom phone format check (`123-456-7890`, optionally with a `1-` prefix and an extension),
 and users cannot save a trustee's Zoom info without retyping the phone.
 
@@ -11,7 +11,7 @@ The migration reads every trustee that has Zoom info and, for each Zoom phone:
 
 | Outcome       | What happens                                                                                                                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Converted     | The phone is rewritten in the accepted format, e.g. `(680) 214-4529` → `680-214-4529`, `(680) 214-4529 x123` → `680-214-4529 x123`                                |
+| Converted     | The phone is rewritten in the accepted format, e.g. `(555) 010-0123` → `555-010-0123`, `(555) 010-0123 x123` → `555-010-0123 x123`                                |
 | Already valid | No change                                                                                                                                                         |
 | Flagged       | The value cannot be converted safely (wrong number of digits, letters, empty or missing). It is left unchanged and listed in the flagged phones report for review |
 | Failed        | The write failed for a reason other than throttling. The failure is logged as an error and the run continues                                                      |

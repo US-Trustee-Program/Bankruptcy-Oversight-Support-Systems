@@ -46,8 +46,8 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         .spyOn(repo, 'createTrusteeHistory')
         .mockResolvedValue(undefined);
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '(680) 214-4529'),
-        trusteeWithPhone('trustee-002', '680-214-4529'),
+        trusteeWithPhone('trustee-001', '(555) 010-0123'),
+        trusteeWithPhone('trustee-002', '555-010-0123'),
         trusteeWithPhone('trustee-003', '214-45'),
         trusteeWithPhone('trustee-004', undefined),
         MockData.getTrustee({ trusteeId: 'trustee-005' }),
@@ -60,7 +60,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         summary: {
           counts: { converted: 1, alreadyValid: 1, flagged: 2, failed: 0 },
           results: [
-            { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
+            { trusteeId: 'trustee-001', outcome: 'converted', newValue: '555-010-0123' },
             { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
             {
               trusteeId: 'trustee-003',
@@ -81,8 +81,8 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       });
       expect(setZoomInfo).toHaveBeenCalledTimes(1);
       expect(setZoomInfo).toHaveBeenCalledWith('trustee-001', {
-        ...zoomInfo('(680) 214-4529'),
-        phone: '680-214-4529',
+        ...zoomInfo('(555) 010-0123'),
+        phone: '555-010-0123',
       });
       expect(updateTrustee).not.toHaveBeenCalled();
       expect(createTrusteeHistory).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         .mockRejectedValueOnce(new Error('Update failed'))
         .mockResolvedValueOnce(undefined);
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+        trusteeWithPhone('trustee-001', '(555) 010-0123'),
         trusteeWithPhone('trustee-002', '(555) 123-4567'),
       ]);
 
@@ -112,7 +112,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         summary: {
           counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 1 },
           results: [
-            { trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' },
+            { trusteeId: 'trustee-001', outcome: 'failed', newValue: '555-010-0123' },
             { trusteeId: 'trustee-002', outcome: 'converted', newValue: '555-123-4567' },
           ],
         },
@@ -123,7 +123,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       const logError = vi.spyOn(context.logger, 'error');
       vi.spyOn(repo, 'setZoomInfo').mockRejectedValueOnce('plain string');
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+        trusteeWithPhone('trustee-001', '(555) 010-0123'),
       ]);
 
       const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
@@ -132,7 +132,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         kind: 'complete',
         summary: {
           counts: { converted: 0, alreadyValid: 0, flagged: 0, failed: 1 },
-          results: [{ trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' }],
+          results: [{ trusteeId: 'trustee-001', outcome: 'failed', newValue: '555-010-0123' }],
         },
       });
       expect(logError).toHaveBeenCalledWith(
@@ -167,7 +167,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         .mockRejectedValueOnce(tooManyRequests())
         .mockResolvedValue(undefined);
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+        trusteeWithPhone('trustee-001', '(555) 010-0123'),
       ]);
 
       const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
@@ -181,7 +181,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         kind: 'complete',
         summary: {
           counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 0 },
-          results: [{ trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' }],
+          results: [{ trusteeId: 'trustee-001', outcome: 'converted', newValue: '555-010-0123' }],
         },
       });
     });
@@ -208,7 +208,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(tooManyRequests());
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+        trusteeWithPhone('trustee-001', '(555) 010-0123'),
         trusteeWithPhone('trustee-002', '(555) 123-4567'),
       ]);
 
@@ -259,7 +259,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
     test('should count trustees converted before a continuation as converted, not already valid', async () => {
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '680-214-4529'),
+        trusteeWithPhone('trustee-001', '555-010-0123'),
         trusteeWithPhone('trustee-002', '555-123-4567'),
         trusteeWithPhone('trustee-003', '214-45'),
       ]);
@@ -289,7 +289,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
   describe('runCorrectionPass continuation counts', () => {
     test('should not report more earlier conversions than there are already valid trustees', async () => {
       vi.spyOn(repo, 'listTrustees').mockResolvedValue([
-        trusteeWithPhone('trustee-001', '680-214-4529'),
+        trusteeWithPhone('trustee-001', '555-010-0123'),
       ]);
 
       const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 5 });
@@ -327,7 +327,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
     test('should write a CSV of only the flagged trustees to the migration container', async () => {
       const location = await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
-        { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
+        { trusteeId: 'trustee-001', outcome: 'converted', newValue: '555-010-0123' },
         { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
         flagged('trustee-003', 'Pat Poe', '214-45'),
         flagged('trustee-004', 'Sam Moe', undefined, 'Zoom phone is empty or missing.'),
@@ -372,18 +372,18 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
     test('should quote values containing commas, quotes, or line breaks', async () => {
       await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
-        flagged('trustee-001', 'Poe, Pat "PJ"', '680-214-4529,\n555'),
+        flagged('trustee-001', 'Poe, Pat "PJ"', '555-010-0123,\n555'),
       ]);
 
       const row = writeObject.mock.calls[0][2].slice(HEADER.length + 1);
       expect(row).toEqual(
-        'trustee-001,"Poe, Pat ""PJ""","680-214-4529,\n555",Zoom phone has 5 digits.',
+        'trustee-001,"Poe, Pat ""PJ""","555-010-0123,\n555",Zoom phone has 5 digits.',
       );
     });
 
     test.each([
       ['=SUM(A1)', "'=SUM(A1)"],
-      ['+2 (680) 214-4529', "'+2 (680) 214-4529"],
+      ['+2 (555) 010-0123', "'+2 (555) 010-0123"],
       ['-5', "'-5"],
       ['@cmd', "'@cmd"],
       ['\tfoo', "'\tfoo"],
@@ -421,29 +421,29 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
   describe('convertZoomPhone', () => {
     test.each([
-      ['680-214-4529'],
-      ['1-680-214-4529'],
-      ['680-214-4529 x123'],
-      ['680-214-4529 ext. 55'],
+      ['555-010-0123'],
+      ['1-555-010-0123'],
+      ['555-010-0123 x123'],
+      ['555-010-0123 ext. 55'],
     ])('should treat "%s" as already valid', (stored) => {
       expect(convertZoomPhone(stored)).toEqual({ outcome: 'alreadyValid' });
     });
 
     test.each([
-      ['(680) 214-4529', '680-214-4529'],
-      ['(680)214-4529', '680-214-4529'],
-      ['(680) 214-4529 x123', '680-214-4529 x123'],
-      ['680.214.4529', '680-214-4529'],
-      ['6802144529', '680-214-4529'],
-      ['(680) 214-4529 ext. 55', '680-214-4529 x55'],
-      ['(680) 214-4529 X123', '680-214-4529 x123'],
-      ['(680) 214-4529 EXT. 55', '680-214-4529 x55'],
-      ['(680) 214-4529 extension 55', '680-214-4529 x55'],
-      ['(680) 214-4529 extension: 55', '680-214-4529 x55'],
-      ['(680) 214-4529 extension. 55', '680-214-4529 x55'],
-      ['1 (680) 214-4529', '1-680-214-4529'],
-      ['+1 (680) 214-4529', '1-680-214-4529'],
-      [' 680-214-4529 ', '680-214-4529'],
+      ['(555) 010-0123', '555-010-0123'],
+      ['(555)010-0123', '555-010-0123'],
+      ['(555) 010-0123 x123', '555-010-0123 x123'],
+      ['555.010.0123', '555-010-0123'],
+      ['5550100123', '555-010-0123'],
+      ['(555) 010-0123 ext. 55', '555-010-0123 x55'],
+      ['(555) 010-0123 X123', '555-010-0123 x123'],
+      ['(555) 010-0123 EXT. 55', '555-010-0123 x55'],
+      ['(555) 010-0123 extension 55', '555-010-0123 x55'],
+      ['(555) 010-0123 extension: 55', '555-010-0123 x55'],
+      ['(555) 010-0123 extension. 55', '555-010-0123 x55'],
+      ['1 (555) 010-0123', '1-555-010-0123'],
+      ['+1 (555) 010-0123', '1-555-010-0123'],
+      [' 555-010-0123 ', '555-010-0123'],
     ])('should convert "%s" to "%s"', (stored, expected) => {
       const result = convertZoomPhone(stored);
 
@@ -458,13 +458,13 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
     test.each([
       ['214-45', 'Zoom phone has 5 digits.'],
-      ['680-214-452', 'Zoom phone has 9 digits.'],
-      ['2-680-214-4529', 'Zoom phone has 11 digits.'],
-      ['680-214-45299', 'Zoom phone has 11 digits.'],
-      ['+2 (680) 214-4529', 'Zoom phone has 11 digits.'],
+      ['555-010-012', 'Zoom phone has 9 digits.'],
+      ['2-555-010-0123', 'Zoom phone has 11 digits.'],
+      ['555-010-01239', 'Zoom phone has 11 digits.'],
+      ['+2 (555) 010-0123', 'Zoom phone has 11 digits.'],
       ['CALL-ME-NOW', UNEXPECTED],
-      ['680+214-4529', UNEXPECTED],
-      ['(680) 214-4529 x1234567', BAD_FORMAT],
+      ['555+010-0123', UNEXPECTED],
+      ['(555) 010-0123 x1234567', BAD_FORMAT],
       ['', EMPTY],
       ['   ', EMPTY],
       [undefined, EMPTY],

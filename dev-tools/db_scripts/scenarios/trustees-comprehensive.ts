@@ -5,7 +5,7 @@
  * Seeds 41 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
- *   - New York: 35 trustees, using only division codes 081 (Southern District,
+ *   - New York: 41 trustees, using only division codes 081 (Southern District,
  *     Manhattan, courtId 0208) and 091 (Western District, Buffalo, courtId 0209)
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
@@ -1210,19 +1210,19 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   // ═══════════════════════════════════════════════════════════════════════════
   // CAMS-975: Zoom phones stored in a non-conforming format
   // ═══════════════════════════════════════════════════════════════════════════
-  // The Zoom Info Import stored unvalidated phones like "(680) 214-4529", which fail
+  // The Zoom Info Import stored unvalidated phones like "(555) 010-0123", which fail
   // PHONE_REGEX and block saving Zoom info. These trustees reproduce that state for the
   // CORRECT-TRUSTEE-ZOOM-PHONES migration (docs/operations/correct-trustee-zoom-phones.md).
   // Every other Zoom field is valid, so only the phone can block a save. mongoUpsert
   // bypasses validation, so the bad phones are stored as written; re-seeding restores
   // them for another pass. No appointments: the Zoom edit form does not need any.
   const cams975ZoomPhones: Array<{ firstName: string; phone: string }> = [
-    { firstName: 'Alpha', phone: '(680) 214-4529' }, // converts to 680-214-4529
-    { firstName: 'Bravo', phone: '(680)214-4529' }, // converts to 680-214-4529
-    { firstName: 'Charlie', phone: '(680) 214-4529 x123' }, // converts to 680-214-4529 x123
+    { firstName: 'Alpha', phone: '(555) 010-0123' }, // converts to 555-010-0123
+    { firstName: 'Bravo', phone: '(555)010-0123' }, // converts to 555-010-0123
+    { firstName: 'Charlie', phone: '(555) 010-0123 x123' }, // converts to 555-010-0123 x123
     { firstName: 'Delta', phone: '214-45' }, // flagged for review
     { firstName: 'Echo', phone: '' }, // flagged for review
-    { firstName: 'Foxtrot', phone: '680-214-4529' }, // already valid
+    { firstName: 'Foxtrot', phone: '555-010-0123' }, // already valid
   ];
   cams975ZoomPhones.forEach(({ firstName, phone }, index) => {
     const n = String(index + 1).padStart(2, '0');
@@ -1235,9 +1235,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         state: 'NY',
         city: 'New York',
         zoomInfo: {
-          link: `https://zoom.us/j/68021445${n}`,
+          link: `https://zoom.us/j/55501001${n}`,
           phone,
-          meetingId: `68021445${n}`,
+          meetingId: `55501001${n}`,
           passcode: `00000000${n}`,
           accountEmail: `${firstName.toLowerCase()}.zoomfix@example.com`,
         },

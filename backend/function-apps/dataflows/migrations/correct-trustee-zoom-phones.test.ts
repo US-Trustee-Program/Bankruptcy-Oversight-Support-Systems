@@ -64,7 +64,7 @@ describe('correct-trustee-zoom-phones migration', () => {
 
   test('should record the flagged trustees in the report and the summary log', async () => {
     const results: Summary['results'] = [
-      { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
+      { trusteeId: 'trustee-001', outcome: 'converted', newValue: '555-010-0123' },
       { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
       {
         trusteeId: 'trustee-003',
@@ -114,7 +114,7 @@ describe('correct-trustee-zoom-phones migration', () => {
     runPass.mockResolvedValue(
       complete(
         [
-          { trusteeId: 'trustee-001', outcome: 'failed', newValue: '680-214-4529' },
+          { trusteeId: 'trustee-001', outcome: 'failed', newValue: '555-010-0123' },
           { trusteeId: 'trustee-002', outcome: 'failed', newValue: '555-123-4567' },
           { trusteeId: 'trustee-003', outcome: 'converted', newValue: '555-987-6543' },
         ],

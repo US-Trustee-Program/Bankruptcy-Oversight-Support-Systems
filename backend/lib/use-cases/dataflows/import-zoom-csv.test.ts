@@ -188,7 +188,7 @@ describe('import-zoom-csv', () => {
       },
       {
         field: 'phone',
-        override: { phone: '(680) 214-4529' },
+        override: { phone: '(555) 010-0123' },
         message: FIELD_VALIDATION_MESSAGES.PHONE_NUMBER,
       },
     ])('should reject malformed $field and not update trustee', async ({ override, message }) => {

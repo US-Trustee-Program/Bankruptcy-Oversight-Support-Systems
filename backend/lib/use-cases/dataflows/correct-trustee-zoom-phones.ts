@@ -18,7 +18,7 @@ const NUMBER_PART_CHARACTERS = /^\+?[\d\s().-]+$/;
 
 /**
  * One-time migration rule for Zoom phones the Zoom Info Import stored
- * without validation, e.g. "(680) 214-4529". Converts what can be unambiguously
+ * without validation, e.g. "(555) 010-0123". Converts what can be unambiguously
  * reformatted to PHONE_REGEX and flags everything else for review.
  */
 export function convertZoomPhone(stored: string | undefined): ZoomPhoneConversion {

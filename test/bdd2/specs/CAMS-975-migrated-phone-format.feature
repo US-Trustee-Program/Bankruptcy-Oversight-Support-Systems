@@ -15,11 +15,11 @@ Feature: Trustee edits succeed for trustees with migrated data
   # User Value: Editors can save a trustee's Zoom info without retyping a phone number
   #             that the Zoom Info Import stored in "(123) 456-7890" format.
   Scenario: Saving Zoom info for a trustee whose Zoom phone was corrected
-    Given a trustee whose Zoom phone was imported as "(680) 214-4529"
+    Given a trustee whose Zoom phone was imported as "(555) 010-0123"
     And the stored Zoom phone numbers have been corrected
     When I edit that trustee's Zoom info and save without changing the phone number
     Then the Zoom info is saved
-    And the trustee's Zoom phone is "680-214-4529"
+    And the trustee's Zoom phone is "555-010-0123"
 
   Scenario Outline: Stored Zoom phone numbers are converted to the accepted format
     Given a trustee whose stored Zoom phone is "<stored>"
@@ -29,11 +29,11 @@ Feature: Trustee edits succeed for trustees with migrated data
 
     Examples:
       | stored                | corrected           |
-      | (680) 214-4529        | 680-214-4529        |
-      | (680)214-4529         | 680-214-4529        |
-      | (680) 214-4529 x123   | 680-214-4529 x123   |
-      | 680-214-4529          | 680-214-4529        |
-      | 1-680-214-4529        | 1-680-214-4529      |
+      | (555) 010-0123        | 555-010-0123        |
+      | (555)010-0123         | 555-010-0123        |
+      | (555) 010-0123 x123   | 555-010-0123 x123   |
+      | 555-010-0123          | 555-010-0123        |
+      | 1-555-010-0123        | 1-555-010-0123      |
 
   Scenario: A stored Zoom phone that cannot be converted is flagged for review
     Given a trustee whose stored Zoom phone is "214-45"
@@ -53,7 +53,7 @@ Feature: Trustee edits succeed for trustees with migrated data
     Then the run reports how many Zoom phones were converted, already valid, and flagged for review
 
   Scenario: The Zoom Info Import does not store a non-conforming Zoom phone
-    Given a Zoom import row whose phone is "(680) 214-4529"
+    Given a Zoom import row whose phone is "(555) 010-0123"
     When the Zoom Info Import processes that row
     Then the matched trustee's Zoom info is not changed
     And the row is reported as an error

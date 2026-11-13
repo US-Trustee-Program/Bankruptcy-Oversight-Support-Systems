@@ -1553,7 +1553,7 @@ describe('TrusteesMongoRepository', () => {
   describe('setZoomInfo', () => {
     const zoomInfo = {
       link: 'https://us02web.zoom.us/j/1234567890',
-      phone: '680-214-4529',
+      phone: '555-010-0123',
       meetingId: '1234567890',
       passcode: '0123456789',
       accountEmail: 'trustee@example.com',
