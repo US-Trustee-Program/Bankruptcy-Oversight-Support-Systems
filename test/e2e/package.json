@@ -55,7 +55,7 @@
   "dependencies": {
     "@azure/functions": "4.17.0",
     "@faker-js/faker": "10.5.0",
-    "mongodb": "7.7.0",
+    "mongodb": "7.8.0",
     "mssql": "12.7.13",
     "ts-node": "10.9.2",
     "tsx": "4.23.15"
