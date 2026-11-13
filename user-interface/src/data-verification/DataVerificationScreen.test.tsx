@@ -1219,7 +1219,7 @@ describe('Review Orders screen', () => {
       );
     }
 
-    test('lists each open appointment task as a "Trustee Appointment" row titled by court, division and chapter', async () => {
+    test('lists each open appointment task as a row in the queue', async () => {
       setupFeatureFlags({ 'trustee-verification-enabled': true });
       vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
       vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
@@ -1229,9 +1229,7 @@ describe('Review Orders screen', () => {
 
       renderScreen();
 
-      const row = await screen.findByTestId(rowTestId);
-      expect(row).toBeVisible();
-      expect(row).toHaveTextContent('Trustee Appointment');
+      expect(await screen.findByTestId(rowTestId)).toBeVisible();
     });
 
     test('neither fetches nor shows appointment tasks when trustee verification is off', async () => {

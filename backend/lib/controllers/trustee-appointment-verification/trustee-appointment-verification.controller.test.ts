@@ -46,6 +46,7 @@ describe('TrusteeAppointmentVerificationController', () => {
     expect(response.body.data).toEqual([
       expect.objectContaining({ id: 'task-1', taskType: 'trustee-appointment', caseCount: 1 }),
     ]);
+    expect(response.body.meta).toEqual({ self: context.request.url });
   });
 
   test('returns 404 when trustee-verification-enabled is off', async () => {

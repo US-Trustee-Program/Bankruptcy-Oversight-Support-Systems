@@ -70,7 +70,6 @@ describe('Feature: Trustee appointment tasks in the Data Verification queue (Ful
     };
 
     // WHEN: a data verifier opens the queue
-    console.log('[TEST] Rendering the Data Verification queue');
     await TestSetup.forUser(TestSessions.dataVerifier())
       .withFeatureFlag('trustee-verification-enabled')
       .withOffices([office])
@@ -84,7 +83,6 @@ describe('Feature: Trustee appointment tasks in the Data Verification queue (Ful
     await waitForAppLoad();
 
     // THEN: the task is listed with its type label and court/division/chapter subject
-    console.log('[TEST] Asserting the appointment task row');
     const row = await screen.findByTestId(`accordion-heading-${task.id}`, {}, { timeout: 10000 });
     expect(row.textContent).toContain('Trustee Appointment');
     expect(row.textContent).toContain(`${court.courtName} (${court.courtDivisionName}): Chapter 7`);

@@ -313,8 +313,9 @@ export function isAppointmentMatch(
   appointments: TrusteeAppointment[],
   courtId: string,
   divisionCode: string,
-  chapter: string,
+  chapter: string | undefined,
 ): boolean {
+  if (!chapter) return false;
   const normalizedChapter = normalizeChapter(chapter);
   return appointments.some(
     (a) =>
@@ -331,8 +332,9 @@ export function hasAppointmentForCase(
   appointments: TrusteeAppointment[],
   courtId: string,
   divisionCode: string,
-  chapter: string,
+  chapter: string | undefined,
 ): boolean {
+  if (!chapter) return false;
   const normalizedChapter = normalizeChapter(chapter);
   return appointments.some((a) =>
     appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
