@@ -134,8 +134,47 @@ describe('TrusteeAppointmentVerificationController', () => {
     expect(findById).not.toHaveBeenCalled();
   });
 
-  test('rejects any method other than GET', async () => {
-    context.request.method = 'PATCH';
+  describe('PATCH refresh', () => {
+    beforeEach(() => {
+      context.request.method = 'PATCH';
+      context.request.params = { id: 'task-1' };
+      context.request.query = { trusteeId: 'trustee-1' };
+      context.request.body = { action: 'refresh' };
+      vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+    });
+
+    test("refreshes the task by its id within the request's trusteeId and returns the outcome", async () => {
+      const findById = vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+      context.request.params = { id: 'task-9' };
+      context.request.query = { trusteeId: 'trustee-7' };
+
+      const response = await new TrusteeAppointmentVerificationController().handleRequest(context);
+
+      expect(findById).toHaveBeenCalledWith('task-9', 'trustee-7');
+      expect(response.statusCode).toBe(200);
+      expect(response.body.data).toEqual(expect.objectContaining({ outcome: 'still-uncovered' }));
+      expect(response.body.meta).toEqual({ self: context.request.url });
+    });
+
+    test.each([
+      ['no id', { params: {} }, 'Missing task ID.'],
+      ['no trusteeId', { query: {} }, 'Missing trusteeId.'],
+      ['no action', { body: {} }, 'Missing or invalid action.'],
+      ['an unknown action', { body: { action: 'reject' } }, 'Missing or invalid action.'],
+      ['no body', { body: undefined }, 'Missing or invalid action.'],
+    ])('rejects a request with %s', async (_, overrides, message) => {
+      Object.assign(context.request, overrides);
+      const findById = vi.spyOn(MockMongoRepository.prototype, 'findById');
+
+      await expect(
+        new TrusteeAppointmentVerificationController().handleRequest(context),
+      ).rejects.toThrow(message);
+      expect(findById).not.toHaveBeenCalled();
+    });
+  });
+
+  test('rejects any method other than GET or PATCH', async () => {
+    context.request.method = 'POST';
 
     await expect(
       new TrusteeAppointmentVerificationController().handleRequest(context),

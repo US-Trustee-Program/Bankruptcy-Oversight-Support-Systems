@@ -141,7 +141,81 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
     });
   });
 
+  describe('resolve', () => {
+    const expectedResolveFilter = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+        },
+        { condition: 'EQUALS', leftOperand: { name: 'trusteeId' }, rightOperand: 'trustee-1' },
+        { condition: 'EQUALS', leftOperand: { name: 'id' }, rightOperand: 'task-1' },
+      ],
+    };
+
+    test('marks the task approved, stamped with the resolving user', async () => {
+      const findOneAndUpdate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ id: 'task-1' });
+
+      await repository.resolve('task-1', 'trustee-1', user);
+
+      expect(findOneAndUpdate).toHaveBeenCalledWith(expectedResolveFilter, {
+        $set: { status: 'approved', updatedOn: expect.any(String), updatedBy: user },
+      });
+    });
+
+    test('throws a not-found error when no task matches', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const result = repository.resolve('missing', 'trustee-1', user);
+
+      await expect(result).rejects.toBeInstanceOf(NotFoundError);
+      await expect(result).rejects.toThrow('Trustee appointment task missing not found.');
+    });
+
+    test('wraps any other failure', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
+        new Error('boom'),
+      );
+
+      await expect(repository.resolve('task-1', 'trustee-1', user)).rejects.toThrow(
+        'Failed to resolve trustee appointment task task-1.',
+      );
+    });
+  });
+
   describe('openOrJoin', () => {
+    const expectedReopenFilter = {
+      ...expectedFilter,
+      values: [
+        ...expectedFilter.values,
+        { condition: 'NOT_EQUALS', leftOperand: { name: 'status' }, rightOperand: 'pending' },
+      ],
+    };
+
+    // The reset must run BEFORE the upsert: if it ran after, a second concurrent joiner's reset
+    // could overwrite caseIds and drop the first joiner's case.
+    test('first resets a non-pending task for the tuple to pending with only the joining case', async () => {
+      const findOneAndUpdate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(null);
+
+      await repository.openOrJoin(key, 'case-2', 'appointment-inactive', user);
+
+      expect(findOneAndUpdate).toHaveBeenNthCalledWith(1, expectedReopenFilter, {
+        $set: {
+          status: 'pending',
+          caseIds: ['case-2'],
+          reason: 'appointment-inactive',
+          updatedOn: expect.any(String),
+          updatedBy: user,
+        },
+      });
+    });
+
     test('upserts one document keyed by the tuple, adding the case to caseIds', async () => {
       const findOneAndUpdate = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
@@ -149,8 +223,8 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
 
       await repository.openOrJoin(key, 'case-1', 'no-appointment', user);
 
-      expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
-      expect(findOneAndUpdate).toHaveBeenCalledWith(
+      expect(findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(findOneAndUpdate).toHaveBeenLastCalledWith(
         expectedFilter,
         {
           $addToSet: { caseIds: 'case-1' },
@@ -179,13 +253,16 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
 
       await repository.openOrJoin(key, 'case-1', 'appointment-inactive', user);
 
-      const [, update] = findOneAndUpdate.mock.calls[0];
+      const [, reopen] = findOneAndUpdate.mock.calls[0];
+      const [, update] = findOneAndUpdate.mock.calls[1];
       expect(update.$setOnInsert.createdOn).toEqual(update.$set.updatedOn);
+      expect(reopen.$set.updatedOn).toEqual(update.$set.updatedOn);
     });
 
     test('retries once when a concurrent insert won the unique index', async () => {
       const findOneAndUpdate = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
         .mockRejectedValueOnce(duplicateKeyError)
         .mockResolvedValueOnce(null);
 
@@ -193,14 +270,45 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
         repository.openOrJoin(key, 'case-1', 'no-appointment', user),
       ).resolves.toBeUndefined();
 
-      expect(findOneAndUpdate).toHaveBeenCalledTimes(2);
-      expect(findOneAndUpdate.mock.calls[1]).toEqual(findOneAndUpdate.mock.calls[0]);
+      expect(findOneAndUpdate).toHaveBeenCalledTimes(3);
+      expect(findOneAndUpdate.mock.calls[2]).toEqual(findOneAndUpdate.mock.calls[1]);
     });
 
     test('throws when the retry also fails', async () => {
       const findOneAndUpdate = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
         .mockRejectedValue(duplicateKeyError);
+
+      await expect(repository.openOrJoin(key, 'case-1', 'no-appointment', user)).rejects.toThrow(
+        'Failed to open or join trustee appointment task for trustee trustee-1',
+      );
+      expect(findOneAndUpdate).toHaveBeenCalledTimes(3);
+    });
+
+    test.each([
+      { write: 'reopen', priorSuccesses: 0 },
+      { write: 'upsert', priorSuccesses: 1 },
+    ])(
+      'rethrows a throttling error on the $write unchanged so callers can classify it as transient',
+      async ({ priorSuccesses }) => {
+        const throttled = new TooManyRequestsError('TEST', { message: 'Throttled.' });
+        const findOneAndUpdate = vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate');
+        for (let i = 0; i < priorSuccesses; i++) findOneAndUpdate.mockResolvedValueOnce(null);
+        findOneAndUpdate.mockRejectedValue(throttled);
+
+        await expect(repository.openOrJoin(key, 'case-1', 'no-appointment', user)).rejects.toBe(
+          throttled,
+        );
+        expect(findOneAndUpdate).toHaveBeenCalledTimes(priorSuccesses + 1);
+      },
+    );
+
+    test('propagates a non-duplicate-key error without retrying', async () => {
+      const findOneAndUpdate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
+        .mockRejectedValue(new Error('Write failed'));
 
       await expect(repository.openOrJoin(key, 'case-1', 'no-appointment', user)).rejects.toThrow(
         'Failed to open or join trustee appointment task for trustee trustee-1',
@@ -208,19 +316,7 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
       expect(findOneAndUpdate).toHaveBeenCalledTimes(2);
     });
 
-    test('rethrows a throttling error unchanged so callers can classify it as transient', async () => {
-      const throttled = new TooManyRequestsError('TEST', { message: 'Throttled.' });
-      const findOneAndUpdate = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
-        .mockRejectedValue(throttled);
-
-      await expect(repository.openOrJoin(key, 'case-1', 'no-appointment', user)).rejects.toBe(
-        throttled,
-      );
-      expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    test('propagates a non-duplicate-key error without retrying', async () => {
+    test('does not upsert when reopening a resolved task fails', async () => {
       const findOneAndUpdate = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
         .mockRejectedValue(new Error('Write failed'));

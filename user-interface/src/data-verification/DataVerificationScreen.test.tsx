@@ -18,6 +18,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.m
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import * as consolidationOrderAccordionModule from './consolidation/ConsolidationOrderAccordion';
 import * as trusteeVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
+import * as trusteeAppointmentRowModule from './trustee-appointment-verification/TrusteeAppointmentVerificationRow';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
@@ -1218,6 +1219,47 @@ describe('Review Orders screen', () => {
         </BrowserRouter>,
       );
     }
+
+    test('an update from an appointment task replaces its row and shows the alert at the top of the screen', async () => {
+      setupFeatureFlags({ 'trustee-verification-enabled': true });
+      const otherTask: TrusteeAppointmentVerificationListItem = {
+        ...appointmentTask,
+        id: 'appointment-task-2',
+      };
+      const message = "Trustee Jane Smith's appointment verified for 3 cases.";
+      vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeAppointmentVerifications').mockResolvedValue({
+        data: [appointmentTask, otherTask],
+      });
+      mockAccordionOnOrderUpdate<trusteeAppointmentRowModule.TrusteeAppointmentVerificationRowProps>(
+        trusteeAppointmentRowModule,
+        'TrusteeAppointmentVerificationRow',
+        'mock-trustee-appointment',
+        (order) =>
+          order.id === appointmentTask.id && order.status === 'pending'
+            ? [
+                { message, type: UswdsAlertStyle.Success, timeOut: 8 },
+                { ...appointmentTask, status: 'approved' },
+              ]
+            : undefined,
+      );
+
+      renderScreen();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-container-data-verification-alert')).toHaveClass(
+          'visible',
+        );
+      });
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(message);
+      expect(
+        screen.getByTestId(`mock-trustee-appointment-${appointmentTask.id}-approved`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-trustee-appointment-${otherTask.id}-pending`),
+      ).toBeInTheDocument();
+    });
 
     test('lists each open appointment task as a row in the queue', async () => {
       setupFeatureFlags({ 'trustee-verification-enabled': true });

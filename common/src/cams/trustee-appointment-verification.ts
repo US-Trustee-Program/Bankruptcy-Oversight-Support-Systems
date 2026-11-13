@@ -83,3 +83,26 @@ export type TrusteeAppointmentVerificationDetail = TrusteeAppointmentVerificatio
   trusteeName: string;
   appointments: TrusteeAppointmentWithAgreement[];
 };
+
+/**
+ * The outcome of a data verifier's "Refresh Trustee Appointments" on one appointment task
+ * (CAMS-956 Slice 3). 'resolved': the trustee now holds an active covering appointment, so the
+ * task's cases were marked covered (updatedCaseCount counts only the cases still assigned to this
+ * trustee) and the task was approved. 'still-uncovered': nothing changed; the court, division and
+ * chapter names are for the verifier's warning message.
+ */
+export type TrusteeAppointmentRefreshResult =
+  | {
+      outcome: 'resolved';
+      trusteeName: string;
+      updatedCaseCount: number;
+      task: TrusteeAppointmentVerificationListItem;
+    }
+  | {
+      outcome: 'still-uncovered';
+      courtId: string;
+      courtName?: string;
+      divisionCode: string;
+      courtDivisionName?: string;
+      chapter: string;
+    };

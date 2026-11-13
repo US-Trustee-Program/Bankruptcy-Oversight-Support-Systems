@@ -90,6 +90,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
       openOrJoin: mockOpenOrJoin,
       search: vi.fn(),
       findById: vi.fn(),
+      resolve: vi.fn(),
       release: vi.fn(),
     });
 
