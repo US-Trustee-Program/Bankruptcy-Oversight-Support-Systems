@@ -1,6 +1,7 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
+
 - **Total Workflows**: 38
 - **Main Workflows**: 19
 - **Reusable Workflows**: 19
@@ -10,6 +11,7 @@
 The diagrams use color coding to distinguish different types of workflow components:
 
 **Triggers** - Event triggers that start workflows:
+
 ```mermaid
 flowchart LR
     trigger_example(["trigger (push, schedule, etc.)"])
@@ -18,6 +20,7 @@ flowchart LR
 ```
 
 **Main Workflows** - Primary workflow files that can be triggered directly:
+
 ```mermaid
 flowchart LR
     main_workflow_example["Main Workflow"]
@@ -26,6 +29,7 @@ flowchart LR
 ```
 
 **Reusable Workflows** - Workflow files that are called by other workflows:
+
 ```mermaid
 flowchart LR
     reusable_workflow_example["Reusable Workflow"]
@@ -34,6 +38,7 @@ flowchart LR
 ```
 
 **Jobs** - Individual jobs within workflows showing internal dependencies:
+
 ```mermaid
 flowchart LR
     job_example["job-name"]
@@ -41,12 +46,12 @@ flowchart LR
     class job_example job
 ```
 
-
 ## Workflow Flow Diagrams by Trigger
 
 ### Delete Triggered Workflows
 
 Workflows triggered by `delete`:
+
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 
 ```mermaid
@@ -86,6 +91,7 @@ flowchart LR
 ### Pull_request Triggered Workflows
 
 Workflows triggered by `pull_request`:
+
 - **Pull Request E2E Validation** (`pr-validation.yml`)
 
 ```mermaid
@@ -110,6 +116,7 @@ flowchart LR
 ### Push Triggered Workflows
 
 Workflows triggered by `push`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
@@ -357,7 +364,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -489,6 +497,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **DORA Metrics** (`dora-metrics.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
@@ -510,6 +519,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_publish["Publish reports to storage"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
@@ -545,6 +555,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_publish
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
@@ -583,6 +594,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_publish job
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
@@ -609,7 +621,8 @@ flowchart LR
 
 ### Workflow_dispatch Triggered Workflows
 
-The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown individually below:
+The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown
+individually below:
 
 #### Clean up Flexion Azure Resources
 
@@ -943,7 +956,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -1219,6 +1233,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_publish["Publish reports to storage"]
 
     trigger_workflow_dispatch --> dora_metrics_yml
     dora_metrics_yml --> dora_metrics_yml_deployment_frequency
@@ -1230,6 +1245,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_publish
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1244,6 +1260,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_publish job
 ```
 
 #### Stand Alone E2E Test Runs
@@ -1379,6 +1396,7 @@ flowchart LR
 ### Workflow_run Triggered Workflows
 
 Workflows triggered by `workflow_run`:
+
 - **slack-notification** (`slack-notification.yml`)
 
 ```mermaid
@@ -1507,6 +1525,7 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
+
 - **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
@@ -1521,7 +1540,7 @@ flowchart LR
   - Jobs: 1
 - **DORA Metrics** (`dora-metrics.yml`)
   - Triggers: schedule, workflow_dispatch
-  - Jobs: 4
+  - Jobs: 5
 - **Active Issue Notification** (`active-issue-notification.yml`)
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
@@ -1565,6 +1584,7 @@ flowchart LR
   - Jobs: 1
 
 ### Reusable Workflows
+
 - **Reusable DORA metrics report** (`reusable-dora-metrics-report.yml`)
   - Jobs: 1
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
