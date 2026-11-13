@@ -9,7 +9,7 @@ import {
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { formatDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
@@ -102,28 +102,28 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   const [detailLoadError, setDetailLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshAlert, setRefreshAlert] = useState<RefreshAlert | null>(null);
-  // The Refresh button's disabled state drops focus, and resolving unmounts it, so focus moves to
-  // the element that replaces it. Only a refresh made here hands off focus on resolve.
+  // Resolving unmounts the Refresh button, so focus moves to the statement that replaces it. Only
+  // a refresh made here hands off focus on resolve.
   const justResolvedRef = useRef(false);
   const resolvedStatementRef = useRef<HTMLParagraphElement>(null);
-  const refreshAlertRef = useRef<HTMLDivElement>(null);
-  const refreshProgressRef = useRef<HTMLDivElement>(null);
+  const refreshAlertRef = useRef<AlertRefType>(null);
 
   /**
    * Refetches on every expand rather than caching the first load: another write (e.g. a case
    * joining the task through openOrJoin) can change caseIds/reason after the first expand, and a
    * verifier who hits a transient load failure can retry simply by collapsing and re-expanding.
    */
+  async function loadDetail() {
+    const response = await Api2.getTrusteeAppointmentVerificationDetail(order.id, order.trusteeId);
+    setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
+  }
+
   async function fetchDetail() {
     if (isLoadingDetail) return;
     setIsLoadingDetail(true);
     setDetailLoadError(false);
     try {
-      const response = await Api2.getTrusteeAppointmentVerificationDetail(
-        order.id,
-        order.trusteeId,
-      );
-      setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
+      await loadDetail();
     } catch {
       setDetailLoadError(true);
     } finally {
@@ -132,41 +132,47 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   }
 
   /**
-   * "Refresh Trustee Appointments": the backend decides whether an active
-   * covering appointment now exists. Resolved goes up to the queue (row status + top alert); still
-   * uncovered or a failure stays here as an inline alert, and the task stays open.
+   * "Refresh Trustee Appointments": the backend decides whether an active covering appointment now
+   * exists. Resolved goes up to the queue (row status + top alert); still uncovered or a failure
+   * stays here in the inline alert, and the task stays open. The button is never disabled, so
+   * focus stays on it and the verifier can retry at once.
    */
   async function refresh() {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     setRefreshAlert(null);
+    let result: TrusteeAppointmentRefreshResult;
     try {
       const response = await Api2.refreshTrusteeAppointmentVerification(order.id, order.trusteeId);
-      const result = (response as ResponseBody<TrusteeAppointmentRefreshResult>).data;
-      if (result.outcome === 'resolved') {
-        justResolvedRef.current = true;
-        onOrderUpdate(
-          {
-            message: buildRefreshResolvedMessage(result.trusteeName, result.updatedCaseCount),
-            type: UswdsAlertStyle.Success,
-            timeOut: 8,
-          },
-          result.task,
-        );
-      } else {
-        setRefreshAlert({
-          type: UswdsAlertStyle.Warning,
-          message: buildRefreshStillUncoveredMessage(result),
-        });
-      }
-      await reloadAppointments();
+      result = (response as ResponseBody<TrusteeAppointmentRefreshResult>).data;
     } catch {
+      setIsRefreshing(false);
       setRefreshAlert({
         type: UswdsAlertStyle.Error,
         message: 'Unable to refresh trustee appointments. Try again later.',
       });
-    } finally {
-      setIsRefreshing(false);
+      return;
     }
+    // The call has settled, so end the progress state now. The reload below runs silently and
+    // must not hold the spinner or the button.
+    setIsRefreshing(false);
+    if (result.outcome === 'resolved') {
+      justResolvedRef.current = true;
+      onOrderUpdate(
+        {
+          message: buildRefreshResolvedMessage(result.trusteeName, result.updatedCaseCount),
+          type: UswdsAlertStyle.Success,
+          timeOut: 8,
+        },
+        result.task,
+      );
+    } else {
+      setRefreshAlert({
+        type: UswdsAlertStyle.Warning,
+        message: buildRefreshStillUncoveredMessage(result),
+      });
+    }
+    await reloadAppointments();
   }
 
   /**
@@ -176,11 +182,7 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
    */
   async function reloadAppointments() {
     try {
-      const response = await Api2.getTrusteeAppointmentVerificationDetail(
-        order.id,
-        order.trusteeId,
-      );
-      setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
+      await loadDetail();
     } catch {
       // Keep the appointments already shown; the warning already tells the verifier to retry.
     }
@@ -203,86 +205,100 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
     }
   }, [isResolved]);
 
+  // The alert region is mounted once and only its content changes, so assistive technology
+  // announces each warning or error as it arrives.
   useEffect(() => {
     if (refreshAlert) {
-      refreshAlertRef.current?.focus();
+      refreshAlertRef.current?.show();
+    } else {
+      refreshAlertRef.current?.hide();
     }
   }, [refreshAlert]);
 
-  useEffect(() => {
-    if (isRefreshing) {
-      refreshProgressRef.current?.focus();
-    }
-  }, [isRefreshing]);
-
   function renderContent() {
-    if (isLoadingDetail) {
-      return <LoadingSpinner caption="Loading task details..." />;
-    }
-    if (detailLoadError) {
-      return (
-        <p className="text-error" role="alert">
-          Unable to load task details. Please try again.
-        </p>
-      );
-    }
-    if (!detail) return null;
-
     return (
       <>
-        {isResolved && (
+        <div
+          role="alert"
+          className="detail-load-alert"
+          data-testid={`detail-load-alert-${order.id}`}
+        >
+          {!isLoadingDetail && detailLoadError && (
+            <p className="text-error">Unable to load task details. Please try again.</p>
+          )}
+        </div>
+        {/* Mounted before the load so the loading text is announced when it appears. */}
+        <div
+          className="detail-load-status"
+          role="status"
+          data-testid={`detail-load-status-${order.id}`}
+        >
+          {isLoadingDetail && (
+            <>
+              <LoadingSpinner id={`detail-load-progress-${order.id}`} aria-hidden="true" />
+              <span>Loading task details...</span>
+            </>
+          )}
+        </div>
+        {!isLoadingDetail && !detailLoadError && detail && (
           <>
-            <p
-              className="resolved-statement"
-              data-testid="resolved-statement"
-              ref={resolvedStatementRef}
-              tabIndex={-1}
-            >
-              {buildResolvedStatement(detail.trusteeName)}
-            </p>
-            <p className="original-reason-label">Original reason</p>
-          </>
-        )}
-        <ReasonStatement detail={detail} />
-        {order.status === 'pending' && (
-          <>
-            <p className="refresh-guidance" data-testid="refresh-guidance">
-              To fix this, a Trustee Admin must add or reactivate the appointment on the
-              trustee&apos;s profile. Then{' '}
-              <Button
-                id={`refresh-trustee-appointments-${order.id}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                onClick={refresh}
-                disabled={isRefreshing}
-              >
-                Refresh Trustee Appointments
-              </Button>{' '}
-              to check again.
-            </p>
-            {isRefreshing && (
-              <div ref={refreshProgressRef} tabIndex={-1}>
-                <LoadingSpinner
-                  id={`refresh-progress-${order.id}`}
-                  caption="Refreshing trustee appointments..."
-                />
-              </div>
+            {isResolved && (
+              <>
+                <p
+                  className="resolved-statement"
+                  data-testid="resolved-statement"
+                  ref={resolvedStatementRef}
+                  tabIndex={-1}
+                >
+                  {buildResolvedStatement(detail.trusteeName)}
+                </p>
+                <p className="original-reason-label">Original reason</p>
+              </>
             )}
-            {refreshAlert && (
-              <div ref={refreshAlertRef} tabIndex={-1}>
+            <ReasonStatement detail={detail} />
+            {order.status === 'pending' && (
+              <>
+                <p className="refresh-guidance" data-testid="refresh-guidance">
+                  To fix this, a Trustee Admin must add or reactivate the appointment on the
+                  trustee&apos;s profile. Then{' '}
+                  <Button
+                    id={`refresh-trustee-appointments-${order.id}`}
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
+                    onClick={refresh}
+                    aria-disabled={isRefreshing}
+                  >
+                    Refresh Trustee Appointments
+                  </Button>{' '}
+                  to check again.
+                </p>
+                <div
+                  className="refresh-status"
+                  role="status"
+                  data-testid={`refresh-status-${order.id}`}
+                >
+                  {isRefreshing && (
+                    <>
+                      <LoadingSpinner id={`refresh-progress-${order.id}`} aria-hidden="true" />
+                      <span>Refreshing trustee appointments...</span>
+                    </>
+                  )}
+                </div>
                 <Alert
                   id={`refresh-alert-${order.id}`}
-                  type={refreshAlert.type}
+                  ref={refreshAlertRef}
+                  className="refresh-alert"
+                  type={refreshAlert?.type ?? UswdsAlertStyle.Warning}
                   role="alert"
-                  message={refreshAlert.message}
+                  message={refreshAlert?.message}
                   inline
                   slim
-                  show
+                  show={refreshAlert !== null}
                 />
-              </div>
+              </>
             )}
+            <AppointmentsTable appointments={detail.appointments} />
           </>
         )}
-        <AppointmentsTable appointments={detail.appointments} />
       </>
     );
   }

@@ -173,14 +173,50 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(screen.queryByText('Loading task details...')).not.toBeInTheDocument();
   });
 
+  test('the detail-load status region is in the DOM before the load, and carries the loading text during it', async () => {
+    let finishLoad: (value: unknown) => void = () => {};
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockReturnValue(
+      new Promise((resolve) => (finishLoad = resolve)) as never,
+    );
+    renderRow();
+    const region = screen.getByTestId(`detail-load-status-${task.id}`);
+    expect(region).toHaveAttribute('role', 'status');
+    expect(region).toBeEmptyDOMElement();
+
+    fireEvent.click(expandButton());
+
+    await waitFor(() => expect(region).toHaveTextContent('Loading task details...'));
+    expect(region.querySelector('.loading-spinner')).toHaveAttribute('aria-hidden', 'true');
+    finishLoad({ data: detail });
+    await waitFor(() => expect(region).toBeEmptyDOMElement());
+  });
+
   test('shows a red alert, announced to screen readers, when loading details fails', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockRejectedValue(new Error('boom'));
     renderRow();
 
     fireEvent.click(expandButton());
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Unable to load task details. Please try again.');
+    const alert = await screen.findByTestId(`detail-load-alert-${task.id}`);
+    await waitFor(() =>
+      expect(alert).toHaveTextContent('Unable to load task details. Please try again.'),
+    );
+  });
+
+  test('the detail-load alert region is in the DOM before details load, so the failure is announced into it', async () => {
+    let failLoad: (reason: unknown) => void = () => {};
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockReturnValue(
+      new Promise((_resolve, reject) => (failLoad = reject)) as never,
+    );
+    renderRow();
+    fireEvent.click(expandButton());
+    const region = screen.getByTestId(`detail-load-alert-${task.id}`);
+    expect(region).toHaveAttribute('role', 'alert');
+    expect(region).toBeEmptyDOMElement();
+
+    failLoad(new Error('boom'));
+
+    await waitFor(() => expect(region).toHaveTextContent('Unable to load task details.'));
   });
 
   test("requests the task's detail with its trustee id, the collection's shard key", async () => {
@@ -216,13 +252,13 @@ describe('TrusteeAppointmentVerificationRow', () => {
     renderRow();
 
     fireEvent.click(expandButton());
-    await screen.findByRole('alert');
+    await screen.findByText('Unable to load task details. Please try again.');
     fireEvent.click(expandButton()); // collapse
     fireEvent.click(expandButton()); // expand again, retrying
 
     await screen.findByTestId('problem-statement');
     expect(detailSpy).toHaveBeenCalledTimes(2);
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByTestId(`detail-load-alert-${task.id}`)).toBeEmptyDOMElement();
   });
 
   test("the reason sentence for 'no-appointment' links the trustee's name to their profile", async () => {
@@ -333,14 +369,6 @@ describe('TrusteeAppointmentVerificationRow', () => {
     });
   });
 
-  /** Focus is inside the element (not dropped to <body>), as after a control is disabled or unmounted. */
-  async function expectFocusInside(testId: string) {
-    await waitFor(() => {
-      expect(document.activeElement).not.toBe(document.body);
-      expect(document.activeElement).toContainElement(screen.getByTestId(testId));
-    });
-  }
-
   describe('Refresh Trustee Appointments', () => {
     const resolved: TrusteeAppointmentRefreshResult = {
       outcome: 'resolved',
@@ -356,6 +384,8 @@ describe('TrusteeAppointmentVerificationRow', () => {
       courtDivisionName: 'St. Louis',
       chapter: '7',
     };
+    const uncoveredMessage =
+      "There's still no active Chapter 7 appointment in Eastern District of Missouri (St. Louis). Ask a Trustee Admin to add or reactivate it, then try again.";
     const newAppointment = {
       id: 'appointment-new',
       trusteeId: 'trustee-1',
@@ -398,6 +428,20 @@ describe('TrusteeAppointmentVerificationRow', () => {
       return screen.getByTestId(`button-refresh-trustee-appointments-${task.id}`);
     }
 
+    /** The always-mounted polite region that carries progress text. */
+    function statusRegion() {
+      return screen.getByTestId(`refresh-status-${task.id}`);
+    }
+
+    /** The always-mounted assertive region (USWDS Alert) that carries the warning or error. */
+    function alertRegion() {
+      return screen.getByTestId(`alert-refresh-alert-${task.id}`);
+    }
+
+    function alertMessage() {
+      return screen.getByTestId(`alert-message-refresh-alert-${task.id}`);
+    }
+
     test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link', async () => {
       await expandAndLoad();
 
@@ -413,7 +457,33 @@ describe('TrusteeAppointmentVerificationRow', () => {
       expect(screen.queryByRole('button', { name: /resolve|reject/i })).not.toBeInTheDocument();
     });
 
-    test('shows a spinner while refreshing, and refreshes the task within its trustee', async () => {
+    test('the progress region and the alert region are in the DOM before any refresh, and empty', async () => {
+      await expandAndLoad();
+
+      expect(statusRegion()).toHaveAttribute('role', 'status');
+      expect(statusRegion()).toBeEmptyDOMElement();
+      expect(alertRegion()).toHaveAttribute('role', 'alert');
+      expect(alertRegion()).toBeEmptyDOMElement();
+    });
+
+    test('while refreshing, the progress region announces the progress and the spinner is hidden from screen readers', async () => {
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
+        new Promise(() => {}) as never,
+      );
+      await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      await waitFor(() =>
+        expect(statusRegion()).toHaveTextContent('Refreshing trustee appointments...'),
+      );
+      expect(statusRegion().querySelector('.loading-spinner')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+    });
+
+    test('refreshes the task within its trustee, and marks the button aria-disabled rather than disabled while it runs', async () => {
       let finish: (value: unknown) => void = () => {};
       const refreshSpy = vi
         .spyOn(Api2, 'refreshTrusteeAppointmentVerification')
@@ -422,15 +492,43 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       fireEvent.click(refreshButton());
 
-      expect(screen.getByTestId(`refresh-progress-${task.id}`)).toHaveTextContent(
-        'Refreshing trustee appointments...',
-      );
-      expect(refreshButton()).toBeDisabled();
       expect(refreshSpy).toHaveBeenCalledWith('task-1', 'trustee-1');
+      expect(refreshButton()).toHaveAttribute('aria-disabled', 'true');
+      expect(refreshButton()).toBeEnabled();
       finish({ data: stillUncovered });
-      await waitFor(() =>
-        expect(screen.queryByText('Refreshing trustee appointments...')).not.toBeInTheDocument(),
-      );
+    });
+
+    test('a second press while a refresh runs starts no second refresh', async () => {
+      const user = userEvent.setup({ delay: null });
+      const refreshSpy = vi
+        .spyOn(Api2, 'refreshTrusteeAppointmentVerification')
+        .mockReturnValue(new Promise(() => {}) as never);
+      await expandAndLoad();
+
+      await user.click(refreshButton());
+      await user.click(refreshButton());
+
+      expect(refreshSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('ends the refreshing state as soon as the refresh call settles, before the silent reload finishes', async () => {
+      let finishReload: (value: unknown) => void = () => {};
+      detailSpy
+        .mockResolvedValueOnce({ data: detail } as never)
+        .mockReturnValueOnce(new Promise((r) => (finishReload = r)) as never);
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: stillUncovered,
+      } as never);
+      await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      await waitFor(() => expect(alertMessage()).toHaveTextContent(uncoveredMessage));
+      expect(detailSpy).toHaveBeenCalledTimes(2);
+      expect(statusRegion()).toBeEmptyDOMElement();
+      expect(refreshButton()).toHaveAttribute('aria-disabled', 'false');
+      expect(refreshButton()).toBeEnabled();
+      finishReload({ data: detail });
     });
 
     test('a successful refresh hands the resolved task and a success message to the queue', async () => {
@@ -451,10 +549,11 @@ describe('TrusteeAppointmentVerificationRow', () => {
           resolved.task,
         ),
       );
-      expect(screen.queryByTestId(`alert-refresh-alert-${task.id}`)).not.toBeInTheDocument();
+      expect(alertRegion()).toBeEmptyDOMElement();
     });
 
-    test('a refresh that still finds no covering appointment warns the verifier and reloads the appointments without the loading spinner', async () => {
+    test('a refresh that still finds no covering appointment announces the warning in the alert region, keeps focus on the refresh button, and reloads the appointments without the loading spinner', async () => {
+      const user = userEvent.setup({ delay: null });
       let finishReload: (value: unknown) => void = () => {};
       detailSpy
         .mockResolvedValueOnce({ data: detail } as never)
@@ -465,13 +564,11 @@ describe('TrusteeAppointmentVerificationRow', () => {
       const onOrderUpdate = await expandAndLoad();
       expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
 
-      fireEvent.click(refreshButton());
+      await user.click(refreshButton());
 
-      const alert = await screen.findByTestId(`alert-refresh-alert-${task.id}`);
-      expect(screen.getByTestId(`alert-message-refresh-alert-${task.id}`)).toHaveTextContent(
-        "There's still no active Chapter 7 appointment in Eastern District of Missouri (St. Louis). Ask a Trustee Admin to add or reactivate it, then try again.",
-      );
-      expect(alert.className).toContain(UswdsAlertStyle.Warning);
+      await waitFor(() => expect(alertMessage()).toHaveTextContent(uncoveredMessage));
+      expect(alertRegion().className).toContain(UswdsAlertStyle.Warning);
+      expect(refreshButton()).toHaveFocus();
       expect(onOrderUpdate).not.toHaveBeenCalled();
       await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
       expect(screen.queryByText('Loading task details...')).not.toBeInTheDocument();
@@ -479,7 +576,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
       finishReload({ data: { ...detail, appointments: [newAppointment] } });
 
       expect(await screen.findByText('Western District of Missouri')).toBeInTheDocument();
-      expect(screen.getByTestId(`alert-refresh-alert-${task.id}`)).toBe(alert);
+      expect(alertMessage()).toHaveTextContent(uncoveredMessage);
       await waitFor(() => expect(refreshButton()).toBeEnabled());
     });
 
@@ -494,25 +591,27 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       fireEvent.click(refreshButton());
 
-      await waitFor(() => expect(refreshButton()).toBeEnabled());
-      expect(detailSpy).toHaveBeenCalledTimes(2);
-      expect(screen.getByTestId(`alert-refresh-alert-${task.id}`).className).toContain(
-        UswdsAlertStyle.Warning,
-      );
+      await waitFor(() => expect(alertMessage()).toHaveTextContent(uncoveredMessage));
+      await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
+      expect(alertRegion().className).toContain(UswdsAlertStyle.Warning);
+      expect(refreshButton()).toBeEnabled();
       expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
     });
 
-    test('a refresh that fails shows an error and leaves the task open', async () => {
+    test('a refresh that fails announces an error in the alert region, keeps focus on the refresh button so the verifier can retry, and leaves the task open', async () => {
+      const user = userEvent.setup({ delay: null });
       vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockRejectedValue(new Error('boom'));
       const onOrderUpdate = await expandAndLoad();
 
-      fireEvent.click(refreshButton());
+      await user.click(refreshButton());
 
-      const alert = await screen.findByTestId(`alert-refresh-alert-${task.id}`);
-      expect(screen.getByTestId(`alert-message-refresh-alert-${task.id}`)).toHaveTextContent(
-        'Unable to refresh trustee appointments. Try again later.',
+      await waitFor(() =>
+        expect(alertMessage()).toHaveTextContent(
+          'Unable to refresh trustee appointments. Try again later.',
+        ),
       );
-      expect(alert.className).toContain(UswdsAlertStyle.Error);
+      expect(alertRegion().className).toContain(UswdsAlertStyle.Error);
+      expect(refreshButton()).toHaveFocus();
       expect(onOrderUpdate).not.toHaveBeenCalled();
       await waitFor(() => expect(refreshButton()).toBeEnabled());
     });
@@ -523,12 +622,24 @@ describe('TrusteeAppointmentVerificationRow', () => {
         .mockReturnValueOnce(new Promise(() => {}) as never);
       await expandAndLoad();
       fireEvent.click(refreshButton());
-      await screen.findByTestId(`alert-refresh-alert-${task.id}`);
+      await waitFor(() => expect(alertMessage()).toBeInTheDocument());
       await waitFor(() => expect(refreshButton()).toBeEnabled());
 
       fireEvent.click(refreshButton());
 
-      expect(screen.queryByTestId(`alert-refresh-alert-${task.id}`)).not.toBeInTheDocument();
+      await waitFor(() => expect(alertRegion()).toBeEmptyDOMElement());
+    });
+
+    test('while a refresh runs, focus stays on the refresh button', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
+        new Promise(() => {}) as never,
+      );
+      await expandAndLoad();
+
+      await user.click(refreshButton());
+
+      expect(refreshButton()).toHaveFocus();
     });
 
     test('after a refresh resolves the task, focus moves to a resolved statement saying the appointment is verified', async () => {
@@ -578,40 +689,6 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       expect(screen.getByTestId('resolved-statement')).not.toHaveFocus();
       expect(expandButton()).toHaveFocus();
-    });
-
-    test('while a refresh runs, focus moves to the progress indicator instead of falling to the body', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
-        new Promise(() => {}) as never,
-      );
-      await expandAndLoad();
-
-      await user.click(refreshButton());
-
-      await expectFocusInside(`refresh-progress-${task.id}`);
-    });
-
-    test('a refresh that still finds no covering appointment moves focus to the warning alert, not the body', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
-        data: stillUncovered,
-      } as never);
-      await expandAndLoad();
-
-      await user.click(refreshButton());
-
-      await expectFocusInside(`alert-refresh-alert-${task.id}`);
-    });
-
-    test('a refresh that fails moves focus to the error alert, not the body', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockRejectedValue(new Error('boom'));
-      await expandAndLoad();
-
-      await user.click(refreshButton());
-
-      await expectFocusInside(`alert-refresh-alert-${task.id}`);
     });
 
     test('a refresh that resolves the task reloads the appointments, showing the covering one', async () => {

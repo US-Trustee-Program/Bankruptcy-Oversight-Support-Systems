@@ -206,6 +206,48 @@ describe('listAppointmentTasks', () => {
     ]);
   });
 
+  test('searches for the statuses named in statusParam', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([]);
+
+    await listAppointmentTasks(context, { statusParam: 'pending,approved' });
+
+    expect(search).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+  });
+
+  test('treats rejected as an unknown status, since no appointment task can be rejected', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
+
+    const result = await listAppointmentTasks(context, { statusParam: 'rejected' });
+
+    expect(search).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+
+  test('drops rejected from a mixed statusParam and searches the rest', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([]);
+
+    await listAppointmentTasks(context, { statusParam: 'pending,rejected' });
+
+    expect(search).toHaveBeenCalledWith({ status: ['pending'] });
+  });
+
+  test('ignores unknown statuses and whitespace around the names it keeps', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([]);
+
+    await listAppointmentTasks(context, { statusParam: ' approved , bogus' });
+
+    expect(search).toHaveBeenCalledWith({ status: ['approved'] });
+  });
+
+  test('returns no tasks without searching when statusParam names no valid status', async () => {
+    const search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
+
+    const result = await listAppointmentTasks(context, { statusParam: 'bogus' });
+
+    expect(search).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+
   test('names the court but not the division when only the court is known', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
     vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([

@@ -24,8 +24,9 @@ type ResponseData =
   | TrusteeAppointmentRefreshResult;
 
 /**
- * Trustee appointment tasks (CAMS-956) for the Data Verification queue. GET lists the open tasks,
- * or returns one task's detail by id. PATCH { action: 'refresh' } on a task re-checks the
+ * Trustee appointment tasks (CAMS-956) for the Data Verification queue. GET lists the tasks whose
+ * status is in the optional comma-separated `status` query parameter (pending when absent), or
+ * returns one task's detail by id. PATCH { action: 'refresh' } on a task re-checks the
  * trustee's appointments and resolves the task if one now covers it. Requests for one task carry
  * its trusteeId (the shard key) as a query parameter. Behind the same feature flag and
  * DataVerifier role as trustee identity tasks.
@@ -46,7 +47,9 @@ export class TrusteeAppointmentVerificationController {
         const id = context.request.params['id'];
         data = id
           ? await getAppointmentTaskDetail(context, id, requireTrusteeId(context))
-          : await listAppointmentTasks(context);
+          : await listAppointmentTasks(context, {
+              statusParam: context.request.query['status'] as string | undefined,
+            });
       } else if (context.request.method === 'PATCH') {
         data = await handlePatch(context);
       } else {

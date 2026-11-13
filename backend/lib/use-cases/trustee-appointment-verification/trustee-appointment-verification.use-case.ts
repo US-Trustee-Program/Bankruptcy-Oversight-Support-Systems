@@ -19,10 +19,16 @@ import {
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import { TrusteeAppointmentsUseCase } from '../trustee-appointments/trustee-appointments';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-USE-CASE';
+const APPOINTMENT_TASK_STATUSES: OrderStatus[] = ['pending', 'approved'];
+
+type AppointmentTaskListParams = {
+  statusParam?: string;
+};
 
 /** The case-appointment write a caller just made, as far as the appointment-task rule needs it. */
 export type AppointmentTaskWrite = {
@@ -147,16 +153,30 @@ function toListItem(
 }
 
 /**
- * The open (pending) appointment tasks for the Data Verification queue, with court and division
- * names resolved from the courts list. A name that can't be resolved is left out; the queue then
- * shows the court id or division code instead.
+ * Appointment tasks for the Data Verification queue, filtered by statusParam: a comma-separated
+ * list of statuses from APPOINTMENT_TASK_STATUSES, parsed the same way as trustee-match
+ * verifications. Unknown names are dropped. With no statusParam, only pending tasks are returned.
+ * When a non-empty statusParam leaves no valid status, the result is an empty list and the
+ * repository is not queried. Court and division names are resolved from the courts list and are
+ * left out when they cannot be resolved.
  */
 export async function listAppointmentTasks(
   context: ApplicationContext,
+  params: AppointmentTaskListParams = {},
 ): Promise<TrusteeAppointmentVerificationListItem[]> {
+  const parsedStatuses = (params.statusParam ?? '')
+    .split(',')
+    .map((s) => s.trim() as OrderStatus)
+    .filter((s) => APPOINTMENT_TASK_STATUSES.includes(s));
+
+  if (params.statusParam && parsedStatuses.length === 0) {
+    return [];
+  }
+
+  const status: OrderStatus[] = parsedStatuses.length > 0 ? parsedStatuses : ['pending'];
   const tasks = await factory
     .getTrusteeAppointmentVerificationRepository(context)
-    .search({ status: ['pending'] });
+    .search({ status });
   const courts = await new CourtsUseCase().getCourts(context);
   return tasks.map((task) => toListItem(task, courts));
 }

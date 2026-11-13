@@ -938,6 +938,21 @@ const trusteeAppointmentVerifications: TrusteeAppointmentVerificationListItem[] 
     taskDate: '2026-11-01T00:00:00.000Z',
     caseCount: 1,
   },
+  {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    taskDate: '2026-11-02T00:00:00.000Z',
+    caseCount: 1,
+  },
 ];
 
 const trusteeAppointmentVerificationDetailsById: Record<
@@ -987,6 +1002,26 @@ const trusteeAppointmentVerificationDetailsById: Record<
         },
       },
     ],
+  },
+  'appointment-task-2': {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    trusteeName: 'Robert Jones',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    caseIds: ['081-24-00002'],
+    createdOn: '2026-11-02T00:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    appointments: [],
   },
 };
 
@@ -2648,9 +2683,9 @@ async function getTrusteeMatchVerifications(_params?: {
   return get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`);
 }
 
-async function getTrusteeAppointmentVerifications(): Promise<
-  ResponseBody<TrusteeAppointmentVerificationListItem[]>
-> {
+async function getTrusteeAppointmentVerifications(_params?: {
+  status?: string;
+}): Promise<ResponseBody<TrusteeAppointmentVerificationListItem[]>> {
   return get<TrusteeAppointmentVerificationListItem[]>(`/trustee-appointment-verification`);
 }
 

@@ -489,10 +489,12 @@ async function getTrusteeMatchVerifications(params?: { status?: string }) {
   return api().get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`, query);
 }
 
-async function getTrusteeAppointmentVerifications() {
+async function getTrusteeAppointmentVerifications(params?: { status?: string }) {
+  const query: Record<string, string> = {};
+  if (params?.status) query.status = params.status;
   return api().get<TrusteeAppointmentVerificationListItem[]>(
     `/trustee-appointment-verification`,
-    {},
+    query,
   );
 }
 
