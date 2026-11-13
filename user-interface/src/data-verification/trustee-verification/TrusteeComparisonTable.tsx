@@ -12,15 +12,16 @@ import {
 
 const CANDIDATES_PAGE_SIZE = 5;
 
-type DifferenceIconProps = { label: string };
+type DifferenceIconProps = { description: string };
 
 /**
- * The single marker for a field that differs from the source record. The icon carries its own
- * accessible name so a screen reader announces it on hover/touch exploration as well as in a
- * full read, and the meaning never rests on color alone (WCAG 1.4.1).
+ * The single marker for a value that differs from some reference (the source record here;
+ * callers elsewhere supply their own reference description, e.g. CAMS-956's "differs from these
+ * cases"). The icon carries its own accessible name so a screen reader announces it on
+ * hover/touch exploration as well as in a full read, and the meaning never rests on color alone
+ * (WCAG 1.4.1).
  */
-export function DifferenceIcon({ label }: DifferenceIconProps) {
-  const description = `${label} differs from the source record`;
+export function DifferenceIcon({ description }: DifferenceIconProps) {
   return (
     <span className="difference-icon" title={description}>
       <Icon
@@ -56,7 +57,9 @@ function FieldCell({ cell, label }: { cell: ComparisonCell; label: string }) {
   return (
     <td data-label={label}>
       <span className="comparison-cell-value">
-        {cell.value !== undefined && cell.differs && <DifferenceIcon label={label} />}
+        {cell.value !== undefined && cell.differs && (
+          <DifferenceIcon description={`${label} differs from the source record`} />
+        )}
         {cell.value ?? 'Not Provided'}
       </span>
     </td>
@@ -68,7 +71,9 @@ function AddressCell({ candidate }: { candidate: ComparisonCandidate }) {
   return (
     <td data-label="Address">
       <span className="comparison-cell-value">
-        {lines.length > 0 && differs && <DifferenceIcon label="Address" />}
+        {lines.length > 0 && differs && (
+          <DifferenceIcon description="Address differs from the source record" />
+        )}
         <span className="address-lines">
           {lines.length > 0
             ? lines.map((line) => (
@@ -99,7 +104,9 @@ function CandidateRow({
     <tr>
       <th scope="row" data-label="Name">
         <span className="comparison-cell-value">
-          {cells.name.differs && <DifferenceIcon label="Name" />}
+          {cells.name.differs && (
+            <DifferenceIcon description="Name differs from the source record" />
+          )}
           <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
         </span>
       </th>

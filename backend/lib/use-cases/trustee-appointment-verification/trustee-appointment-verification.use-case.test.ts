@@ -269,6 +269,24 @@ describe('getAppointmentTaskDetail', () => {
         courtDivisionName: 'Manhattan',
       }),
     ]);
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+      MockData.getTrustee({ trusteeId: 'trustee-1', name: 'Jane Smith' }),
+    );
+  });
+
+  test("includes the trustee's current name", async () => {
+    const result = await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(result.trusteeName).toBe('Jane Smith');
+  });
+
+  test('falls back to the trustee id when the trustee cannot be read', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('not found'));
+
+    const result = await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(result.trusteeName).toBe('trustee-1');
   });
 
   test('returns the task with resolved names and the appointments sorted by agreement, closest first', async () => {
@@ -297,6 +315,7 @@ describe('getAppointmentTaskDetail', () => {
       ...task,
       courtName: 'Southern District of New York',
       courtDivisionName: 'Manhattan',
+      trusteeName: 'Jane Smith',
       appointments: [
         {
           ...bestMatch,
@@ -357,14 +376,6 @@ describe('getAppointmentTaskDetail', () => {
     await getAppointmentTaskDetail(context, 'task-1');
 
     expect(getTrusteeAppointments).toHaveBeenCalledWith(context, 'trustee-1');
-  });
-
-  test('returns an empty appointments array when the trustee has none', async () => {
-    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-
-    const result = await getAppointmentTaskDetail(context, 'task-1');
-
-    expect(result.appointments).toEqual([]);
   });
 
   test('propagates a not-found error when the task does not exist', async () => {

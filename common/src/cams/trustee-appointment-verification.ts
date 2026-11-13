@@ -66,18 +66,20 @@ export type TrusteeAppointmentVerificationListItem = Pick<
  * marks a cell with a warning icon when the corresponding `agreement` flag is false; the list is
  * already sorted closest-agreement-first (highest `agreement.score` first) by the backend.
  */
-type TrusteeAppointmentWithAgreement = TrusteeAppointment & {
+export type TrusteeAppointmentWithAgreement = TrusteeAppointment & {
   agreement: AppointmentAgreement;
 };
 
 /**
  * The full detail for one appointment task (CAMS-956 Slice 2), fetched lazily when a data
  * verifier expands its row. courtName/courtDivisionName are resolved the same way as the list
- * item's; appointments is the trustee's full appointment list, sorted by agreement with this
+ * item's; trusteeName is the trustee's current name, for the reason sentence's link to their
+ * profile; appointments is the trustee's full appointment list, sorted by agreement with this
  * task's tuple.
  */
 export type TrusteeAppointmentVerificationDetail = TrusteeAppointmentVerification & {
   courtName?: string;
   courtDivisionName?: string;
+  trusteeName: string;
   appointments: TrusteeAppointmentWithAgreement[];
 };

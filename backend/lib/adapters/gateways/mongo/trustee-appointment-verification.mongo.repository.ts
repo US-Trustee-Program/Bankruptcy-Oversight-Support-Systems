@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeAppointmentVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { isDuplicateKeyError } from './utils/duplicate-key-error';
@@ -87,9 +86,8 @@ export class TrusteeAppointmentVerificationMongoRepository
         ),
       );
     } catch (originalError) {
-      if (originalError instanceof NotFoundError) {
-        throw originalError;
-      }
+      // getCamsErrorWithStack already rethrows a CamsError (e.g. NotFoundError) unchanged, the
+      // same guarantee openOrJoin relies on for TooManyRequestsError below.
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find trustee appointment task ${id}.`,
       });

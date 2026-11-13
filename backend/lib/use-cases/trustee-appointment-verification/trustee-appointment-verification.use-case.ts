@@ -175,6 +175,17 @@ export async function getAppointmentTaskDetail(
     task.trusteeId,
   );
 
+  // Falls back to the trusteeId so the UI always has something to show/link when the trustee
+  // record itself can't be read, the same resilience as trustee-match-verification's
+  // resolvedTrusteeName lookup.
+  let trusteeName = task.trusteeId;
+  try {
+    const trustee = await factory.getTrusteesRepository(context).read(task.trusteeId);
+    trusteeName = trustee.name;
+  } catch {
+    // name unavailable -- UI falls back to the trustee id
+  }
+
   const appointments = trusteeAppointments
     .map((appointment) => ({
       ...appointment,
@@ -193,6 +204,7 @@ export async function getAppointmentTaskDetail(
   return {
     ...task,
     ...resolveTaskCourtNames(task, courts),
+    trusteeName,
     appointments,
   };
 }
