@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach, MockInstance } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as SyncCasesModule from '../../../lib/use-cases/dataflows/sync-cases';
@@ -15,6 +15,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import { DEFAULT_INVOCATION_BUDGET_MS } from '../../../lib/use-cases/dataflows/invocation-budget';
 import type * as ResyncModule from './resync-cases-by-date';
+import type { ObservabilityGateway } from '../../../lib/use-cases/gateways.types';
 const makeInvocationContext = (): InvocationContext =>
   ({
     invocationId: 'test-id',
@@ -45,6 +46,7 @@ type StoredMessage = {
  */
 class FakeQueue {
   readonly sent: SentMessage[] = [];
+  readonly leasesRequested: number[] = [];
   private readonly stored: StoredMessage[] = [];
   private sequence = 0;
 
@@ -76,7 +78,8 @@ class FakeQueue {
     this.seed(text);
   }
 
-  async receiveMessage(_visibilityTimeout: number) {
+  async receiveMessage(visibilityTimeout: number) {
+    this.leasesRequested.push(visibilityTimeout);
     const message = this.stored.find((candidate) => !candidate.leased);
     if (!message) return undefined;
     message.leased = true;
@@ -603,6 +606,13 @@ describe('resync-cases-by-date handleWriter', () => {
     queues.get(PAGE_QUEUE).seed(JSON.stringify(body), { dequeueCount });
   }
 
+  function writerTraceResult(spy: MockInstance<ObservabilityGateway['completeTrace']>) {
+    const call = spy.mock.calls.find(
+      ([, , data]) => data?.properties?.handlerName === 'handleWriter',
+    );
+    return call?.[2];
+  }
+
   async function givenContext() {
     const context = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
@@ -612,7 +622,8 @@ describe('resync-cases-by-date handleWriter', () => {
   test('syncs each case of a page one at a time, routes results, and deletes the page after the follow-up messages are sent', async () => {
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
-    await givenContext();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
     seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
     const exportSpy = stubExportAndLoad((event) => {
       if (event.caseId === CASE_B) event.error = new CamsError('TEST', { message: 'bad' });
@@ -638,6 +649,15 @@ describe('resync-cases-by-date handleWriter', () => {
     const pageDeleted = queues.log.indexOf(`delete:${PAGE_QUEUE}`);
     expect(pageDeleted).toBeGreaterThan(queues.log.indexOf(`send:${FIX_QUEUE_NAME}`));
     expect(pageDeleted).toBeGreaterThan(queues.log.indexOf(`send:${DLQ_QUEUE}`));
+    // A is written; B failed; C's write is left to the FIX queue, so it counts as neither.
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: true,
+        error: undefined,
+        properties: expect.objectContaining({ runId: 'run-1', laneId: '2', outcome: 'waiting' }),
+        measurements: { documentsWritten: 1, documentsFailed: 1 },
+      }),
+    );
   });
 
   test('routes an event carrying both a division change and an error to DLQ, not FIX', async () => {
@@ -707,9 +727,11 @@ describe('resync-cases-by-date handleWriter', () => {
   test('on a 429 at case k, requeues only cases k onward with the retry count bumped and ends the invocation', async () => {
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
-    await givenContext();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
     seedPage(queues, {
-      events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)],
+      // C arrives carrying a result from an earlier attempt; the continuation drops it.
+      events: [caseEvent(CASE_A), caseEvent(CASE_B), { ...caseEvent(CASE_C), divisionChange }],
       firstAttemptAt: FIRST_ATTEMPT_AT,
     });
     seedPage(queues, { events: [caseEvent(CASE_D)] });
@@ -736,6 +758,13 @@ describe('resync-cases-by-date handleWriter', () => {
     expect(laneSend.visibilityTimeout).toBeLessThanOrEqual(10);
     expect(queues.log.indexOf(`send:${PAGE_QUEUE}`)).toBeLessThan(
       queues.log.indexOf(`delete:${PAGE_QUEUE}`),
+    );
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'rate-limited-requeued',
+        properties: expect.objectContaining({ outcome: 'rate-limited' }),
+      }),
     );
   });
 
@@ -798,7 +827,7 @@ describe('resync-cases-by-date handleWriter', () => {
       .find((message) => message.includes('casesCompleted='));
     expect(pageLine).toEqual(
       expect.stringContaining(
-        'casesCompleted=1 casesPutBack=2 msSlept=0 transientCount=1 retryCount=0',
+        'casesCompleted=1 casesPutBack=2 msSlept=0 retryCount=0 outcome=rate-limited',
       ),
     );
   });
@@ -884,10 +913,98 @@ describe('resync-cases-by-date handleWriter', () => {
   });
 
   test.each([
+    { slowCaseMs: 135_000, expectedPutBack: [[caseEvent(CASE_B)]] },
+    { slowCaseMs: 130_000, expectedPutBack: [] },
+  ])(
+    'after a $slowCaseMs ms case, puts the page back only when the next case could end inside the lease safety margin',
+    async ({ slowCaseMs, expectedPutBack }) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+      const { handleWriter } = await import('./resync-cases-by-date');
+      const queues = stubQueues();
+      await givenContext();
+      seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+      // B is estimated to take as long as A plus 5 s. A 300 s lease less its 30 s margin puts the
+      // threshold at A = 132.5 s.
+      stubExportAndLoad((event) => {
+        if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
+      });
+
+      await handleWriter(writerMessage, makeInvocationContext());
+
+      const putBack = sentJson(queues.get(PAGE_QUEUE)) as PageMessage[];
+      expect(putBack.map((page) => page.events)).toEqual(expectedPutBack);
+    },
+  );
+
+  test('extends the lease on each new page by the slowest case so far, so one slow case does not make the lane put back fresh pages unsynced', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B), caseEvent(CASE_C)] });
+    // A is longer than the 270 s the default lease leaves after its safety margin.
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + 280_000);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B, CASE_C]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(DLQ_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).leasesRequested.slice(0, 2)).toEqual([300, 580]);
+  });
+
+  test('re-sends the lane without delay once the slowest case so far no longer fits in the budget, even after faster cases', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const startedAt = new Date('2026-11-11T00:00:00.000Z').getTime();
+    vi.setSystemTime(startedAt);
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+    seedPage(queues, { events: [caseEvent(CASE_C)] });
+    // A takes 100 s and B takes 1 s. Closing the page then leaves 50 s of budget, which fits B's
+    // cost but not A's.
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + 100_000);
+      if (event.caseId === CASE_B) {
+        vi.setSystemTime(Date.now() + 1_000);
+        event.divisionChange = divisionChange;
+      }
+    });
+    vi.spyOn(queues.get(FIX_QUEUE_NAME), 'sendMessage').mockImplementation(async () => {
+      vi.setSystemTime(startedAt + DEFAULT_INVOCATION_BUDGET_MS - 50_000);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([
+      JSON.stringify({ events: [caseEvent(CASE_C)] }),
+    ]);
+    expect(queues.get(WRITER_QUEUE).sent).toEqual([
+      expect.objectContaining({
+        text: JSON.stringify(writerMessage),
+        visibilityTimeout: undefined,
+      }),
+    ]);
+  });
+
+  test.each([
     {
       description: 'another lane still holds a page',
       leasedPage: true,
       emptyChecks: undefined,
+      expectedLane: { runId: 'run-1', laneId: 2 },
+    },
+    {
+      description: 'another lane still holds a page after an earlier empty check',
+      leasedPage: true,
+      emptyChecks: 1,
       expectedLane: { runId: 'run-1', laneId: 2 },
     },
     {
@@ -925,25 +1042,27 @@ describe('resync-cases-by-date handleWriter', () => {
     },
   );
 
-  test('sleeps after a case when the lane is ahead of its target rate and records the sleep on the page', async () => {
+  test("sleeps after each case for whatever is left of that case's share of the target rate and records the sleep on the page", async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
-    // Default 40 lanes at 19 RU per case: 7600 RU/s gives 10 cases per second per lane, so one
-    // case must be followed by a 100 ms sleep while the clock stays frozen.
+    // Default 40 lanes at 19 RU per case: 7600 RU/s gives 10 cases per second per lane, so each
+    // 100 ms slot holds a 40 ms case and a 60 ms sleep.
     process.env[TARGET_RU_ENV] = '7600';
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
     const context = await givenContext();
     const infoSpy = vi.spyOn(context.logger, 'info');
-    seedPage(queues, { events: [caseEvent(CASE_A)] });
-    stubExportAndLoad();
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+    stubExportAndLoad(() => {
+      vi.setSystemTime(Date.now() + 40);
+    });
 
     await handleWriter(writerMessage, makeInvocationContext());
 
     const pageLine = infoSpy.mock.calls
       .map(([, message]) => String(message))
       .find((message) => message.includes('casesCompleted='));
-    expect(pageLine).toEqual(expect.stringContaining('msSlept=100 '));
+    expect(pageLine).toEqual(expect.stringContaining('msSlept=120 '));
     expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
   });
 
@@ -971,7 +1090,8 @@ describe('resync-cases-by-date handleWriter', () => {
   test('lets a non-transient error from exportAndLoad propagate and leaves the page on the queue', async () => {
     const { handleWriter } = await import('./resync-cases-by-date');
     const queues = stubQueues();
-    await givenContext();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
     seedPage(queues, { events: [caseEvent(CASE_A)] });
     vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(
       new Error('Database connection failed'),
@@ -983,6 +1103,13 @@ describe('resync-cases-by-date handleWriter', () => {
 
     expect(queues.log).toEqual([]);
     expect(queues.get(PAGE_QUEUE).remaining).toHaveLength(1);
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'Database connection failed',
+        properties: expect.objectContaining({ outcome: 'error' }),
+      }),
+    );
   });
 
   test('sends a page to DLQ without syncing it once it has been received more times than the poison limit, then keeps pulling pages', async () => {
@@ -1046,14 +1173,15 @@ describe('resync-cases-by-date handleWriter', () => {
 
 describe('computePacingSleepMs', () => {
   test.each([
-    { casesDone: 10, casesPerSec: 5, elapsedMs: 5_000, expected: 0 },
-    { casesDone: 10, casesPerSec: 5, elapsedMs: 1_000, expected: 1_000 },
-    { casesDone: 1, casesPerSec: 3, elapsedMs: 0, expected: 333 },
+    { casesPerSec: 5, caseDurationMs: 50, expected: 150 },
+    { casesPerSec: 5, caseDurationMs: 200, expected: 0 },
+    { casesPerSec: 5, caseDurationMs: 30_000, expected: 0 },
+    { casesPerSec: 3, caseDurationMs: 0, expected: 333 },
   ])(
-    'casesDone=$casesDone at $casesPerSec per second after $elapsedMs ms sleeps $expected ms',
-    async ({ casesDone, casesPerSec, elapsedMs, expected }) => {
+    'a $caseDurationMs ms case at $casesPerSec per second sleeps $expected ms',
+    async ({ casesPerSec, caseDurationMs, expected }) => {
       const { computePacingSleepMs } = await import('./resync-cases-by-date');
-      expect(computePacingSleepMs(casesDone, casesPerSec, elapsedMs)).toBe(expected);
+      expect(computePacingSleepMs(casesPerSec, caseDurationMs)).toBe(expected);
     },
   );
 });

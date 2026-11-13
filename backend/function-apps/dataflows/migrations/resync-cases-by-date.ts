@@ -43,8 +43,9 @@ const TARGET_RU_PER_SEC_ENV = 'RESYNC_CASES_BY_DATE_TARGET_RU_PER_SEC';
 const RU_PER_CASE_ENV = 'RESYNC_CASES_BY_DATE_RU_PER_CASE';
 const DEFAULT_TARGET_RU_PER_SEC = 4000;
 const DEFAULT_RU_PER_CASE = 19;
-// Lease on a page while a lane works it. The lease is not renewed; a page still in progress
-// after this long becomes visible again and another lane picks it up.
+// Lease on a page while a lane works it, before the lane's slowest case so far is added to it.
+// The lease is not renewed; a page still in progress when it ends becomes visible again and
+// another lane picks it up.
 const PAGE_LEASE_SECONDS = 300;
 // A page is put back once the next case would end within this margin of its lease expiring.
 const PAGE_LEASE_SAFETY_MARGIN_MS = 30_000;
@@ -70,10 +71,10 @@ type OpenPage = {
   receipt: ReceivedQueueMessage;
   body: ResyncCasesByDatePageMessage;
   startedAt: number;
+  leaseMs: number;
   nextIndex: number;
   results: CaseSyncEvent[];
   msSlept: number;
-  transientCount: number;
 };
 
 type LaneRun = {
@@ -83,7 +84,6 @@ type LaneRun = {
   startedAt: number;
   casesPerSec: number;
   longestCaseMs?: number;
-  casesDone: number;
   casesWritten: number;
   casesFailed: number;
   queues: {
@@ -285,15 +285,12 @@ function readCasesPerSecPerLane(): number {
 }
 
 /**
- * Milliseconds a lane waits so that casesDone cases never finish faster than casesPerSec allows,
- * measured from invocation start. Zero when the lane is already at or behind schedule.
+ * Milliseconds a lane waits after a case so that the case and the wait together take one case's
+ * share of a second at casesPerSec. Zero when the case alone took that long. Each case is paced
+ * on its own, so a lane that falls behind does not run unpaced afterwards to catch up.
  */
-export function computePacingSleepMs(
-  casesDone: number,
-  casesPerSec: number,
-  elapsedMs: number,
-): number {
-  return Math.floor(Math.max(0, (casesDone / casesPerSec) * 1000 - elapsedMs));
+export function computePacingSleepMs(casesPerSec: number, caseDurationMs: number): number {
+  return Math.floor(Math.max(0, 1000 / casesPerSec - caseDurationMs));
 }
 
 function sleep(ms: number): Promise<void> {
@@ -308,10 +305,19 @@ function isOutOfBudget(run: LaneRun): boolean {
   return shouldEscape(run.startedAt, DEFAULT_INVOCATION_BUDGET_MS, nextCaseCostMs(run));
 }
 
+/**
+ * Seconds to lease a page for. Adding the slowest case so far keeps the next-case estimate inside
+ * the lease of a page just received, so one slow case cannot make a lane put back every later
+ * page without syncing any of it.
+ */
+function pageLeaseSeconds(run: LaneRun): number {
+  return PAGE_LEASE_SECONDS + Math.ceil((run.longestCaseMs ?? 0) / 1000);
+}
+
 function isLeaseExpiring(run: LaneRun, page: OpenPage): boolean {
   return shouldEscape(
     page.startedAt,
-    PAGE_LEASE_SECONDS * 1000 - PAGE_LEASE_SAFETY_MARGIN_MS,
+    page.leaseMs - PAGE_LEASE_SAFETY_MARGIN_MS,
     nextCaseCostMs(run),
   );
 }
@@ -418,7 +424,7 @@ async function endPage(
   }
   run.context.logger.info(
     MODULE_NAME,
-    `Page closed: runId=${run.message.runId} laneId=${run.message.laneId} durationMs=${Date.now() - page.startedAt} casesCompleted=${page.results.length} casesPutBack=${unfinished.length} msSlept=${page.msSlept} transientCount=${page.transientCount} retryCount=${page.body.retryCount ?? 0} outcome=${outcome}`,
+    `Page closed: runId=${run.message.runId} laneId=${run.message.laneId} durationMs=${Date.now() - page.startedAt} casesCompleted=${page.results.length} casesPutBack=${unfinished.length} msSlept=${page.msSlept} retryCount=${page.body.retryCount ?? 0} outcome=${outcome}`,
   );
 }
 
@@ -440,8 +446,11 @@ async function handleEmptyPageQueue(run: LaneRun): Promise<LaneOutcome> {
   return 'waiting';
 }
 
-/** Runs exportAndLoad for one case. Returns 'rate-limited' on a transient infra error. */
-async function syncNextCase(run: LaneRun, page: OpenPage): Promise<'synced' | 'rate-limited'> {
+/**
+ * Runs exportAndLoad for one case. Returns how long the case took, or 'rate-limited' on a
+ * transient infra error.
+ */
+async function syncNextCase(run: LaneRun, page: OpenPage): Promise<number | 'rate-limited'> {
   const { type, caseId } = page.body.events[page.nextIndex];
   const caseStartedAt = Date.now();
   let result: CaseSyncEvent;
@@ -451,24 +460,23 @@ async function syncNextCase(run: LaneRun, page: OpenPage): Promise<'synced' | 'r
     if (!isTransientInfraError(error)) {
       throw error;
     }
-    page.transientCount = 1;
     return 'rate-limited';
   }
 
-  run.longestCaseMs = Math.max(run.longestCaseMs ?? 0, Date.now() - caseStartedAt);
+  const caseDurationMs = Date.now() - caseStartedAt;
+  run.longestCaseMs = Math.max(run.longestCaseMs ?? 0, caseDurationMs);
   page.results.push(result);
   page.nextIndex += 1;
-  run.casesDone += 1;
   if (result.error) {
     run.casesFailed += 1;
   } else if (result.divisionChange === undefined) {
     run.casesWritten += 1;
   }
-  return 'synced';
+  return caseDurationMs;
 }
 
-async function paceAfterCase(run: LaneRun, page: OpenPage) {
-  const sleepMs = computePacingSleepMs(run.casesDone, run.casesPerSec, Date.now() - run.startedAt);
+async function paceAfterCase(run: LaneRun, page: OpenPage, caseDurationMs: number) {
+  const sleepMs = computePacingSleepMs(run.casesPerSec, caseDurationMs);
   if (sleepMs > 0) {
     page.msSlept += sleepMs;
     await sleep(sleepMs);
@@ -489,7 +497,8 @@ async function drainPages(run: LaneRun): Promise<LaneOutcome> {
     }
 
     if (!page) {
-      const receipt = await run.queues.page.receiveMessage(PAGE_LEASE_SECONDS);
+      const leaseSeconds = pageLeaseSeconds(run);
+      const receipt = await run.queues.page.receiveMessage(leaseSeconds);
       if (!receipt) {
         return handleEmptyPageQueue(run);
       }
@@ -497,10 +506,10 @@ async function drainPages(run: LaneRun): Promise<LaneOutcome> {
         receipt,
         body: JSON.parse(receipt.messageText) as ResyncCasesByDatePageMessage,
         startedAt: Date.now(),
+        leaseMs: leaseSeconds * 1000,
         nextIndex: 0,
         results: [],
         msSlept: 0,
-        transientCount: 0,
       };
     }
 
@@ -522,13 +531,14 @@ async function drainPages(run: LaneRun): Promise<LaneOutcome> {
       continue;
     }
 
-    if ((await syncNextCase(run, page)) === 'rate-limited') {
+    const caseDurationMs = await syncNextCase(run, page);
+    if (caseDurationMs === 'rate-limited') {
       await endPage(run, page, page.body.events.slice(page.nextIndex), 'rate-limited');
       await sendLane(run, { runId, laneId }, laneRestartDelaySeconds());
       return 'rate-limited';
     }
 
-    await paceAfterCase(run, page);
+    await paceAfterCase(run, page, caseDurationMs);
   }
 }
 
@@ -573,7 +583,6 @@ export async function handleWriter(
     message,
     startedAt,
     casesPerSec: readCasesPerSecPerLane(),
-    casesDone: 0,
     casesWritten: 0,
     casesFailed: 0,
     queues: {
