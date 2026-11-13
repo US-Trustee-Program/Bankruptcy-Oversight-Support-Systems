@@ -63,9 +63,9 @@ elif command -v sqlcmd &>/dev/null; then
 elif [[ "$(uname -s)" == "Linux" ]]; then
   echo "sqlcmd not found — installing mssql-tools18 via apt..."
   sudo mkdir -p /usr/share/keyrings
-  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+  sudo chmod a+r /usr/share/keyrings/microsoft-prod.gpg
   curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" \
-    | sed 's#\[arch=amd64\]#[arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg]#' \
     | sudo tee /etc/apt/sources.list.d/mssql-release.list
   sudo apt-get update -q
   sudo ACCEPT_EULA=Y apt-get install -y -q mssql-tools18 unixodbc-dev
