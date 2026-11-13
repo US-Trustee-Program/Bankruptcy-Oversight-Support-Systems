@@ -1,8 +1,9 @@
 import { PHONE_REGEX } from '@common/cams/regex';
-import { Trustee } from '@common/cams/trustees';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
+import { BASE_DELAY_MS, retryOnRateLimit } from './dataflow-backoff';
+import { DEFAULT_INVOCATION_BUDGET_MS } from './invocation-budget';
 import { MaybeData } from './queue-types';
 
 const MODULE_NAME = 'CORRECT-TRUSTEE-ZOOM-PHONES-USE-CASE';
@@ -16,7 +17,7 @@ const EXTENSION_SUFFIX = /^(.*?)\s*(?:x|ext\.?|extension[:.]?)\s*(\d+)$/i;
 const NUMBER_PART_CHARACTERS = /^\+?[\d\s().-]+$/;
 
 /**
- * One-time migration rule (CAMS-975) for Zoom phones the Zoom Info Import stored
+ * One-time migration rule for Zoom phones the Zoom Info Import stored
  * without validation, e.g. "(680) 214-4529". Converts what can be unambiguously
  * reformatted to PHONE_REGEX and flags everything else for review.
  */
@@ -58,12 +59,13 @@ type ZoomPhoneCorrectionOutcome = 'converted' | 'alreadyValid' | 'flagged' | 'fa
 
 type ZoomPhoneCorrectionResult = {
   trusteeId: string;
-  trusteeName: string;
-  storedValue: string | undefined;
   outcome: ZoomPhoneCorrectionOutcome;
   newValue?: string;
   reason?: string;
   error?: string;
+  // Carried on flagged results so the review report identifies the trustee and the bad value.
+  trusteeName?: string;
+  storedPhone?: string;
 };
 
 type ZoomPhoneCorrectionSummary = {
@@ -71,47 +73,99 @@ type ZoomPhoneCorrectionSummary = {
   counts: Record<ZoomPhoneCorrectionOutcome, number>;
 };
 
-async function getTrusteesWithZoomInfo(context: ApplicationContext): Promise<MaybeData<Trustee[]>> {
-  try {
-    const repo = factory.getTrusteesRepository(context);
-    const trustees = await repo.listTrustees();
-    return { data: trustees.filter((trustee) => !!trustee.zoomInfo) };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to get trustees with Zoom info.'),
-    };
-  }
-}
+/**
+ * What a continuation carries between invocations. Each pass re-reads the trustees, so
+ * trustees converted earlier already show as valid; only their count has to be carried.
+ */
+export type CorrectionState = { converted: number };
+
+export const INITIAL_CORRECTION_STATE: CorrectionState = { converted: 0 };
+
+type CorrectionPassOptions = {
+  startedAt?: number;
+  safeThresholdMs?: number;
+  baseDelayMs?: number;
+};
+
+export type CorrectionPassOutcome =
+  | { kind: 'complete'; summary: ZoomPhoneCorrectionSummary }
+  | { kind: 'escape'; state: CorrectionState; backoffSeconds: number };
 
 /**
- * Writes corrected Zoom phones through the repository setter only. It deliberately does
- * not go through TrusteesUseCase, so no trustee history or change notification is produced.
+ * One pass over every trustee with Zoom info. Rate limited (429) reads and writes back off and
+ * retry in place. When the next backoff would not fit in the invocation budget, the pass stops
+ * with `escape` and the state a continuation needs to resume; the next pass finds the remaining
+ * work by re-reading. A write that fails for any other reason is recorded as failed and the pass
+ * moves on.
+ *
+ * Writes go through the repository setter only. This deliberately does not go through
+ * TrusteesUseCase, so no trustee history or change notification is produced.
  */
-async function correctZoomPhones(
+async function runCorrectionPass(
   context: ApplicationContext,
-  trustees: Trustee[],
-): Promise<MaybeData<ZoomPhoneCorrectionSummary>> {
+  state: CorrectionState,
+  options: CorrectionPassOptions = {},
+): Promise<MaybeData<CorrectionPassOutcome>> {
+  const {
+    startedAt = Date.now(),
+    safeThresholdMs = DEFAULT_INVOCATION_BUDGET_MS,
+    baseDelayMs = BASE_DELAY_MS,
+  } = options;
+  const { logger } = context;
+  const retryOptions = (description: string) => ({
+    startedAt,
+    safeThresholdMs,
+    baseDelayMs,
+    onBackoff: (attempt: number, backoffMs: number) =>
+      logger.info(
+        MODULE_NAME,
+        `RU-throttled ${description} (attempt ${attempt}) — backing off ${backoffMs}ms before retry.`,
+      ),
+  });
+
   try {
     const repo = factory.getTrusteesRepository(context);
-    const results: ZoomPhoneCorrectionResult[] = [];
 
-    for (const trustee of trustees) {
-      const storedValue = trustee.zoomInfo?.phone;
-      const base = { trusteeId: trustee.trusteeId, trusteeName: trustee.name, storedValue };
-      const conversion = convertZoomPhone(storedValue);
+    const read = await retryOnRateLimit(
+      () => repo.listTrustees(),
+      retryOptions('reading trustees'),
+    );
+    if (read.kind === 'escape') {
+      return { data: escapeOutcome(state, 0, read.backoffMs) };
+    }
+
+    const results: ZoomPhoneCorrectionResult[] = [];
+    let convertedThisPass = 0;
+
+    for (const trustee of read.value.filter((t) => !!t.zoomInfo)) {
+      const { trusteeId } = trustee;
+      const conversion = convertZoomPhone(trustee.zoomInfo?.phone);
 
       if (conversion.outcome === 'alreadyValid') {
-        results.push({ ...base, outcome: 'alreadyValid' });
+        results.push({ trusteeId, outcome: 'alreadyValid' });
       } else if (conversion.outcome === 'flagged') {
-        results.push({ ...base, outcome: 'flagged', reason: conversion.reason });
+        results.push({
+          trusteeId,
+          outcome: 'flagged',
+          reason: conversion.reason,
+          trusteeName: trustee.name,
+          storedPhone: trustee.zoomInfo?.phone,
+        });
       } else {
         const { newValue } = conversion;
         try {
-          await repo.setZoomInfo(trustee.trusteeId, { ...trustee.zoomInfo, phone: newValue });
-          results.push({ ...base, outcome: 'converted', newValue });
+          const write = await retryOnRateLimit(
+            () => repo.setZoomInfo(trusteeId, { ...trustee.zoomInfo, phone: newValue }),
+            retryOptions(`writing trustee ${trusteeId}`),
+          );
+          if (write.kind === 'escape') {
+            return { data: escapeOutcome(state, convertedThisPass, write.backoffMs) };
+          }
+          convertedThisPass++;
+          results.push({ trusteeId, outcome: 'converted', newValue });
         } catch (originalError) {
           results.push({
-            ...base,
+            trusteeId,
             outcome: 'failed',
             newValue,
             error: originalError instanceof Error ? originalError.message : String(originalError),
@@ -120,10 +174,7 @@ async function correctZoomPhones(
       }
     }
 
-    const counts = { converted: 0, alreadyValid: 0, flagged: 0, failed: 0 };
-    results.forEach((result) => counts[result.outcome]++);
-
-    return { data: { results, counts } };
+    return { data: { kind: 'complete', summary: summarize(results, state.converted) } };
   } catch (originalError) {
     return {
       error: getCamsError(originalError, MODULE_NAME, 'Failed to correct trustee Zoom phones.'),
@@ -131,9 +182,78 @@ async function correctZoomPhones(
   }
 }
 
+function escapeOutcome(
+  state: CorrectionState,
+  convertedThisPass: number,
+  backoffMs: number,
+): CorrectionPassOutcome {
+  return {
+    kind: 'escape',
+    state: { converted: state.converted + convertedThisPass },
+    backoffSeconds: Math.ceil(backoffMs / 1000),
+  };
+}
+
+/**
+ * Trustees converted by earlier passes read as already valid now, so they move from the
+ * already-valid count back to converted.
+ */
+function summarize(
+  results: ZoomPhoneCorrectionResult[],
+  convertedEarlier: number,
+): ZoomPhoneCorrectionSummary {
+  const counts = { converted: 0, alreadyValid: 0, flagged: 0, failed: 0 };
+  results.forEach((result) => counts[result.outcome]++);
+  const reclassified = Math.min(convertedEarlier, counts.alreadyValid);
+  counts.converted += reclassified;
+  counts.alreadyValid -= reclassified;
+  return { results, counts };
+}
+
+const FLAGGED_REPORT_BLOB_NAME = 'correct-trustee-zoom-phones-flagged.csv';
+const FLAGGED_REPORT_HEADERS = 'trusteeId,trusteeName,storedPhone,reason';
+
+// A cell starting with one of these is read as a formula by spreadsheet software, and the
+// stored phone is arbitrary bad data.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+function csvCell(value: string | undefined): string {
+  const text = value ?? '';
+  const safe = FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/**
+ * Records the trustees whose Zoom phone could not be converted safely as a CSV in object
+ * storage, for a person to review in CAMS. The file is overwritten on every run, and is written
+ * with only the header when nothing is flagged so a report from an earlier run cannot be
+ * mistaken for this one. Returns the container-qualified blob name.
+ */
+async function writeFlaggedReport(
+  context: ApplicationContext,
+  results: ZoomPhoneCorrectionResult[],
+): Promise<string> {
+  const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+  const rows = results
+    .filter((result) => result.outcome === 'flagged')
+    .map((result) =>
+      [result.trusteeId, result.trusteeName, result.storedPhone, result.reason]
+        .map(csvCell)
+        .join(','),
+    );
+  await factory
+    .getObjectStorageGateway(context)
+    .writeObject(
+      containerName,
+      FLAGGED_REPORT_BLOB_NAME,
+      [FLAGGED_REPORT_HEADERS, ...rows].join('\n'),
+    );
+  return `${containerName}/${FLAGGED_REPORT_BLOB_NAME}`;
+}
+
 const CorrectTrusteeZoomPhones = {
-  getTrusteesWithZoomInfo,
-  correctZoomPhones,
+  runCorrectionPass,
+  writeFlaggedReport,
 };
 
 export default CorrectTrusteeZoomPhones;

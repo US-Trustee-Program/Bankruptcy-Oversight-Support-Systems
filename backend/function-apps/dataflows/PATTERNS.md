@@ -21,6 +21,65 @@ off remaining work via a continuation message, rather than being killed mid-writ
 
 See `backend/lib/use-cases/dataflows/trustee-appointment-region-driver.ts` for a caller.
 
+## One-time migration: in-place 429 backoff, stateless continuation, CSV review report
+
+**Modules:** `backend/lib/use-cases/dataflows/dataflow-backoff.ts` (with `invocation-budget.ts`
+above)
+
+For a bounded, idempotent, one-time repair of a collection small enough to read whole (thousands of
+documents, not millions). It is the single-invocation counterpart to `fix-chapter-7-appointments`'s
+reader/writer queues, and to the queue-level `handleRateLimitRetry` in `dataflows-rate-limit.ts`,
+which requeues a whole message rather than waiting inside the invocation.
+
+- **Read once, write one record at a time.** The pass reads the collection with one call, filters in
+  memory, and writes each record that needs repair with its own sequential call. At this size the
+  cost is a few minutes and a small, self-paced RU load; bulk writes would need new adapter code for
+  no benefit.
+- **A 429 never reaches the DLQ.** Wrap every Cosmos call in
+  `retryOnRateLimit(operation, { startedAt, safeThresholdMs, baseDelayMs, onBackoff })`. It sleeps
+  and retries in place on `TooManyRequestsError` (first wait is twice `baseDelayMs`, doubling to a
+  10-minute cap) and rethrows anything else. Wrap the read and each write separately so a throttled
+  write retries that record, not the pass.
+- **Escape instead of overrunning.** Once the next backoff would reach the safe threshold,
+  `retryOnRateLimit` returns `{ kind: 'escape', backoffMs }` without sleeping. The use case turns
+  that into `{ kind: 'escape', state, backoffSeconds }`.
+- **Continuation state is only what cannot be re-derived.** The next invocation re-reads the data,
+  and records already repaired no longer need repair, so it finds the remaining work itself and
+  there is no cursor or unwritten-batch hand-off. The state carries only what the final report needs
+  (here, a count of repairs made earlier). The handler enqueues the continuation on the dataflow's
+  own start queue with a visibility delay of a fixed 30 seconds plus `backoffSeconds`.
+  `StorageQueueHumbleObject.sendMessage` Base64-encodes the body and creates the queue if missing.
+- **The run ends when a pass finishes without an escape.** That pass is the final one: it recomputes
+  every outcome from current data and writes the single completion log entry. Outcomes derived from
+  data (already valid, flagged) are never accumulated across continuations, so they cannot be
+  double-counted; adjust only for repairs that earlier passes made and this pass now reads as
+  already valid.
+- **DLQ only for what a re-run might not fix.** A write that fails for a non-429 reason is recorded
+  as failed and the pass moves on; the failures go to the DLQ as `{ id, error }`. A run-level error,
+  including failing to enqueue the continuation, goes to the DLQ as a queue error. Several DLQ
+  messages in one invocation must go out as one array, because `extraOutputs.set` for the same
+  binding replaces the earlier value.
+- **Records that need a human go to a CSV, never the DLQ.** Written with
+  `factory.getObjectStorageGateway(context).writeObject(CAMS_OBJECT_CONTAINER ?? 'migration-files', blobName, content)`,
+  as `import-zoom-csv.ts` does for its report. Overwrite the same blob each run so it always
+  reflects the latest run, and write the header alone when nothing needs review so an old report is
+  not mistaken for the current one. The CSV holds only what identifies the record and the bad value.
+  Quote cells containing commas, quotes, or line breaks, and prefix a value starting with `=`, `+`,
+  `-` or `@` with `'` because the data being reported is arbitrary. The one completion log entry
+  also lists each such record's id and reason, so review does not depend on the file alone, and
+  sampling keeps or drops the counts and the list together. A failure to write the report is a
+  run-level DLQ error, and the completion log omits the report location.
+- **Re-running is the recovery path.** Repaired records are skipped and the report is regenerated,
+  so an operator who finds failures, a missing report, or a stuck run starts it again.
+
+Not extracted yet: `migrate-case-appointments.ts` and `migrate-trustees.ts` still carry their own
+copies of the backoff curve and `sleep`.
+
+See `backend/function-apps/dataflows/migrations/correct-trustee-zoom-phones.ts` and
+`backend/lib/use-cases/dataflows/correct-trustee-zoom-phones.ts` (`runCorrectionPass`,
+`writeFlaggedReport`) for a caller. `fix-chapter-7-appointments.ts` uses the same backoff curve for
+an unbounded, loop-until-empty variant.
+
 ## Fan-out across K lanes + capacity
 
 **Module:** `backend/lib/use-cases/dataflows/lane-assignment.ts`

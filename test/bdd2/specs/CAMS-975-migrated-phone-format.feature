@@ -39,7 +39,14 @@ Feature: Trustee edits succeed for trustees with migrated data
     Given a trustee whose stored Zoom phone is "214-45"
     When the stored Zoom phone numbers are corrected
     Then the trustee's Zoom phone is still "214-45"
-    And the trustee and the stored value appear in the review log
+    And the trustee and the stored value appear in the flagged phones report
+
+  Scenario: A throttled database does not lose or skip corrections
+    Given the database is rate limiting the correction
+    When the stored Zoom phone numbers are corrected
+    Then the correction waits and retries instead of skipping the trustee
+    And the correction resumes where it left off if it cannot finish in one run
+    And the throttled trustees are not reported as failed
 
   Scenario: The correction reports what it did
     When the stored Zoom phone numbers are corrected in an environment

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, Mock } from 'vitest';
 import { PHONE_REGEX } from '@common/cams/regex';
 import { Trustee, ZoomInfo } from '@common/cams/trustees';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -6,6 +6,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import factory from '../../factory';
+import { ObjectStorageGateway } from '../gateways.types';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { TrusteesUseCase } from '../trustees/trustees';
 import CorrectTrusteeZoomPhones, { convertZoomPhone } from './correct-trustee-zoom-phones';
 
@@ -27,76 +29,56 @@ describe('CorrectTrusteeZoomPhones use case', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
     context = await createMockApplicationContext();
     repo = new MockMongoRepository();
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(repo);
   });
 
-  describe('getTrusteesWithZoomInfo', () => {
-    test('should return only trustees that have zoomInfo', async () => {
-      const withZoom = trusteeWithPhone('trustee-001', '(680) 214-4529');
-      const withoutZoom = MockData.getTrustee({ trusteeId: 'trustee-002' });
-      vi.spyOn(repo, 'listTrustees').mockResolvedValue([withZoom, withoutZoom]);
+  describe('runCorrectionPass', () => {
+    const tooManyRequests = () => new TooManyRequestsError('TEST', { message: 'throttled' });
+    const noBudgetPressure = { baseDelayMs: 1, safeThresholdMs: 60_000 };
 
-      const result = await CorrectTrusteeZoomPhones.getTrusteesWithZoomInfo(context);
-
-      expect(result.data).toEqual([withZoom]);
-    });
-
-    test('should return an error when listTrustees fails', async () => {
-      vi.spyOn(repo, 'listTrustees').mockRejectedValue(new Error('Database error'));
-
-      const result = await CorrectTrusteeZoomPhones.getTrusteesWithZoomInfo(context);
-
-      expect(result.error).toBeDefined();
-      expect(result.data).toBeUndefined();
-    });
-  });
-
-  describe('correctZoomPhones', () => {
-    test('should convert, skip, and flag phones and report counts', async () => {
+    test('should convert, skip, and flag phones, ignoring trustees without zoomInfo', async () => {
       const setZoomInfo = vi.spyOn(repo, 'setZoomInfo').mockResolvedValue(undefined);
       const updateTrustee = vi.spyOn(TrusteesUseCase.prototype, 'updateTrustee');
       const createTrusteeHistory = vi
         .spyOn(repo, 'createTrusteeHistory')
         .mockResolvedValue(undefined);
-      const trustees = [
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
         trusteeWithPhone('trustee-001', '(680) 214-4529'),
         trusteeWithPhone('trustee-002', '680-214-4529'),
         trusteeWithPhone('trustee-003', '214-45'),
         trusteeWithPhone('trustee-004', undefined),
-      ];
-
-      const result = await CorrectTrusteeZoomPhones.correctZoomPhones(context, trustees);
-
-      expect(result.data!.counts).toEqual({ converted: 1, alreadyValid: 1, flagged: 2, failed: 0 });
-      expect(result.data!.results).toEqual([
-        {
-          trusteeId: 'trustee-001',
-          trusteeName: 'Trustee trustee-001',
-          storedValue: '(680) 214-4529',
-          outcome: 'converted',
-          newValue: '680-214-4529',
-        },
-        {
-          trusteeId: 'trustee-002',
-          trusteeName: 'Trustee trustee-002',
-          storedValue: '680-214-4529',
-          outcome: 'alreadyValid',
-        },
-        expect.objectContaining({
-          trusteeId: 'trustee-003',
-          storedValue: '214-45',
-          outcome: 'flagged',
-          reason: 'Zoom phone has 5 digits.',
-        }),
-        expect.objectContaining({
-          trusteeId: 'trustee-004',
-          storedValue: undefined,
-          outcome: 'flagged',
-          reason: 'Zoom phone is empty or missing.',
-        }),
+        MockData.getTrustee({ trusteeId: 'trustee-005' }),
       ]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
+
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: {
+          counts: { converted: 1, alreadyValid: 1, flagged: 2, failed: 0 },
+          results: [
+            { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
+            { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
+            {
+              trusteeId: 'trustee-003',
+              outcome: 'flagged',
+              reason: 'Zoom phone has 5 digits.',
+              trusteeName: 'Trustee trustee-003',
+              storedPhone: '214-45',
+            },
+            {
+              trusteeId: 'trustee-004',
+              outcome: 'flagged',
+              reason: 'Zoom phone is empty or missing.',
+              trusteeName: 'Trustee trustee-004',
+              storedPhone: undefined,
+            },
+          ],
+        },
+      });
       expect(setZoomInfo).toHaveBeenCalledTimes(1);
       expect(setZoomInfo).toHaveBeenCalledWith('trustee-001', {
         ...zoomInfo('(680) 214-4529'),
@@ -111,46 +93,330 @@ describe('CorrectTrusteeZoomPhones use case', () => {
         .spyOn(repo, 'setZoomInfo')
         .mockRejectedValueOnce(new Error('Update failed'))
         .mockResolvedValueOnce(undefined);
-      const trustees = [
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
         trusteeWithPhone('trustee-001', '(680) 214-4529'),
         trusteeWithPhone('trustee-002', '(555) 123-4567'),
-      ];
+      ]);
 
-      const result = await CorrectTrusteeZoomPhones.correctZoomPhones(context, trustees);
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
 
       expect(setZoomInfo).toHaveBeenCalledTimes(2);
-      expect(result.data!.counts).toEqual({ converted: 1, alreadyValid: 0, flagged: 0, failed: 1 });
-      expect(result.data!.results[0]).toEqual(
-        expect.objectContaining({
-          trusteeId: 'trustee-001',
-          outcome: 'failed',
-          newValue: '680-214-4529',
-          error: 'Update failed',
-        }),
-      );
-      expect(result.data!.results[1].outcome).toBe('converted');
-    });
-
-    test('should return empty results and zero counts for no trustees', async () => {
-      const result = await CorrectTrusteeZoomPhones.correctZoomPhones(context, []);
-
       expect(result.data).toEqual({
-        results: [],
-        counts: { converted: 0, alreadyValid: 0, flagged: 0, failed: 0 },
+        kind: 'complete',
+        summary: {
+          counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 1 },
+          results: [
+            {
+              trusteeId: 'trustee-001',
+              outcome: 'failed',
+              newValue: '680-214-4529',
+              error: 'Update failed',
+            },
+            { trusteeId: 'trustee-002', outcome: 'converted', newValue: '555-123-4567' },
+          ],
+        },
       });
     });
 
-    test('should return an error when the repository cannot be created', async () => {
-      vi.spyOn(factory, 'getTrusteesRepository').mockImplementation(() => {
-        throw new Error('No repository');
-      });
-
-      const result = await CorrectTrusteeZoomPhones.correctZoomPhones(context, [
+    test('should record the text of a write failure that is not an Error', async () => {
+      vi.spyOn(repo, 'setZoomInfo').mockRejectedValueOnce('plain string');
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
         trusteeWithPhone('trustee-001', '(680) 214-4529'),
       ]);
 
-      expect(result.error).toBeDefined();
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
+
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: {
+          counts: { converted: 0, alreadyValid: 0, flagged: 0, failed: 1 },
+          results: [
+            {
+              trusteeId: 'trustee-001',
+              outcome: 'failed',
+              newValue: '680-214-4529',
+              error: 'plain string',
+            },
+          ],
+        },
+      });
+    });
+
+    test('should return empty results and zero counts when there are no trustees', async () => {
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
+
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: { results: [], counts: { converted: 0, alreadyValid: 0, flagged: 0, failed: 0 } },
+      });
+    });
+
+    test('should return an error when trustees cannot be read for a reason other than throttling', async () => {
+      vi.spyOn(repo, 'listTrustees').mockRejectedValue(new Error('Database error'));
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 0 });
+
+      expect(result.error?.message).toEqual('Failed to correct trustee Zoom phones.');
       expect(result.data).toBeUndefined();
+    });
+
+    test('should back off and retry a throttled write instead of recording a failure', async () => {
+      const setZoomInfo = vi
+        .spyOn(repo, 'setZoomInfo')
+        .mockRejectedValueOnce(tooManyRequests())
+        .mockResolvedValue(undefined);
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
+        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+      ]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
+        context,
+        { converted: 0 },
+        noBudgetPressure,
+      );
+
+      expect(setZoomInfo).toHaveBeenCalledTimes(2);
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: {
+          counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 0 },
+          results: [{ trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' }],
+        },
+      });
+    });
+
+    test('should back off and retry a throttled read', async () => {
+      const listTrustees = vi
+        .spyOn(repo, 'listTrustees')
+        .mockRejectedValueOnce(tooManyRequests())
+        .mockResolvedValue([]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
+        context,
+        { converted: 0 },
+        noBudgetPressure,
+      );
+
+      expect(listTrustees).toHaveBeenCalledTimes(2);
+      expect(result.data?.kind).toEqual('complete');
+    });
+
+    test('should escape with the trustees converted so far when a throttled write cannot back off within the budget', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(repo, 'setZoomInfo')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(tooManyRequests());
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
+        trusteeWithPhone('trustee-001', '(680) 214-4529'),
+        trusteeWithPhone('trustee-002', '(555) 123-4567'),
+      ]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
+        context,
+        { converted: 5 },
+        { baseDelayMs: 1000, safeThresholdMs: 1500 },
+      );
+
+      expect(result.data).toEqual({
+        kind: 'escape',
+        state: { converted: 6 },
+        backoffSeconds: 2,
+      });
+    });
+
+    test('should escape without reading when the invocation budget is already spent', async () => {
+      const listTrustees = vi.spyOn(repo, 'listTrustees');
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
+        context,
+        { converted: 5 },
+        { safeThresholdMs: 0 },
+      );
+
+      expect(listTrustees).not.toHaveBeenCalled();
+      expect(result.data).toEqual({ kind: 'escape', state: { converted: 5 }, backoffSeconds: 0 });
+    });
+
+    test('should escape without writing when a throttled read cannot back off within the budget', async () => {
+      vi.useFakeTimers();
+      const setZoomInfo = vi.spyOn(repo, 'setZoomInfo');
+      vi.spyOn(repo, 'listTrustees').mockRejectedValue(tooManyRequests());
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(
+        context,
+        { converted: 5 },
+        { baseDelayMs: 1000, safeThresholdMs: 1500 },
+      );
+
+      expect(setZoomInfo).not.toHaveBeenCalled();
+      expect(result.data).toEqual({
+        kind: 'escape',
+        state: { converted: 5 },
+        backoffSeconds: 2,
+      });
+    });
+
+    test('should count trustees converted before a continuation as converted, not already valid', async () => {
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
+        trusteeWithPhone('trustee-001', '680-214-4529'),
+        trusteeWithPhone('trustee-002', '555-123-4567'),
+        trusteeWithPhone('trustee-003', '214-45'),
+      ]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 2 });
+
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: {
+          counts: { converted: 2, alreadyValid: 0, flagged: 1, failed: 0 },
+          results: [
+            { trusteeId: 'trustee-001', outcome: 'alreadyValid' },
+            { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
+            {
+              trusteeId: 'trustee-003',
+              outcome: 'flagged',
+              reason: 'Zoom phone has 5 digits.',
+              trusteeName: 'Trustee trustee-003',
+              storedPhone: '214-45',
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe('runCorrectionPass continuation counts', () => {
+    test('should not report more earlier conversions than there are already valid trustees', async () => {
+      vi.spyOn(repo, 'listTrustees').mockResolvedValue([
+        trusteeWithPhone('trustee-001', '680-214-4529'),
+      ]);
+
+      const result = await CorrectTrusteeZoomPhones.runCorrectionPass(context, { converted: 5 });
+
+      expect(result.data).toEqual({
+        kind: 'complete',
+        summary: {
+          counts: { converted: 1, alreadyValid: 0, flagged: 0, failed: 0 },
+          results: [{ trusteeId: 'trustee-001', outcome: 'alreadyValid' }],
+        },
+      });
+    });
+  });
+
+  describe('writeFlaggedReport', () => {
+    const HEADER = 'trusteeId,trusteeName,storedPhone,reason';
+    let writeObject: Mock<ObjectStorageGateway['writeObject']>;
+
+    const flagged = (
+      trusteeId: string,
+      trusteeName: string,
+      storedPhone: string | undefined,
+      reason = 'Zoom phone has 5 digits.',
+    ) => ({ trusteeId, outcome: 'flagged' as const, reason, trusteeName, storedPhone });
+
+    beforeEach(() => {
+      writeObject = vi.fn<ObjectStorageGateway['writeObject']>().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+        readObject: vi.fn().mockResolvedValue(null),
+        writeObject,
+      });
+      vi.unstubAllEnvs();
+      vi.stubEnv('CAMS_OBJECT_CONTAINER', undefined);
+    });
+
+    test('should write a CSV of only the flagged trustees to the migration container', async () => {
+      const location = await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
+        { trusteeId: 'trustee-001', outcome: 'converted', newValue: '680-214-4529' },
+        { trusteeId: 'trustee-002', outcome: 'alreadyValid' },
+        flagged('trustee-003', 'Pat Poe', '214-45'),
+        flagged('trustee-004', 'Sam Moe', undefined, 'Zoom phone is empty or missing.'),
+        { trusteeId: 'trustee-005', outcome: 'failed', error: 'Update failed' },
+      ]);
+
+      expect(writeObject).toHaveBeenCalledWith(
+        'migration-files',
+        'correct-trustee-zoom-phones-flagged.csv',
+        [
+          HEADER,
+          'trustee-003,Pat Poe,214-45,Zoom phone has 5 digits.',
+          'trustee-004,Sam Moe,,Zoom phone is empty or missing.',
+        ].join('\n'),
+      );
+      expect(location).toEqual('migration-files/correct-trustee-zoom-phones-flagged.csv');
+    });
+
+    test('should write a header-only file when nothing is flagged so a stale report is replaced', async () => {
+      await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
+        { trusteeId: 'trustee-001', outcome: 'alreadyValid' },
+      ]);
+
+      expect(writeObject).toHaveBeenCalledWith(
+        'migration-files',
+        'correct-trustee-zoom-phones-flagged.csv',
+        HEADER,
+      );
+    });
+
+    test('should use the configured object container', async () => {
+      vi.stubEnv('CAMS_OBJECT_CONTAINER', 'custom-container');
+
+      await CorrectTrusteeZoomPhones.writeFlaggedReport(context, []);
+
+      expect(writeObject).toHaveBeenCalledWith(
+        'custom-container',
+        'correct-trustee-zoom-phones-flagged.csv',
+        HEADER,
+      );
+    });
+
+    test('should quote values containing commas, quotes, or line breaks', async () => {
+      await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
+        flagged('trustee-001', 'Poe, Pat "PJ"', '680-214-4529,\n555'),
+      ]);
+
+      const row = writeObject.mock.calls[0][2].slice(HEADER.length + 1);
+      expect(row).toEqual(
+        'trustee-001,"Poe, Pat ""PJ""","680-214-4529,\n555",Zoom phone has 5 digits.',
+      );
+    });
+
+    test.each([
+      ['=SUM(A1)', "'=SUM(A1)"],
+      ['+2 (680) 214-4529', "'+2 (680) 214-4529"],
+      ['-5', "'-5"],
+      ['@cmd', "'@cmd"],
+      ['\tfoo', "'\tfoo"],
+      ['\rfoo', '"\'\rfoo"'],
+      ['=1,2', '"\'=1,2"'],
+    ])(
+      'should neutralize the stored phone %j so a spreadsheet does not read it as a formula',
+      async (storedPhone, expectedCell) => {
+        await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
+          flagged('trustee-001', 'Pat Poe', storedPhone),
+        ]);
+
+        const row = writeObject.mock.calls[0][2].slice(HEADER.length + 1);
+        expect(row).toEqual(`trustee-001,Pat Poe,${expectedCell},Zoom phone has 5 digits.`);
+      },
+    );
+
+    test('should neutralize the trustee name and the reason as well as the stored phone', async () => {
+      await CorrectTrusteeZoomPhones.writeFlaggedReport(context, [
+        flagged('trustee-001', '=cmd', '214-45', '@reason'),
+      ]);
+
+      const row = writeObject.mock.calls[0][2].slice(HEADER.length + 1);
+      expect(row).toEqual("trustee-001,'=cmd,214-45,'@reason");
+    });
+
+    test('should reject when the report cannot be written', async () => {
+      writeObject.mockRejectedValue(new Error('Storage unavailable'));
+
+      await expect(CorrectTrusteeZoomPhones.writeFlaggedReport(context, [])).rejects.toThrow(
+        'Storage unavailable',
+      );
     });
   });
 
@@ -171,6 +437,8 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       ['680.214.4529', '680-214-4529'],
       ['6802144529', '680-214-4529'],
       ['(680) 214-4529 ext. 55', '680-214-4529 x55'],
+      ['(680) 214-4529 X123', '680-214-4529 x123'],
+      ['(680) 214-4529 EXT. 55', '680-214-4529 x55'],
       ['(680) 214-4529 extension 55', '680-214-4529 x55'],
       ['(680) 214-4529 extension: 55', '680-214-4529 x55'],
       ['(680) 214-4529 extension. 55', '680-214-4529 x55'],
@@ -196,6 +464,7 @@ describe('CorrectTrusteeZoomPhones use case', () => {
       ['680-214-45299', 'Zoom phone has 11 digits.'],
       ['+2 (680) 214-4529', 'Zoom phone has 11 digits.'],
       ['CALL-ME-NOW', UNEXPECTED],
+      ['680+214-4529', UNEXPECTED],
       ['(680) 214-4529 x1234567', BAD_FORMAT],
       ['', EMPTY],
       ['   ', EMPTY],
