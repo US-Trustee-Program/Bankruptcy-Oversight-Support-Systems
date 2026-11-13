@@ -5,6 +5,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '@common/cams/roles';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
+import { TrusteeAppointmentsUseCase } from '../../use-cases/trustee-appointments/trustee-appointments';
 import { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
@@ -37,6 +38,7 @@ describe('TrusteeAppointmentVerificationController', () => {
     context.session.user.roles = [CamsRole.DataVerifier];
     search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
     vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
   });
 
   test('GET returns the open appointment tasks as list items', async () => {
@@ -47,6 +49,28 @@ describe('TrusteeAppointmentVerificationController', () => {
       expect.objectContaining({ id: 'task-1', taskType: 'trustee-appointment', caseCount: 1 }),
     ]);
     expect(response.body.meta).toEqual({ self: context.request.url });
+  });
+
+  test("GET with an id returns that task's detail", async () => {
+    const findById = vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+    context.request.params = { id: 'task-1' };
+
+    const response = await new TrusteeAppointmentVerificationController().handleRequest(context);
+
+    expect(findById).toHaveBeenCalledWith('task-1');
+    expect(search).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(200);
+    expect(response.body.data).toEqual(expect.objectContaining({ id: 'task-1', appointments: [] }));
+    expect(response.body.meta).toEqual({ self: context.request.url });
+  });
+
+  test('wraps a not-found error for an unknown id as a CamsError', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(new Error('not found'));
+    context.request.params = { id: 'missing' };
+
+    await expect(
+      new TrusteeAppointmentVerificationController().handleRequest(context),
+    ).rejects.toMatchObject({ module: 'TRUSTEE-APPOINTMENT-VERIFICATION-CONTROLLER' });
   });
 
   test('returns 404 when trustee-verification-enabled is off', async () => {

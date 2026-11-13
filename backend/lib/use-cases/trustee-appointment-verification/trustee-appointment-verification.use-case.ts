@@ -6,15 +6,18 @@ import {
   CaseAppointmentChecks,
   CaseAppointmentDocumentType,
   hasAppointmentForCase,
+  scoreAppointmentAgreement,
   TrusteeAppointment,
 } from '@common/cams/trustee-appointments';
 import {
   AppointmentTaskReason,
   TrusteeAppointmentVerification,
+  TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CourtsUseCase } from '../courts/courts';
+import { TrusteeAppointmentsUseCase } from '../trustee-appointments/trustee-appointments';
 
 /** The case-appointment write a caller just made, as far as the appointment-task rule needs it. */
 export type AppointmentTaskWrite = {
@@ -99,14 +102,29 @@ export async function openOrJoinAppointmentTask(
     );
 }
 
-function toListItem(
-  task: TrusteeAppointmentVerification,
+/**
+ * Resolves a task's (courtId, divisionCode) tuple against the courts list, the same way for the
+ * queue row and the detail view: a name that can't be resolved is left out rather than guessed.
+ */
+function resolveTaskCourtNames(
+  task: Pick<TrusteeAppointmentVerification, 'courtId' | 'divisionCode'>,
   courts: CourtDivisionDetails[],
-): TrusteeAppointmentVerificationListItem {
+): { courtName?: string; courtDivisionName?: string } {
   const division = courts.find(
     (c) => c.courtId === task.courtId && c.courtDivisionCode === task.divisionCode,
   );
   const courtName = (division ?? courts.find((c) => c.courtId === task.courtId))?.courtName;
+  return {
+    ...(courtName ? { courtName } : {}),
+    ...(division ? { courtDivisionName: division.courtDivisionName } : {}),
+  };
+}
+
+function toListItem(
+  task: TrusteeAppointmentVerification,
+  courts: CourtDivisionDetails[],
+): TrusteeAppointmentVerificationListItem {
+  const { courtName, courtDivisionName } = resolveTaskCourtNames(task, courts);
   return {
     id: task.id,
     documentType: task.documentType,
@@ -115,7 +133,7 @@ function toListItem(
     courtId: task.courtId,
     ...(courtName ? { courtName } : {}),
     divisionCode: task.divisionCode,
-    ...(division ? { courtDivisionName: division.courtDivisionName } : {}),
+    ...(courtDivisionName ? { courtDivisionName } : {}),
     chapter: task.chapter,
     reason: task.reason,
     status: task.status,
@@ -137,4 +155,44 @@ export async function listAppointmentTasks(
     .search({ status: ['pending'] });
   const courts = await new CourtsUseCase().getCourts(context);
   return tasks.map((task) => toListItem(task, courts));
+}
+
+/**
+ * One appointment task's full detail (CAMS-956 Slice 2), fetched when a data verifier expands its
+ * row: court/division names resolved the same way as the queue row, plus the trustee's full
+ * appointment list scored and sorted by how closely each one agrees with the task's (court,
+ * division, chapter) tuple -- closest agreement first, ties broken by the most recently appointed.
+ * Propagates a not-found error from the repository when the task does not exist.
+ */
+export async function getAppointmentTaskDetail(
+  context: ApplicationContext,
+  id: string,
+): Promise<TrusteeAppointmentVerificationDetail> {
+  const task = await factory.getTrusteeAppointmentVerificationRepository(context).findById(id);
+  const courts = await new CourtsUseCase().getCourts(context);
+  const trusteeAppointments = await new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(
+    context,
+    task.trusteeId,
+  );
+
+  const appointments = trusteeAppointments
+    .map((appointment) => ({
+      ...appointment,
+      agreement: scoreAppointmentAgreement(
+        appointment,
+        task.courtId,
+        task.divisionCode,
+        task.chapter,
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.agreement.score - a.agreement.score || b.appointedDate.localeCompare(a.appointedDate),
+    );
+
+  return {
+    ...task,
+    ...resolveTaskCourtNames(task, courts),
+    appointments,
+  };
 }

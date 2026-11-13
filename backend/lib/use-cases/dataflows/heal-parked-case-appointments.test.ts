@@ -470,6 +470,7 @@ describe('heal-parked-case-appointments', () => {
       vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
         openOrJoin,
         search: vi.fn(),
+        findById: vi.fn(),
         release: vi.fn(),
       });
     });

@@ -33,5 +33,5 @@ app.http('trustee-appointment-verification', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustee-appointment-verification',
+  route: 'trustee-appointment-verification/{id?}',
 });
