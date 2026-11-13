@@ -22,6 +22,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import { TrusteeAppointmentsUseCase } from '../trustee-appointments/trustee-appointments';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-USE-CASE';
 const APPOINTMENT_TASK_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -229,44 +230,24 @@ export async function getAppointmentTaskDetail(
   };
 }
 
-/**
- * Marks one case's current appointment as covered, if it still sits on the task's
- * (trustee, court, division, chapter). Returns whether the case counts toward the verified total.
- * A case whose active appointment is for another trustee, or for another court, division or
- * chapter (for example, the trustee was re-appointed to the case with a different tuple), is
- * skipped; so is a case with no active appointment. A case already marked covered (e.g. by an
- * earlier refresh that failed before resolving the task) counts without a rewrite.
- */
-async function markCaseCovered(
-  context: ApplicationContext,
-  caseId: string,
-  task: Pick<TrusteeAppointmentVerification, 'trusteeId' | 'courtId' | 'divisionCode' | 'chapter'>,
-): Promise<boolean> {
-  const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-  const active = await repo.getActiveByCaseId(caseId);
-  const onTaskTuple =
-    active?.trusteeId === task.trusteeId &&
-    active?.courtId === task.courtId &&
-    active?.courtDivisionCode === task.divisionCode &&
-    active?.chapter === task.chapter;
-  // A case only joins a task through the task predicate, which requires checks; an appointment
-  // without them is not the one that opened the task.
-  if (!active?.checks || !onTaskTuple) return false;
-  if (active.checks.matchedTrusteeAppointment) return true;
-  await repo.updateCaseAppointment({
-    ...active,
-    checks: { ...active.checks, matchedTrusteeAppointment: true },
-  });
-  return true;
-}
+/** How many times a refresh re-reads a task that changed (a case joined) before giving up. */
+const MAX_REFRESH_ATTEMPTS = 3;
 
 /**
  * A data verifier's "Refresh Trustee Appointments" on one appointment task.
  * Re-reads the trustee's appointments and applies the shared coverage rule (isAppointmentMatch)
  * to the task's (court, division, chapter). Every case in a task shares that tuple, so coverage is
- * all-or-nothing. If covered: marks each case whose active appointment still sits on this tuple
- * as covered, THEN resolves the task, so a failed case write leaves the task open and a retry is
- * safe. If not covered: changes nothing and reports the tuple for the verifier's warning.
+ * all-or-nothing.
+ *
+ * If covered: atomically marks each case still assigned to this trustee on the tuple as covered
+ * (cases since reassigned, unassigned or moved to another tuple are skipped and not counted),
+ * THEN resolves the task only if it is unchanged since it was read. A case that joined in the
+ * meantime makes the resolve miss, so the task is re-read, coverage re-checked and the new case
+ * covered, up to MAX_REFRESH_ATTEMPTS times. A failed case write leaves the task open and a retry
+ * is safe (the case writes are idempotent). A task another verifier already resolved is reported
+ * as resolved without resolving it again.
+ *
+ * If not covered: changes nothing and reports the tuple for the verifier's warning.
  */
 export async function refreshAppointmentTask(
   context: ApplicationContext,
@@ -274,42 +255,60 @@ export async function refreshAppointmentTask(
   trusteeId: string,
 ): Promise<TrusteeAppointmentRefreshResult> {
   const taskRepo = factory.getTrusteeAppointmentVerificationRepository(context);
-  const [task, courts, trustee] = await Promise.all([
-    taskRepo.findById(id, trusteeId),
+  const caseAppointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const verifier = getCamsUserReference(context.session.user);
+  const [courts, trustee] = await Promise.all([
     new CourtsUseCase().getCourts(context),
     factory.getTrusteesRepository(context).read(trusteeId),
   ]);
-  const trusteeAppointments = await new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(
-    context,
-    trusteeId,
-    courts,
-  );
 
-  if (!isAppointmentMatch(trusteeAppointments, task.courtId, task.divisionCode, task.chapter)) {
-    return {
-      outcome: 'still-uncovered',
+  for (let attempt = 1; attempt <= MAX_REFRESH_ATTEMPTS; attempt++) {
+    const task = await taskRepo.findById(id, trusteeId);
+    const trusteeAppointments = await new TrusteeAppointmentsUseCase(
+      context,
+    ).getTrusteeAppointments(context, trusteeId, courts);
+
+    if (!isAppointmentMatch(trusteeAppointments, task.courtId, task.divisionCode, task.chapter)) {
+      return {
+        outcome: 'still-uncovered',
+        courtId: task.courtId,
+        divisionCode: task.divisionCode,
+        chapter: task.chapter,
+        ...resolveTaskCourtNames(task, courts),
+      };
+    }
+
+    const onTaskTuple = {
+      trusteeId: task.trusteeId,
       courtId: task.courtId,
-      divisionCode: task.divisionCode,
+      courtDivisionCode: task.divisionCode,
       chapter: task.chapter,
-      ...resolveTaskCourtNames(task, courts),
     };
+    let updatedCaseCount = 0;
+    for (const caseId of task.caseIds) {
+      if (await caseAppointmentsRepo.markTrusteeAppointmentMatched(caseId, onTaskTuple, verifier)) {
+        updatedCaseCount++;
+      }
+    }
+
+    const resolved =
+      task.status !== 'pending' ||
+      (await taskRepo.resolve(id, trusteeId, task.updatedOn, verifier));
+    if (resolved) {
+      context.logger.info(
+        MODULE_NAME,
+        `Resolved trustee appointment task ${id} for trustee ${trusteeId}: ${updatedCaseCount} of ${task.caseIds.length} cases marked covered.`,
+      );
+      return {
+        outcome: 'resolved',
+        trusteeName: trustee.name,
+        updatedCaseCount,
+        task: toListItem({ ...task, status: 'approved' }, courts),
+      };
+    }
   }
 
-  let updatedCaseCount = 0;
-  for (const caseId of task.caseIds) {
-    if (await markCaseCovered(context, caseId, task)) updatedCaseCount++;
-  }
-
-  await taskRepo.resolve(id, trusteeId, getCamsUserReference(context.session.user));
-  context.logger.info(
-    MODULE_NAME,
-    `Resolved trustee appointment task ${id} for trustee ${trusteeId}: ${updatedCaseCount} of ${task.caseIds.length} cases marked covered.`,
-  );
-
-  return {
-    outcome: 'resolved',
-    trusteeName: trustee.name,
-    updatedCaseCount,
-    task: toListItem({ ...task, status: 'approved' }, courts),
-  };
+  throw new UnknownError(MODULE_NAME, {
+    message: `Trustee appointment task ${id} kept changing during the refresh; try again.`,
+  });
 }

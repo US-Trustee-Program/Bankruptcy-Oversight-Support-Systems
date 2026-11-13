@@ -21,9 +21,10 @@ import {
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
+import { CaseChapter, isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
 import { classifyRateLimitError } from './utils/mongo-adapter';
 import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/cases/sentinel-trustee';
@@ -484,6 +485,62 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         message: `Failed to read case appointment for case ${appointment.caseId}.`,
       });
     }
+  }
+
+  /**
+   * Atomically marks a case's active appointment as covered by an active trustee appointment, in
+   * both partitions, without replacing the document: only checks.matchedTrusteeAppointment and the
+   * audit fields change, so a concurrent reassignment or unassignment is never undone. Matches
+   * only while the case is still assigned (no unassignedOn) to `appointment.trusteeId` on the
+   * given court, division and chapter, with checks present. Idempotent, so a retry after a
+   * failed trustee-partition write repairs it. Returns whether the case partition matched.
+   */
+  async markTrusteeAppointmentMatched(
+    caseId: string,
+    appointment: { trusteeId: string; courtId: string; courtDivisionCode: string; chapter: string },
+    user: CamsUserReference,
+  ): Promise<boolean> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('caseId').equals(caseId),
+      doc('trusteeId').equals(appointment.trusteeId),
+      doc('courtId').equals(appointment.courtId),
+      doc('courtDivisionCode').equals(appointment.courtDivisionCode),
+      // A task's chapter is a plain string; a value outside CaseChapter simply matches nothing.
+      doc('chapter').equals(appointment.chapter as CaseChapter),
+      doc('unassignedOn').notExists(),
+      doc('checks').exists(),
+    );
+    const update = {
+      $set: {
+        'checks.matchedTrusteeAppointment': true,
+        updatedOn: new Date().toISOString(),
+        updatedBy: user,
+      },
+    };
+
+    let matched: boolean;
+    try {
+      const result = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .updateMany(query, update);
+      matched = result.matchedCount > 0;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to mark the trustee appointment matched for case ${caseId}.`,
+      });
+    }
+
+    try {
+      await this.trusteePartition.adapter<CaseAppointmentDocument>().updateMany(query, update);
+    } catch (secondaryError) {
+      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+        message: `Failed to mark the trustee appointment matched for case ${caseId} in the trustee partition.`,
+      });
+    }
+
+    return matched;
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {

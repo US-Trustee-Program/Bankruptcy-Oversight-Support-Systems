@@ -4,7 +4,6 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteeAppointmentVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { isDuplicateKeyError } from './utils/duplicate-key-error';
-import { NotFoundError } from '../../../common-errors/not-found-error';
 import QueryBuilder from '../../../query/query-builder';
 import {
   AppointmentTaskKey,
@@ -17,6 +16,9 @@ import { OrderStatus } from '@common/cams/orders';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointment-verification';
+
+/** How many reopen-then-upsert attempts a join makes before giving up on duplicate keys. */
+const MAX_JOIN_ATTEMPTS = 3;
 
 const { using, and } = QueryBuilder;
 
@@ -100,16 +102,18 @@ export class TrusteeAppointmentVerificationMongoRepository
   }
 
   /**
-   * Marks one task resolved (status 'approved') once a refresh found a covering appointment.
-   * Looked up by id within trusteeId, the shard key. Throws NotFoundError when no task matches.
-   *
-   * Not guarded on status or caseIds. A case that joins between the refresh's coverage check and
-   * this write would be resolved with the task. Accepted: writers compute coverage from the
-   * trustee's current appointments, so once a covering appointment exists new cases for this
-   * tuple don't open tasks; only a writer that read appointments before the Trustee Admin's fix
-   * could hit the window.
+   * Marks one task resolved (status 'approved') once a refresh found a covering appointment, but
+   * only if it is still pending and unchanged since the refresh read it: `expectedUpdatedOn` must
+   * equal the stored updatedOn. Every join bumps updatedOn, so a case that joined after the read
+   * makes this match nothing and return false; the refresh then re-reads the task and covers the
+   * new case. Looked up by id within trusteeId, the shard key.
    */
-  async resolve(id: string, trusteeId: string, user: CamsUserReference): Promise<void> {
+  async resolve(
+    id: string,
+    trusteeId: string,
+    expectedUpdatedOn: string,
+    user: CamsUserReference,
+  ): Promise<boolean> {
     try {
       const doc = using<TrusteeAppointmentVerification>();
       const resolved = await this.getAdapter<TrusteeAppointmentVerification>().findOneAndUpdate(
@@ -117,16 +121,13 @@ export class TrusteeAppointmentVerificationMongoRepository
           doc('documentType').equals(TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE),
           doc('trusteeId').equals(trusteeId),
           doc('id').equals(id),
+          doc('status').equals('pending'),
+          doc('updatedOn').equals(expectedUpdatedOn),
         ),
         { $set: { status: 'approved', updatedOn: new Date().toISOString(), updatedBy: user } },
       );
-      if (!resolved) {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Trustee appointment task ${id} not found.`,
-        });
-      }
+      return !!resolved;
     } catch (originalError) {
-      // getCamsErrorWithStack rethrows a CamsError (the NotFoundError above) unchanged.
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to resolve trustee appointment task ${id}.`,
       });
@@ -139,22 +140,19 @@ export class TrusteeAppointmentVerificationMongoRepository
    *
    * 1. Reopen: if the tuple's task is no longer pending (a refresh resolved it), set it back to
    *    pending with caseIds reset to just this case. The cases it held were verified when it
-   *    resolved; without this, a new uncovered case would join a task the pending-only queue
-   *    never shows. Matches nothing when the task is pending or doesn't exist.
-   * 2. Open or join: findOneAndUpdate with upsert, so concurrent writers can neither create a
-   *    second task for the tuple nor add a case twice ($addToSet). Two writers racing to INSERT
-   *    the same tuple: the loser gets an E11000 duplicate-key error, and retrying the same upsert
-   *    once then matches the winner's document.
+   *    resolved. Matches nothing when the task is pending or doesn't exist.
+   * 2. Open or join: findOneAndUpdate with upsert on the tuple's PENDING task, so concurrent
+   *    writers can neither create a second task for the tuple nor add a case twice ($addToSet),
+   *    and a case never lands on a resolved task the pending-only queue would hide.
+   *
+   * A duplicate-key error on the upsert means the tuple's task exists but isn't pending (a
+   * refresh resolved it after step 1) or a concurrent writer inserted it first. Either way the
+   * whole sequence is retried from step 1, up to MAX_JOIN_ATTEMPTS times.
    *
    * Two writers joining the same resolved task stay safe: only the first reopen matches (the
    * second sees status pending), and both cases then land via $addToSet. A pipeline update could
    * do both in one write, but the upsert would also have to build every insert field with
    * $cond, and Cosmos DB support for pipeline upserts is unverified.
-   *
-   * Accepted race: if a stale refresh resolves the task between two writers' reopens, the later
-   * reopen's `$set caseIds` discards the earlier writer's case. This is accepted for the same
-   * stale-writer reason as the resolve note above, and by then a covering appointment exists, so
-   * the only residue is that case's matchedTrusteeAppointment flag staying false.
    */
   async openOrJoin(
     key: AppointmentTaskKey,
@@ -170,7 +168,7 @@ export class TrusteeAppointmentVerificationMongoRepository
       doc('divisionCode').equals(key.divisionCode),
       doc('chapter').equals(key.chapter),
     ];
-    const query = and(...keyConditions);
+    const query = and(...keyConditions, doc('status').equals('pending'));
     const now = new Date().toISOString();
     const update = {
       $addToSet: { caseIds: caseId },
@@ -197,12 +195,17 @@ export class TrusteeAppointmentVerificationMongoRepository
       });
 
     try {
-      await this.getAdapter<TrusteeAppointmentVerification>().findOneAndUpdate(reopenQuery, reopen);
-      try {
-        await upsert();
-      } catch (error) {
-        if (!isDuplicateKeyError(error)) throw error;
-        await upsert();
+      for (let attempt = 1; ; attempt++) {
+        await this.getAdapter<TrusteeAppointmentVerification>().findOneAndUpdate(
+          reopenQuery,
+          reopen,
+        );
+        try {
+          await upsert();
+          return;
+        } catch (error) {
+          if (!isDuplicateKeyError(error) || attempt >= MAX_JOIN_ATTEMPTS) throw error;
+        }
       }
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

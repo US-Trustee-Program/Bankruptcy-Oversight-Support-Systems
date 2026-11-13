@@ -822,8 +822,12 @@ export class MockMongoRepository
     return Promise.resolve();
   }
 
-  resolve(..._ignore: any[]): Promise<void> {
-    return Promise.resolve();
+  resolve(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  markTrusteeAppointmentMatched(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────
