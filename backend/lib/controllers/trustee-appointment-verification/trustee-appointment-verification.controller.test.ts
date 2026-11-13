@@ -8,6 +8,8 @@ import { CourtsUseCase } from '../../use-cases/courts/courts';
 import { TrusteeAppointmentsUseCase } from '../../use-cases/trustee-appointments/trustee-appointments';
 import { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('TrusteeAppointmentVerificationController', () => {
   let context: ApplicationContext;
@@ -39,6 +41,9 @@ describe('TrusteeAppointmentVerificationController', () => {
     search = vi.spyOn(MockMongoRepository.prototype, 'search').mockResolvedValue([task]);
     vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
     vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+      MockData.getTrustee({ trusteeId: 'trustee-1', name: 'Jane Smith' }),
+    );
   });
 
   test('GET returns the open appointment tasks as list items', async () => {
@@ -64,13 +69,16 @@ describe('TrusteeAppointmentVerificationController', () => {
     expect(response.body.meta).toEqual({ self: context.request.url });
   });
 
-  test('wraps a not-found error for an unknown id as a CamsError', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(new Error('not found'));
+  test('a not-found error for an unknown id keeps its 404 status through the controller', async () => {
+    const notFound = new NotFoundError('TRUSTEE-APPOINTMENT-VERIFICATION-MONGO-REPOSITORY', {
+      message: 'Trustee appointment task missing not found.',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(notFound);
     context.request.params = { id: 'missing' };
 
     await expect(
       new TrusteeAppointmentVerificationController().handleRequest(context),
-    ).rejects.toMatchObject({ module: 'TRUSTEE-APPOINTMENT-VERIFICATION-CONTROLLER' });
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   test('returns 404 when trustee-verification-enabled is off', async () => {

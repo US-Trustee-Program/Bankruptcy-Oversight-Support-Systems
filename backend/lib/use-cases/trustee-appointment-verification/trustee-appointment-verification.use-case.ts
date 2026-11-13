@@ -169,22 +169,16 @@ export async function getAppointmentTaskDetail(
   id: string,
 ): Promise<TrusteeAppointmentVerificationDetail> {
   const task = await factory.getTrusteeAppointmentVerificationRepository(context).findById(id);
-  const courts = await new CourtsUseCase().getCourts(context);
-  const trusteeAppointments = await new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(
-    context,
-    task.trusteeId,
-  );
 
-  // Falls back to the trusteeId so the UI always has something to show/link when the trustee
-  // record itself can't be read, the same resilience as trustee-match-verification's
-  // resolvedTrusteeName lookup.
-  let trusteeName = task.trusteeId;
-  try {
-    const trustee = await factory.getTrusteesRepository(context).read(task.trusteeId);
-    trusteeName = trustee.name;
-  } catch {
-    // name unavailable -- UI falls back to the trustee id
-  }
+  // Independent reads, run concurrently. getTrusteeAppointments already reads the trustee (and
+  // throws NotFoundError) before returning, so by the time this resolves the trustee is confirmed
+  // to exist -- the trustee-name read below needs no fallback of its own.
+  const [courts, trusteeAppointments, trustee] = await Promise.all([
+    new CourtsUseCase().getCourts(context),
+    new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(context, task.trusteeId),
+    factory.getTrusteesRepository(context).read(task.trusteeId),
+  ]);
+  const trusteeName = trustee.name;
 
   const appointments = trusteeAppointments
     .map((appointment) => ({

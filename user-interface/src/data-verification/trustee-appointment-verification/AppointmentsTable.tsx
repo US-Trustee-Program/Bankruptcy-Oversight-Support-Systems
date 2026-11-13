@@ -3,11 +3,14 @@ import { Pagination } from '@/lib/components/uswds/Pagination';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { TrusteeAppointmentWithAgreement } from '@common/cams/trustee-appointment-verification';
 import { formatAppointmentStatus, getDivisionCodes } from '@common/cams/trustee-appointments';
-import { formatAppointmentType } from '@common/cams/trustees';
+import { formatAppointmentType, formatChapterType } from '@common/cams/trustees';
 import { DifferenceIcon } from '../trustee-verification/TrusteeComparisonTable';
 
 const APPOINTMENTS_PAGE_SIZE = 5;
-const DIFFERS_DESCRIPTION = 'Different from these cases';
+
+function differsDescription(field: string): string {
+  return `${field} differs from these cases`;
+}
 
 export type AppointmentsTableProps = {
   appointments: TrusteeAppointmentWithAgreement[];
@@ -21,20 +24,22 @@ function AppointmentRow({ appointment }: { appointment: TrusteeAppointmentWithAg
   return (
     <tr>
       <td data-label="District">
-        {!agreement.matchesCourt && <DifferenceIcon description={DIFFERS_DESCRIPTION} />}
+        {!agreement.matchesCourt && <DifferenceIcon description={differsDescription('District')} />}
         {district}
       </td>
       <td data-label="Division">
-        {!agreement.matchesDivision && <DifferenceIcon description={DIFFERS_DESCRIPTION} />}
+        {!agreement.matchesDivision && (
+          <DifferenceIcon description={differsDescription('Division')} />
+        )}
         {division}
       </td>
       <td data-label="Chapter">
-        {!agreement.matchesChapter && <DifferenceIcon description={DIFFERS_DESCRIPTION} />}
-        {appointment.chapter}
+        {!agreement.matchesChapter && <DifferenceIcon description={differsDescription('Chapter')} />}
+        {formatChapterType(appointment.chapter)}
       </td>
       <td data-label="Type">{formatAppointmentType(appointment.appointmentType)}</td>
       <td data-label="Status">
-        {!agreement.isActive && <DifferenceIcon description={DIFFERS_DESCRIPTION} />}
+        {!agreement.isActive && <DifferenceIcon description={differsDescription('Status')} />}
         {formatAppointmentStatus(appointment.status)}
       </td>
     </tr>
@@ -77,7 +82,7 @@ export function AppointmentsTable({ appointments }: Readonly<AppointmentsTablePr
         A warning icon marks information that differs from the court, division, chapter or status of
         these cases.
       </p>
-      <table className="usa-table usa-table--borderless appointments-table">
+      <table className="usa-table usa-table--borderless appointments-table" aria-label="Appointments">
         <thead>
           <tr>
             <th scope="col">District</th>

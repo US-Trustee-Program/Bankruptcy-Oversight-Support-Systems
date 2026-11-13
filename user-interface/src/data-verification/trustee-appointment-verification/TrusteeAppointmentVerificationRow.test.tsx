@@ -146,18 +146,17 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(screen.queryByText('Loading task details...')).not.toBeInTheDocument();
   });
 
-  test('shows a red alert when loading details fails', async () => {
+  test('shows a red alert, announced to screen readers, when loading details fails', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockRejectedValue(new Error('boom'));
     renderRow();
 
     fireEvent.click(expandButton());
 
-    expect(
-      await screen.findByText('Unable to load task details. Please try again.'),
-    ).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Unable to load task details. Please try again.');
   });
 
-  test('does not refetch on a second expand once details are loaded', async () => {
+  test('refetches detail on each new expand, so stale data is never shown and a retry after a failure can succeed', async () => {
     const detailSpy = vi
       .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
       .mockResolvedValue({ data: detail } as never);
@@ -165,10 +164,27 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
     fireEvent.click(expandButton());
     await screen.findByTestId('problem-statement');
-    fireEvent.click(expandButton());
-    fireEvent.click(expandButton());
+    fireEvent.click(expandButton()); // collapse
+    fireEvent.click(expandButton()); // expand again
 
-    expect(detailSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
+  });
+
+  test('retries after a failed load: re-expanding fetches again and can clear the error', async () => {
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ data: detail } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+    await screen.findByRole('alert');
+    fireEvent.click(expandButton()); // collapse
+    fireEvent.click(expandButton()); // expand again, retrying
+
+    await screen.findByTestId('problem-statement');
+    expect(detailSpy).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   test("the reason sentence for 'no-appointment' links the trustee's name to their profile", async () => {
@@ -241,21 +257,6 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(
       await screen.findByText('This trustee has no appointments in CAMS.'),
     ).toBeInTheDocument();
-  });
-
-  test('does not retry after a failed load; re-expanding shows the same error', async () => {
-    const detailSpy = vi
-      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
-      .mockRejectedValue(new Error('boom'));
-    renderRow();
-
-    fireEvent.click(expandButton());
-    await screen.findByText('Unable to load task details. Please try again.');
-    fireEvent.click(expandButton());
-    fireEvent.click(expandButton());
-
-    expect(detailSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Unable to load task details. Please try again.')).toBeInTheDocument();
   });
 
   describe('inside an accordion group', () => {

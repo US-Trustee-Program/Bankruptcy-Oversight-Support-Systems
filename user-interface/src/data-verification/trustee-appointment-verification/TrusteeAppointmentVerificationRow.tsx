@@ -78,9 +78,15 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
 
+  /**
+   * Refetches on every expand rather than caching the first load: another write (e.g. a case
+   * joining the task through openOrJoin) can change caseIds/reason after the first expand, and a
+   * verifier who hits a transient load failure can retry simply by collapsing and re-expanding.
+   */
   async function fetchDetail() {
-    if (detail || detailLoadError || isLoadingDetail) return;
+    if (isLoadingDetail) return;
     setIsLoadingDetail(true);
+    setDetailLoadError(false);
     try {
       const response = await Api2.getTrusteeAppointmentVerificationDetail(order.id);
       setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
@@ -105,7 +111,11 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
       return <LoadingSpinner caption="Loading task details..." />;
     }
     if (detailLoadError) {
-      return <p className="text-error">Unable to load task details. Please try again.</p>;
+      return (
+        <p className="text-error" role="alert">
+          Unable to load task details. Please try again.
+        </p>
+      );
     }
     if (!detail) return null;
 
