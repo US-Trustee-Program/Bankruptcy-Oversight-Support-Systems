@@ -41,6 +41,13 @@ Feature: Trustee edits succeed for trustees with migrated data
     Then the trustee's Zoom phone is still "214-45"
     And the trustee and the stored value appear in the flagged phones report
 
+  Scenario: A trustee whose other Zoom info still fails validation is flagged, not changed
+    Given a trustee whose stored Zoom phone is "(555) 010-0123"
+    And the trustee's Zoom passcode is not 10 digits
+    When the stored Zoom phone numbers are corrected
+    Then the trustee's Zoom info is not changed
+    And the trustee and the invalid Zoom field names appear in the flagged phones report
+
   Scenario: A throttled database does not lose or skip corrections
     Given the database is rate limiting the correction
     When the stored Zoom phone numbers are corrected

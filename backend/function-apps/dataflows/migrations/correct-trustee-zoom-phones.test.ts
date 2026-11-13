@@ -73,7 +73,12 @@ describe('correct-trustee-zoom-phones migration', () => {
         trusteeName: 'Pat Poe',
         storedPhone: '214-45',
       },
-      { trusteeId: 'trustee-004', outcome: 'flagged', reason: 'Zoom phone is empty or missing.' },
+      {
+        trusteeId: 'trustee-004',
+        outcome: 'flagged',
+        reason: 'Zoom phone is empty or missing.',
+        trusteeName: 'Sam Moe',
+      },
     ];
     runPass.mockResolvedValue(
       complete(results, { converted: 1, alreadyValid: 1, flagged: 2, failed: 0 }),
@@ -148,7 +153,14 @@ describe('correct-trustee-zoom-phones migration', () => {
   test('should log an error but still report the counts and the flagged trustees when the report cannot be written', async () => {
     runPass.mockResolvedValue(
       complete(
-        [{ trusteeId: 'trustee-002', outcome: 'flagged', reason: 'Zoom phone has 5 digits.' }],
+        [
+          {
+            trusteeId: 'trustee-002',
+            outcome: 'flagged',
+            reason: 'Zoom phone has 5 digits.',
+            trusteeName: 'Pat Poe',
+          },
+        ],
         { converted: 0, alreadyValid: 0, flagged: 1, failed: 0 },
       ),
     );

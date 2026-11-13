@@ -1,4 +1,7 @@
 import { PHONE_REGEX } from '@common/cams/regex';
+import { ZoomInfo } from '@common/cams/trustees';
+import { zoomInfoSpec } from '@common/cams/trustees-validators';
+import { validateObject } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
@@ -21,8 +24,11 @@ const NUMBER_PART_CHARACTERS = /^\+?[\d\s().-]+$/;
  * without validation, e.g. "(555) 010-0123". Converts what can be unambiguously
  * reformatted to PHONE_REGEX and flags everything else for review.
  */
-export function convertZoomPhone(stored: string | undefined): ZoomPhoneConversion {
-  const trimmed = stored?.trim() ?? '';
+export function convertZoomPhone(stored: unknown): ZoomPhoneConversion {
+  if (stored != null && typeof stored !== 'string') {
+    return { outcome: 'flagged', reason: 'Zoom phone is not text.' };
+  }
+  const trimmed = typeof stored === 'string' ? stored.trim() : '';
   if (!trimmed) {
     return { outcome: 'flagged', reason: 'Zoom phone is empty or missing.' };
   }
@@ -55,17 +61,15 @@ export function convertZoomPhone(stored: string | undefined): ZoomPhoneConversio
   return { outcome: 'converted', newValue };
 }
 
-type ZoomPhoneCorrectionOutcome = 'converted' | 'alreadyValid' | 'flagged' | 'failed';
+type ZoomPhoneCorrectionResult = { trusteeId: string } & (
+  | { outcome: 'alreadyValid' }
+  | { outcome: 'converted'; newValue: string }
+  // Name and stored phone are carried so the review report identifies the trustee and the value.
+  | { outcome: 'flagged'; reason: string; trusteeName: string; storedPhone?: string }
+  | { outcome: 'failed'; newValue: string }
+);
 
-type ZoomPhoneCorrectionResult = {
-  trusteeId: string;
-  outcome: ZoomPhoneCorrectionOutcome;
-  newValue?: string;
-  reason?: string;
-  // Carried on flagged results so the review report identifies the trustee and the bad value.
-  trusteeName?: string;
-  storedPhone?: string;
-};
+type ZoomPhoneCorrectionOutcome = ZoomPhoneCorrectionResult['outcome'];
 
 type ZoomPhoneCorrectionSummary = {
   results: ZoomPhoneCorrectionResult[];
@@ -136,25 +140,37 @@ async function runCorrectionPass(
     const results: ZoomPhoneCorrectionResult[] = [];
     let convertedThisPass = 0;
 
-    for (const trustee of read.value.filter((t) => !!t.zoomInfo)) {
-      const { trusteeId } = trustee;
-      const conversion = convertZoomPhone(trustee.zoomInfo?.phone);
-
-      if (conversion.outcome === 'alreadyValid') {
-        results.push({ trusteeId, outcome: 'alreadyValid' });
-      } else if (conversion.outcome === 'flagged') {
+    for (const trustee of read.value) {
+      const { trusteeId, zoomInfo } = trustee;
+      if (!zoomInfo) {
+        continue;
+      }
+      const conversion = convertZoomPhone(zoomInfo.phone);
+      const flag = (reason: string) =>
         results.push({
           trusteeId,
           outcome: 'flagged',
-          reason: conversion.reason,
+          reason,
           trusteeName: trustee.name,
-          storedPhone: trustee.zoomInfo?.phone,
+          storedPhone: zoomInfo.phone == null ? undefined : String(zoomInfo.phone),
         });
+
+      if (conversion.outcome === 'flagged') {
+        flag(conversion.reason);
+        continue;
+      }
+
+      const newPhone = conversion.outcome === 'converted' ? conversion.newValue : zoomInfo.phone;
+      const invalidFields = findInvalidZoomFields({ ...zoomInfo, phone: newPhone });
+      if (invalidFields.length > 0) {
+        flag(`Zoom info has invalid fields: ${invalidFields.join(', ')}.`);
+      } else if (conversion.outcome === 'alreadyValid') {
+        results.push({ trusteeId, outcome: 'alreadyValid' });
       } else {
         const { newValue } = conversion;
         try {
           const write = await retryOnRateLimit(
-            () => repo.setZoomInfo(trusteeId, { ...trustee.zoomInfo, phone: newValue }),
+            () => repo.setZoomInfo(trusteeId, { ...zoomInfo, phone: newValue }),
             retryOptions(`writing trustee ${trusteeId}`),
           );
           if (write.kind === 'escape') {
@@ -181,6 +197,14 @@ async function runCorrectionPass(
       error: getCamsError(originalError, MODULE_NAME, 'Failed to correct trustee Zoom phones.'),
     };
   }
+}
+
+/**
+ * Saving Zoom info validates all of it together, so a trustee whose phone is fine can still be
+ * blocked by another field. Only field names are returned; the values include the passcode.
+ */
+function findInvalidZoomFields(zoomInfo: ZoomInfo): string[] {
+  return Object.keys(validateObject(zoomInfoSpec, zoomInfo).reasonMap ?? {});
 }
 
 function escapeOutcome(
