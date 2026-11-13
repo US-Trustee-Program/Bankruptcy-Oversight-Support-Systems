@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
 import { TrusteeAppointmentWithAgreement } from '@common/cams/trustee-appointment-verification';
 import { AppointmentAgreement } from '@common/cams/trustee-appointments';
@@ -41,8 +41,19 @@ describe('AppointmentsTable', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  test('lists appointments with District, Division, Chapter, Type and Status columns', () => {
-    render(
+  test('has an accessible name and the District, Division, Chapter, Type and Status columns', () => {
+    render(<AppointmentsTable appointments={[makeAppointment()]} />);
+
+    const table = screen.getByRole('table', { name: 'Appointments' });
+    expect(table).toHaveTextContent('District');
+    expect(table).toHaveTextContent('Division');
+    expect(table).toHaveTextContent('Chapter');
+    expect(table).toHaveTextContent('Type');
+    expect(table).toHaveTextContent('Status');
+  });
+
+  test('renders each appointment value in its own column', () => {
+    const { container } = render(
       <AppointmentsTable
         appointments={[
           makeAppointment({ divisionCode: '1', chapter: '7', appointmentType: 'panel' }),
@@ -50,35 +61,42 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    const table = screen.getByRole('table');
-    expect(table).toHaveTextContent('District');
-    expect(table).toHaveTextContent('Division');
-    expect(table).toHaveTextContent('Chapter');
-    expect(table).toHaveTextContent('Type');
-    expect(table).toHaveTextContent('Status');
-    expect(table).toHaveTextContent('Southern District of New York');
-    expect(table).toHaveTextContent('1');
-    expect(table).toHaveTextContent('7');
-    expect(table).toHaveTextContent('Panel');
-    expect(table).toHaveTextContent('Active');
+    const cell = (label: string) => container.querySelector(`td[data-label="${label}"]`);
+    expect(cell('District')).toHaveTextContent('Southern District of New York');
+    expect(cell('Division')).toHaveTextContent('1');
+    expect(cell('Chapter')).toHaveTextContent('7');
+    expect(cell('Type')).toHaveTextContent('Panel');
+    expect(cell('Status')).toHaveTextContent('Active');
   });
 
-  test('falls back to the court id when the court name is unknown', () => {
-    render(
+  test('formats a subchapter V chapter slug for display', () => {
+    const { container } = render(
+      <AppointmentsTable appointments={[makeAppointment({ chapter: '11-subchapter-v' })]} />,
+    );
+
+    expect(container.querySelector('td[data-label="Chapter"]')).toHaveTextContent(
+      '11 Subchapter V',
+    );
+  });
+
+  test('falls back to the court id in the District column when the court name is unknown', () => {
+    const { container } = render(
       <AppointmentsTable
         appointments={[makeAppointment({ courtName: undefined, courtId: '081' })]}
       />,
     );
 
-    expect(screen.getByRole('table')).toHaveTextContent('081');
+    expect(container.querySelector('td[data-label="District"]')).toHaveTextContent('081');
   });
 
-  test('shows the resolved division name when the backend provides one', () => {
-    render(
+  test('shows the resolved division name in the Division column when the backend provides one', () => {
+    const { container } = render(
       <AppointmentsTable appointments={[makeAppointment({ courtDivisionName: 'Foley Square' })]} />,
     );
 
-    expect(screen.getByRole('table')).toHaveTextContent('Foley Square');
+    expect(container.querySelector('td[data-label="Division"]')).toHaveTextContent(
+      'Foley Square',
+    );
   });
 
   test('renders appointments in the order given, without re-sorting', () => {
@@ -106,7 +124,7 @@ describe('AppointmentsTable', () => {
     { flag: 'matchesDivision', cell: 'Division' },
     { flag: 'matchesChapter', cell: 'Chapter' },
     { flag: 'isActive', cell: 'Status' },
-  ])('marks the $cell cell with a warning icon when $flag is false', ({ flag }) => {
+  ])('marks only the $cell cell with a warning icon when $flag is false', ({ flag, cell }) => {
     const matchingAgreement: AppointmentAgreement = {
       matchesCourt: true,
       matchesDivision: true,
@@ -115,7 +133,7 @@ describe('AppointmentsTable', () => {
       score: 4,
     };
 
-    render(
+    const { container } = render(
       <AppointmentsTable
         appointments={[
           makeAppointment({ agreement: { ...matchingAgreement, [flag]: false, score: 3 } }),
@@ -123,13 +141,21 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Different from these cases')).toBeInTheDocument();
+    const targetCell = container.querySelector(`td[data-label="${cell}"]`) as HTMLElement;
+    expect(
+      within(targetCell).getByRole('img', { name: `${cell} differs from these cases` }),
+    ).toBeInTheDocument();
+
+    container.querySelectorAll('td').forEach((td) => {
+      if (td === targetCell) return;
+      expect(td.querySelector('[role="img"]')).not.toBeInTheDocument();
+    });
   });
 
   test('shows no warning icon when every field matches the tuple', () => {
-    render(<AppointmentsTable appointments={[makeAppointment()]} />);
+    const { container } = render(<AppointmentsTable appointments={[makeAppointment()]} />);
 
-    expect(screen.queryByLabelText('Different from these cases')).not.toBeInTheDocument();
+    expect(container.querySelector('[role="img"]')).not.toBeInTheDocument();
   });
 
   test('shows the key line explaining the warning icon', () => {

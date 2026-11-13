@@ -281,12 +281,11 @@ describe('getAppointmentTaskDetail', () => {
     expect(result.trusteeName).toBe('Jane Smith');
   });
 
-  test('falls back to the trustee id when the trustee cannot be read', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('not found'));
+  test('propagates a failure reading the trustee record', async () => {
+    const readFailure = new Error('read failed');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(readFailure);
 
-    const result = await getAppointmentTaskDetail(context, 'task-1');
-
-    expect(result.trusteeName).toBe('trustee-1');
+    await expect(getAppointmentTaskDetail(context, 'task-1')).rejects.toBe(readFailure);
   });
 
   test('returns the task with resolved names and the appointments sorted by agreement, closest first', async () => {
