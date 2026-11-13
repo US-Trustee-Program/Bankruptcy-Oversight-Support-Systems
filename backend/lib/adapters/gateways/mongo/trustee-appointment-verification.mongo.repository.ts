@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeAppointmentVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { isDuplicateKeyError } from './utils/duplicate-key-error';
@@ -71,6 +72,26 @@ export class TrusteeAppointmentVerificationMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee appointment tasks.',
+      });
+    }
+  }
+
+  /** The single task by id, for the Slice 2 detail view. */
+  async findById(id: string): Promise<TrusteeAppointmentVerification> {
+    try {
+      const doc = using<TrusteeAppointmentVerification>();
+      return await this.getAdapter<TrusteeAppointmentVerification>().findOne(
+        and(
+          doc('documentType').equals(TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE),
+          doc('id').equals(id),
+        ),
+      );
+    } catch (originalError) {
+      if (originalError instanceof NotFoundError) {
+        throw originalError;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee appointment task ${id}.`,
       });
     }
   }

@@ -282,7 +282,10 @@ export function normalizeChapter(chapter: string): string {
  * singular `divisionCode` and the current `divisionCodes` array (modern appointments,
  * including multi-division panel appointments, only populate `divisionCodes`).
  */
-function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
+export function appointmentCoversDivision(
+  appointment: TrusteeAppointment,
+  divisionCode: string,
+): boolean {
   return (
     appointment.divisionCode === divisionCode ||
     getDivisionCodes(appointment).includes(divisionCode)
@@ -339,6 +342,36 @@ export function hasAppointmentForCase(
   return appointments.some((a) =>
     appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
   );
+}
+
+/**
+ * How closely one of a trustee's appointments agrees with a task's (court, division, chapter)
+ * tuple and active status -- CAMS-956 Slice 2's Appointments table ranks a trustee's appointments
+ * by this (closest agreement first) and marks the per-field cells that differ. score is the count
+ * of the four fields that match (0-4); isActive is reported separately from matchesCourt/
+ * matchesDivision/matchesChapter because an appointment can match the tuple exactly and still not
+ * cover the case if it isn't active (the 'appointment-inactive' task reason).
+ */
+export type AppointmentAgreement = {
+  matchesCourt: boolean;
+  matchesDivision: boolean;
+  matchesChapter: boolean;
+  isActive: boolean;
+  score: number;
+};
+
+export function scoreAppointmentAgreement(
+  appointment: TrusteeAppointment,
+  courtId: string,
+  divisionCode: string,
+  chapter: string,
+): AppointmentAgreement {
+  const matchesCourt = appointment.courtId === courtId;
+  const matchesDivision = appointmentCoversDivision(appointment, divisionCode);
+  const matchesChapter = normalizeChapter(appointment.chapter) === normalizeChapter(chapter);
+  const isActive = appointment.status === 'active';
+  const score = [matchesCourt, matchesDivision, matchesChapter, isActive].filter(Boolean).length;
+  return { matchesCourt, matchesDivision, matchesChapter, isActive, score };
 }
 
 export type AppointmentCoverageCase = {

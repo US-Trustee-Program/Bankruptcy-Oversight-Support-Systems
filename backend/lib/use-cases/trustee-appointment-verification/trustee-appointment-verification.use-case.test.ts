@@ -5,12 +5,15 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import MockData from '@common/cams/test-utilities/mock-data';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CaseAppointmentChecks } from '@common/cams/trustee-appointments';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import {
   AppointmentTaskWrite,
+  getAppointmentTaskDetail,
   listAppointmentTasks,
   openOrJoinAppointmentTask,
 } from './trustee-appointment-verification.use-case';
 import { CourtsUseCase } from '../courts/courts';
+import { TrusteeAppointmentsUseCase } from '../trustee-appointments/trustee-appointments';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 
@@ -226,5 +229,148 @@ describe('listAppointmentTasks', () => {
 
     expect(item).not.toHaveProperty('courtName');
     expect(item).not.toHaveProperty('courtDivisionName');
+  });
+});
+
+describe('getAppointmentTaskDetail', () => {
+  let context: ApplicationContext;
+
+  const task: TrusteeAppointmentVerification = {
+    id: 'task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    divisionCode: '1',
+    chapter: '7',
+    reason: 'no-appointment',
+    caseIds: ['081-24-00001', '081-24-00002'],
+    status: 'pending',
+    createdOn: '2026-11-01T00:00:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+  };
+
+  const court = (overrides: Partial<CourtDivisionDetails>): CourtDivisionDetails => ({
+    ...MockData.getCourts()[0],
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+      court({
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '1',
+        courtDivisionName: 'Manhattan',
+      }),
+    ]);
+  });
+
+  test('returns the task with resolved names and the appointments sorted by agreement, closest first', async () => {
+    const worseMatch = MockData.getTrusteeAppointment({
+      courtId: '081',
+      divisionCode: '2',
+      divisionCodes: undefined,
+      chapter: '7',
+      status: 'active',
+    });
+    const bestMatch = MockData.getTrusteeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      divisionCodes: undefined,
+      chapter: '7',
+      status: 'active',
+    });
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([
+      worseMatch,
+      bestMatch,
+    ]);
+
+    const result = await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(result).toEqual({
+      ...task,
+      courtName: 'Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      appointments: [
+        {
+          ...bestMatch,
+          agreement: {
+            matchesCourt: true,
+            matchesDivision: true,
+            matchesChapter: true,
+            isActive: true,
+            score: 4,
+          },
+        },
+        {
+          ...worseMatch,
+          agreement: {
+            matchesCourt: true,
+            matchesDivision: false,
+            matchesChapter: true,
+            isActive: true,
+            score: 3,
+          },
+        },
+      ],
+    });
+  });
+
+  test('breaks a tied score by the most recently appointed', async () => {
+    const older = MockData.getTrusteeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      divisionCodes: undefined,
+      chapter: '7',
+      status: 'active',
+      appointedDate: '2020-01-01',
+    });
+    const newer = MockData.getTrusteeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      divisionCodes: undefined,
+      chapter: '7',
+      status: 'active',
+      appointedDate: '2024-06-15',
+    });
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([
+      older,
+      newer,
+    ]);
+
+    const result = await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(result.appointments.map((a) => a.appointedDate)).toEqual(['2024-06-15', '2020-01-01']);
+  });
+
+  test("fetches the trustee appointments for the task's own trustee", async () => {
+    const getTrusteeAppointments = vi
+      .spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments')
+      .mockResolvedValue([]);
+
+    await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(getTrusteeAppointments).toHaveBeenCalledWith(context, 'trustee-1');
+  });
+
+  test('returns an empty appointments array when the trustee has none', async () => {
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+    const result = await getAppointmentTaskDetail(context, 'task-1');
+
+    expect(result.appointments).toEqual([]);
+  });
+
+  test('propagates a not-found error when the task does not exist', async () => {
+    const notFound = new NotFoundError('TEST');
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(notFound);
+
+    await expect(getAppointmentTaskDetail(context, 'missing')).rejects.toBe(notFound);
   });
 });

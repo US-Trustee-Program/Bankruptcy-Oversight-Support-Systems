@@ -247,7 +247,11 @@ export function createApp(): Application {
     }
   };
 
-  app.get('/api/trustee-appointment-verification', async (req, res, next) => {
+  const handleTrusteeAppointmentVerification = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const context = await ContextCreator.applicationContextCreator(req);
       const controller = new TrusteeAppointmentVerificationController();
@@ -256,7 +260,10 @@ export function createApp(): Application {
     } catch (error) {
       next(error);
     }
-  });
+  };
+
+  app.get('/api/trustee-appointment-verification', handleTrusteeAppointmentVerification);
+  app.get('/api/trustee-appointment-verification/:id', handleTrusteeAppointmentVerification);
 
   app.get('/api/orders-suggestions', handleOrdersSuggestions);
   app.get('/api/orders-suggestions/:caseId', handleOrdersSuggestions);

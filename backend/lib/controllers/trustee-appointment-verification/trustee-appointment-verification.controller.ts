@@ -4,20 +4,31 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
-import { listAppointmentTasks } from '../../use-cases/trustee-appointment-verification/trustee-appointment-verification.use-case';
+import {
+  TrusteeAppointmentVerificationDetail,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
+import {
+  getAppointmentTaskDetail,
+  listAppointmentTasks,
+} from '../../use-cases/trustee-appointment-verification/trustee-appointment-verification.use-case';
 import { CamsRole } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-CONTROLLER';
 
 /**
- * Lists open trustee appointment tasks (CAMS-956) for the Data Verification queue. Behind the
- * same feature flag and DataVerifier role as trustee identity tasks.
+ * Lists open trustee appointment tasks (CAMS-956) for the Data Verification queue, or (Slice 2)
+ * returns one task's detail by id. Behind the same feature flag and DataVerifier role as trustee
+ * identity tasks.
  */
 export class TrusteeAppointmentVerificationController {
   async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointmentVerificationListItem[]>> {
+  ): Promise<
+    CamsHttpResponseInit<
+      TrusteeAppointmentVerificationListItem[] | TrusteeAppointmentVerificationDetail
+    >
+  > {
     if (!context.featureFlags['trustee-verification-enabled']) {
       return { statusCode: 404 };
     }
@@ -30,7 +41,10 @@ export class TrusteeAppointmentVerificationController {
         throw new BadRequestError(MODULE_NAME, { message: 'Unsupported method.' });
       }
 
-      const data = await listAppointmentTasks(context);
+      const id = context.request.params['id'];
+      const data = id
+        ? await getAppointmentTaskDetail(context, id)
+        : await listAppointmentTasks(context);
       return httpSuccess({
         body: {
           meta: { self: context.request.url },

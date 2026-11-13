@@ -746,6 +746,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
           openOrJoin: mockOpenOrJoin,
           search: vi.fn(),
+          findById: vi.fn(),
           release: vi.fn(),
         });
         approver = getCamsUserReference(context.session.user);
