@@ -607,6 +607,13 @@ describe('trustee-appointments', () => {
   });
 
   describe('hasAppointmentForCase', () => {
+    test('should return false, not throw, when the case has no chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCodes: ['1'], chapter: '7', status: 'inactive' }),
+      ];
+      expect(hasAppointmentForCase(appointments, '081', '1', undefined)).toBe(false);
+    });
+
     test('should return true for an appointment that is not active but covers court, division, and chapter', () => {
       const appointments = [
         makeAppointment({
@@ -650,6 +657,13 @@ describe('trustee-appointments', () => {
 
     test('should return false when appointments array is empty', () => {
       expect(isAppointmentMatch([], '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false, not throw, when the case has no chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', undefined)).toBe(false);
     });
 
     test('should return false when matching appointment has status inactive', () => {

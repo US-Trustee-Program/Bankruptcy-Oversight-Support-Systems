@@ -13,7 +13,6 @@ import SyncTrusteeCaseAppointments, {
 import factory from '../../factory';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { CaseAppointment, CaseAppointmentChecks } from '@common/cams/trustee-appointments';
-import * as commonTrusteeAppointments from '@common/cams/trustee-appointments';
 import {
   CasesRepository,
   RuntimeStateRepository,
@@ -128,6 +127,17 @@ describe('SyncTrusteeCaseAppointments', () => {
       };
     };
 
+    /** An active appointment covering makeEvent's court 081, division 081, chapter 7. */
+    const coveringAppointment = () =>
+      MockData.getTrusteeAppointment({
+        trusteeId: 'trustee-123',
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['081'],
+        chapter: '7',
+        status: 'active',
+      });
+
     const makeAcmsEvent = (
       caseId: string,
       fullName: string,
@@ -157,7 +167,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       };
 
       mockAppointmentsRepo = {
-        getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        getTrusteeAppointments: vi.fn().mockResolvedValue([coveringAppointment()]),
         release: vi.fn(),
       };
 
@@ -231,7 +241,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(pipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         makeResolvedState('trustee-123'),
       );
-      vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
     });
 
     describe('appointment task (CAMS-956)', () => {
@@ -243,7 +252,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       };
 
       beforeEach(() => {
-        vi.mocked(commonTrusteeAppointments.isAppointmentMatch).mockRestore();
+        (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [],
+        );
       });
 
       test("opens or joins an appointment task for the event's court, division and chapter after an uncovered write", async () => {
@@ -813,7 +824,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('a parked appointment records matchedTrusteeAppointment false when the trustee does not cover the case', async () => {
-        vi.mocked(commonTrusteeAppointments.isAppointmentMatch).mockRestore();
         (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
           [],
         );
@@ -1912,7 +1922,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
         ]);
-        vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(false);
+        (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [],
+        );
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -2825,7 +2837,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeResolvedState('t-1', 'resolveByAddress'));
-      vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
 
       const { successCount, dlqMessages, scenarioDistribution } =
         await SyncTrusteeCaseAppointments.processAppointments(
@@ -2858,16 +2869,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       // ('082', not the event's '081') — decision 1a (2026-10-27) removed the old coverage gate
       // that used to route this to a human-review IMPERFECT_MATCH task; the appointment is still
       // written, with checks.matchedTrusteeAppointment recording the miss for #3190.
-      mockAppointmentsRepo.getTrusteeAppointments = vi.fn().mockResolvedValue([
-        {
-          trusteeId: 't-1',
-          status: 'active',
-          courtId: '081',
-          divisionCode: '082',
-          chapter: '7',
-        },
+      (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { ...coveringAppointment(), trusteeId: 't-1', divisionCodes: ['082'] },
       ]);
-      vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(false);
       const infoSpy = vi.spyOn(context.logger, 'info');
 
       const { successCount, dlqMessages, scenarioDistribution } =
@@ -2986,9 +2990,10 @@ describe('SyncTrusteeCaseAppointments', () => {
         // Event 3: resolved but uncovered — still auto-links under decision 1a
         .mockResolvedValueOnce(makeResolvedState('trustee-3'));
 
-      vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch')
-        .mockReturnValueOnce(true) // Event 1
-        .mockReturnValueOnce(false); // Event 3
+      // trustee-3 has no appointments, so event 3 is uncovered
+      (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockImplementation(
+        async (trusteeId: string) => (trusteeId === 'trustee-3' ? [] : [coveringAppointment()]),
+      );
 
       const events = [
         makeEvent('case-001', 'Perfect'),
@@ -3037,7 +3042,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeResolvedState('t-1', 'resolveByAddress'));
-      vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
       const infoSpy = vi.spyOn(context.logger, 'info');
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -3540,7 +3544,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeResolvedState('t-1'));
-        vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3962,7 +3965,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(makeResolvedState('t-1'));
-        vi.spyOn(commonTrusteeAppointments, 'isAppointmentMatch').mockReturnValue(true);
         const event = makeEvent('case-001', 'Common Name');
         (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           {

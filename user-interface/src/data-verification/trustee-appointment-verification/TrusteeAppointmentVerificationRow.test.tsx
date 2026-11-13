@@ -35,34 +35,40 @@ function renderRow(order = task, hidden = false) {
 }
 
 describe('TrusteeAppointmentVerificationRow', () => {
-  test('shows the task type, court and division subject, created date and status', () => {
+  test('shows the task type, created date and status', () => {
     renderRow();
 
     const row = screen.getByTestId('accordion-heading-task-1');
     expect(row).toHaveTextContent('Trustee Appointment');
-    expect(row).toHaveTextContent('Eastern District of New York (Brooklyn): Chapter 7');
     expect(row).toHaveTextContent('11/01/2026');
     expect(row).toHaveTextContent('Pending Review');
   });
 
-  test('falls back to the court id and division code when their names are unknown', () => {
-    const { courtName: _court, courtDivisionName: _division, ...unnamed } = task;
+  test.each([
+    {
+      case: 'both court and division are named',
+      overrides: {},
+      subject: 'Eastern District of New York (Brooklyn): Chapter 7',
+    },
+    {
+      case: 'the court name is unknown, so the court id is used',
+      overrides: { courtName: undefined },
+      subject: '091 (Brooklyn): Chapter 7',
+    },
+    {
+      case: 'the division name is unknown, so the division code is used',
+      overrides: { courtDivisionName: undefined },
+      subject: 'Eastern District of New York (081): Chapter 7',
+    },
+    {
+      case: 'both names are unknown, so the court id and division code are used',
+      overrides: { courtName: undefined, courtDivisionName: undefined },
+      subject: '091 (081): Chapter 7',
+    },
+  ])('subject shows $subject when $case', ({ overrides, subject }) => {
+    renderRow({ ...task, ...overrides });
 
-    renderRow(unnamed);
-
-    expect(screen.getByTestId('accordion-heading-task-1')).toHaveTextContent(
-      '091 (081): Chapter 7',
-    );
-  });
-
-  test('falls back to the division code alone when only the court is named', () => {
-    const { courtDivisionName: _division, ...courtOnly } = task;
-
-    renderRow(courtOnly);
-
-    expect(screen.getByTestId('accordion-heading-task-1')).toHaveTextContent(
-      'Eastern District of New York (081): Chapter 7',
-    );
+    expect(screen.getByTestId('accordion-heading-task-1')).toHaveTextContent(subject);
   });
 
   test('has no expand control, since the task has no detail to show yet', () => {

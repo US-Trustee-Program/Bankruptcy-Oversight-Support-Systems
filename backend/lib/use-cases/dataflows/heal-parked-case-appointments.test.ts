@@ -573,6 +573,21 @@ describe('heal-parked-case-appointments', () => {
           ...override,
         });
 
+      test('gives the no-appointment reason when the trustee has no appointments at all', async () => {
+        caseAppointmentsRepo.getByCaseId.mockResolvedValue([attachedRow()]);
+        caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+        await run();
+
+        expect(getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
+        expect(openOrJoin).toHaveBeenCalledWith(
+          { trusteeId: 'trustee-1', courtId: '0208', divisionCode: '081', chapter: '7' },
+          '081-26-00001',
+          'no-appointment',
+          SYSTEM,
+        );
+      });
+
       test('opens or joins the task from the attached row, so a failed earlier attempt is retried', async () => {
         getTrusteeAppointments.mockResolvedValue([
           { ...coveringTrusteeAppointment, status: 'inactive' },
