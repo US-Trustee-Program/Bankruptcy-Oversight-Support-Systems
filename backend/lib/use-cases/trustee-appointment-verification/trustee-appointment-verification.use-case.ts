@@ -47,9 +47,8 @@ type AppointmentTaskCandidate = AppointmentTaskWrite & {
  * The appointment-task predicate: an open (no unassignedOn), attached (CASE_APPOINTMENT) write
  * whose case and trustee were both identified, that no active appointment covers, with court,
  * division and chapter all present. A closed appointment is excluded because a task asserts the
- * trustee serves the case now; a historical appointment is not something a verifier can resolve
- * (cams-0yr5n.1.6). Exported so a caller can skip fetching
- * the trustee's appointments when no task applies.
+ * trustee serves the case now; a historical appointment is not something a verifier can resolve.
+ * Exported so a caller can skip fetching the trustee's appointments when no task applies.
  */
 export function isAppointmentTaskCandidate(
   appointment: AppointmentTaskWrite,
@@ -211,21 +210,28 @@ export async function getAppointmentTaskDetail(
 }
 
 /**
- * Marks one case's current appointment as covered, if it is still this trustee's. Returns whether
- * the case counts toward the verified total: a case reassigned to another trustee, or with no
- * active appointment, is skipped; a case already marked covered (e.g. by an earlier refresh that
- * failed before resolving the task) counts without a rewrite.
+ * Marks one case's current appointment as covered, if it still sits on the task's
+ * (trustee, court, division, chapter). Returns whether the case counts toward the verified total.
+ * A case whose active appointment is for another trustee, or for another court, division or
+ * chapter (for example, the trustee was re-appointed to the case with a different tuple), is
+ * skipped; so is a case with no active appointment. A case already marked covered (e.g. by an
+ * earlier refresh that failed before resolving the task) counts without a rewrite.
  */
 async function markCaseCovered(
   context: ApplicationContext,
   caseId: string,
-  trusteeId: string,
+  task: Pick<TrusteeAppointmentVerification, 'trusteeId' | 'courtId' | 'divisionCode' | 'chapter'>,
 ): Promise<boolean> {
   const repo = factory.getTrusteeCaseAppointmentsRepository(context);
   const active = await repo.getActiveByCaseId(caseId);
+  const onTaskTuple =
+    active?.trusteeId === task.trusteeId &&
+    active?.courtId === task.courtId &&
+    active?.courtDivisionCode === task.divisionCode &&
+    active?.chapter === task.chapter;
   // A case only joins a task through the task predicate, which requires checks; an appointment
   // without them is not the one that opened the task.
-  if (!active?.checks || active.trusteeId !== trusteeId) return false;
+  if (!active?.checks || !onTaskTuple) return false;
   if (active.checks.matchedTrusteeAppointment) return true;
   await repo.updateCaseAppointment({
     ...active,
@@ -235,12 +241,12 @@ async function markCaseCovered(
 }
 
 /**
- * A data verifier's "Refresh Trustee Appointments" on one appointment task (CAMS-956 Slice 3).
+ * A data verifier's "Refresh Trustee Appointments" on one appointment task.
  * Re-reads the trustee's appointments and applies the shared coverage rule (isAppointmentMatch)
  * to the task's (court, division, chapter). Every case in a task shares that tuple, so coverage is
- * all-or-nothing. If covered: marks each case still assigned to this trustee as covered, THEN
- * resolves the task, so a failed case write leaves the task open and a retry is safe. If not
- * covered: changes nothing and reports the tuple for the verifier's warning.
+ * all-or-nothing. If covered: marks each case whose active appointment still sits on this tuple
+ * as covered, THEN resolves the task, so a failed case write leaves the task open and a retry is
+ * safe. If not covered: changes nothing and reports the tuple for the verifier's warning.
  */
 export async function refreshAppointmentTask(
   context: ApplicationContext,
@@ -271,7 +277,7 @@ export async function refreshAppointmentTask(
 
   let updatedCaseCount = 0;
   for (const caseId of task.caseIds) {
-    if (await markCaseCovered(context, caseId, trusteeId)) updatedCaseCount++;
+    if (await markCaseCovered(context, caseId, task)) updatedCaseCount++;
   }
 
   await taskRepo.resolve(id, trusteeId, getCamsUserReference(context.session.user));

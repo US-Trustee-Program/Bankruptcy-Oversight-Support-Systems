@@ -844,7 +844,7 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
-// One caseless ambiguous DXTR identity task (CAMS-953 Slice 5): no caseId/courtId at all, no
+// One caseless ambiguous DXTR identity task: no caseId/courtId at all, no
 // affected cases. Its findings are the real pipeline's output for the multipleCandidatesCaseless
 // fixture scenario, imported as plain JSON for the same reason as trusteeMatchFindings above.
 const trusteeMatchCaselessFindings =
@@ -867,8 +867,8 @@ const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification =
   affectedCaseIds: [],
 };
 
-// One ambiguous DXTR identity task with 7 candidates (CAMS-953 Slice 7): exercises the comparison
-// table's pagination past the first 5. Its findings are the real pipeline's output for the
+// One ambiguous DXTR identity task with 7 candidates: exercises the comparison table's
+// pagination past the first 5. Its findings are the real pipeline's output for the
 // manyCandidates fixture scenario, imported as plain JSON for the same reason as
 // trusteeMatchFindings above.
 const trusteeMatchManyCandidatesFindings =

@@ -24,6 +24,11 @@ export function buildAppointmentTaskReasonParts(
   };
 }
 
+/** The statement shown in the row once the task is verified. True for any approved task. */
+export function buildResolvedStatement(trusteeName: string): string {
+  return `Trustee ${trusteeName}'s appointment is verified.`;
+}
+
 /** The top-of-screen success message after a refresh resolves an appointment task. */
 export function buildRefreshResolvedMessage(trusteeName: string, caseCount: number): string {
   const cases = caseCount === 1 ? '1 case' : `${caseCount} cases`;

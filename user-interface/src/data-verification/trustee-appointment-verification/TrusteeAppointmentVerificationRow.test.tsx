@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
   TrusteeAppointmentRefreshResult,
@@ -62,6 +64,27 @@ function renderRow(order = task, hidden = false, onOrderUpdate = vi.fn()) {
         hidden={hidden}
         onOrderUpdate={onOrderUpdate}
       />
+    </BrowserRouter>,
+  );
+}
+
+/** Renders the row under a parent that applies onOrderUpdate, as the queue does. */
+function renderRowWithParentState(initialOrder = task) {
+  function Parent() {
+    const [order, setOrder] = useState(initialOrder);
+    return (
+      <TrusteeAppointmentVerificationRow
+        order={order}
+        taskType={taskType}
+        statusType={orderStatusType}
+        fieldHeaders={fieldHeaders}
+        onOrderUpdate={(_alert, updated) => setOrder(updated)}
+      />
+    );
+  }
+  render(
+    <BrowserRouter>
+      <Parent />
     </BrowserRouter>,
   );
 }
@@ -310,6 +333,14 @@ describe('TrusteeAppointmentVerificationRow', () => {
     });
   });
 
+  /** Focus is inside the element (not dropped to <body>), as after a control is disabled or unmounted. */
+  async function expectFocusInside(testId: string) {
+    await waitFor(() => {
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toContainElement(screen.getByTestId(testId));
+    });
+  }
+
   describe('Refresh Trustee Appointments', () => {
     const resolved: TrusteeAppointmentRefreshResult = {
       outcome: 'resolved',
@@ -325,6 +356,29 @@ describe('TrusteeAppointmentVerificationRow', () => {
       courtDivisionName: 'St. Louis',
       chapter: '7',
     };
+    const newAppointment = {
+      id: 'appointment-new',
+      trusteeId: 'trustee-1',
+      chapter: '13',
+      appointmentType: 'standing',
+      courtId: '091',
+      courtName: 'Western District of Missouri',
+      divisionCodes: ['081'],
+      appointedDate: '2026-11-10',
+      status: 'active',
+      effectiveDate: '2026-11-10',
+      createdOn: '2026-11-10T00:00:00.000Z',
+      createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      updatedOn: '2026-11-10T00:00:00.000Z',
+      updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      agreement: {
+        matchesCourt: true,
+        matchesDivision: true,
+        matchesChapter: false,
+        isActive: true,
+        score: 3,
+      },
+    } as TrusteeAppointmentVerificationDetail['appointments'][number];
     let detailSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -341,7 +395,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
     }
 
     function refreshButton() {
-      return screen.getByRole('button', { name: 'Refresh Trustee Appointments' });
+      return screen.getByTestId(`button-refresh-trustee-appointments-${task.id}`);
     }
 
     test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link', async () => {
@@ -368,7 +422,9 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       fireEvent.click(refreshButton());
 
-      expect(screen.getByText('Refreshing trustee appointments...')).toBeInTheDocument();
+      expect(screen.getByTestId(`refresh-progress-${task.id}`)).toHaveTextContent(
+        'Refreshing trustee appointments...',
+      );
       expect(refreshButton()).toBeDisabled();
       expect(refreshSpy).toHaveBeenCalledWith('task-1', 'trustee-1');
       finish({ data: stillUncovered });
@@ -395,33 +451,10 @@ describe('TrusteeAppointmentVerificationRow', () => {
           resolved.task,
         ),
       );
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(`alert-refresh-alert-${task.id}`)).not.toBeInTheDocument();
     });
 
     test('a refresh that still finds no covering appointment warns the verifier and reloads the appointments without the loading spinner', async () => {
-      const newAppointment = {
-        id: 'appointment-new',
-        trusteeId: 'trustee-1',
-        chapter: '13',
-        appointmentType: 'standing',
-        courtId: '091',
-        courtName: 'Western District of Missouri',
-        divisionCodes: ['081'],
-        appointedDate: '2026-11-10',
-        status: 'active',
-        effectiveDate: '2026-11-10',
-        createdOn: '2026-11-10T00:00:00.000Z',
-        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
-        updatedOn: '2026-11-10T00:00:00.000Z',
-        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-        agreement: {
-          matchesCourt: true,
-          matchesDivision: true,
-          matchesChapter: false,
-          isActive: true,
-          score: 3,
-        },
-      } as TrusteeAppointmentVerificationDetail['appointments'][number];
       let finishReload: (value: unknown) => void = () => {};
       detailSpy
         .mockResolvedValueOnce({ data: detail } as never)
@@ -434,8 +467,8 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       fireEvent.click(refreshButton());
 
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent(
+      const alert = await screen.findByTestId(`alert-refresh-alert-${task.id}`);
+      expect(screen.getByTestId(`alert-message-refresh-alert-${task.id}`)).toHaveTextContent(
         "There's still no active Chapter 7 appointment in Eastern District of Missouri (St. Louis). Ask a Trustee Admin to add or reactivate it, then try again.",
       );
       expect(alert.className).toContain(UswdsAlertStyle.Warning);
@@ -446,7 +479,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
       finishReload({ data: { ...detail, appointments: [newAppointment] } });
 
       expect(await screen.findByText('Western District of Missouri')).toBeInTheDocument();
-      expect(screen.getByRole('alert')).toBe(alert);
+      expect(screen.getByTestId(`alert-refresh-alert-${task.id}`)).toBe(alert);
       await waitFor(() => expect(refreshButton()).toBeEnabled());
     });
 
@@ -463,7 +496,9 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       await waitFor(() => expect(refreshButton()).toBeEnabled());
       expect(detailSpy).toHaveBeenCalledTimes(2);
-      expect(screen.getByRole('alert').className).toContain(UswdsAlertStyle.Warning);
+      expect(screen.getByTestId(`alert-refresh-alert-${task.id}`).className).toContain(
+        UswdsAlertStyle.Warning,
+      );
       expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
     });
 
@@ -473,8 +508,10 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       fireEvent.click(refreshButton());
 
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent('Unable to refresh trustee appointments. Try again later.');
+      const alert = await screen.findByTestId(`alert-refresh-alert-${task.id}`);
+      expect(screen.getByTestId(`alert-message-refresh-alert-${task.id}`)).toHaveTextContent(
+        'Unable to refresh trustee appointments. Try again later.',
+      );
       expect(alert.className).toContain(UswdsAlertStyle.Error);
       expect(onOrderUpdate).not.toHaveBeenCalled();
       await waitFor(() => expect(refreshButton()).toBeEnabled());
@@ -486,12 +523,120 @@ describe('TrusteeAppointmentVerificationRow', () => {
         .mockReturnValueOnce(new Promise(() => {}) as never);
       await expandAndLoad();
       fireEvent.click(refreshButton());
-      await screen.findByRole('alert');
+      await screen.findByTestId(`alert-refresh-alert-${task.id}`);
       await waitFor(() => expect(refreshButton()).toBeEnabled());
 
       fireEvent.click(refreshButton());
 
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(`alert-refresh-alert-${task.id}`)).not.toBeInTheDocument();
+    });
+
+    test('after a refresh resolves the task, focus moves to a resolved statement saying the appointment is verified', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: resolved,
+      } as never);
+      renderRowWithParentState();
+      fireEvent.click(expandButton());
+      await screen.findByTestId('problem-statement');
+
+      await user.click(refreshButton());
+
+      const statement = await screen.findByTestId('resolved-statement');
+      await waitFor(() => expect(statement).toHaveFocus());
+      expect(statement).toHaveTextContent("Trustee Jane Smith's appointment is verified.");
+    });
+
+    test('a task that the parent flips to approved without a local refresh does not take focus', async () => {
+      const user = userEvent.setup({ delay: null });
+      const { rerender } = render(
+        <BrowserRouter>
+          <TrusteeAppointmentVerificationRow
+            order={task}
+            taskType={taskType}
+            statusType={orderStatusType}
+            fieldHeaders={fieldHeaders}
+            onOrderUpdate={vi.fn()}
+          />
+        </BrowserRouter>,
+      );
+      await user.click(expandButton());
+      await screen.findByTestId('problem-statement');
+      expandButton().focus();
+
+      rerender(
+        <BrowserRouter>
+          <TrusteeAppointmentVerificationRow
+            order={{ ...task, status: 'approved' }}
+            taskType={taskType}
+            statusType={orderStatusType}
+            fieldHeaders={fieldHeaders}
+            onOrderUpdate={vi.fn()}
+          />
+        </BrowserRouter>,
+      );
+
+      expect(screen.getByTestId('resolved-statement')).not.toHaveFocus();
+      expect(expandButton()).toHaveFocus();
+    });
+
+    test('while a refresh runs, focus moves to the progress indicator instead of falling to the body', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
+        new Promise(() => {}) as never,
+      );
+      await expandAndLoad();
+
+      await user.click(refreshButton());
+
+      await expectFocusInside(`refresh-progress-${task.id}`);
+    });
+
+    test('a refresh that still finds no covering appointment moves focus to the warning alert, not the body', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: stillUncovered,
+      } as never);
+      await expandAndLoad();
+
+      await user.click(refreshButton());
+
+      await expectFocusInside(`alert-refresh-alert-${task.id}`);
+    });
+
+    test('a refresh that fails moves focus to the error alert, not the body', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockRejectedValue(new Error('boom'));
+      await expandAndLoad();
+
+      await user.click(refreshButton());
+
+      await expectFocusInside(`alert-refresh-alert-${task.id}`);
+    });
+
+    test('a refresh that resolves the task reloads the appointments, showing the covering one', async () => {
+      const user = userEvent.setup({ delay: null });
+      detailSpy
+        .mockResolvedValueOnce({ data: detail } as never)
+        .mockResolvedValueOnce({ data: { ...detail, appointments: [newAppointment] } } as never);
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: resolved,
+      } as never);
+      renderRowWithParentState();
+      fireEvent.click(expandButton());
+      await screen.findByTestId('problem-statement');
+
+      await user.click(refreshButton());
+
+      expect(await screen.findByText('Western District of Missouri')).toBeInTheDocument();
+    });
+
+    test('a task that loads already approved does not take focus', async () => {
+      renderRowWithParentState({ ...task, status: 'approved' });
+      fireEvent.click(expandButton());
+      await screen.findByTestId('problem-statement');
+
+      expect(screen.getByTestId('problem-statement')).not.toHaveFocus();
     });
 
     test('a task that is no longer pending offers no refresh', async () => {
@@ -499,7 +644,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
 
       expect(screen.queryByTestId('refresh-guidance')).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Refresh Trustee Appointments' }),
+        screen.queryByTestId(`button-refresh-trustee-appointments-${task.id}`),
       ).not.toBeInTheDocument();
     });
   });

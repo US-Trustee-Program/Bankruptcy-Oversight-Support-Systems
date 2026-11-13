@@ -393,7 +393,7 @@ export interface AcmsGateway {
   /**
    * regionId and changeDate are optional, additive WHERE filters (CMMAP.REGION_CODE and
    * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, the query spans
-   * all regions and dates. No production caller omits them (cams-fd8qd.38).
+   * all regions and dates. No production caller omits them.
    */
   getCmmapAppointmentsRaw(
     context: ApplicationContext,
@@ -887,7 +887,7 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
 
 /**
  * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
- * (cams-fd8qd.1.10, the per-region driver). One document, one key per region, each written
+ * (the per-region driver). One document, one key per region, each written
  * independently with RuntimeStateRepository.setField's dotted path (e.g.
  * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
  * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a

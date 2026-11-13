@@ -100,9 +100,8 @@ export class TrusteeAppointmentVerificationMongoRepository
   }
 
   /**
-   * Marks one task resolved (status 'approved') once a refresh found a covering appointment
-   * (CAMS-956 Slice 3). Looked up by id within trusteeId, the shard key. Throws NotFoundError when
-   * no task matches.
+   * Marks one task resolved (status 'approved') once a refresh found a covering appointment.
+   * Looked up by id within trusteeId, the shard key. Throws NotFoundError when no task matches.
    *
    * Not guarded on status or caseIds. A case that joins between the refresh's coverage check and
    * this write would be resolved with the task. Accepted: writers compute coverage from the
@@ -151,6 +150,11 @@ export class TrusteeAppointmentVerificationMongoRepository
    * second sees status pending), and both cases then land via $addToSet. A pipeline update could
    * do both in one write, but the upsert would also have to build every insert field with
    * $cond, and Cosmos DB support for pipeline upserts is unverified.
+   *
+   * Accepted race: if a stale refresh resolves the task between two writers' reopens, the later
+   * reopen's `$set caseIds` discards the earlier writer's case. This is accepted for the same
+   * stale-writer reason as the resolve note above, and by then a covering appointment exists, so
+   * the only residue is that case's matchedTrusteeAppointment flag staying false.
    */
   async openOrJoin(
     key: AppointmentTaskKey,
