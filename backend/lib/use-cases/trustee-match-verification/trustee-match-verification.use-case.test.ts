@@ -831,6 +831,21 @@ describe('TrusteeMatchVerificationUseCase', () => {
         );
       });
 
+      test('a closed placeholder (unassignedOn set) opens no task; approval succeeds', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001', { ...courtFields081, unassignedOn: '2024-06-30' }),
+        ]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockUpdateIfPending).toHaveBeenCalledWith(
+          'verification-1',
+          expect.objectContaining({ status: 'approved' }),
+        );
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
+      });
+
       test('a parked placeholder (case not yet in CAMS) opens no task; approval succeeds', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue([
           placeholder('081-24-00001', {

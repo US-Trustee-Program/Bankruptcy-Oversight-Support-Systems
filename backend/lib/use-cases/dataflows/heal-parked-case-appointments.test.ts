@@ -505,6 +505,17 @@ describe('heal-parked-case-appointments', () => {
       );
     });
 
+    test('attaching a parked appointment the source already closed (DISP_DATE) opens no task', async () => {
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+        makeParkedAppointment({ unassignedOn: '2026-10-30' }),
+      ]);
+
+      const result = await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+      expect(result.healed).toBe(1);
+    });
+
     test('attaching a covered parked appointment opens no task', async () => {
       getTrusteeAppointments.mockResolvedValue([coveringTrusteeAppointment]);
       caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
