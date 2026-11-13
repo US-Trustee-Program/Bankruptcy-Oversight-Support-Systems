@@ -7,6 +7,7 @@ import TrusteeChangeNotificationEvent from './events/trustee-change-notification
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
+import CorrectTrusteeZoomPhones from './migrations/correct-trustee-zoom-phones';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
 import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
@@ -103,6 +104,7 @@ dataflows.register(
   BackfillPhoneticTokens,
   BackfillCaseAppointmentDates,
   BackfillTrusteePhoneticTokens,
+  CorrectTrusteeZoomPhones,
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,

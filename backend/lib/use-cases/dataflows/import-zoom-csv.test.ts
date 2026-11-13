@@ -7,6 +7,8 @@ import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notifi
 import factory from '../../factory';
 import { ObjectStorageGateway } from '../gateways.types';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { escapeRegExCharacters } from '@common/cams/regex';
 
 const MOCK_TRUSTEE = MockData.getTrustee({
   trusteeId: 'trustee-456',
@@ -178,7 +180,18 @@ describe('import-zoom-csv', () => {
       );
     });
 
-    test('should reject malformed passcode and not update trustee', async () => {
+    test.each([
+      {
+        field: 'passcode',
+        override: { passcode: 'abc123' },
+        message: FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE,
+      },
+      {
+        field: 'phone',
+        override: { phone: '(555) 010-0123' },
+        message: FIELD_VALIDATION_MESSAGES.PHONE_NUMBER,
+      },
+    ])('should reject malformed $field and not update trustee', async ({ override, message }) => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
@@ -188,13 +201,13 @@ describe('import-zoom-csv', () => {
         .mockResolvedValue(MOCK_TRUSTEE);
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      const result = await processZoomMatchedRow(context, { ...row, passcode: 'abc123' });
+      const result = await processZoomMatchedRow(context, { ...row, ...override });
 
       expect(result.outcome).toBe('error');
       expect(updateSpy).not.toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
         'IMPORT-ZOOM-CSV',
-        expect.stringContaining('Invalid zoom info'),
+        expect.stringMatching(new RegExp(`^Invalid zoom info.*${escapeRegExCharacters(message)}`)),
       );
     });
 
