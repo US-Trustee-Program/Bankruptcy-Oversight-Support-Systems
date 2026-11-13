@@ -15,6 +15,7 @@ import {
 } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 
 describe('TrusteesMongoRepository', () => {
@@ -1594,6 +1595,16 @@ describe('TrusteesMongoRepository', () => {
 
       await expect(repository.setZoomInfo('trust-123', zoomInfo)).rejects.toThrow(
         'Failed to set zoom info for trustee trust-123',
+      );
+    });
+
+    test('should rethrow a rate limit error as a TooManyRequestsError so callers can back off', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new TooManyRequestsError('TEST', { message: 'throttled' }),
+      );
+
+      await expect(repository.setZoomInfo('trust-123', zoomInfo)).rejects.toBeInstanceOf(
+        TooManyRequestsError,
       );
     });
   });
