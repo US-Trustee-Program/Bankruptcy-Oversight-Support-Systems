@@ -158,26 +158,28 @@ export async function listAppointmentTasks(
 }
 
 /**
- * One appointment task's full detail (CAMS-956 Slice 2), fetched when a data verifier expands its
+ * One appointment task's full detail (CAMS-956), fetched when a data verifier expands its
  * row: court/division names resolved the same way as the queue row, plus the trustee's full
  * appointment list scored and sorted by how closely each one agrees with the task's (court,
  * division, chapter) tuple -- closest agreement first, ties broken by the most recently appointed.
+ * trusteeId is the collection's shard key, so the task is looked up within that trustee.
  * Propagates a not-found error from the repository when the task does not exist.
  */
 export async function getAppointmentTaskDetail(
   context: ApplicationContext,
   id: string,
+  trusteeId: string,
 ): Promise<TrusteeAppointmentVerificationDetail> {
-  const task = await factory.getTrusteeAppointmentVerificationRepository(context).findById(id);
-
-  // Independent reads, run concurrently. getTrusteeAppointments already reads the trustee (and
-  // throws NotFoundError) before returning, so by the time this resolves the trustee is confirmed
-  // to exist -- the trustee-name read below needs no fallback of its own.
-  const [courts, trusteeAppointments, trustee] = await Promise.all([
+  const [task, courts, trustee] = await Promise.all([
+    factory.getTrusteeAppointmentVerificationRepository(context).findById(id, trusteeId),
     new CourtsUseCase().getCourts(context),
-    new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(context, task.trusteeId),
-    factory.getTrusteesRepository(context).read(task.trusteeId),
+    factory.getTrusteesRepository(context).read(trusteeId),
   ]);
+  const trusteeAppointments = await new TrusteeAppointmentsUseCase(context).getTrusteeAppointments(
+    context,
+    trusteeId,
+    courts,
+  );
   const trusteeName = trustee.name;
 
   const appointments = trusteeAppointments

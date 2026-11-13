@@ -88,7 +88,10 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
     setIsLoadingDetail(true);
     setDetailLoadError(false);
     try {
-      const response = await Api2.getTrusteeAppointmentVerificationDetail(order.id);
+      const response = await Api2.getTrusteeAppointmentVerificationDetail(
+        order.id,
+        order.trusteeId,
+      );
       setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
     } catch {
       setDetailLoadError(true);

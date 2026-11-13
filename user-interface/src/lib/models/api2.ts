@@ -495,10 +495,12 @@ async function getTrusteeAppointmentVerifications() {
   );
 }
 
-async function getTrusteeAppointmentVerificationDetail(id: string) {
+async function getTrusteeAppointmentVerificationDetail(id: string, trusteeId: string) {
   return api().get<TrusteeAppointmentVerificationDetail>(
     `/trustee-appointment-verification/${id}`,
-    {},
+    {
+      trusteeId,
+    },
   );
 }
 

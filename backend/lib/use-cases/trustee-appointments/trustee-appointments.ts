@@ -187,6 +187,7 @@ export class TrusteeAppointmentsUseCase {
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: string,
+    courts?: CourtDivisionDetails[],
   ): Promise<TrusteeAppointment[]> {
     try {
       // Verify trustee exists
@@ -198,14 +199,14 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
-      const [appointments, courts] = await Promise.all([
+      const [appointments, resolvedCourts] = await Promise.all([
         this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId),
-        this.courtsUseCase.getCourts(context),
+        courts ?? this.courtsUseCase.getCourts(context),
       ]);
 
       // Enrich appointments with court district name
       const enrichedAppointments = appointments.map((appointment) => {
-        const courtName = this.findCourtDistrict(courts, appointment.courtId);
+        const courtName = this.findCourtDistrict(resolvedCourts, appointment.courtId);
         context.logger.debug(
           MODULE_NAME,
           `Enriching appointment ${appointment.id}: courtId=${appointment.courtId} -> courtName=${courtName || 'NOT FOUND'}`,

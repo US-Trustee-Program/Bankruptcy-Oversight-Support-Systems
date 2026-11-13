@@ -75,13 +75,17 @@ export class TrusteeAppointmentVerificationMongoRepository
     }
   }
 
-  /** The single task by id, for the Slice 2 detail view. */
-  async findById(id: string): Promise<TrusteeAppointmentVerification> {
+  /**
+   * The single task by id, for the detail view. trusteeId is the collection's shard key, so the
+   * lookup targets one partition instead of fanning out across all of them.
+   */
+  async findById(id: string, trusteeId: string): Promise<TrusteeAppointmentVerification> {
     try {
       const doc = using<TrusteeAppointmentVerification>();
       return await this.getAdapter<TrusteeAppointmentVerification>().findOne(
         and(
           doc('documentType').equals(TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE),
+          doc('trusteeId').equals(trusteeId),
           doc('id').equals(id),
         ),
       );
