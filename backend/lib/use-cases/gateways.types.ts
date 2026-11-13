@@ -701,6 +701,17 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     options?: CaseAppointmentUpsertOptions,
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
+  /**
+   * Atomically sets checks.matchedTrusteeAppointment, updatedOn and updatedBy on a case's
+   * appointment in both partitions, only while it is still assigned (no unassignedOn) to
+   * `appointment.trusteeId` on the given court, division and chapter, with checks present. Never
+   * replaces the document. Idempotent. Returns whether the case partition matched.
+   */
+  markTrusteeAppointmentMatched(
+    caseId: string,
+    appointment: { trusteeId: string; courtId: string; courtDivisionCode: string; chapter: string },
+    user: CamsUserReference,
+  ): Promise<boolean>;
   delete(id: string): Promise<void>;
   /**
    * Deletes appointment rows (placed and parked) in both partitions; returns the case-partition
@@ -1094,10 +1105,17 @@ export interface TrusteeAppointmentVerificationRepository extends Releasable {
   /** The single task by its id within a trustee (the shard key), for the detail view. */
   findById(id: string, trusteeId: string): Promise<TrusteeAppointmentVerification>;
   /**
-   * Marks the task resolved (status 'approved'), by id within a trustee (the shard key). A later
-   * openOrJoin for the same tuple reopens it. Throws NotFoundError when no task matches.
+   * Marks the task resolved (status 'approved') only if it is still pending and unchanged since
+   * the caller read it (`expectedUpdatedOn`), by id within a trustee (the shard key). Every join
+   * bumps updatedOn, so a case that joined after the caller read the task makes this return false
+   * and the caller re-reads. A later openOrJoin for the same tuple reopens a resolved task.
    */
-  resolve(id: string, trusteeId: string, user: CamsUserReference): Promise<void>;
+  resolve(
+    id: string,
+    trusteeId: string,
+    expectedUpdatedOn: string,
+    user: CamsUserReference,
+  ): Promise<boolean>;
 }
 
 export interface UserGroupsRepository extends Releasable {

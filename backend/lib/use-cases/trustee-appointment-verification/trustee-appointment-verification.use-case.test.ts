@@ -5,7 +5,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import MockData from '@common/cams/test-utilities/mock-data';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
-import { CaseAppointment, CaseAppointmentChecks } from '@common/cams/trustee-appointments';
+import { CaseAppointmentChecks } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import {
   AppointmentTaskWrite,
@@ -455,7 +455,7 @@ describe('getAppointmentTaskDetail', () => {
 describe('refreshAppointmentTask', () => {
   let context: ApplicationContext;
   let resolve: ReturnType<typeof vi.spyOn>;
-  let updateCaseAppointment: ReturnType<typeof vi.spyOn>;
+  let markMatched: ReturnType<typeof vi.spyOn>;
 
   const task: TrusteeAppointmentVerification = {
     id: 'task-1',
@@ -473,25 +473,18 @@ describe('refreshAppointmentTask', () => {
     updatedOn: '2026-11-02T00:00:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
   };
+  const taskTuple = {
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    courtDivisionCode: '1',
+    chapter: '7',
+  };
 
   const covering = MockData.getTrusteeAppointment({
     courtId: '081',
     divisionCodes: ['1'],
     chapter: '7',
     status: 'active',
-  });
-
-  const caseAppointment = (caseId: string, trusteeId = 'trustee-1'): CaseAppointment => ({
-    id: `appt-${caseId}`,
-    caseId,
-    trusteeId,
-    assignedOn: '2026-10-01',
-    courtId: '081',
-    courtDivisionCode: '1',
-    chapter: '7',
-    checks: { ...uncoveredChecks },
-    updatedOn: '2026-10-01T00:00:00.000Z',
-    updatedBy: SYSTEM_USER_REFERENCE,
   });
 
   beforeEach(async () => {
@@ -513,29 +506,24 @@ describe('refreshAppointmentTask', () => {
     vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([
       covering,
     ]);
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
-      async (caseId: string) => caseAppointment(caseId),
-    );
-    updateCaseAppointment = vi
-      .spyOn(MockMongoRepository.prototype, 'updateCaseAppointment')
-      .mockImplementation(async (appt: CaseAppointment) => appt);
-    resolve = vi.spyOn(MockMongoRepository.prototype, 'resolve').mockResolvedValue();
+    markMatched = vi
+      .spyOn(MockMongoRepository.prototype, 'markTrusteeAppointmentMatched')
+      .mockResolvedValue(true);
+    resolve = vi.spyOn(MockMongoRepository.prototype, 'resolve').mockResolvedValue(true);
   });
 
-  test("marks each case's appointment covered, then resolves the task as the verifier", async () => {
+  test("marks each case covered on the task's tuple as the verifier, then resolves the task as last read", async () => {
+    const verifier = getCamsUserReference(context.session.user);
+
     const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
 
-    expect(updateCaseAppointment).toHaveBeenCalledTimes(2);
+    expect(markMatched).toHaveBeenCalledTimes(2);
     for (const caseId of task.caseIds) {
-      expect(updateCaseAppointment).toHaveBeenCalledWith({
-        ...caseAppointment(caseId),
-        checks: { ...uncoveredChecks, matchedTrusteeAppointment: true },
-      });
+      expect(markMatched).toHaveBeenCalledWith(caseId, taskTuple, verifier);
     }
-    expect(resolve).toHaveBeenCalledWith(
-      'task-1',
-      'trustee-1',
-      getCamsUserReference(context.session.user),
+    expect(resolve).toHaveBeenCalledWith('task-1', 'trustee-1', task.updatedOn, verifier);
+    expect(resolve.mock.invocationCallOrder[0]).toBeGreaterThan(
+      Math.max(...markMatched.mock.invocationCallOrder),
     );
     expect(result).toEqual({
       outcome: 'resolved',
@@ -551,82 +539,74 @@ describe('refreshAppointmentTask', () => {
     });
   });
 
-  test('skips and does not count a case now assigned to another trustee or with no active appointment', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue({
-      ...task,
-      caseIds: ['081-24-00001', '081-24-00002', '081-24-00003'],
-    });
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
-      async (caseId: string) => {
-        if (caseId === '081-24-00002') return caseAppointment(caseId, 'trustee-2');
-        if (caseId === '081-24-00003') return null;
-        return caseAppointment(caseId);
-      },
-    );
+  test('counts only the cases still assigned to this trustee on the tuple, and still resolves when none are', async () => {
+    markMatched.mockImplementation(async (caseId: string) => caseId === '081-24-00001');
 
     const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
 
-    expect(updateCaseAppointment).toHaveBeenCalledTimes(1);
-    expect(updateCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: '081-24-00001' }),
-    );
     expect(resolve).toHaveBeenCalled();
     expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 1 });
+
+    markMatched.mockResolvedValue(false);
+    expect(await refreshAppointmentTask(context, 'task-1', 'trustee-1')).toMatchObject({
+      outcome: 'resolved',
+      updatedCaseCount: 0,
+    });
   });
 
-  test.each<[string, Partial<CaseAppointment>]>([
-    ['a different chapter', { chapter: '13' }],
-    ['a different court', { courtId: '091' }],
-    ['a different division', { courtDivisionCode: '2' }],
-  ])(
-    'skips and does not count a case whose new appointment for the same trustee has %s',
-    async (_label, newAppointment) => {
-      vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
-        async (caseId: string) => ({ ...caseAppointment(caseId), ...newAppointment }),
-      );
-
-      const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
-
-      expect(updateCaseAppointment).not.toHaveBeenCalled();
-      expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
-    },
-  );
-
-  test('still resolves the task, with a count of 0, when every case was skipped', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(null);
+  test('re-reads the task and covers the case that joined when the task changed before it could be resolved', async () => {
+    const joined: TrusteeAppointmentVerification = {
+      ...task,
+      caseIds: [...task.caseIds, '081-24-00003'],
+      updatedOn: '2026-11-03T00:00:00.000Z',
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'findById')
+      .mockResolvedValueOnce(task)
+      .mockResolvedValueOnce(joined);
+    resolve.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
     const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
 
-    expect(updateCaseAppointment).not.toHaveBeenCalled();
-    expect(resolve).toHaveBeenCalled();
-    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
+    expect(markMatched).toHaveBeenCalledWith('081-24-00003', taskTuple, expect.anything());
+    expect(resolve).toHaveBeenLastCalledWith(
+      'task-1',
+      'trustee-1',
+      joined.updatedOn,
+      expect.anything(),
+    );
+    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 3 });
   });
 
-  test('skips a case appointment with no checks, since it never met the task predicate', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
-      async (caseId: string) => ({ ...caseAppointment(caseId), checks: undefined }),
-    );
+  test('re-checks coverage on each attempt, so coverage removed during the refresh leaves the task open', async () => {
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments')
+      .mockResolvedValueOnce([covering])
+      .mockResolvedValueOnce([{ ...covering, status: 'inactive' }]);
+    resolve.mockResolvedValueOnce(false);
 
     const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
 
-    expect(updateCaseAppointment).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
+    expect(result).toMatchObject({ outcome: 'still-uncovered' });
+    expect(resolve).toHaveBeenCalledTimes(1);
   });
 
-  test('counts but does not rewrite a case already marked covered, so a retry reports the full count', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
-      async (caseId: string) => ({
-        ...caseAppointment(caseId),
-        checks: { ...uncoveredChecks, matchedTrusteeAppointment: caseId === '081-24-00001' },
-      }),
+  test('gives up with an error, leaving the task open, when the task keeps changing', async () => {
+    resolve.mockResolvedValue(false);
+
+    await expect(refreshAppointmentTask(context, 'task-1', 'trustee-1')).rejects.toThrow(
+      'Trustee appointment task task-1 kept changing during the refresh; try again.',
     );
+    expect(resolve).toHaveBeenCalledTimes(3);
+  });
+
+  test('a task another verifier already resolved reports resolved without resolving it again', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue({
+      ...task,
+      status: 'approved',
+    });
 
     const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
 
-    expect(updateCaseAppointment).toHaveBeenCalledTimes(1);
-    expect(updateCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: '081-24-00002' }),
-    );
+    expect(resolve).not.toHaveBeenCalled();
     expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 2 });
   });
 
@@ -658,13 +638,13 @@ describe('refreshAppointmentTask', () => {
       courtDivisionName: 'St. Louis',
       chapter: '7',
     });
-    expect(updateCaseAppointment).not.toHaveBeenCalled();
+    expect(markMatched).not.toHaveBeenCalled();
     expect(resolve).not.toHaveBeenCalled();
   });
 
   test('does not resolve the task when a case write fails', async () => {
     const writeFailure = new Error('write failed');
-    updateCaseAppointment.mockRejectedValue(writeFailure);
+    markMatched.mockRejectedValue(writeFailure);
 
     await expect(refreshAppointmentTask(context, 'task-1', 'trustee-1')).rejects.toBe(writeFailure);
     expect(resolve).not.toHaveBeenCalled();
