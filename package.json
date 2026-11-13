@@ -62,7 +62,7 @@
     "@typescript-eslint/eslint-plugin": "8.72.1",
     "@typescript-eslint/parser": "8.72.1",
     "@vitest/eslint-plugin": "1.6.28",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsonc": "3.4.2",
     "eslint-plugin-jsx-a11y": "6.10.2",
