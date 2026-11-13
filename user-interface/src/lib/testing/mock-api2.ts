@@ -28,6 +28,7 @@ import {
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import {
+  TrusteeAppointmentRefreshResult,
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
@@ -843,7 +844,7 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
-// One caseless ambiguous DXTR identity task (CAMS-953 Slice 5): no caseId/courtId at all, no
+// One caseless ambiguous DXTR identity task: no caseId/courtId at all, no
 // affected cases. Its findings are the real pipeline's output for the multipleCandidatesCaseless
 // fixture scenario, imported as plain JSON for the same reason as trusteeMatchFindings above.
 const trusteeMatchCaselessFindings =
@@ -866,8 +867,8 @@ const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification =
   affectedCaseIds: [],
 };
 
-// One ambiguous DXTR identity task with 7 candidates (CAMS-953 Slice 7): exercises the comparison
-// table's pagination past the first 5. Its findings are the real pipeline's output for the
+// One ambiguous DXTR identity task with 7 candidates: exercises the comparison table's
+// pagination past the first 5. Its findings are the real pipeline's output for the
 // manyCandidates fixture scenario, imported as plain JSON for the same reason as
 // trusteeMatchFindings above.
 const trusteeMatchManyCandidatesFindings =
@@ -937,6 +938,21 @@ const trusteeAppointmentVerifications: TrusteeAppointmentVerificationListItem[] 
     taskDate: '2026-11-01T00:00:00.000Z',
     caseCount: 1,
   },
+  {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    taskDate: '2026-11-02T00:00:00.000Z',
+    caseCount: 1,
+  },
 ];
 
 const trusteeAppointmentVerificationDetailsById: Record<
@@ -986,6 +1002,26 @@ const trusteeAppointmentVerificationDetailsById: Record<
         },
       },
     ],
+  },
+  'appointment-task-2': {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    trusteeName: 'Robert Jones',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    caseIds: ['081-24-00002'],
+    createdOn: '2026-11-02T00:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    appointments: [],
   },
 };
 
@@ -2647,9 +2683,9 @@ async function getTrusteeMatchVerifications(_params?: {
   return get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`);
 }
 
-async function getTrusteeAppointmentVerifications(): Promise<
-  ResponseBody<TrusteeAppointmentVerificationListItem[]>
-> {
+async function getTrusteeAppointmentVerifications(_params?: {
+  status?: string;
+}): Promise<ResponseBody<TrusteeAppointmentVerificationListItem[]>> {
   return get<TrusteeAppointmentVerificationListItem[]>(`/trustee-appointment-verification`);
 }
 
@@ -2658,6 +2694,35 @@ async function getTrusteeAppointmentVerificationDetail(
   _trusteeId: string,
 ): Promise<ResponseBody<TrusteeAppointmentVerificationDetail>> {
   return get<TrusteeAppointmentVerificationDetail>(`/trustee-appointment-verification/${id}`);
+}
+
+/**
+ * The fake refresh resolves 'appointment-task-1' and reports every other task still uncovered, so
+ * both outcomes can be exercised against the fake API.
+ */
+async function refreshTrusteeAppointmentVerification(
+  id: string,
+  _trusteeId: string,
+): Promise<ResponseBody<TrusteeAppointmentRefreshResult>> {
+  const task = trusteeAppointmentVerifications.find((t) => t.id === id);
+  if (!task) throw new Error(`Trustee appointment task ${id} not found.`);
+  const data: TrusteeAppointmentRefreshResult =
+    id === 'appointment-task-1'
+      ? {
+          outcome: 'resolved',
+          trusteeName: trusteeAppointmentVerificationDetailsById[id]?.trusteeName ?? 'Trustee',
+          updatedCaseCount: task.caseCount,
+          task: { ...task, status: 'approved' },
+        }
+      : {
+          outcome: 'still-uncovered',
+          courtId: task.courtId,
+          courtName: task.courtName,
+          divisionCode: task.divisionCode,
+          courtDivisionName: task.courtDivisionName,
+          chapter: task.chapter,
+        };
+  return { meta: { self: `/trustee-appointment-verification/${id}` }, data };
 }
 
 async function getTrusteeMatchVerificationDetail(
@@ -3523,6 +3588,7 @@ const MockApi2 = {
   getTrusteeMatchVerificationDetail,
   getTrusteeAppointmentVerifications,
   getTrusteeAppointmentVerificationDetail,
+  refreshTrusteeAppointmentVerification,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

@@ -264,6 +264,7 @@ export function createApp(): Application {
 
   app.get('/api/trustee-appointment-verification', handleTrusteeAppointmentVerification);
   app.get('/api/trustee-appointment-verification/:id', handleTrusteeAppointmentVerification);
+  app.patch('/api/trustee-appointment-verification/:id', handleTrusteeAppointmentVerification);
 
   app.get('/api/orders-suggestions', handleOrdersSuggestions);
   app.get('/api/orders-suggestions/:caseId', handleOrdersSuggestions);

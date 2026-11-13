@@ -802,6 +802,103 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('markTrusteeAppointmentMatched', () => {
+    const verifier = { id: 'verifier-1', name: 'Vera Verifier' };
+    const onTuple = {
+      trusteeId: 'trustee-1',
+      courtId: '081',
+      courtDivisionCode: '1',
+      chapter: '7',
+    };
+    const expectedFilter = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'CASE_APPOINTMENT',
+        },
+        { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: '081-24-00001' },
+        { condition: 'EQUALS', leftOperand: { name: 'trusteeId' }, rightOperand: 'trustee-1' },
+        { condition: 'EQUALS', leftOperand: { name: 'courtId' }, rightOperand: '081' },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'courtDivisionCode' },
+          rightOperand: '1',
+        },
+        { condition: 'EQUALS', leftOperand: { name: 'chapter' }, rightOperand: '7' },
+        { condition: 'EXISTS', leftOperand: { name: 'unassignedOn' }, rightOperand: false },
+        { condition: 'EXISTS', leftOperand: { name: 'checks' }, rightOperand: true },
+      ],
+    };
+
+    test("sets only the coverage flag and the verifier's audit fields, in both partitions, on the still-active appointment for the tuple", async () => {
+      const updateMany = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const matched = await repo.markTrusteeAppointmentMatched('081-24-00001', onTuple, verifier);
+
+      expect(matched).toBe(true);
+      expect(updateMany).toHaveBeenCalledTimes(2);
+      for (const [query, update] of updateMany.mock.calls) {
+        expect(query).toEqual(expectedFilter);
+        expect(update).toEqual({
+          $set: {
+            'checks.matchedTrusteeAppointment': true,
+            updatedOn: expect.any(String),
+            updatedBy: verifier,
+          },
+        });
+      }
+      repo.release();
+    });
+
+    test('reports no match when the case is no longer that appointment, and still writes the trustee partition', async () => {
+      const updateMany = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const matched = await repo.markTrusteeAppointmentMatched('081-24-00001', onTuple, verifier);
+
+      expect(matched).toBe(false);
+      expect(updateMany).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('throws when the trustee-partition write fails, so a retry repairs it', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 0 })
+        .mockRejectedValueOnce(new Error('trustee partition down'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.markTrusteeAppointmentMatched('081-24-00001', onTuple, verifier),
+      ).rejects.toThrow(
+        'Failed to mark the trustee appointment matched for case 081-24-00001 in the trustee partition.',
+      );
+      repo.release();
+    });
+
+    test('throws when the case-partition write fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
+        new Error('case partition down'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.markTrusteeAppointmentMatched('081-24-00001', onTuple, verifier),
+      ).rejects.toThrow('Failed to mark the trustee appointment matched for case 081-24-00001.');
+      repo.release();
+    });
+  });
+
   describe('updateCaseAppointment', () => {
     test('should update both partitions and return the updated document', async () => {
       const replaceOneSpy = vi

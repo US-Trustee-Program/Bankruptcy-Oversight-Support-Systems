@@ -25,8 +25,10 @@ async function narrowToTrusteeIdentityTasks(page: Page) {
 // - the fake-API fixtures always include pending orders, and pendingItemCount there is computed
 // over the whole unfiltered list, not the active filter selection, so 'no-pending-orders' can't
 // be reached by filter clicks alone; reaching 'too-many-filters' would need a type+status
-// combination with zero matching fixture orders, and none exists today. Deliberate omissions, not
-// oversights.
+// combination with zero matching fixture orders, and none exists today. The Refresh Trustee
+// Appointments error alert is also not scanned: the fake refresh fails only for a task id missing
+// from the fixtures, which the queue never renders, so it is not reachable without a test hack.
+// Deliberate omissions, not oversights.
 test.describe('Data Verification', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
@@ -199,8 +201,7 @@ test.describe('Data Verification', () => {
   test('should not have accessibility issues on a caseless identity task', async ({ page }) => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
     // The fake API serves one caseless ambiguous DXTR identity task (mock-api2.ts
-    // trusteeMatchVerificationCaselessDetail) - no caseId/courtId, no affected cases (CAMS-953
-    // Slice 5).
+    // trusteeMatchVerificationCaselessDetail) - no caseId/courtId, no affected cases.
     const taskId = 'e8c1f0a2-identity-task-caseless';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
@@ -235,7 +236,7 @@ test.describe('Data Verification', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
     // The fake API serves one ambiguous DXTR identity task with 7 candidates (mock-api2.ts
     // trusteeMatchVerificationManyCandidatesDetail), exercising the comparison table's
-    // pagination past the first 5 (CAMS-953 Slice 7).
+    // pagination past the first 5.
     const taskId = 'e8c1f0a2-identity-task-manycandidates';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
@@ -305,5 +306,53 @@ test.describe('Data Verification', () => {
       const accessibilityScanResults = await createAxeBuilder(page).analyze();
       expect(accessibilityScanResults.violations).toEqual([]);
     });
+  });
+
+  // The fake API's trustee appointment tasks are appointment-task-1 and appointment-task-2
+  // (mock-api2.ts `trusteeAppointmentVerifications`). Its fake refresh resolves task-1 and reports
+  // task-2 still uncovered.
+  test('should not have accessibility issues in an expanded appointment task, or after Refresh Trustee Appointments resolves it', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    const taskId = 'appointment-task-1';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const refreshButton = page.getByRole('button', { name: 'Refresh Trustee Appointments' });
+    await expect(refreshButton).toBeVisible();
+
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await refreshButton.click();
+    await expect(page.locator('[data-testid="alert-data-verification-alert"]')).toContainText(
+      'appointment verified for 1 case.',
+    );
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('should not have accessibility issues in an expanded appointment task after Refresh Trustee Appointments still finds no covering appointment', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    const taskId = 'appointment-task-2';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const refreshButton = page.getByTestId(`button-refresh-trustee-appointments-${taskId}`);
+    await expect(refreshButton).toBeVisible();
+
+    await refreshButton.click();
+    await expect(page.getByTestId(`alert-message-refresh-alert-${taskId}`)).toContainText(
+      'still no active Chapter 7 appointment',
+    );
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 });

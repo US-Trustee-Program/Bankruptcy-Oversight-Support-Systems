@@ -18,6 +18,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.m
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import * as consolidationOrderAccordionModule from './consolidation/ConsolidationOrderAccordion';
 import * as trusteeVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
+import * as trusteeAppointmentRowModule from './trustee-appointment-verification/TrusteeAppointmentVerificationRow';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
@@ -1219,6 +1220,47 @@ describe('Review Orders screen', () => {
       );
     }
 
+    test('an update from an appointment task replaces its row and shows the alert at the top of the screen', async () => {
+      setupFeatureFlags({ 'trustee-verification-enabled': true });
+      const otherTask: TrusteeAppointmentVerificationListItem = {
+        ...appointmentTask,
+        id: 'appointment-task-2',
+      };
+      const message = "Trustee Jane Smith's appointment verified for 3 cases.";
+      vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeAppointmentVerifications').mockResolvedValue({
+        data: [appointmentTask, otherTask],
+      });
+      mockAccordionOnOrderUpdate<trusteeAppointmentRowModule.TrusteeAppointmentVerificationRowProps>(
+        trusteeAppointmentRowModule,
+        'TrusteeAppointmentVerificationRow',
+        'mock-trustee-appointment',
+        (order) =>
+          order.id === appointmentTask.id && order.status === 'pending'
+            ? [
+                { message, type: UswdsAlertStyle.Success, timeOut: 8 },
+                { ...appointmentTask, status: 'approved' },
+              ]
+            : undefined,
+      );
+
+      renderScreen();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-container-data-verification-alert')).toHaveClass(
+          'visible',
+        );
+      });
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(message);
+      expect(
+        screen.getByTestId(`mock-trustee-appointment-${appointmentTask.id}-approved`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-trustee-appointment-${otherTask.id}-pending`),
+      ).toBeInTheDocument();
+    });
+
     test('lists each open appointment task as a row in the queue', async () => {
       setupFeatureFlags({ 'trustee-verification-enabled': true });
       vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
@@ -1323,6 +1365,67 @@ describe('Review Orders screen', () => {
       await waitFor(() => {
         expect(screen.getByTestId(rowTestId)).not.toBeVisible();
       });
+    });
+
+    test('fetches appointment tasks for the selected statuses', async () => {
+      setupFeatureFlags({ 'trustee-verification-enabled': true });
+      vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+      const appointmentSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointmentVerifications')
+        .mockResolvedValue({ data: [] });
+
+      renderScreen();
+
+      await waitFor(() => {
+        expect(appointmentSpy).toHaveBeenCalledWith({ status: 'pending,approved,rejected' });
+      });
+    });
+
+    test('refetches appointment tasks when the status filter changes', async () => {
+      setupFeatureFlags({ 'trustee-verification-enabled': true });
+      vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+      const appointmentSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointmentVerifications')
+        .mockResolvedValue({ data: [] });
+
+      renderScreen();
+      await waitFor(() => {
+        expect(appointmentSpy).toHaveBeenCalledWith({ status: 'pending,approved,rejected' });
+      });
+
+      fireEvent.click(document.getElementById('task-status-filter-expand')!);
+      fireEvent.click(screen.getByTestId('task-status-filter-option-item-0')); // Pending Review
+
+      await waitFor(() => {
+        expect(appointmentSpy).toHaveBeenLastCalledWith({ status: 'approved,rejected' });
+      });
+    });
+
+    test('lists a verified appointment task when Verified is the only status selected', async () => {
+      setupFeatureFlags({ 'trustee-verification-enabled': true });
+      const verifiedTask: TrusteeAppointmentVerificationListItem = {
+        ...appointmentTask,
+        id: 'appointment-task-verified',
+        status: 'approved',
+      };
+      vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getTrusteeAppointmentVerifications').mockImplementation(async (params) => {
+        const statuses = params?.status?.split(',') ?? ['pending'];
+        return {
+          data: [appointmentTask, verifiedTask].filter((task) => statuses.includes(task.status)),
+        };
+      });
+
+      renderScreen();
+      await screen.findByTestId(rowTestId);
+      fireEvent.click(document.getElementById('task-status-filter-expand')!);
+      fireEvent.click(screen.getByTestId('task-status-filter-option-item-0')); // Pending Review
+      fireEvent.click(screen.getByTestId('task-status-filter-option-item-2')); // Rejected
+
+      expect(await screen.findByTestId(`accordion-heading-${verifiedTask.id}`)).toBeVisible();
     });
 
     test('still shows the other tasks when appointment tasks fail to load', async () => {

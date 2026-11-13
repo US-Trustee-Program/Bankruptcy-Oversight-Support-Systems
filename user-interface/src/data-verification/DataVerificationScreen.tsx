@@ -128,6 +128,15 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
+  function handleTrusteeAppointmentVerificationUpdate(
+    alertDetails: AlertDetails,
+    updatedTask: TrusteeAppointmentVerificationListItem,
+  ) {
+    setAppointmentTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
+  }
+
   function handleTypeFilter(selections: ComboOption[]) {
     setTypeSelections(selections);
   }
@@ -232,7 +241,9 @@ export default function DataVerificationScreen() {
 
     async function loadAppointmentTasks() {
       try {
-        const response = await Api2.getTrusteeAppointmentVerifications();
+        const response = await Api2.getTrusteeAppointmentVerifications({
+          status: verificationStatusParam,
+        });
         if (cancelled) return;
         setAppointmentTasks(
           (response as ResponseBody<TrusteeAppointmentVerificationListItem[]>).data,
@@ -249,7 +260,7 @@ export default function DataVerificationScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam]);
 
   const orderList = [...orders, ...verifications, ...appointmentTasks];
 
@@ -325,6 +336,7 @@ export default function DataVerificationScreen() {
             statusType={orderStatusType}
             fieldHeaders={accordionFieldHeaders}
             hidden={isHidden}
+            onOrderUpdate={handleTrusteeAppointmentVerificationUpdate}
           />
         );
       } else if (isTrusteeMatchVerification(order)) {

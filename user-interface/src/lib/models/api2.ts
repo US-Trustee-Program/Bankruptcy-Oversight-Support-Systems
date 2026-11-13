@@ -24,6 +24,7 @@ import {
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import {
+  TrusteeAppointmentRefreshResult,
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
@@ -488,10 +489,12 @@ async function getTrusteeMatchVerifications(params?: { status?: string }) {
   return api().get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`, query);
 }
 
-async function getTrusteeAppointmentVerifications() {
+async function getTrusteeAppointmentVerifications(params?: { status?: string }) {
+  const query: Record<string, string> = {};
+  if (params?.status) query.status = params.status;
   return api().get<TrusteeAppointmentVerificationListItem[]>(
     `/trustee-appointment-verification`,
-    {},
+    query,
   );
 }
 
@@ -501,6 +504,14 @@ async function getTrusteeAppointmentVerificationDetail(id: string, trusteeId: st
     {
       trusteeId,
     },
+  );
+}
+
+async function refreshTrusteeAppointmentVerification(id: string, trusteeId: string) {
+  return api().patch<TrusteeAppointmentRefreshResult, { action: 'refresh' }>(
+    `/trustee-appointment-verification/${id}`,
+    { action: 'refresh' },
+    { trusteeId },
   );
 }
 
@@ -785,6 +796,7 @@ export const _Api2 = {
   getTrusteeMatchVerificationDetail,
   getTrusteeAppointmentVerifications,
   getTrusteeAppointmentVerificationDetail,
+  refreshTrusteeAppointmentVerification,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

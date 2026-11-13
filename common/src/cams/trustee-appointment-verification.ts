@@ -61,8 +61,7 @@ export type TrusteeAppointmentVerificationListItem = Pick<
 };
 
 /**
- * One of the trustee's appointments as shown in the task's Appointments table (CAMS-956 Slice 2),
- * annotated with how closely it agrees with the task's (court, division, chapter) tuple. The UI
+ * One of the trustee's appointments as shown in the task's Appointments table, annotated with how closely it agrees with the task's (court, division, chapter) tuple. The UI
  * marks a cell with a warning icon when the corresponding `agreement` flag is false; the list is
  * already sorted closest-agreement-first (highest `agreement.score` first) by the backend.
  */
@@ -71,8 +70,7 @@ export type TrusteeAppointmentWithAgreement = TrusteeAppointment & {
 };
 
 /**
- * The full detail for one appointment task (CAMS-956 Slice 2), fetched lazily when a data
- * verifier expands its row. courtName/courtDivisionName are resolved the same way as the list
+ * The full detail for one appointment task, fetched lazily when a data verifier expands its row. courtName/courtDivisionName are resolved the same way as the list
  * item's; trusteeName is the trustee's current name, for the reason sentence's link to their
  * profile; appointments is the trustee's full appointment list, sorted by agreement with this
  * task's tuple.
@@ -83,3 +81,26 @@ export type TrusteeAppointmentVerificationDetail = TrusteeAppointmentVerificatio
   trusteeName: string;
   appointments: TrusteeAppointmentWithAgreement[];
 };
+
+/**
+ * The outcome of a data verifier's "Refresh Trustee Appointments" on one appointment task.
+ * 'resolved': the trustee now holds an active covering appointment, so the
+ * task's cases were marked covered (updatedCaseCount counts only the cases still assigned to this
+ * trustee) and the task was approved. 'still-uncovered': nothing changed; the court, division and
+ * chapter names are for the verifier's warning message.
+ */
+export type TrusteeAppointmentRefreshResult =
+  | {
+      outcome: 'resolved';
+      trusteeName: string;
+      updatedCaseCount: number;
+      task: TrusteeAppointmentVerificationListItem;
+    }
+  | {
+      outcome: 'still-uncovered';
+      courtId: string;
+      courtName?: string;
+      divisionCode: string;
+      courtDivisionName?: string;
+      chapter: string;
+    };
