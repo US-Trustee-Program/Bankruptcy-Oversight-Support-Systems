@@ -2655,6 +2655,7 @@ async function getTrusteeAppointmentVerifications(): Promise<
 
 async function getTrusteeAppointmentVerificationDetail(
   id: string,
+  _trusteeId: string,
 ): Promise<ResponseBody<TrusteeAppointmentVerificationDetail>> {
   return get<TrusteeAppointmentVerificationDetail>(`/trustee-appointment-verification/${id}`);
 }

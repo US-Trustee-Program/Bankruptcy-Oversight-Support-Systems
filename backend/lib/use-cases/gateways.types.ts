@@ -1090,8 +1090,8 @@ export interface TrusteeAppointmentVerificationRepository extends Releasable {
   ): Promise<void>;
   /** Appointment tasks with any of the given statuses, unsorted (callers sort for display). */
   search(predicate: { status: OrderStatus[] }): Promise<TrusteeAppointmentVerification[]>;
-  /** The single task by its id, for the detail view (CAMS-956 Slice 2). */
-  findById(id: string): Promise<TrusteeAppointmentVerification>;
+  /** The single task by its id within a trustee (the shard key), for the detail view. */
+  findById(id: string, trusteeId: string): Promise<TrusteeAppointmentVerification>;
 }
 
 export interface UserGroupsRepository extends Releasable {

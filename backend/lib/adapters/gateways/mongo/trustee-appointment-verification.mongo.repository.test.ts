@@ -108,7 +108,7 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
       const task = { id: 'task-1', trusteeId: 'trustee-1', status: 'pending' };
       const findOne = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(task);
 
-      const result = await repository.findById('task-1');
+      const result = await repository.findById('task-1', 'trustee-1');
 
       expect(result).toEqual(task);
       expect(findOne).toHaveBeenCalledWith({
@@ -119,6 +119,7 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
             leftOperand: { name: 'documentType' },
             rightOperand: 'TRUSTEE_APPOINTMENT_VERIFICATION',
           },
+          { condition: 'EQUALS', leftOperand: { name: 'trusteeId' }, rightOperand: 'trustee-1' },
           { condition: 'EQUALS', leftOperand: { name: 'id' }, rightOperand: 'task-1' },
         ],
       });
@@ -128,13 +129,13 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
       const notFound = new NotFoundError('TEST');
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(notFound);
 
-      await expect(repository.findById('missing')).rejects.toBe(notFound);
+      await expect(repository.findById('missing', 'trustee-1')).rejects.toBe(notFound);
     });
 
     test('wraps any other failure', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(new Error('boom'));
 
-      await expect(repository.findById('task-1')).rejects.toThrow(
+      await expect(repository.findById('task-1', 'trustee-1')).rejects.toThrow(
         'Failed to find trustee appointment task task-1.',
       );
     });

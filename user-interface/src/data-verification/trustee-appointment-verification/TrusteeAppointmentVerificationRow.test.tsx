@@ -156,6 +156,17 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(alert).toHaveTextContent('Unable to load task details. Please try again.');
   });
 
+  test("requests the task's detail with its trustee id, the collection's shard key", async () => {
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockResolvedValue({ data: detail } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    await waitFor(() => expect(detailSpy).toHaveBeenCalledWith(task.id, task.trusteeId));
+  });
+
   test('refetches detail on each new expand, so stale data is never shown and a retry after a failure can succeed', async () => {
     const detailSpy = vi
       .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
@@ -287,7 +298,10 @@ describe('TrusteeAppointmentVerificationRow', () => {
       fireEvent.click(expandButton(secondTask.id));
 
       await waitFor(() =>
-        expect(Api2.getTrusteeAppointmentVerificationDetail).toHaveBeenCalledWith(secondTask.id),
+        expect(Api2.getTrusteeAppointmentVerificationDetail).toHaveBeenCalledWith(
+          secondTask.id,
+          secondTask.trusteeId,
+        ),
       );
     });
   });

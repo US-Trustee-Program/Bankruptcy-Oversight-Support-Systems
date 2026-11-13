@@ -59,10 +59,11 @@ describe('TrusteeAppointmentVerificationController', () => {
   test("GET with an id returns that task's detail", async () => {
     const findById = vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
     context.request.params = { id: 'task-1' };
+    context.request.query = { trusteeId: 'trustee-1' };
 
     const response = await new TrusteeAppointmentVerificationController().handleRequest(context);
 
-    expect(findById).toHaveBeenCalledWith('task-1');
+    expect(findById).toHaveBeenCalledWith('task-1', 'trustee-1');
     expect(search).not.toHaveBeenCalled();
     expect(response.statusCode).toBe(200);
     expect(response.body.data).toEqual(expect.objectContaining({ id: 'task-1', appointments: [] }));
@@ -75,10 +76,22 @@ describe('TrusteeAppointmentVerificationController', () => {
     });
     vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(notFound);
     context.request.params = { id: 'missing' };
+    context.request.query = { trusteeId: 'trustee-1' };
 
     await expect(
       new TrusteeAppointmentVerificationController().handleRequest(context),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  test('rejects a task detail request that has no trusteeId', async () => {
+    const findById = vi.spyOn(MockMongoRepository.prototype, 'findById');
+    context.request.params = { id: 'task-1' };
+    context.request.query = {};
+
+    await expect(
+      new TrusteeAppointmentVerificationController().handleRequest(context),
+    ).rejects.toThrow('Missing trusteeId.');
+    expect(findById).not.toHaveBeenCalled();
   });
 
   test('returns 404 when trustee-verification-enabled is off', async () => {
@@ -97,6 +110,28 @@ describe('TrusteeAppointmentVerificationController', () => {
       new TrusteeAppointmentVerificationController().handleRequest(context),
     ).rejects.toThrow('Unauthorized');
     expect(search).not.toHaveBeenCalled();
+  });
+
+  test('returns 404 for a task detail request when trustee-verification-enabled is off', async () => {
+    context.featureFlags['trustee-verification-enabled'] = false;
+    context.request.params = { id: 'task-1' };
+    const findById = vi.spyOn(MockMongoRepository.prototype, 'findById');
+
+    const response = await new TrusteeAppointmentVerificationController().handleRequest(context);
+
+    expect(response.statusCode).toBe(404);
+    expect(findById).not.toHaveBeenCalled();
+  });
+
+  test('rejects a task detail request from a user without the DataVerifier role', async () => {
+    context.session.user.roles = [CamsRole.TrialAttorney];
+    context.request.params = { id: 'task-1' };
+    const findById = vi.spyOn(MockMongoRepository.prototype, 'findById');
+
+    await expect(
+      new TrusteeAppointmentVerificationController().handleRequest(context),
+    ).rejects.toThrow('Unauthorized');
+    expect(findById).not.toHaveBeenCalled();
   });
 
   test('rejects any method other than GET', async () => {

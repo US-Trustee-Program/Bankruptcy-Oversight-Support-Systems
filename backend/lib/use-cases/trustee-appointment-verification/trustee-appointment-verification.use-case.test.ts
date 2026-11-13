@@ -276,7 +276,7 @@ describe('getAppointmentTaskDetail', () => {
   });
 
   test("includes the trustee's current name", async () => {
-    const result = await getAppointmentTaskDetail(context, 'task-1');
+    const result = await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
 
     expect(result.trusteeName).toBe('Jane Smith');
   });
@@ -285,7 +285,9 @@ describe('getAppointmentTaskDetail', () => {
     const readFailure = new Error('read failed');
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(readFailure);
 
-    await expect(getAppointmentTaskDetail(context, 'task-1')).rejects.toBe(readFailure);
+    await expect(getAppointmentTaskDetail(context, 'task-1', 'trustee-1')).rejects.toBe(
+      readFailure,
+    );
   });
 
   test('returns the task with resolved names and the appointments sorted by agreement, closest first', async () => {
@@ -308,7 +310,7 @@ describe('getAppointmentTaskDetail', () => {
       bestMatch,
     ]);
 
-    const result = await getAppointmentTaskDetail(context, 'task-1');
+    const result = await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
 
     expect(result).toEqual({
       ...task,
@@ -362,9 +364,30 @@ describe('getAppointmentTaskDetail', () => {
       newer,
     ]);
 
-    const result = await getAppointmentTaskDetail(context, 'task-1');
+    const result = await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
 
     expect(result.appointments.map((a) => a.appointedDate)).toEqual(['2024-06-15', '2020-01-01']);
+  });
+
+  test("looks the task up by id within the caller's trustee (the shard key)", async () => {
+    const findById = vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+
+    await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
+
+    expect(findById).toHaveBeenCalledWith('task-1', 'trustee-1');
+  });
+
+  test('fetches the courts once and reuses them when loading the trustee appointments', async () => {
+    const courts = [court({ courtId: '081', courtDivisionCode: '1' })];
+    const getCourts = vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(courts);
+    const getTrusteeAppointments = vi
+      .spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments')
+      .mockResolvedValue([]);
+
+    await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
+
+    expect(getCourts).toHaveBeenCalledTimes(1);
+    expect(getTrusteeAppointments).toHaveBeenCalledWith(context, 'trustee-1', courts);
   });
 
   test("fetches the trustee appointments for the task's own trustee", async () => {
@@ -372,15 +395,15 @@ describe('getAppointmentTaskDetail', () => {
       .spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments')
       .mockResolvedValue([]);
 
-    await getAppointmentTaskDetail(context, 'task-1');
+    await getAppointmentTaskDetail(context, 'task-1', 'trustee-1');
 
-    expect(getTrusteeAppointments).toHaveBeenCalledWith(context, 'trustee-1');
+    expect(getTrusteeAppointments).toHaveBeenCalledWith(context, 'trustee-1', expect.any(Array));
   });
 
   test('propagates a not-found error when the task does not exist', async () => {
     const notFound = new NotFoundError('TEST');
     vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(notFound);
 
-    await expect(getAppointmentTaskDetail(context, 'missing')).rejects.toBe(notFound);
+    await expect(getAppointmentTaskDetail(context, 'missing', 'trustee-1')).rejects.toBe(notFound);
   });
 });

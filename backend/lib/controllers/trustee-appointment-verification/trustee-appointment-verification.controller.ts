@@ -17,8 +17,8 @@ import { CamsRole } from '@common/cams/roles';
 const MODULE_NAME = 'TRUSTEE-APPOINTMENT-VERIFICATION-CONTROLLER';
 
 /**
- * Lists open trustee appointment tasks (CAMS-956) for the Data Verification queue, or (Slice 2)
- * returns one task's detail by id. Behind the same feature flag and DataVerifier role as trustee
+ * Lists open trustee appointment tasks (CAMS-956) for the Data Verification queue, or
+ * returns one task's detail by id (with its trusteeId, the shard key). Behind the same feature flag and DataVerifier role as trustee
  * identity tasks.
  */
 export class TrusteeAppointmentVerificationController {
@@ -42,9 +42,16 @@ export class TrusteeAppointmentVerificationController {
       }
 
       const id = context.request.params['id'];
-      const data = id
-        ? await getAppointmentTaskDetail(context, id)
-        : await listAppointmentTasks(context);
+      let data: TrusteeAppointmentVerificationListItem[] | TrusteeAppointmentVerificationDetail;
+      if (id) {
+        const trusteeId = context.request.query['trusteeId'];
+        if (!trusteeId) {
+          throw new BadRequestError(MODULE_NAME, { message: 'Missing trusteeId.' });
+        }
+        data = await getAppointmentTaskDetail(context, id, trusteeId);
+      } else {
+        data = await listAppointmentTasks(context);
+      }
       return httpSuccess({
         body: {
           meta: { self: context.request.url },
