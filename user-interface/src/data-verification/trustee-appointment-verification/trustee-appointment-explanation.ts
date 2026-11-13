@@ -31,6 +31,9 @@ export function buildResolvedStatement(trusteeName: string): string {
 
 /** The top-of-screen success message after a refresh resolves an appointment task. */
 export function buildRefreshResolvedMessage(trusteeName: string, caseCount: number): string {
+  if (caseCount === 0) {
+    return `Trustee ${trusteeName}'s appointment verified. None of this task's cases are still assigned to Trustee ${trusteeName}.`;
+  }
   const cases = caseCount === 1 ? '1 case' : `${caseCount} cases`;
   return `Trustee ${trusteeName}'s appointment verified for ${cases}.`;
 }

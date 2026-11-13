@@ -241,7 +241,9 @@ export default function DataVerificationScreen() {
 
     async function loadAppointmentTasks() {
       try {
-        const response = await Api2.getTrusteeAppointmentVerifications();
+        const response = await Api2.getTrusteeAppointmentVerifications({
+          status: verificationStatusParam,
+        });
         if (cancelled) return;
         setAppointmentTasks(
           (response as ResponseBody<TrusteeAppointmentVerificationListItem[]>).data,
@@ -258,7 +260,7 @@ export default function DataVerificationScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam]);
 
   const orderList = [...orders, ...verifications, ...appointmentTasks];
 

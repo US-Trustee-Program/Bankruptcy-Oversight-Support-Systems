@@ -37,9 +37,14 @@ describe('buildRefreshResolvedMessage', () => {
   test.each([
     [3, "Trustee Jane Smith's appointment verified for 3 cases."],
     [1, "Trustee Jane Smith's appointment verified for 1 case."],
-    [0, "Trustee Jane Smith's appointment verified for 0 cases."],
   ])('names the trustee and counts %i verified case(s)', (count, message) => {
     expect(buildRefreshResolvedMessage('Jane Smith', count)).toBe(message);
+  });
+
+  test('says no case is still assigned when the refresh verified zero cases', () => {
+    expect(buildRefreshResolvedMessage('Jane Smith', 0)).toBe(
+      "Trustee Jane Smith's appointment verified. None of this task's cases are still assigned to Trustee Jane Smith.",
+    );
   });
 });
 

@@ -56,6 +56,14 @@ describe('TrusteeAppointmentVerificationController', () => {
     expect(response.body.meta).toEqual({ self: context.request.url });
   });
 
+  test('GET passes the status query parameter to the task search', async () => {
+    context.request.query = { status: 'pending,approved' };
+
+    await new TrusteeAppointmentVerificationController().handleRequest(context);
+
+    expect(search).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+  });
+
   test("GET with an id returns that task's detail", async () => {
     const findById = vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
     context.request.params = { id: 'task-1' };
