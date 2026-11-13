@@ -110,6 +110,7 @@ describe('openOrJoinAppointmentTask', () => {
     ['a missing courtId', { courtId: undefined }],
     ['a missing courtDivisionCode', { courtDivisionCode: undefined }],
     ['a missing chapter', { chapter: undefined }],
+    ['a closed appointment (unassignedOn set)', { unassignedOn: '2024-06-30' }],
   ])('does not open or join a task for %s', async (_label, override) => {
     await openOrJoinAppointmentTask(context, { ...appointment, ...override }, []);
 

@@ -150,7 +150,8 @@ export class TrusteeMatchVerificationUseCase {
    * Opens or joins a trustee appointment task (CAMS-956) for each placeholder row the resolved
    * trustee's appointments do not cover. Coverage is judged from the court fields stored on each
    * row at write time (epic decision 14) -- never a DXTR lookup, which fails for a case not yet in
-   * CAMS. openOrJoinAppointmentTask skips parked rows, covered rows and rows missing a court field.
+   * CAMS. openOrJoinAppointmentTask skips parked rows, closed rows (unassignedOn set), covered rows
+   * and rows missing a court field.
    * A case with several placeholder rows may be joined more than once; the task upsert makes the
    * repeat a no-op.
    *
@@ -166,7 +167,7 @@ export class TrusteeMatchVerificationUseCase {
     userRef: CamsUserReference,
   ): Promise<void> {
     for (const row of surrogates) {
-      const { caseId, courtId, courtDivisionCode, chapter } = row;
+      const { caseId, courtId, courtDivisionCode, chapter, unassignedOn } = row;
       try {
         await openOrJoinAppointmentTask(
           context,
@@ -176,6 +177,7 @@ export class TrusteeMatchVerificationUseCase {
             courtId,
             courtDivisionCode,
             chapter,
+            unassignedOn,
             documentType:
               row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
                 ? 'CASE_APPOINTMENT_UNATTACHED'

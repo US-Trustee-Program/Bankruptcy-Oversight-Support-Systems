@@ -148,14 +148,14 @@ async function attachParkedAppointment(
     matchedTrusteeAppointment: covered,
     matchedBy: row.checks?.matchedBy ?? IDENTITY_TASK_MATCHED_BY,
   };
-  const softCloseFailure = await applyResolvedTrustee(
+  const { dlqFailure, unassignedOn } = await applyResolvedTrustee(
     deps.context,
     eventFrom(row),
     row.trusteeId,
     deps.caseAppointmentsRepo,
     checks,
   );
-  if (softCloseFailure) return false;
+  if (dlqFailure) return false;
   await openOrJoinAppointmentTask(
     deps.context,
     {
@@ -164,6 +164,7 @@ async function attachParkedAppointment(
       courtId: row.courtId,
       courtDivisionCode: row.courtDivisionCode,
       chapter: row.chapter,
+      unassignedOn,
       documentType: 'CASE_APPOINTMENT',
       checks,
     },

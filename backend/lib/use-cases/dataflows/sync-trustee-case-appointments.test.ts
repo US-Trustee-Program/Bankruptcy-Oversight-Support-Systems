@@ -341,19 +341,21 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
       });
 
-      test('does not open a task when the soft-close of the previous trustee permanently failed', async () => {
+      const activeAppointmentFor = (trusteeId: string, assignedOn: string) => ({
+        id: 'ca-old',
+        caseId: 'case-001',
+        trusteeId,
+        assignedOn,
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      });
+
+      test("opens a task and still dead-letters the event when the previous trustee's soft-close permanently failed", async () => {
         (
           mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue({
-          id: 'ca-old',
-          caseId: 'case-001',
-          trusteeId: 'old-trustee',
-          assignedOn: '2024-01-01T00:00:00Z',
-          createdOn: '2024-01-01T00:00:00Z',
-          createdBy: { id: 'system', name: 'System' },
-          updatedOn: '2024-01-01T00:00:00Z',
-          updatedBy: { id: 'system', name: 'System' },
-        });
+        ).mockResolvedValue(activeAppointmentFor('old-trustee', '2024-01-01T00:00:00Z'));
         (
           mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
         ).mockRejectedValue(new Error('Cosmos write failed'));
@@ -363,9 +365,66 @@ describe('SyncTrusteeCaseAppointments', () => {
           [makeEvent('case-001', 'John Doe')],
         );
 
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+        );
         expect(dlqMessages).toEqual([
           expect.objectContaining({ mismatchReason: 'SOFT_CLOSE_WRITE_FAILED' }),
         ]);
+        expect(mockAppointmentVerificationRepo.openOrJoin).toHaveBeenCalledWith(
+          expectedKey,
+          'case-001',
+          'no-appointment',
+          SYSTEM_USER_REFERENCE,
+        );
+      });
+
+      test('does not open a task when the source disposition (DISP_DATE) writes the appointment closed', async () => {
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-06-30' }],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', unassignedOn: '2024-06-30' }),
+        );
+        expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
+      });
+
+      test("does not open a task for an out-of-order row written closed behind the case's later active appointment", async () => {
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(activeAppointmentFor('newer-trustee', '2024-03-01T00:00:00Z'));
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+          'CASE_APPOINTMENT',
+          { fallbackUnassignedOn: '2024-02-29' },
+        );
+        expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
+      });
+
+      test("does not open a task when the source disposition closes the trustee's own active appointment", async () => {
+        (
+          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(activeAppointmentFor('trustee-123', '2024-01-15T00:00:00Z'));
+        (
+          mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(true);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [{ ...makeEvent('case-001', 'John Doe'), unassignedOn: '2024-06-30' }],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+          expect.objectContaining({ trusteeId: 'trustee-123', unassignedOn: '2024-06-30' }),
+        );
         expect(mockAppointmentVerificationRepo.openOrJoin).not.toHaveBeenCalled();
       });
 

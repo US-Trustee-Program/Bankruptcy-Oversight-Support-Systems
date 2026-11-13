@@ -23,6 +23,7 @@ export type AppointmentTaskWrite = {
   courtId?: string;
   courtDivisionCode?: string;
   chapter?: string;
+  unassignedOn?: string;
   documentType: CaseAppointmentDocumentType;
   checks?: CaseAppointmentChecks;
 };
@@ -35,16 +36,20 @@ type AppointmentTaskCandidate = AppointmentTaskWrite & {
 };
 
 /**
- * The appointment-task predicate: an attached (CASE_APPOINTMENT) write whose case and trustee
- * were both identified, that no active appointment covers, with court, division and chapter all
- * present. Exported so a caller can skip fetching the trustee's appointments when no task applies.
+ * The appointment-task predicate: an open (no unassignedOn), attached (CASE_APPOINTMENT) write
+ * whose case and trustee were both identified, that no active appointment covers, with court,
+ * division and chapter all present. A closed appointment is excluded because a task asserts the
+ * trustee serves the case now; a historical appointment is not something a verifier can resolve
+ * (cams-0yr5n.1.6). Exported so a caller can skip fetching
+ * the trustee's appointments when no task applies.
  */
 export function isAppointmentTaskCandidate(
   appointment: AppointmentTaskWrite,
 ): appointment is AppointmentTaskCandidate {
-  const { courtId, courtDivisionCode, chapter, documentType, checks } = appointment;
+  const { courtId, courtDivisionCode, chapter, unassignedOn, documentType, checks } = appointment;
   return (
     documentType === 'CASE_APPOINTMENT' &&
+    !unassignedOn &&
     !!checks?.matchedCase &&
     checks.matchedTrustee &&
     !checks.matchedTrusteeAppointment &&
@@ -61,8 +66,7 @@ export function isAppointmentTaskCandidate(
  * writes a case appointment calls this right after its write; the repository's atomic upsert
  * makes repeat calls for the same case a no-op.
  *
- * Does nothing for a parked (CASE_APPOINTMENT_UNATTACHED) row, a placeholder (matchedTrustee
- * false), a covered appointment, or a row missing any of court, division or chapter.
+ * Does nothing unless isAppointmentTaskCandidate holds.
  *
  * `trusteeAppointments` is the trustee's full appointment list, which every caller has already
  * fetched to compute checks. Errors propagate; the caller decides whether to retry.
