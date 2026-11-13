@@ -3,9 +3,11 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
+import factory from '../../factory';
 import {
   CasesRepository,
   ParkedAppointment,
+  TrusteeAppointmentVerificationRepository,
   TrusteeAppointmentsRepository,
   TrusteeCaseAppointmentsRepository,
 } from '../gateways.types';
@@ -454,6 +456,220 @@ describe('heal-parked-case-appointments', () => {
 
   test('an empty page returns a null cursor', async () => {
     expect(await run()).toEqual({ healed: 0, stillParked: 0, failed: 0, nextLastId: null });
+  });
+
+  describe('appointment task (CAMS-956)', () => {
+    let openOrJoin: ReturnType<
+      typeof vi.fn<TrusteeAppointmentVerificationRepository['openOrJoin']>
+    >;
+
+    beforeEach(() => {
+      openOrJoin = vi
+        .fn<TrusteeAppointmentVerificationRepository['openOrJoin']>()
+        .mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
+        openOrJoin,
+        search: vi.fn(),
+        release: vi.fn(),
+      });
+    });
+
+    test("attaching an uncovered parked appointment opens or joins the task for the row's court, division and chapter", async () => {
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      const result = await run();
+
+      expect(openOrJoin).toHaveBeenCalledTimes(1);
+      expect(openOrJoin).toHaveBeenCalledWith(
+        { trusteeId: 'trustee-1', courtId: '0208', divisionCode: '081', chapter: '7' },
+        '081-26-00001',
+        'no-appointment',
+        SYSTEM,
+      );
+      expect(result.healed).toBe(1);
+    });
+
+    test('an inactive appointment for the tuple gives the appointment-inactive reason', async () => {
+      getTrusteeAppointments.mockResolvedValue([
+        { ...coveringTrusteeAppointment, status: 'inactive' },
+      ]);
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      await run();
+
+      expect(openOrJoin).toHaveBeenCalledWith(
+        expect.anything(),
+        '081-26-00001',
+        'appointment-inactive',
+        SYSTEM,
+      );
+    });
+
+    test('attaching a parked appointment the source already closed (DISP_DATE) opens no task', async () => {
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+        makeParkedAppointment({ unassignedOn: '2026-10-30' }),
+      ]);
+
+      const result = await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+      expect(result.healed).toBe(1);
+    });
+
+    test('attaching a covered parked appointment opens no task', async () => {
+      getTrusteeAppointments.mockResolvedValue([coveringTrusteeAppointment]);
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+    });
+
+    test('an attach written as uncovered only because a court field is missing opens no task', async () => {
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+        makeParkedAppointment({ courtDivisionCode: undefined }),
+      ]);
+
+      const result = await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+      expect(result.healed).toBe(1);
+    });
+
+    test('a permanent soft-close failure opens no task on that run (the next run retries it as superseded)', async () => {
+      caseAppointmentsRepo.getActiveByCaseId.mockResolvedValue(
+        makeActiveAppointment({ assignedOn: '2026-10-01' }),
+      );
+      caseAppointmentsRepo.updateCaseAppointment.mockRejectedValue(new Error('permanent failure'));
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      const result = await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+      expect(result.failed).toBe(1);
+    });
+
+    test('a parked placeholder placed as a placeholder opens no task', async () => {
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+        makeParkedAppointment({
+          trusteeId: 'fp-1',
+          isSurrogate: true,
+          variant: 'variant-1',
+          checks: undefined,
+        }),
+      ]);
+
+      await run();
+
+      expect(openOrJoin).not.toHaveBeenCalled();
+    });
+
+    test('a transient error from the task write is rethrown before the parked row is deleted', async () => {
+      openOrJoin.mockRejectedValue(new TooManyRequestsError('TEST'));
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      await expect(run()).rejects.toThrow(TooManyRequestsError);
+      expect(caseAppointmentsRepo.delete).not.toHaveBeenCalled();
+    });
+
+    describe('when an earlier run already attached the row (the parked row is superseded)', () => {
+      const attachedRow = (override: Partial<CaseAppointment> = {}) =>
+        makeActiveAppointment({
+          trusteeId: 'trustee-1',
+          assignedOn: '2026-11-01',
+          courtId: '0208',
+          courtDivisionCode: '081',
+          chapter: '7',
+          checks: makeParkedAppointment().checks,
+          ...override,
+        });
+
+      test('gives the no-appointment reason when the trustee has no appointments at all', async () => {
+        caseAppointmentsRepo.getByCaseId.mockResolvedValue([attachedRow()]);
+        caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+        await run();
+
+        expect(getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
+        expect(openOrJoin).toHaveBeenCalledWith(
+          { trusteeId: 'trustee-1', courtId: '0208', divisionCode: '081', chapter: '7' },
+          '081-26-00001',
+          'no-appointment',
+          SYSTEM,
+        );
+      });
+
+      test('opens or joins the task from the attached row, so a failed earlier attempt is retried', async () => {
+        getTrusteeAppointments.mockResolvedValue([
+          { ...coveringTrusteeAppointment, status: 'inactive' },
+        ]);
+        caseAppointmentsRepo.getByCaseId.mockResolvedValue([attachedRow()]);
+        caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+        const result = await run();
+
+        expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
+        expect(openOrJoin).toHaveBeenCalledWith(
+          { trusteeId: 'trustee-1', courtId: '0208', divisionCode: '081', chapter: '7' },
+          '081-26-00001',
+          'appointment-inactive',
+          SYSTEM,
+        );
+        expect(caseAppointmentsRepo.delete).toHaveBeenCalledWith('parked-1');
+        expect(result.healed).toBe(1);
+      });
+
+      test.each<[string, Partial<CaseAppointment>]>([
+        [
+          'covered',
+          {
+            checks: {
+              matchedCase: true,
+              matchedTrustee: true,
+              matchedTrusteeAppointment: true,
+              matchedBy: 'professional-id',
+            },
+          },
+        ],
+        [
+          'a placeholder',
+          {
+            isSurrogate: true,
+            checks: {
+              matchedCase: true,
+              matchedTrustee: false,
+              matchedTrusteeAppointment: false,
+              matchedBy: 'variation',
+            },
+          },
+        ],
+      ])(
+        'opens no task and reads no trustee appointments when the attached row is %s',
+        async (_label, override) => {
+          caseAppointmentsRepo.getByCaseId.mockResolvedValue([attachedRow(override)]);
+          caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([
+            makeParkedAppointment(),
+          ]);
+
+          await run();
+
+          expect(getTrusteeAppointments).not.toHaveBeenCalled();
+          expect(openOrJoin).not.toHaveBeenCalled();
+          expect(caseAppointmentsRepo.delete).toHaveBeenCalledWith('parked-1');
+        },
+      );
+    });
+
+    test('a permanent error from the task write leaves the row parked and counts it failed', async () => {
+      openOrJoin.mockRejectedValue(new Error('write failed'));
+      caseAppointmentsRepo.findParkedFiledOnOrAfter.mockResolvedValue([makeParkedAppointment()]);
+
+      const result = await run();
+
+      expect(caseAppointmentsRepo.delete).not.toHaveBeenCalled();
+      expect(result.failed).toBe(1);
+    });
   });
 
   test('countAbandoned counts parked rows filed the day before the window start', async () => {

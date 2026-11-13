@@ -903,3 +903,37 @@ resource emailNotificationArchiveCollection 'Microsoft.DocumentDB/databaseAccoun
     }
   }
 }
+
+resource trusteeAppointmentVerificationCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustee-appointment-verification'
+  properties: {
+    resource: {
+      id: 'trustee-appointment-verification'
+      shardKey: {
+        trusteeId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'trusteeId'
+              'courtId'
+              'divisionCode'
+              'chapter'
+              'documentType'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+      ]
+    }
+  }
+}

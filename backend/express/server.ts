@@ -14,6 +14,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { TrusteeAppointmentVerificationController } from '../lib/controllers/trustee-appointment-verification/trustee-appointment-verification.controller';
 import { TrusteesController } from '../lib/controllers/trustees/trustees.controller';
 import { TrusteeAppointmentsController } from '../lib/controllers/trustee-appointments/trustee-appointments.controller';
 import { TrusteeStaffController } from '../lib/controllers/trustee-staff/trustee-staff.controller';
@@ -245,6 +246,17 @@ export function createApp(): Application {
       next(error);
     }
   };
+
+  app.get('/api/trustee-appointment-verification', async (req, res, next) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new TrusteeAppointmentVerificationController();
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.get('/api/orders-suggestions', handleOrdersSuggestions);
   app.get('/api/orders-suggestions/:caseId', handleOrdersSuggestions);

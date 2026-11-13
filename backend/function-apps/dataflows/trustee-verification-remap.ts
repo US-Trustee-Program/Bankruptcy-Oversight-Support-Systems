@@ -80,25 +80,10 @@ async function handleRemap(
 
   try {
     const useCase = new TrusteeVerificationRemapUseCase(context);
-    const {
-      documentsWritten,
-      documentsFailed,
-      permanentFailureCount,
-      totalCandidates,
-      pageSize,
-      remainingCount,
-    } = await useCase.remapPage(message, REMAP_PAGE_SIZE);
+    const { documentsWritten, documentsFailed, totalCandidates, pageSize, remainingCount } =
+      await useCase.remapPage(message, REMAP_PAGE_SIZE);
 
-    // A page where every surrogate is a permanent division mismatch can never make progress --
-    // nothing was deleted, so the identical page would be re-selected and re-fail the same way
-    // forever. Requeuing there is a genuine infinite loop (reviewer-verified on PR #3090), not
-    // the ordinary "more pages to go" case remainingCount otherwise signals. Stop instead,
-    // leaving the stuck surrogates in place the same way an at-or-under-page-size bundle
-    // already does (the CAMS-894 condition) -- a known, accepted gap this stopgap doesn't
-    // resolve, only stops from consuming invocations indefinitely.
-    const allPermanentlyFailed =
-      pageSize > 0 && documentsWritten === 0 && permanentFailureCount === pageSize;
-    const shouldRequeue = remainingCount > 0 && !allPermanentlyFailed;
+    const shouldRequeue = remainingCount > 0;
 
     if (shouldRequeue) {
       // Re-send the message unchanged: the next invocation re-queries
@@ -114,18 +99,13 @@ async function handleRemap(
         MODULE_NAME,
         `Remapped a page of ${pageSize} case(s) for fingerprint ${message.fingerprint}; requeued for ${remainingCount} remaining.`,
       );
-    } else if (remainingCount > 0) {
-      context.logger.error(
-        MODULE_NAME,
-        `Stopping continuation for fingerprint ${message.fingerprint}: all ${pageSize} case(s) in this page are permanently uncovered by resolved trustee ${message.resolvedTrusteeId}, so requeuing would re-select and re-fail the identical page forever. ${remainingCount} case(s) beyond this page were never attempted.`,
-      );
     }
 
-    if (documentsFailed > 0 || permanentFailureCount > 0) {
+    if (documentsFailed > 0) {
       await writeRemapStatus(verificationRepo, message, {
         status: 'error',
         originalError: new Error(
-          `${documentsFailed} of ${pageSize} case(s) failed to remap in this page, and ${permanentFailureCount} are permanently uncovered by the resolved trustee — see logs for fingerprint ${message.fingerprint}.`,
+          `${documentsFailed} of ${pageSize} case(s) failed to remap in this page — see logs for fingerprint ${message.fingerprint}.`,
         ),
       });
     } else {
@@ -143,19 +123,16 @@ async function handleRemap(
       {
         documentsWritten,
         documentsFailed,
-        // A page where every case failed was previously reported as success:true, which is why
-        // CAMS-894 (stuck surrogates never getting remapped) had no telemetry trail at all.
-        success: documentsFailed === 0 && permanentFailureCount === 0,
-        ...(documentsFailed > 0 || permanentFailureCount > 0
-          ? { error: 'per-case-remap-failure' }
-          : {}),
+        // Any per-case failure reports success:false, so a page that left surrogates behind
+        // always has a telemetry trail.
+        success: documentsFailed === 0,
+        ...(documentsFailed > 0 ? { error: 'per-case-remap-failure' } : {}),
         details: {
           fingerprint: message.fingerprint,
           verificationId: message.verificationId,
           totalCandidates: String(totalCandidates),
           pageSize: String(pageSize),
           continuationQueued: String(shouldRequeue),
-          permanentFailureCount: String(permanentFailureCount),
         },
       },
     );

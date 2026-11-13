@@ -1,8 +1,10 @@
 import DateHelper from '@common/date-helper';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import {
+  CaseAppointment,
   CaseAppointmentChecks,
   CaseAppointmentInput,
+  IDENTITY_TASK_MATCHED_BY,
   isAppointmentMatch,
 } from '@common/cams/trustee-appointments';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -12,14 +14,16 @@ import {
   applyResolvedTrustee,
   SyncTrusteeCaseAppointmentsDeps,
 } from './sync-trustee-case-appointments';
+import {
+  AppointmentTaskWrite,
+  isAppointmentTaskCandidate,
+  openOrJoinAppointmentTask,
+} from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'HEAL-PARKED-CASE-APPOINTMENTS-USE-CASE';
 
 /** Parked rows filed within this many days of the heal run date are healed; older ones are abandoned. */
 const HEAL_WINDOW_DAYS = 14;
-
-/** matchedBy for a parked appointment written by an identity-task remap, which records no checks. */
-const IDENTITY_TASK_MATCHED_BY = 'identity-task';
 
 export type HealParkedDeps = Pick<
   SyncTrusteeCaseAppointmentsDeps,
@@ -88,25 +92,46 @@ function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
 }
 
 /**
- * True when the sync already wrote this court appointment as a placed row (same trustee or
- * fingerprint, same assignedOn day): it did so after the case loaded, from newer source data, so
- * the parked row is out of date. Placed and parked rows have different natural keys, so attaching
- * the parked row would replace the placed row, e.g. reopening an appointment a later DISP_DATE
- * closed. applyResolvedTrustee alone cannot see this: it only looks at the active appointment.
+ * The placed row for this same court appointment (same trustee or fingerprint, same assignedOn
+ * day), if one exists. Either the sync wrote it after the case loaded, from newer source data, or
+ * an earlier heal run attached this parked row and then failed before deleting it. Either way the
+ * parked row is out of date. Placed and parked rows have different natural keys, so attaching the
+ * parked row would replace the placed row, e.g. reopening an appointment a later DISP_DATE closed.
+ * applyResolvedTrustee alone cannot see this: it only looks at the active appointment.
  */
-async function isSupersededByPlacedRow(
+async function findSupersedingPlacedRow(
   deps: HealParkedDeps,
   row: ParkedAppointment,
-): Promise<boolean> {
+): Promise<CaseAppointment | undefined> {
   const placedRows = await deps.caseAppointmentsRepo.getByCaseId(row.caseId);
-  return placedRows.some(
+  return placedRows.find(
     (placed) =>
       placed.trusteeId === row.trusteeId &&
       placed.assignedOn.slice(0, 10) === row.assignedOn.slice(0, 10),
   );
 }
 
-/** Returns false when the old trustee's appointment could not be closed (see healParkedPage). */
+/**
+ * Opens or joins the appointment task for a placed row that superseded the parked row. An earlier
+ * run that attached this row and then failed (soft-close failure, or an error writing the task)
+ * left no task behind; this is where it is retried. A placed row the sync wrote already had its
+ * task opened by the sync, and the repeat is a no-op.
+ */
+async function openOrJoinTaskForPlacedRow(
+  deps: HealParkedDeps,
+  placed: CaseAppointment,
+): Promise<void> {
+  const write: AppointmentTaskWrite = { ...placed, documentType: 'CASE_APPOINTMENT' };
+  if (!isAppointmentTaskCandidate(write)) return;
+  const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(placed.trusteeId);
+  await openOrJoinAppointmentTask(deps.context, write, trusteeAppointments);
+}
+
+/**
+ * Returns false when the old trustee's appointment could not be closed (see healParkedPage). On
+ * success, an uncovered attach opens or joins the trustee appointment task (CAMS-956) before the
+ * caller deletes the parked row, so a failed task write leaves the row parked for the next run.
+ */
 async function attachParkedAppointment(
   deps: HealParkedDeps,
   row: ParkedAppointment,
@@ -123,14 +148,29 @@ async function attachParkedAppointment(
     matchedTrusteeAppointment: covered,
     matchedBy: row.checks?.matchedBy ?? IDENTITY_TASK_MATCHED_BY,
   };
-  const softCloseFailure = await applyResolvedTrustee(
+  const { dlqFailure, unassignedOn } = await applyResolvedTrustee(
     deps.context,
     eventFrom(row),
     row.trusteeId,
     deps.caseAppointmentsRepo,
     checks,
   );
-  return softCloseFailure === null;
+  if (dlqFailure) return false;
+  await openOrJoinAppointmentTask(
+    deps.context,
+    {
+      caseId: row.caseId,
+      trusteeId: row.trusteeId,
+      courtId: row.courtId,
+      courtDivisionCode: row.courtDivisionCode,
+      chapter: row.chapter,
+      unassignedOn,
+      documentType: 'CASE_APPOINTMENT',
+      checks,
+    },
+    trusteeAppointments,
+  );
+  return true;
 }
 
 /**
@@ -145,7 +185,8 @@ async function attachParkedAppointment(
  * When applyResolvedTrustee reports a permanent soft-close failure, the new appointment is already
  * written but the previous trustee's appointment is still open. The parked row is kept and counted
  * failed, with the error logged for manual replay (the sync dead-letters the same case). The next
- * heal finds the new appointment active for this trustee and clears the parked row.
+ * heal finds the new appointment as the superseding placed row, opens or joins its appointment
+ * task (CAMS-956), and clears the parked row.
  *
  * Cursor-paged on _id, so rows left parked never stall progress. A transient error is rethrown
  * for the caller's rate-limit retry; any other per-row error is logged and the row left parked.
@@ -171,8 +212,10 @@ export async function healParkedPage(
         continue;
       }
 
-      if (await isSupersededByPlacedRow(deps, row)) {
-        // Nothing to write; clearing the stale parked row counts as healed.
+      const supersedingRow = await findSupersedingPlacedRow(deps, row);
+      if (supersedingRow) {
+        // No appointment to write; clearing the stale parked row counts as healed.
+        await openOrJoinTaskForPlacedRow(deps, supersedingRow);
       } else if (row.isSurrogate) {
         await deps.caseAppointmentsRepo.upsert(placedPlaceholderFrom(row));
       } else if (!(await attachParkedAppointment(deps, row))) {

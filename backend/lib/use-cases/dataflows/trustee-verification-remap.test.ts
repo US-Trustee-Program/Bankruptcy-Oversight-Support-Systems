@@ -8,7 +8,8 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
-import { SurrogateAppointment } from '../gateways.types';
+import { SurrogateAppointment, TrusteeAppointmentVerificationRepository } from '../gateways.types';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -46,6 +47,9 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
   let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
+  let mockOpenOrJoin: ReturnType<
+    typeof vi.fn<TrusteeAppointmentVerificationRepository['openOrJoin']>
+  >;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -79,8 +83,24 @@ describe('TrusteeVerificationRemapUseCase', () => {
       }),
     );
 
+    mockOpenOrJoin = vi
+      .fn<TrusteeAppointmentVerificationRepository['openOrJoin']>()
+      .mockResolvedValue(undefined);
+    vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
+      openOrJoin: mockOpenOrJoin,
+      search: vi.fn(),
+      release: vi.fn(),
+    });
+
     useCase = new TrusteeVerificationRemapUseCase(context);
   });
+
+  const coveredChecks = {
+    matchedCase: true,
+    matchedTrustee: true,
+    matchedTrusteeAppointment: true,
+    matchedBy: 'identity-task',
+  };
 
   describe('parked placeholders (case not yet in CAMS)', () => {
     const parked = () =>
@@ -112,6 +132,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
           chapter: '7',
           courtId: '081',
           courtDivisionCode: '081',
+          checks: coveredChecks,
         },
         'CASE_APPOINTMENT_UNATTACHED',
       );
@@ -167,7 +188,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
       },
     );
 
-    test('a parked placeholder the resolved trustee does not cover is a permanent failure and stays in place', async () => {
+    test('a parked placeholder the resolved trustee does not cover stays parked, records the miss, and opens no task', async () => {
       mockGetSurrogatesByFingerprint.mockResolvedValue([parked()]);
       mockGetTrusteeAppointments.mockResolvedValue([
         { status: 'active', courtId: '081', chapter: '13', divisionCodes: ['081'] },
@@ -175,9 +196,15 @@ describe('TrusteeVerificationRemapUseCase', () => {
 
       const result = await useCase.remapPage(makeMessage(), 25);
 
-      expect(result.permanentFailureCount).toBe(1);
-      expect(mockUpsert).not.toHaveBeenCalled();
-      expect(mockDelete).not.toHaveBeenCalled();
+      expect(result.documentsWritten).toBe(1);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checks: expect.objectContaining({ matchedTrusteeAppointment: false }),
+        }),
+        'CASE_APPOINTMENT_UNATTACHED',
+      );
+      expect(mockOpenOrJoin).not.toHaveBeenCalled();
+      expect(mockDelete).toHaveBeenCalledWith('parked-placeholder');
     });
   });
 
@@ -281,9 +308,11 @@ describe('TrusteeVerificationRemapUseCase', () => {
         chapter: surrogate.chapter,
         courtId: surrogate.courtId,
         courtDivisionCode: surrogate.courtDivisionCode,
+        checks: coveredChecks,
       }),
     );
     expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('isSurrogate');
+    expect(mockOpenOrJoin).not.toHaveBeenCalled();
     expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
     const upsertOrder = mockUpsert.mock.invocationCallOrder[0];
     const deleteOrder = mockDelete.mock.invocationCallOrder[0];
@@ -291,7 +320,6 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 1,
       documentsFailed: 0,
-      permanentFailureCount: 0,
       totalCandidates: 1,
       pageSize: 1,
       remainingCount: 0,
@@ -452,48 +480,131 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(result).toEqual({
       documentsWritten: 0,
       documentsFailed: 0,
-      permanentFailureCount: 0,
       totalCandidates: 0,
       pageSize: 0,
       remainingCount: 0,
     });
   });
 
-  test('skips remapping a surrogate whose stored court fields the resolved trustee does not cover -- defense in depth against the approval race window', async () => {
-    // A surrogate could be admitted into this fingerprint's bucket after
-    // approveVerification's own division-check snapshot but before its TRUSTEE_VARIATION
-    // write closes the window (see that use case's step 2-4 comments) -- such a surrogate
-    // would never have passed any division check at all. Coverage is judged from the court
-    // fields stored on the row (epic decision 14).
-    const surrogate = makeSurrogate({ courtDivisionCode: '099', chapter: '13' });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    // Resolved trustee is only assigned to '081'/'7' (the default appointment), not '099'/'13'.
+  test("keeps the surrogate's own matchedBy when it recorded one", async () => {
+    mockGetSurrogatesByFingerprint.mockResolvedValue([
+      makeSurrogate({
+        checks: {
+          matchedCase: true,
+          matchedTrustee: false,
+          matchedTrusteeAppointment: false,
+          matchedBy: 'variation',
+        },
+      }),
+    ]);
 
-    const result = await useCase.remapPage(makeMessage(), 25);
+    await useCase.remapPage(makeMessage(), 25);
 
-    expect(mockUpsert).not.toHaveBeenCalled();
-    expect(mockDelete).not.toHaveBeenCalled();
-    expect(result.documentsWritten).toBe(0);
-    // A genuine division mismatch is permanent -- retrying this surrogate can never succeed,
-    // so it's tracked separately from documentsFailed (which represents failures that might).
-    expect(result.documentsFailed).toBe(0);
-    expect(result.permanentFailureCount).toBe(1);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ checks: { ...coveredChecks, matchedBy: 'variation' } }),
+    );
   });
 
-  test.each([['courtId'], ['courtDivisionCode'], ['chapter']])(
-    'treats a surrogate row with no %s as uncovered (permanent), not as a lookup failure',
-    async (missingField) => {
-      const surrogate = makeSurrogate({ [missingField]: undefined });
+  describe('a surrogate the resolved trustee does not cover (CAMS-956)', () => {
+    test('writes the real appointment recording the miss, opens or joins the appointment task, then deletes the surrogate', async () => {
+      const surrogate = makeSurrogate({ courtDivisionCode: '099', chapter: '13' });
       mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+      // Resolved trustee is only assigned to '081'/'7' (the default appointment), not '099'/'13'.
 
       const result = await useCase.remapPage(makeMessage(), 25);
 
-      expect(mockUpsert).not.toHaveBeenCalled();
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: surrogate.caseId,
+          trusteeId: 'trustee-new',
+          checks: { ...coveredChecks, matchedTrusteeAppointment: false },
+        }),
+      );
+      expect(mockOpenOrJoin).toHaveBeenCalledWith(
+        { trusteeId: 'trustee-new', courtId: '081', divisionCode: '099', chapter: '13' },
+        surrogate.caseId,
+        'no-appointment',
+        SYSTEM_USER_REFERENCE,
+      );
+      expect(mockUpsert.mock.invocationCallOrder[0]).toBeLessThan(
+        mockOpenOrJoin.mock.invocationCallOrder[0],
+      );
+      expect(mockOpenOrJoin.mock.invocationCallOrder[0]).toBeLessThan(
+        mockDelete.mock.invocationCallOrder[0],
+      );
+      expect(result).toEqual({
+        documentsWritten: 1,
+        documentsFailed: 0,
+        totalCandidates: 1,
+        pageSize: 1,
+        remainingCount: 0,
+      });
+    });
+
+    test("gives the appointment-inactive reason when the trustee's appointment for the tuple is not active", async () => {
+      const surrogate = makeSurrogate();
+      mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+      mockGetTrusteeAppointments.mockResolvedValue([
+        { status: 'inactive', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+      ]);
+
+      await useCase.remapPage(makeMessage(), 25);
+
+      expect(mockOpenOrJoin).toHaveBeenCalledWith(
+        { trusteeId: 'trustee-new', courtId: '081', divisionCode: '081', chapter: '7' },
+        surrogate.caseId,
+        'appointment-inactive',
+        SYSTEM_USER_REFERENCE,
+      );
+    });
+
+    test.each([['courtId'], ['courtDivisionCode'], ['chapter']])(
+      'still remaps a surrogate row with no %s, records it uncovered, and opens no task',
+      async (missingField) => {
+        const surrogate = makeSurrogate({ [missingField]: undefined });
+        mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+
+        const result = await useCase.remapPage(makeMessage(), 25);
+
+        expect(mockUpsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            checks: expect.objectContaining({ matchedTrusteeAppointment: false }),
+          }),
+        );
+        expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty(missingField);
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
+        expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
+        expect(result.documentsWritten).toBe(1);
+      },
+    );
+
+    test('a transient error writing the task rethrows and leaves the surrogate in place', async () => {
+      mockGetSurrogatesByFingerprint.mockResolvedValue([
+        makeSurrogate({ courtDivisionCode: '099' }),
+      ]);
+      mockOpenOrJoin.mockRejectedValue(new TooManyRequestsError('TEST'));
+
+      await expect(useCase.remapPage(makeMessage(), 25)).rejects.toThrow(TooManyRequestsError);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checks: expect.objectContaining({ matchedTrusteeAppointment: false }),
+        }),
+      );
       expect(mockDelete).not.toHaveBeenCalled();
-      expect(result.permanentFailureCount).toBe(1);
-      expect(result.documentsFailed).toBe(0);
-    },
-  );
+    });
+
+    test('any other error writing the task counts as a failure and leaves the surrogate for the next attempt', async () => {
+      mockGetSurrogatesByFingerprint.mockResolvedValue([
+        makeSurrogate({ courtDivisionCode: '099' }),
+      ]);
+      mockOpenOrJoin.mockRejectedValue(new Error('write failed'));
+
+      const result = await useCase.remapPage(makeMessage(), 25);
+
+      expect(mockDelete).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ documentsWritten: 0, documentsFailed: 1 });
+    });
+  });
 
   test('counts a documentsFailed when the surrogate row carries a malformed chapter, even though it passed the division/chapter match', async () => {
     // isAppointmentMatch's normalizeChapter is deliberately LOOSE for matching purposes --
@@ -515,13 +626,12 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockDelete).not.toHaveBeenCalled();
     expect(result.documentsWritten).toBe(0);
     expect(result.documentsFailed).toBe(1);
-    expect(result.permanentFailureCount).toBe(0);
   });
 
-  test('tracks a mix of success, permanent mismatch, and ordinary failure independently in one page', async () => {
+  test('tracks a mix of covered, uncovered, and failed surrogates in one page', async () => {
     const covered = makeSurrogate({ id: 'surrogate-covered', caseId: '081-25-00001' });
-    const mismatched = makeSurrogate({
-      id: 'surrogate-mismatched',
+    const uncovered = makeSurrogate({
+      id: 'surrogate-uncovered',
       caseId: '081-25-00002',
       courtDivisionCode: '099',
       chapter: '13',
@@ -530,7 +640,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
       id: 'surrogate-ordinary-failure',
       caseId: '081-25-00003',
     });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([covered, mismatched, ordinaryFailure]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([covered, uncovered, ordinaryFailure]);
     mockUpsert.mockImplementation(async (payload: { caseId: string }) => {
       if (payload.caseId === ordinaryFailure.caseId) {
         throw new Error('upsert failed');
@@ -540,13 +650,16 @@ describe('TrusteeVerificationRemapUseCase', () => {
 
     const result = await useCase.remapPage(makeMessage(), 25);
 
-    expect(result).toMatchObject({
-      documentsWritten: 1,
-      documentsFailed: 1,
-      permanentFailureCount: 1,
-    });
+    expect(result).toMatchObject({ documentsWritten: 2, documentsFailed: 1 });
+    expect(mockOpenOrJoin).toHaveBeenCalledTimes(1);
+    expect(mockOpenOrJoin).toHaveBeenCalledWith(
+      expect.anything(),
+      uncovered.caseId,
+      'no-appointment',
+      expect.anything(),
+    );
     expect(mockDelete).toHaveBeenCalledWith(covered.id);
-    expect(mockDelete).not.toHaveBeenCalledWith(mismatched.id);
+    expect(mockDelete).toHaveBeenCalledWith(uncovered.id);
     expect(mockDelete).not.toHaveBeenCalledWith(ordinaryFailure.id);
   });
 });

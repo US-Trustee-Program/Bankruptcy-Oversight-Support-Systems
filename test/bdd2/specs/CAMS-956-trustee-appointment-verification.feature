@@ -91,6 +91,14 @@ Feature: Trustee case appointment verification
     Then an appointment task opens or is joined for that trustee, court, division and chapter
     And this replaces CAMS-955's prior behavior of writing the appointment with no task
 
+  Scenario: The daily heal opens or joins a task when it attaches an uncovered parked appointment
+    Given a parked appointment for trustee "T-1" in court "081", division "1", chapter "7" waits for its
+      case to load
+    And trustee "T-1" has no active appointment covering that court, division and chapter
+    When the case loads and the daily heal attaches the parked appointment
+    Then the attached appointment is written with checks.matchedTrusteeAppointment false
+    And an appointment task opens or is joined for that trustee, court, division and chapter
+
   Scenario: The remap writes the real appointment and opens or joins a task instead of throwing
     Given the trustee-match verification remap is writing the real appointment for a trustee with no
       covering appointment in the case's court, division and chapter

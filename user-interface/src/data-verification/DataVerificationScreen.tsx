@@ -13,6 +13,7 @@ import {
   DataVerificationItemType,
   isConsolidationOrder,
   isTransferOrder,
+  isTrusteeAppointmentVerification,
   isTrusteeMatchVerification,
 } from '@common/cams/data-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -24,6 +25,8 @@ import useFeatureFlags, {
 import { FeatureFlagSet } from '@common/feature-flags';
 import { TrusteeMatchVerificationListItem } from '@common/cams/trustee-match-verification';
 import { TrusteeMatchVerificationAccordion } from './trustee-verification/TrusteeMatchVerificationAccordion';
+import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
+import { TrusteeAppointmentVerificationRow } from './trustee-appointment-verification/TrusteeAppointmentVerificationRow';
 import { sortByDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -87,7 +90,10 @@ export default function DataVerificationScreen() {
         ? [{ value: 'transfer', label: taskType.get('transfer')! }]
         : []),
       ...(flags[TRUSTEE_VERIFICATION_ENABLED]
-        ? [{ value: 'trustee-match', label: taskType.get('trustee-match')! }]
+        ? [
+            { value: 'trustee-appointment', label: taskType.get('trustee-appointment')! },
+            { value: 'trustee-match', label: taskType.get('trustee-match')! },
+          ]
         : []),
     ];
   }
@@ -143,6 +149,9 @@ export default function DataVerificationScreen() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [verifications, setVerifications] = useState<TrusteeMatchVerificationListItem[]>([]);
+  const [appointmentTasks, setAppointmentTasks] = useState<
+    TrusteeAppointmentVerificationListItem[]
+  >([]);
   const verificationStatusParam = statusFilter.length > 0 ? statusFilter.join(',') : undefined;
 
   useEffect(() => {
@@ -213,7 +222,36 @@ export default function DataVerificationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam]);
 
-  const orderList = [...orders, ...verifications];
+  useEffect(() => {
+    if (!showDataVerification || !featureFlags[TRUSTEE_VERIFICATION_ENABLED]) {
+      setAppointmentTasks([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadAppointmentTasks() {
+      try {
+        const response = await Api2.getTrusteeAppointmentVerifications();
+        if (cancelled) return;
+        setAppointmentTasks(
+          (response as ResponseBody<TrusteeAppointmentVerificationListItem[]>).data,
+        );
+      } catch {
+        if (cancelled) return;
+        setAppointmentTasks([]);
+      }
+    }
+
+    loadAppointmentTasks();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
+
+  const orderList = [...orders, ...verifications, ...appointmentTasks];
 
   let visibleItemCount = 0;
   let pendingItemCount = 0;
@@ -277,6 +315,17 @@ export default function DataVerificationScreen() {
             fieldHeaders={orderAccordionFieldHeaders}
             hidden={isHidden}
           ></TransferOrderAccordion>
+        );
+      } else if (isTrusteeAppointmentVerification(order)) {
+        return (
+          <TrusteeAppointmentVerificationRow
+            key={`accordion-${order.id}`}
+            order={order}
+            taskType={taskType}
+            statusType={orderStatusType}
+            fieldHeaders={accordionFieldHeaders}
+            hidden={isHidden}
+          />
         );
       } else if (isTrusteeMatchVerification(order)) {
         return (

@@ -289,26 +289,55 @@ function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode
   );
 }
 
+function appointmentCoversCase(
+  appointment: TrusteeAppointment,
+  courtId: string,
+  divisionCode: string,
+  normalizedChapter: string,
+): boolean {
+  return (
+    appointment.courtId === courtId &&
+    appointmentCoversDivision(appointment, divisionCode) &&
+    normalizeChapter(appointment.chapter) === normalizedChapter
+  );
+}
+
 /**
  * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
  * chapter all on that same record -- the one shared coverage rule every layer agrees on: the
- * backend's auto-match pipeline, trustee-search filtering, verification-approval enforcement,
- * and remap re-validation. Living here keeps every caller from drifting into disagreeing about
- * what counts as coverage.
+ * backend's auto-match pipeline, trustee-search filtering, and the coverage result that
+ * identity-task approval and the remap record (CAMS-956 appointment tasks). Living here keeps
+ * every caller from drifting into disagreeing about what counts as coverage.
  */
 export function isAppointmentMatch(
   appointments: TrusteeAppointment[],
   courtId: string,
   divisionCode: string,
-  chapter: string,
+  chapter: string | undefined,
 ): boolean {
+  if (!chapter) return false;
   const normalizedChapter = normalizeChapter(chapter);
   return appointments.some(
     (a) =>
-      a.status === 'active' &&
-      a.courtId === courtId &&
-      appointmentCoversDivision(a, divisionCode) &&
-      normalizeChapter(a.chapter) === normalizedChapter,
+      a.status === 'active' && appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
+  );
+}
+
+/**
+ * Same court + division + chapter rule as isAppointmentMatch, but for an appointment of ANY
+ * status. Distinguishes a trustee who has no appointment for a case's court/division/chapter
+ * from one whose appointment exists but is not active (CAMS-956 appointment-task reason).
+ */
+export function hasAppointmentForCase(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+  chapter: string | undefined,
+): boolean {
+  if (!chapter) return false;
+  const normalizedChapter = normalizeChapter(chapter);
+  return appointments.some((a) =>
+    appointmentCoversCase(a, courtId, divisionCode, normalizedChapter),
   );
 }
 
@@ -325,8 +354,8 @@ export type AppointmentCoverageCase = {
  * the same trustee demographic string across several filings), and a trustee resolving one of
  * them isn't guaranteed to hold a covering appointment for all of them -- same district,
  * different chapter is a routine split, so the cases a trustee does not cover need handling of
- * their own. TrusteeMatchVerificationUseCase.approveVerification enforces coverage on approval
- * independently of this function.
+ * their own. TrusteeMatchVerificationUseCase.approveVerification checks coverage per placeholder
+ * row independently of this function, opening an appointment task for each uncovered case.
  */
 export function getUncoveredCases<T extends AppointmentCoverageCase>(
   appointments: TrusteeAppointment[],
@@ -443,14 +472,18 @@ export function buildMergePayload(
 }
 
 /**
- * Per-write evidence of what a case-appointment resolution actually checked, for #3190's
- * appointment-task follow-up to consume (shape per #3189's checks definition). matchedCase and
+ * Per-write evidence of what a case-appointment resolution actually checked (shape per #3189's
+ * checks definition); CAMS-956's openOrJoinAppointmentTask reads it to decide whether the write
+ * belongs to a trustee appointment task. matchedCase and
  * matchedTrustee record that a case and a CAMS trustee were both identified; matchedTrusteeAppointment
  * records whether a single active appointment covered this case's court+division+chapter
  * (isAppointmentMatch); matchedBy names what resolved the trustee — a trustee-match pipeline
  * RESOLVE stage's name (PipelineMatch.resolvedBy), 'variation' for a fingerprint-bucket hit, or
  * 'professional-id' for a verified ACMS professional-id link (identification step 1).
  */
+/** checks.matchedBy for an appointment whose trustee a data verifier resolved on an identity task. */
+export const IDENTITY_TASK_MATCHED_BY = 'identity-task';
+
 export type CaseAppointmentChecks = {
   matchedCase: boolean;
   matchedTrustee: boolean;
