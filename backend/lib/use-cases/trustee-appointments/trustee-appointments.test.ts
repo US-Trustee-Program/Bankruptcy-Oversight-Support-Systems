@@ -87,6 +87,26 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(MockMongoRepository.prototype.getTrusteeAppointments).toHaveBeenCalledWith(trusteeId);
     });
 
+    test('enriches with the courts a caller already fetched instead of fetching them again', async () => {
+      const trusteeId = 'trustee-123';
+      const court = MockData.getCourts()[0];
+      const appointment = MockData.getTrusteeAppointment({ trusteeId, courtId: court.courtId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+        MockData.getTrustee({ trusteeId }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        appointment,
+      ]);
+      const getCourts = vi.spyOn(CourtsUseCase.prototype, 'getCourts');
+
+      const result = await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId, [
+        court,
+      ]);
+
+      expect(getCourts).not.toHaveBeenCalled();
+      expect(result[0].courtName).toBe(court.courtName);
+    });
+
     test('should return empty array when trustee has no appointments', async () => {
       const trusteeId = 'trustee-456';
       const mockTrustee = MockData.getTrustee({ trusteeId });

@@ -1,0 +1,76 @@
+@use 'uswds-core' as *;
+@use '@/styles/abstracts/colors';
+
+.usa-accordion__content:has(.trustee-appointment-content) {
+  padding-top: 0;
+}
+
+.trustee-appointment-content {
+  p.problem-statement {
+    margin: 1.5rem 0;
+    line-height: 1.25;
+    .new-tab-link {
+      vertical-align: top;
+    }
+  }
+
+  .affected-cases-list {
+    .affected-case-item:not(:last-child) {
+      margin-right: 0.25rem;
+    }
+  }
+
+  // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). The icon
+  // carries its own accessible name, so meaning never rests on color alone.
+  .difference-icon {
+    display: inline-flex;
+    align-items: center;
+    height: 1.5em; // fallback for browsers without lh support
+    height: 1lh;
+  }
+
+  .difference-icon-symbol {
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: middle;
+    fill: colors.$gold;
+  }
+
+  .appointments-table-container {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+
+  .appointments-table-key {
+    margin: 1rem 0 0.5rem;
+  }
+
+  .appointments-table {
+    th,
+    td {
+      vertical-align: top;
+    }
+
+    th:first-child,
+    td:first-child {
+      padding-left: 0;
+    }
+
+    // Stack each row's cells, labelled by data-label, below tablet width -- same pattern as
+    // TrusteeComparisonTable.
+    @include at-media-max('tablet') {
+      table-layout: auto;
+      @include table-stacked-styles;
+
+      tbody,
+      tr {
+        display: block;
+      }
+
+      th,
+      td {
+        padding-left: 0;
+      }
+    }
+  }
+}

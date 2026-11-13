@@ -1,5 +1,6 @@
 import { Auditable } from './auditable';
 import { OrderStatus } from './orders';
+import { AppointmentAgreement, TrusteeAppointment } from './trustee-appointments';
 
 export const TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE =
   'TRUSTEE_APPOINTMENT_VERIFICATION' as const;
@@ -57,4 +58,28 @@ export type TrusteeAppointmentVerificationListItem = Pick<
   courtDivisionName?: string;
   taskDate: string;
   caseCount: number;
+};
+
+/**
+ * One of the trustee's appointments as shown in the task's Appointments table (CAMS-956 Slice 2),
+ * annotated with how closely it agrees with the task's (court, division, chapter) tuple. The UI
+ * marks a cell with a warning icon when the corresponding `agreement` flag is false; the list is
+ * already sorted closest-agreement-first (highest `agreement.score` first) by the backend.
+ */
+export type TrusteeAppointmentWithAgreement = TrusteeAppointment & {
+  agreement: AppointmentAgreement;
+};
+
+/**
+ * The full detail for one appointment task (CAMS-956 Slice 2), fetched lazily when a data
+ * verifier expands its row. courtName/courtDivisionName are resolved the same way as the list
+ * item's; trusteeName is the trustee's current name, for the reason sentence's link to their
+ * profile; appointments is the trustee's full appointment list, sorted by agreement with this
+ * task's tuple.
+ */
+export type TrusteeAppointmentVerificationDetail = TrusteeAppointmentVerification & {
+  courtName?: string;
+  courtDivisionName?: string;
+  trusteeName: string;
+  appointments: TrusteeAppointmentWithAgreement[];
 };

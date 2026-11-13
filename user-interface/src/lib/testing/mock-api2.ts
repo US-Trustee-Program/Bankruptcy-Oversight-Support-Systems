@@ -27,7 +27,10 @@ import {
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
-import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
+import {
+  TrusteeAppointmentVerificationDetail,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -935,6 +938,56 @@ const trusteeAppointmentVerifications: TrusteeAppointmentVerificationListItem[] 
     caseCount: 1,
   },
 ];
+
+const trusteeAppointmentVerificationDetailsById: Record<
+  string,
+  TrusteeAppointmentVerificationDetail
+> = {
+  'appointment-task-1': {
+    id: 'appointment-task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    trusteeName: 'Jane Smith',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    caseIds: ['081-24-00001'],
+    createdOn: '2026-11-01T00:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2026-11-01T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    appointments: [
+      {
+        id: 'appointment-1',
+        trusteeId: 'trustee-1',
+        chapter: '13',
+        appointmentType: 'standing',
+        courtId: '081',
+        divisionCodes: ['082'],
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+        courtName: 'Southern District of New York',
+        createdOn: '2020-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2020-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        agreement: {
+          matchesCourt: true,
+          matchesDivision: false,
+          matchesChapter: false,
+          isActive: true,
+          score: 2,
+        },
+      },
+    ],
+  },
+};
 
 const orders = [
   {
@@ -1956,6 +2009,11 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
+  } else if (path.match(/\/trustee-appointment-verification\/(.+)/)) {
+    const id = path.match(/\/trustee-appointment-verification\/(.+)/)![1];
+    response = {
+      data: trusteeAppointmentVerificationDetailsById[id],
+    };
   } else if (path.match(/\/trustee-appointment-verification/)) {
     response = {
       data: trusteeAppointmentVerifications,
@@ -2593,6 +2651,13 @@ async function getTrusteeAppointmentVerifications(): Promise<
   ResponseBody<TrusteeAppointmentVerificationListItem[]>
 > {
   return get<TrusteeAppointmentVerificationListItem[]>(`/trustee-appointment-verification`);
+}
+
+async function getTrusteeAppointmentVerificationDetail(
+  id: string,
+  _trusteeId: string,
+): Promise<ResponseBody<TrusteeAppointmentVerificationDetail>> {
+  return get<TrusteeAppointmentVerificationDetail>(`/trustee-appointment-verification/${id}`);
 }
 
 async function getTrusteeMatchVerificationDetail(
@@ -3457,6 +3522,7 @@ const MockApi2 = {
   getTrusteeMatchVerifications,
   getTrusteeMatchVerificationDetail,
   getTrusteeAppointmentVerifications,
+  getTrusteeAppointmentVerificationDetail,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

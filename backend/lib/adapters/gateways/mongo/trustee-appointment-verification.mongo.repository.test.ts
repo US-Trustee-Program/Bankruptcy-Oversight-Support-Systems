@@ -7,6 +7,7 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import { AppointmentTaskKey } from '@common/cams/trustee-appointment-verification';
 import { CamsUserReference } from '@common/cams/users';
 import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 describe('TrusteeAppointmentVerificationMongoRepository', () => {
   let context: ApplicationContext;
@@ -98,6 +99,44 @@ describe('TrusteeAppointmentVerificationMongoRepository', () => {
 
       await expect(repository.search({ status: ['pending'] })).rejects.toThrow(
         'Failed to find trustee appointment tasks.',
+      );
+    });
+  });
+
+  describe('findById', () => {
+    test('finds the task by id', async () => {
+      const task = { id: 'task-1', trusteeId: 'trustee-1', status: 'pending' };
+      const findOne = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(task);
+
+      const result = await repository.findById('task-1', 'trustee-1');
+
+      expect(result).toEqual(task);
+      expect(findOne).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+          },
+          { condition: 'EQUALS', leftOperand: { name: 'trusteeId' }, rightOperand: 'trustee-1' },
+          { condition: 'EQUALS', leftOperand: { name: 'id' }, rightOperand: 'task-1' },
+        ],
+      });
+    });
+
+    test('rethrows a not-found error unchanged', async () => {
+      const notFound = new NotFoundError('TEST');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(notFound);
+
+      await expect(repository.findById('missing', 'trustee-1')).rejects.toBe(notFound);
+    });
+
+    test('wraps any other failure', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.findById('task-1', 'trustee-1')).rejects.toThrow(
+        'Failed to find trustee appointment task task-1.',
       );
     });
   });

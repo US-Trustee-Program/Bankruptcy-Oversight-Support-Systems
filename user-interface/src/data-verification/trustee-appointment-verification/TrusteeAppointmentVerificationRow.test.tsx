@@ -1,7 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
-import { TrusteeAppointmentVerificationListItem } from '@common/cams/trustee-appointment-verification';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import {
+  TrusteeAppointmentVerificationDetail,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
 import { orderStatusType, taskType } from '@/lib/utils/labels';
+import Api2 from '@/lib/models/api2';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeAppointmentVerificationRow } from './TrusteeAppointmentVerificationRow';
 
 const fieldHeaders = ['Task Type', 'Subject', 'Task Created', 'Task Status'];
@@ -22,19 +28,69 @@ const task: TrusteeAppointmentVerificationListItem = {
   caseCount: 1,
 };
 
+const detail: TrusteeAppointmentVerificationDetail = {
+  id: 'task-1',
+  documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+  taskType: 'trustee-appointment',
+  trusteeId: 'trustee-1',
+  trusteeName: 'Jane Smith',
+  courtId: '091',
+  courtName: 'Eastern District of New York',
+  divisionCode: '081',
+  courtDivisionName: 'Brooklyn',
+  chapter: '7',
+  reason: 'no-appointment',
+  caseIds: ['081-24-00001'],
+  status: 'pending',
+  createdOn: '2026-11-01T00:00:00.000Z',
+  createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  updatedOn: '2026-11-01T00:00:00.000Z',
+  updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  appointments: [],
+};
+
 function renderRow(order = task, hidden = false) {
   render(
-    <TrusteeAppointmentVerificationRow
-      order={order}
-      taskType={taskType}
-      statusType={orderStatusType}
-      fieldHeaders={fieldHeaders}
-      hidden={hidden}
-    />,
+    <BrowserRouter>
+      <TrusteeAppointmentVerificationRow
+        order={order}
+        taskType={taskType}
+        statusType={orderStatusType}
+        fieldHeaders={fieldHeaders}
+        hidden={hidden}
+      />
+    </BrowserRouter>,
+  );
+}
+
+function expandButton(id: string = task.id) {
+  return screen.getByTestId(`accordion-button-order-list-${id}`);
+}
+
+function renderInAccordionGroup(orders: TrusteeAppointmentVerificationListItem[]) {
+  render(
+    <BrowserRouter>
+      <AccordionGroup>
+        {orders.map((order) => (
+          <TrusteeAppointmentVerificationRow
+            key={order.id}
+            order={order}
+            taskType={taskType}
+            statusType={orderStatusType}
+            fieldHeaders={fieldHeaders}
+            hidden={false}
+          />
+        ))}
+      </AccordionGroup>
+    </BrowserRouter>,
   );
 }
 
 describe('TrusteeAppointmentVerificationRow', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test('shows the task type, created date and status', () => {
     renderRow();
 
@@ -71,15 +127,182 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(screen.getByTestId('accordion-heading-task-1')).toHaveTextContent(subject);
   });
 
-  test('has no expand control, since the task has no detail to show yet', () => {
-    renderRow();
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
   test('is hidden when filtered out', () => {
     renderRow(task, true);
 
-    expect(screen.getByTestId('accordion-task-1')).not.toBeVisible();
+    expect(screen.getByTestId('accordion-order-list-task-1')).not.toBeVisible();
+  });
+
+  test('expanding shows a loading spinner, then the task details', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: detail,
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    expect(screen.getByText('Loading task details...')).toBeInTheDocument();
+    await screen.findByTestId('problem-statement');
+    expect(screen.queryByText('Loading task details...')).not.toBeInTheDocument();
+  });
+
+  test('shows a red alert, announced to screen readers, when loading details fails', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockRejectedValue(new Error('boom'));
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Unable to load task details. Please try again.');
+  });
+
+  test("requests the task's detail with its trustee id, the collection's shard key", async () => {
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockResolvedValue({ data: detail } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    await waitFor(() => expect(detailSpy).toHaveBeenCalledWith(task.id, task.trusteeId));
+  });
+
+  test('refetches detail on each new expand, so stale data is never shown and a retry after a failure can succeed', async () => {
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockResolvedValue({ data: detail } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+    await screen.findByTestId('problem-statement');
+    fireEvent.click(expandButton()); // collapse
+    fireEvent.click(expandButton()); // expand again
+
+    await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
+  });
+
+  test('retries after a failed load: re-expanding fetches again and can clear the error', async () => {
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ data: detail } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+    await screen.findByRole('alert');
+    fireEvent.click(expandButton()); // collapse
+    fireEvent.click(expandButton()); // expand again, retrying
+
+    await screen.findByTestId('problem-statement');
+    expect(detailSpy).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test("the reason sentence for 'no-appointment' links the trustee's name to their profile", async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: { ...detail, reason: 'no-appointment' },
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    const statement = await screen.findByTestId('problem-statement');
+    expect(statement).toHaveTextContent(
+      'Trustee Jane Smith is not appointed in this court, division and chapter. Affects 1 case:',
+    );
+    const trusteeLink = screen.getByRole('link', { name: /Jane Smith/ });
+    expect(trusteeLink).toHaveAttribute('href', '/trustees/trustee-1');
+  });
+
+  test("the reason sentence for 'appointment-inactive'", async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: { ...detail, reason: 'appointment-inactive' },
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    const statement = await screen.findByTestId('problem-statement');
+    expect(statement).toHaveTextContent(
+      'The appointment for Trustee Jane Smith in this court, division and chapter is not active. Affects 1 case:',
+    );
+  });
+
+  test('each affected case is linked, sorted regardless of input order', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: { ...detail, caseIds: ['081-26-00002', '081-26-00001'] },
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    await screen.findByTestId('affected-cases');
+    const links = screen.getAllByRole('link', { name: /26-0000\d/ });
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/case-detail/081-26-00001',
+      '/case-detail/081-26-00002',
+    ]);
+  });
+
+  test('a single affected case is linked without a case count', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: { ...detail, caseIds: ['081-26-00001'] },
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    const link = await screen.findByRole('link', { name: /26-00001/ });
+    expect(link).toHaveAttribute('href', '/case-detail/081-26-00001');
+    expect(screen.queryByTestId('affected-cases')).not.toBeInTheDocument();
+  });
+
+  test('shows the Appointments table once details load', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
+      data: { ...detail, appointments: [] },
+    } as never);
+    renderRow();
+
+    fireEvent.click(expandButton());
+
+    expect(
+      await screen.findByText('This trustee has no appointments in CAMS.'),
+    ).toBeInTheDocument();
+  });
+
+  describe('inside an accordion group', () => {
+    const secondTask: TrusteeAppointmentVerificationListItem = { ...task, id: 'task-2' };
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockImplementation(
+        async (id: string) => ({ data: { ...detail, id } }) as never,
+      );
+    });
+
+    test('expanding a second task collapses the first', async () => {
+      renderInAccordionGroup([task, secondTask]);
+
+      fireEvent.click(expandButton(task.id));
+      await waitFor(() => expect(expandButton(task.id)).toHaveAttribute('aria-expanded', 'true'));
+      fireEvent.click(expandButton(secondTask.id));
+
+      await waitFor(() =>
+        expect(expandButton(secondTask.id)).toHaveAttribute('aria-expanded', 'true'),
+      );
+      expect(expandButton(task.id)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('still loads the task details when expanded inside a group', async () => {
+      renderInAccordionGroup([task, secondTask]);
+
+      fireEvent.click(expandButton(secondTask.id));
+
+      await waitFor(() =>
+        expect(Api2.getTrusteeAppointmentVerificationDetail).toHaveBeenCalledWith(
+          secondTask.id,
+          secondTask.trusteeId,
+        ),
+      );
+    });
   });
 });
