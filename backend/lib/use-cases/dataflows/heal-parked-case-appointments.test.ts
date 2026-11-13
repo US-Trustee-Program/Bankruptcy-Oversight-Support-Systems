@@ -471,6 +471,7 @@ describe('heal-parked-case-appointments', () => {
         openOrJoin,
         search: vi.fn(),
         findById: vi.fn(),
+        resolve: vi.fn(),
         release: vi.fn(),
       });
     });

@@ -4,13 +4,15 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { CaseAppointmentChecks } from '@common/cams/trustee-appointments';
+import { getCamsUserReference } from '@common/cams/session';
+import { CaseAppointment, CaseAppointmentChecks } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import {
   AppointmentTaskWrite,
   getAppointmentTaskDetail,
   listAppointmentTasks,
   openOrJoinAppointmentTask,
+  refreshAppointmentTask,
 } from './trustee-appointment-verification.use-case';
 import { CourtsUseCase } from '../courts/courts';
 import { TrusteeAppointmentsUseCase } from '../trustee-appointments/trustee-appointments';
@@ -405,5 +407,216 @@ describe('getAppointmentTaskDetail', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findById').mockRejectedValue(notFound);
 
     await expect(getAppointmentTaskDetail(context, 'missing', 'trustee-1')).rejects.toBe(notFound);
+  });
+});
+
+describe('refreshAppointmentTask', () => {
+  let context: ApplicationContext;
+  let resolve: ReturnType<typeof vi.spyOn>;
+  let updateCaseAppointment: ReturnType<typeof vi.spyOn>;
+
+  const task: TrusteeAppointmentVerification = {
+    id: 'task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    divisionCode: '1',
+    chapter: '7',
+    reason: 'no-appointment',
+    caseIds: ['081-24-00001', '081-24-00002'],
+    status: 'pending',
+    createdOn: '2026-11-01T00:00:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+  };
+
+  const covering = MockData.getTrusteeAppointment({
+    courtId: '081',
+    divisionCodes: ['1'],
+    chapter: '7',
+    status: 'active',
+  });
+
+  const caseAppointment = (caseId: string, trusteeId = 'trustee-1'): CaseAppointment => ({
+    id: `appt-${caseId}`,
+    caseId,
+    trusteeId,
+    assignedOn: '2026-10-01',
+    courtId: '081',
+    courtDivisionCode: '1',
+    chapter: '7',
+    checks: { ...uncoveredChecks },
+    updatedOn: '2026-10-01T00:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+  });
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue(task);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+      {
+        ...MockData.getCourts()[0],
+        courtId: '081',
+        courtName: 'Eastern District of Missouri',
+        courtDivisionCode: '1',
+        courtDivisionName: 'St. Louis',
+      },
+    ]);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+      MockData.getTrustee({ trusteeId: 'trustee-1', name: 'Jane Smith' }),
+    );
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue([
+      covering,
+    ]);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
+      async (caseId: string) => caseAppointment(caseId),
+    );
+    updateCaseAppointment = vi
+      .spyOn(MockMongoRepository.prototype, 'updateCaseAppointment')
+      .mockImplementation(async (appt: CaseAppointment) => appt);
+    resolve = vi.spyOn(MockMongoRepository.prototype, 'resolve').mockResolvedValue();
+  });
+
+  test("marks each case's appointment covered, then resolves the task as the verifier", async () => {
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(updateCaseAppointment).toHaveBeenCalledTimes(2);
+    for (const caseId of task.caseIds) {
+      expect(updateCaseAppointment).toHaveBeenCalledWith({
+        ...caseAppointment(caseId),
+        checks: { ...uncoveredChecks, matchedTrusteeAppointment: true },
+      });
+    }
+    expect(resolve).toHaveBeenCalledWith(
+      'task-1',
+      'trustee-1',
+      getCamsUserReference(context.session.user),
+    );
+    expect(result).toEqual({
+      outcome: 'resolved',
+      trusteeName: 'Jane Smith',
+      updatedCaseCount: 2,
+      task: expect.objectContaining({
+        id: 'task-1',
+        status: 'approved',
+        courtName: 'Eastern District of Missouri',
+        courtDivisionName: 'St. Louis',
+        caseCount: 2,
+      }),
+    });
+  });
+
+  test('skips and does not count a case now assigned to another trustee or with no active appointment', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findById').mockResolvedValue({
+      ...task,
+      caseIds: ['081-24-00001', '081-24-00002', '081-24-00003'],
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
+      async (caseId: string) => {
+        if (caseId === '081-24-00002') return caseAppointment(caseId, 'trustee-2');
+        if (caseId === '081-24-00003') return null;
+        return caseAppointment(caseId);
+      },
+    );
+
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(updateCaseAppointment).toHaveBeenCalledTimes(1);
+    expect(updateCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: '081-24-00001' }),
+    );
+    expect(resolve).toHaveBeenCalled();
+    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 1 });
+  });
+
+  test('still resolves the task, with a count of 0, when every case was skipped', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(null);
+
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(updateCaseAppointment).not.toHaveBeenCalled();
+    expect(resolve).toHaveBeenCalled();
+    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
+  });
+
+  test('skips a case appointment with no checks, since it never met the task predicate', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
+      async (caseId: string) => ({ ...caseAppointment(caseId), checks: undefined }),
+    );
+
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(updateCaseAppointment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
+  });
+
+  test('counts but does not rewrite a case already marked covered, so a retry reports the full count', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
+      async (caseId: string) => ({
+        ...caseAppointment(caseId),
+        checks: { ...uncoveredChecks, matchedTrusteeAppointment: caseId === '081-24-00001' },
+      }),
+    );
+
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(updateCaseAppointment).toHaveBeenCalledTimes(1);
+    expect(updateCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: '081-24-00002' }),
+    );
+    expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 2 });
+  });
+
+  test.each([
+    ['no appointment for the tuple', []],
+    [
+      'only an inactive appointment for the tuple',
+      [
+        MockData.getTrusteeAppointment({
+          courtId: '081',
+          divisionCodes: ['1'],
+          chapter: '7',
+          status: 'inactive',
+        }),
+      ],
+    ],
+  ])('reports still-uncovered and changes nothing when the trustee has %s', async (_, appts) => {
+    vi.spyOn(TrusteeAppointmentsUseCase.prototype, 'getTrusteeAppointments').mockResolvedValue(
+      appts,
+    );
+
+    const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+    expect(result).toEqual({
+      outcome: 'still-uncovered',
+      courtId: '081',
+      courtName: 'Eastern District of Missouri',
+      divisionCode: '1',
+      courtDivisionName: 'St. Louis',
+      chapter: '7',
+    });
+    expect(updateCaseAppointment).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  test('does not resolve the task when a case write fails', async () => {
+    const writeFailure = new Error('write failed');
+    updateCaseAppointment.mockRejectedValue(writeFailure);
+
+    await expect(refreshAppointmentTask(context, 'task-1', 'trustee-1')).rejects.toBe(writeFailure);
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  test("looks the task up within the caller's trustee and propagates not-found", async () => {
+    const notFound = new NotFoundError('TEST');
+    const findById = vi
+      .spyOn(MockMongoRepository.prototype, 'findById')
+      .mockRejectedValue(notFound);
+
+    await expect(refreshAppointmentTask(context, 'missing', 'trustee-1')).rejects.toBe(notFound);
+    expect(findById).toHaveBeenCalledWith('missing', 'trustee-1');
   });
 });

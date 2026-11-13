@@ -812,6 +812,10 @@ export class MockMongoRepository
     return Promise.resolve();
   }
 
+  resolve(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
+  }
+
   // ── NotificationRoutingRepository ─────────────────────────────────────────
   async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
     return Array.from(this.notificationRouting.values()).filter((record) =>

@@ -306,4 +306,30 @@ test.describe('Data Verification', () => {
       expect(accessibilityScanResults.violations).toEqual([]);
     });
   });
+
+  // appointment-task-1 is the fake API's only trustee appointment task (mock-api2.ts
+  // `trusteeAppointmentVerifications`); its fake refresh resolves it.
+  test('should not have accessibility issues in an expanded appointment task, or after Refresh Trustee Appointments resolves it', async ({
+    page,
+  }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+    const taskId = 'appointment-task-1';
+    await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
+
+    await page.locator(`[data-testid="accordion-button-order-list-${taskId}"]`).click();
+    const refreshButton = page.getByRole('button', { name: 'Refresh Trustee Appointments' });
+    await expect(refreshButton).toBeVisible();
+
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    await refreshButton.click();
+    await expect(page.locator('[data-testid="alert-data-verification-alert"]')).toContainText(
+      'appointment verified for 1 case.',
+    );
+    await page.waitForTimeout(ANALYZE_DELAY);
+
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
 });

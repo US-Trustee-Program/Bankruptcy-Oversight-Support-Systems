@@ -28,6 +28,7 @@ import {
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import {
+  TrusteeAppointmentRefreshResult,
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
@@ -2660,6 +2661,35 @@ async function getTrusteeAppointmentVerificationDetail(
   return get<TrusteeAppointmentVerificationDetail>(`/trustee-appointment-verification/${id}`);
 }
 
+/**
+ * The fake refresh resolves 'appointment-task-1' and reports every other task still uncovered, so
+ * both outcomes can be exercised against the fake API.
+ */
+async function refreshTrusteeAppointmentVerification(
+  id: string,
+  _trusteeId: string,
+): Promise<ResponseBody<TrusteeAppointmentRefreshResult>> {
+  const task = trusteeAppointmentVerifications.find((t) => t.id === id);
+  if (!task) throw new Error(`Trustee appointment task ${id} not found.`);
+  const data: TrusteeAppointmentRefreshResult =
+    id === 'appointment-task-1'
+      ? {
+          outcome: 'resolved',
+          trusteeName: trusteeAppointmentVerificationDetailsById[id]?.trusteeName ?? 'Trustee',
+          updatedCaseCount: task.caseCount,
+          task: { ...task, status: 'approved' },
+        }
+      : {
+          outcome: 'still-uncovered',
+          courtId: task.courtId,
+          courtName: task.courtName,
+          divisionCode: task.divisionCode,
+          courtDivisionName: task.courtDivisionName,
+          chapter: task.chapter,
+        };
+  return { meta: { self: `/trustee-appointment-verification/${id}` }, data };
+}
+
 async function getTrusteeMatchVerificationDetail(
   id: string,
 ): Promise<ResponseBody<TrusteeMatchVerification>> {
@@ -3523,6 +3553,7 @@ const MockApi2 = {
   getTrusteeMatchVerificationDetail,
   getTrusteeAppointmentVerifications,
   getTrusteeAppointmentVerificationDetail,
+  refreshTrusteeAppointmentVerification,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,

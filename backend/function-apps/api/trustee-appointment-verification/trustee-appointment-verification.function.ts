@@ -30,7 +30,7 @@ export default async function handler(
 }
 
 app.http('trustee-appointment-verification', {
-  methods: ['GET'],
+  methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
   route: 'trustee-appointment-verification/{id?}',

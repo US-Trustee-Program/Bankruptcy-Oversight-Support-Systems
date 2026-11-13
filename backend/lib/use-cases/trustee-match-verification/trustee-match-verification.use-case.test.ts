@@ -747,6 +747,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           openOrJoin: mockOpenOrJoin,
           search: vi.fn(),
           findById: vi.fn(),
+          resolve: vi.fn(),
           release: vi.fn(),
         });
         approver = getCamsUserReference(context.session.user);

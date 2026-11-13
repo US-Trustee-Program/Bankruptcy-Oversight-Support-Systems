@@ -2,9 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
+  TrusteeAppointmentRefreshResult,
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType, taskType } from '@/lib/utils/labels';
 import Api2 from '@/lib/models/api2';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
@@ -49,7 +51,7 @@ const detail: TrusteeAppointmentVerificationDetail = {
   appointments: [],
 };
 
-function renderRow(order = task, hidden = false) {
+function renderRow(order = task, hidden = false, onOrderUpdate = vi.fn()) {
   render(
     <BrowserRouter>
       <TrusteeAppointmentVerificationRow
@@ -58,6 +60,7 @@ function renderRow(order = task, hidden = false) {
         statusType={orderStatusType}
         fieldHeaders={fieldHeaders}
         hidden={hidden}
+        onOrderUpdate={onOrderUpdate}
       />
     </BrowserRouter>,
   );
@@ -79,6 +82,7 @@ function renderInAccordionGroup(orders: TrusteeAppointmentVerificationListItem[]
             statusType={orderStatusType}
             fieldHeaders={fieldHeaders}
             hidden={false}
+            onOrderUpdate={vi.fn()}
           />
         ))}
       </AccordionGroup>
@@ -303,6 +307,200 @@ describe('TrusteeAppointmentVerificationRow', () => {
           secondTask.trusteeId,
         ),
       );
+    });
+  });
+
+  describe('Refresh Trustee Appointments', () => {
+    const resolved: TrusteeAppointmentRefreshResult = {
+      outcome: 'resolved',
+      trusteeName: 'Jane Smith',
+      updatedCaseCount: 3,
+      task: { ...task, status: 'approved' },
+    };
+    const stillUncovered: TrusteeAppointmentRefreshResult = {
+      outcome: 'still-uncovered',
+      courtId: '091',
+      courtName: 'Eastern District of Missouri',
+      divisionCode: '081',
+      courtDivisionName: 'St. Louis',
+      chapter: '7',
+    };
+    let detailSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      detailSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+        .mockResolvedValue({ data: detail } as never);
+    });
+
+    async function expandAndLoad(order = task, onOrderUpdate = vi.fn()) {
+      renderRow(order, false, onOrderUpdate);
+      fireEvent.click(expandButton(order.id));
+      await screen.findByTestId('problem-statement');
+      return onOrderUpdate;
+    }
+
+    function refreshButton() {
+      return screen.getByRole('button', { name: 'Refresh Trustee Appointments' });
+    }
+
+    test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link', async () => {
+      await expandAndLoad();
+
+      expect(screen.getByTestId('refresh-guidance')).toHaveTextContent(
+        "To fix this, a Trustee Admin must add or reactivate the appointment on the trustee's profile. Then Refresh Trustee Appointments to check again.",
+      );
+      expect(refreshButton()).toHaveClass('usa-button--unstyled');
+    });
+
+    test('offers no Resolve or reject action', async () => {
+      await expandAndLoad();
+
+      expect(screen.queryByRole('button', { name: /resolve|reject/i })).not.toBeInTheDocument();
+    });
+
+    test('shows a spinner while refreshing, and refreshes the task within its trustee', async () => {
+      let finish: (value: unknown) => void = () => {};
+      const refreshSpy = vi
+        .spyOn(Api2, 'refreshTrusteeAppointmentVerification')
+        .mockReturnValue(new Promise((r) => (finish = r)) as never);
+      await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      expect(screen.getByText('Refreshing trustee appointments...')).toBeInTheDocument();
+      expect(refreshButton()).toBeDisabled();
+      expect(refreshSpy).toHaveBeenCalledWith('task-1', 'trustee-1');
+      finish({ data: stillUncovered });
+      await waitFor(() =>
+        expect(screen.queryByText('Refreshing trustee appointments...')).not.toBeInTheDocument(),
+      );
+    });
+
+    test('a successful refresh hands the resolved task and a success message to the queue', async () => {
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: resolved,
+      } as never);
+      const onOrderUpdate = await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      await waitFor(() =>
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          {
+            message: "Trustee Jane Smith's appointment verified for 3 cases.",
+            type: UswdsAlertStyle.Success,
+            timeOut: 8,
+          },
+          resolved.task,
+        ),
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    test('a refresh that still finds no covering appointment warns the verifier and reloads the appointments without the loading spinner', async () => {
+      const newAppointment = {
+        id: 'appointment-new',
+        trusteeId: 'trustee-1',
+        chapter: '13',
+        appointmentType: 'standing',
+        courtId: '091',
+        courtName: 'Western District of Missouri',
+        divisionCodes: ['081'],
+        appointedDate: '2026-11-10',
+        status: 'active',
+        effectiveDate: '2026-11-10',
+        createdOn: '2026-11-10T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2026-11-10T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        agreement: {
+          matchesCourt: true,
+          matchesDivision: true,
+          matchesChapter: false,
+          isActive: true,
+          score: 3,
+        },
+      } as TrusteeAppointmentVerificationDetail['appointments'][number];
+      let finishReload: (value: unknown) => void = () => {};
+      detailSpy
+        .mockResolvedValueOnce({ data: detail } as never)
+        .mockReturnValueOnce(new Promise((r) => (finishReload = r)) as never);
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: stillUncovered,
+      } as never);
+      const onOrderUpdate = await expandAndLoad();
+      expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
+
+      fireEvent.click(refreshButton());
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(
+        "There's still no active Chapter 7 appointment in Eastern District of Missouri (St. Louis). Ask a Trustee Admin to add or reactivate it, then try again.",
+      );
+      expect(alert.className).toContain(UswdsAlertStyle.Warning);
+      expect(onOrderUpdate).not.toHaveBeenCalled();
+      await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText('Loading task details...')).not.toBeInTheDocument();
+
+      finishReload({ data: { ...detail, appointments: [newAppointment] } });
+
+      expect(await screen.findByText('Western District of Missouri')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toBe(alert);
+      await waitFor(() => expect(refreshButton()).toBeEnabled());
+    });
+
+    test('keeps the warning and the appointments already shown when the reload after a still-uncovered refresh fails', async () => {
+      detailSpy
+        .mockResolvedValueOnce({ data: detail } as never)
+        .mockRejectedValueOnce(new Error('reload failed'));
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockResolvedValue({
+        data: stillUncovered,
+      } as never);
+      await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      await waitFor(() => expect(refreshButton()).toBeEnabled());
+      expect(detailSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole('alert').className).toContain(UswdsAlertStyle.Warning);
+      expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
+    });
+
+    test('a refresh that fails shows an error and leaves the task open', async () => {
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockRejectedValue(new Error('boom'));
+      const onOrderUpdate = await expandAndLoad();
+
+      fireEvent.click(refreshButton());
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent('Unable to refresh trustee appointments. Try again later.');
+      expect(alert.className).toContain(UswdsAlertStyle.Error);
+      expect(onOrderUpdate).not.toHaveBeenCalled();
+      await waitFor(() => expect(refreshButton()).toBeEnabled());
+    });
+
+    test("a new refresh clears the previous refresh's alert", async () => {
+      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification')
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockReturnValueOnce(new Promise(() => {}) as never);
+      await expandAndLoad();
+      fireEvent.click(refreshButton());
+      await screen.findByRole('alert');
+      await waitFor(() => expect(refreshButton()).toBeEnabled());
+
+      fireEvent.click(refreshButton());
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    test('a task that is no longer pending offers no refresh', async () => {
+      await expandAndLoad({ ...task, status: 'approved' });
+
+      expect(screen.queryByTestId('refresh-guidance')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Refresh Trustee Appointments' }),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -1080,7 +1080,8 @@ export interface TrusteeAppointmentVerificationRepository extends Releasable {
   /**
    * Opens the appointment task for `key`, or joins `caseId` to it if one already exists, in one
    * atomic upsert. Adding a case that is already in the task is a no-op for caseIds; `reason`
-   * and the updated audit fields are overwritten on every call.
+   * and the updated audit fields are overwritten on every call. If the tuple's task is no longer
+   * pending (resolved), it is first reopened with caseIds reset to just `caseId`.
    */
   openOrJoin(
     key: AppointmentTaskKey,
@@ -1092,6 +1093,11 @@ export interface TrusteeAppointmentVerificationRepository extends Releasable {
   search(predicate: { status: OrderStatus[] }): Promise<TrusteeAppointmentVerification[]>;
   /** The single task by its id within a trustee (the shard key), for the detail view. */
   findById(id: string, trusteeId: string): Promise<TrusteeAppointmentVerification>;
+  /**
+   * Marks the task resolved (status 'approved'), by id within a trustee (the shard key). A later
+   * openOrJoin for the same tuple reopens it. Throws NotFoundError when no task matches.
+   */
+  resolve(id: string, trusteeId: string, user: CamsUserReference): Promise<void>;
 }
 
 export interface UserGroupsRepository extends Releasable {

@@ -5,13 +5,21 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { getCaseNumber } from '@common/cams/cases';
 import {
+  TrusteeAppointmentRefreshResult,
   TrusteeAppointmentVerificationDetail,
   TrusteeAppointmentVerificationListItem,
 } from '@common/cams/trustee-appointment-verification';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { formatDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
-import { buildAppointmentTaskReasonParts } from './trustee-appointment-explanation';
+import {
+  buildAppointmentTaskReasonParts,
+  buildRefreshResolvedMessage,
+  buildRefreshStillUncoveredMessage,
+  formatCourtAndDivision,
+} from './trustee-appointment-explanation';
 import { AppointmentsTable } from './AppointmentsTable';
 
 export interface TrusteeAppointmentVerificationRowProps {
@@ -23,12 +31,17 @@ export interface TrusteeAppointmentVerificationRowProps {
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
   expandedId?: string;
+  /** Called when a refresh resolves the task: the queue shows the alert and updates the row. */
+  onOrderUpdate: (
+    alertDetails: AlertDetails,
+    order: TrusteeAppointmentVerificationListItem,
+  ) => void;
 }
 
+type RefreshAlert = { type: UswdsAlertStyle; message: string };
+
 function subjectOf(order: TrusteeAppointmentVerificationListItem): string {
-  const court = order.courtName ?? order.courtId;
-  const division = order.courtDivisionName ?? order.divisionCode;
-  return `${court} (${division}): Chapter ${order.chapter}`;
+  return `${formatCourtAndDivision(order)}: Chapter ${order.chapter}`;
 }
 
 function AffectedCases({ caseIds }: { caseIds: string[] }) {
@@ -73,11 +86,22 @@ function ReasonStatement({ detail }: { detail: TrusteeAppointmentVerificationDet
  * actual appointments.
  */
 export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerificationRowProps) {
-  const { order, statusType, taskType, fieldHeaders, hidden, onExpand, onCollapse, expandedId } =
-    props;
+  const {
+    order,
+    statusType,
+    taskType,
+    fieldHeaders,
+    hidden,
+    onExpand,
+    onCollapse,
+    expandedId,
+    onOrderUpdate,
+  } = props;
   const [detail, setDetail] = useState<TrusteeAppointmentVerificationDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshAlert, setRefreshAlert] = useState<RefreshAlert | null>(null);
 
   /**
    * Refetches on every expand rather than caching the first load: another write (e.g. a case
@@ -98,6 +122,56 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
       setDetailLoadError(true);
     } finally {
       setIsLoadingDetail(false);
+    }
+  }
+
+  /**
+   * "Refresh Trustee Appointments" (CAMS-956 Slice 3): the backend decides whether an active
+   * covering appointment now exists. Resolved goes up to the queue (row status + top alert); still
+   * uncovered or a failure stays here as an inline alert, and the task stays open.
+   */
+  async function refresh() {
+    setIsRefreshing(true);
+    setRefreshAlert(null);
+    try {
+      const response = await Api2.refreshTrusteeAppointmentVerification(order.id, order.trusteeId);
+      const result = (response as ResponseBody<TrusteeAppointmentRefreshResult>).data;
+      if (result.outcome === 'resolved') {
+        onOrderUpdate(
+          {
+            message: buildRefreshResolvedMessage(result.trusteeName, result.updatedCaseCount),
+            type: UswdsAlertStyle.Success,
+            timeOut: 8,
+          },
+          result.task,
+        );
+      } else {
+        setRefreshAlert({
+          type: UswdsAlertStyle.Warning,
+          message: buildRefreshStillUncoveredMessage(result),
+        });
+        await reloadAppointments();
+      }
+    } catch {
+      setRefreshAlert({
+        type: UswdsAlertStyle.Error,
+        message: 'Unable to refresh trustee appointments. Try again later.',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  /** Reloads the detail in place, without the loading spinner, so the warning stays visible. */
+  async function reloadAppointments() {
+    try {
+      const response = await Api2.getTrusteeAppointmentVerificationDetail(
+        order.id,
+        order.trusteeId,
+      );
+      setDetail((response as ResponseBody<TrusteeAppointmentVerificationDetail>).data);
+    } catch {
+      // Keep the appointments already shown; the warning already tells the verifier to retry.
     }
   }
 
@@ -126,6 +200,35 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
     return (
       <>
         <ReasonStatement detail={detail} />
+        {order.status === 'pending' && (
+          <>
+            <p className="refresh-guidance" data-testid="refresh-guidance">
+              To fix this, a Trustee Admin must add or reactivate the appointment on the
+              trustee&apos;s profile. Then{' '}
+              <Button
+                id={`refresh-trustee-appointments-${order.id}`}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                onClick={refresh}
+                disabled={isRefreshing}
+              >
+                Refresh Trustee Appointments
+              </Button>{' '}
+              to check again.
+            </p>
+            {isRefreshing && <LoadingSpinner caption="Refreshing trustee appointments..." />}
+            {refreshAlert && (
+              <Alert
+                id={`refresh-alert-${order.id}`}
+                type={refreshAlert.type}
+                role="alert"
+                message={refreshAlert.message}
+                inline
+                slim
+                show
+              />
+            )}
+          </>
+        )}
         <AppointmentsTable appointments={detail.appointments} />
       </>
     );
