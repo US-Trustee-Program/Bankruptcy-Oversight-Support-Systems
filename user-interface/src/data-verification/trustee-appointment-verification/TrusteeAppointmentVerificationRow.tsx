@@ -1,5 +1,5 @@
 import './TrusteeAppointmentVerificationRow.scss';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
@@ -17,6 +17,7 @@ import { ResponseBody } from '@common/api/response';
 import {
   buildAppointmentTaskReasonParts,
   buildRefreshResolvedMessage,
+  buildResolvedStatement,
   buildRefreshStillUncoveredMessage,
   formatCourtAndDivision,
 } from './trustee-appointment-explanation';
@@ -81,9 +82,8 @@ function ReasonStatement({ detail }: { detail: TrusteeAppointmentVerificationDet
 }
 
 /**
- * A trustee appointment task (CAMS-956) in the Data Verification queue. Expanding it fetches and
- * shows the task's detail (Slice 2): why it opened, which cases it affects, and the trustee's
- * actual appointments.
+ * A trustee appointment task in the Data Verification queue. Expanding it fetches the detail: why
+ * it opened, which cases it affects, and the trustee's actual appointments.
  */
 export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerificationRowProps) {
   const {
@@ -102,6 +102,12 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   const [detailLoadError, setDetailLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshAlert, setRefreshAlert] = useState<RefreshAlert | null>(null);
+  // The Refresh button's disabled state drops focus, and resolving unmounts it, so focus moves to
+  // the element that replaces it. Only a refresh made here hands off focus on resolve.
+  const justResolvedRef = useRef(false);
+  const resolvedStatementRef = useRef<HTMLParagraphElement>(null);
+  const refreshAlertRef = useRef<HTMLDivElement>(null);
+  const refreshProgressRef = useRef<HTMLDivElement>(null);
 
   /**
    * Refetches on every expand rather than caching the first load: another write (e.g. a case
@@ -126,7 +132,7 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   }
 
   /**
-   * "Refresh Trustee Appointments" (CAMS-956 Slice 3): the backend decides whether an active
+   * "Refresh Trustee Appointments": the backend decides whether an active
    * covering appointment now exists. Resolved goes up to the queue (row status + top alert); still
    * uncovered or a failure stays here as an inline alert, and the task stays open.
    */
@@ -137,6 +143,7 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
       const response = await Api2.refreshTrusteeAppointmentVerification(order.id, order.trusteeId);
       const result = (response as ResponseBody<TrusteeAppointmentRefreshResult>).data;
       if (result.outcome === 'resolved') {
+        justResolvedRef.current = true;
         onOrderUpdate(
           {
             message: buildRefreshResolvedMessage(result.trusteeName, result.updatedCaseCount),
@@ -150,8 +157,8 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
           type: UswdsAlertStyle.Warning,
           message: buildRefreshStillUncoveredMessage(result),
         });
-        await reloadAppointments();
       }
+      await reloadAppointments();
     } catch {
       setRefreshAlert({
         type: UswdsAlertStyle.Error,
@@ -162,7 +169,11 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
     }
   }
 
-  /** Reloads the detail in place, without the loading spinner, so the warning stays visible. */
+  /**
+   * Reloads the detail in place, without the loading spinner, so the alert stays visible. Runs
+   * after both a still-uncovered refresh and a resolved one, so a verified row shows the new
+   * covering appointment.
+   */
   async function reloadAppointments() {
     try {
       const response = await Api2.getTrusteeAppointmentVerificationDetail(
@@ -183,6 +194,26 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   const taskTypeLabel = taskType.get(order.taskType);
   const subject = subjectOf(order);
   const statusLabel = statusType.get(order.status);
+  const isResolved = order.status === 'approved';
+
+  useEffect(() => {
+    if (isResolved && justResolvedRef.current) {
+      justResolvedRef.current = false;
+      resolvedStatementRef.current?.focus();
+    }
+  }, [isResolved]);
+
+  useEffect(() => {
+    if (refreshAlert) {
+      refreshAlertRef.current?.focus();
+    }
+  }, [refreshAlert]);
+
+  useEffect(() => {
+    if (isRefreshing) {
+      refreshProgressRef.current?.focus();
+    }
+  }, [isRefreshing]);
 
   function renderContent() {
     if (isLoadingDetail) {
@@ -199,6 +230,19 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
 
     return (
       <>
+        {isResolved && (
+          <>
+            <p
+              className="resolved-statement"
+              data-testid="resolved-statement"
+              ref={resolvedStatementRef}
+              tabIndex={-1}
+            >
+              {buildResolvedStatement(detail.trusteeName)}
+            </p>
+            <p className="original-reason-label">Original reason</p>
+          </>
+        )}
         <ReasonStatement detail={detail} />
         {order.status === 'pending' && (
           <>
@@ -215,17 +259,26 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
               </Button>{' '}
               to check again.
             </p>
-            {isRefreshing && <LoadingSpinner caption="Refreshing trustee appointments..." />}
+            {isRefreshing && (
+              <div ref={refreshProgressRef} tabIndex={-1}>
+                <LoadingSpinner
+                  id={`refresh-progress-${order.id}`}
+                  caption="Refreshing trustee appointments..."
+                />
+              </div>
+            )}
             {refreshAlert && (
-              <Alert
-                id={`refresh-alert-${order.id}`}
-                type={refreshAlert.type}
-                role="alert"
-                message={refreshAlert.message}
-                inline
-                slim
-                show
-              />
+              <div ref={refreshAlertRef} tabIndex={-1}>
+                <Alert
+                  id={`refresh-alert-${order.id}`}
+                  type={refreshAlert.type}
+                  role="alert"
+                  message={refreshAlert.message}
+                  inline
+                  slim
+                  show
+                />
+              </div>
             )}
           </>
         )}

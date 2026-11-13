@@ -532,6 +532,24 @@ describe('refreshAppointmentTask', () => {
     expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 1 });
   });
 
+  test.each<[string, Partial<CaseAppointment>]>([
+    ['a different chapter', { chapter: '13' }],
+    ['a different court', { courtId: '091' }],
+    ['a different division', { courtDivisionCode: '2' }],
+  ])(
+    'skips and does not count a case whose new appointment for the same trustee has %s',
+    async (_label, newAppointment) => {
+      vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockImplementation(
+        async (caseId: string) => ({ ...caseAppointment(caseId), ...newAppointment }),
+      );
+
+      const result = await refreshAppointmentTask(context, 'task-1', 'trustee-1');
+
+      expect(updateCaseAppointment).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ outcome: 'resolved', updatedCaseCount: 0 });
+    },
+  );
+
   test('still resolves the task, with a count of 0, when every case was skipped', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(null);
 

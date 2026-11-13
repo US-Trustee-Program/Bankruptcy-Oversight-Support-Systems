@@ -199,8 +199,7 @@ test.describe('Data Verification', () => {
   test('should not have accessibility issues on a caseless identity task', async ({ page }) => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
     // The fake API serves one caseless ambiguous DXTR identity task (mock-api2.ts
-    // trusteeMatchVerificationCaselessDetail) - no caseId/courtId, no affected cases (CAMS-953
-    // Slice 5).
+    // trusteeMatchVerificationCaselessDetail) - no caseId/courtId, no affected cases.
     const taskId = 'e8c1f0a2-identity-task-caseless';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
@@ -235,7 +234,7 @@ test.describe('Data Verification', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
     // The fake API serves one ambiguous DXTR identity task with 7 candidates (mock-api2.ts
     // trusteeMatchVerificationManyCandidatesDetail), exercising the comparison table's
-    // pagination past the first 5 (CAMS-953 Slice 7).
+    // pagination past the first 5.
     const taskId = 'e8c1f0a2-identity-task-manycandidates';
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 

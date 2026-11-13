@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import {
   buildAppointmentTaskReasonParts,
   buildRefreshResolvedMessage,
+  buildResolvedStatement,
   buildRefreshStillUncoveredMessage,
   formatCourtAndDivision,
 } from './trustee-appointment-explanation';
@@ -20,6 +21,14 @@ describe('buildAppointmentTaskReasonParts', () => {
 
     expect(`${before}Jane Smith${after}`).toBe(
       'The appointment for Trustee Jane Smith in this court, division and chapter is not active.',
+    );
+  });
+});
+
+describe('buildResolvedStatement', () => {
+  test('states that the trustee appointment is verified, without depending on a case count', () => {
+    expect(buildResolvedStatement('Jane Smith')).toBe(
+      "Trustee Jane Smith's appointment is verified.",
     );
   });
 });
