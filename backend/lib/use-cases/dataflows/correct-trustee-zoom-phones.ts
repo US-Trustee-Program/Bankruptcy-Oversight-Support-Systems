@@ -7,6 +7,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { BASE_DELAY_MS, retryOnRateLimit } from './dataflow-backoff';
 import { DEFAULT_INVOCATION_BUDGET_MS } from './invocation-budget';
+import { getMigrationFilesContainerName } from './migration-files-container';
 import { MaybeData } from './queue-types';
 
 const MODULE_NAME = 'CORRECT-TRUSTEE-ZOOM-PHONES-USE-CASE';
@@ -258,7 +259,7 @@ async function writeFlaggedReport(
   context: ApplicationContext,
   results: ZoomPhoneCorrectionResult[],
 ): Promise<string> {
-  const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+  const containerName = getMigrationFilesContainerName();
   const rows = results
     .filter((result) => result.outcome === 'flagged')
     .map((result) =>
