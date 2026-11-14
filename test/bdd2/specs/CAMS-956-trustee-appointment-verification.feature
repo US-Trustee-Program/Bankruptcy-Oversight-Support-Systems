@@ -241,6 +241,12 @@ Feature: Trustee case appointment verification
   # Dependencies: Slice 1 (gate A is removed)
   # User Value: Before approving, the verifier sees what will actually happen to uncovered cases, and can
   #             act on them instead of finding Match Trustee and Confirm Appointment disabled.
+  # Scoping note (2026-11-13, Phase 2 design, beads cams-0yr5n.5): gates F and G no longer exist in current
+  # code. Gate F (hasUncoveredCases in the since-deleted TrusteeCandidateRow/CandidateTable) was removed by
+  # CAMS-953 (commit 769f9459d, PR #3235); gate G's successor (a coverage-filter checkbox in
+  # TrusteeSearchModal.tsx) was removed by CAMS-954 (commit fd56f758a). The scenario below stays as a
+  # regression test confirming that behavior, not new production code - the slice's real work is the
+  # approval-preview bullet.
 
   Scenario: The approval preview names the appointment tasks it will create
     Given an identity task's approval preview includes an uncovered case in court "Eastern District of
