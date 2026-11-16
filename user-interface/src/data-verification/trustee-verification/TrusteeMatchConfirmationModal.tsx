@@ -33,6 +33,14 @@ function caseAssignmentSentence(caseCount: number, trusteeName: string): string 
   return `${cases} will be assigned to ${trusteeName}.`;
 }
 
+type PreviewResult = {
+  requestKey: string;
+  groups: AppointmentTaskPreviewGroup[];
+  failed: boolean;
+};
+
+type Outcome = { key: string; text: string };
+
 function appointmentTaskSentence(group: AppointmentTaskPreviewGroup): string {
   const cases = group.caseCount === 1 ? '1 case' : `${group.caseCount} cases`;
   const court = group.courtDivisionName
@@ -48,41 +56,49 @@ function TrusteeMatchConfirmationModal_(
   const { id, rows, source, caseCount, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [selected, setSelected] = useState<SelectedTrustee | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [appointmentTaskPreview, setAppointmentTaskPreview] = useState<
-    AppointmentTaskPreviewGroup[]
-  >([]);
+  // Bumped on every show() so reopening the modal refetches, even for the same trustee.
+  const [showCount, setShowCount] = useState(0);
+  // The preview belongs to the request key that produced it, so a result for a previous
+  // trustee or showing is never rendered for the current one.
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
   const processingRef = useRef<HTMLDivElement>(null);
 
   function show(trustee: SelectedTrustee, options?: ModalShowOptions) {
     setSelected(trustee);
+    setShowCount((count) => count + 1);
     modalRef.current?.show(options ?? {});
   }
 
+  const trusteeId = selected?.trusteeId;
+  const requestKey = trusteeId ? `${trusteeId}:${showCount}` : undefined;
+
   // Ask which appointment tasks approving this trustee would open. The preview never blocks
-  // confirmation: a failed fetch leaves the case-assignment sentence as the only outcome.
+  // confirmation: a failed fetch is logged and reported, and the case-assignment sentence
+  // remains.
   useEffect(() => {
-    setAppointmentTaskPreview([]);
-    if (!selected) {
-      setIsLoadingPreview(false);
-      return;
-    }
+    if (!trusteeId || !requestKey) return;
     let isCurrent = true;
-    setIsLoadingPreview(true);
-    Api2.getTrusteeMatchVerificationDetail(id, selected.trusteeId)
+    Api2.getTrusteeMatchVerificationDetail(id, trusteeId)
       .then((response) => {
-        if (isCurrent) setAppointmentTaskPreview(response.data.appointmentTaskPreview ?? []);
+        if (isCurrent) {
+          setPreview({
+            requestKey,
+            groups: response.data.appointmentTaskPreview ?? [],
+            failed: false,
+          });
+        }
       })
-      .catch(() => {
-        // Preview unavailable; confirmation still works without it.
-      })
-      .finally(() => {
-        if (isCurrent) setIsLoadingPreview(false);
+      .catch((error) => {
+        console.error('Could not load the appointment task preview', error);
+        if (isCurrent) setPreview({ requestKey, groups: [], failed: true });
       });
     return () => {
       isCurrent = false;
     };
-  }, [id, selected]);
+  }, [id, trusteeId, requestKey]);
+
+  const currentPreview = preview?.requestKey === requestKey ? preview : null;
+  const isLoadingPreview = !!requestKey && !currentPreview;
 
   // Disabling the submit button drops focus, so move it to the processing status instead.
   useEffect(() => {
@@ -97,12 +113,18 @@ function TrusteeMatchConfirmationModal_(
 
   useImperativeHandle(ref, () => ({ show, hide }));
 
-  function outcomes(trustee: SelectedTrustee): string[] {
-    return [
-      caseAssignmentSentence(caseCount, trustee.trusteeName),
-      ...appointmentTaskPreview.map(appointmentTaskSentence),
-    ];
-  }
+  const outcomes: Outcome[] = selected
+    ? [
+        {
+          key: 'case-assignment',
+          text: caseAssignmentSentence(caseCount, selected.trusteeName),
+        },
+        ...(currentPreview?.groups ?? []).map((group) => ({
+          key: `${group.courtId}-${group.courtDivisionCode}-${group.chapter}`,
+          text: appointmentTaskSentence(group),
+        })),
+      ]
+    : [];
 
   const actionButtonGroup = {
     modalId: `trustee-confirmation-modal-${id}`,
@@ -172,14 +194,17 @@ function TrusteeMatchConfirmationModal_(
               </section>
             </div>
             <h3>What Happens Next</h3>
-            {outcomes(selected).length === 1 ? (
-              <p>{outcomes(selected)[0]}</p>
+            {outcomes.length === 1 ? (
+              <p>{outcomes[0].text}</p>
             ) : (
               <ul>
-                {outcomes(selected).map((sentence) => (
-                  <li key={sentence}>{sentence}</li>
+                {outcomes.map(({ key, text }) => (
+                  <li key={key}>{text}</li>
                 ))}
               </ul>
+            )}
+            {currentPreview?.failed && (
+              <p role="alert">Appointment outcomes could not be checked.</p>
             )}
             {isLoadingPreview && <LoadingSpinner caption="Checking appointments..." />}
           </>

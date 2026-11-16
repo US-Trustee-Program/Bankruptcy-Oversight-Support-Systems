@@ -452,17 +452,62 @@ describe('TrusteeMatchConfirmationModal', () => {
       expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument();
     });
 
-    test('still shows the assignment sentence and allows confirming when the preview fails', async () => {
-      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockRejectedValue(new Error('boom'));
+    test('logs a failed preview, says it could not be checked, and still allows confirming', async () => {
+      const error = new Error('boom');
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockRejectedValue(error);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       const { onConfirm } = renderModal({ caseCount: 2 });
       showSelected();
 
-      await waitFor(() =>
-        expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument(),
+      expect(
+        await screen.findByText('Appointment outcomes could not be checked.'),
+      ).toBeInTheDocument();
+      expect(consoleError).toHaveBeenCalledWith(
+        'Could not load the appointment task preview',
+        error,
       );
       expect(screen.getByText('2 cases will be assigned to Jane Smith.')).toBeInTheDocument();
       fireEvent.click(submitButton());
       expect(onConfirm).toHaveBeenCalledWith(selected);
+    });
+
+    test('lists two groups whose court names cannot be resolved as two separate bullets', async () => {
+      const unnamed = { ...stLouisChapter7, courtName: undefined, courtDivisionName: undefined };
+      mockPreview([unnamed, { ...unnamed, courtId: '082', courtDivisionCode: '082' }]);
+      renderModal({ caseCount: 2 });
+      showSelected();
+
+      await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3));
+    });
+
+    test('refetches each time the modal is shown, even for the same trustee', async () => {
+      const preview = mockPreview([stLouisChapter7]);
+      renderModal();
+      showSelected();
+      await screen.findByText(/will become a Trustee Appointment task/);
+      expect(preview).toHaveBeenCalledTimes(1);
+
+      preview.mockResolvedValue({ data: { appointmentTaskPreview: [] } } as never);
+      showSelected();
+
+      await waitFor(() => expect(preview).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/will become a Trustee Appointment task/),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    test('does not refetch when the parent re-renders with the trustee unchanged', async () => {
+      const preview = mockPreview([stLouisChapter7]);
+      const { rerender } = renderModal();
+      showSelected();
+      await screen.findByText(/will become a Trustee Appointment task/);
+
+      rerender({ caseCount: 5 });
+
+      expect(preview).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/will become a Trustee Appointment task/)).toBeInTheDocument();
     });
 
     test('does not show a previous trustee preview for a newly selected trustee', async () => {
@@ -474,10 +519,10 @@ describe('TrusteeMatchConfirmationModal', () => {
       mockPreview([]);
       act(() => modalRef.current?.show({ ...selected, trusteeId: 'trustee-2' }));
 
+      // Hidden straight away, not only after the new trustee's preview resolves.
+      expect(screen.queryByText(/will become a Trustee Appointment task/)).not.toBeInTheDocument();
       await waitFor(() =>
-        expect(
-          screen.queryByText(/will become a Trustee Appointment task/),
-        ).not.toBeInTheDocument(),
+        expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument(),
       );
     });
   });
