@@ -208,6 +208,35 @@ const DIVISION_MISMATCH_TRUSTEE_ID = 'seed-trustee-match-divisionmismatch';
 // task's case.
 const ACMS_LINK_CANDIDATE_TRUSTEE_ID = 'seed-trustee-match-unlisted';
 
+/**
+ * The surrogate CASE_APPOINTMENT the sync writes for a case it raised an identity task for. Its
+ * trusteeId is the task's fingerprint, which is how the task finds its affected cases.
+ */
+function buildSurrogate(opts: {
+  slug: string;
+  caseId: string;
+  fingerprint: string;
+  chapter: string;
+  courtDivisionCode: string;
+  appointedDate: string;
+}) {
+  return {
+    id: `seed-surrogate-${opts.slug}-${opts.caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId: opts.caseId,
+    trusteeId: opts.fingerprint,
+    assignedOn: `${opts.appointedDate}T00:00:00.000Z`,
+    appointedDate: opts.appointedDate,
+    isSurrogate: true,
+    chapter: opts.chapter,
+    courtDivisionCode: opts.courtDivisionCode,
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  };
+}
+
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   const singleCaseTasks = SINGLE_CASE_TASKS.map((task) => ({
     id: `seed-match-${task.slug}-${task.caseId}`,
@@ -220,21 +249,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     updatedOn: '2025-03-01T00:00:00.000Z',
     updatedBy: SEEDER,
   }));
-  const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) => ({
-    id: `seed-surrogate-${slug}-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: singleCaseTasks[index].fingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter,
-    courtDivisionCode: '091',
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
+    buildSurrogate({
+      slug,
+      caseId,
+      fingerprint: singleCaseTasks[index].fingerprint,
+      chapter,
+      courtDivisionCode: '091',
+      appointedDate: '2018-01-01',
+    }),
+  );
 
   const acmsCaseTasks = ACMS_CASE_TASKS.map((task) => ({
     id: `seed-match-${task.slug}-${task.caseId}`,
@@ -247,41 +271,31 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     updatedOn: '2025-03-01T00:00:00.000Z',
     updatedBy: SEEDER,
   }));
-  const acmsCaseSurrogates = ACMS_CASE_TASKS.map(({ slug, caseId, chapter }, index) => ({
-    id: `seed-surrogate-${slug}-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: acmsCaseTasks[index].fingerprint,
-    assignedOn: '2026-10-15T00:00:00.000Z',
-    appointedDate: '2026-10-15',
-    isSurrogate: true,
-    chapter,
-    courtDivisionCode: '091',
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  const acmsCaseSurrogates = ACMS_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
+    buildSurrogate({
+      slug,
+      caseId,
+      fingerprint: acmsCaseTasks[index].fingerprint,
+      chapter,
+      courtDivisionCode: '091',
+      appointedDate: '2026-10-15',
+    }),
+  );
 
   // Surrogates shared by the multi-case pending task below. Computed up front (rather than
   // inline in the array) so the fingerprint on the surrogates and the task can never drift apart.
   const multiCaseTask = identityTaskFields('multiCase');
   const multiCaseFingerprint = multiCaseTask.fingerprint;
-  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
-    id: `seed-surrogate-multicase-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: multiCaseFingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter: '11',
-    courtDivisionCode: '091',
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) =>
+    buildSurrogate({
+      slug: 'multicase',
+      caseId,
+      fingerprint: multiCaseFingerprint,
+      chapter: '11',
+      courtDivisionCode: '091',
+      appointedDate: '2018-01-01',
+    }),
+  );
 
   // Surrogates for the division-mismatch scenario. Unlike multiCaseSurrogates above, the
   // bookkeeping courtDivisionCode genuinely differs per case here (091 for A/B, 081 for C) --
@@ -297,21 +311,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     CASE_DIVISION_MISMATCH_A,
     CASE_DIVISION_MISMATCH_B,
     CASE_DIVISION_MISMATCH_C,
-  ].map((caseId) => ({
-    id: `seed-surrogate-divisionmismatch-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: divisionMismatchFingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter: '11',
-    courtDivisionCode: divisionMismatchCaseDivisions[caseId],
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  ].map((caseId) =>
+    buildSurrogate({
+      slug: 'divisionmismatch',
+      caseId,
+      fingerprint: divisionMismatchFingerprint,
+      chapter: '11',
+      courtDivisionCode: divisionMismatchCaseDivisions[caseId],
+      appointedDate: '2018-01-01',
+    }),
+  );
 
   return [
     // ── Cosmos: Trustees named by the identity tasks ─────────────────────────
