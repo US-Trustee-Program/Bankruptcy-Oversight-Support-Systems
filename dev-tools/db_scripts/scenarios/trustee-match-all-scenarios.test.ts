@@ -396,21 +396,37 @@ describe('Data Verification screen compatibility', () => {
 });
 
 describe('trustee-match-all-scenarios (CAMS-955 ACMS case-appointment tasks)', () => {
-  test('should seed pending ACMS tasks that carry a case and its surrogate appointment', async () => {
-    const ops = await generate(context());
-    const tasks = ops
-      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
-      .flatMap((o) => o.data)
-      .filter((d) => d.source === 'ACMS' && d.caseId);
+  test.each([
+    {
+      id: 'seed-match-acms-case-ambiguous-091-99-64660',
+      key: 'acmsAmbiguousWithCase',
+      mismatchReason: 'ambiguous',
+      caseId: '091-99-64660',
+      chapter: '11',
+    },
+    {
+      id: 'seed-match-acms-case-no-match-091-99-75623',
+      key: 'acmsNoMatchWithCase',
+      mismatchReason: 'no match',
+      caseId: '091-99-75623',
+      chapter: '12',
+    },
+  ] as const)(
+    'should seed a pending ACMS task for $key with its case and a surrogate in both partitions',
+    async ({ id, key, mismatchReason, caseId, chapter }) => {
+      const ops = await generate(context());
+      const task = findVerification(ops, id);
 
-    expect(tasks.map((t) => t.mismatchReason).sort()).toEqual(['ambiguous', 'no match']);
-    for (const task of tasks) {
-      expect(task.status).toBe('pending');
-      expect(task.acmsProfessionalId).toBeTruthy();
-      const surrogates = surrogatesFor(ops, 'trustee-case-appointments').filter(
-        (s) => s.trusteeId === task.fingerprint,
-      );
-      expect(surrogates.map((s) => s.caseId)).toEqual([task.caseId]);
-    }
-  });
+      expect(task).toMatchObject({ status: 'pending', source: 'ACMS', mismatchReason, caseId });
+      expect(task?.acmsProfessionalId).toBeTruthy();
+      expect(task?.findings).toEqual(MockData.getTrusteeMatchScenarioFindings(key));
+      // Guards the surrogate lookups below from matching on an undefined fingerprint.
+      expect(task?.fingerprint).toBeTruthy();
+
+      for (const { surrogates } of surrogateSetsForFingerprint(ops, task?.fingerprint)) {
+        expect(surrogates).toHaveLength(1);
+        expect(surrogates[0]).toMatchObject({ caseId, chapter, isSurrogate: true });
+      }
+    },
+  );
 });

@@ -17,9 +17,11 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
 
     const keys = tasks.map((t) => [t.trusteeId, t.courtId, t.divisionCode, t.chapter].join('|'));
     expect(new Set(keys).size).toBe(keys.length);
-    expect(tasks.filter((t) => t.status === 'pending')).toHaveLength(8);
-    expect(tasks.filter((t) => t.status === 'approved')).toHaveLength(1);
-    expect(tasks.map((t) => t.reason)).toContain('appointment-inactive');
+    // At least one task in each state and for each reason, so every UAT path has a fixture.
+    expect(tasks.some((t) => t.status === 'pending')).toBe(true);
+    expect(tasks.some((t) => t.status === 'approved')).toBe(true);
+    expect(tasks.some((t) => t.reason === 'no-appointment')).toBe(true);
+    expect(tasks.some((t) => t.reason === 'appointment-inactive')).toBe(true);
   });
 
   test('should give every task case a CASE_APPOINTMENT in both partitions that matches the predicate', async () => {
@@ -87,6 +89,9 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
 
     const placeholder = caseAppointments.find((a) => a.isSurrogate);
     const parked = caseAppointments.find((a) => a.documentType === 'CASE_APPOINTMENT_UNATTACHED');
+    // Guards the lookups below from passing vacuously on an undefined case id.
+    expect(placeholder).toBeDefined();
+    expect(parked).toBeDefined();
     expect(joined.has(placeholder?.caseId as string)).toBe(false);
     expect(joined.has(parked?.caseId as string)).toBe(false);
   });
@@ -100,7 +105,37 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
       (a) => a.trusteeId === task?.trusteeId && !a.unassignedOn,
     );
 
+    // Guards the filter above from matching on an undefined trustee.
+    expect(task).toBeDefined();
     expect(task?.caseIds).toHaveLength(3);
     expect(open).toHaveLength(1);
+  });
+
+  test('should move the reassigned case to another trustee that holds a covered appointment', async () => {
+    const ops = await generate(context());
+    const partial = docs(ops, 'trustee-appointment-verification').find(
+      (t) => t.id === 'seed-appt-task-partial-chicago-15',
+    );
+    const closedForPartial = docs(ops, 'trustee-case-appointments').filter(
+      (a) => a.trusteeId === partial?.trusteeId && a.unassignedOn,
+    );
+    expect(partial).toBeDefined();
+    expect(closedForPartial).toHaveLength(2);
+    const reassigned = docs(ops, 'trustee-case-appointments').filter(
+      (a) =>
+        !a.unassignedOn &&
+        a.trusteeId !== partial?.trusteeId &&
+        closedForPartial.some((c) => c.caseId === a.caseId),
+    );
+    expect(reassigned).toHaveLength(1);
+    expect(
+      (reassigned[0].checks as { matchedTrusteeAppointment: boolean }).matchedTrusteeAppointment,
+    ).toBe(true);
+    // Only the partial task holds that case, through the trustee that no longer has it open.
+    expect(
+      docs(ops, 'trustee-appointment-verification')
+        .filter((t) => (t.caseIds as string[]).includes(reassigned[0].caseId as string))
+        .map((t) => t.trusteeId),
+    ).toEqual([partial?.trusteeId]);
   });
 });
