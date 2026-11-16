@@ -5,6 +5,7 @@ import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import {
+  AppointmentTaskPreviewGroup,
   EnrichedTrusteeMatchVerification,
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
@@ -27,7 +28,12 @@ import {
 } from '@common/cams/trustee-appointments';
 import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
 import { SurrogateAppointment } from '../gateways.types';
-import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
+import {
+  AppointmentTaskWrite,
+  isAppointmentTaskCandidate,
+  openOrJoinAppointmentTask,
+  resolveTaskCourtNames,
+} from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -147,6 +153,41 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   /**
+   * The case-appointment write approval would make for a placeholder row, with coverage judged
+   * against the resolved trustee's appointments. Approval and the approval preview both build it
+   * here, so isAppointmentTaskCandidate decides the same rows in both places.
+   */
+  private toAppointmentTaskWrite(
+    row: SurrogateAppointment,
+    resolvedTrusteeId: string,
+    trusteeAppointments: TrusteeAppointment[],
+  ): AppointmentTaskWrite {
+    const { caseId, courtId, courtDivisionCode, chapter, unassignedOn } = row;
+    return {
+      caseId,
+      trusteeId: resolvedTrusteeId,
+      courtId,
+      courtDivisionCode,
+      chapter,
+      unassignedOn,
+      documentType:
+        row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
+          ? 'CASE_APPOINTMENT_UNATTACHED'
+          : 'CASE_APPOINTMENT',
+      checks: {
+        matchedCase: true,
+        matchedTrustee: true,
+        matchedTrusteeAppointment:
+          !!courtId &&
+          !!courtDivisionCode &&
+          !!chapter &&
+          isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
+        matchedBy: IDENTITY_TASK_MATCHED_BY,
+      },
+    };
+  }
+
+  /**
    * Opens or joins a trustee appointment task (CAMS-956) for each placeholder row the resolved
    * trustee's appointments do not cover. Coverage is judged from the court fields stored on each
    * row at write time (epic decision 14) -- never a DXTR lookup, which fails for a case not yet in
@@ -167,32 +208,11 @@ export class TrusteeMatchVerificationUseCase {
     userRef: CamsUserReference,
   ): Promise<void> {
     for (const row of surrogates) {
-      const { caseId, courtId, courtDivisionCode, chapter, unassignedOn } = row;
+      const { caseId } = row;
       try {
         await openOrJoinAppointmentTask(
           context,
-          {
-            caseId,
-            trusteeId: resolvedTrusteeId,
-            courtId,
-            courtDivisionCode,
-            chapter,
-            unassignedOn,
-            documentType:
-              row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
-                ? 'CASE_APPOINTMENT_UNATTACHED'
-                : 'CASE_APPOINTMENT',
-            checks: {
-              matchedCase: true,
-              matchedTrustee: true,
-              matchedTrusteeAppointment:
-                !!courtId &&
-                !!courtDivisionCode &&
-                !!chapter &&
-                isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
-              matchedBy: IDENTITY_TASK_MATCHED_BY,
-            },
-          },
+          this.toAppointmentTaskWrite(row, resolvedTrusteeId, trusteeAppointments),
           trusteeAppointments,
           userRef,
         );
@@ -535,9 +555,52 @@ export class TrusteeMatchVerificationUseCase {
     }
   }
 
+  /**
+   * The appointment tasks approving this verification for the given trustee would open or join
+   * (CAMS-956), computed read-only. A row counts when isAppointmentTaskCandidate accepts the same
+   * write approval would make for it, so parked, closed, covered and incomplete rows are left out
+   * exactly as they are at approval. Cases are counted once per group.
+   */
+  private buildAppointmentTaskPreview(
+    surrogates: SurrogateAppointment[],
+    trusteeId: string,
+    trusteeAppointments: TrusteeAppointment[],
+    courts: CourtDivisionDetails[],
+  ): AppointmentTaskPreviewGroup[] {
+    const groups = new Map<
+      string,
+      { courtId: string; courtDivisionCode: string; chapter: string; caseIds: Set<string> }
+    >();
+    for (const row of surrogates) {
+      const write = this.toAppointmentTaskWrite(row, trusteeId, trusteeAppointments);
+      if (!isAppointmentTaskCandidate(write)) continue;
+
+      const { caseId, courtId, courtDivisionCode, chapter } = write;
+      const key = `${courtId}|${courtDivisionCode}|${chapter}`;
+      const group = groups.get(key) ?? {
+        courtId,
+        courtDivisionCode,
+        chapter,
+        caseIds: new Set<string>(),
+      };
+      group.caseIds.add(caseId);
+      groups.set(key, group);
+    }
+
+    return [...groups.values()].map(({ caseIds, ...tuple }) => ({
+      ...tuple,
+      ...resolveTaskCourtNames(
+        { courtId: tuple.courtId, divisionCode: tuple.courtDivisionCode },
+        courts,
+      ),
+      caseCount: caseIds.size,
+    }));
+  }
+
   async getEnrichedVerification(
     context: ApplicationContext,
     id: string,
+    trusteeId?: string,
   ): Promise<EnrichedTrusteeMatchVerification> {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
@@ -545,6 +608,7 @@ export class TrusteeMatchVerificationUseCase {
 
       const verification = await repo.findById(id);
       let affectedCaseIds: string[];
+      let appointmentTaskPreview: AppointmentTaskPreviewGroup[] | undefined;
       if (verification.status === 'approved') {
         // Only approveVerification writes a snapshot, so read it for approved verifications.
         affectedCaseIds = verification.affectedCaseIds ?? [];
@@ -552,10 +616,30 @@ export class TrusteeMatchVerificationUseCase {
         // Pending and (legacy, read-only) rejected verifications have no snapshot — rejection
         // never touched surrogates, and pending hasn't been resolved yet — so derive live in
         // both cases.
-        const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-          verification.fingerprint,
+        // The surrogates, the trustee's appointments and the courts are independent reads; the
+        // last two are only needed for the preview of a pending verification.
+        const wantsPreview = !!trusteeId && verification.status === 'pending';
+        const [surrogates, trusteeAppointments, courts] = await Promise.all([
+          factory
+            .getTrusteeCaseAppointmentsRepository(context)
+            .getSurrogatesByFingerprints([verification.fingerprint]),
+          wantsPreview
+            ? factory.getTrusteeAppointmentsRepository(context).getTrusteeAppointments(trusteeId)
+            : undefined,
+          wantsPreview ? new CourtsUseCase().getCourts(context) : undefined,
         ]);
-        affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+        affectedCaseIds =
+          this.groupAffectedCaseIdsByFingerprint(context, surrogates).get(
+            verification.fingerprint,
+          ) ?? [];
+        if (wantsPreview && trusteeAppointments && courts) {
+          appointmentTaskPreview = this.buildAppointmentTaskPreview(
+            surrogates,
+            trusteeId,
+            trusteeAppointments,
+            courts,
+          );
+        }
       }
 
       // Approval stores resolvedTrusteeName; read the trustee only when it is missing.
@@ -577,6 +661,7 @@ export class TrusteeMatchVerificationUseCase {
         ...verification,
         resolvedTrusteeName,
         affectedCaseIds,
+        ...(appointmentTaskPreview ? { appointmentTaskPreview } : {}),
       };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
