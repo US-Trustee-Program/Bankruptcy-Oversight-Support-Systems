@@ -53,6 +53,9 @@
  *    11. Pending, no match (1 candidate whose name passes but state differs, acmsNoMatchCaseless),
  *        caseless, with source 'ACMS' and an acmsProfessionalId - as the ACMS professional-id sync
  *        writes a no-match professional with a name-passing candidate (CAMS-954 Slice 2).
+ *    12. Pending, case-bearing, source 'ACMS' (acmsAmbiguousWithCase, acmsNoMatchWithCase), each
+ *        with its case's surrogate CASE_APPOINTMENT - as the ACMS case-appointment sync writes
+ *        them (CAMS-955).
  *
  * Inactive-trustee/appointment variations are not identity tasks (an appointment concern, see
  * CAMS-956), so this scenario no longer seeds them.
