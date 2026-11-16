@@ -89,6 +89,7 @@
     "path-to-regexp": "8.4.2",
     "@opentelemetry/core": "2.8.0",
     "@opentelemetry/exporter-prometheus": "0.218.0",
+    "@opentelemetry/instrumentation-http": "0.222.0",
     "qs": "6.17.0",
     "uuid": "11.1.1",
     "@opentelemetry/propagator-jaeger": "2.9.0",
