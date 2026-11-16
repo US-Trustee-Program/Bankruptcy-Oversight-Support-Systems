@@ -278,7 +278,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
     if (detailLoadError) {
       return (
-        <p className="text-error">Failed to load candidate details. Please try again later.</p>
+        <p className="text-error" role="alert">
+          Failed to load candidate details. Please try again later.
+        </p>
       );
     }
     if (!comparison) return null;

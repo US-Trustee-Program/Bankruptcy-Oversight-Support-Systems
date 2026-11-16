@@ -23,6 +23,11 @@ import {
   EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeAppointmentRefreshResult,
+  TrusteeAppointmentVerificationDetail,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
@@ -55,6 +60,7 @@ import {
 } from '@common/cams/trustees';
 import {
   CaseTrusteeAppointmentHistory,
+  RegionCaseAppointmentSource,
   TrusteeAppointment,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
@@ -483,8 +489,37 @@ async function getTrusteeMatchVerifications(params?: { status?: string }) {
   return api().get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`, query);
 }
 
-async function getTrusteeMatchVerificationDetail(id: string) {
-  return api().get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
+async function getTrusteeAppointmentVerifications(params?: { status?: string }) {
+  const query: Record<string, string> = {};
+  if (params?.status) query.status = params.status;
+  return api().get<TrusteeAppointmentVerificationListItem[]>(
+    `/trustee-appointment-verification`,
+    query,
+  );
+}
+
+async function getTrusteeAppointmentVerificationDetail(id: string, trusteeId: string) {
+  return api().get<TrusteeAppointmentVerificationDetail>(
+    `/trustee-appointment-verification/${id}`,
+    {
+      trusteeId,
+    },
+  );
+}
+
+async function refreshTrusteeAppointmentVerification(id: string, trusteeId: string) {
+  return api().patch<TrusteeAppointmentRefreshResult, { action: 'refresh' }>(
+    `/trustee-appointment-verification/${id}`,
+    { action: 'refresh' },
+    { trusteeId },
+  );
+}
+
+async function getTrusteeMatchVerificationDetail(id: string, trusteeId?: string) {
+  return api().get<EnrichedTrusteeMatchVerification>(
+    `/trustee-match-verification/${id}`,
+    trusteeId ? { trusteeId } : {},
+  );
 }
 
 async function patchTrusteeVerificationOrderApproval(
@@ -554,6 +589,10 @@ async function getRoleAndOfficeGroupNames() {
 async function getPrivilegedIdentityUsers() {
   const path = '/dev-tools/privileged-identity';
   return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<CamsUserReference[]>(path);
+}
+
+async function getCaseAppointmentSources() {
+  return api().get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
 async function getPrivilegedIdentityUser(userId: string) {
@@ -758,11 +797,15 @@ export const _Api2 = {
   searchTrustees,
   getTrusteeMatchVerifications,
   getTrusteeMatchVerificationDetail,
+  getTrusteeAppointmentVerifications,
+  getTrusteeAppointmentVerificationDetail,
+  refreshTrusteeAppointmentVerification,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
+  getCaseAppointmentSources,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

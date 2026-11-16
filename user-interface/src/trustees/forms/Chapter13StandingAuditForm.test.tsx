@@ -109,6 +109,58 @@ describe('Chapter13StandingAuditForm', () => {
     expect(screen.getByTestId('audit-completion-status')).toHaveValue('');
   });
 
+  test('renders an empty past-audit field when the existing document does not have it set', async () => {
+    const documentMissingPastAudit: TrusteeUpcomingKeyDates = {
+      ...existingDocument,
+      pastAudit: undefined,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentMissingPastAudit });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toHaveValue('');
+    });
+  });
+
+  test('save clears owned fields to null after clearing previously populated values', async () => {
+    const documentWithOwnedFieldsSet: TrusteeUpcomingKeyDates = {
+      ...existingDocument,
+      ch13AuditCompletionYear: 2026,
+      ch13AuditCompletionStatus: 'COMPLETE',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: documentWithOwnedFieldsSet });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toHaveValue('2025-06-30');
+    });
+    expect(screen.getByTestId('audit-completion-year')).toHaveValue('2026');
+    expect(screen.getByTestId('audit-completion-status')).toHaveValue('COMPLETE');
+
+    fireEvent.change(screen.getByTestId('past-audit'), { target: { value: '' } });
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), '');
+
+    const saveButton = screen.getByTestId('button-save-chapter13-standing-audit-key-dates');
+    expect(saveButton).not.toBeDisabled();
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          pastAudit: null,
+          ch13AuditCompletionYear: null,
+          ch13AuditCompletionStatus: null,
+        }),
+      );
+    });
+  });
+
   test('Save button is disabled when past-audit has an invalid date', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
     renderComponent();

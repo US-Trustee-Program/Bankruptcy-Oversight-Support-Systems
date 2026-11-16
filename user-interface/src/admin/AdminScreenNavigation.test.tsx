@@ -14,6 +14,12 @@ const NAV_LINKS = [
     navState: AdminNavState.PRIVILEGED_IDENTITY,
   },
   {
+    name: 'Trustee Task Regions',
+    testId: 'trustee-task-regions-nav-link',
+    href: '/admin/trustee-task-regions',
+    navState: AdminNavState.TRUSTEE_TASK_REGIONS,
+  },
+  {
     name: 'Bankruptcy Software',
     testId: 'bankruptcy-software-nav-link',
     href: '/admin/bankruptcy-software',

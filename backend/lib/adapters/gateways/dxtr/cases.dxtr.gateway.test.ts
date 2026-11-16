@@ -2068,7 +2068,7 @@ describe('getTrusteePetitionEvents', () => {
       courtDivisionCode: '081',
       appointedDate: '2026-04-07',
     });
-    expect(result.events[0].dxtrTrustee.fullName).toBe('Jane Doe');
+    expect(result.events[0].sourceTrustee.fullName).toBe('Jane Doe');
     expect(result.latestSyncDate).toBe('2026-04-07T00:00:00.000Z');
   });
 

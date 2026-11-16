@@ -1,6 +1,6 @@
 import QueryPipeline, { Score, Stage } from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
-import { Condition, Field } from '../../../../query/query-builder';
+import { Condition, Conjunction, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
 
 type MongoScoreStage = {
@@ -335,6 +335,97 @@ describe('aggregation query renderer tests', () => {
     const query = pipeline(group);
     const actual = MongoAggregateRenderer.toMongoAggregate(query);
     expect(actual).toEqual([{ $group: { _id: '$userId', items: { $push: '$itemId' } } }]);
+  });
+
+  test('should consume a PROJECT stage immediately following PAGINATE into the facet, emitting nothing standalone', () => {
+    const { paginate, project, pick } = QueryPipeline;
+    const query = pipeline(paginate(0, 5), project(pick('name')));
+
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
+
+    expect(actual).toEqual([
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: 0 }, { $limit: 5 }, { $project: { name: 1 } }],
+        },
+      },
+    ]);
+  });
+
+  test('should render a standalone PROJECT stage with include, alias, and exclude mappings', () => {
+    const { project, pick, alias, omit } = QueryPipeline;
+    const query = pipeline(project(pick('name'), alias('fullName', 'name'), omit('ssn')));
+
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
+
+    expect(actual).toEqual([{ $project: { name: 1, fullName: '$name', ssn: 0 } }]);
+  });
+
+  test('should render an INCLUDE stage through the pipeline dispatcher', () => {
+    const { include } = QueryPipeline;
+    const query = pipeline(include({ name: 'name' }));
+
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
+
+    expect(actual).toEqual([{ $project: { name: 1 } }]);
+  });
+
+  test('should default to an empty $filter cond when the ADD_FIELDS query is a conjunction', () => {
+    const conjunction: Conjunction = { conjunction: 'AND', values: [] };
+    const stage: Stage = {
+      stage: 'ADD_FIELDS',
+      fields: [
+        {
+          fieldToAdd: { name: 'matchingBars' },
+          querySource: { name: 'barDocs' },
+          query: conjunction as never,
+        },
+      ],
+    };
+
+    const actual = MongoAggregateRenderer.toMongoAddFields(stage);
+
+    expect(actual).toEqual({
+      $addFields: {
+        matchingBars: {
+          $filter: {
+            input: { $ifNull: ['$barDocs', []] },
+            cond: {},
+          },
+        },
+      },
+    });
+  });
+
+  test('translateCondition should throw when leftOperand is not a field', () => {
+    const invalidCondition: Condition = {
+      condition: 'EQUALS',
+      leftOperand: 'not-a-field' as never,
+      rightOperand: 'value',
+    };
+
+    expect(() => MongoAggregateRenderer.translateCondition(invalidCondition)).toThrow(
+      'leftOperand must be a field',
+    );
+  });
+
+  test('should score zero for character-prefix and similar-length when there are no search words', () => {
+    const scoreStage: Score = score({
+      searchWords: [],
+      nicknameWords: [],
+      searchMetaphones: [],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    const matchCountsStage = result[1].$addFields;
+    expect(matchCountsStage._charPrefixMatch_0).toEqual({ $literal: 0 });
+    expect(matchCountsStage._similarLengthMatch_0).toEqual({ $literal: 0 });
   });
 
   test('should render a SCORE stage with multiple target fields', () => {

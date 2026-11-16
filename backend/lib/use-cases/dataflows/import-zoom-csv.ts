@@ -4,6 +4,7 @@ import factory from '../../factory';
 import { ZoomInfo, Trustee } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 import { TrusteesUseCase } from '../trustees/trustees';
+import { getMigrationFilesContainerName } from './migration-files-container';
 import { normalizeName } from './trustee-match.helpers';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
@@ -434,7 +435,7 @@ export async function processZoomMatchedRow(
 }
 
 export async function importZoomCsv(context: ApplicationContext): Promise<ZoomImportResult> {
-  const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+  const containerName = getMigrationFilesContainerName();
   const objectStorage = factory.getObjectStorageGateway(context);
   const content = await objectStorage.readObject(containerName, ZOOM_MATCHED_TSV_BLOB_NAME);
 

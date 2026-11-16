@@ -1,29 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
+import { BASE_DELAY_MS, computeNextBackoffMs, sleep } from './dataflow-backoff';
+import { DEFAULT_INVOCATION_BUDGET_MS, shouldEscape } from './invocation-budget';
 
 const MODULE_NAME = 'FIX-CHAPTER-7-APPOINTMENTS-USE-CASE';
 
 export type AppointmentIdPair = { trusteeApptId: string; caseApptId: string | null };
-
-// Azure Function execution budget (matches host.json functionTimeout of 01:00:00).
-// Used as the upper bound for runReaderLoop's escape hatch calculation.
-// 4-minute safety buffer: 60 min - 4 min = 56 min. Mirrors the same
-// timeout/buffer ratio used by migrate-case-appointments.
-const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
-
-const BASE_DELAY_MS = 30_000;
-const MAX_BACKOFF_MS = 10 * 60 * 1000;
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
-  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
-}
-
-function shouldEscape(startedAt: number, safeThresholdMs: number, nextDelayMs: number): boolean {
-  return Date.now() - startedAt + nextDelayMs >= safeThresholdMs;
-}
 
 /**
  * readIdPairs — thin wrapper delegating to the repository's
@@ -80,7 +63,7 @@ type RunReaderLoopResult = {
  * the caller (handleReader) is expected to send that batch to the writer
  * queue as a fallback and re-enqueue a plain reader continuation. This keeps
  * the invocation safely within the Azure Functions execution timeout (see
- * SAFE_THRESHOLD_MS) regardless of how much RU throttling is encountered.
+ * DEFAULT_INVOCATION_BUDGET_MS) regardless of how much RU throttling is encountered.
  *
  * On 429/RU-throttling (read or write), retries in place with exponential
  * backoff (mirrors migrate-case-appointments' writePage) rather than
@@ -98,7 +81,7 @@ async function runReaderLoop(
 ): Promise<RunReaderLoopResult> {
   const {
     startedAt = Date.now(),
-    safeThresholdMs = SAFE_THRESHOLD_MS,
+    safeThresholdMs = DEFAULT_INVOCATION_BUDGET_MS,
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const { logger } = context;

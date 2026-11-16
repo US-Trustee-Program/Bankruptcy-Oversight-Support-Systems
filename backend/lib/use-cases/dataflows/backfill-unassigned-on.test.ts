@@ -5,7 +5,7 @@ import BackfillUnassignedOnUseCase from './backfill-unassigned-on';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import factory from '../../factory';
-import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../cases/sentinel-trustee';
 
 function makeCaseAppointment(override: Partial<CaseAppointment> = {}): CaseAppointment {
   return {

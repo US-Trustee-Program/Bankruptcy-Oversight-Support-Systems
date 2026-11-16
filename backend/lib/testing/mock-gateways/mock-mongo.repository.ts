@@ -23,18 +23,26 @@ import {
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteeMatchVerificationRepository,
+  TrusteeAppointmentVerificationRepository,
   TrusteeNotesRepository,
   TrusteesRepository,
   TrusteeStaffRepository,
   TrusteeUpcomingKeyDatesRepository,
   TrusteeProfessionalIdsRepository,
   TrusteeVariationRepository,
+  SurrogateAppointment,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
+import {
+  AppointmentStatus,
+  Trustee,
+  TrusteeHistory,
+  TrusteeSummary,
+  ZoomInfo,
+} from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
@@ -73,6 +81,7 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeStaffRepository,
     TrusteeMatchVerificationRepository,
+    TrusteeAppointmentVerificationRepository,
     TrusteeVariationRepository,
     TrusteeNotesRepository,
     TrusteeProfessionalIdsRepository,
@@ -417,12 +426,20 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
-  getSurrogatesByFingerprint(..._ignore: any[]): Promise<CaseAppointment[]> {
+  getSurrogatesByFingerprint(..._ignore: any[]): Promise<SurrogateAppointment[]> {
     return Promise.resolve([]);
   }
 
-  getSurrogatesByFingerprints(..._ignore: any[]): Promise<CaseAppointment[]> {
+  getSurrogatesByFingerprints(..._ignore: any[]): Promise<SurrogateAppointment[]> {
     return Promise.resolve([]);
+  }
+
+  findParkedFiledOnOrAfter(..._ignore: any[]): Promise<any[]> {
+    return Promise.resolve([]);
+  }
+
+  countParkedFiledOn(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
   }
   findAppointmentIdPairsByChapter(
     ..._ignore: any[]
@@ -512,6 +529,10 @@ export class MockMongoRepository
   }
 
   setPhoneticTokens(_trusteeId: string, _tokens: string[]): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  setZoomInfo(_trusteeId: string, _zoomInfo: ZoomInfo): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -769,6 +790,10 @@ export class MockMongoRepository
     return Promise.resolve(count);
   }
 
+  deleteCaseAppointments(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
+  }
+
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
@@ -790,6 +815,19 @@ export class MockMongoRepository
     const created: TrusteeVariation = { id: crypto.randomUUID(), ...item };
     this.trusteeVariations.push(created);
     return Promise.resolve(created);
+  }
+
+  // ── TrusteeAppointmentVerificationRepository ──────────────────────────────
+  openOrJoin(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  resolve(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
+  markTrusteeAppointmentMatched(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────

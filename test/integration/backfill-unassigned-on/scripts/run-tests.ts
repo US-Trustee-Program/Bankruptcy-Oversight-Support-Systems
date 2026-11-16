@@ -58,7 +58,7 @@ import { InvocationContext } from '@azure/functions';
 import { MongoClient } from 'mongodb';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import BackfillUnassignedOnUseCase from '../../../../backend/lib/use-cases/dataflows/backfill-unassigned-on';
-import { SENTINEL_TRUSTEE_ID } from '../../../../backend/lib/use-cases/dataflows/migrate-case-appointments-constants';
+import { SENTINEL_TRUSTEE_ID } from '../../../../backend/lib/use-cases/cases/sentinel-trustee';
 import { finalizeDeferrable } from '../../../../backend/lib/deferrable/finalize-deferrable';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');

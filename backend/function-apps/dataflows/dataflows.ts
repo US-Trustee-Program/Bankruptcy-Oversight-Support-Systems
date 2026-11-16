@@ -7,6 +7,7 @@ import TrusteeChangeNotificationEvent from './events/trustee-change-notification
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
+import CorrectTrusteeZoomPhones from './migrations/correct-trustee-zoom-phones';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
 import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
@@ -17,7 +18,6 @@ import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
 import MigrateOrderTypeToTaskType from './migrations/migrate-ordertype-to-tasktype';
 import MigrateConsolidations from './migrations/migrate-consolidations';
-import MigrateCaseAppointments from './migrations/migrate-case-appointments';
 import MigrateTrustees from './migrations/migrate-trustees';
 import ResyncCasesByDate from './migrations/resync-cases-by-date';
 import ResyncRemainingCases from './migrations/resync-remaining-cases';
@@ -104,6 +104,7 @@ dataflows.register(
   BackfillPhoneticTokens,
   BackfillCaseAppointmentDates,
   BackfillTrusteePhoneticTokens,
+  CorrectTrusteeZoomPhones,
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,
@@ -112,7 +113,6 @@ dataflows.register(
   HealSentinelCaseAppointments,
   ImportZoomCsv,
   MigrateAssignees,
-  MigrateCaseAppointments,
   MigrateCases,
   MigrateChildCasesToMemberCases,
   MigrateOrderTypeToTaskType,
@@ -149,7 +149,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
-  // SyncTrusteeCaseAppointments, // TODO Re-enable after division 1 enhancement is complete.
+  SyncTrusteeCaseAppointments,
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,

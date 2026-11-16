@@ -226,7 +226,7 @@ export function ensureContainersExist(containerNames: string[], moduleName: stri
  * same messages. All messages are accumulated in memory before writing (one file
  * per flush).
  *
- * Shared by MIGRATE-TRUSTEES and MIGRATE-CASE-APPOINTMENTS. Parameterized on the
+ * Used by MIGRATE-TRUSTEES. Parameterized on the
  * storage connection string and output container so each caller keeps its own
  * storage account / container conventions.
  *
