@@ -1515,6 +1515,23 @@ describe('TrusteeMatchVerificationUseCase', () => {
         },
       );
 
+      test('leaves out parked and closed rows, which approval does not open a task for', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-open'),
+          { ...surrogate('case-parked'), documentType: 'CASE_APPOINTMENT_UNATTACHED' },
+          { ...surrogate('case-closed'), unassignedOn: '2024-01-01T00:00:00.000Z' },
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toHaveLength(1);
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(1);
+      });
+
       test('returns an empty array when the trustee already covers every case', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
         mockGetTrusteeAppointments.mockResolvedValue([

@@ -29,6 +29,8 @@ import {
 import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
 import { SurrogateAppointment } from '../gateways.types';
 import {
+  AppointmentTaskWrite,
+  isAppointmentTaskCandidate,
   openOrJoinAppointmentTask,
   resolveTaskCourtNames,
 } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
@@ -151,6 +153,41 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   /**
+   * The case-appointment write approval would make for a placeholder row, with coverage judged
+   * against the resolved trustee's appointments. Approval and the approval preview both build it
+   * here, so isAppointmentTaskCandidate decides the same rows in both places.
+   */
+  private toAppointmentTaskWrite(
+    row: SurrogateAppointment,
+    resolvedTrusteeId: string,
+    trusteeAppointments: TrusteeAppointment[],
+  ): AppointmentTaskWrite {
+    const { caseId, courtId, courtDivisionCode, chapter, unassignedOn } = row;
+    return {
+      caseId,
+      trusteeId: resolvedTrusteeId,
+      courtId,
+      courtDivisionCode,
+      chapter,
+      unassignedOn,
+      documentType:
+        row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
+          ? 'CASE_APPOINTMENT_UNATTACHED'
+          : 'CASE_APPOINTMENT',
+      checks: {
+        matchedCase: true,
+        matchedTrustee: true,
+        matchedTrusteeAppointment:
+          !!courtId &&
+          !!courtDivisionCode &&
+          !!chapter &&
+          isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
+        matchedBy: IDENTITY_TASK_MATCHED_BY,
+      },
+    };
+  }
+
+  /**
    * Opens or joins a trustee appointment task (CAMS-956) for each placeholder row the resolved
    * trustee's appointments do not cover. Coverage is judged from the court fields stored on each
    * row at write time (epic decision 14) -- never a DXTR lookup, which fails for a case not yet in
@@ -171,32 +208,11 @@ export class TrusteeMatchVerificationUseCase {
     userRef: CamsUserReference,
   ): Promise<void> {
     for (const row of surrogates) {
-      const { caseId, courtId, courtDivisionCode, chapter, unassignedOn } = row;
+      const { caseId } = row;
       try {
         await openOrJoinAppointmentTask(
           context,
-          {
-            caseId,
-            trusteeId: resolvedTrusteeId,
-            courtId,
-            courtDivisionCode,
-            chapter,
-            unassignedOn,
-            documentType:
-              row.documentType === 'CASE_APPOINTMENT_UNATTACHED'
-                ? 'CASE_APPOINTMENT_UNATTACHED'
-                : 'CASE_APPOINTMENT',
-            checks: {
-              matchedCase: true,
-              matchedTrustee: true,
-              matchedTrusteeAppointment:
-                !!courtId &&
-                !!courtDivisionCode &&
-                !!chapter &&
-                isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter),
-              matchedBy: IDENTITY_TASK_MATCHED_BY,
-            },
-          },
+          this.toAppointmentTaskWrite(row, resolvedTrusteeId, trusteeAppointments),
           trusteeAppointments,
           userRef,
         );
@@ -541,41 +557,43 @@ export class TrusteeMatchVerificationUseCase {
 
   /**
    * The appointment tasks approving this verification for the given trustee would open or join
-   * (CAMS-956), computed read-only with the same isAppointmentMatch rule approval applies. Rows
-   * missing a court, division or chapter are left out, as they cannot become a task. Cases are
-   * counted once per group.
+   * (CAMS-956), computed read-only. A row counts when isAppointmentTaskCandidate accepts the same
+   * write approval would make for it, so parked, closed, covered and incomplete rows are left out
+   * exactly as they are at approval. Cases are counted once per group.
    */
-  private async buildAppointmentTaskPreview(
-    context: ApplicationContext,
-    surrogates: CaseAppointment[],
+  private buildAppointmentTaskPreview(
+    surrogates: SurrogateAppointment[],
     trusteeId: string,
-  ): Promise<AppointmentTaskPreviewGroup[]> {
-    const [trusteeAppointments, courts] = await Promise.all([
-      factory.getTrusteeAppointmentsRepository(context).getTrusteeAppointments(trusteeId),
-      new CourtsUseCase().getCourts(context),
-    ]);
-
-    const caseIdsByTuple = new Map<string, Set<string>>();
-    const tuples = new Map<
+    trusteeAppointments: TrusteeAppointment[],
+    courts: CourtDivisionDetails[],
+  ): AppointmentTaskPreviewGroup[] {
+    const groups = new Map<
       string,
-      { courtId: string; courtDivisionCode: string; chapter: string }
+      { courtId: string; courtDivisionCode: string; chapter: string; caseIds: Set<string> }
     >();
-    for (const { caseId, courtId, courtDivisionCode, chapter } of surrogates) {
-      if (!courtId || !courtDivisionCode || !chapter) continue;
-      if (isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter)) continue;
+    for (const row of surrogates) {
+      const write = this.toAppointmentTaskWrite(row, trusteeId, trusteeAppointments);
+      if (!isAppointmentTaskCandidate(write)) continue;
 
-      const key = JSON.stringify([courtId, courtDivisionCode, chapter]);
-      tuples.set(key, { courtId, courtDivisionCode, chapter });
-      caseIdsByTuple.set(key, (caseIdsByTuple.get(key) ?? new Set()).add(caseId));
+      const { caseId, courtId, courtDivisionCode, chapter } = write;
+      const key = `${courtId}|${courtDivisionCode}|${chapter}`;
+      const group = groups.get(key) ?? {
+        courtId,
+        courtDivisionCode,
+        chapter,
+        caseIds: new Set<string>(),
+      };
+      group.caseIds.add(caseId);
+      groups.set(key, group);
     }
 
-    return [...tuples].map(([key, tuple]) => ({
+    return [...groups.values()].map(({ caseIds, ...tuple }) => ({
       ...tuple,
       ...resolveTaskCourtNames(
         { courtId: tuple.courtId, divisionCode: tuple.courtDivisionCode },
         courts,
       ),
-      caseCount: caseIdsByTuple.get(key)!.size,
+      caseCount: caseIds.size,
     }));
   }
 
@@ -598,18 +616,28 @@ export class TrusteeMatchVerificationUseCase {
         // Pending and (legacy, read-only) rejected verifications have no snapshot — rejection
         // never touched surrogates, and pending hasn't been resolved yet — so derive live in
         // both cases.
-        const surrogates = await factory
-          .getTrusteeCaseAppointmentsRepository(context)
-          .getSurrogatesByFingerprints([verification.fingerprint]);
+        // The surrogates, the trustee's appointments and the courts are independent reads; the
+        // last two are only needed for the preview of a pending verification.
+        const wantsPreview = !!trusteeId && verification.status === 'pending';
+        const [surrogates, trusteeAppointments, courts] = await Promise.all([
+          factory
+            .getTrusteeCaseAppointmentsRepository(context)
+            .getSurrogatesByFingerprints([verification.fingerprint]),
+          wantsPreview
+            ? factory.getTrusteeAppointmentsRepository(context).getTrusteeAppointments(trusteeId)
+            : undefined,
+          wantsPreview ? new CourtsUseCase().getCourts(context) : undefined,
+        ]);
         affectedCaseIds =
           this.groupAffectedCaseIdsByFingerprint(context, surrogates).get(
             verification.fingerprint,
           ) ?? [];
-        if (trusteeId && verification.status === 'pending') {
-          appointmentTaskPreview = await this.buildAppointmentTaskPreview(
-            context,
+        if (wantsPreview && trusteeAppointments && courts) {
+          appointmentTaskPreview = this.buildAppointmentTaskPreview(
             surrogates,
             trusteeId,
+            trusteeAppointments,
+            courts,
           );
         }
       }
