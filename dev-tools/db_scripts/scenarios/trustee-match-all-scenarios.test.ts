@@ -394,3 +394,23 @@ describe('Data Verification screen compatibility', () => {
     }
   });
 });
+
+describe('trustee-match-all-scenarios (CAMS-955 ACMS case-appointment tasks)', () => {
+  test('should seed pending ACMS tasks that carry a case and its surrogate appointment', async () => {
+    const ops = await generate(context());
+    const tasks = ops
+      .filter((o) => o.collectionOrTable === 'trustee-match-verification')
+      .flatMap((o) => o.data)
+      .filter((d) => d.source === 'ACMS' && d.caseId);
+
+    expect(tasks.map((t) => t.mismatchReason).sort()).toEqual(['ambiguous', 'no match']);
+    for (const task of tasks) {
+      expect(task.status).toBe('pending');
+      expect(task.acmsProfessionalId).toBeTruthy();
+      const surrogates = surrogatesFor(ops, 'trustee-case-appointments').filter(
+        (s) => s.trusteeId === task.fingerprint,
+      );
+      expect(surrogates.map((s) => s.caseId)).toEqual([task.caseId]);
+    }
+  });
+});
