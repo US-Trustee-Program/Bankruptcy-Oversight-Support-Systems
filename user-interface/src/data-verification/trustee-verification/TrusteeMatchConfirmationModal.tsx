@@ -5,6 +5,8 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Api2 from '@/lib/models/api2';
+import { AppointmentTaskPreviewGroup } from '@common/cams/trustee-match-verification';
 import { DifferenceIcon } from './TrusteeComparisonTable';
 import { ComparisonRow, ComparisonRowKey, SelectedTrustee } from './trustee-comparison';
 
@@ -31,6 +33,14 @@ function caseAssignmentSentence(caseCount: number, trusteeName: string): string 
   return `${cases} will be assigned to ${trusteeName}.`;
 }
 
+function appointmentTaskSentence(group: AppointmentTaskPreviewGroup): string {
+  const cases = group.caseCount === 1 ? '1 case' : `${group.caseCount} cases`;
+  const court = group.courtDivisionName
+    ? `${group.courtName} (${group.courtDivisionName})`
+    : (group.courtName ?? 'this court');
+  return `${cases} in ${court}, Chapter ${group.chapter} will become a Trustee Appointment task.`;
+}
+
 function TrusteeMatchConfirmationModal_(
   props: TrusteeMatchConfirmationModalProps,
   ref: React.Ref<TrusteeMatchConfirmationModalImperative>,
@@ -38,12 +48,41 @@ function TrusteeMatchConfirmationModal_(
   const { id, rows, source, caseCount, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [selected, setSelected] = useState<SelectedTrustee | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [appointmentTaskPreview, setAppointmentTaskPreview] = useState<
+    AppointmentTaskPreviewGroup[]
+  >([]);
   const processingRef = useRef<HTMLDivElement>(null);
 
   function show(trustee: SelectedTrustee, options?: ModalShowOptions) {
     setSelected(trustee);
     modalRef.current?.show(options ?? {});
   }
+
+  // Ask which appointment tasks approving this trustee would open. The preview never blocks
+  // confirmation: a failed fetch leaves the case-assignment sentence as the only outcome.
+  useEffect(() => {
+    setAppointmentTaskPreview([]);
+    if (!selected) {
+      setIsLoadingPreview(false);
+      return;
+    }
+    let isCurrent = true;
+    setIsLoadingPreview(true);
+    Api2.getTrusteeMatchVerificationDetail(id, selected.trusteeId)
+      .then((response) => {
+        if (isCurrent) setAppointmentTaskPreview(response.data.appointmentTaskPreview ?? []);
+      })
+      .catch(() => {
+        // Preview unavailable; confirmation still works without it.
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingPreview(false);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [id, selected]);
 
   // Disabling the submit button drops focus, so move it to the processing status instead.
   useEffect(() => {
@@ -57,6 +96,13 @@ function TrusteeMatchConfirmationModal_(
   }
 
   useImperativeHandle(ref, () => ({ show, hide }));
+
+  function outcomes(trustee: SelectedTrustee): string[] {
+    return [
+      caseAssignmentSentence(caseCount, trustee.trusteeName),
+      ...appointmentTaskPreview.map(appointmentTaskSentence),
+    ];
+  }
 
   const actionButtonGroup = {
     modalId: `trustee-confirmation-modal-${id}`,
@@ -126,7 +172,16 @@ function TrusteeMatchConfirmationModal_(
               </section>
             </div>
             <h3>What Happens Next</h3>
-            <p>{caseAssignmentSentence(caseCount, selected.trusteeName)}</p>
+            {outcomes(selected).length === 1 ? (
+              <p>{outcomes(selected)[0]}</p>
+            ) : (
+              <ul>
+                {outcomes(selected).map((sentence) => (
+                  <li key={sentence}>{sentence}</li>
+                ))}
+              </ul>
+            )}
+            {isLoadingPreview && <LoadingSpinner caption="Checking appointments..." />}
           </>
         ) : null
       }

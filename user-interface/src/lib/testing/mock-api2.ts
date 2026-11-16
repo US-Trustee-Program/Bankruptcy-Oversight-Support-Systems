@@ -24,7 +24,6 @@ import {
 } from '@common/cams/orders';
 import {
   EnrichedTrusteeMatchVerification,
-  TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import {
@@ -2727,8 +2726,9 @@ async function refreshTrusteeAppointmentVerification(
 
 async function getTrusteeMatchVerificationDetail(
   id: string,
-): Promise<ResponseBody<TrusteeMatchVerification>> {
-  return get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`);
+  _trusteeId?: string,
+): Promise<ResponseBody<EnrichedTrusteeMatchVerification>> {
+  return get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`);
 }
 
 async function patchTrusteeVerificationOrderApproval(

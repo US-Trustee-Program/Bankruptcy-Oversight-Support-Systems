@@ -5,6 +5,11 @@ import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
 import { ComparisonRow, ComparisonRowKey, SelectedTrustee } from './trustee-comparison';
+import Api2 from '@/lib/models/api2';
+import {
+  AppointmentTaskPreviewGroup,
+  EnrichedTrusteeMatchVerification,
+} from '@common/cams/trustee-match-verification';
 
 const modalId = 'test-order-id';
 
@@ -91,8 +96,24 @@ describe('TrusteeMatchConfirmationModal', () => {
   const cancelButton = () =>
     screen.getByTestId(`button-trustee-confirmation-modal-${modalId}-cancel-button`);
 
+  function mockPreview(appointmentTaskPreview?: AppointmentTaskPreviewGroup[]) {
+    return vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({
+      data: { appointmentTaskPreview } as EnrichedTrusteeMatchVerification,
+    } as never);
+  }
+
+  const stLouisChapter7: AppointmentTaskPreviewGroup = {
+    courtId: '081',
+    courtDivisionCode: '081',
+    courtName: 'Eastern District of Missouri',
+    courtDivisionName: 'St. Louis',
+    chapter: '7',
+    caseCount: 1,
+  };
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPreview();
     modalRef = React.createRef<TrusteeMatchConfirmationModalImperative>();
   });
 
@@ -253,9 +274,12 @@ describe('TrusteeMatchConfirmationModal', () => {
     ).toHaveAttribute('data-force-action', 'true');
   });
 
-  test('keeps one status region mounted so Matching trustee... is announced when processing starts', () => {
+  test('keeps one status region mounted so Matching trustee... is announced when processing starts', async () => {
     const { rerender } = renderModal();
     showSelected();
+    await waitFor(() =>
+      expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument(),
+    );
 
     const status = screen.getByRole('status');
     rerender({ isProcessing: true });
@@ -356,5 +380,105 @@ describe('TrusteeMatchConfirmationModal', () => {
     fireEvent.click(cancelButton());
 
     await waitFor(() => expect(openerRef.current).toHaveFocus());
+  });
+  describe('appointment task preview', () => {
+    test('requests the preview for the selected trustee when shown', async () => {
+      const preview = mockPreview();
+      renderModal();
+      showSelected();
+
+      await waitFor(() => expect(preview).toHaveBeenCalledWith(modalId, 'trustee-1'));
+    });
+
+    test('names the appointment task the match will create', async () => {
+      mockPreview([stLouisChapter7]);
+      renderModal({ caseCount: 1 });
+      showSelected();
+
+      expect(
+        await screen.findByText(
+          '1 case in Eastern District of Missouri (St. Louis), Chapter 7 will become a Trustee Appointment task.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText('1 case will be assigned to Jane Smith.')).toBeInTheDocument();
+    });
+
+    test('lists the assignment and each appointment task as bullets when there are several outcomes', async () => {
+      mockPreview([stLouisChapter7, { ...stLouisChapter7, chapter: '13', caseCount: 2 }]);
+      renderModal({ caseCount: 3 });
+      showSelected();
+
+      await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3));
+      expect(screen.getAllByRole('listitem')[2]).toHaveTextContent(
+        '2 cases in Eastern District of Missouri (St. Louis), Chapter 13 will become a Trustee Appointment task.',
+      );
+    });
+
+    test('keeps the single sentence, with no bullets, when there is nothing to preview', async () => {
+      const preview = mockPreview([]);
+      renderModal({ caseCount: 3 });
+      showSelected();
+
+      await waitFor(() => expect(preview).toHaveBeenCalled());
+      expect(screen.getByText('3 cases will be assigned to Jane Smith.')).toBeInTheDocument();
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+    });
+
+    test('falls back to the court id wording when the court name is unknown', async () => {
+      mockPreview([{ ...stLouisChapter7, courtName: undefined, courtDivisionName: undefined }]);
+      renderModal();
+      showSelected();
+
+      expect(
+        await screen.findByText(
+          '1 case in this court, Chapter 7 will become a Trustee Appointment task.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    test('shows a loading state until the preview resolves', async () => {
+      let resolve!: (value: never) => void;
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockReturnValue(
+        new Promise<never>((r) => {
+          resolve = r;
+        }),
+      );
+      renderModal();
+      showSelected();
+
+      expect(screen.getByText('Checking appointments...')).toBeInTheDocument();
+
+      await act(async () => resolve({ data: { appointmentTaskPreview: [] } } as never));
+      expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument();
+    });
+
+    test('still shows the assignment sentence and allows confirming when the preview fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockRejectedValue(new Error('boom'));
+      const { onConfirm } = renderModal({ caseCount: 2 });
+      showSelected();
+
+      await waitFor(() =>
+        expect(screen.queryByText('Checking appointments...')).not.toBeInTheDocument(),
+      );
+      expect(screen.getByText('2 cases will be assigned to Jane Smith.')).toBeInTheDocument();
+      fireEvent.click(submitButton());
+      expect(onConfirm).toHaveBeenCalledWith(selected);
+    });
+
+    test('does not show a previous trustee preview for a newly selected trustee', async () => {
+      mockPreview([stLouisChapter7]);
+      renderModal();
+      showSelected();
+      await screen.findByText(/will become a Trustee Appointment task/);
+
+      mockPreview([]);
+      act(() => modalRef.current?.show({ ...selected, trusteeId: 'trustee-2' }));
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/will become a Trustee Appointment task/),
+        ).not.toBeInTheDocument(),
+      );
+    });
   });
 });
