@@ -1,6 +1,6 @@
 /**
  * Scenario: trustee-appointment-tasks
- * Database: cams only
+ * Database: cams, plus DXTR (AO_CS/AO_PY) rows for the generated cases
  *
  * Seeds "Trustee Appointment" data-verification tasks (CAMS-956): TRUSTEE_APPOINTMENT_VERIFICATION
  * documents, one per (trustee, court, division, chapter), each joined by the cases whose
@@ -15,16 +15,16 @@
  *   2. No covering appointment, but other appointments that differ in district, division,
  *      chapter or status (Manhattan Ch 12, 3 cases): 7 appointments, so the table paginates and
  *      shows warning icons. The same trustee also has task 3.
- *   3. Same trustee as task 2, a second tuple (Chicago Ch 13, 1 case): one trustee, two tasks.
+ *   3. Same trustee as task 2, a second tuple (Delaware Ch 13, 1 case): one trustee, two tasks.
  *   4. Appointment inactive (Buffalo Ch 12, 2 cases): the reason sentence for an inactive
  *      appointment.
- *   5. Ready to resolve (Chicago Ch 7, 3 cases): the trustee already holds an active covering
+ *   5. Ready to resolve (Delaware Ch 7, 3 cases): the trustee already holds an active covering
  *      appointment, so Refresh Trustee Appointments resolves the task and covers all 3 cases.
- *   6. Already resolved (Chicago Ch 7, 1 case): shown only when the queue includes approved tasks.
+ *   6. Already resolved (Delaware Ch 7, 1 case): shown only when the queue includes approved tasks.
  *   7. Many cases (Manhattan Ch 7, 12 cases): a long affected-case list.
  *   8. Unresolvable court names (court 0674 / division 674, Ch 12, 2 cases): the queue row and
  *      the subject fall back to the codes. Its trustee holds an active Ch 7 appointment there.
- *   9. Partial coverage (Chicago Ch 7, 3 cases): the trustee holds a covering appointment, but
+ *   9. Partial coverage (Delaware Ch 7, 3 cases): the trustee holds a covering appointment, but
  *      one case's appointment was closed and one was reassigned to another trustee, so Refresh
  *      covers only 1 of the 3 ("verified for 1 case").
  *  10. Records that must never join a task: a placeholder (checks.matchedTrustee false) and a
@@ -34,10 +34,11 @@
  * here uses one of those. Cases:
  *  - Buffalo and court 0674 tasks reuse cases from cases-fuzzy-search.ts, which must be seeded
  *    first (a default run does; `--scenario=trustee-appointment-tasks` alone does not).
- *  - The Manhattan and Chicago tasks need Ch 7/12/13 cases, and the seeded ones there are all
- *    Ch 15, so this scenario seeds its own generated cases (SEED ids, ids matching the seed
- *    range). They exist only in Cosmos: the task queue, task details, case links and Refresh all
- *    work, but a generated case's own detail page cannot load without a DXTR row.
+ *  - The Manhattan and Delaware tasks need Ch 7/12/13 cases, and the seeded ones there are all
+ *    Ch 15, so this scenario seeds its own generated cases (SEED ids in the seed range) and the
+ *    DXTR rows behind them, so each case's detail page loads. Seeding needs the DXTR SQL
+ *    connection (MSSQL_*), which the Cosmos instances share. Manhattan is court 0208 and
+ *    Delaware is court 0311 (division 111, group WL), as in DXTR.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -50,18 +51,18 @@ type Tuple = { courtId: string; divisionCode: string; chapter: string };
 
 const BUFFALO = { courtId: '0209', divisionCode: '091' };
 const BUFFALO_NAMES = {
-  courtName: 'U.S. Bankruptcy Court Western District of New York',
+  courtName: 'Western District of New York',
   courtDivisionName: 'Buffalo',
 };
 const MANHATTAN = { courtId: '0208', divisionCode: '081' };
 const MANHATTAN_NAMES = {
-  courtName: 'U.S. Bankruptcy Court Southern District of New York',
+  courtName: 'Southern District of New York',
   courtDivisionName: 'Manhattan',
 };
-const CHICAGO = { courtId: '0711', divisionCode: '111' };
-const CHICAGO_NAMES = {
-  courtName: 'U.S. Bankruptcy Court Northern District of Illinois',
-  courtDivisionName: 'Chicago',
+const DELAWARE = { courtId: '0311', divisionCode: '111' };
+const DELAWARE_NAMES = {
+  courtName: 'District of Delaware',
+  courtDivisionName: 'Delaware',
 };
 
 function trustee(id: string, firstName: string, lastName: string) {
@@ -110,12 +111,22 @@ function appointment(opts: {
 
 const BUFFALO_COURT = { ...BUFFALO, ...BUFFALO_NAMES };
 const MANHATTAN_COURT = { ...MANHATTAN, ...MANHATTAN_NAMES };
-const CHICAGO_COURT = { ...CHICAGO, ...CHICAGO_NAMES };
+const DELAWARE_COURT = { ...DELAWARE, ...DELAWARE_NAMES };
 
 type Court = typeof BUFFALO_COURT;
-type Geography = { regionId: string; regionName: string; state: string };
-const NEW_YORK: Geography = { regionId: '02', regionName: 'NEW YORK', state: 'NY' };
-const ILLINOIS: Geography = { regionId: '11', regionName: 'CHICAGO', state: 'IL' };
+type Geography = { regionId: string; regionName: string; state: string; groupDesignator: string };
+const NEW_YORK: Geography = {
+  regionId: '02',
+  regionName: 'NEW YORK',
+  state: 'NY',
+  groupDesignator: 'NY',
+};
+const DELAWARE_GEOGRAPHY: Geography = {
+  regionId: '03',
+  regionName: 'PHILADELPHIA',
+  state: 'DE',
+  groupDesignator: 'WL',
+};
 
 /**
  * Cosmos-only cases for tasks whose divisions have no seeded case with an appointable chapter.
@@ -146,7 +157,7 @@ function seedCaseSet(
       courtName: court.courtName,
       courtDivisionCode: court.divisionCode,
       courtDivisionName: court.courtDivisionName,
-      groupDesignator: geography.state,
+      groupDesignator: geography.groupDesignator,
       regionId: geography.regionId,
       regionName: geography.regionName,
       debtorName: `Appointment Task Debtor ${number}`,
@@ -154,25 +165,81 @@ function seedCaseSet(
       updatedBy: SEEDER,
     });
   });
-  return { docs, caseIds: docs.map((doc) => doc.caseId as string) };
+  // The DXTR rows behind each case, in the shape ensureDxtrCase writes, so the case detail page
+  // loads: the case master (AO_CS) and its debtor (AO_PY), plus the petition below.
+  const dxtrCases = docs.map((doc) => ({
+    CS_CASEID: doc.dxtrId,
+    COURT_ID: doc.courtId,
+    CS_CASE_NUMBER: (doc.caseNumber as string).split('-')[1],
+    CS_DIV: doc.courtDivisionCode,
+    GRP_DES: doc.groupDesignator,
+    CASE_ID: doc.caseNumber,
+    CS_SHORT_TITLE: doc.caseTitle,
+    CS_CHAPTER: doc.chapter,
+    CS_TYPE: 'bk',
+    CS_FEE_STATUS: 'p',
+    CS_JOINT: 'n',
+    CS_VOL_INVOL: 'v',
+    CS_DATE_FILED: new Date(doc.dateFiled as string),
+  }));
+  const dxtrDebtors = docs.map((doc) => ({
+    CS_CASEID: doc.dxtrId,
+    COURT_ID: doc.courtId,
+    PY_ROLE: 'DB',
+    PY_LAST_NAME: doc.caseTitle,
+    PY_FIRST_NAME: null,
+    PY_MIDDLE_NAME: null,
+    PY_ADDRESS1: '123 Test St',
+    PY_ADDRESS2: null,
+    PY_ADDRESS3: null,
+    PY_CITY: 'Test City',
+    PY_STATE: geography.state,
+    PY_ZIP: '10001',
+    PY_COUNTRY: 'United States',
+  }));
+  // The case summary query inner-joins the petition transaction (AO_TX type 1, code 1) and reads
+  // the debtor type from characters 34-35 and the petition code from 108-109 of its fixed-width
+  // REC. TX_ID is an identity column, so it is left to SQL Server.
+  const dxtrPetitions = docs.map((doc) => ({
+    CS_CASEID: doc.dxtrId,
+    COURT_ID: doc.courtId,
+    DE_SEQNO: 1,
+    CASE_ID: doc.caseNumber,
+    JOB_ID: 0,
+    TX_TYPE: '1',
+    TX_CODE: '1',
+    TX_DATE: new Date(doc.dateFiled as string),
+    REC: `${' '.repeat(33)}IC${' '.repeat(72)}VP${' '.repeat(6)}`,
+  }));
+  return {
+    docs,
+    dxtrCases,
+    dxtrDebtors,
+    dxtrPetitions,
+    caseIds: docs.map((doc) => doc.caseId as string),
+  };
 }
 
 const MISMATCH_MANHATTAN_CASES = seedCaseSet(90101, MANHATTAN_COURT, NEW_YORK, '12', 3);
-const MISMATCH_CHICAGO_CASES = seedCaseSet(90111, CHICAGO_COURT, ILLINOIS, '13', 1);
-const READY_CASES = seedCaseSet(90121, CHICAGO_COURT, ILLINOIS, '7', 3);
-const RESOLVED_CASES = seedCaseSet(90131, CHICAGO_COURT, ILLINOIS, '7', 1);
+const MISMATCH_DELAWARE_CASES = seedCaseSet(90111, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '13', 1);
+const READY_CASES = seedCaseSet(90121, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '7', 3);
+const RESOLVED_CASES = seedCaseSet(90131, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '7', 1);
 const MANY_CASES = seedCaseSet(90141, MANHATTAN_COURT, NEW_YORK, '7', 12);
-const PARTIAL_CASES = seedCaseSet(90161, CHICAGO_COURT, ILLINOIS, '7', 3);
+const PARTIAL_CASES = seedCaseSet(90161, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '7', 3);
 const PLACEHOLDER_CASES = seedCaseSet(90171, MANHATTAN_COURT, NEW_YORK, '7', 1);
-const GENERATED_CASES = [
+const GENERATED_CASE_SETS = [
   MISMATCH_MANHATTAN_CASES,
-  MISMATCH_CHICAGO_CASES,
+  MISMATCH_DELAWARE_CASES,
   READY_CASES,
   RESOLVED_CASES,
   MANY_CASES,
   PARTIAL_CASES,
   PLACEHOLDER_CASES,
-].flatMap((set) => set.docs);
+];
+const GENERATED_CASES = GENERATED_CASE_SETS.flatMap((set) => set.docs);
+const GENERATED_DXTR_CASES = GENERATED_CASE_SETS.flatMap((set) => set.dxtrCases);
+const GENERATED_DXTR_DEBTORS = GENERATED_CASE_SETS.flatMap((set) => set.dxtrDebtors);
+const GENERATED_DXTR_PETITIONS = GENERATED_CASE_SETS.flatMap((set) => set.dxtrPetitions);
 
 const T_NONE = 'seed-trustee-appt-none';
 const T_MISMATCH = 'seed-trustee-appt-mismatch';
@@ -214,11 +281,11 @@ const TASKS: TaskSpec[] = [
     createdOn: '2026-11-08T14:00:00.000Z',
   },
   {
-    slug: 'mismatch-chicago-13',
+    slug: 'mismatch-delaware-13',
     trusteeId: T_MISMATCH,
-    tuple: { ...CHICAGO, chapter: '13' },
+    tuple: { ...DELAWARE, chapter: '13' },
     reason: 'no-appointment',
-    caseIds: MISMATCH_CHICAGO_CASES.caseIds,
+    caseIds: MISMATCH_DELAWARE_CASES.caseIds,
     status: 'pending',
     createdOn: '2026-11-08T15:00:00.000Z',
   },
@@ -232,18 +299,18 @@ const TASKS: TaskSpec[] = [
     createdOn: '2026-11-07T14:00:00.000Z',
   },
   {
-    slug: 'ready-chicago-7',
+    slug: 'ready-delaware-7',
     trusteeId: T_READY,
-    tuple: { ...CHICAGO, chapter: '7' },
+    tuple: { ...DELAWARE, chapter: '7' },
     reason: 'no-appointment',
     caseIds: READY_CASES.caseIds,
     status: 'pending',
     createdOn: '2026-11-06T14:00:00.000Z',
   },
   {
-    slug: 'resolved-chicago-7',
+    slug: 'resolved-delaware-7',
     trusteeId: T_RESOLVED,
-    tuple: { ...CHICAGO, chapter: '7' },
+    tuple: { ...DELAWARE, chapter: '7' },
     reason: 'no-appointment',
     caseIds: RESOLVED_CASES.caseIds,
     status: 'approved',
@@ -268,9 +335,9 @@ const TASKS: TaskSpec[] = [
     createdOn: '2026-11-04T14:00:00.000Z',
   },
   {
-    slug: 'partial-chicago-7',
+    slug: 'partial-delaware-7',
     trusteeId: T_PARTIAL,
-    tuple: { ...CHICAGO, chapter: '7' },
+    tuple: { ...DELAWARE, chapter: '7' },
     reason: 'no-appointment',
     caseIds: PARTIAL_CASES.caseIds,
     status: 'pending',
@@ -295,7 +362,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // T_NONE: deliberately none.
 
     // T_MISMATCH: seven appointments (a second page of the table), none covering Manhattan Ch 12
-    // or Chicago Ch 13. Ordered in the table by how closely each agrees with the task's tuple.
+    // or Delaware Ch 13. Ordered in the table by how closely each agrees with the task's tuple.
     appointment({
       id: 'seed-appt-mismatch-1',
       trusteeId: T_MISMATCH,
@@ -336,7 +403,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: T_MISMATCH,
       chapter: '7',
       appointmentType: 'off-panel',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'resigned',
       appointedDate: '2018-09-01',
     }),
@@ -354,7 +421,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: T_MISMATCH,
       chapter: '11',
       appointmentType: 'case-by-case',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'inactive',
       appointedDate: '2017-05-01',
     }),
@@ -379,13 +446,13 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       appointedDate: '2021-01-01',
     }),
 
-    // T_READY: an active appointment already covers Chicago Ch 7, so refreshing resolves the task.
+    // T_READY: an active appointment already covers Delaware Ch 7, so refreshing resolves the task.
     appointment({
       id: 'seed-appt-ready-1',
       trusteeId: T_READY,
       chapter: '7',
       appointmentType: 'panel',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'active',
       appointedDate: '2026-11-08',
     }),
@@ -396,7 +463,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: T_RESOLVED,
       chapter: '7',
       appointmentType: 'panel',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'active',
       appointedDate: '2026-10-20',
     }),
@@ -415,14 +482,14 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       },
       status: 'active',
     }),
-    // T_PARTIAL: covers Chicago Ch 7, so refreshing resolves the task, but only for the cases
+    // T_PARTIAL: covers Delaware Ch 7, so refreshing resolves the task, but only for the cases
     // still assigned to this trustee on the tuple.
     appointment({
       id: 'seed-appt-partial-1',
       trusteeId: T_PARTIAL,
       chapter: '7',
       appointmentType: 'panel',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'active',
       appointedDate: '2026-11-08',
     }),
@@ -431,7 +498,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: T_REASSIGNED_TO,
       chapter: '7',
       appointmentType: 'panel',
-      court: CHICAGO_COURT,
+      court: DELAWARE_COURT,
       status: 'active',
       appointedDate: '2026-11-01',
     }),
@@ -498,8 +565,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       assignedOn: '2026-11-01T00:00:00.000Z',
       appointedDate: '2026-11-01',
       chapter: '7',
-      courtId: CHICAGO.courtId,
-      courtDivisionCode: CHICAGO.divisionCode,
+      courtId: DELAWARE.courtId,
+      courtDivisionCode: DELAWARE.divisionCode,
       checks: {
         matchedCase: true,
         matchedTrustee: true,
@@ -552,6 +619,28 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   const caseAppointments = [...taskCaseAppointments, ...otherCaseAppointments];
 
   return [
+    // DXTR rows first (case, debtor, petition), then the Cosmos cases they back (the runner orders them the same way).
+    {
+      db: 'dxtr',
+      collectionOrTable: 'AO_CS',
+      primaryKey: ['CS_CASEID', 'COURT_ID'],
+      insertOnly: true,
+      data: GENERATED_DXTR_CASES,
+    },
+    {
+      db: 'dxtr',
+      collectionOrTable: 'AO_PY',
+      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
+      insertOnly: true,
+      data: GENERATED_DXTR_DEBTORS,
+    },
+    {
+      db: 'dxtr',
+      collectionOrTable: 'AO_TX',
+      primaryKey: ['CS_CASEID', 'COURT_ID', 'TX_TYPE', 'TX_CODE'],
+      insertOnly: true,
+      data: GENERATED_DXTR_PETITIONS,
+    },
     { db: 'cams', collectionOrTable: 'cases', data: GENERATED_CASES },
     { db: 'cams', collectionOrTable: 'trustees', data: trustees },
     { db: 'cams', collectionOrTable: 'trustee-appointments', data: appointments },
