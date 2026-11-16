@@ -2268,6 +2268,307 @@
     "skip": false,
     "error": null
   },
+  "acmsAmbiguousWithCase": {
+    "sourceRaw": {
+      "firstName": "B",
+      "lastName": "Acmscaseambiguous",
+      "fullName": "B Acmscaseambiguous",
+      "legacy": {
+        "address1": "2 Source Ct",
+        "cityStateZipCountry": "New York NY 10014",
+        "phone": "212-555-9995",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10014"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "b",
+      "middleName": "",
+      "lastName": "acmscaseambiguous",
+      "legacy": {
+        "address1": "2 Source Ct",
+        "cityStateZipCountry": "New York NY 10014",
+        "phone": "212-555-9995",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10014"
+        }
+      },
+      "fullName": "B Acmscaseambiguous",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-case-a",
+          "firstName": "Blair",
+          "lastName": "Acmscaseambiguous",
+          "name": "Blair Acmscaseambiguous",
+          "address": {
+            "address1": "506 Acms Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10014",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9301"
+          },
+          "email": "blair.acmscaseambiguous@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "blair",
+          "middleName": "",
+          "lastName": "acmscaseambiguous",
+          "phone": {
+            "number": "212-555-9301"
+          },
+          "email": "blair.acmscaseambiguous@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "blair acmscaseambiguous"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "b acmscaseambiguous|blair acmscaseambiguous",
+              "value": 0.845
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "b acmscaseambiguous|blair acmscaseambiguous",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-case-b",
+          "firstName": "Blake",
+          "lastName": "Acmscaseambiguous",
+          "name": "Blake Acmscaseambiguous",
+          "address": {
+            "address1": "507 Acms Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10014",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9302"
+          },
+          "email": "blake.acmscaseambiguous@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "blake",
+          "middleName": "",
+          "lastName": "acmscaseambiguous",
+          "phone": {
+            "number": "212-555-9302"
+          },
+          "email": "blake.acmscaseambiguous@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "blake acmscaseambiguous"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "b acmscaseambiguous|blake acmscaseambiguous",
+              "value": 0.869
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "b acmscaseambiguous|blake acmscaseambiguous",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 3
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "acmsNoMatchWithCase": {
+    "sourceRaw": {
+      "firstName": "Nova",
+      "lastName": "Acmscasenomatch",
+      "fullName": "Nova Acmscasenomatch",
+      "legacy": {
+        "cityStateZipCountry": "Bristol TN",
+        "parsedCityStateZip": null
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "nova",
+      "middleName": "",
+      "lastName": "acmscasenomatch",
+      "legacy": {
+        "cityStateZipCountry": "Bristol TN",
+        "parsedCityStateZip": null
+      },
+      "fullName": "Nova Acmscasenomatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-acms-case-nomatch",
+          "firstName": "Nova",
+          "lastName": "Acmscasenomatch",
+          "name": "Nova Acmscasenomatch",
+          "address": {
+            "address1": "2 State St",
+            "city": "Bristol",
+            "state": "VA",
+            "zipCode": "24201",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "276-555-0101"
+          },
+          "email": "nova.acmscasenomatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "nova",
+          "middleName": "",
+          "lastName": "acmscasenomatch",
+          "phone": {
+            "number": "276-555-0101"
+          },
+          "email": "nova.acmscasenomatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "nova acmscasenomatch"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "nova acmscasenomatch|nova acmscasenomatch",
+              "value": 1
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "nova acmscasenomatch|nova acmscasenomatch",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "exact"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": false
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "weak",
+            "points": 1
+          },
+          "recallByTokenIntersection": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
   "resolvedNoSurrogates": {
     "sourceRaw": {
       "firstName": "Riley",

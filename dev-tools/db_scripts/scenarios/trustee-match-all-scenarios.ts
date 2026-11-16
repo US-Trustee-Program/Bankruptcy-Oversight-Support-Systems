@@ -142,6 +142,35 @@ const SINGLE_CASE_TASKS = [
   acmsProfessionalId?: string;
 }[];
 
+// ACMS case-appointment sync tasks (CAMS-955): source 'ACMS' but, unlike the professional-id sync
+// tasks, each carries the appointment's case. Existing Buffalo cases from cases-fuzzy-search.ts
+// that no other scenario gives an appointment.
+const ACMS_CASE_TASKS = [
+  {
+    slug: 'acms-case-ambiguous',
+    key: 'acmsAmbiguousWithCase',
+    caseId: '091-99-64660', // Ch 11
+    chapter: '11',
+    acmsProfessionalId: 'SEED-ACMS-CASE-AMBIGUOUS',
+    taskDate: '2026-11-02T00:00:00.000Z',
+  },
+  {
+    slug: 'acms-case-no-match',
+    key: 'acmsNoMatchWithCase',
+    caseId: '091-99-75623', // Ch 12
+    chapter: '12',
+    acmsProfessionalId: 'SEED-ACMS-CASE-NO-MATCH',
+    taskDate: '2026-11-03T00:00:00.000Z',
+  },
+] as const satisfies readonly {
+  slug: string;
+  key: TrusteeMatchScenarioKey;
+  caseId: string;
+  chapter: string;
+  acmsProfessionalId: string;
+  taskDate: string;
+}[];
+
 // Multi-case scenarios (3 distinct cases, all Chapter 11, Buffalo). None of these cases carries
 // another scenario's trustee appointments: the sync only raises a task for a case whose trustee
 // it could not resolve.
@@ -195,6 +224,33 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     trusteeId: singleCaseTasks[index].fingerprint,
     assignedOn: '2018-01-01T00:00:00.000Z',
     appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter,
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+
+  const acmsCaseTasks = ACMS_CASE_TASKS.map((task) => ({
+    id: `seed-match-${task.slug}-${task.caseId}`,
+    ...identityTaskFields(task.key, 'ACMS'),
+    acmsProfessionalId: task.acmsProfessionalId,
+    caseId: task.caseId,
+    courtId: '0209',
+    status: 'pending',
+    taskDate: task.taskDate,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+  const acmsCaseSurrogates = ACMS_CASE_TASKS.map(({ slug, caseId, chapter }, index) => ({
+    id: `seed-surrogate-${slug}-${caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId,
+    trusteeId: acmsCaseTasks[index].fingerprint,
+    assignedOn: '2026-10-15T00:00:00.000Z',
+    appointedDate: '2026-10-15',
     isSurrogate: true,
     chapter,
     courtDivisionCode: '091',
@@ -273,6 +329,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           'multipleCandidatesCaseless',
           'acmsAmbiguousCaseless',
           'acmsNoMatchCaseless',
+          'acmsAmbiguousWithCase',
+          'acmsNoMatchWithCase',
           'manyCandidates',
         ),
         TRUSTEE_RESOLVED,
@@ -476,6 +534,25 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
       ],
+    },
+
+    // 12. Pending case-bearing tasks as the ACMS case-appointment sync writes them (CAMS-955):
+    // source 'ACMS', an acmsProfessionalId, the appointment's case and its surrogate placeholder
+    // (dual-written like the bundles above).
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: acmsCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: acmsCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: acmsCaseTasks,
     },
 
     // 5. Already-approved task, no surviving surrogates: simulates the state after

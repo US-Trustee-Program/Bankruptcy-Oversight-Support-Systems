@@ -468,6 +468,64 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     expectedCandidateCount: 1,
   },
 
+  // trustee-match-all-scenarios: the ACMS case-appointment sync (CAMS-955) raises a task that
+  // carries the appointment's case, unlike the caseless professional-id sync tasks above. Same
+  // tie-at-every-resolver shape as multipleCandidates; surnames stay distinct from the others.
+  acmsAmbiguousWithCase: {
+    source: {
+      firstName: 'B',
+      lastName: 'Acmscaseambiguous',
+      fullName: 'B Acmscaseambiguous',
+      legacy: {
+        address1: '2 Source Ct',
+        cityStateZipCountry: 'New York NY 10014',
+        phone: '212-555-9995',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-a',
+        firstName: 'Blair',
+        lastName: 'Acmscaseambiguous',
+        address: { address1: '506 Acms Ave', city: 'New York', state: 'NY', zipCode: '10014' },
+        phone: '212-555-9301',
+        email: 'blair.acmscaseambiguous@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-b',
+        firstName: 'Blake',
+        lastName: 'Acmscaseambiguous',
+        address: { address1: '507 Acms Ave', city: 'New York', state: 'NY', zipCode: '10014' },
+        phone: '212-555-9302',
+        email: 'blake.acmscaseambiguous@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
+
+  // trustee-match-all-scenarios: a case-bearing 'no match' task from the ACMS case-appointment
+  // sync (CAMS-955). Same shape as acmsNoMatchCaseless: the one candidate passes the name check
+  // but its state differs.
+  acmsNoMatchWithCase: {
+    source: {
+      firstName: 'Nova',
+      lastName: 'Acmscasenomatch',
+      fullName: 'Nova Acmscasenomatch',
+      legacy: { cityStateZipCountry: 'Bristol TN' },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-nomatch',
+        firstName: 'Nova',
+        lastName: 'Acmscasenomatch',
+        address: { address1: '2 State St', city: 'Bristol', state: 'VA', zipCode: '24201' },
+        phone: '276-555-0101',
+        email: 'nova.acmscasenomatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
   // trustee-match-all-scenarios: approved tasks whose pipeline run found no candidate.
   resolvedNoSurrogates: {
     source: { firstName: 'Riley', lastName: 'Resolvedmatch', fullName: 'Riley Resolvedmatch' },
