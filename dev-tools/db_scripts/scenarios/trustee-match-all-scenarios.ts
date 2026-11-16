@@ -217,6 +217,7 @@ function buildSurrogate(opts: {
   caseId: string;
   fingerprint: string;
   chapter: string;
+  courtId: string;
   courtDivisionCode: string;
   appointedDate: string;
 }) {
@@ -229,6 +230,7 @@ function buildSurrogate(opts: {
     appointedDate: opts.appointedDate,
     isSurrogate: true,
     chapter: opts.chapter,
+    courtId: opts.courtId,
     courtDivisionCode: opts.courtDivisionCode,
     createdOn: '2025-03-01T00:00:00.000Z',
     createdBy: SEEDER,
@@ -255,6 +257,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       caseId,
       fingerprint: singleCaseTasks[index].fingerprint,
       chapter,
+      courtId: '0209',
       courtDivisionCode: '091',
       appointedDate: '2018-01-01',
     }),
@@ -277,6 +280,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       caseId,
       fingerprint: acmsCaseTasks[index].fingerprint,
       chapter,
+      courtId: '0209',
       courtDivisionCode: '091',
       appointedDate: '2026-10-15',
     }),
@@ -292,6 +296,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       caseId,
       fingerprint: multiCaseFingerprint,
       chapter: '11',
+      courtId: '0209',
       courtDivisionCode: '091',
       appointedDate: '2018-01-01',
     }),
@@ -307,6 +312,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     [CASE_DIVISION_MISMATCH_B]: '091',
     [CASE_DIVISION_MISMATCH_C]: '081',
   };
+  const divisionMismatchCaseCourts: Record<string, string> = {
+    [CASE_DIVISION_MISMATCH_A]: '0209',
+    [CASE_DIVISION_MISMATCH_B]: '0209',
+    [CASE_DIVISION_MISMATCH_C]: '0208',
+  };
   const divisionMismatchSurrogates = [
     CASE_DIVISION_MISMATCH_A,
     CASE_DIVISION_MISMATCH_B,
@@ -317,6 +327,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       caseId,
       fingerprint: divisionMismatchFingerprint,
       chapter: '11',
+      courtId: divisionMismatchCaseCourts[caseId],
       courtDivisionCode: divisionMismatchCaseDivisions[caseId],
       appointedDate: '2018-01-01',
     }),
