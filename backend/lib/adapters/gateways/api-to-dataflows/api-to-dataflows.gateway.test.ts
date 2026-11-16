@@ -51,7 +51,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
   });
 
   describe('queueCaseReload', () => {
-    test('sends the case-reload event wrapped in an array to the page queue', async () => {
+    test('sends the case-reload event as a sync-cases page message ({ events }) to the page queue', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
       const caseId = '081-12-34567';
 
@@ -62,7 +62,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
         SYNC_CASES_PAGE_QUEUE.queueName,
       );
       expect(mockSendMessage).toHaveBeenCalledWith(
-        JSON.stringify([{ caseId, type: 'CASE_CHANGED' }]),
+        JSON.stringify({ events: [{ caseId, type: 'CASE_CHANGED' }] }),
       );
     });
 
@@ -75,11 +75,11 @@ describe('ApiToDataflowsGatewayImpl', () => {
       expect(mockSendMessage).toHaveBeenCalledTimes(2);
       expect(mockSendMessage).toHaveBeenNthCalledWith(
         1,
-        JSON.stringify([{ caseId: '081-12-34567', type: 'CASE_CHANGED' }]),
+        JSON.stringify({ events: [{ caseId: '081-12-34567', type: 'CASE_CHANGED' }] }),
       );
       expect(mockSendMessage).toHaveBeenNthCalledWith(
         2,
-        JSON.stringify([{ caseId: '087-99-79400', type: 'CASE_CHANGED' }]),
+        JSON.stringify({ events: [{ caseId: '087-99-79400', type: 'CASE_CHANGED' }] }),
       );
     });
   });
