@@ -1395,5 +1395,190 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       await expect(useCase.getEnrichedVerification(context, 'verification-1')).rejects.toThrow();
     });
+
+    describe('appointmentTaskPreview', () => {
+      const surrogate = (
+        caseId: string,
+        overrides: Partial<{ courtId: string; courtDivisionCode: string; chapter: string }> = {},
+      ) => ({
+        caseId,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
+        ...overrides,
+      });
+
+      beforeEach(() => {
+        vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+          {
+            courtId: '081',
+            courtName: 'Eastern District of Missouri',
+            courtDivisionCode: '081',
+            courtDivisionName: 'St. Louis',
+          },
+        ] as Awaited<ReturnType<CourtsUseCase['getCourts']>>);
+      });
+
+      test('is omitted when no trusteeId is given', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+        expect(result).not.toHaveProperty('appointmentTaskPreview');
+        expect(mockGetTrusteeAppointments).not.toHaveBeenCalled();
+      });
+
+      test('names one group for a single uncovered case', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(mockGetTrusteeAppointments).toHaveBeenCalledWith('trustee-a');
+        expect(result.appointmentTaskPreview).toEqual([
+          {
+            courtId: '081',
+            courtDivisionCode: '081',
+            courtName: 'Eastern District of Missouri',
+            courtDivisionName: 'St. Louis',
+            chapter: '7',
+            caseCount: 1,
+          },
+        ]);
+      });
+
+      test('counts cases that share a court, division and chapter in one group', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001'),
+          surrogate('case-002'),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toHaveLength(1);
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(2);
+      });
+
+      test('counts a case with two placeholder rows for the same tuple once', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001'),
+          surrogate('case-001'),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(1);
+      });
+
+      test('splits cases in different chapters into separate groups', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001', { chapter: '7' }),
+          surrogate('case-002', { chapter: '13' }),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview?.map((g) => g.chapter).sort()).toEqual(['13', '7']);
+      });
+
+      test.each(['courtId', 'courtDivisionCode', 'chapter'] as const)(
+        'excludes a surrogate that is missing %s',
+        async (field) => {
+          mockGetSurrogatesByFingerprints.mockResolvedValue([
+            surrogate('case-001', { [field]: undefined }),
+          ]);
+
+          const result = await useCase.getEnrichedVerification(
+            context,
+            'verification-1',
+            'trustee-a',
+          );
+
+          expect(result.appointmentTaskPreview).toEqual([]);
+        },
+      );
+
+      test('returns an empty array when the trustee already covers every case', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          {
+            status: 'active',
+            courtId: '081',
+            divisionCode: '081',
+            chapter: '7',
+            appointmentType: 'panel',
+          },
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toEqual([]);
+      });
+
+      test('leaves court names out when the court cannot be resolved', async () => {
+        vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview![0]).not.toHaveProperty('courtName');
+        expect(result.appointmentTaskPreview![0]).not.toHaveProperty('courtDivisionName');
+      });
+
+      test('fetches the surrogates once for both affectedCaseIds and the preview', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledTimes(1);
+        expect(result.affectedCaseIds).toEqual(['case-001']);
+      });
+
+      test('is omitted for an approved verification', async () => {
+        mockFindById.mockResolvedValue({
+          ...sampleVerification,
+          status: 'approved',
+          affectedCaseIds: ['case-001'],
+        });
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result).not.toHaveProperty('appointmentTaskPreview');
+        expect(mockGetTrusteeAppointments).not.toHaveBeenCalled();
+      });
+    });
   });
 });

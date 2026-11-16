@@ -69,7 +69,11 @@ export class TrusteeMatchVerificationController {
     id: string,
   ): Promise<CamsHttpResponseInit<EnrichedTrusteeMatchVerification>> {
     const useCase = new TrusteeMatchVerificationUseCase();
-    const enriched = await useCase.getEnrichedVerification(context, id);
+    const enriched = await useCase.getEnrichedVerification(
+      context,
+      id,
+      context.request.query['trusteeId'] as string | undefined,
+    );
 
     return httpSuccess({
       body: {

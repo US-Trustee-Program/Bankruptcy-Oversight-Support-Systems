@@ -515,8 +515,11 @@ async function refreshTrusteeAppointmentVerification(id: string, trusteeId: stri
   );
 }
 
-async function getTrusteeMatchVerificationDetail(id: string) {
-  return api().get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
+async function getTrusteeMatchVerificationDetail(id: string, trusteeId?: string) {
+  return api().get<EnrichedTrusteeMatchVerification>(
+    `/trustee-match-verification/${id}`,
+    trusteeId ? { trusteeId } : {},
+  );
 }
 
 async function patchTrusteeVerificationOrderApproval(

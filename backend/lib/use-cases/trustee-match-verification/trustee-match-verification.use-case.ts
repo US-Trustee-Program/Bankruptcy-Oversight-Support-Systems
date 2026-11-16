@@ -5,6 +5,7 @@ import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import {
+  AppointmentTaskPreviewGroup,
   EnrichedTrusteeMatchVerification,
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
@@ -27,7 +28,10 @@ import {
 } from '@common/cams/trustee-appointments';
 import { deriveNameMatchCount } from '../dataflows/trustee-professional-ids.types';
 import { SurrogateAppointment } from '../gateways.types';
-import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
+import {
+  openOrJoinAppointmentTask,
+  resolveTaskCourtNames,
+} from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -535,9 +539,50 @@ export class TrusteeMatchVerificationUseCase {
     }
   }
 
+  /**
+   * The appointment tasks approving this verification for the given trustee would open or join
+   * (CAMS-956), computed read-only with the same isAppointmentMatch rule approval applies. Rows
+   * missing a court, division or chapter are left out, as they cannot become a task. Cases are
+   * counted once per group.
+   */
+  private async buildAppointmentTaskPreview(
+    context: ApplicationContext,
+    surrogates: CaseAppointment[],
+    trusteeId: string,
+  ): Promise<AppointmentTaskPreviewGroup[]> {
+    const [trusteeAppointments, courts] = await Promise.all([
+      factory.getTrusteeAppointmentsRepository(context).getTrusteeAppointments(trusteeId),
+      new CourtsUseCase().getCourts(context),
+    ]);
+
+    const caseIdsByTuple = new Map<string, Set<string>>();
+    const tuples = new Map<
+      string,
+      { courtId: string; courtDivisionCode: string; chapter: string }
+    >();
+    for (const { caseId, courtId, courtDivisionCode, chapter } of surrogates) {
+      if (!courtId || !courtDivisionCode || !chapter) continue;
+      if (isAppointmentMatch(trusteeAppointments, courtId, courtDivisionCode, chapter)) continue;
+
+      const key = JSON.stringify([courtId, courtDivisionCode, chapter]);
+      tuples.set(key, { courtId, courtDivisionCode, chapter });
+      caseIdsByTuple.set(key, (caseIdsByTuple.get(key) ?? new Set()).add(caseId));
+    }
+
+    return [...tuples].map(([key, tuple]) => ({
+      ...tuple,
+      ...resolveTaskCourtNames(
+        { courtId: tuple.courtId, divisionCode: tuple.courtDivisionCode },
+        courts,
+      ),
+      caseCount: caseIdsByTuple.get(key)!.size,
+    }));
+  }
+
   async getEnrichedVerification(
     context: ApplicationContext,
     id: string,
+    trusteeId?: string,
   ): Promise<EnrichedTrusteeMatchVerification> {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
@@ -545,6 +590,7 @@ export class TrusteeMatchVerificationUseCase {
 
       const verification = await repo.findById(id);
       let affectedCaseIds: string[];
+      let appointmentTaskPreview: AppointmentTaskPreviewGroup[] | undefined;
       if (verification.status === 'approved') {
         // Only approveVerification writes a snapshot, so read it for approved verifications.
         affectedCaseIds = verification.affectedCaseIds ?? [];
@@ -552,10 +598,20 @@ export class TrusteeMatchVerificationUseCase {
         // Pending and (legacy, read-only) rejected verifications have no snapshot — rejection
         // never touched surrogates, and pending hasn't been resolved yet — so derive live in
         // both cases.
-        const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-          verification.fingerprint,
-        ]);
-        affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+        const surrogates = await factory
+          .getTrusteeCaseAppointmentsRepository(context)
+          .getSurrogatesByFingerprints([verification.fingerprint]);
+        affectedCaseIds =
+          this.groupAffectedCaseIdsByFingerprint(context, surrogates).get(
+            verification.fingerprint,
+          ) ?? [];
+        if (trusteeId && verification.status === 'pending') {
+          appointmentTaskPreview = await this.buildAppointmentTaskPreview(
+            context,
+            surrogates,
+            trusteeId,
+          );
+        }
       }
 
       // Approval stores resolvedTrusteeName; read the trustee only when it is missing.
@@ -577,6 +633,7 @@ export class TrusteeMatchVerificationUseCase {
         ...verification,
         resolvedTrusteeName,
         affectedCaseIds,
+        ...(appointmentTaskPreview ? { appointmentTaskPreview } : {}),
       };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

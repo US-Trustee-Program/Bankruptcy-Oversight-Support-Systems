@@ -117,7 +117,7 @@ export async function openOrJoinAppointmentTask(
  * Resolves a task's (courtId, divisionCode) tuple against the courts list, the same way for the
  * queue row and the detail view: a name that can't be resolved is left out rather than guessed.
  */
-function resolveTaskCourtNames(
+export function resolveTaskCourtNames(
   task: Pick<TrusteeAppointmentVerification, 'courtId' | 'divisionCode'>,
   courts: CourtDivisionDetails[],
 ): { courtName?: string; courtDivisionName?: string } {
