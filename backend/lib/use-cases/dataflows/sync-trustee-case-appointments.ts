@@ -34,6 +34,7 @@ import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases
 import { BadRequestError } from '../../common-errors/bad-request';
 import DateHelper from '@common/date-helper';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { openOrJoinAppointmentTask } from '../trustee-appointment-verification/trustee-appointment-verification.use-case';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -417,6 +418,19 @@ function assertAppointedDate(
 }
 
 /**
+ * What applyResolvedTrustee wrote. dlqFailure is non-null when the previous trustee's appointment
+ * could not be closed (SOFT_CLOSE_WRITE_FAILED); the resolved trustee's appointment IS still
+ * written in that case (see softCloseExistingAppointment). unassignedOn is set when that
+ * appointment is closed as written: a source disposition (DISP_DATE), or an out-of-order row closed
+ * behind the case's later active appointment. Callers use it to skip opening an appointment task
+ * for a historical appointment (CAMS-956).
+ */
+export type AppliedTrustee = {
+  dlqFailure: TrusteeAppointmentSyncError | null;
+  unassignedOn?: string;
+};
+
+/**
  * Applies the resolved trustee to the case and manages appointment history.
  * Shared logic for both normal matching and fuzzy matching success paths.
  *
@@ -434,6 +448,9 @@ function assertAppointedDate(
  *
  * Also used by the daily heal (heal-parked-case-appointments.ts) to attach a parked appointment
  * once its case loads, so parked and synced appointments follow the same active-trustee rule.
+ *
+ * Returns the soft-close DLQ failure (if any) and the resolved trustee's appointment close date as
+ * written (see AppliedTrustee).
  */
 export async function applyResolvedTrustee(
   context: ApplicationContext,
@@ -441,7 +458,7 @@ export async function applyResolvedTrustee(
   trusteeId: string,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
   checks: CaseAppointmentChecks,
-): Promise<TrusteeAppointmentSyncError | null> {
+): Promise<AppliedTrustee> {
   assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
   const assignedOn = event.appointedDate;
   // createNewAppointment validates again when it writes; checking here first means an invalid
@@ -494,7 +511,7 @@ export async function applyResolvedTrustee(
         unassignedOn: disposition,
       });
     }
-    return null; // Same trustee already active — nothing further to do
+    return { dlqFailure: null, unassignedOn: disposition }; // Same trustee already active
   }
 
   if (existingAppointment) {
@@ -504,6 +521,9 @@ export async function applyResolvedTrustee(
       // when the source gives none, and none is stored, is the row closed one day before the
       // active appointment starts.
       const disposition = sourceDisposition(context, event, assignedOn);
+      const fallbackUnassignedOn = disposition
+        ? undefined
+        : deriveUnassignedOn(existingAppointment.assignedOn, assignedOn);
       await createNewAppointment(
         context,
         appointmentsRepo,
@@ -512,9 +532,10 @@ export async function applyResolvedTrustee(
         assignedOn,
         checks,
         disposition,
-        disposition ? undefined : deriveUnassignedOn(existingAppointment.assignedOn, assignedOn),
+        fallbackUnassignedOn,
       );
-      return null;
+      // Closed either way; the repository keeps an already-stored disposition over the fallback.
+      return { dlqFailure: null, unassignedOn: disposition ?? fallbackUnassignedOn };
     }
 
     const { closed, dlqFailure } = await softCloseExistingAppointment(
@@ -527,7 +548,9 @@ export async function applyResolvedTrustee(
       checks,
     );
     if (!closed) {
-      return dlqFailure;
+      // softCloseExistingAppointment still wrote the resolved trustee's appointment, closed only
+      // when the source carries a disposition.
+      return { dlqFailure, unassignedOn: event.unassignedOn };
     }
   }
 
@@ -580,7 +603,7 @@ export async function applyResolvedTrustee(
     unassignedOn,
   );
 
-  return null;
+  return { dlqFailure: null, unassignedOn };
 }
 
 const PARKED: CaseAppointmentDocumentType = 'CASE_APPOINTMENT_UNATTACHED';
@@ -651,11 +674,13 @@ async function parkAppointment(
  * UI even though no one had looked at them. Callers remain responsible for successCount and any
  * control-flow (e.g. continue) since those are not part of this shared side-effect sequence.
  *
- * Returns the soft-close DLQ failure, if any, rather than mutating a shared dlqMessages array —
- * a permanent soft-close failure means createNewAppointment never ran (see applyResolvedTrustee),
- * so this event was NOT actually auto-linked, yet the caller still needs to know about the DLQ
- * failure. Returning it lets processAppointments' aggregation loop be the one place that decides
- * what to do with it, instead of a side channel a reader could miss when scanning that loop.
+ * Returns what applyResolvedTrustee wrote (AppliedTrustee), including the soft-close DLQ failure,
+ * if any, rather than mutating a shared dlqMessages array. A permanent soft-close failure still
+ * writes the resolved trustee's appointment (see softCloseExistingAppointment), but the previous
+ * trustee's appointment stays open, so the event is dead-lettered for manual replay. Returning the
+ * failure lets processAppointments' aggregation loop be the one place that decides what to do with
+ * it, instead of a side channel a reader could miss when scanning that loop. A parked write
+ * reports no failure and no close date.
  *
  * Takes MatchContext (absorbing context/event/fingerprint/variant/audit/scenarioDistribution, plus
  * caseAppointmentsRepo/variationRepo via ctx.deps) and only the values genuinely specific to this
@@ -667,13 +692,13 @@ async function autoLinkTrustee(
   knownTrusteeId: string | null,
   logMessage: string,
   checks: CaseAppointmentChecks,
-): Promise<TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null> {
+): Promise<AppliedTrustee> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const { context } = deps;
 
-  const softCloseFailure =
+  const applied: AppliedTrustee =
     ctx.documentType === PARKED
-      ? await parkAppointment(ctx, trusteeId, checks)
+      ? { dlqFailure: await parkAppointment(ctx, trusteeId, checks) }
       : await applyResolvedTrustee(context, event, trusteeId, deps.caseAppointmentsRepo, checks);
   if (!knownTrusteeId) {
     await deps.variationRepo.createVariation(
@@ -696,7 +721,7 @@ async function autoLinkTrustee(
   audit.matchOutcome = 'auto-matched';
   audit.matchedTrusteeId = trusteeId;
   audit.appointmentStatus = checks.matchedTrusteeAppointment ? 'active' : 'uncovered';
-  return softCloseFailure;
+  return applied;
 }
 
 /**
@@ -1002,8 +1027,12 @@ async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityRes
  * by always writing the real case appointment, recording what was checked (checks.matchedBy,
  * checks.matchedTrusteeAppointment) rather than gating the write on coverage. Decision 1a
  * (2026-10-27): no more IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS identity tasks — an
- * uncovered or inactive-appointment match still auto-links, with checks.matchedTrusteeAppointment
- * recording the fact for #3190's appointment-task follow-up to consume.
+ * uncovered or inactive-appointment match still auto-links. CAMS-956: an uncovered attached write
+ * then opens or joins the trustee appointment task for its court, division and chapter
+ * (openOrJoinAppointmentTask, which skips parked, closed and covered writes). This includes a
+ * write whose previous trustee's soft-close permanently failed: the resolved trustee's appointment
+ * is written all the same, so its task opens now, and the event is still dead-lettered for the
+ * soft-close replay.
  *
  * Same never-catch rule as resolveTrusteeViaPipeline above.
  */
@@ -1026,12 +1055,26 @@ async function applyResolvedMatch(
     ),
     matchedBy,
   };
-  const dlqFailure = await autoLinkTrustee(
+  const { dlqFailure, unassignedOn } = await autoLinkTrustee(
     ctx,
     trusteeId,
     knownTrusteeId,
     `Match: case ${event.caseId} auto-linked to trustee ${trusteeId} (matchedBy: ${matchedBy}, matchedTrusteeAppointment: ${checks.matchedTrusteeAppointment})`,
     checks,
+  );
+  await openOrJoinAppointmentTask(
+    deps.context,
+    {
+      caseId: event.caseId,
+      trusteeId,
+      courtId: event.courtId,
+      courtDivisionCode: event.courtDivisionCode,
+      chapter: event.chapter,
+      unassignedOn,
+      documentType: ctx.documentType,
+      checks,
+    },
+    trusteeAppointments,
   );
   return { outcome: 'auto-linked', dlqFailure };
 }
@@ -1040,11 +1083,12 @@ async function applyResolvedMatch(
  * Outcome of applyResolvedMatch. Kept as its own type rather than folded into IdentityResolution —
  * this stage never reports a trusteeId back upward, so its vocabulary shouldn't carry a case that
  * can't occur here.
- * 'auto-linked' carries an optional dlqFailure: a permanent soft-close failure means
- * createNewAppointment never ran (see autoLinkTrustee/applyResolvedTrustee), so the event wasn't
- * actually linked even though this stage still reports 'auto-linked' for successCount purposes —
- * the caller (processOneEvent/processAppointments) is responsible for also routing dlqFailure to
- * the DLQ, keeping that routing visible in the one aggregation loop rather than a side mutation.
+ * 'auto-linked' carries an optional dlqFailure: on a permanent soft-close failure the resolved
+ * trustee's appointment IS written (see softCloseExistingAppointment), but the previous trustee's
+ * appointment is still open, so the event needs a manual replay. This stage still reports
+ * 'auto-linked' for successCount purposes; the caller (processOneEvent/processAppointments) is
+ * responsible for also routing dlqFailure to the DLQ, keeping that routing visible in the one
+ * aggregation loop rather than a side mutation.
  */
 type MatchOutcomeResolution = {
   outcome: 'auto-linked';
@@ -1683,8 +1727,8 @@ async function processOneEventOrDlq(
  * removed the old appointment-coverage gate that used to send an uncovered or inactive-only
  * match to a human-review identity task (IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS no longer
  * exist). checks.matchedTrusteeAppointment records isAppointmentMatch's result (a SINGLE active
- * appointment covering court+division+chapter together) as data for #3190's appointment-task
- * follow-up, not as a gate on whether to write.
+ * appointment covering court+division+chapter together), not as a gate on whether to write; an
+ * uncovered attached write then opens or joins a trustee appointment task (CAMS-956).
  *
  * Case not in CAMS yet (no SYNCED_CASE document): identification runs as usual and the write
  * parks the row as CASE_APPOINTMENT_UNATTACHED (parkedCount); the daily heal attaches it later.

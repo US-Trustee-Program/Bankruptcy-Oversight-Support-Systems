@@ -270,6 +270,14 @@ export async function spyOnAllGateways(
     'ListsMongoRepository',
     explicitMocks.ListsMongoRepository,
   );
+
+  const { TrusteeAppointmentVerificationMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/trustee-appointment-verification.mongo.repository');
+  spyOnAllGatewayMethods(
+    TrusteeAppointmentVerificationMongoRepository,
+    'TrusteeAppointmentVerificationMongoRepository',
+    explicitMocks.TrusteeAppointmentVerificationMongoRepository,
+  );
 }
 
 /**

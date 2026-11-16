@@ -64,6 +64,11 @@ import {
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
 import {
+  AppointmentTaskKey,
+  AppointmentTaskReason,
+  TrusteeAppointmentVerification,
+} from '@common/cams/trustee-appointment-verification';
+import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -389,7 +394,7 @@ export interface AcmsGateway {
   /**
    * regionId and changeDate are optional, additive WHERE filters (CMMAP.REGION_CODE and
    * CMMAP.CDB_UPDATE_DATE respectively) for the per-region ACMS source; omitted, the query spans
-   * all regions and dates. No production caller omits them (cams-fd8qd.38).
+   * all regions and dates. No production caller omits them.
    */
   getCmmapAppointmentsRaw(
     context: ApplicationContext,
@@ -698,6 +703,17 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     options?: CaseAppointmentUpsertOptions,
   ): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
+  /**
+   * Atomically sets checks.matchedTrusteeAppointment, updatedOn and updatedBy on a case's
+   * appointment in both partitions, only while it is still assigned (no unassignedOn) to
+   * `appointment.trusteeId` on the given court, division and chapter, with checks present. Never
+   * replaces the document. Idempotent. Returns whether the case partition matched.
+   */
+  markTrusteeAppointmentMatched(
+    caseId: string,
+    appointment: { trusteeId: string; courtId: string; courtDivisionCode: string; chapter: string },
+    user: CamsUserReference,
+  ): Promise<boolean>;
   delete(id: string): Promise<void>;
   /**
    * Deletes appointment rows (placed and parked) in both partitions; returns the case-partition
@@ -884,7 +900,7 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
 
 /**
  * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
- * (cams-fd8qd.1.10, the per-region driver). One document, one key per region, each written
+ * (the per-region driver). One document, one key per region, each written
  * independently with RuntimeStateRepository.setField's dotted path (e.g.
  * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
  * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a
@@ -1071,6 +1087,37 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
+}
+
+export interface TrusteeAppointmentVerificationRepository extends Releasable {
+  /**
+   * Opens the appointment task for `key`, or joins `caseId` to it if one already exists, in one
+   * atomic upsert. Adding a case that is already in the task is a no-op for caseIds; `reason`
+   * and the updated audit fields are overwritten on every call. If the tuple's task is no longer
+   * pending (resolved), it is first reopened with caseIds reset to just `caseId`.
+   */
+  openOrJoin(
+    key: AppointmentTaskKey,
+    caseId: string,
+    reason: AppointmentTaskReason,
+    user: CamsUserReference,
+  ): Promise<void>;
+  /** Appointment tasks with any of the given statuses, unsorted (callers sort for display). */
+  search(predicate: { status: OrderStatus[] }): Promise<TrusteeAppointmentVerification[]>;
+  /** The single task by its id within a trustee (the shard key), for the detail view. */
+  findById(id: string, trusteeId: string): Promise<TrusteeAppointmentVerification>;
+  /**
+   * Marks the task resolved (status 'approved') only if it is still pending and unchanged since
+   * the caller read it (`expectedUpdatedOn`), by id within a trustee (the shard key). Every join
+   * bumps updatedOn, so a case that joined after the caller read the task makes this return false
+   * and the caller re-reads. A later openOrJoin for the same tuple reopens a resolved task.
+   */
+  resolve(
+    id: string,
+    trusteeId: string,
+    expectedUpdatedOn: string,
+    user: CamsUserReference,
+  ): Promise<boolean>;
 }
 
 export interface UserGroupsRepository extends Releasable {
