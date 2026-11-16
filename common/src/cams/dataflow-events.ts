@@ -55,6 +55,16 @@ export type CaseSyncEvent = {
 };
 
 /**
+ * A page of case sync events on the sync-cases page queue. The API's case reload and the
+ * sync-cases dataflow both write this shape; sync-cases handlePage reads it.
+ */
+export type SyncCasesPageMessage = {
+  events: CaseSyncEvent[];
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+/**
  * The trustee-matching pipeline's source-record shape - a legacy-system trustee/professional
  * record, in whatever form it takes before matching normalizes it. DxtrTrusteeParty and
  * AcmsTrusteeProfessional are each their own nominal type sharing this shape, rather than aliases
