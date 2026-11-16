@@ -1,6 +1,13 @@
 import { describe, test, expect, vi } from 'vitest';
-import { isAppointmentMatch, TrusteeAppointment } from '@common/cams/trustee-appointments.js';
+import {
+  chapterAppointmentTypeMap,
+  getStatusOptions,
+  isAppointmentMatch,
+  TrusteeAppointment,
+} from '@common/cams/trustee-appointments.js';
+import type { AppointmentChapterType, AppointmentType } from '@common/cams/trustees.js';
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { generate as generateCases } from './cases-fuzzy-search.js';
 import { generate } from './trustee-appointment-tasks.js';
 
 function context(): SeedContext {
@@ -65,10 +72,7 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
       )
       .map((t) => t.id);
 
-    expect(covered).toEqual([
-      'seed-appt-task-ready-chicago-15',
-      'seed-appt-task-partial-chicago-15',
-    ]);
+    expect(covered).toEqual(['seed-appt-task-ready-chicago-7', 'seed-appt-task-partial-chicago-7']);
   });
 
   test('should seed every referenced trustee', async () => {
@@ -99,7 +103,7 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
   test('should leave one case on the partial task still refreshable', async () => {
     const ops = await generate(context());
     const task = docs(ops, 'trustee-appointment-verification').find(
-      (t) => t.id === 'seed-appt-task-partial-chicago-15',
+      (t) => t.id === 'seed-appt-task-partial-chicago-7',
     );
     const open = docs(ops, 'trustee-case-appointments').filter(
       (a) => a.trusteeId === task?.trusteeId && !a.unassignedOn,
@@ -114,7 +118,7 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
   test('should move the reassigned case to another trustee that holds a covered appointment', async () => {
     const ops = await generate(context());
     const partial = docs(ops, 'trustee-appointment-verification').find(
-      (t) => t.id === 'seed-appt-task-partial-chicago-15',
+      (t) => t.id === 'seed-appt-task-partial-chicago-7',
     );
     const closedForPartial = docs(ops, 'trustee-case-appointments').filter(
       (a) => a.trusteeId === partial?.trusteeId && a.unassignedOn,
@@ -137,5 +141,76 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
         .filter((t) => (t.caseIds as string[]).includes(reassigned[0].caseId as string))
         .map((t) => t.trusteeId),
     ).toEqual([partial?.trusteeId]);
+  });
+
+  test('should seed only appointments the appointment form could create', async () => {
+    const appointments = docs(await generate(context()), 'trustee-appointments');
+
+    expect(appointments.length).toBeGreaterThan(0);
+    for (const appointment of appointments) {
+      const chapter = appointment.chapter as AppointmentChapterType;
+      const type = appointment.appointmentType as AppointmentType;
+      expect(Object.keys(chapterAppointmentTypeMap)).toContain(chapter);
+      expect(chapterAppointmentTypeMap[chapter]).toContain(type);
+      expect(getStatusOptions(chapter, type)).toContain(appointment.status);
+    }
+  });
+
+  test('should only name tasks and case appointments on chapters a trustee can be appointed to', async () => {
+    const ops = await generate(context());
+    const appointable = Object.keys(chapterAppointmentTypeMap);
+
+    for (const task of docs(ops, 'trustee-appointment-verification')) {
+      expect(appointable).toContain(task.chapter);
+    }
+    for (const collection of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      for (const caseAppointment of docs(ops, collection)) {
+        expect(appointable).toContain(caseAppointment.chapter);
+      }
+    }
+  });
+
+  test('should name only cases that exist in Cosmos once the prerequisite scenarios are seeded', async () => {
+    const ops = await generate(context());
+    const seededCaseIds = new Set(
+      [...docs(await generateCases(context()), 'cases'), ...docs(ops, 'cases')].map(
+        (c) => c.caseId,
+      ),
+    );
+    const caseIds = [
+      ...docs(ops, 'trustee-appointment-verification').flatMap((t) => t.caseIds as string[]),
+      ...docs(ops, 'trustee-case-appointments')
+        .filter((a) => a.documentType === 'CASE_APPOINTMENT')
+        .map((a) => a.caseId as string),
+    ];
+
+    expect(caseIds.length).toBeGreaterThan(0);
+    expect(caseIds.filter((caseId) => !seededCaseIds.has(caseId))).toEqual([]);
+  });
+
+  test('should give each generated case the chapter and court its appointment task uses', async () => {
+    const ops = await generate(context());
+    const generatedCases = docs(ops, 'cases');
+    const tasks = docs(ops, 'trustee-appointment-verification');
+    const taskFor = (caseId: unknown) =>
+      tasks.find((t) => (t.caseIds as string[]).includes(caseId as string));
+
+    expect(generatedCases.length).toBeGreaterThan(0);
+    // Every generated case belongs to a task, except the one a placeholder sits on.
+    const inTasks = generatedCases.filter((generated) => taskFor(generated.caseId));
+    expect(inTasks.length).toBe(generatedCases.length - 1);
+    expect(
+      inTasks.map((generated) => ({
+        chapter: generated.chapter,
+        courtId: generated.courtId,
+        courtDivisionCode: generated.courtDivisionCode,
+      })),
+    ).toEqual(
+      inTasks.map((generated) => ({
+        chapter: taskFor(generated.caseId)?.chapter,
+        courtId: taskFor(generated.caseId)?.courtId,
+        courtDivisionCode: taskFor(generated.caseId)?.divisionCode,
+      })),
+    );
   });
 });

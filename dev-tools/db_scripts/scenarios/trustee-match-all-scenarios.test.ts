@@ -419,3 +419,37 @@ describe('trustee-match-all-scenarios (CAMS-955 ACMS case-appointment tasks)', (
     },
   );
 });
+
+describe('trustee-match-all-scenarios (surrogate court fields)', () => {
+  // The remap copies courtId, courtDivisionCode and chapter from the surrogate, and an appointment
+  // task only opens when all three are present, so a surrogate without them hides the task.
+  test('should give every surrogate the court, division and chapter an approval needs', async () => {
+    const ops = await generate(context());
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = docsIn(ops, table).filter((s) => s.isSurrogate === true);
+      expect(surrogates.length).toBeGreaterThan(0);
+      for (const surrogate of surrogates) {
+        expect(surrogate).toMatchObject({
+          courtId: expect.stringMatching(/^\d{4}$/),
+          courtDivisionCode: expect.stringMatching(/^\d{3}$/),
+          chapter: expect.any(String),
+        });
+      }
+    }
+  });
+
+  test('should use the court of the division each surrogate names', async () => {
+    const ops = await generate(context());
+    const courtsByDivision = new Map<unknown, Set<unknown>>();
+
+    for (const surrogate of docsIn(ops, 'case-trustee-appointments').filter((s) => s.isSurrogate)) {
+      const courts = courtsByDivision.get(surrogate.courtDivisionCode) ?? new Set();
+      courts.add(surrogate.courtId);
+      courtsByDivision.set(surrogate.courtDivisionCode, courts);
+    }
+
+    expect([...courtsByDivision.get('091')!]).toEqual(['0209']);
+    expect([...courtsByDivision.get('081')!]).toEqual(['0208']);
+  });
+});
