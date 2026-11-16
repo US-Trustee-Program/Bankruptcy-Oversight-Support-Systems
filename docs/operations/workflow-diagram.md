@@ -510,6 +510,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_docs_page["Render docs page"]
     dora_metrics_yml_publish["Publish reports to storage"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
@@ -546,6 +547,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_docs_page
     dora_metrics_yml --> dora_metrics_yml_publish
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
@@ -585,6 +587,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_docs_page job
     class dora_metrics_yml_publish job
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
@@ -1222,6 +1225,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_docs_page["Render docs page"]
     dora_metrics_yml_publish["Publish reports to storage"]
 
     trigger_workflow_dispatch --> dora_metrics_yml
@@ -1234,6 +1238,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_docs_page
     dora_metrics_yml --> dora_metrics_yml_publish
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
@@ -1249,6 +1254,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_docs_page job
     class dora_metrics_yml_publish job
 ```
 
@@ -1385,14 +1391,21 @@ flowchart LR
 ### Workflow_run Triggered Workflows
 
 Workflows triggered by `workflow_run`:
+- **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **slack-notification** (`slack-notification.yml`)
 
 ```mermaid
 flowchart LR
     trigger_workflow_run(["workflow_run"])
+    deploy_pages_yml["Deploy GitHub Pages"]
+    deploy_pages_yml_build["build"]
+    deploy_pages_yml_deploy["deploy"]
     slack_notification_yml["slack-notification"]
     slack_notification_yml_notify["notify"]
 
+    trigger_workflow_run --> deploy_pages_yml
+    deploy_pages_yml --> deploy_pages_yml_build
+    deploy_pages_yml --> deploy_pages_yml_deploy
     trigger_workflow_run --> slack_notification_yml
     slack_notification_yml --> slack_notification_yml_notify
 
@@ -1402,6 +1415,9 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_workflow_run trigger
+    class deploy_pages_yml mainWorkflow
+    class deploy_pages_yml_build job
+    class deploy_pages_yml_deploy job
     class slack_notification_yml mainWorkflow
     class slack_notification_yml_notify job
 ```
@@ -1441,12 +1457,13 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     launchdarkly_code_references_yml["LaunchDarkly Code References"]
     continuous_deployment_yml["Continuous Deployment"]
+    trigger_workflow_run(["workflow_run"])
+    deploy_pages_yml["Deploy GitHub Pages"]
+    slack_notification_yml["slack-notification"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
-    trigger_workflow_run(["workflow_run"])
-    slack_notification_yml["slack-notification"]
 
     trigger_workflow_dispatch --> deploy_sql_hub_yml
     trigger_workflow_dispatch --> deploy_dora_metrics_storage_yml
@@ -1476,9 +1493,10 @@ flowchart LR
     trigger_push --> deploy_pages_yml
     trigger_push --> launchdarkly_code_references_yml
     trigger_push --> continuous_deployment_yml
+    trigger_workflow_run --> deploy_pages_yml
+    trigger_workflow_run --> slack_notification_yml
     trigger_delete --> azure_remove_branch_yml
     trigger_pull_request --> pr_validation_yml
-    trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
@@ -1486,9 +1504,9 @@ flowchart LR
     class trigger_workflow_dispatch trigger
     class trigger_schedule trigger
     class trigger_push trigger
+    class trigger_workflow_run trigger
     class trigger_delete trigger
     class trigger_pull_request trigger
-    class trigger_workflow_run trigger
     class deploy_sql_hub_yml mainWorkflow
     class deploy_dora_metrics_storage_yml mainWorkflow
     class build_playwright_msedge_image_yml mainWorkflow
@@ -1527,11 +1545,11 @@ flowchart LR
   - Jobs: 1
 - **DORA Metrics** (`dora-metrics.yml`)
   - Triggers: schedule, workflow_dispatch
-  - Jobs: 5
+  - Jobs: 6
 - **Active Issue Notification** (`active-issue-notification.yml`)
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
-  - Triggers: push, workflow_dispatch
+  - Triggers: push, workflow_run, workflow_dispatch
   - Jobs: 2
 - **Stand Alone E2E Test Runs** (`e2e-test.yml`)
   - Triggers: workflow_dispatch

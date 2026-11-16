@@ -7,23 +7,53 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-pages.yml'
+  # Refreshes docs/operations/dora-metrics.md weekly without a commit.
+  workflow_run:
+    workflows: [DORA Metrics]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 # Allow only one concurrent deployment, skip runs queued between the run in-progress and latest queued.
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: false
 
 permissions: read-all
 
 jobs:
   build:
+    # A failed DORA Metrics run leaves the site, and its last rendered page, as it was.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Never fails the build: without a rendered page, the committed placeholder is served.
+      - name: Fetch rendered DORA Metrics page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          run_id=$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow dora-metrics.yml \
+            --branch main --status success --limit 1 \
+            --json databaseId --jq '.[0].databaseId // empty') || run_id=""
+          if [ -z "${run_id}" ]; then
+            echo "::warning::No successful DORA Metrics run on main found; serving the placeholder page."
+            exit 0
+          fi
+          page_dir=$(mktemp -d)
+          if gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" --name dora-docs-page \
+              --dir "${page_dir}" && [ -s "${page_dir}/dora-metrics.md" ]; then
+            cp "${page_dir}/dora-metrics.md" docs/operations/dora-metrics.md
+            echo "Using the DORA Metrics page from run ${run_id}."
+          else
+            echo "::warning::DORA Metrics run ${run_id} has no dora-docs-page artifact; serving the placeholder page."
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
