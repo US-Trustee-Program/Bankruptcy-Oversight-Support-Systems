@@ -43,7 +43,7 @@ function reportsFor(week: Week, overrides: Partial<ByPeriodReports> = {}): ByPer
     deploymentFrequency: [deploymentRow(week, 24, '3.43')],
     leadTime: [leadTimeRow(week, 5, '3.20', '3.60')],
     changeFailureRate: [cfrRow(week, 24, 2, '0.0833')],
-    mttr: [mttrRow(week, 1, '284.75', '284.75')],
+    mttr: [mttrRow(week, 1, '300.25', '284.75')],
     ...overrides,
   };
 }
@@ -53,10 +53,10 @@ const GENERATED_AT = new Date('2026-11-16T12:05:00.000Z');
 describe('summarizeLatestWeek', () => {
   test('summarizes the latest week ending at or before the generation time', () => {
     const reports: ByPeriodReports = {
-      deploymentFrequency: [deploymentRow(WEEK_1, 10, '1.43'), deploymentRow(WEEK_2, 24, '3.43')],
+      deploymentFrequency: [deploymentRow(WEEK_1, 10, '1.43'), deploymentRow(WEEK_2, 23, '3.29')],
       leadTime: [leadTimeRow(WEEK_1, 3, '1.00', '1.00'), leadTimeRow(WEEK_2, 5, '3.20', '3.60')],
       changeFailureRate: [cfrRow(WEEK_1, 10, 0, '0.0000'), cfrRow(WEEK_2, 24, 2, '0.0833')],
-      mttr: [mttrRow(WEEK_1, 0, '0.00', '0.00'), mttrRow(WEEK_2, 1, '284.75', '284.75')],
+      mttr: [mttrRow(WEEK_1, 0, '0.00', '0.00'), mttrRow(WEEK_2, 1, '300.25', '284.75')],
     };
 
     const summary = summarizeLatestWeek(reports, new Date('2026-11-10T00:00:00.000Z'));
@@ -64,11 +64,11 @@ describe('summarizeLatestWeek', () => {
     expect(summary).toEqual({
       periodStart: new Date(WEEK_2.periodStart),
       periodEnd: new Date(WEEK_2.periodEnd),
-      deploymentCount: 24,
-      deploymentsPerDay: 3.43,
+      deploymentCount: 23,
+      deploymentsPerDay: 3.29,
       leadTime: { medianHours: 3.6, meanHours: 3.2 },
       changeFailure: { failedDeployments: 2, totalDeployments: 24, rate: 0.0833 },
-      restoreTime: { medianHours: 284.75, meanHours: 284.75 },
+      restoreTime: { medianHours: 284.75, meanHours: 300.25 },
     });
   });
 
@@ -156,11 +156,15 @@ describe('summarizeLatestWeek', () => {
     );
   });
 
-  test('throws naming the report and column when a value is not a number', () => {
-    const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_2, 1, 'abc', '1.00')] });
+  // A blank cell must not be read as 0: Number('') is 0, and the page would show it as a real value.
+  test.each(['abc', ''])(
+    'throws naming the report and column when a value is %j instead of a number',
+    (raw) => {
+      const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_2, 1, raw, '1.00')] });
 
-    expect(() => summarizeLatestWeek(reports, GENERATED_AT)).toThrow(
-      'mttr-by-period.csv: meanRestoreTimeHours is not a number: "abc"',
-    );
-  });
+      expect(() => summarizeLatestWeek(reports, GENERATED_AT)).toThrow(
+        `mttr-by-period.csv: meanRestoreTimeHours is not a number: "${raw}"`,
+      );
+    },
+  );
 });

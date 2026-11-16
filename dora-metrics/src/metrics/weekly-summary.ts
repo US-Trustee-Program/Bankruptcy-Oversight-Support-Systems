@@ -51,13 +51,10 @@ export type WeeklySummary = {
   restoreTime: DurationSummary;
 };
 
+// The report scripts write by-period rows oldest first, so the last eligible row is the latest week.
 function latestRowEndingBy(key: ReportKey, rows: CsvRow[], generatedAt: Date): CsvRow {
   const eligible = rows.filter((row) => new Date(row.periodEnd).getTime() <= generatedAt.getTime());
-  const latest = eligible.reduce<CsvRow | undefined>(
-    (best, row) =>
-      !best || new Date(row.periodEnd).getTime() > new Date(best.periodEnd).getTime() ? row : best,
-    undefined,
-  );
+  const latest: CsvRow | undefined = eligible[eligible.length - 1];
   if (!latest) {
     throw new Error(
       `${BY_PERIOD_REPORTS[key].file} has no week ending at or before ${generatedAt.toISOString()}`,

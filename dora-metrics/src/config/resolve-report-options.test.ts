@@ -124,7 +124,7 @@ describe('resolveReportOptions', () => {
     expect(() => resolveReportOptions()).toThrow('Invalid DORA_START_DATE: not-a-date');
   });
   describe('default window snaps to complete calendar weeks', () => {
-    test('ends at the most recent Monday 00:00 UTC and starts 13 weeks earlier on a Wednesday', () => {
+    test('on a Wednesday, ends at the most recent Monday 00:00 UTC and starts 13 weeks earlier', () => {
       vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
 
       const options = resolveReportOptions();
@@ -139,6 +139,14 @@ describe('resolveReportOptions', () => {
       const options = resolveReportOptions();
 
       expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
+    });
+
+    test('ends at a Monday in the previous month and year when the week spans New Year', () => {
+      vi.setSystemTime(new Date('2026-01-01T12:00:00.000Z'));
+
+      const options = resolveReportOptions();
+
+      expect(options.endDate).toEqual(new Date('2025-12-29T00:00:00.000Z'));
     });
 
     test('ends at the previous Monday on the last millisecond of Sunday', () => {
