@@ -72,7 +72,10 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
       )
       .map((t) => t.id);
 
-    expect(covered).toEqual(['seed-appt-task-ready-chicago-7', 'seed-appt-task-partial-chicago-7']);
+    expect(covered).toEqual([
+      'seed-appt-task-ready-delaware-7',
+      'seed-appt-task-partial-delaware-7',
+    ]);
   });
 
   test('should seed every referenced trustee', async () => {
@@ -103,7 +106,7 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
   test('should leave one case on the partial task still refreshable', async () => {
     const ops = await generate(context());
     const task = docs(ops, 'trustee-appointment-verification').find(
-      (t) => t.id === 'seed-appt-task-partial-chicago-7',
+      (t) => t.id === 'seed-appt-task-partial-delaware-7',
     );
     const open = docs(ops, 'trustee-case-appointments').filter(
       (a) => a.trusteeId === task?.trusteeId && !a.unassignedOn,
@@ -118,7 +121,7 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
   test('should move the reassigned case to another trustee that holds a covered appointment', async () => {
     const ops = await generate(context());
     const partial = docs(ops, 'trustee-appointment-verification').find(
-      (t) => t.id === 'seed-appt-task-partial-chicago-7',
+      (t) => t.id === 'seed-appt-task-partial-delaware-7',
     );
     const closedForPartial = docs(ops, 'trustee-case-appointments').filter(
       (a) => a.trusteeId === partial?.trusteeId && a.unassignedOn,
@@ -212,5 +215,66 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
         courtDivisionCode: taskFor(generated.caseId)?.divisionCode,
       })),
     );
+  });
+
+  test('should back every generated case with DXTR rows its detail page can load', async () => {
+    const ops = await generate(context());
+    const generatedCases = docs(ops, 'cases');
+    const dxtrCases = docs(ops, 'AO_CS');
+    const dxtrDebtors = docs(ops, 'AO_PY');
+    const dxtrPetitions = docs(ops, 'AO_TX');
+
+    expect(generatedCases.length).toBeGreaterThan(0);
+    expect(dxtrCases).toHaveLength(generatedCases.length);
+    for (const generated of generatedCases) {
+      expect(dxtrCases).toContainEqual(
+        expect.objectContaining({
+          CS_CASEID: generated.dxtrId,
+          COURT_ID: generated.courtId,
+          CS_DIV: generated.courtDivisionCode,
+          GRP_DES: generated.groupDesignator,
+          CASE_ID: generated.caseNumber,
+          CS_CHAPTER: generated.chapter,
+        }),
+      );
+      expect(dxtrDebtors).toContainEqual(
+        expect.objectContaining({
+          CS_CASEID: generated.dxtrId,
+          COURT_ID: generated.courtId,
+          PY_ROLE: 'DB',
+        }),
+      );
+      expect(dxtrPetitions).toContainEqual(
+        expect.objectContaining({
+          CS_CASEID: generated.dxtrId,
+          COURT_ID: generated.courtId,
+          TX_TYPE: '1',
+          TX_CODE: '1',
+        }),
+      );
+    }
+  });
+
+  test('should write a petition record the case summary query can read', async () => {
+    const petitions = docs(await generate(context()), 'AO_TX');
+
+    expect(petitions.length).toBeGreaterThan(0);
+    for (const petition of petitions) {
+      const rec = petition.REC as string;
+      // The summary query reads debtor type from characters 34-35 and petition from 108-109.
+      expect(rec.substring(33, 35)).toBe('IC');
+      expect(rec.substring(107, 109)).toBe('VP');
+      expect(petition).not.toHaveProperty('TX_ID');
+    }
+  });
+
+  test('should use court, division and group combinations that exist in DXTR', async () => {
+    const generatedCases = docs(await generate(context()), 'cases');
+    const combinations = new Set(
+      generatedCases.map((c) => `${c.courtId}/${c.courtDivisionCode}/${c.groupDesignator}`),
+    );
+
+    // Manhattan is 0208/081/NY and Delaware is 0311/111/WL in the real data.
+    expect([...combinations].sort()).toEqual(['0208/081/NY', '0311/111/WL']);
   });
 });
