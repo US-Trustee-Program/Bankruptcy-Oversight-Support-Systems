@@ -595,6 +595,13 @@ async function getCaseAppointmentSources() {
   return api().get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
+async function patchCaseAppointmentSource(regionId: string) {
+  return api().patch<RegionCaseAppointmentSource, { source: 'DXTR' }>(
+    `/dev-tools/case-appointment-source/${regionId}`,
+    { source: 'DXTR' },
+  );
+}
+
 async function getPrivilegedIdentityUser(userId: string) {
   const path = `/dev-tools/privileged-identity/${userId}`;
   return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
@@ -806,6 +813,7 @@ export const _Api2 = {
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
   getCaseAppointmentSources,
+  patchCaseAppointmentSource,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

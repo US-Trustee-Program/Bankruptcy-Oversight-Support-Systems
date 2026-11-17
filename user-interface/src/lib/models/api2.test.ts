@@ -353,6 +353,18 @@ describe('_Api2 functions', async () => {
     expect(patchSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, trusteeInput, {});
   });
 
+  test('should call api.patch with source DXTR when calling patchCaseAppointmentSource', () => {
+    const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({
+      data: { regionId: '02', regionName: 'Region 02', source: 'DXTR' },
+    });
+    api2.default.patchCaseAppointmentSource('02');
+    expect(patchSpy).toHaveBeenCalledWith(
+      '/dev-tools/case-appointment-source/02',
+      { source: 'DXTR' },
+      {},
+    );
+  });
+
   test('should call api.patch with approve action when calling patchTrusteeVerificationOrderApproval', () => {
     const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue(undefined);
     const id = 'verification-order-id';
