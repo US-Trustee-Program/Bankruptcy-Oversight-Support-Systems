@@ -1,8 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { TrusteeTaskRegions } from './TrusteeTaskRegions';
 import Api2 from '@/lib/models/api2';
 import { RegionCaseAppointmentSource } from '@common/cams/trustee-appointments';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const mockSources: RegionCaseAppointmentSource[] = [
   { regionId: '02', regionName: 'NEW YORK', source: 'ACMS' },
@@ -58,12 +60,13 @@ describe('TrusteeTaskRegions component', () => {
     });
   });
 
-  test('should render a disabled "Change to DXTR" button for an ACMS region, with no "ACMS" label', async () => {
+  test('should render an enabled "Change to DXTR" button for an ACMS region, with no "ACMS" label', async () => {
     renderComponent();
     await waitFor(() => {
       const button = screen.getByTestId('button-change-to-dxtr-02');
       expect(button).toHaveTextContent('Change to DXTR');
-      expect(button).toBeDisabled();
+      expect(button).toBeEnabled();
+      expect(button).toHaveAccessibleName('Change Region 2 to DXTR');
     });
     expect(screen.queryByText('ACMS')).not.toBeInTheDocument();
   });
@@ -85,5 +88,130 @@ describe('TrusteeTaskRegions component', () => {
       );
     });
     expect(screen.queryByTestId('trustee-task-regions-table')).not.toBeInTheDocument();
+  });
+
+  describe('switching a region to DXTR', () => {
+    let alertHook: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
+
+    beforeEach(() => {
+      alertHook = TestingUtilities.spyOnGlobalAlert();
+    });
+
+    async function openDialogForRegion02() {
+      renderComponent();
+      await waitFor(() => {
+        expect(screen.getByTestId('button-change-to-dxtr-02')).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByTestId('button-change-to-dxtr-02'));
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-visible');
+      });
+    }
+
+    test('clicking the button opens a dialog with the exact heading, body and button copy', async () => {
+      await openDialogForRegion02();
+
+      expect(screen.getByText("This action can't be undone.")).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Change to DXTR' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+
+    test('cancelling closes the dialog, calls no API, and leaves the button enabled', async () => {
+      const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource');
+      await openDialogForRegion02();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(patchSpy).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
+      });
+      expect(screen.getByTestId('button-change-to-dxtr-02')).toBeEnabled();
+    });
+
+    test('closing with Escape calls no API', async () => {
+      const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource');
+      await openDialogForRegion02();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(patchSpy).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
+      });
+    });
+
+    test('confirming closes the dialog immediately, disables only that row, and calls the API', async () => {
+      let resolveSwitch: (value: { data: RegionCaseAppointmentSource }) => void = () => {};
+      vi.spyOn(Api2, 'patchCaseAppointmentSource').mockImplementation(
+        () => new Promise((resolve) => (resolveSwitch = resolve)),
+      );
+      await openDialogForRegion02();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
+      });
+      expect(screen.getByTestId('button-change-to-dxtr-02')).toBeDisabled();
+      // Other rows are untouched while region 02 is in flight.
+      expect(screen.getByTestId('button-change-to-dxtr-10')).toBeEnabled();
+
+      resolveSwitch({ data: { regionId: '02', regionName: 'NEW YORK', source: 'DXTR' } });
+      await waitFor(() => {
+        expect(screen.getByText('Using DXTR')).toBeInTheDocument();
+      });
+    });
+
+    test('success replaces the row with "Using DXTR", shows the alert, and moves focus there', async () => {
+      vi.spyOn(Api2, 'patchCaseAppointmentSource').mockResolvedValue({
+        data: { regionId: '02', regionName: 'NEW YORK', source: 'DXTR' },
+      });
+      await openDialogForRegion02();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+
+      await waitFor(() => {
+        expect(alertHook.success).toHaveBeenCalledWith(
+          'Region 2 will change to DXTR on the next sync.',
+        );
+      });
+      expect(screen.queryByTestId('button-change-to-dxtr-02')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('using-dxtr-02')).toHaveFocus();
+      });
+    });
+
+    test('failure shows the error alert, re-enables the button, and returns focus to it', async () => {
+      vi.spyOn(Api2, 'patchCaseAppointmentSource').mockRejectedValue(new Error('server error'));
+      await openDialogForRegion02();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+
+      await waitFor(() => {
+        expect(alertHook.error).toHaveBeenCalledWith('Unable to change to DXTR. Please try again.');
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('button-change-to-dxtr-02')).toBeEnabled();
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('button-change-to-dxtr-02')).toHaveFocus();
+      });
+    });
+
+    test('does not call fireEvent-triggered submit twice for a single click', async () => {
+      // Sanity check that confirming is wired through userEvent.click only once per click.
+      const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource').mockResolvedValue({
+        data: { regionId: '02', regionName: 'NEW YORK', source: 'DXTR' },
+      });
+      await openDialogForRegion02();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+
+      await waitFor(() => {
+        expect(patchSpy).toHaveBeenCalledTimes(1);
+      });
+      expect(patchSpy).toHaveBeenCalledWith('02');
+    });
   });
 });
