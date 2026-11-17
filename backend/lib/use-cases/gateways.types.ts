@@ -33,6 +33,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
   TrusteeChangeNotificationEvent,
+  TrusteeDataReportStartMessage,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
@@ -1061,6 +1062,7 @@ export interface ApiToDataflowsGateway {
   queueCaseReload(caseId: string): Promise<void>;
   queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void>;
   queueTrusteeChangeNotification(event: TrusteeChangeNotificationEvent): Promise<void>;
+  queueTrusteeDataReportStart(message: TrusteeDataReportStartMessage): Promise<void>;
 }
 
 export interface ObservabilityTrace {

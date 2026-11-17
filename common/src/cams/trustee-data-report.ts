@@ -39,3 +39,9 @@ export type TrusteeDataDifference = {
   camsValue?: string;
   todValue?: string;
 };
+
+/** GET /api/dev-tools/trustee-data-report: the run in progress, if any, and the latest results. */
+export type TrusteeDataReportStatus = {
+  activeRun?: TrusteeDataReportRun;
+  latestCompletedRun?: TrusteeDataReportRun;
+};
