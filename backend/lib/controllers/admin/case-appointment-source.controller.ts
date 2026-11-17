@@ -45,7 +45,11 @@ export class CaseAppointmentSourceController implements CamsController {
   ): Promise<CamsHttpResponseInit<RegionCaseAppointmentSource>> {
     const regionId = context.request.params.regionId;
     const body = context.request.body as { source?: unknown } | null | undefined;
-    const requestsDxtr = !!body && typeof body === 'object' && body.source === 'DXTR';
+    const requestsDxtr =
+      !!body &&
+      typeof body === 'object' &&
+      Object.keys(body).length === 1 &&
+      body.source === 'DXTR';
 
     if (!regionId || !requestsDxtr) {
       throw new BadRequestError(MODULE_NAME, {

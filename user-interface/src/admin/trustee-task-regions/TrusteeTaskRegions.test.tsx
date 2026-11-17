@@ -63,7 +63,7 @@ describe('TrusteeTaskRegions component', () => {
       const button = screen.getByTestId('button-change-to-dxtr-02');
       expect(button).toHaveTextContent('Change to DXTR');
       expect(button).toBeEnabled();
-      expect(button).toHaveAccessibleName('Change Region 2 to DXTR');
+      expect(button).toHaveAccessibleName('Change to DXTR for Region 2');
     });
     expect(screen.queryByText('ACMS')).not.toBeInTheDocument();
   });
@@ -111,7 +111,9 @@ describe('TrusteeTaskRegions component', () => {
       expect(document.getElementById('change-to-dxtr-confirm-modal-heading')).toHaveTextContent(
         'Change Region 2 to DXTR?',
       );
-      expect(screen.getByText("This action can't be undone.")).toBeInTheDocument();
+      expect(document.getElementById('change-to-dxtr-confirm-modal-description')).toHaveTextContent(
+        "This action can't be undone. The change takes effect on the next sync.",
+      );
       expect(screen.getByRole('button', { name: 'Change to DXTR' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });

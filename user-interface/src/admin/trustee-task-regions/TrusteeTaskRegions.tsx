@@ -115,12 +115,14 @@ export function TrusteeTaskRegions() {
                     ) : (
                       <Button
                         id={`change-to-dxtr-${source.regionId}`}
-                        aria-label={`Change Region ${formatRegionId(source.regionId)} to DXTR`}
                         uswdsStyle={UswdsButtonStyle.Default}
                         disabled={pendingRegionId === source.regionId}
                         onClick={() => openConfirmModal(source.regionId)}
                       >
-                        Change to DXTR
+                        Change to DXTR{' '}
+                        <span className="usa-sr-only">
+                          for Region {formatRegionId(source.regionId)}
+                        </span>
                       </Button>
                     )}
                   </CamsTableCell>

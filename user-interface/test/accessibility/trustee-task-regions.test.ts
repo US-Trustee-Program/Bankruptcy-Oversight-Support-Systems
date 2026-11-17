@@ -42,7 +42,7 @@ test.describe('Trustee Task Regions admin page', () => {
     page,
   }) => {
     await page.locator('#change-to-dxtr-02').click();
-    await page.getByRole('button', { name: 'Change to DXTR' }).click();
+    await page.getByRole('button', { name: 'Change to DXTR', exact: true }).click();
     // The row's "Using DXTR" text takes focus and a global success alert appears -- the riskiest
     // moment for an a11y regression (programmatic focus onto a non-interactive element, a live
     // alert), so it gets its own scan rather than relying on the pre-confirmation scans above.

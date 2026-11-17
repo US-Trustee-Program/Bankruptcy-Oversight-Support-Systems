@@ -4,7 +4,6 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 
 export type ChangeToDxtrConfirmModalRef = {
   show: (regionId: string, regionLabel: string) => void;
-  hide: () => void;
 };
 
 type ChangeToDxtrConfirmModalProps = {
@@ -25,9 +24,6 @@ export const ChangeToDxtrConfirmModal = forwardRef<
       setRegionId(id);
       setRegionLabel(label);
       modalRef.current?.show({});
-    },
-    hide() {
-      modalRef.current?.hide();
     },
   }));
 
@@ -53,7 +49,7 @@ export const ChangeToDxtrConfirmModal = forwardRef<
       modalId={modalId}
       heading={`Change Region ${regionLabel} to DXTR?`}
       actionButtonGroup={actionButtonGroup}
-      content="This action can't be undone."
+      content="This action can't be undone. The change takes effect on the next sync."
     />
   );
 });

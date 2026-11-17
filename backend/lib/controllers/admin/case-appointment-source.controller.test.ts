@@ -116,6 +116,11 @@ describe('CaseAppointmentSourceController', () => {
       },
       { description: 'body is not an object', params: { regionId: '02' }, body: 'DXTR' },
       { description: 'body is null', params: { regionId: '02' }, body: null },
+      {
+        description: 'body has keys besides source',
+        params: { regionId: '02' },
+        body: { source: 'DXTR', extra: true },
+      },
     ])(
       'should throw BadRequestError and call the use case zero times when $description',
       async ({ params, body }) => {
