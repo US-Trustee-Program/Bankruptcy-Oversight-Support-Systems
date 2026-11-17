@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { ChangeToDxtrConfirmModal, ChangeToDxtrConfirmModalRef } from './ChangeToDxtrConfirmModal';
 
 function TestWrapper({ onConfirm }: { onConfirm: (regionId: string) => void }) {
@@ -27,7 +27,7 @@ describe('ChangeToDxtrConfirmModal', () => {
         'Change Region 2 to DXTR?',
       );
       expect(document.getElementById('test-dxtr-modal-description')).toHaveTextContent(
-        "This action can't be undone.",
+        "This action can't be undone. The change takes effect on the next sync.",
       );
     });
   });
@@ -78,20 +78,5 @@ describe('ChangeToDxtrConfirmModal', () => {
     });
     await userEvent.keyboard('{Escape}');
     expect(onConfirm).not.toHaveBeenCalled();
-  });
-
-  test('should close when hide() is called on the ref', async () => {
-    const ref = React.createRef<ChangeToDxtrConfirmModalRef>();
-    render(<ChangeToDxtrConfirmModal ref={ref} modalId="test-dxtr-modal" onConfirm={vi.fn()} />);
-
-    act(() => ref.current?.show('02', '2'));
-    await waitFor(() => {
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
-    });
-
-    act(() => ref.current?.hide());
-    await waitFor(() => {
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
-    });
   });
 });

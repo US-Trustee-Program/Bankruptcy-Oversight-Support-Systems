@@ -37,13 +37,13 @@ Feature: Switch a region's trustee appointments to DXTR
     And region "02" has no source record
     When I open Administration > Trustee Task Regions
     Then region "02" shows an enabled "Change to DXTR" button
-    And the button's accessible name is "Change Region 2 to DXTR"
+    And the button's accessible name is "Change to DXTR for Region 2"
 
   Scenario: Confirming the switch
     Given I am logged in as a SuperUser
     And region "02" has no source record
-    When I click "Change Region 2 to DXTR"
-    Then a dialog opens with heading "Change Region 2 to DXTR?" and body "This action can't be undone."
+    When I click "Change to DXTR for Region 2"
+    Then a dialog opens with heading "Change Region 2 to DXTR?" and body "This action can't be undone. The change takes effect on the next sync."
     And the dialog has buttons "Change to DXTR" and "Cancel"
     When I click "Change to DXTR" in the dialog
     Then the dialog closes with no saving state shown
