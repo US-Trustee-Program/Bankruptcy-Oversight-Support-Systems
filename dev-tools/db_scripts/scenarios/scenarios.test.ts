@@ -884,7 +884,7 @@ describe('access-management scenario', () => {
       performedAt: assignment.assignedAt,
       previousState: null,
       newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
-      reason: 'Seeded Super User for local/dev testing',
+      replacedByAssignmentId: null,
     });
   });
 
