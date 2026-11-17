@@ -76,37 +76,6 @@ ignore:
           nor server actions, so exploitability remains low in the
           interim.
         expires: 2026-10-14T00:00:00.000Z
-  SNYK-JS-AZUREMSALNODE-22409043:
-    - '*':
-        reason: >-
-          Insufficiently Protected Credentials (CVE-2026-108470) in
-          @azure/msal-node@6.0.0, a new finding distinct from the
-          already-ignored SNYK-JS-AZUREMSALNODE-21689163 (CVE-2026-109461)
-          above — that one is the authorization-code/acquireTokenByCode
-          origin-validation bug fixed in 7.1.0; this one is a separate
-          credential-protection issue Snyk first flagged 2026-11-11,
-          affecting all @azure/msal-node versions before 7.0.1. Snyk's CVSS
-          vector marks user interaction as required (partial), consistent
-          with an interactive/browser auth-code flow. Not reachable in
-          CAMS: every @azure/identity call site — the explicit
-          DefaultAzureCredential in
-          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
-          and the azure-active-directory-default auth type used by
-          mssql/tedious across backend, dev-tools, and test/e2e — resolves
-          to DefaultAzureCredential's non-interactive client-credential/
-          managed-identity token acquisition, never an interactive or
-          authorization-code flow requiring user interaction. Fix is
-          @azure/identity 4.14.1 (published 2026-10-29, bumps msal-node to
-          ^7.1.0), which Snyk's own "Issues to fix by upgrading" output
-          confirms, but it's blocked by CAMS's 14-day minimum npm
-          release-age policy (.npmrc min-release-age=14) until
-          2026-11-12. Bump the dev-tools @azure/identity dependency to
-          4.14.1 (and pin @azure/msal-node to an embargo-cleared 7.1.x via
-          override, since ^7.1.0 would otherwise resolve to the still-
-          embargoed 7.2.1) and remove this ignore, plus
-          SNYK-JS-AZUREMSALNODE-21689163 above (also fixed by the same
-          bump), once the embargo lifts.
-        expires: 2026-11-13T00:00:00.000Z
   SNYK-JS-NODEFORGE-22409009:
     - '*':
         reason: >-
@@ -179,49 +148,3 @@ ignore:
           Severity (CVE-2026-125336). Fixed in 1.4.3; also embargoed
           until 2026-11-18 (CAMS .npmrc min-release-age=14).
         expires: 2026-11-19T00:00:00.000Z
-  SNYK-JS-FASTXMLPARSER-22409021:
-    - '*':
-        reason: >-
-          Inefficient Algorithmic Complexity (CVE pending, Snyk ID
-          SNYK-JS-FASTXMLPARSER-22409021) in fast-xml-parser@5.7.3's
-          readStopNodeData(): a crafted stop-node body with many
-          unclosed '<a' fragments causes quadratic rescanning that can
-          block the event loop. Only applications that set the
-          non-default `stopNodes` parser option are exploitable. Not
-          reachable in CAMS: fast-xml-parser is not a direct dependency —
-          its only consumers are @azure/core-xml (via
-          @azure/storage-blob@12.34.0 and @azure/storage-queue@12.32.0),
-          which builds its XMLParser/XMLBuilder options internally
-          (checked node_modules/@azure/core-xml's parseOptionsFor
-          helpers) and never sets `stopNodes`. Fixed in 5.12.0 (published
-          2026-11-03), blocked by CAMS's 14-day minimum npm release-age
-          policy (.npmrc min-release-age=14) until 2026-11-17. No direct
-          override is in place today since fast-xml-parser isn't pinned
-          elsewhere; add one bumping to 5.12.0 and remove this ignore once
-          the embargo lifts.
-        expires: 2026-11-18T00:00:00.000Z
-  SNYK-JS-AZUREMSALNODE-21689163:
-    - '*':
-        reason: >-
-          Origin Validation Error (CVE-2026-109461) in
-          @azure/msal-node@6.0.0, pulled in transitively by
-          @azure/identity@4.13.3 (pinned to msal-node ^6.0.0). Flagged
-          across backend (node), dev-tools, and test/e2e (via mssql >
-          tedious > @azure/identity). No fixed version available from
-          upstream: @azure/identity's latest release (4.14.0) still pins
-          msal-node ^6.0.0, and the fix (7.1.0) is a major version bump
-          npm's ^6.0.0 range won't resolve to; no @azure/identity release
-          depends on msal-node >=7.1.0 yet. The flaw is in
-          ConfidentialClientApplication.acquireTokenByCode, which fails
-          to sanitize the caller-supplied authCodePayload during an
-          authorization-code token exchange. Not reachable in CAMS: every
-          @azure/identity usage — the explicit DefaultAzureCredential in
-          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
-          and the azure-active-directory-default auth type used by
-          mssql/tedious across backend, dev-tools, and test/e2e (see
-          application-configuration.ts, sql-config.ts,
-          seed-sqlserver.ts) — resolves to DefaultAzureCredential's
-          client-credential/managed-identity token acquisition, never
-          the authorization-code flow. Re-check for an @azure/identity
-          release that bumps msal-node to >=7.1.0.
-        expires: 2026-11-23T00:00:00.000Z
