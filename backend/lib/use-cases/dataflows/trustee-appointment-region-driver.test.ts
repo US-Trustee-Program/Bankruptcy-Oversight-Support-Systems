@@ -391,7 +391,9 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
   });
 
-  test('escapes before reading a date when the invocation budget is exhausted, returning a continuation', async () => {
+  // The latest-date read runs with a 5-minute request timeout, so it gets the same budget check as
+  // a page: started late, it could outlive the function host instead of returning a continuation.
+  test('escapes before the latest-date read when the invocation budget is exhausted, returning a continuation', async () => {
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
     getCmmapAppointmentsRaw.mockResolvedValue([]);
 
@@ -405,11 +407,32 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: undefined },
+      resumeFrom: undefined,
       cause: 'invocation-budget',
     });
     expect(result.processedRegions).toEqual([]);
+    expect(getLatestCmmapChangeDateForRegion).not.toHaveBeenCalled();
     expect(getCmmapAppointmentsRaw).not.toHaveBeenCalled();
+  });
+
+  test('a budget escape before the latest-date read keeps the incoming resume point', async () => {
+    const resumeFrom = {
+      regionId: '02',
+      date: '2026-07-02',
+      lastId: '1001',
+      source: 'ACMS' as const,
+    };
+
+    const result = await RegionDriver.runRegionDriver(context, {
+      regions: ['02'],
+      runDate: '2026-07-05',
+      resumeFrom,
+      startedAt: Date.now() - 1_000_000,
+      safeThresholdMs: 1,
+    });
+
+    expect(result.continuation?.resumeFrom).toEqual(resumeFrom);
+    expect(getLatestCmmapChangeDateForRegion).not.toHaveBeenCalled();
   });
 
   test('does not start a page that could run past the invocation budget, even with time left', async () => {
@@ -452,7 +475,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '03', date: CUTOVER_DATE, lastId: undefined },
+      resumeFrom: undefined,
       cause: 'invocation-budget',
     });
     expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
@@ -484,7 +507,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001' },
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001', source: 'ACMS' },
       cause: 'invocation-budget',
     });
     expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
@@ -563,7 +586,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: undefined },
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: undefined, source: 'ACMS' },
       cause: 'transient-error',
     });
     // The date is re-read from its start, which regenerates its results -- returning these too
@@ -614,7 +637,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '2' },
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '2', source: 'ACMS' },
       cause: 'transient-error',
     });
   });
@@ -643,7 +666,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001' },
+      resumeFrom: { regionId: '02', date: CUTOVER_DATE, lastId: '1001', source: 'ACMS' },
       cause: 'transient-error',
     });
     expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
@@ -673,7 +696,7 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(result.continuation).toEqual({
       regions: ['02', '03'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: undefined },
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: undefined, source: 'ACMS' },
       cause: 'transient-error',
     });
   });
@@ -731,7 +754,7 @@ describe('RegionDriver.runRegionDriver', () => {
     await RegionDriver.runRegionDriver(context, {
       regions: ['02'],
       runDate: '2026-07-05',
-      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001' },
+      resumeFrom: { regionId: '02', date: '2026-07-02', lastId: '1001', source: 'ACMS' },
     });
 
     // Resumes at the given date/lastId -- NOT bookmark+1 (which would also be 07-02 here
@@ -953,6 +976,48 @@ describe('RegionDriver.runRegionDriver', () => {
       );
     });
 
+    // A region can be switched while a continuation is queued. An ACMS lastId (a CMMAP id) means
+    // nothing as a DXTR TX_ID, so a cursor from another source restarts the date from the top.
+    test.each([
+      { name: 'an ACMS cursor', resumeSource: { source: 'ACMS' as const } },
+      { name: 'a cursor with no recorded source', resumeSource: {} },
+    ])(
+      'a continuation carrying $name re-reads the date from the start once the region reads from DXTR',
+      async ({ resumeSource }) => {
+        mockRegionStateRepo.read.mockResolvedValue(
+          stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+        );
+        getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+
+        await RegionDriver.runRegionDriver(context, {
+          regions: ['01'],
+          runDate: '2026-09-20',
+          resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '987654', ...resumeSource },
+        });
+
+        expect(getTrusteeAppointmentEventsForRegionDate.mock.calls[0][1]).toEqual(
+          expect.objectContaining({ txDate: '2026-09-15', afterTxId: '0' }),
+        );
+      },
+    );
+
+    test('a continuation carrying a DXTR cursor resumes DXTR at that cursor', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+
+      await RegionDriver.runRegionDriver(context, {
+        regions: ['01'],
+        runDate: '2026-09-20',
+        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '5001', source: 'DXTR' },
+      });
+
+      expect(getTrusteeAppointmentEventsForRegionDate.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ txDate: '2026-09-15', afterTxId: '5001' }),
+      );
+    });
+
     test('a DXTR timeout on a later page stops with a transient-error continuation at that page cursor', async () => {
       mockRegionStateRepo.read.mockResolvedValue(
         stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
@@ -972,7 +1037,7 @@ describe('RegionDriver.runRegionDriver', () => {
       expect(result.continuation).toEqual({
         regions: ['01'],
         runDate: '2026-09-20',
-        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '5001' },
+        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '5001', source: 'DXTR' },
         cause: 'transient-error',
       });
       expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();

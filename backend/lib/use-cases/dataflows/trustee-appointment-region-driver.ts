@@ -113,6 +113,8 @@ export type RegionDriverResumePoint = {
   regionId: string;
   date: string;
   lastId?: string;
+  /** The source lastId belongs to. A cursor from another source (or none recorded) is not reused. */
+  source?: TrusteeAppointmentSource['name'];
 };
 
 type RegionDriverRecordResults = {
@@ -227,6 +229,11 @@ async function runRegionDriver(
       const resumeHere = options.resumeFrom?.regionId === regionId ? options.resumeFrom : undefined;
       resumeAt = resumeHere;
 
+      // The latest-date read can take as long as a page, so it needs the same budget check.
+      if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {
+        return stopAt(i, resumeHere, 'invocation-budget');
+      }
+
       const latestChangeDate = await source.getLatestChangeDate(context, regionId);
       if (!latestChangeDate) {
         // No data at all for this region yet -- nothing to process, nothing to bookmark.
@@ -244,11 +251,13 @@ async function runRegionDriver(
         : bookmark
           ? DateHelper.addDays(bookmark, 1)
           : CUTOVER_DATE;
-      let lastId = resumeHere?.lastId;
+      // A switch to DXTR can land while a continuation is queued; another source's cursor would
+      // skip rows, so restart the date instead (re-reading is safe: writes are idempotent).
+      let lastId = resumeHere?.source === source.name ? resumeHere.lastId : undefined;
 
       while (currentDate <= effectiveEnd) {
         while (true) {
-          resumeAt = { regionId, date: currentDate, lastId };
+          resumeAt = { regionId, date: currentDate, lastId, source: source.name };
           if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {
             return stopAt(i, resumeAt, 'invocation-budget');
           }
@@ -277,7 +286,7 @@ async function runRegionDriver(
         // re-reading regenerates them (writes are idempotent). A hand-off that failed part-way
         // already sent some messages, so the re-read sends those again: a duplicate DLQ entry or
         // retry page, which is harmless because processing an event twice writes the same rows.
-        resumeAt = { regionId, date: currentDate, lastId: undefined };
+        resumeAt = { regionId, date: currentDate, lastId: undefined, source: source.name };
         const finishedDateResults = dateResults;
         dateResults = { dlqMessages: [], retryableEvents: [] };
         await handOffDateResults(finishedDateResults);
@@ -287,6 +296,7 @@ async function runRegionDriver(
             regionId,
             date: DateHelper.addDays(currentDate, 1),
             lastId: undefined,
+            source: source.name,
           };
           await deps.regionStateRepo.setField(
             REGION_STATE_DOCUMENT_TYPE,

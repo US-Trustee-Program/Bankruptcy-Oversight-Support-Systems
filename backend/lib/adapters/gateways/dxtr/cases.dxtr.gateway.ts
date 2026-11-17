@@ -1450,6 +1450,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
    * One page of a region's trustee appointment (TX_TYPE='A'/TX_CODE='TR') and petition
    * (TX_TYPE='1'/TX_CODE='1') transactions whose TX_DATE falls on txDate, in TX_ID order after
    * afterTxId. Both kinds share one TX_ID sequence, so a single id pages them together.
+   * A transaction yields one row per trustee party, so WITH TIES extends the page past limit to
+   * finish the last TX_ID; otherwise the next page's TX_ID > afterTxId would skip its other rows.
    */
   async getTrusteeAppointmentEventsForRegionDate(
     context: ApplicationContext,
@@ -1462,7 +1464,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       { name: 'limit', type: mssql.Int, value: request.limit },
     ];
     const query = `
-      SELECT TOP (@limit)
+      SELECT TOP (@limit) WITH TIES
         CONVERT(VARCHAR(20), TX.TX_ID) AS txId,
         ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
         CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_APT_DATE_OFFSET}, 6) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_APT_DATE_OFFSET}, 6) END AS aptDate,
