@@ -19,6 +19,45 @@ import { ACTIVE_STATUS_CODES } from './ats.constants';
 
 const MODULE_NAME = 'ATS-GATEWAY';
 
+const TRUSTEE_COLUMNS = `
+        T.ID,
+        T.LAST_NAME,
+        T.FIRST_NAME,
+        T.MIDDLE,
+        T.COMPANY,
+        T.STREET,
+        T.STREET1,
+        T.CITY,
+        T.STATE,
+        T.ZIP,
+        T.ZIP_PLUS,
+        T.DISP_ON_WEB,
+        T.DISP_ON_WEB_A2,
+        T.STREET_A2,
+        T.STREET1_A2,
+        T.CITY_A2,
+        T.STATE_A2,
+        T.ZIP_A2,
+        T.ZIP_PLUS_A2,
+        T.TELEPHONE,
+        T.EMAIL_ADDRESS`;
+
+// Keeps each ID-list query well under SQL Server's 2,100-parameter limit.
+const ID_BATCH_SIZE = 500;
+
+function idParameters(ids: number[]): { placeholders: string; input: DbTableFieldSpec[] } {
+  const input = ids.map((value, index) => ({ name: `id${index}`, type: mssql.Int, value }));
+  return { placeholders: input.map(({ name }) => `@${name}`).join(', '), input };
+}
+
+function batches<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    result.push(items.slice(start, start + size));
+  }
+  return result;
+}
+
 /**
  * Gateway for accessing the ATS (Attorney Trustee System) database.
  * Implements queries for trustee demographics and appointments.
@@ -90,28 +129,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       )`;
 
     let query = `
-      SELECT
-        T.ID,
-        T.LAST_NAME,
-        T.FIRST_NAME,
-        T.MIDDLE,
-        T.COMPANY,
-        T.STREET,
-        T.STREET1,
-        T.CITY,
-        T.STATE,
-        T.ZIP,
-        T.ZIP_PLUS,
-        T.DISP_ON_WEB,
-        T.DISP_ON_WEB_A2,
-        T.STREET_A2,
-        T.STREET1_A2,
-        T.CITY_A2,
-        T.STATE_A2,
-        T.ZIP_A2,
-        T.ZIP_PLUS_A2,
-        T.TELEPHONE,
-        T.EMAIL_ADDRESS
+      SELECT ${TRUSTEE_COLUMNS}
       FROM TRUSTEES T
       ${activeFilter}`;
 
@@ -151,6 +169,54 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         error: error.message,
       });
       throw error;
+    }
+  }
+
+  async getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]> {
+    const trustees: AtsTrusteeRecord[] = [];
+    try {
+      for (const batch of batches(ids, ID_BATCH_SIZE)) {
+        const { placeholders, input } = idParameters(batch);
+        const query = `
+          SELECT ${TRUSTEE_COLUMNS}
+          FROM TRUSTEES T
+          WHERE T.ID IN (${placeholders})`;
+        const { results } = await this.executeQuery<AtsTrusteeRecord>(context, query, input);
+        trustees.push(...(results as mssql.IResult<AtsTrusteeRecord>).recordset);
+      }
+      return trustees;
+    } catch (originalError) {
+      throw getCamsError(
+        originalError as Error,
+        MODULE_NAME,
+        'Failed to retrieve trustees by ID from ATS',
+      );
+    }
+  }
+
+  async getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]> {
+    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
+    const activeIds: number[] = [];
+    try {
+      for (const batch of batches(ids, ID_BATCH_SIZE)) {
+        const { placeholders, input } = idParameters(batch);
+        const query = `
+          SELECT DISTINCT CD.TRU_ID
+          FROM CHAPTER_DETAILS CD
+          WHERE CD.TRU_ID IN (${placeholders})
+            AND CD.STATUS IN (${activeCodesInList})`;
+        const { results } = await this.executeQuery<{ TRU_ID: number }>(context, query, input);
+        activeIds.push(
+          ...(results as mssql.IResult<{ TRU_ID: number }>).recordset.map((row) => row.TRU_ID),
+        );
+      }
+      return activeIds;
+    } catch (originalError) {
+      throw getCamsError(
+        originalError as Error,
+        MODULE_NAME,
+        'Failed to retrieve active trustee IDs from ATS',
+      );
     }
   }
 

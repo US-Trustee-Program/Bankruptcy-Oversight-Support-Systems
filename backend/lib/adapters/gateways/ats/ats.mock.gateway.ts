@@ -26,6 +26,25 @@ const MOCK_ACTIVE_TRUSTEE_IDS = new Set(MOCK_TRUSTEE_IDS.filter((id) => id !== 6
  */
 const MOCK_TOTAL_TRUSTEES = MOCK_TRUSTEE_IDS.length;
 
+/** The mock TOD trustee record for an ID in the mock pool. */
+export function mockAtsTrusteeRecord(id: number): AtsTrusteeRecord {
+  return {
+    ID: id,
+    LAST_NAME: `LastName${id}`,
+    FIRST_NAME: `FirstName${id}`,
+    MIDDLE: `M${id}`,
+    COMPANY: id % 2 === 0 ? `Company ${id}` : undefined,
+    STREET: `${id * 100} Main Street`,
+    STREET1: id % 3 === 0 ? `Suite ${id}` : undefined,
+    STREET_A2: undefined,
+    CITY: 'New York',
+    STATE: 'NY',
+    ZIP: `1000${id}`,
+    TELEPHONE: `555-000${id}`,
+    EMAIL_ADDRESS: `trustee${id}@example.com`,
+  };
+}
+
 /**
  * Mock implementation of ATS gateway for testing.
  * Returns sample trustee and appointment data.
@@ -60,21 +79,7 @@ export class MockAtsGateway implements AtsGateway {
 
     for (let i = startId; i <= MOCK_TOTAL_TRUSTEES && mockTrustees.length < pageSize; i++) {
       if (!importAll && !MOCK_ACTIVE_TRUSTEE_IDS.has(i)) continue;
-      mockTrustees.push({
-        ID: i,
-        LAST_NAME: `LastName${i}`,
-        FIRST_NAME: `FirstName${i}`,
-        MIDDLE: `M${i}`,
-        COMPANY: i % 2 === 0 ? `Company ${i}` : undefined,
-        STREET: `${i * 100} Main Street`,
-        STREET1: i % 3 === 0 ? `Suite ${i}` : undefined,
-        STREET_A2: undefined,
-        CITY: 'New York',
-        STATE: 'NY',
-        ZIP: `1000${i}`,
-        TELEPHONE: `555-000${i}`,
-        EMAIL_ADDRESS: `trustee${i}@example.com`,
-      });
+      mockTrustees.push(mockAtsTrusteeRecord(i));
     }
 
     return mockTrustees;
@@ -373,6 +378,14 @@ export class MockAtsGateway implements AtsGateway {
         skipped: 0,
       },
     };
+  }
+
+  async getTrusteesByIds(_context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]> {
+    return ids.filter((id) => MOCK_TRUSTEE_IDS.includes(id)).map(mockAtsTrusteeRecord);
+  }
+
+  async getActiveTrusteeIds(_context: ApplicationContext, ids: number[]): Promise<number[]> {
+    return ids.filter((id) => MOCK_ACTIVE_TRUSTEE_IDS.has(id));
   }
 
   async getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number> {

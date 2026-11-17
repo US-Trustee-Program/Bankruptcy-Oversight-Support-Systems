@@ -16,6 +16,7 @@ import {
   EmailNotificationArchiveRepository,
   ListsRepository,
   TrusteeDataReportRepository,
+  TrusteeDataReportRunState,
   NotificationRoutingRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
@@ -37,6 +38,9 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
+import { NotFoundError } from '../../common-errors/not-found-error';
+
+const TRUSTEE_DATA_REPORT_LOCK = 'TRUSTEE_DATA_REPORT_RUN';
 import {
   AppointmentStatus,
   Trustee,
@@ -46,6 +50,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
+import { MOCK_TRUSTEES_LINKED_TO_MOCK_TOD } from './mock-trustee-data-report.fixtures';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
@@ -98,8 +103,11 @@ export class MockMongoRepository
   private trusteeVariations: TrusteeVariation[] = [];
   private notificationRouting = new Map<string, NotificationRoutingRecord>();
   private emailNotificationArchive = new Map<string, EmailNotificationArchiveRecord>();
-  private trusteeDataReportRuns = new Map<string, TrusteeDataReportRun>();
-  private trusteeDataReportDifferences: (TrusteeDataDifference & { runId: string })[] = [];
+  // Static: the factory makes a new mock per call, and a local (dbMock) report run spans many
+  // queue messages, so its runs, rows and lock must outlive any one instance.
+  private static trusteeDataReportRuns = new Map<string, TrusteeDataReportRun>();
+  private static trusteeDataReportDifferences: (TrusteeDataDifference & { runId: string })[] = [];
+  private static trusteeDataReportLock: TrusteeDataReportRunState | null = null;
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -283,7 +291,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  upsert(..._ignore): Promise<any | void> {
+  upsert(...args): Promise<any | void> {
+    if (args[0]?.documentType === TRUSTEE_DATA_REPORT_LOCK) {
+      MockMongoRepository.trusteeDataReportLock = args[0];
+      return Promise.resolve(args[0]);
+    }
     throw new Error('Method not implemented.');
   }
 
@@ -311,7 +323,13 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  read(..._ignore): Promise<any> {
+  read(...args): Promise<any> {
+    if (args[0] === TRUSTEE_DATA_REPORT_LOCK) {
+      const lock = MockMongoRepository.trusteeDataReportLock;
+      return lock
+        ? Promise.resolve(lock)
+        : Promise.reject(new NotFoundError('MOCK-MONGO-REPOSITORY'));
+    }
     throw new Error('Method not implemented.');
   }
 
@@ -319,7 +337,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  delete(..._ignore): Promise<void> {
+  delete(...args): Promise<void> {
+    if (args[0] === TRUSTEE_DATA_REPORT_LOCK) {
+      MockMongoRepository.trusteeDataReportLock = null;
+      return Promise.resolve();
+    }
     throw new Error('Method not implemented.');
   }
 
@@ -481,7 +503,7 @@ export class MockMongoRepository
   }
 
   listTrustees(): Promise<any[]> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve(MOCK_TRUSTEES_LINKED_TO_MOCK_TOD);
   }
 
   findTrusteesByName(_name: string): Promise<any[]> {
@@ -663,8 +685,12 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  findTrusteesByLegacyTruIds(_ignore: string[]): Promise<Trustee[]> {
-    return Promise.resolve([]);
+  findTrusteesByLegacyTruIds(truIds: string[]): Promise<Trustee[]> {
+    return Promise.resolve(
+      MOCK_TRUSTEES_LINKED_TO_MOCK_TOD.filter((trustee) =>
+        (trustee.legacy?.truIds ?? []).some((id) => truIds.includes(id)),
+      ),
+    );
   }
 
   findTrusteeByNameAndState(..._ignore): Promise<Trustee | null> {
@@ -922,29 +948,30 @@ export class MockMongoRepository
 
   // ── TrusteeDataReportRepository ───────────────────────────────────────────
   async upsertRun(run: TrusteeDataReportRun): Promise<void> {
-    this.trusteeDataReportRuns.set(run.runId, run);
+    MockMongoRepository.trusteeDataReportRuns.set(run.runId, run);
   }
 
   async readRun(runId: string): Promise<TrusteeDataReportRun | null> {
-    return this.trusteeDataReportRuns.get(runId) ?? null;
+    return MockMongoRepository.trusteeDataReportRuns.get(runId) ?? null;
   }
 
   async readLatestCompletedRun(): Promise<TrusteeDataReportRun | null> {
-    const completed = [...this.trusteeDataReportRuns.values()]
+    const completed = [...MockMongoRepository.trusteeDataReportRuns.values()]
       .filter((run) => run.status === 'completed')
       .sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
     return completed[0] ?? null;
   }
 
   async insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void> {
-    this.trusteeDataReportDifferences.push(...differences.map((d) => ({ ...d, runId })));
+    MockMongoRepository.trusteeDataReportDifferences.push(
+      ...differences.map((d) => ({ ...d, runId })),
+    );
   }
 
   async deleteRun(runId: string): Promise<void> {
-    this.trusteeDataReportRuns.delete(runId);
-    this.trusteeDataReportDifferences = this.trusteeDataReportDifferences.filter(
-      (d) => d.runId !== runId,
-    );
+    MockMongoRepository.trusteeDataReportRuns.delete(runId);
+    MockMongoRepository.trusteeDataReportDifferences =
+      MockMongoRepository.trusteeDataReportDifferences.filter((d) => d.runId !== runId);
   }
 
   // Mock implementation for replaceOneInTrusteePartition

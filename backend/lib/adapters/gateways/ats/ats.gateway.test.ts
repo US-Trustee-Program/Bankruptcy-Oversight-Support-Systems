@@ -43,6 +43,16 @@ describe('ATS Gateway', () => {
       expect(emptyPage).toHaveLength(0);
     });
 
+    test('should return the mock trustees that exist for a list of IDs', async () => {
+      const result = await gateway.getTrusteesByIds(context, [2, 99, 5]);
+      expect(result.map((record) => record.ID)).toEqual([2, 5]);
+      expect(result[0]).toEqual((await gateway.getTrusteesPage(context, 1, 1, true))[0]);
+    });
+
+    test('should return only active mock trustee IDs', async () => {
+      expect(await gateway.getActiveTrusteeIds(context, [5, 6, 99])).toEqual([5]);
+    });
+
     test('should return trustee appointments', async () => {
       const result = await gateway.getTrusteeAppointments(context, 1);
       expect(result.cleanAppointments.length).toBeGreaterThan(0);
@@ -126,6 +136,69 @@ describe('ATS Gateway', () => {
       // Mock the executeQuery method
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockExecuteQuery = vi.spyOn(gateway as any, 'executeQuery');
+    });
+
+    describe('getTrusteesByIds', () => {
+      test('should select trustees whose ID is in the list, one parameter per ID', async () => {
+        const records = [{ ID: 7 }, { ID: 9 }];
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: records } });
+
+        const result = await gateway.getTrusteesByIds(context, [7, 9]);
+
+        expect(result).toEqual(records);
+        const [, query, input] = mockExecuteQuery.mock.calls[0];
+        expect(query).toContain('FROM TRUSTEES T');
+        expect(query).toContain('T.ID IN (@id0, @id1)');
+        expect(input).toEqual([
+          expect.objectContaining({ name: 'id0', value: 7 }),
+          expect.objectContaining({ name: 'id1', value: 9 }),
+        ]);
+      });
+
+      test('should query in batches of 500 IDs', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+        const ids = Array.from({ length: 1200 }, (_, i) => i + 1);
+
+        await gateway.getTrusteesByIds(context, ids);
+
+        expect(mockExecuteQuery.mock.calls.map(([, , input]) => input.length)).toEqual([
+          500, 500, 200,
+        ]);
+      });
+
+      test('should not query when the list is empty', async () => {
+        expect(await gateway.getTrusteesByIds(context, [])).toEqual([]);
+        expect(mockExecuteQuery).not.toHaveBeenCalled();
+      });
+
+      test('should wrap query errors as CamsError', async () => {
+        mockExecuteQuery.mockRejectedValue(new Error('boom'));
+
+        await expect(gateway.getTrusteesByIds(context, [1])).rejects.toBeInstanceOf(CamsError);
+      });
+    });
+
+    describe('getActiveTrusteeIds', () => {
+      test('should return the IDs that have an active appointment status', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 3 }] } });
+
+        expect(await gateway.getActiveTrusteeIds(context, [3, 4])).toEqual([3]);
+        const [, query] = mockExecuteQuery.mock.calls[0];
+        expect(query).toContain('FROM CHAPTER_DETAILS CD');
+        expect(query).toContain('CD.TRU_ID IN (@id0, @id1)');
+        expect(query).toMatch(/CD\.STATUS IN \('[^)]+'\)/);
+      });
+
+      test('should not query when the list is empty', async () => {
+        expect(await gateway.getActiveTrusteeIds(context, [])).toEqual([]);
+        expect(mockExecuteQuery).not.toHaveBeenCalled();
+      });
+
+      test('should wrap query errors as CamsError', async () => {
+        mockExecuteQuery.mockRejectedValue(new Error('boom'));
+
+        await expect(gateway.getActiveTrusteeIds(context, [1])).rejects.toBeInstanceOf(CamsError);
+      });
     });
 
     test('should build correct query for first page of trustees', async () => {

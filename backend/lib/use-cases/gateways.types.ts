@@ -433,6 +433,10 @@ export interface AtsGateway {
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
+  /** Read-only: the TOD trustee records that exist among the given IDs. */
+  getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;
+  /** Read-only: the given TOD trustee IDs that have at least one active appointment status. */
+  getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,
@@ -851,7 +855,8 @@ export type RuntimeStateDocumentType =
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
   | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE'
-  | 'TRUSTEE_APPOINTMENT_SYNC_RUN';
+  | 'TRUSTEE_APPOINTMENT_SYNC_RUN'
+  | 'TRUSTEE_DATA_REPORT_RUN';
 
 export type RuntimeState = {
   id?: string;
@@ -933,6 +938,13 @@ export type TrusteeAppointmentSyncRunState = RuntimeState & {
   startedAt: string;
   /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
   lanesRemaining: number;
+};
+
+/** Lock held by the trustee data report run in progress; only one report runs at a time. */
+export type TrusteeDataReportRunState = RuntimeState & {
+  documentType: 'TRUSTEE_DATA_REPORT_RUN';
+  runId: string;
+  startedAt: string;
 };
 
 /**
