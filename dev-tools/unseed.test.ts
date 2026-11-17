@@ -1,5 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { withThrottleRetry, deleteInChunks, ThrottleRetryableCollection } from './unseed.js';
+import {
+  withThrottleRetry,
+  deleteInChunks,
+  ThrottleRetryableCollection,
+  cosmosUnseedFilter,
+} from './unseed.js';
 
 function throttleError(overrides: Record<string, unknown> = {}): Error {
   return Object.assign(new Error('Batch write error.'), { code: 16500, ...overrides });
@@ -203,5 +208,31 @@ describe('deleteInChunks', () => {
     await expect(promise).resolves.toBe(1);
     expect(collection.find).toHaveBeenCalledTimes(3);
     expect(collection.deleteMany).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('cosmosUnseedFilter', () => {
+  const seededTrusteeCondition = { trusteeId: { $regex: '^seed-trustee-match-' } };
+
+  test('matches seed ids and seed-range case ids in every collection', () => {
+    expect(cosmosUnseedFilter('cases').$or).toEqual([
+      { id: { $regex: '^seed-' } },
+      { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } },
+    ]);
+  });
+
+  test.each([
+    'case-trustee-appointments',
+    'trustee-case-appointments',
+    'trustee-appointment-verification',
+  ])(
+    'also matches %s documents the app wrote for a seeded trustee-match candidate',
+    (collectionName) => {
+      expect(cosmosUnseedFilter(collectionName).$or).toContainEqual(seededTrusteeCondition);
+    },
+  );
+
+  test('does not match by trustee in collections the app never writes for seeded candidates', () => {
+    expect(cosmosUnseedFilter('trustees').$or).not.toContainEqual(seededTrusteeCondition);
   });
 });
