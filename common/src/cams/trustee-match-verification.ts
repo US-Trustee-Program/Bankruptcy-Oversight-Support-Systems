@@ -142,6 +142,21 @@ export type TrusteeMatchVerificationListItem = Pick<
   affectedCaseIds: string[];
 };
 
+/**
+ * One Trustee Appointment task the approval would open or join: the cases the selected trustee
+ * does not cover in this court, division and chapter.
+ */
+export type AppointmentTaskPreviewGroup = {
+  courtId: string;
+  courtDivisionCode: string;
+  courtName?: string;
+  courtDivisionName?: string;
+  chapter: string;
+  caseCount: number;
+};
+
 export type EnrichedTrusteeMatchVerification = TrusteeMatchVerification & {
   affectedCaseIds: string[];
+  /** Present only when a trustee was supplied for a pending verification. */
+  appointmentTaskPreview?: AppointmentTaskPreviewGroup[];
 };

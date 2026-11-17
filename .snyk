@@ -39,226 +39,6 @@ ignore:
           controlled config files here (okta config-loader.js, cosmiconfig
           build tooling), so exploitability is low in the interim.
         expires: 2026-08-24T00:00:00.000Z
-  SNYK-JS-NODEFORGE-19635204:
-    - '*':
-        reason: >-
-          Transitive dependency via @okta/okta-sdk-nodejs@8.2.0, which
-          hard-depends on node-jose for its own package.json (every
-          node-jose version, 0.9.0 through latest, requires node-forge,
-          so no version swap avoids this). CVE-2026-85393 is an RSA
-          signature-verification bypass, but our only reachable node-jose
-          call is JWS.createSign for outbound DPoP proof signing
-          (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. Re-verified 2026-10-28: node-forge
-          1.4.1 (published 2026-10-27, fixes CVE-2026-85393 per
-          digitalbazaar/forge CHANGELOG.md) and 1.4.2 (published
-          2026-10-27, unrelated PEM-decode regression fix on top of 1.4.1)
-          are now available upstream; PR #1152 itself was closed/superseded,
-          but the fix landed directly as commit c7f42614 ("Verify
-          certificate signatures with the child's scheme"). Bumping is
-          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
-          min-release-age=14) until 2026-11-10. Bump the root package.json
-          node-forge override from 1.4.0 to 1.4.2 and remove this ignore
-          once the embargo lifts.
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113938:
-    - '*':
-        reason: >-
-          One of 14 node-forge@1.4.0 vulnerabilities disclosed together
-          on 2026-11-02 and fixed in 1.4.1 (per the forge CHANGELOG:
-          CVE-2026-85393/119192 RSA signature-verification forgery,
-          CVE-2026-119191 asn1.fromDer() BIT STRING resource exhaustion,
-          CVE-2026-118779 pem.decode()/certificateFromPem() ReDoS,
-          CVE-2026-119187/119188/118778 tls record/handshake crashes,
-          CVE-2026-118782 pkcs12/pbe zero-iteration MAC forgery,
-          CVE-2026-119190/119189/118774/118780 x509 cert-chain
-          verification bugs, CVE-2026-119186 cipher AES-GCM tag-length
-          auth bypass, CVE-2026-118776 cipher PKCS#7 padding check,
-          CVE-2026-118777 forge.http/forge.xhr cookie prototype
-          pollution, CVE-2026-118775 asn1.oidToDer() first-arc
-          truncation, CVE-2026-118781 jsbn BigInteger.modInverse() hang
-          via pki.rsa.generateKeyPair() with a negative exponent).
-          Verified not reachable in CAMS: the only call site for
-          node-forge is transitive via @okta/okta-sdk-nodejs@8.2.0 >
-          node-jose@2.2.0, reached solely through
-          backend/lib/humble-objects/okta-humble.ts configuring the Okta
-          SDK client with authorizationMode 'PrivateKey' using CAMS's own
-          statically-configured Okta service-account key (never
-          attacker-controlled input). That path
-          (@okta/okta-sdk-nodejs/src/dpop.js and jwt.js) only ever calls
-          jose.JWK.asKey() to import that trusted key and
-          jose.JWS.createSign() to sign a DPoP proof / client-assertion
-          JWT — node-jose's rsassa.js sign path exercises only
-          forge.jsbn.BigInteger construction from our own key's
-          components, forge.pki.rsa.setPrivateKey, forge.md digest
-          creation, and pki.sign() (PKCS#1 v1.5 signing). node-jose's
-          JWS.createVerify, JWE (cipher), PEM/cert decoding, PKCS#12, and
-          forge.http/forge.tls are never invoked anywhere in CAMS
-          (grepped backend/common source — node-forge and node-jose are
-          not required directly, only transitively through the Okta
-          SDK). None of the 14 CVEs above touch the sign-only code path
-          actually exercised. Also embargoed regardless: 1.4.1 was
-          published 2026-10-27, still inside CAMS's 14-day minimum npm
-          release-age policy (.npmrc min-release-age=14) until
-          2026-11-10. Bump the root package.json node-forge override to
-          1.4.2 and remove all node-forge ignores (this one, 19635204,
-          and the 13 below) once the embargo lifts, as defense-in-depth
-          even though unreachable today.
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113960:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: CAMS only signs
-          with node-forge via the Okta SDK's DPoP path, never parses PEM
-          input). Regular Expression Denial of Service (ReDoS) in
-          pem.decode(), High Severity. Fixed in 1.4.1; also embargoed
-          until 2026-11-10 (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113962:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: CAMS never
-          decrypts/decodes with forge.cipher, only signs). Modification
-          of Assumed-Immutable Data (MAID) — incomplete PKCS#7 padding
-          check in CBC/ECB decryption, Medium Severity. Fixed in 1.4.1;
-          also embargoed until 2026-11-10 (CAMS .npmrc
-          min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113964:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: CAMS never
-          calls asn1.fromDer() or pkcs12/pbe functions, only
-          BigInteger/pki.rsa.setPrivateKey/pki.sign on our own key).
-          Integer Overflow or Wraparound, Medium Severity. Fixed in
-          1.4.1; also embargoed until 2026-11-10 (CAMS .npmrc
-          min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113970:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: CAMS never
-          exercises forge.tls — no TLS handshake processing occurs via
-          node-forge anywhere in this dependency path). NULL Pointer
-          Dereference — tls client/missing-certificate crash, High
-          Severity. Fixed in 1.4.1; also embargoed until 2026-11-10
-          (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113972:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: this is the
-          forge.http/forge.xhr cookie-handling prototype pollution bug;
-          CAMS's only node-forge call path never requires forge.http).
-          Prototype Pollution, Medium Severity. Fixed in 1.4.1; also
-          embargoed until 2026-11-10 (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113974:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: this is
-          forge.tls recursive record-processing stack exhaustion; CAMS
-          never exercises forge.tls). Uncontrolled Recursion, High
-          Severity. Fixed in 1.4.1; also embargoed until 2026-11-10
-          (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113978:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: this is a
-          pki.verifyCertificateChain() basicConstraints-bypass bug; CAMS
-          never calls verifyCertificateChain or parses any X.509
-          certificate via node-forge — our only call path signs with our
-          own private key, never verifies). Improper Certificate
-          Validation, Critical Severity. Fixed in 1.4.1; also embargoed
-          until 2026-11-10 (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113982:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: pkcs12/pbe
-          zero-iteration-count MAC/key-derivation forgery; CAMS never
-          calls pkcs12 or pbe functions). Improper Validation of
-          Specified Quantity in Input, High Severity. Fixed in 1.4.1;
-          also embargoed until 2026-11-10 (CAMS .npmrc
-          min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22113984:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: cipher AES-GCM
-          tagLength validation bypass; CAMS never invokes forge.cipher —
-          the only node-forge call path signs, it never encrypts/
-          decrypts). Improper Validation of Specified Quantity in Input,
-          High Severity. Fixed in 1.4.1; also embargoed until 2026-11-10
-          (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22114200:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: forge.tls
-          fragmented-handshake crash; CAMS never exercises forge.tls).
-          Uncontrolled Recursion, High Severity. Fixed in 1.4.1; also
-          embargoed until 2026-11-10 (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22114202:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: x509
-          pathLenConstraint/signature-scheme-mismatch bugs in
-          pki.verifyCertificateChain(); CAMS never calls
-          verifyCertificateChain or parses any certificate via
-          node-forge). Improper Certificate Validation, High Severity.
-          Fixed in 1.4.1; also embargoed until 2026-11-10 (CAMS .npmrc
-          min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22114204:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: asn1.oidToDer()
-          first-arc truncation; the only node-forge call path's OID
-          values, when EC keys are used, come from node-jose's own fixed
-          curve constants, never attacker input). Improper Validation of
-          Specified Quantity in Input, Medium Severity. Fixed in 1.4.1;
-          also embargoed until 2026-11-10 (CAMS .npmrc
-          min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
-  SNYK-JS-NODEFORGE-22114206:
-    - '*':
-        reason: >-
-          Same node-forge@1.4.0 batch disclosure as
-          SNYK-JS-NODEFORGE-22113938 above — see that entry for the full
-          reachability analysis (verified not reachable: RSA
-          non-canonical DigestInfo signature-verification forgery; CAMS
-          only calls JWS.createSign, never JWS.createVerify, so forge's
-          RSA verify path is never invoked). Improper Verification of
-          Cryptographic Signature, Medium Severity. Fixed in 1.4.1; also
-          embargoed until 2026-11-10 (CAMS .npmrc min-release-age=14).
-        expires: 2026-11-11T00:00:00.000Z
   SNYK-JS-SPRINTFJS-20532016:
     - '*':
         reason: >-
@@ -296,52 +76,130 @@ ignore:
           nor server actions, so exploitability remains low in the
           interim.
         expires: 2026-10-14T00:00:00.000Z
-  SNYK-JS-BODYPARSER-21431495:
+  SNYK-JS-AZUREMSALNODE-22409043:
     - '*':
         reason: >-
-          Uncaught Exception (DoS) in body-parser@2.3.0, pinned by the
-          root package.json override and pulled in by express@5.2.1. A
-          compressed request body with trailing bytes makes the
-          decompression stream emit an unhandled error that crashes the
-          Node process. Not reachable in any deployed environment: the
-          deployed API runs on Azure Functions, and nothing under
-          backend/function-apps or backend/lib imports express. The only
-          express servers are backend/express/server.ts (local dev via
-          npm run start:express, and the BDD harness in
-          test/bdd/helpers/api-server.ts) and the test/ui-sandbox
-          fake-okta server, all local or test only. Fixed version 2.4.0
-          was published 2026-10-22 and is blocked by CAMS's 14-day
-          minimum npm release-age policy (.npmrc min-release-age=14)
-          until 2026-11-05. The qs ^6.16.1 requirement is already
-          satisfied (root override bumped 2026-10-29 for
-          SNYK-JS-QS-20943482); once the embargo lifts, bump the root
-          package.json override body-parser 2.3.0 -> 2.4.0 and remove
-          this ignore.
-        expires: 2026-11-06T00:00:00.000Z
-  SNYK-JS-QS-21755395:
+          Insufficiently Protected Credentials (CVE-2026-108470) in
+          @azure/msal-node@6.0.0, a new finding distinct from the
+          already-ignored SNYK-JS-AZUREMSALNODE-21689163 (CVE-2026-109461)
+          above — that one is the authorization-code/acquireTokenByCode
+          origin-validation bug fixed in 7.1.0; this one is a separate
+          credential-protection issue Snyk first flagged 2026-11-11,
+          affecting all @azure/msal-node versions before 7.0.1. Snyk's CVSS
+          vector marks user interaction as required (partial), consistent
+          with an interactive/browser auth-code flow. Not reachable in
+          CAMS: every @azure/identity call site — the explicit
+          DefaultAzureCredential in
+          backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts,
+          and the azure-active-directory-default auth type used by
+          mssql/tedious across backend, dev-tools, and test/e2e — resolves
+          to DefaultAzureCredential's non-interactive client-credential/
+          managed-identity token acquisition, never an interactive or
+          authorization-code flow requiring user interaction. Fix is
+          @azure/identity 4.14.1 (published 2026-10-29, bumps msal-node to
+          ^7.1.0), which Snyk's own "Issues to fix by upgrading" output
+          confirms, but it's blocked by CAMS's 14-day minimum npm
+          release-age policy (.npmrc min-release-age=14) until
+          2026-11-12. Bump the dev-tools @azure/identity dependency to
+          4.14.1 (and pin @azure/msal-node to an embargo-cleared 7.1.x via
+          override, since ^7.1.0 would otherwise resolve to the still-
+          embargoed 7.2.1) and remove this ignore, plus
+          SNYK-JS-AZUREMSALNODE-21689163 above (also fixed by the same
+          bump), once the embargo lifts.
+        expires: 2026-11-13T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409009:
     - '*':
         reason: >-
-          Improper Encoding or Escaping of Output (CVE-2026-110910) in
-          qs@6.16.1, pinned by the root package.json override and pulled
-          in by express@5.3.0 and body-parser@2.3.0. The flaw is in
-          qs.stringify() when called with { allowEmptyArrays: true }: an
-          attacker-controlled object key containing '&', '=', or '#' is
-          not encoded, letting the key name inject extra query-string
-          parameters or a URL fragment into the output. Not reachable in
-          CAMS: express and body-parser only call qs.parse() to read
-          incoming query strings/bodies, never qs.stringify() (verified
-          by grep across backend, common, user-interface, dev-tools,
-          dora-metrics, test — no CAMS source calls qs.stringify or
-          passes allowEmptyArrays anywhere). The only other qs consumer
-          in the lockfile is typed-rest-client (pulled in transitively by
-          @stryker-mutator/core, dev-only), which never calls stringify
-          with allowEmptyArrays either. Fixed version 6.17.0 was
-          published 2026-10-27 and is blocked by CAMS's 14-day minimum
-          npm release-age policy (.npmrc min-release-age=14) until
-          2026-11-10. Bump the root package.json qs override from
-          6.16.1 to 6.17.0 and remove this ignore once the embargo
-          lifts.
-        expires: 2026-11-11T00:00:00.000Z
+          Regular Expression Denial of Service (ReDoS, CVE-2026-125333) in
+          node-forge@1.4.2's forge.http _trimString() header/cookie
+          trimming — one of 5 new node-forge vulnerabilities Snyk first
+          flagged 2026-11-11 against the 1.4.2 we bumped to for the prior
+          14-CVE batch (see the now-removed SNYK-JS-NODEFORGE-22113938
+          entry's history). Not reachable in CAMS: as established for
+          that prior batch, the only node-forge call path is transitive
+          via @okta/okta-sdk-nodejs@8.2.0 > node-jose@2.2.0, reached
+          solely through backend/lib/humble-objects/okta-humble.ts
+          signing DPoP proofs with jose.JWS.createSign on our own RSA key
+          — forge.http is never loaded or invoked anywhere in that path
+          or elsewhere in CAMS. Fixed in 1.4.3 (published 2026-11-04),
+          blocked by CAMS's 14-day minimum npm release-age policy (.npmrc
+          min-release-age=14) until 2026-11-18. Bump the root package.json
+          node-forge override to 1.4.3 and remove this ignore (and the 4
+          below) once the embargo lifts.
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409010:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is a
+          forge.tls client NULL-pointer crash on a crafted ServerHello
+          when session is null; CAMS never exercises forge.tls, only
+          node-jose's sign-only RSA path). NULL Pointer Dereference, High
+          Severity (CVE-2026-125334). Fixed in 1.4.3; also embargoed until
+          2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409011:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is
+          ed25519.verify() accepting small-order public keys, a
+          signature-forgery bug; CAMS's only node-forge call path signs
+          with an RSA key via jose.JWS.createSign/pki.sign(), never
+          touches ed25519 verify or any Ed25519 key). Improper
+          Verification of Cryptographic Signature, Medium Severity
+          (CVE-2026-125335). Fixed in 1.4.3; also embargoed until
+          2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409013:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is an
+          uncaught-exception crash in forge.tls when a ServerHello's
+          compression_method is unsupported; CAMS never exercises
+          forge.tls). Uncaught Exception, High Severity (CVE-2026-125332).
+          Fixed in 1.4.3; also embargoed until 2026-11-18 (CAMS .npmrc
+          min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-NODEFORGE-22409017:
+    - '*':
+        reason: >-
+          Same 2026-11-11 node-forge@1.4.2 batch disclosure as
+          SNYK-JS-NODEFORGE-22409009 above — see that entry for the
+          reachability analysis (verified not reachable: this is
+          pki.verifyCertificateChain() ignoring X.509 name constraints,
+          a CA-scope bypass in forge.tls peer verification; CAMS never
+          calls verifyCertificateChain or parses any certificate via
+          node-forge — our only call path signs with our own private key,
+          never verifies). Improper Certificate Validation, Critical
+          Severity (CVE-2026-125336). Fixed in 1.4.3; also embargoed
+          until 2026-11-18 (CAMS .npmrc min-release-age=14).
+        expires: 2026-11-19T00:00:00.000Z
+  SNYK-JS-FASTXMLPARSER-22409021:
+    - '*':
+        reason: >-
+          Inefficient Algorithmic Complexity (CVE pending, Snyk ID
+          SNYK-JS-FASTXMLPARSER-22409021) in fast-xml-parser@5.7.3's
+          readStopNodeData(): a crafted stop-node body with many
+          unclosed '<a' fragments causes quadratic rescanning that can
+          block the event loop. Only applications that set the
+          non-default `stopNodes` parser option are exploitable. Not
+          reachable in CAMS: fast-xml-parser is not a direct dependency —
+          its only consumers are @azure/core-xml (via
+          @azure/storage-blob@12.34.0 and @azure/storage-queue@12.32.0),
+          which builds its XMLParser/XMLBuilder options internally
+          (checked node_modules/@azure/core-xml's parseOptionsFor
+          helpers) and never sets `stopNodes`. Fixed in 5.12.0 (published
+          2026-11-03), blocked by CAMS's 14-day minimum npm release-age
+          policy (.npmrc min-release-age=14) until 2026-11-17. No direct
+          override is in place today since fast-xml-parser isn't pinned
+          elsewhere; add one bumping to 5.12.0 and remove this ignore once
+          the embargo lifts.
+        expires: 2026-11-18T00:00:00.000Z
   SNYK-JS-AZUREMSALNODE-21689163:
     - '*':
         reason: >-

@@ -286,6 +286,14 @@ export async function spyOnAllGateways(
     'RoleAssignmentAuditMongoRepository',
     explicitMocks.RoleAssignmentAuditMongoRepository,
   );
+
+  const { TrusteeAppointmentVerificationMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/trustee-appointment-verification.mongo.repository');
+  spyOnAllGatewayMethods(
+    TrusteeAppointmentVerificationMongoRepository,
+    'TrusteeAppointmentVerificationMongoRepository',
+    explicitMocks.TrusteeAppointmentVerificationMongoRepository,
+  );
 }
 
 /**

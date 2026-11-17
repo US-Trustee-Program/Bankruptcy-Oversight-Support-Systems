@@ -34,7 +34,7 @@ const HEAL_PAGE_SIZE = 25;
  * invariants). Those live in HealSentinelCaseAppointmentsUseCase.healPage.
  *
  * Started manually by sending an initial message to the HEAL queue (same on-demand convention as
- * trustee-verification-remap and migrate-case-appointments) — there is no timer trigger. Re-run
+ * trustee-verification-remap) — there is no timer trigger. Re-run
  * as needed as trustee-professional-ids mapping data improves.
  */
 async function handleHeal(
@@ -66,7 +66,10 @@ async function handleHeal(
         connectionString,
         HEAL.queueName,
       );
-      await queueClient.sendMessage(JSON.stringify({ ...message, lastId: nextLastId }));
+      // Only the cursor: retryCount/firstAttemptAt set by handleRateLimitRetry on this message
+      // belong to this page, and would shorten every later page's retry budget if carried on.
+      const continuation: HealSentinelCaseAppointmentsMessage = { lastId: nextLastId };
+      await queueClient.sendMessage(JSON.stringify(continuation));
       context.logger.info(
         MODULE_NAME,
         `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to check for more.`,

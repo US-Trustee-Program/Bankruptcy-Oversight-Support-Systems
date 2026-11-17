@@ -224,6 +224,30 @@ describe('TrusteeMatchVerificationController', () => {
       expect(data.id).toBe('case-001:john doe');
       expect(data.findings).toEqual(sampleOrder.findings);
     });
+
+    test('should pass the trusteeId query parameter through to the use case', async () => {
+      context.request.params = { id: 'verification-1' };
+      context.request.query = { trusteeId: 'trustee-a' };
+      const getEnriched = vi
+        .spyOn(TrusteeMatchVerificationUseCase.prototype, 'getEnrichedVerification')
+        .mockResolvedValue({ ...sampleOrder, affectedCaseIds: [] });
+
+      await new TrusteeMatchVerificationController().handleRequest(context);
+
+      expect(getEnriched).toHaveBeenCalledWith(context, 'verification-1', 'trustee-a');
+    });
+
+    test('should pass an undefined trusteeId when the query parameter is absent', async () => {
+      context.request.params = { id: 'verification-1' };
+      context.request.query = {};
+      const getEnriched = vi
+        .spyOn(TrusteeMatchVerificationUseCase.prototype, 'getEnrichedVerification')
+        .mockResolvedValue({ ...sampleOrder, affectedCaseIds: [] });
+
+      await new TrusteeMatchVerificationController().handleRequest(context);
+
+      expect(getEnriched).toHaveBeenCalledWith(context, 'verification-1', undefined);
+    });
   });
 
   describe('PATCH', () => {

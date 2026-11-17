@@ -1436,7 +1436,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
-        dxtrTrustee,
+        source: 'DXTR',
+        sourceTrustee: dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
         // '000000', or otherwise unparseable — a genuine DXTR data-quality gap.

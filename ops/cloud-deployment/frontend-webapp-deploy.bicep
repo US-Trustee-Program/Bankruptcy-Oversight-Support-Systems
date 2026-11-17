@@ -58,7 +58,7 @@ param appServiceRuntime string = 'php'
 // NOTE: Node version should match major version in .nvmrc
 var linuxFxVersionMap = {
   node: 'NODE|24'
-  php: 'PHP|8.2'
+  php: 'PHP|8.5'
 }
 
 @description('Url for our Okta Provider')

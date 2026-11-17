@@ -62,7 +62,9 @@ elif command -v sqlcmd &>/dev/null; then
   SQLCMD="sqlcmd"
 elif [[ "$(uname -s)" == "Linux" ]]; then
   echo "sqlcmd not found — installing mssql-tools18 via apt..."
-  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - 2>/dev/null
+  sudo mkdir -p /usr/share/keyrings
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+  sudo chmod a+r /usr/share/keyrings/microsoft-prod.gpg
   curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" \
     | sudo tee /etc/apt/sources.list.d/mssql-release.list
   sudo apt-get update -q

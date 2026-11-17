@@ -172,6 +172,25 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       expect(result.data?.[0].success).toBe(false);
       expect(result.data?.[0].error).toBe('Write failed');
     });
+
+    test('should record a stringified failure when updateCaseAppointment throws a non-Error', async () => {
+      const appointment = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const dxtrMap = new Map([[appointment.caseId, '2026-04-07']]);
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockResolvedValue(
+        dxtrMap,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
+        'write failed as a plain string',
+      );
+
+      const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
+        appointment,
+      ]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toBe('write failed as a plain string');
+    });
   });
 
   describe('readBackfillState', () => {
@@ -314,6 +333,107 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       expect(result.status).toBe('error');
     });
 
+    test('should return error when the page fetch fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+        context,
+        null,
+        100,
+      );
+
+      expect(result.status).toBe('error');
+    });
+
+    test('should return error when updating state after an empty page fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue(
+        [],
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('DB error'));
+
+      const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+        context,
+        null,
+        100,
+      );
+
+      expect(result.status).toBe('error');
+    });
+
+    test('should return error when fetching appointment dates from DXTR fails', async () => {
+      const appt = makeAppointment('eeee');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue([
+        appt,
+      ]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockRejectedValue(
+        new Error('DXTR unavailable'),
+      );
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointmentDateBackfillState);
+
+      const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+        context,
+        null,
+        100,
+      );
+
+      expect(result.status).toBe('error');
+      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED' }));
+    });
+
+    test('should log, rather than throw, when the state update after a batch failure also fails', async () => {
+      const appt = makeAppointment('ffff');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue([
+        appt,
+      ]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockRejectedValue(
+        new Error('DXTR unavailable'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('DB error'));
+
+      const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+        context,
+        null,
+        100,
+      );
+
+      expect(result.status).toBe('error');
+    });
+
+    test('should return error when updating state after a successful batch fails', async () => {
+      const appt = makeAppointment('gggg');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue([
+        appt,
+      ]);
+      vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockResolvedValue(
+        new Map([[appt.caseId, '2026-05-01']]),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockResolvedValue({
+        ...appt,
+        appointedDate: '2026-05-01',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('DB error'));
+
+      const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+        context,
+        null,
+        100,
+      );
+
+      expect(result.status).toBe('error');
+    });
+
     test('should return ok with failedResults when some appointments fail to update', async () => {
       const appt = makeAppointment('dddd');
 
@@ -415,6 +535,22 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       });
 
       expect(result.error).toBeDefined();
+    });
+
+    test('should return error when the state lookup fails with something other than NotFoundError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new Error('Connection lost'),
+      );
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+
+      const result = await BackfillCaseAppointmentDatesUseCase.updateBackfillState(context, {
+        lastId: null,
+        processedCount: 0,
+        status: 'FAILED',
+      });
+
+      expect(result.error).toBeDefined();
+      expect(upsertSpy).not.toHaveBeenCalled();
     });
   });
 });

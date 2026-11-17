@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { isDuplicateKeyError } from './duplicate-key-error';
 
 describe('isDuplicateKeyError', () => {

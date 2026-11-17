@@ -13,6 +13,9 @@ import {
   getDivisionCodes,
   normalizeChapter,
   isAppointmentMatch,
+  hasAppointmentForCase,
+  appointmentCoversDivision,
+  scoreAppointmentAgreement,
   getUncoveredCases,
   isChapter11CaseByCase,
   isChapter11SubchapterV,
@@ -605,6 +608,67 @@ describe('trustee-appointments', () => {
     });
   });
 
+  describe('appointmentCoversDivision', () => {
+    test('matches via the legacy divisionCode field', () => {
+      const appointment = makeAppointment({ divisionCode: '1', divisionCodes: undefined });
+      expect(appointmentCoversDivision(appointment, '1')).toBe(true);
+    });
+
+    test('matches via the divisionCodes array', () => {
+      const appointment = makeAppointment({
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+      });
+      expect(appointmentCoversDivision(appointment, '236')).toBe(true);
+    });
+
+    test('does not match a division present in neither field', () => {
+      const appointment = makeAppointment({ divisionCode: '1', divisionCodes: ['235'] });
+      expect(appointmentCoversDivision(appointment, '999')).toBe(false);
+    });
+  });
+
+  describe('hasAppointmentForCase', () => {
+    test('should return false, not throw, when the case has no chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCodes: ['1'], chapter: '7', status: 'inactive' }),
+      ];
+      expect(hasAppointmentForCase(appointments, '081', '1', undefined)).toBe(false);
+    });
+
+    test('should return true for an appointment that is not active but covers court, division, and chapter', () => {
+      const appointments = [
+        makeAppointment({
+          courtId: '081',
+          divisionCodes: ['1'],
+          chapter: '7',
+          status: 'inactive',
+        }),
+      ];
+      expect(hasAppointmentForCase(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test('should return true for an active covering appointment', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(hasAppointmentForCase(appointments, '081', '1', '7')).toBe(true);
+    });
+
+    test.each<[string, Partial<TrusteeAppointment>]>([
+      ['court', { courtId: '082', divisionCodes: ['1'], chapter: '7' }],
+      ['division', { courtId: '081', divisionCodes: ['2'], chapter: '7' }],
+      ['chapter', { courtId: '081', divisionCodes: ['1'], chapter: '13' }],
+    ])('should return false when the %s differs', (_field, overrides) => {
+      const appointments = [makeAppointment({ ...overrides, status: 'inactive' })];
+      expect(hasAppointmentForCase(appointments, '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false when appointments array is empty', () => {
+      expect(hasAppointmentForCase([], '081', '1', '7')).toBe(false);
+    });
+  });
+
   describe('isAppointmentMatch', () => {
     test('should return true when active appointment matches court, division, and chapter', () => {
       const appointments = [
@@ -615,6 +679,13 @@ describe('trustee-appointments', () => {
 
     test('should return false when appointments array is empty', () => {
       expect(isAppointmentMatch([], '081', '1', '7')).toBe(false);
+    });
+
+    test('should return false, not throw, when the case has no chapter', () => {
+      const appointments = [
+        makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      ];
+      expect(isAppointmentMatch(appointments, '081', '1', undefined)).toBe(false);
     });
 
     test('should return false when matching appointment has status inactive', () => {
@@ -705,6 +776,100 @@ describe('trustee-appointments', () => {
         }),
       ];
       expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(false);
+    });
+  });
+
+  describe('scoreAppointmentAgreement', () => {
+    test('scores 4 and matches everything for an active appointment matching court, division and chapter', () => {
+      const appointment = makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        divisionCodes: undefined,
+        chapter: '7',
+        status: 'active',
+      });
+      expect(scoreAppointmentAgreement(appointment, '081', '1', '7')).toEqual({
+        matchesCourt: true,
+        matchesDivision: true,
+        matchesChapter: true,
+        isActive: true,
+        score: 4,
+      });
+    });
+
+    test('scores 3 when the tuple matches but the appointment is not active', () => {
+      const appointment = makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        divisionCodes: undefined,
+        chapter: '7',
+        status: 'inactive',
+      });
+      expect(scoreAppointmentAgreement(appointment, '081', '1', '7')).toEqual({
+        matchesCourt: true,
+        matchesDivision: true,
+        matchesChapter: true,
+        isActive: false,
+        score: 3,
+      });
+    });
+
+    test('scores 2 when only court and chapter match', () => {
+      const appointment = makeAppointment({
+        courtId: '081',
+        divisionCode: '2',
+        divisionCodes: undefined,
+        chapter: '7',
+        status: 'inactive',
+      });
+      expect(scoreAppointmentAgreement(appointment, '081', '1', '7')).toEqual({
+        matchesCourt: true,
+        matchesDivision: false,
+        matchesChapter: true,
+        isActive: false,
+        score: 2,
+      });
+    });
+
+    test('scores 0 when nothing matches', () => {
+      const appointment = makeAppointment({
+        courtId: '082',
+        divisionCode: '2',
+        divisionCodes: undefined,
+        chapter: '13',
+        status: 'inactive',
+      });
+      expect(scoreAppointmentAgreement(appointment, '081', '1', '7')).toEqual({
+        matchesCourt: false,
+        matchesDivision: false,
+        matchesChapter: false,
+        isActive: false,
+        score: 0,
+      });
+    });
+
+    test('normalizes chapter for comparison, same as isAppointmentMatch', () => {
+      const appointment = makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        divisionCodes: undefined,
+        chapter: '11',
+        status: 'active',
+      });
+      expect(
+        scoreAppointmentAgreement(appointment, '081', '1', '11-subchapter-v').matchesChapter,
+      ).toBe(true);
+    });
+
+    test('matches division via a multi-division divisionCodes array', () => {
+      const appointment = makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        chapter: '7',
+        status: 'active',
+      });
+      expect(scoreAppointmentAgreement(appointment, '081', '237', '7').matchesDivision).toBe(true);
     });
   });
 

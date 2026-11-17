@@ -1,17 +1,21 @@
 import { vi, describe, test, expect, beforeEach, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
-import { ObservabilityGateway } from '../../use-cases/gateways.types';
+import {
+  ObservabilityGateway,
+  SurrogateAppointment,
+  TrusteeAppointmentVerificationRepository,
+} from '../../use-cases/gateways.types';
+import { getCamsUserReference } from '@common/cams/session';
+import { CamsUserReference } from '@common/cams/users';
 import { CourtsUseCase } from '../courts/courts';
 import CaseManagement from '../cases/case-management';
-import { CaseSummary } from '@common/cams/cases';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import MockData from '@common/cams/test-utilities/mock-data';
 
@@ -54,6 +58,8 @@ describe('TrusteeMatchVerificationUseCase', () => {
     fingerprint: 'fp-abc123',
     variant: '{"firstName":"john","lastName":"doe"}',
   };
+
+  const courtFields081 = { courtId: '081', courtDivisionCode: '081', chapter: '7' as const };
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdateIfPending: ReturnType<typeof vi.fn>;
@@ -312,6 +318,31 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const result = await useCase.getVerifications(context, {});
 
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(result[0].affectedCaseCount).toBe(2);
+      expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
+    });
+
+    test('counts a case once when it holds more than one placeholder for the same fingerprint', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-03-01' },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(1);
+      expect(result[0].affectedCaseIds).toEqual(['case-001']);
+    });
+
+    test('counts each case once per fingerprint across cases, keeping separate cases distinct', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-03-01' },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true, assignedOn: '2026-01-01' },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
       expect(result[0].affectedCaseCount).toBe(2);
       expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
     });
@@ -647,16 +678,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     test('snapshots affectedCaseIds onto the same update call that sets status approved', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([
-        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
-        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true, ...courtFields081 },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true, ...courtFields081 },
       ]);
       mockGetTrusteeAppointments.mockResolvedValue([
         { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
       ]);
-      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
-        async (_context, caseId) =>
-          ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
-      );
 
       await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
@@ -702,34 +729,42 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
-    describe('division enforcement', () => {
-      // Realistic 3-segment case IDs (not 'case-001'), so these tests exercise getCaseNumber's
-      // real division-prefix-stripping logic rather than its no-op 2-segment passthrough. Error
-      // messages built from these go through getCaseNumber, so they show the stripped 'yy-nnnnn'
-      // form (e.g. '24-00001'), not the full case ID.
-      const oneAffectedCase = [
-        { caseId: '081-24-00001', trusteeId: 'fp-abc123', isSurrogate: true },
-      ];
-      const twoAffectedCases = [
-        { caseId: '081-24-00001', trusteeId: 'fp-abc123', isSurrogate: true },
-        { caseId: '081-24-00002', trusteeId: 'fp-abc123', isSurrogate: true },
-      ];
-
-      function mockCaseSummaries(byId: Record<string, Partial<CaseSummary>>) {
-        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
-          async (_context, caseId) => ({ caseId, ...byId[caseId] }) as CaseSummary,
-        );
+    describe('uncovered cases open appointment tasks instead of blocking approval (CAMS-956)', () => {
+      // Realistic 3-segment case IDs. Coverage is decided from the court fields stored on each
+      // placeholder row (epic decision 14), never from a DXTR case lookup.
+      function placeholder(caseId: string, fields: Partial<SurrogateAppointment> = courtFields081) {
+        return { caseId, trusteeId: 'fp-abc123', isSurrogate: true, ...fields };
       }
 
-      test('approves when the resolved trustee covers every affected case court+chapter+division', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
+      let mockOpenOrJoin: Mock<TrusteeAppointmentVerificationRepository['openOrJoin']>;
+      let approver: CamsUserReference;
+
+      beforeEach(() => {
+        mockOpenOrJoin = vi
+          .fn<TrusteeAppointmentVerificationRepository['openOrJoin']>()
+          .mockResolvedValue(undefined);
+        vi.spyOn(factory, 'getTrusteeAppointmentVerificationRepository').mockReturnValue({
+          openOrJoin: mockOpenOrJoin,
+          search: vi.fn(),
+          findById: vi.fn(),
+          resolve: vi.fn(),
+          release: vi.fn(),
+        });
+        approver = getCamsUserReference(context.session.user);
+      });
+
+      test('approves when the resolved trustee covers every affected case, opening no task', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001'),
+          placeholder('081-24-00002', { ...courtFields081, courtDivisionCode: '082' }),
+        ]);
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
         ]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-          '081-24-00002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
-        });
+        // A case not yet in CAMS has no DXTR case summary; coverage must come from the rows alone.
+        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(
+          new Error('case not found'),
+        );
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
@@ -737,123 +772,180 @@ describe('TrusteeMatchVerificationUseCase', () => {
           'verification-1',
           expect.objectContaining({ status: 'approved' }),
         );
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
       });
 
-      test('rejects when the resolved trustee does not cover an affected case division, and performs no writes', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
-        mockGetTrusteeAppointments.mockResolvedValue([
-          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['082'] },
-        ]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-        });
-
-        await expect(
-          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(BadRequestError);
-
-        expect(mockCreateVariation).not.toHaveBeenCalled();
-        expect(mockUpdateIfPending).not.toHaveBeenCalled();
-        expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
-      });
-
-      test('rejection identifies the uncovered case ID in the error message', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
+      test('approves an uncovered case exactly as a covered one, then opens an appointment task for it as the approving user', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
         mockGetTrusteeAppointments.mockResolvedValue([]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-        });
 
-        await expect(
-          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(/24-00001/);
-      });
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
-      test('rejection names the resolved trustee by name and gives next-step guidance, rather than a raw ID', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
-        mockGetTrusteeAppointments.mockResolvedValue([]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-        });
-
-        await expect(
-          useCase.approveVerification(context, 'verification-1', 'trustee-new', 'Jane Doe'),
-        ).rejects.toThrow(
-          'Jane Doe is not assigned to the division(s) for case(s): 24-00001. Choose a different candidate or search for a trustee whose appointments cover these cases.',
+        expect(mockCreateVariation).toHaveBeenCalled();
+        expect(mockUpdateIfPending).toHaveBeenCalledWith(
+          'verification-1',
+          expect.objectContaining({ status: 'approved', affectedCaseIds: ['081-24-00001'] }),
+        );
+        expect(mockQueueTrusteeVerificationRemap).toHaveBeenCalled();
+        expect(mockOpenOrJoin).toHaveBeenCalledTimes(1);
+        expect(mockOpenOrJoin).toHaveBeenCalledWith(
+          { trusteeId: 'trustee-new', courtId: '081', divisionCode: '081', chapter: '7' },
+          '081-24-00001',
+          'no-appointment',
+          approver,
         );
       });
 
-      test('rejection falls back to the resolved trustee id when no name was supplied', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
-        mockGetTrusteeAppointments.mockResolvedValue([]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-        });
-
-        await expect(
-          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(/^trustee-new is not assigned/);
-      });
-
-      test('rejects a multi-case verification when only one of several affected cases is uncovered', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
+      test('opens a task only for the uncovered case of a multi-case verification', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001'),
+          placeholder('081-24-00002', { ...courtFields081, courtDivisionCode: '082' }),
+        ]);
         // Covers 081-24-00001's division (081) but not 081-24-00002's (082).
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
         ]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-          '081-24-00002': { courtId: '081', courtDivisionCode: '082', chapter: '7' },
-        });
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockOpenOrJoin).toHaveBeenCalledTimes(1);
+        expect(mockOpenOrJoin).toHaveBeenCalledWith(
+          { trusteeId: 'trustee-new', courtId: '081', divisionCode: '082', chapter: '7' },
+          '081-24-00002',
+          'no-appointment',
+          approver,
+        );
+      });
+
+      test("gives the appointment-inactive reason when the trustee's appointment for the case is not active", async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          { status: 'inactive', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+        ]);
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockOpenOrJoin).toHaveBeenCalledWith(
+          expect.anything(),
+          '081-24-00001',
+          'appointment-inactive',
+          approver,
+        );
+      });
+
+      test('a closed placeholder (unassignedOn set) opens no task; approval succeeds', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001', { ...courtFields081, unassignedOn: '2024-06-30' }),
+        ]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockUpdateIfPending).toHaveBeenCalledWith(
+          'verification-1',
+          expect.objectContaining({ status: 'approved' }),
+        );
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
+      });
+
+      test('a parked placeholder (case not yet in CAMS) opens no task; approval succeeds', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001', {
+            ...courtFields081,
+            documentType: 'CASE_APPOINTMENT_UNATTACHED',
+          }),
+        ]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockUpdateIfPending).toHaveBeenCalled();
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
+      });
+
+      test.each([['courtId'], ['courtDivisionCode'], ['chapter']])(
+        'a placeholder row with no %s opens no task; approval succeeds',
+        async (missingField) => {
+          const incomplete = { ...courtFields081 };
+          delete incomplete[missingField as keyof typeof incomplete];
+          mockGetSurrogatesByFingerprints.mockResolvedValue([
+            placeholder('081-24-00001', incomplete),
+          ]);
+          mockGetTrusteeAppointments.mockResolvedValue([]);
+
+          await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+          expect(mockUpdateIfPending).toHaveBeenCalled();
+          expect(mockOpenOrJoin).not.toHaveBeenCalled();
+        },
+      );
+
+      test('a failed task write after the approval is logged, and the approval still succeeds', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockOpenOrJoin.mockRejectedValue(new Error('write failed'));
+        const errorSpy = vi.spyOn(context.logger, 'error');
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(/24-00002/);
+        ).resolves.toBeUndefined();
 
-        expect(mockUpdateIfPending).not.toHaveBeenCalled();
+        expect(mockQueueTrusteeVerificationRemap).toHaveBeenCalled();
+        expect(errorSpy).toHaveBeenCalledWith(
+          'TRUSTEE-MATCH-VERIFICATION-USE-CASE',
+          expect.stringMatching(/081-24-00001.*trustee-new/),
+          expect.anything(),
+        );
       });
 
-      test('rejects when the division matches but the chapter does not', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
-        mockGetTrusteeAppointments.mockResolvedValue([
-          { status: 'active', courtId: '081', chapter: '11', divisionCodes: ['081'] },
+      test('one failed task write does not stop the remaining cases from opening theirs', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          placeholder('081-24-00001'),
+          placeholder('081-24-00002'),
         ]);
-        mockCaseSummaries({
-          '081-24-00001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
-        });
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockOpenOrJoin
+          .mockRejectedValueOnce(new Error('write failed'))
+          .mockResolvedValueOnce(undefined);
+        const errorSpy = vi.spyOn(context.logger, 'error');
+
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockOpenOrJoin).toHaveBeenCalledTimes(2);
+        expect(mockOpenOrJoin).toHaveBeenLastCalledWith(
+          expect.anything(),
+          '081-24-00002',
+          'no-appointment',
+          approver,
+        );
+        expect(errorSpy).toHaveBeenCalledTimes(1);
+      });
+
+      test('an approval whose status write fails opens no task', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockUpdateIfPending.mockRejectedValue(new Error('db'));
 
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(BadRequestError);
+        ).rejects.toThrow();
+
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
       });
 
-      test('rejects with a distinct error (not BadRequestError) when a case lookup fails, rather than conflating it with a real division mismatch', async () => {
-        mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
-        mockGetTrusteeAppointments.mockResolvedValue([
-          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
-        ]);
-        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
-          async (_context, caseId) => {
-            if (caseId === '081-24-00002') throw new Error('gateway timeout');
-            return {
-              caseId,
-              courtId: '081',
-              courtDivisionCode: '081',
-              chapter: '7',
-            } as CaseSummary;
-          },
-        );
+      test('an approval that loses the race to a concurrent approval opens no task', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([placeholder('081-24-00001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([]);
+        mockUpdateIfPending.mockResolvedValue(false);
 
-        const error = await getTheThrownError(() =>
+        await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        );
+        ).rejects.toThrow();
 
-        expect(error).not.toBeInstanceOf(BadRequestError);
-        expect((error as Error).message).toContain('081-24-00002');
-        expect(mockUpdateIfPending).not.toHaveBeenCalled();
+        expect(mockOpenOrJoin).not.toHaveBeenCalled();
       });
 
-      test('skips the division check entirely (and never fetches trustee appointments) when there are no affected cases', async () => {
+      test('never fetches trustee appointments when there are no affected cases', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue([]);
 
         await useCase.approveVerification(context, 'verification-1', 'trustee-new');
@@ -863,44 +955,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
           'verification-1',
           expect.objectContaining({ status: 'approved' }),
         );
-      });
-
-      // Guards against a large affected-case bundle firing one simultaneous DXTR query per
-      // case inside a single synchronous request (reviewer-flagged on PR #3090) -- 25 cases
-      // is comfortably above CASE_SUMMARY_FETCH_CONCURRENCY (10), so an unbounded fan-out
-      // would push concurrent in-flight calls well past the cap this test asserts against.
-      test('bounds concurrent case-summary lookups rather than firing one per affected case at once', async () => {
-        const affectedCases = Array.from({ length: 25 }, (_, i) => ({
-          caseId: `case-${i}`,
-          trusteeId: 'fp-abc123',
-          isSurrogate: true,
-        }));
-        mockGetSurrogatesByFingerprints.mockResolvedValue(affectedCases);
-        mockGetTrusteeAppointments.mockResolvedValue([
-          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
-        ]);
-
-        let inFlight = 0;
-        let maxInFlight = 0;
-        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
-          async (_context, caseId) => {
-            inFlight++;
-            maxInFlight = Math.max(maxInFlight, inFlight);
-            await new Promise((resolve) => setTimeout(resolve, 1));
-            inFlight--;
-            return {
-              caseId,
-              courtId: '081',
-              courtDivisionCode: '081',
-              chapter: '7',
-            } as CaseSummary;
-          },
-        );
-
-        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-        expect(maxInFlight).toBeGreaterThan(0);
-        expect(maxInFlight).toBeLessThanOrEqual(10);
       });
     });
 
@@ -1340,6 +1394,208 @@ describe('TrusteeMatchVerificationUseCase', () => {
       mockFindById.mockRejectedValue(new Error('db unavailable'));
 
       await expect(useCase.getEnrichedVerification(context, 'verification-1')).rejects.toThrow();
+    });
+
+    describe('appointmentTaskPreview', () => {
+      const surrogate = (
+        caseId: string,
+        overrides: Partial<{ courtId: string; courtDivisionCode: string; chapter: string }> = {},
+      ) => ({
+        caseId,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
+        ...overrides,
+      });
+
+      beforeEach(() => {
+        vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+          {
+            courtId: '081',
+            courtName: 'Eastern District of Missouri',
+            courtDivisionCode: '081',
+            courtDivisionName: 'St. Louis',
+          },
+        ] as Awaited<ReturnType<CourtsUseCase['getCourts']>>);
+      });
+
+      test('is omitted when no trusteeId is given', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+        expect(result).not.toHaveProperty('appointmentTaskPreview');
+        expect(mockGetTrusteeAppointments).not.toHaveBeenCalled();
+      });
+
+      test('names one group for a single uncovered case', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(mockGetTrusteeAppointments).toHaveBeenCalledWith('trustee-a');
+        expect(result.appointmentTaskPreview).toEqual([
+          {
+            courtId: '081',
+            courtDivisionCode: '081',
+            courtName: 'Eastern District of Missouri',
+            courtDivisionName: 'St. Louis',
+            chapter: '7',
+            caseCount: 1,
+          },
+        ]);
+      });
+
+      test('counts cases that share a court, division and chapter in one group', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001'),
+          surrogate('case-002'),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toHaveLength(1);
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(2);
+      });
+
+      test('counts a case with two placeholder rows for the same tuple once', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001'),
+          surrogate('case-001'),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(1);
+      });
+
+      test('splits cases in different chapters into separate groups', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-001', { chapter: '7' }),
+          surrogate('case-002', { chapter: '13' }),
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview?.map((g) => g.chapter).sort()).toEqual(['13', '7']);
+      });
+
+      test.each(['courtId', 'courtDivisionCode', 'chapter'] as const)(
+        'excludes a surrogate that is missing %s',
+        async (field) => {
+          mockGetSurrogatesByFingerprints.mockResolvedValue([
+            surrogate('case-001', { [field]: undefined }),
+          ]);
+
+          const result = await useCase.getEnrichedVerification(
+            context,
+            'verification-1',
+            'trustee-a',
+          );
+
+          expect(result.appointmentTaskPreview).toEqual([]);
+        },
+      );
+
+      test('leaves out parked and closed rows, which approval does not open a task for', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([
+          surrogate('case-open'),
+          { ...surrogate('case-parked'), documentType: 'CASE_APPOINTMENT_UNATTACHED' },
+          { ...surrogate('case-closed'), unassignedOn: '2024-01-01T00:00:00.000Z' },
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toHaveLength(1);
+        expect(result.appointmentTaskPreview![0].caseCount).toBe(1);
+      });
+
+      test('returns an empty array when the trustee already covers every case', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          {
+            status: 'active',
+            courtId: '081',
+            divisionCode: '081',
+            chapter: '7',
+            appointmentType: 'panel',
+          },
+        ]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview).toEqual([]);
+      });
+
+      test('leaves court names out when the court cannot be resolved', async () => {
+        vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result.appointmentTaskPreview![0]).not.toHaveProperty('courtName');
+        expect(result.appointmentTaskPreview![0]).not.toHaveProperty('courtDivisionName');
+      });
+
+      test('fetches the surrogates once for both affectedCaseIds and the preview', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue([surrogate('case-001')]);
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledTimes(1);
+        expect(result.affectedCaseIds).toEqual(['case-001']);
+      });
+
+      test('is omitted for an approved verification', async () => {
+        mockFindById.mockResolvedValue({
+          ...sampleVerification,
+          status: 'approved',
+          affectedCaseIds: ['case-001'],
+        });
+
+        const result = await useCase.getEnrichedVerification(
+          context,
+          'verification-1',
+          'trustee-a',
+        );
+
+        expect(result).not.toHaveProperty('appointmentTaskPreview');
+        expect(mockGetTrusteeAppointments).not.toHaveBeenCalled();
+      });
     });
   });
 });

@@ -269,12 +269,13 @@ Azure rejects address-space changes on in-use subnets.
 ## DORA Metrics Storage
 
 A dedicated, Flexion-only storage account holds the weekly DORA Metrics workflow's
-(`dora-metrics.yml`) CSV reports so that history outlives GitHub's artifact retention. Until the
-workflow's publish job is added, reports still exist only as expiring workflow artifacts. The
-account is defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from `main.bicep`,
-so it is never deployed to USTP. Shared-key access is disabled; every reader and writer uses Entra
-ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics` container. Deleted
-or overwritten blobs, and a deleted container, stay recoverable for 30 days.
+(`dora-metrics.yml`) CSV reports so that history outlives GitHub's artifact retention. After the
+four report jobs succeed, the workflow's publish job uploads every CSV to
+`dora-metrics/runs/<run date>-<run id>/`; if any report job fails, nothing is published for that
+run. The account is defined in `ops/cloud-deployment/dora-metrics-storage.bicep`, separate from
+`main.bicep`, so it is never deployed to USTP. Shared-key access is disabled; every reader and
+writer uses Entra ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics`
+container. Deleted or overwritten blobs, and a deleted container, stay recoverable for 30 days.
 
 ### One-time setup
 

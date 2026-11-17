@@ -24,9 +24,13 @@ import {
 } from '@common/cams/orders';
 import {
   EnrichedTrusteeMatchVerification,
-  TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeAppointmentRefreshResult,
+  TrusteeAppointmentVerificationDetail,
+  TrusteeAppointmentVerificationListItem,
+} from '@common/cams/trustee-appointment-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -44,6 +48,7 @@ import {
 } from '@common/cams/trustees';
 import {
   CaseTrusteeAppointmentHistory,
+  RegionCaseAppointmentSource,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
@@ -849,7 +854,7 @@ const trusteeMatchVerificationDetail: EnrichedTrusteeMatchVerification = {
   affectedCaseIds: ['081-22-11111'],
 };
 
-// One caseless ambiguous DXTR identity task (CAMS-953 Slice 5): no caseId/courtId at all, no
+// One caseless ambiguous DXTR identity task: no caseId/courtId at all, no
 // affected cases. Its findings are the real pipeline's output for the multipleCandidatesCaseless
 // fixture scenario, imported as plain JSON for the same reason as trusteeMatchFindings above.
 const trusteeMatchCaselessFindings =
@@ -872,8 +877,8 @@ const trusteeMatchVerificationCaselessDetail: EnrichedTrusteeMatchVerification =
   affectedCaseIds: [],
 };
 
-// One ambiguous DXTR identity task with 7 candidates (CAMS-953 Slice 7): exercises the comparison
-// table's pagination past the first 5. Its findings are the real pipeline's output for the
+// One ambiguous DXTR identity task with 7 candidates: exercises the comparison table's
+// pagination past the first 5. Its findings are the real pipeline's output for the
 // manyCandidates fixture scenario, imported as plain JSON for the same reason as
 // trusteeMatchFindings above.
 const trusteeMatchManyCandidatesFindings =
@@ -926,6 +931,109 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   toListItem(trusteeMatchVerificationCaselessDetail),
   toListItem(trusteeMatchVerificationManyCandidatesDetail),
 ];
+
+const trusteeAppointmentVerifications: TrusteeAppointmentVerificationListItem[] = [
+  {
+    id: 'appointment-task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    taskDate: '2026-11-01T00:00:00.000Z',
+    caseCount: 1,
+  },
+  {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    taskDate: '2026-11-02T00:00:00.000Z',
+    caseCount: 1,
+  },
+];
+
+const trusteeAppointmentVerificationDetailsById: Record<
+  string,
+  TrusteeAppointmentVerificationDetail
+> = {
+  'appointment-task-1': {
+    id: 'appointment-task-1',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-1',
+    trusteeName: 'Jane Smith',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    caseIds: ['081-24-00001'],
+    createdOn: '2026-11-01T00:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2026-11-01T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    appointments: [
+      {
+        id: 'appointment-1',
+        trusteeId: 'trustee-1',
+        chapter: '13',
+        appointmentType: 'standing',
+        courtId: '081',
+        divisionCodes: ['082'],
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+        courtName: 'Southern District of New York',
+        createdOn: '2020-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2020-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        agreement: {
+          matchesCourt: true,
+          matchesDivision: false,
+          matchesChapter: false,
+          isActive: true,
+          score: 2,
+        },
+      },
+    ],
+  },
+  'appointment-task-2': {
+    id: 'appointment-task-2',
+    documentType: 'TRUSTEE_APPOINTMENT_VERIFICATION',
+    taskType: 'trustee-appointment',
+    trusteeId: 'trustee-2',
+    trusteeName: 'Robert Jones',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    chapter: '7',
+    reason: 'no-appointment',
+    status: 'pending',
+    caseIds: ['081-24-00002'],
+    createdOn: '2026-11-02T00:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2026-11-02T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    appointments: [],
+  },
+};
 
 const orders = [
   {
@@ -1939,9 +2047,22 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
         offices: [],
       },
     };
+  } else if (path.match(/\/dev-tools\/case-appointment-source/)) {
+    response = {
+      data: mockedCaseAppointmentSources(),
+    };
   } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
     response = {
       data: [caseDetails],
+    };
+  } else if (path.match(/\/trustee-appointment-verification\/(.+)/)) {
+    const id = path.match(/\/trustee-appointment-verification\/(.+)/)![1];
+    response = {
+      data: trusteeAppointmentVerificationDetailsById[id],
+    };
+  } else if (path.match(/\/trustee-appointment-verification/)) {
+    response = {
+      data: trusteeAppointmentVerifications,
     };
   } else if (path.match(/\/trustee-match-verification\/(.+)/)) {
     const id = path.match(/\/trustee-match-verification\/(.+)/)![1];
@@ -2572,10 +2693,53 @@ async function getTrusteeMatchVerifications(_params?: {
   return get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`);
 }
 
+async function getTrusteeAppointmentVerifications(_params?: {
+  status?: string;
+}): Promise<ResponseBody<TrusteeAppointmentVerificationListItem[]>> {
+  return get<TrusteeAppointmentVerificationListItem[]>(`/trustee-appointment-verification`);
+}
+
+async function getTrusteeAppointmentVerificationDetail(
+  id: string,
+  _trusteeId: string,
+): Promise<ResponseBody<TrusteeAppointmentVerificationDetail>> {
+  return get<TrusteeAppointmentVerificationDetail>(`/trustee-appointment-verification/${id}`);
+}
+
+/**
+ * The fake refresh resolves 'appointment-task-1' and reports every other task still uncovered, so
+ * both outcomes can be exercised against the fake API.
+ */
+async function refreshTrusteeAppointmentVerification(
+  id: string,
+  _trusteeId: string,
+): Promise<ResponseBody<TrusteeAppointmentRefreshResult>> {
+  const task = trusteeAppointmentVerifications.find((t) => t.id === id);
+  if (!task) throw new Error(`Trustee appointment task ${id} not found.`);
+  const data: TrusteeAppointmentRefreshResult =
+    id === 'appointment-task-1'
+      ? {
+          outcome: 'resolved',
+          trusteeName: trusteeAppointmentVerificationDetailsById[id]?.trusteeName ?? 'Trustee',
+          updatedCaseCount: task.caseCount,
+          task: { ...task, status: 'approved' },
+        }
+      : {
+          outcome: 'still-uncovered',
+          courtId: task.courtId,
+          courtName: task.courtName,
+          divisionCode: task.divisionCode,
+          courtDivisionName: task.courtDivisionName,
+          chapter: task.chapter,
+        };
+  return { meta: { self: `/trustee-appointment-verification/${id}` }, data };
+}
+
 async function getTrusteeMatchVerificationDetail(
   id: string,
-): Promise<ResponseBody<TrusteeMatchVerification>> {
-  return get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`);
+  _trusteeId?: string,
+): Promise<ResponseBody<EnrichedTrusteeMatchVerification>> {
+  return get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`);
 }
 
 async function patchTrusteeVerificationOrderApproval(
@@ -2672,6 +2836,29 @@ async function getRoleAndOfficeGroupNames() {
 
 async function getPrivilegedIdentityUsers() {
   return get<CamsUserReference[]>('/dev-tools/privileged-identity');
+}
+
+/** Every distinct region in the mocked office data: region 03 on DXTR, every other region on ACMS. */
+function mockedCaseAppointmentSources(): RegionCaseAppointmentSource[] {
+  const regionNamesById = new Map<string, string>();
+  for (const office of MOCKED_USTP_OFFICES_ARRAY) {
+    const regionId = office.regionId.padStart(2, '0');
+    if (!regionNamesById.has(regionId)) {
+      regionNamesById.set(regionId, office.regionName);
+    }
+  }
+  return [...regionNamesById.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([regionId, regionName]) => ({
+      regionId,
+      regionName,
+      // One DXTR region so the fake API shows both source states on the admin page.
+      source: regionId === '03' ? ('DXTR' as const) : ('ACMS' as const),
+    }));
+}
+
+async function getCaseAppointmentSources() {
+  return get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
 async function getPrivilegedIdentityUser(userId: string) {
@@ -3563,11 +3750,15 @@ const MockApi2 = {
   searchTrustees,
   getTrusteeMatchVerifications,
   getTrusteeMatchVerificationDetail,
+  getTrusteeAppointmentVerifications,
+  getTrusteeAppointmentVerificationDetail,
+  refreshTrusteeAppointmentVerification,
   patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
+  getCaseAppointmentSources,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

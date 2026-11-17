@@ -27,6 +27,7 @@ import {
   isOneSidedMiddleNameMatch,
   calculateNumericTokenScore,
   padSingleDigitNumericToken,
+  isBlankSourceValue,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -923,6 +924,26 @@ describe('calculateAddressScore', () => {
     expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
   });
 
+  // Regression coverage: when the DXTR cityStateZipCountry has no valid two-letter state token
+  // (e.g. a typo'd/invalid code, or a format that omits state entirely), parseCityStateZip
+  // returns state: null rather than throwing, and calculateAddressScore must fall back to an
+  // empty string for the city/state comparison instead of crashing on a null concatenation.
+  test('should fall back to an empty state when the DXTR city/state/zip has no valid state token', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Corinth 38834',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+      address1: '123 Main St',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(97);
+  });
+
   test('should treat a number and its leading-zero-padded form as an exact numeric match', () => {
     const dxtrAddress: LegacyAddress = {
       cityStateZipCountry: 'New York, NY 10001',
@@ -1449,6 +1470,41 @@ describe('lastNameTokensMatch', () => {
       ).toBe(false);
     });
 
+    test('should NOT match when only the source side supplies a bare single-token candidate list', () => {
+      // candidateCandidates is undefined here, not merely empty - covers the `?? []`/`?.length`
+      // fallbacks on the side that received no list at all.
+      expect(
+        lastNameTokensMatch(
+          firstLastNameToken('Jones'),
+          firstLastNameToken('Doe'),
+          lastNameSurnameCandidates('Jones'),
+          undefined,
+        ),
+      ).toBe(false);
+    });
+
+    test('should NOT apply the fallback when the source list is empty and the candidate side has no list at all', () => {
+      // sourceCandidates is an empty array (defined, but not length-1), so the `||` check's left
+      // operand is false and must actually evaluate the right operand against an undefined
+      // candidateCandidates - unlike the single-bare-token case above, which short-circuits
+      // before the right operand's `?.length ?? 0` fallback ever runs.
+      expect(
+        lastNameTokensMatch(firstLastNameToken('Jones'), firstLastNameToken('Doe'), [], undefined),
+      ).toBe(false);
+    });
+
+    test('should NOT match when only the candidate side supplies a bare single-token candidate list', () => {
+      // sourceCandidates is undefined here, the mirror image of the case above.
+      expect(
+        lastNameTokensMatch(
+          firstLastNameToken('Doe'),
+          firstLastNameToken('Jones'),
+          undefined,
+          lastNameSurnameCandidates('Jones'),
+        ),
+      ).toBe(false);
+    });
+
     test('should NOT apply the fallback when neither candidate list is supplied', () => {
       // Same firstLastNameToken inputs as the first parameterized case above, but without the
       // candidate lists - existing callers that never pass them must see unchanged behavior, not
@@ -1511,6 +1567,13 @@ describe('lastNameSurnameCandidates', () => {
       expect(result).not.toContain('inactive');
     },
   );
+
+  test('excludes a hyphen-segment candidate that is too short to be a plausible surname', () => {
+    // The trailing hyphen segment "A" reduces to the single-character token "a", which fails
+    // isPlausibleFallback's minimum-length check, so it must not survive as a candidate even
+    // though the whole hyphenated compound ("smith-a") does.
+    expect(lastNameSurnameCandidates('Smith-A')).toEqual(['smith', 'smith-a']);
+  });
 
   test('excludes a chapter-number token even though it clears the minimum length check', () => {
     // "11"/"12"/"13" are 2-3 characters, long enough to pass SURNAME_CANDIDATE_MIN_TOKEN_LENGTH
@@ -2318,6 +2381,16 @@ describe('isOneSidedMiddleNameMatch', () => {
       camsMiddle: '',
       expected: false,
     },
+    // dxtrFirst is empty, so isCrossedNamePartMatch's own `!a || !b` guard short-circuits before
+    // any nickname/distance comparison runs.
+    {
+      description: 'the dxtr first name is empty on the side being crossed',
+      dxtrFirst: '',
+      dxtrMiddle: '',
+      camsFirst: 'robert',
+      camsMiddle: 'w',
+      expected: false,
+    },
   ])(
     'should return $expected when $description',
     ({ dxtrFirst, dxtrMiddle, camsFirst, camsMiddle, expected }) => {
@@ -2386,5 +2459,23 @@ describe('calculateEmailScore', () => {
 
   test('should return null when either side is empty/whitespace-only', () => {
     expect(calculateEmailScore('   ', 'john.doe@example.com')).toBeNull();
+  });
+});
+
+describe('isBlankSourceValue', () => {
+  test('should return true when the value is undefined', () => {
+    expect(isBlankSourceValue(undefined)).toBe(true);
+  });
+
+  test('should return true when the value is an empty string', () => {
+    expect(isBlankSourceValue('')).toBe(true);
+  });
+
+  test('should return true when the value is the sentinel "0"', () => {
+    expect(isBlankSourceValue('0')).toBe(true);
+  });
+
+  test('should return false for a real, non-blank value', () => {
+    expect(isBlankSourceValue('123 Main St')).toBe(false);
   });
 });

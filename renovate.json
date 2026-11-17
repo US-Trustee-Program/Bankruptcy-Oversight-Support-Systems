@@ -97,6 +97,13 @@
       "matchPackageNames": ["!/^actions//", "!/^github//"]
     },
     {
+      "description": "Snyk CLI version pinned in .github/workflows/sub-security-scan.yml (tracked by the custom regex manager below). Separate PR, no automerge: the CLI runs with the Snyk OAuth secret and security-events: write, and a CLI release broke the SCA deploy gate in CAMS-939, so each bump gets a human review and its own CI run.",
+      "matchManagers": ["custom.regex"],
+      "matchPackageNames": ["snyk"],
+      "groupName": null,
+      "automerge": false
+    },
+    {
       "description": "Group Vitest and related testing packages",
       "matchPackageNames": ["vitest", "@vitest/coverage-v8"],
       "groupName": "vitest"
@@ -166,6 +173,14 @@
         "type=raw,value=v(?<currentValue>[0-9.]+)-noble"
       ],
       "depNameTemplate": "@playwright/test",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "description": "Track the Snyk CLI version pinned for snyk/actions/setup in the security scan workflow. The CLI is published to npm as `snyk`; the workflow value keeps its leading `v`.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/sub-security-scan\\.yml$/"],
+      "matchStrings": ["snyk-version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "snyk",
       "datasourceTemplate": "npm"
     }
   ],

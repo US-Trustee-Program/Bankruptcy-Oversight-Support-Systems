@@ -1,3 +1,4 @@
+@use 'uswds-core' as *;
 @use 'styles/abstracts/device-screens' as device-screens;
 
 .data-verification-screen {
@@ -62,6 +63,17 @@
       .combo-box-form-group {
         min-width: 220px;
       }
+    }
+  }
+
+  // A task row with no detail to expand (trustee appointment tasks, CAMS-956): keeps the
+  // accordion row's layout but drops its expand icon and pointer, which would promise a toggle.
+  .static-task-row .usa-accordion__button {
+    background-image: none;
+    cursor: default;
+
+    &:hover {
+      background-color: color('base-lightest');
     }
   }
 

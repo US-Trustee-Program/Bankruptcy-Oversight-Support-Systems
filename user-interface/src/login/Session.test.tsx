@@ -108,4 +108,38 @@ describe('Session', () => {
       expect(alertText).toHaveTextContent(errorMessage);
     });
   });
+
+  test('should display a default message when getMe rejects without an error message', async () => {
+    vi.spyOn(Api2, 'getMe').mockRejectedValue({});
+
+    renderWithProps();
+
+    await waitFor(() => {
+      const alertHeading = document.querySelector('.usa-alert__heading');
+      expect(alertHeading).toHaveTextContent('Access Denied');
+      const alertText = document.querySelector('.usa-alert__text');
+      expect(alertText).toHaveTextContent(
+        'Access to this application is denied without successful authentication.',
+      );
+    });
+  });
+
+  test('should default to an empty user when no user prop is provided', async () => {
+    const setSession = vi.spyOn(LocalStorage, 'setSession');
+    const mockSession = MockData.getNonPaginatedResponseBody(MockData.getCamsSession());
+    vi.spyOn(Api2, 'getMe').mockResolvedValue(mockSession);
+
+    const { user: _user, ...propsWithoutUser } = testSession;
+    render(
+      <BrowserRouter>
+        <Session {...propsWithoutUser}></Session>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(setSession).toHaveBeenCalledWith(
+        expect.objectContaining({ user: { id: '', name: '' } }),
+      );
+    });
+  });
 });
