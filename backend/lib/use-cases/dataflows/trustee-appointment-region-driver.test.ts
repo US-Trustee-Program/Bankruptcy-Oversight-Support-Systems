@@ -9,6 +9,7 @@ import { AcmsCaseAppointmentRawRecord, TrusteeAppointmentRegionSyncState } from 
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 type ScenarioDistribution = Awaited<
   ReturnType<typeof SyncTrusteeCaseAppointments.processAppointments>
@@ -828,6 +829,137 @@ describe('RegionDriver.runRegionDriver', () => {
       'region.02.lastSyncDate',
       '2026-07-01',
     );
+  });
+
+  describe('a region switched to DXTR', () => {
+    const DXTR_SOURCE = {
+      system: 'DXTR' as const,
+      updatedOn: '2026-09-10T00:00:00.000Z',
+      updatedBy: { id: 'su-1', name: 'Super User' },
+    };
+    let getLatestTrusteeAppointmentTxDateForRegion: ReturnType<typeof vi.fn>;
+    let getTrusteeAppointmentEventsForRegionDate: ReturnType<typeof vi.fn>;
+
+    /** One DXTR event per date in eventsByDate, returned on the first page only (afterTxId '0'). */
+    function dxtrPages(eventsByDate: Record<string, TrusteeAppointmentSyncEvent>) {
+      return async (_context: unknown, request: { txDate: string; afterTxId: string }) => {
+        const event = eventsByDate[request.txDate];
+        return event && request.afterTxId === '0'
+          ? { events: [event], lastTxId: '5001' }
+          : { events: [] };
+      };
+    }
+
+    function dxtrEvent(caseId: string): TrusteeAppointmentSyncEvent {
+      return { ...makeEvent(caseId), source: 'DXTR' };
+    }
+
+    beforeEach(() => {
+      getLatestTrusteeAppointmentTxDateForRegion = vi.fn().mockResolvedValue(undefined);
+      getTrusteeAppointmentEventsForRegionDate = vi.fn().mockResolvedValue({ events: [] });
+      vi.spyOn(factory, 'getCasesGateway').mockReturnValue({
+        getLatestTrusteeAppointmentTxDateForRegion,
+        getTrusteeAppointmentEventsForRegionDate,
+      } as unknown as ReturnType<typeof factory.getCasesGateway>);
+    });
+
+    test('is read from DXTR while a region with no source record is read from ACMS in the same run', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({
+          '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE },
+          '02': { lastSyncDate: '2026-09-14' },
+        }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+      getTrusteeAppointmentEventsForRegionDate.mockImplementation(
+        dxtrPages({ '2026-09-15': dxtrEvent('081-26-00001') }),
+      );
+      getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-09-16');
+      getCmmapAppointmentsRaw.mockImplementation(
+        respectingCursor({ '2026-09-15': makeRawRow(7, '2026-09-15') }),
+      );
+
+      const result = await RegionDriver.runRegionDriver(context, {
+        regions: ['01', '02'],
+        runDate: '2026-09-20',
+      });
+
+      expect(result.processedRegions).toEqual(['01', '02']);
+      expect(getLatestTrusteeAppointmentTxDateForRegion).toHaveBeenCalledTimes(1);
+      expect(getLatestTrusteeAppointmentTxDateForRegion).toHaveBeenCalledWith(context, '01');
+      expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledTimes(1);
+      expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledWith(context, '02');
+      const dxtrDates = getTrusteeAppointmentEventsForRegionDate.mock.calls.map(
+        ([, request]) => `${request.regionId} ${request.txDate}`,
+      );
+      expect([...new Set(dxtrDates)]).toEqual(['01 2026-09-15', '01 2026-09-16']);
+      expect(processAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), [
+        expect.objectContaining({ caseId: '081-26-00001', source: 'DXTR' }),
+      ]);
+      expect(processAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), [
+        expect.objectContaining({ caseId: '081-26-00007', source: 'ACMS' }),
+      ]);
+    });
+
+    test('pages each DXTR date by transaction-id cursor and still withholds the newest date from the bookmark', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+      getTrusteeAppointmentEventsForRegionDate.mockImplementation(
+        dxtrPages({
+          '2026-09-15': dxtrEvent('081-26-00001'),
+          '2026-09-16': dxtrEvent('081-26-00002'),
+        }),
+      );
+
+      await RegionDriver.runRegionDriver(context, { regions: ['01'], runDate: '2026-09-20' });
+
+      expect(processAppointmentsSpy).toHaveBeenCalledTimes(2);
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.01.lastSyncDate', '2026-09-15'],
+      ]);
+    });
+
+    test('switched before its first run, starts at the cutover date and reads nothing earlier', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(stateWith({ '01': { source: DXTR_SOURCE } }));
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-07-02');
+
+      await RegionDriver.runRegionDriver(context, { regions: ['01'], runDate: '2026-07-05' });
+
+      const dates = getTrusteeAppointmentEventsForRegionDate.mock.calls.map(
+        ([, request]) => request.txDate,
+      );
+      expect([...new Set(dates)]).toEqual([CUTOVER_DATE, '2026-07-02']);
+      expect(mockRegionStateRepo.setField).toHaveBeenCalledWith(
+        'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        'region.01.lastSyncDate',
+        CUTOVER_DATE,
+      );
+    });
+
+    test('a DXTR timeout stops with a transient-error continuation at that cursor', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+      getTrusteeAppointmentEventsForRegionDate.mockRejectedValue(
+        new GatewayTimeoutError('CASES-DXTR-GATEWAY', { message: 'Timeout: request failed' }),
+      );
+
+      const result = await RegionDriver.runRegionDriver(context, {
+        regions: ['01'],
+        runDate: '2026-09-20',
+      });
+
+      expect(result.continuation).toEqual({
+        regions: ['01'],
+        runDate: '2026-09-20',
+        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: undefined },
+        cause: 'transient-error',
+      });
+      expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
+    });
   });
 });
 

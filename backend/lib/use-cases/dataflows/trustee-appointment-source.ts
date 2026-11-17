@@ -44,31 +44,43 @@ export interface TrusteeAppointmentSource {
 }
 
 /**
- * DXTR implementation, wrapping the existing transaction-date reads on the cases gateway.
+ * DXTR implementation, reading a region's trustee appointment (TX_TYPE='A'/TX_CODE='TR') and
+ * petition (TX_TYPE='1'/TX_CODE='1') transactions per TX_DATE day, paged by AO_TX.TX_ID. The region
+ * comes from each case's group designator.
  *
- * Non-functional stub: it exists to keep the interface honest against the existing DXTR read and
- * is not wired into the dataflow until GitHub #3191. DXTR reads are keyed by transaction start
- * date across all regions, so regionId is ignored, there is no id paging (every call returns the
- * complete result), and getLatestChangeDate is not supported.
+ * Events carry DXTR's groupDesignator and profCode but never an acmsProfessionalId: DXTR can supply
+ * an incorrect ACMS professional code, so it must not link a trustee by professional id. profCode
+ * is kept only to detect placeholder codes.
  */
 export class DxtrTrusteeAppointmentSource implements TrusteeAppointmentSource {
   readonly name = 'DXTR' as const;
 
-  async getLatestChangeDate(): Promise<string | undefined> {
-    throw new Error('DxtrTrusteeAppointmentSource.getLatestChangeDate is not supported');
+  async getLatestChangeDate(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined> {
+    const casesGateway = factory.getCasesGateway(context);
+    return casesGateway.getLatestTrusteeAppointmentTxDateForRegion(context, regionId);
   }
 
   async getEventsForDate(
     context: ApplicationContext,
-    _regionId: string,
+    regionId: string,
     changeDate: string,
+    lastId?: string,
   ): Promise<TrusteeAppointmentSourcePage> {
     const casesGateway = factory.getCasesGateway(context);
-    const [appointments, petitions] = await Promise.all([
-      casesGateway.getTrusteeAppointments(context, changeDate),
-      casesGateway.getTrusteePetitionEvents(context, changeDate),
-    ]);
-    return { events: [...appointments.events, ...petitions.events], failures: [] };
+    const page = await casesGateway.getTrusteeAppointmentEventsForRegionDate(context, {
+      regionId,
+      txDate: changeDate,
+      afterTxId: lastId ?? '0',
+      limit: DEFAULT_FETCH_SIZE,
+    });
+    return {
+      events: page.events,
+      failures: [],
+      ...(page.lastTxId ? { lastId: page.lastTxId } : {}),
+    };
   }
 }
 

@@ -119,9 +119,11 @@ Feature: Switch a region's trustee appointments to DXTR
   # Dependencies: Slice 1
   # User Value: Case appointments for a switched region come from DXTR on the next scheduled run,
   #             with no deployment and no manual dataflow run
-  # Includes: a region-scoped DXTR source (group designator filter, paging, latest transaction date),
-  #           the ACMS professional id built from group designator + professional code.
+  # Includes: a region-scoped DXTR source (group designator filter, paging, latest transaction date).
   # Not included: unknown trustees, placeholders and parking for DXTR records (Slice 3).
+  #               An ACMS professional id built from DXTR's group designator + professional code:
+  #               DXTR can carry an incorrect professional code (CAMS-882), so DXTR events do not
+  #               link by professional id. Decided by Matt Stankey, 2026-11-17; follow-up on cams-0pqfs.2.3.
 
   Scenario: A switched region syncs from DXTR on the next scheduled run
     Given region "01" has a source record with system DXTR and a bookmark of 2026-09-14
@@ -152,9 +154,16 @@ Feature: Switch a region's trustee appointments to DXTR
 
   Scenario: A known trustee's DXTR appointment is written
     Given region "01" has a source record with system DXTR
-    And a DXTR trustee-appointment transaction for case "081-26-12345" whose group designator and professional code form an ACMS professional id linked to exactly one CAMS trustee
+    And a DXTR trustee-appointment transaction for case "081-26-12345" whose trustee name and details match a known trustee variation for exactly one CAMS trustee
     When the sync runs
     Then a case appointment for that trustee on case "081-26-12345" is written
+
+  Scenario: A DXTR professional code does not link a trustee
+    Given region "01" has a source record with system DXTR
+    And a DXTR trustee-appointment transaction whose group designator and professional code match an ACMS professional id linked to a CAMS trustee
+    When the sync runs
+    Then the event carries no ACMS professional id
+    And the trustee is not resolved by that professional-id link
 
   Scenario: Existing records are kept when a region switches
     Given region "01" has case appointments written from ACMS before the switch

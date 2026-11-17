@@ -2,6 +2,8 @@ import * as mssql from 'mssql';
 import {
   CasesInterface,
   TransactionIdRangeForDate,
+  TrusteeAppointmentEventsPage,
+  TrusteeAppointmentEventsPageRequest,
   TrusteeAppointmentsResult,
   UpdatedCaseIds,
 } from '../../../use-cases/cases/cases.interface';
@@ -22,6 +24,7 @@ import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import { CaseBasics, CaseDetail, CaseSummary, getCaseIdParts } from '@common/cams/cases';
 import { DebtorAttorney, Debtor, Party, LegacyTrustee } from '@common/cams/parties';
 import { Trustee } from '@common/cams/trustees';
+import { toRegionId } from '../../../use-cases/gateways.types';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
@@ -39,6 +42,12 @@ const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
   }
   return parsed;
 })();
+
+// The region-scoped trustee appointment reads (one region, one day per page) are bounded to match
+// the ACMS request timeout, because the trustee appointment region driver only starts a page when
+// PAGE_STEP_COST_MS (6 minutes: a 5-minute read plus writes) of its invocation budget remains. A
+// longer read could run past the function host's timeout and get the invocation killed mid-page.
+const REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
 export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;
@@ -64,6 +73,45 @@ const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appoin
 // auto-link a case appointment to a specific trustee — it's read only as a negative sentinel
 // signal (detecting known placeholder values), never for identity/matching decisions.
 const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
+
+// Columns and joins shared by every trustee appointment event read. The trustee's name and contact
+// come from the case's current AO_PY trustee party, not from the transaction itself.
+const TRUSTEE_APPOINTMENT_EVENT_COLUMNS = `
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
+        TX.CS_CASEID,
+        TX.COURT_ID AS courtId,
+        C.CS_CHAPTER AS chapter,
+        CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
+        C.GRP_DES AS groupDesignator,
+        P.PY_FIRST_NAME AS firstName,
+        P.PY_MIDDLE_NAME AS middleName,
+        P.PY_LAST_NAME AS lastName,
+        P.PY_GENERATION AS generation,
+        P.PY_ADDRESS1 AS address1,
+        P.PY_ADDRESS2 AS address2,
+        P.PY_ADDRESS3 AS address3,
+        P.PY_CITY AS city,
+        P.PY_STATE AS state,
+        P.PY_ZIP AS zip,
+        P.PY_COUNTRY AS country,
+        P.PY_E_MAIL AS email,
+        P.PY_PHONENO AS phone,
+        P.PY_FAX_PHONE AS fax,
+        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate`;
+
+const TRUSTEE_APPOINTMENT_EVENT_JOINS = `
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'`;
+
+// Both trustee transaction kinds for one region. The region comes from the case's group
+// designator; DXTR stores AO_GRP_DES.REGION_ID zero-padded ('02'), the same as CAMS region ids.
+const REGION_TRUSTEE_APPOINTMENT_FILTER = `
+      JOIN AO_GRP_DES GRP ON C.GRP_DES = GRP.GRP_DES
+      WHERE ((TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR') OR (TX.TX_TYPE = '1' AND TX.TX_CODE = '1'))
+        AND GRP.REGION_ID = @regionId`;
 
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
@@ -1354,39 +1402,100 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   ): string {
     return `
       SELECT
-        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
-        TX.CS_CASEID,
-        TX.COURT_ID AS courtId,
-        C.CS_CHAPTER AS chapter,
-        CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
-        C.GRP_DES AS groupDesignator,
-        P.PY_FIRST_NAME AS firstName,
-        P.PY_MIDDLE_NAME AS middleName,
-        P.PY_LAST_NAME AS lastName,
-        P.PY_GENERATION AS generation,
-        P.PY_ADDRESS1 AS address1,
-        P.PY_ADDRESS2 AS address2,
-        P.PY_ADDRESS3 AS address3,
-        P.PY_CITY AS city,
-        P.PY_STATE AS state,
-        P.PY_ZIP AS zip,
-        P.PY_COUNTRY AS country,
-        P.PY_E_MAIL AS email,
-        P.PY_PHONENO AS phone,
-        P.PY_FAX_PHONE AS fax,
-        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
+        ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
         SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
-        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
         SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
-      FROM AO_TX TX
-      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
-      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'
+      ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
       WHERE ${txTypeCondition}
         AND ${txCodeCondition}
         AND TX.TX_DATE > @transactionsStart
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
+  }
+
+  /**
+   * Newest TX_DATE (YYYY-MM-DD) among a region's trustee appointment and petition transactions, or
+   * undefined when the region has none. Uses the same rows as getTrusteeAppointmentEventsForRegionDate.
+   */
+  async getLatestTrusteeAppointmentTxDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined> {
+    const params: DbTableFieldSpec[] = [
+      { name: 'regionId', type: mssql.VarChar, value: toRegionId(regionId) },
+    ];
+    const query = `
+      SELECT CONVERT(VARCHAR(10), MAX(TX.TX_DATE), 23) AS latestTxDate
+      ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
+      ${REGION_TRUSTEE_APPOINTMENT_FILTER}
+    `;
+
+    const queryResult = await this.executeQuery(
+      context,
+      query,
+      params,
+      REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+    );
+    const records = handleQueryResult<{ latestTxDate: string | null }[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.trusteeAppointmentsQueryCallback,
+    );
+    // MAX() with no GROUP BY always returns one row; latestTxDate is NULL when nothing matched.
+    return records[0].latestTxDate ?? undefined;
+  }
+
+  /**
+   * One page of a region's trustee appointment (TX_TYPE='A'/TX_CODE='TR') and petition
+   * (TX_TYPE='1'/TX_CODE='1') transactions whose TX_DATE falls on txDate, in TX_ID order after
+   * afterTxId. Both kinds share one TX_ID sequence, so a single id pages them together.
+   */
+  async getTrusteeAppointmentEventsForRegionDate(
+    context: ApplicationContext,
+    request: TrusteeAppointmentEventsPageRequest,
+  ): Promise<TrusteeAppointmentEventsPage> {
+    const params: DbTableFieldSpec[] = [
+      { name: 'regionId', type: mssql.VarChar, value: toRegionId(request.regionId) },
+      { name: 'txDate', type: mssql.Date, value: request.txDate },
+      { name: 'afterTxId', type: mssql.BigInt, value: request.afterTxId },
+      { name: 'limit', type: mssql.Int, value: request.limit },
+    ];
+    const query = `
+      SELECT TOP (@limit)
+        CONVERT(VARCHAR(20), TX.TX_ID) AS txId,
+        ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
+        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_APT_DATE_OFFSET}, 6) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_APT_DATE_OFFSET}, 6) END AS aptDate,
+        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_PROF_CODE_OFFSET}, 5) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_PROF_CODE_OFFSET}, 5) END AS profCode
+      ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
+      ${REGION_TRUSTEE_APPOINTMENT_FILTER}
+        AND TX.TX_DATE >= @txDate
+        AND TX.TX_DATE < DATEADD(day, 1, @txDate)
+        AND TX.TX_ID > @afterTxId
+      ORDER BY TX.TX_ID ASC
+    `;
+
+    const queryResult = await this.executeQuery(
+      context,
+      query,
+      params,
+      REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+    );
+    const records = handleQueryResult<(TrusteeAppointmentEventRecord & { txId: string })[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.trusteeAppointmentsQueryCallback,
+    );
+    if (records.length === 0) {
+      return { events: [] };
+    }
+
+    const lastTxId = records.reduce(
+      (max, record) => (BigInt(record.txId) > BigInt(max) ? record.txId : max),
+      records[0].txId,
+    );
+    return { events: records.map((record) => this.toTrusteeAppointmentEvent(record)), lastTxId };
   }
 
   private mapTrusteeAppointmentEventRecords(
@@ -1400,62 +1509,66 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       };
     }
 
-    const events: TrusteeAppointmentSyncEvent[] = records.map((record) => {
-      const fullName = removeExtraSpaces(
-        [record.firstName, record.middleName, record.lastName, record.generation]
-          .filter(Boolean)
-          .join(' '),
-      );
-
-      const cityStateZipCountry = formatCityStateZipCountry(
-        record.city,
-        record.state,
-        record.zip,
-        record.country,
-      );
-
-      const dxtrTrustee: DxtrTrusteeParty = {
-        firstName: record.firstName?.trim(),
-        middleName: record.middleName?.trim(),
-        lastName: record.lastName?.trim(),
-        generation: record.generation?.trim(),
-        fullName,
-        legacy: {
-          address1: record.address1?.trim(),
-          address2: record.address2?.trim(),
-          address3: record.address3?.trim(),
-          cityStateZipCountry,
-          phone: record.phone?.trim(),
-          fax: record.fax?.trim(),
-          email: record.email?.trim(),
-        },
-      };
-
-      return {
-        caseId: record.caseId,
-        courtId: record.courtId,
-        chapter: record.chapter,
-        courtDivisionCode: record.courtDivisionCode,
-        source: 'DXTR',
-        sourceTrustee: dxtrTrustee,
-        // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
-        // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
-        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap.
-        // TX.TX_DATE is a datetime2 NOT NULL column on the very same transaction row (the
-        // 'Trustee Appointed' transaction itself), so it can never be missing/malformed the way
-        // a REC substring can. Falling back to it keeps the appointment date tied to a real,
-        // stable DXTR fact instead of refusing the event outright or (worse) wall-clock time,
-        // while still preferring REC's date when it parses since that's the more precise,
-        // pre-existing source.
-        appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
-        profCode: record.profCode?.trim(),
-        groupDesignator: record.groupDesignator?.trim(),
-      };
-    });
+    const events = records.map((record) => this.toTrusteeAppointmentEvent(record));
 
     return {
       events,
       latestSyncDate: records[0].latestSyncDate,
+    };
+  }
+
+  private toTrusteeAppointmentEvent(
+    record: TrusteeAppointmentEventRecord,
+  ): TrusteeAppointmentSyncEvent {
+    const fullName = removeExtraSpaces(
+      [record.firstName, record.middleName, record.lastName, record.generation]
+        .filter(Boolean)
+        .join(' '),
+    );
+
+    const cityStateZipCountry = formatCityStateZipCountry(
+      record.city,
+      record.state,
+      record.zip,
+      record.country,
+    );
+
+    const dxtrTrustee: DxtrTrusteeParty = {
+      firstName: record.firstName?.trim(),
+      middleName: record.middleName?.trim(),
+      lastName: record.lastName?.trim(),
+      generation: record.generation?.trim(),
+      fullName,
+      legacy: {
+        address1: record.address1?.trim(),
+        address2: record.address2?.trim(),
+        address3: record.address3?.trim(),
+        cityStateZipCountry,
+        phone: record.phone?.trim(),
+        fax: record.fax?.trim(),
+        email: record.email?.trim(),
+      },
+    };
+
+    return {
+      caseId: record.caseId,
+      courtId: record.courtId,
+      chapter: record.chapter,
+      courtDivisionCode: record.courtDivisionCode,
+      source: 'DXTR',
+      sourceTrustee: dxtrTrustee,
+      // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
+      // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
+      // '000000', or otherwise unparseable — a genuine DXTR data-quality gap.
+      // TX.TX_DATE is a datetime2 NOT NULL column on the very same transaction row (the
+      // 'Trustee Appointed' transaction itself), so it can never be missing/malformed the way
+      // a REC substring can. Falling back to it keeps the appointment date tied to a real,
+      // stable DXTR fact instead of refusing the event outright or (worse) wall-clock time,
+      // while still preferring REC's date when it parses since that's the more precise,
+      // pre-existing source.
+      appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
+      profCode: record.profCode?.trim(),
+      groupDesignator: record.groupDesignator?.trim(),
     };
   }
 

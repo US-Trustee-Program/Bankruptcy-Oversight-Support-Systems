@@ -1,6 +1,8 @@
 import {
   CasesInterface,
   TransactionIdRangeForDate,
+  TrusteeAppointmentEventsPage,
+  TrusteeAppointmentEventsPageRequest,
   TrusteeAppointmentsResult,
   UpdatedCaseIds,
 } from '../../use-cases/cases/cases.interface';
@@ -171,6 +173,20 @@ export class CasesLocalGateway implements CasesInterface {
     transactionsStart: string,
   ): Promise<TrusteeAppointmentsResult> {
     return this.getTrusteeAppointments(context, transactionsStart);
+  }
+
+  public async getLatestTrusteeAppointmentTxDateForRegion(
+    _context: ApplicationContext,
+    _regionId: string,
+  ): Promise<string | undefined> {
+    return undefined;
+  }
+
+  public async getTrusteeAppointmentEventsForRegionDate(
+    _context: ApplicationContext,
+    _request: TrusteeAppointmentEventsPageRequest,
+  ): Promise<TrusteeAppointmentEventsPage> {
+    return { events: [] };
   }
 
   public async getAppointmentDatesByCaseIds(
