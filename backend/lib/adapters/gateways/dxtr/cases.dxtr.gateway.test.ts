@@ -2397,10 +2397,12 @@ describe('region-scoped trustee appointment transactions', () => {
 
       await read();
 
+      // The OR of the two kinds must be grouped: without the outer parentheses SQL Server binds
+      // the region condition to the second kind only, letting other regions' appointments through.
       const sql = querySpy.mock.calls[0][1] as string;
-      expect(sql).toContain("(TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR')");
-      expect(sql).toContain("(TX.TX_TYPE = '1' AND TX.TX_CODE = '1')");
-      expect(sql).toContain('GRP.REGION_ID = @regionId');
+      expect(sql).toMatch(
+        /WHERE \(\(TX\.TX_TYPE = 'A' AND TX\.TX_CODE = 'TR'\) OR \(TX\.TX_TYPE = '1' AND TX\.TX_CODE = '1'\)\)\s+AND GRP\.REGION_ID = @regionId/,
+      );
     },
   );
 
@@ -2414,6 +2416,8 @@ describe('region-scoped trustee appointment transactions', () => {
       );
 
       expect(result).toBe('2026-09-16');
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain('MAX(TX.TX_DATE)');
     });
 
     test('zero-pads the region id to match DXTR AO_GRP_DES.REGION_ID', async () => {
@@ -2465,7 +2469,7 @@ describe('region-scoped trustee appointment transactions', () => {
       expect(paramValue(0, 'limit')).toBe(2500);
     });
 
-    test('pages one calendar day by TX_ID, at most limit rows', async () => {
+    test("pages one calendar day by TX_ID, never splitting one transaction's rows across pages", async () => {
       querySpy.mockResolvedValue(queryResult([]));
 
       await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
@@ -2474,7 +2478,7 @@ describe('region-scoped trustee appointment transactions', () => {
       expect(sql).toContain('TX.TX_DATE >= @txDate');
       expect(sql).toContain('TX.TX_DATE < DATEADD(day, 1, @txDate)');
       expect(sql).toContain('TX.TX_ID > @afterTxId');
-      expect(sql).toContain('SELECT TOP (@limit)');
+      expect(sql).toContain('SELECT TOP (@limit) WITH TIES');
       expect(sql).toContain('ORDER BY TX.TX_ID ASC');
     });
 
