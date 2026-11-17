@@ -105,6 +105,8 @@ function appointment(opts: {
   appointedDate?: string;
 }) {
   const { court } = opts;
+  const appointedDate = opts.appointedDate ?? '2020-01-01';
+  const appointedOn = `${appointedDate}T00:00:00.000Z`;
   return {
     id: opts.id,
     documentType: 'TRUSTEE_APPOINTMENT',
@@ -114,12 +116,12 @@ function appointment(opts: {
     courtId: court.courtId,
     divisionCodes: [court.divisionCode],
     divisionCode: court.divisionCode,
-    appointedDate: opts.appointedDate ?? '2020-01-01',
+    appointedDate,
     status: opts.status,
-    effectiveDate: opts.appointedDate ?? '2020-01-01',
+    effectiveDate: appointedDate,
     courtName: court.courtName,
     courtDivisionName: court.courtDivisionName,
-    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedOn: appointedOn > SEEDED_ON ? appointedOn : SEEDED_ON,
     updatedBy: SEEDER,
   };
 }

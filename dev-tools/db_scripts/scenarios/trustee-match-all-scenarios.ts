@@ -70,6 +70,7 @@ import {
   buildSurrogate,
   identityTaskFields,
   scenarioTrusteeDocuments,
+  syncedOn,
 } from '../lib/trustee-match-scenario-seeds.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
@@ -218,7 +219,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     courtId: '0209',
     status: 'pending',
     taskDate: task.taskDate,
-    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedOn: syncedOn(task.taskDate),
     updatedBy: SEEDER,
   }));
   const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
@@ -241,7 +242,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     courtId: '0209',
     status: 'pending',
     taskDate: task.taskDate,
-    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedOn: syncedOn(task.taskDate),
     updatedBy: SEEDER,
   }));
   const acmsCaseSurrogates = ACMS_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
