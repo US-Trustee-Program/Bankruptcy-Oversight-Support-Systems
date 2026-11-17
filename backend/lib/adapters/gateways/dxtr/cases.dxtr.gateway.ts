@@ -74,6 +74,13 @@ const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appoin
 // signal (detecting known placeholder values), never for identity/matching decisions.
 const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
 
+// REC's appointment date and professional code sit at different offsets per transaction kind.
+// Defined once, keyed on TX_TYPE, so every trustee appointment event read uses the same mapping
+// whether it reads one kind or both.
+const TRUSTEE_APPOINTMENT_REC_COLUMNS = `
+        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_APT_DATE_OFFSET}, 6) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_APT_DATE_OFFSET}, 6) END AS aptDate,
+        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_PROF_CODE_OFFSET}, 5) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_PROF_CODE_OFFSET}, 5) END AS profCode`;
+
 // Columns and joins shared by every trustee appointment event read. The trustee's name and contact
 // come from the case's current AO_PY trustee party, not from the transaction itself.
 const TRUSTEE_APPOINTMENT_EVENT_COLUMNS = `
@@ -1325,12 +1332,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       },
     ];
 
-    const query = this.trusteeAppointmentEventsQuery(
-      "TX.TX_TYPE = 'A'",
-      "TX.TX_CODE IN ('TR')",
-      TX_TYPE_A_APT_DATE_OFFSET,
-      TX_TYPE_A_PROF_CODE_OFFSET,
-    );
+    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = 'A'", "TX.TX_CODE IN ('TR')");
 
     const queryResult: QueryResults = await this.executeQuery(
       context,
@@ -1370,12 +1372,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       },
     ];
 
-    const query = this.trusteeAppointmentEventsQuery(
-      "TX.TX_TYPE = '1'",
-      "TX.TX_CODE IN ('1')",
-      TX_TYPE_1_APT_DATE_OFFSET,
-      TX_TYPE_1_PROF_CODE_OFFSET,
-    );
+    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = '1'", "TX.TX_CODE IN ('1')");
 
     const queryResult: QueryResults = await this.executeQuery(
       context,
@@ -1394,17 +1391,11 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
   }
 
-  private trusteeAppointmentEventsQuery(
-    txTypeCondition: string,
-    txCodeCondition: string,
-    aptDateOffset: number,
-    profCodeOffset: number,
-  ): string {
+  private trusteeAppointmentEventsQuery(txTypeCondition: string, txCodeCondition: string): string {
     return `
       SELECT
         ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
-        SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
-        SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
+        ${TRUSTEE_APPOINTMENT_REC_COLUMNS}
       ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
       WHERE ${txTypeCondition}
         AND ${txCodeCondition}
@@ -1467,8 +1458,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       SELECT TOP (@limit) WITH TIES
         CONVERT(VARCHAR(20), TX.TX_ID) AS txId,
         ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
-        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_APT_DATE_OFFSET}, 6) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_APT_DATE_OFFSET}, 6) END AS aptDate,
-        CASE WHEN TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, ${TX_TYPE_A_PROF_CODE_OFFSET}, 5) ELSE SUBSTRING(TX.REC, ${TX_TYPE_1_PROF_CODE_OFFSET}, 5) END AS profCode
+        ${TRUSTEE_APPOINTMENT_REC_COLUMNS}
       ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
       ${REGION_TRUSTEE_APPOINTMENT_FILTER}
         AND TX.TX_DATE >= @txDate

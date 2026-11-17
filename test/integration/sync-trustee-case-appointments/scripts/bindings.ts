@@ -102,6 +102,14 @@ export async function readRegionBookmark(db: Db, region: string): Promise<string
   return value ? value.slice(0, 10) : undefined;
 }
 
+/** The region's stored source system ('DXTR' once switched), or undefined. Same assumed shape as seedRegionState. */
+export async function readRegionSource(db: Db, region: string): Promise<string | undefined> {
+  const doc = await db
+    .collection('runtime-state')
+    .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
+  return doc?.region?.[region]?.source?.system as string | undefined;
+}
+
 /**
  * The operator delete (cams-fd8qd.32): deletes the appointments in the named regions assigned
  * within the date range and rewinds those regions' bookmarks, as handleStart does for a start

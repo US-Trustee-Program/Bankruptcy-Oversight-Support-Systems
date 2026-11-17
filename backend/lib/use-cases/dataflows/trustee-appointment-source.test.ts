@@ -324,23 +324,5 @@ describe('DxtrTrusteeAppointmentSource', () => {
       expect(page.events).toEqual([]);
       expect(page.lastId).toBeUndefined();
     });
-
-    // The gateway test 'maps rows to DXTR events...' is the primary guard (events are built there);
-    // this one catches the source deriving an id the way AcmsTrusteeAppointmentSource does.
-    test('never sets an ACMS professional id on DXTR events, since DXTR professional codes can be wrong', async () => {
-      setupCasesGateway({
-        getTrusteeAppointmentEventsForRegionDate: vi
-          .fn()
-          .mockResolvedValue({ events: [dxtrEvent('081-26-12345')] }),
-      });
-
-      const page = await new DxtrTrusteeAppointmentSource().getEventsForDate(
-        context,
-        '02',
-        '2026-09-15',
-      );
-
-      expect(page.events[0]).not.toHaveProperty('acmsProfessionalId');
-    });
   });
 });

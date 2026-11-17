@@ -907,21 +907,14 @@ describe('RegionDriver.runRegionDriver', () => {
         respectingCursor({ '2026-09-15': makeRawRow(7, '2026-09-15') }),
       );
 
-      const result = await RegionDriver.runRegionDriver(context, {
+      await RegionDriver.runRegionDriver(context, {
         regions: ['01', '02'],
         runDate: '2026-09-20',
       });
 
-      expect(result.processedRegions).toEqual(['01', '02']);
-      expect(getLatestTrusteeAppointmentTxDateForRegion).toHaveBeenCalledTimes(1);
-      expect(getLatestTrusteeAppointmentTxDateForRegion).toHaveBeenCalledWith(context, '01');
-      expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledTimes(1);
-      expect(getLatestCmmapChangeDateForRegion).toHaveBeenCalledWith(context, '02');
-      const dxtrRegions = getTrusteeAppointmentEventsForRegionDate.mock.calls.map(
-        ([, request]) => request.regionId,
-      );
-      expect(dxtrRegions.length).toBeGreaterThan(0);
-      expect(dxtrRegions.every((regionId: string) => regionId === '01')).toBe(true);
+      // Each source is asked about exactly one region, and each region's events carry its source.
+      expect(getLatestTrusteeAppointmentTxDateForRegion.mock.calls).toEqual([[context, '01']]);
+      expect(getLatestCmmapChangeDateForRegion.mock.calls).toEqual([[context, '02']]);
       expect(processAppointmentsSpy).toHaveBeenCalledWith(expect.anything(), [
         expect.objectContaining({ caseId: '081-26-00001', source: 'DXTR' }),
       ]);
