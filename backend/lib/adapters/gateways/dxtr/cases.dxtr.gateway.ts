@@ -1491,10 +1491,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       return { events: [] };
     }
 
-    const lastTxId = records.reduce(
-      (max, record) => (BigInt(record.txId) > BigInt(max) ? record.txId : max),
-      records[0].txId,
-    );
+    // Rows are ordered by TX_ID, so the last row carries the page's greatest id.
+    const lastTxId = records[records.length - 1].txId;
     return { events: records.map((record) => this.toTrusteeAppointmentEvent(record)), lastTxId };
   }
 

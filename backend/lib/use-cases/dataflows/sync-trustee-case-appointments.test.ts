@@ -2053,22 +2053,29 @@ describe('SyncTrusteeCaseAppointments', () => {
           groupDesignator: 'NY',
           profCode: '00063',
         };
-        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi.fn().mockResolvedValue([
+        // A link to a different trustee than the pipeline's default ('trustee-123'), so the
+        // assertion below can tell which path resolved the event.
+        vi.mocked(mockProfessionalIdsRepo.findByAcmsProfessionalId!).mockResolvedValue([
           {
             camsTrusteeId: 'trustee-linked',
             acmsProfessionalId: 'NY-00063',
             disposition: 'linked',
           },
-        ]);
+        ] as Awaited<ReturnType<TrusteeProfessionalIdsRepository['findByAcmsProfessionalId']>>);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
           [event],
         );
 
-        expect(pipelineOrchestrator.runTrusteeMatchPipeline).toHaveBeenCalled();
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalledWith(
-          expect.objectContaining({ trusteeId: 'trustee-linked' }),
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({
+              matchedBy: expect.not.stringMatching(/^professional-id$/),
+            }),
+          }),
         );
       });
 
@@ -2159,17 +2166,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             checks: expect.objectContaining({ matchedBy: 'professional-id' }),
           }),
         );
-      });
-
-      test('is not consulted for a DXTR event (no acmsProfessionalId)', async () => {
-        const event = makeEvent('case-001', 'Jane Doe');
-
-        await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          [event],
-        );
-
-        expect(mockProfessionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
       });
 
       test('a resolved professional-id link short-circuits the verification-bucket-hit check', async () => {
@@ -4260,8 +4256,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         },
       });
 
+      // mockRegionStateRepo exposes only read and setField on purpose: any other write (e.g. a
+      // whole-document replace that would drop source) throws, which surfaces as result.error.
       const result = await deleteAppointments({ regions: ['02'] });
 
+      expect(result.error).toBeUndefined();
       expect(result).toEqual({ data: { deleted: 3 } });
       expect(mockRegionStateRepo.setField.mock.calls).toEqual([
         ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', null],

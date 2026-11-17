@@ -76,11 +76,7 @@ export class DxtrTrusteeAppointmentSource implements TrusteeAppointmentSource {
       afterTxId: lastId ?? '0',
       limit: DEFAULT_FETCH_SIZE,
     });
-    return {
-      events: page.events,
-      failures: [],
-      ...(page.lastTxId ? { lastId: page.lastTxId } : {}),
-    };
+    return { events: page.events, failures: [], lastId: page.lastTxId };
   }
 }
 
