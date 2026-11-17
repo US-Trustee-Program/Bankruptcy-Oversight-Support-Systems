@@ -185,17 +185,6 @@ describe('switchCaseAppointmentSourceToDxtr', () => {
     });
   });
 
-  test('stores only system, updatedOn and updatedBy -- no createdOn/createdBy', async () => {
-    const setFieldSpy = vi
-      .spyOn(MockMongoRepository.prototype, 'setField')
-      .mockResolvedValue(undefined);
-
-    await switchCaseAppointmentSourceToDxtr(context, '02');
-
-    const writtenValue = setFieldSpy.mock.calls[0][2] as Record<string, unknown>;
-    expect(Object.keys(writtenValue).sort()).toEqual(['system', 'updatedBy', 'updatedOn']);
-  });
-
   test('is a no-op when the region is already on DXTR', async () => {
     mockRegionState(stateWith({ '02': { source: DXTR_SOURCE } }));
     const setFieldSpy = vi

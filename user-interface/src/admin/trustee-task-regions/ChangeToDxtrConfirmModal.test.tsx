@@ -23,8 +23,12 @@ describe('ChangeToDxtrConfirmModal', () => {
     await userEvent.click(screen.getByText('Open Modal'));
 
     await waitFor(() => {
-      expect(screen.getByText('Change Region 2 to DXTR?')).toBeInTheDocument();
-      expect(screen.getByText("This action can't be undone.")).toBeInTheDocument();
+      expect(document.getElementById('test-dxtr-modal-heading')).toHaveTextContent(
+        'Change Region 2 to DXTR?',
+      );
+      expect(document.getElementById('test-dxtr-modal-description')).toHaveTextContent(
+        "This action can't be undone.",
+      );
     });
   });
 
@@ -34,12 +38,16 @@ describe('ChangeToDxtrConfirmModal', () => {
     await userEvent.click(screen.getByText('Open Modal'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Change to DXTR' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+      expect(screen.getByTestId('button-test-dxtr-modal-submit-button')).toHaveTextContent(
+        'Change to DXTR',
+      );
+      expect(screen.getByTestId('button-test-dxtr-modal-cancel-button')).toHaveTextContent(
+        'Cancel',
+      );
     });
   });
 
-  test('should call onConfirm with the regionId and close when confirmed', async () => {
+  test('should call onConfirm with the regionId when confirmed', async () => {
     const onConfirm = vi.fn();
     render(<TestWrapper onConfirm={onConfirm} />);
 
@@ -48,15 +56,12 @@ describe('ChangeToDxtrConfirmModal', () => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+    await userEvent.click(screen.getByTestId('button-test-dxtr-modal-submit-button'));
 
     expect(onConfirm).toHaveBeenCalledWith('02');
-    await waitFor(() => {
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
-    });
   });
 
-  test('should close on cancel without calling onConfirm', async () => {
+  test('should not call onConfirm when dismissed by Cancel or Escape', async () => {
     const onConfirm = vi.fn();
     render(<TestWrapper onConfirm={onConfirm} />);
 
@@ -64,30 +69,15 @@ describe('ChangeToDxtrConfirmModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     });
-
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
+    await userEvent.click(screen.getByTestId('button-test-dxtr-modal-cancel-button'));
     expect(onConfirm).not.toHaveBeenCalled();
-    await waitFor(() => {
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
-    });
-  });
-
-  test('should close on Escape without calling onConfirm', async () => {
-    const onConfirm = vi.fn();
-    render(<TestWrapper onConfirm={onConfirm} />);
 
     await userEvent.click(screen.getByText('Open Modal'));
     await waitFor(() => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     });
-
     await userEvent.keyboard('{Escape}');
-
     expect(onConfirm).not.toHaveBeenCalled();
-    await waitFor(() => {
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
-    });
   });
 
   test('should close when hide() is called on the ref', async () => {

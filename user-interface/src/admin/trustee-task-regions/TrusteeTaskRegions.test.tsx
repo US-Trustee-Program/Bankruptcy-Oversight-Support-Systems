@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { TrusteeTaskRegions } from './TrusteeTaskRegions';
@@ -22,12 +22,9 @@ function renderComponent() {
 
 describe('TrusteeTaskRegions component', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getCaseAppointmentSources').mockResolvedValue({ data: mockSources });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show loading state initially', () => {
@@ -111,30 +108,30 @@ describe('TrusteeTaskRegions component', () => {
     test('clicking the button opens a dialog with the exact heading, body and button copy', async () => {
       await openDialogForRegion02();
 
+      expect(document.getElementById('change-to-dxtr-confirm-modal-heading')).toHaveTextContent(
+        'Change Region 2 to DXTR?',
+      );
       expect(screen.getByText("This action can't be undone.")).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Change to DXTR' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
 
-    test('cancelling closes the dialog, calls no API, and leaves the button enabled', async () => {
+    test('cancelling or closing with Escape calls no API and leaves the button enabled', async () => {
       const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource');
       await openDialogForRegion02();
-
       await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
       expect(patchSpy).not.toHaveBeenCalled();
       await waitFor(() => {
         expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
       });
       expect(screen.getByTestId('button-change-to-dxtr-02')).toBeEnabled();
-    });
 
-    test('closing with Escape calls no API', async () => {
-      const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource');
-      await openDialogForRegion02();
-
+      // Reopen the same rendered dialog and dismiss it the other way.
+      await userEvent.click(screen.getByTestId('button-change-to-dxtr-02'));
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-visible');
+      });
       await userEvent.keyboard('{Escape}');
-
       expect(patchSpy).not.toHaveBeenCalled();
       await waitFor(() => {
         expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
@@ -143,9 +140,9 @@ describe('TrusteeTaskRegions component', () => {
 
     test('confirming closes the dialog immediately, disables only that row, and calls the API', async () => {
       let resolveSwitch: (value: { data: RegionCaseAppointmentSource }) => void = () => {};
-      vi.spyOn(Api2, 'patchCaseAppointmentSource').mockImplementation(
-        () => new Promise((resolve) => (resolveSwitch = resolve)),
-      );
+      const patchSpy = vi
+        .spyOn(Api2, 'patchCaseAppointmentSource')
+        .mockImplementation(() => new Promise((resolve) => (resolveSwitch = resolve)));
       await openDialogForRegion02();
 
       await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
@@ -153,6 +150,7 @@ describe('TrusteeTaskRegions component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('modal-change-to-dxtr-confirm-modal')).toHaveClass('is-hidden');
       });
+      expect(patchSpy).toHaveBeenCalledWith('02');
       expect(screen.getByTestId('button-change-to-dxtr-02')).toBeDisabled();
       // Other rows are untouched while region 02 is in flight.
       expect(screen.getByTestId('button-change-to-dxtr-10')).toBeEnabled();
@@ -199,19 +197,19 @@ describe('TrusteeTaskRegions component', () => {
       });
     });
 
-    test('does not call fireEvent-triggered submit twice for a single click', async () => {
-      // Sanity check that confirming is wired through userEvent.click only once per click.
-      const patchSpy = vi.spyOn(Api2, 'patchCaseAppointmentSource').mockResolvedValue({
-        data: { regionId: '02', regionName: 'NEW YORK', source: 'DXTR' },
-      });
+    test('a response with no data shows the error alert and re-enables the button', async () => {
+      // Exercises the generic client's void-response union member.
+      vi.spyOn(Api2, 'patchCaseAppointmentSource').mockResolvedValue(undefined);
       await openDialogForRegion02();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Change to DXTR' }));
 
       await waitFor(() => {
-        expect(patchSpy).toHaveBeenCalledTimes(1);
+        expect(alertHook.error).toHaveBeenCalledWith('Unable to change to DXTR. Please try again.');
       });
-      expect(patchSpy).toHaveBeenCalledWith('02');
+      await waitFor(() => {
+        expect(screen.getByTestId('button-change-to-dxtr-02')).toBeEnabled();
+      });
     });
   });
 });
