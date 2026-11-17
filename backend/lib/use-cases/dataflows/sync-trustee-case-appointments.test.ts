@@ -2044,6 +2044,34 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     describe('professional-id identification step', () => {
+      test("a DXTR event's group designator and professional code never resolve a trustee by professional-id link", async () => {
+        // DXTR can carry an incorrect ACMS professional code (CAMS-882), so DXTR events carry no
+        // acmsProfessionalId even when their raw codes match a linked ACMS professional. The other
+        // half of this rule is the DXTR gateway test asserting events never get that property.
+        const event = {
+          ...makeEvent('case-001', 'Jane Doe'),
+          groupDesignator: 'NY',
+          profCode: '00063',
+        };
+        mockProfessionalIdsRepo.findByAcmsProfessionalId = vi.fn().mockResolvedValue([
+          {
+            camsTrusteeId: 'trustee-linked',
+            acmsProfessionalId: 'NY-00063',
+            disposition: 'linked',
+          },
+        ]);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(pipelineOrchestrator.runTrusteeMatchPipeline).toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalledWith(
+          expect.objectContaining({ trusteeId: 'trustee-linked' }),
+        );
+      });
+
       test('resolves directly when exactly one CAMS trustee is linked, with matchedBy "professional-id"', async () => {
         const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
         mockProfessionalIdsRepo.findByAcmsProfessionalId = vi
@@ -4214,6 +4242,29 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(mockRegionStateRepo.setField.mock.calls).toEqual([
         ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', '2026-07-31'],
+      ]);
+    });
+
+    test("keeps a region's switch to DXTR, clearing only its bookmark", async () => {
+      mockRegionStateRepo.read.mockResolvedValue({
+        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
+        region: {
+          '02': {
+            lastSyncDate: '2026-09-14',
+            source: {
+              system: 'DXTR',
+              updatedOn: '2026-09-10T00:00:00.000Z',
+              updatedBy: { id: 'su-1', name: 'Super User' },
+            },
+          },
+        },
+      });
+
+      const result = await deleteAppointments({ regions: ['02'] });
+
+      expect(result).toEqual({ data: { deleted: 3 } });
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', null],
       ]);
     });
 

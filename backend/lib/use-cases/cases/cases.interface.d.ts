@@ -14,6 +14,22 @@ export type TrusteeAppointmentsResult = {
   latestSyncDate: string;
 };
 
+/** One region's trustee appointment transactions for one TX_DATE day, after afterTxId. */
+export type TrusteeAppointmentEventsPageRequest = {
+  regionId: string;
+  /** ISO date (YYYY-MM-DD); only transactions whose TX_DATE falls on this day are read. */
+  txDate: string;
+  /** Read transactions with a TX_ID greater than this ('0' for the first page). */
+  afterTxId: string;
+  limit: number;
+};
+
+export type TrusteeAppointmentEventsPage = {
+  events: TrusteeAppointmentSyncEvent[];
+  /** Greatest TX_ID on the page; absent when the page is empty. */
+  lastTxId?: string;
+};
+
 type TransactionIdRangeForDate = {
   findDate: string;
   found: boolean;
@@ -60,6 +76,16 @@ export interface CasesInterface {
     context: ApplicationContext,
     transactionsStart: string,
   ): Promise<TrusteeAppointmentsResult>;
+
+  getLatestTrusteeAppointmentTxDateForRegion(
+    context: ApplicationContext,
+    regionId: string,
+  ): Promise<string | undefined>;
+
+  getTrusteeAppointmentEventsForRegionDate(
+    context: ApplicationContext,
+    request: TrusteeAppointmentEventsPageRequest,
+  ): Promise<TrusteeAppointmentEventsPage>;
 
   getAppointmentDatesByCaseIds(
     context: ApplicationContext,
