@@ -80,6 +80,7 @@ import {
   runRegionDriver,
   seedRegionState,
   readRegionBookmark,
+  readRegionSource,
   deleteAppointments,
 } from './bindings';
 
@@ -1318,6 +1319,11 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         r.step('Then', `the bookmark for region ${region} is ${expected}`);
         const actual = await readRegionBookmark(db, region);
         r.check(actual === expected, `bookmark ${actual}`, `bookmark is ${actual ?? 'unset'}`);
+      }
+      for (const region of s.expect.stillSwitchedToDxtr ?? []) {
+        r.step('Then', `region ${region} is still switched to DXTR`);
+        const system = await readRegionSource(db, region);
+        r.check(system === 'DXTR', 'source DXTR', `source is ${system ?? 'unset'}`);
       }
       await assertTasks(r, db, s.expect.tasks ?? [], s.expect.tasksTotal);
     } finally {

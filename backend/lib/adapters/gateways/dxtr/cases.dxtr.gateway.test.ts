@@ -1878,7 +1878,7 @@ describe('getTrusteeAppointments', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 24, 6) AS aptDate'),
+      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 24, 6)"),
       expect.anything(),
       expect.anything(),
     );
@@ -1912,7 +1912,7 @@ describe('getTrusteeAppointments', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 17, 5) AS profCode'),
+      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 17, 5)"),
       expect.anything(),
       expect.anything(),
     );
@@ -2000,7 +2000,7 @@ describe('getTrusteePetitionEvents', () => {
   });
 
   test.each([
-    { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
+    { label: 'aptDate', expectedFragment: 'ELSE SUBSTRING(TX.REC, 91, 6) END AS aptDate' },
     // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not
     // FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
     // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
@@ -2098,7 +2098,7 @@ describe('getTrusteePetitionEvents', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.stringContaining('ELSE SUBSTRING(TX.REC, 86, 5) END AS profCode'),
       expect.anything(),
       expect.anything(),
     );

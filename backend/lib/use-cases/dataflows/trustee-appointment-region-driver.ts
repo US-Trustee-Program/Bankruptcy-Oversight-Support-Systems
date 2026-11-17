@@ -31,11 +31,16 @@ const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 export const CUTOVER_DATE = '2026-07-01';
 
 /**
- * Worst-case wall-clock cost of one page: an ACMS or DXTR read can take up to its request timeout
- * (5 minutes by default for ACMS; fixed at 5 minutes for the region-scoped DXTR reads), then its
- * events are written to Cosmos. A page is not started
- * unless this much budget remains, so a slow page cannot carry the invocation past the host's
- * functionTimeout and get killed and redelivered.
+ * Worst-case wall-clock cost of one page: a source read can take up to its request timeout, then
+ * its events are written to Cosmos. Both sources' page reads are bounded at 5 minutes:
+ * - ACMS: ACMS_REQUEST_TIMEOUT_MS in acms.gateway.ts (DEFAULT_ACMS_REQUEST_TIMEOUT_MS, 5 minutes,
+ *   overridable by env).
+ * - DXTR: REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS in cases.dxtr.gateway.ts (fixed 5
+ *   minutes). The 10-minute TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS there belongs to the older
+ *   all-region DXTR reads, which this driver does not use.
+ * A page is not started unless this much budget remains, so a slow page cannot carry the
+ * invocation past the host's functionTimeout and get killed and redelivered. Raising either
+ * timeout above 5 minutes requires raising this cost too.
  */
 export const PAGE_STEP_COST_MS = 6 * 60 * 1000;
 
@@ -95,6 +100,11 @@ async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
   return [...regionIds];
 }
 
+/**
+ * Only ACMS rows can fail conversion today: DxtrTrusteeAppointmentSource always returns
+ * failures: [], so the DXTR form of this message is not yet reachable. sourceName is kept so a
+ * future DXTR conversion failure is labeled correctly without changing this helper.
+ */
 function toRowFailureDlqEntry(
   sourceName: TrusteeAppointmentSource['name'],
   regionId: string,

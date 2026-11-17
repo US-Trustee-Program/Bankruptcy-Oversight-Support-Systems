@@ -2045,9 +2045,12 @@ describe('SyncTrusteeCaseAppointments', () => {
 
     describe('professional-id identification step', () => {
       test("a DXTR event's group designator and professional code never resolve a trustee by professional-id link", async () => {
-        // DXTR can carry an incorrect ACMS professional code (CAMS-882), so DXTR events carry no
-        // acmsProfessionalId even when their raw codes match a linked ACMS professional. The other
-        // half of this rule is the DXTR gateway test asserting events never get that property.
+        // DXTR can carry an incorrect ACMS professional code (CAMS-873, CAMS-882), so DXTR events
+        // carry no acmsProfessionalId. The raw groupDesignator/profCode below are the trap: they
+        // form exactly the key ('NY-00063') the mocked link answers to, so any future change that
+        // builds a professional id from them for matching would land this appointment on
+        // 'trustee-linked' and fail. The DXTR gateway test is the other half: it asserts DXTR
+        // events never get acmsProfessionalId.
         const event = {
           ...makeEvent('case-001', 'Jane Doe'),
           groupDesignator: 'NY',
@@ -4241,23 +4244,11 @@ describe('SyncTrusteeCaseAppointments', () => {
       ]);
     });
 
-    test("keeps a region's switch to DXTR, clearing only its bookmark", async () => {
-      mockRegionStateRepo.read.mockResolvedValue({
-        documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE',
-        region: {
-          '02': {
-            lastSyncDate: '2026-09-14',
-            source: {
-              system: 'DXTR',
-              updatedOn: '2026-09-10T00:00:00.000Z',
-              updatedBy: { id: 'su-1', name: 'Super User' },
-            },
-          },
-        },
-      });
-
+    test("with a named region and no date bound, clears only that region's bookmark and writes nothing else", async () => {
       // mockRegionStateRepo exposes only read and setField on purpose: any other write (e.g. a
-      // whole-document replace that would drop source) throws, which surfaces as result.error.
+      // whole-document replace) throws, which would surface as result.error. That a reset keeps a
+      // region's DXTR switch (region.<id>.source) is proven against real Mongo by the integration
+      // harness scenario driver-delete-switched-region-keeps-switch.
       const result = await deleteAppointments({ regions: ['02'] });
 
       expect(result.error).toBeUndefined();
