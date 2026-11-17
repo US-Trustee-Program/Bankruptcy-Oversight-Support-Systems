@@ -53,17 +53,28 @@ function resolveOverlaps(permissions: UserRoleAssignment[]): UserRoleAssignment[
   );
 }
 
+export type SessionAccessRead = 'permissions' | 'offices';
+
+/** Wraps one read; the caller uses it to apply its own retry policy to each read separately. */
+export type ReadWrapper = <T>(read: SessionAccessRead, fn: () => Promise<T>) => Promise<T>;
+
+const noWrap: ReadWrapper = (_read, fn) => fn();
+
 /**
- * Reads the user's active permissions and the office list in parallel. Either read failing fails
- * the whole read; the caller decides whether to retry or deny the session.
+ * Reads the user's active permissions and the office list in parallel. Each read goes through
+ * `wrap` separately, so retrying one read never repeats the other. Either read failing in the end
+ * fails the whole read; the caller decides whether to deny the session.
  */
 export async function readSessionAccess(
   context: ApplicationContext,
   userId: string,
+  wrap: ReadWrapper = noWrap,
 ): Promise<{ access: SessionAccess; permissionCount: number }> {
   const [permissions, offices] = await Promise.all([
-    factory.getUserRoleAssignmentRepository(context).findActiveByUserIds([userId]),
-    factory.getOfficesGateway(context).getOffices(context),
+    wrap('permissions', () =>
+      factory.getUserRoleAssignmentRepository(context).findActiveByUserIds([userId]),
+    ),
+    wrap('offices', () => factory.getOfficesGateway(context).getOffices(context)),
   ]);
   return {
     access: sessionAccessFrom(permissions, offices),

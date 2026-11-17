@@ -369,6 +369,7 @@ describe('user-session.gateway test', () => {
       expect(errorSpy).toHaveBeenCalledTimes(1);
       expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
         userId: mockUser.id,
+        read: 'permissions',
         errorType: 'Error',
         status: undefined,
         module: undefined,
@@ -395,6 +396,7 @@ describe('user-session.gateway test', () => {
         'SESSION_ACCESS read retry 1/3',
         {
           userId: mockUser.id,
+          read: 'permissions',
           errorType: 'TooManyRequestsError',
           status: 429,
           module: 'TEST',
@@ -419,12 +421,68 @@ describe('user-session.gateway test', () => {
       expect(errorSpy).toHaveBeenCalledTimes(1);
       expect(errorSpy).toHaveBeenCalledWith('USER-SESSION-GATEWAY', 'SESSION_ACCESS read failed', {
         userId: mockUser.id,
+        read: 'permissions',
         errorType: 'GatewayTimeoutError',
         status: 504,
         module: 'TEST',
         message: 'Gateway Timeout',
         transient: true,
       });
+    });
+
+    test('should retry only the read that failed, not the one that succeeded', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce([manhattanTrialAttorney]);
+      const officesSpy = vi.spyOn(MockOfficesGateway.prototype, 'getOffices');
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+
+      await gateway.lookup(context, jwtString);
+
+      expect(findSpy).toHaveBeenCalledTimes(3);
+      expect(officesSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should retry a transient office-list failure on its own and name the read in the log', async () => {
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findActiveByUserIds')
+        .mockResolvedValue([manhattanTrialAttorney]);
+      const officesSpy = vi
+        .spyOn(MockOfficesGateway.prototype, 'getOffices')
+        .mockRejectedValueOnce(new GatewayTimeoutError('TEST'))
+        .mockResolvedValueOnce(MOCKED_USTP_OFFICES_ARRAY);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      expect(officesSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'SESSION_ACCESS read retry 1/3',
+        expect.objectContaining({ read: 'offices', errorType: 'GatewayTimeoutError' }),
+      );
+      expect(session.user.offices.map((office) => office.officeCode)).toEqual([
+        MANHATTAN.officeCode,
+      ]);
+    });
+
+    test('should log and deny the session when a read rejects with a non-Error value', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockRejectedValue(undefined);
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'USER-SESSION-GATEWAY',
+        'SESSION_ACCESS read failed',
+        expect.objectContaining({ read: 'permissions', message: undefined, transient: false }),
+      );
     });
 
     test('should log the access read from assignments at info', async () => {

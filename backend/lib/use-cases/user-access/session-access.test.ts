@@ -216,6 +216,19 @@ describe('readSessionAccess', () => {
     await pending;
   });
 
+  test('should pass each read through the wrapper separately', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockResolvedValue([]);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([]);
+    const wrapped: string[] = [];
+
+    await readSessionAccess(context, 'user-a', (read, fn) => {
+      wrapped.push(read);
+      return fn();
+    });
+
+    expect(wrapped.sort()).toEqual(['offices', 'permissions']);
+  });
+
   test('should fail when the permissions cannot be read', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'findActiveByUserIds').mockRejectedValue(
       new Error('cosmos unavailable'),
