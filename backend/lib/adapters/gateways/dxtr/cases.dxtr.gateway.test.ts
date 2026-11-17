@@ -2368,12 +2368,41 @@ describe('region-scoped trustee appointment transactions', () => {
     };
   }
 
+  const page = { regionId: '02', txDate: '2026-09-15', afterTxId: '0', limit: 2500 };
+
   beforeEach(async () => {
     vi.restoreAllMocks();
     applicationContext = await createMockApplicationContext();
     gateway = new CasesDxtrGateway(applicationContext);
     querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
   });
+
+  // The region driver asks for the newest date, then pages that date, so both reads must select
+  // the same rows: both trustee transaction kinds, for the region only.
+  test.each([
+    {
+      name: 'latest transaction date',
+      rows: [{ latestTxDate: null }],
+      read: () => gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '02'),
+    },
+    {
+      name: 'events page',
+      rows: [],
+      read: () => gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page),
+    },
+  ])(
+    'the $name read selects both trustee transaction kinds for the region only',
+    async ({ rows, read }) => {
+      querySpy.mockResolvedValue(queryResult(rows));
+
+      await read();
+
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain("(TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR')");
+      expect(sql).toContain("(TX.TX_TYPE = '1' AND TX.TX_CODE = '1')");
+      expect(sql).toContain('GRP.REGION_ID = @regionId');
+    },
+  );
 
   describe('getLatestTrusteeAppointmentTxDateForRegion', () => {
     test('returns the newest transaction date for the region', async () => {
@@ -2418,23 +2447,10 @@ describe('region-scoped trustee appointment transactions', () => {
 
       expect(result).toBeUndefined();
     });
-
-    test('reads both appointment and petition transactions, scoped by region', async () => {
-      querySpy.mockResolvedValue(queryResult([{ latestTxDate: null }]));
-
-      await gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '02');
-
-      const sql = querySpy.mock.calls[0][1] as string;
-      expect(sql).toContain("(TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR')");
-      expect(sql).toContain("(TX.TX_TYPE = '1' AND TX.TX_CODE = '1')");
-      expect(sql).toContain('GRP.REGION_ID = @regionId');
-    });
   });
 
   describe('getTrusteeAppointmentEventsForRegionDate', () => {
-    const page = { regionId: '02', txDate: '2026-09-15', afterTxId: '0', limit: 2500 };
-
-    test('binds region, date, lastId and page size as parameters', async () => {
+    test('binds region, date, afterTxId and limit as parameters', async () => {
       querySpy.mockResolvedValue(queryResult([]));
 
       await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, {
@@ -2449,7 +2465,7 @@ describe('region-scoped trustee appointment transactions', () => {
       expect(paramValue(0, 'limit')).toBe(2500);
     });
 
-    test('limits to one calendar day after the given id, ordered by id', async () => {
+    test('pages one calendar day by TX_ID, at most limit rows', async () => {
       querySpy.mockResolvedValue(queryResult([]));
 
       await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
@@ -2458,7 +2474,16 @@ describe('region-scoped trustee appointment transactions', () => {
       expect(sql).toContain('TX.TX_DATE >= @txDate');
       expect(sql).toContain('TX.TX_DATE < DATEADD(day, 1, @txDate)');
       expect(sql).toContain('TX.TX_ID > @afterTxId');
+      expect(sql).toContain('SELECT TOP (@limit)');
       expect(sql).toContain('ORDER BY TX.TX_ID ASC');
+    });
+
+    test('throws when the query fails, so the driver never treats a failed page as empty', async () => {
+      querySpy.mockResolvedValue({ success: false, results: {}, message: 'boom' } as QueryResults);
+
+      await expect(
+        gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page),
+      ).rejects.toThrow(CamsError);
     });
 
     test('reads each transaction kind at its own REC offsets', async () => {
@@ -2497,12 +2522,12 @@ describe('region-scoped trustee appointment transactions', () => {
       expect(result).toEqual({ events: [] });
     });
 
-    test('maps rows to DXTR events and returns the greatest transaction id as lastTxId', async () => {
+    test("maps rows to DXTR events and returns the last row's transaction id as lastTxId", async () => {
       querySpy.mockResolvedValue(
         queryResult([
           trusteeRow({ txId: '1001' }),
-          trusteeRow({ txId: '1003', caseId: '081-26-12346' }),
-          trusteeRow({ txId: '1002', caseId: '081-26-12347' }),
+          trusteeRow({ txId: '1002', caseId: '081-26-12346' }),
+          trusteeRow({ txId: '1003', caseId: '081-26-12347' }),
         ]),
       );
 
@@ -2526,20 +2551,7 @@ describe('region-scoped trustee appointment transactions', () => {
           appointedDate: '2026-09-10',
         }),
       );
-      expect(result.events[0]).not.toHaveProperty('acmsProfessionalId');
-    });
-
-    test('compares transaction ids numerically, not as text', async () => {
-      querySpy.mockResolvedValue(
-        queryResult([trusteeRow({ txId: '999' }), trusteeRow({ txId: '1000' })]),
-      );
-
-      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
-        applicationContext,
-        page,
-      );
-
-      expect(result.lastTxId).toBe('1000');
+      result.events.forEach((event) => expect(event).not.toHaveProperty('acmsProfessionalId'));
     });
   });
 });
