@@ -13,10 +13,45 @@ import { CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
+import { readSessionAccess, SessionAccess, SessionAccessRead } from '../user-access/session-access';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
+const IDENTITY_PROVIDER_BACKOFF_MS = [2000, 4000];
+const SESSION_ACCESS_BACKOFF_MS = [250, 500];
 
 type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
+
+// Only CamsErrors carry status and module; plain errors log them as undefined.
+function errorLogFields(error: Error & { status?: number; module?: string }) {
+  return {
+    errorType: error?.constructor?.name,
+    status: error?.status,
+    module: error?.module,
+  };
+}
+
+type RetryPolicy = {
+  /** Wait before each retry; the number of attempts is one more than its length. */
+  backoffMs: number[];
+  shouldRetry: (error: unknown) => boolean;
+  onRetry: (error: unknown, attempt: number, maxAttempts: number) => void;
+};
+
+/** Calls `fn` until it succeeds, the error is not retryable, or the attempts run out. */
+async function retryWithBackoff<T>(fn: () => Promise<T>, policy: RetryPolicy): Promise<T> {
+  const maxAttempts = policy.backoffMs.length + 1;
+  for (let attempt = 1; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (!policy.shouldRetry(error)) throw error;
+      policy.onRetry(error, attempt, maxAttempts);
+      await delay(policy.backoffMs[attempt - 1]);
+    }
+  }
+  return fn();
+}
 
 export class UserSessionUseCase {
   private readonly sessionCacheRepository: UserSessionCacheRepository;
@@ -50,22 +85,74 @@ export class UserSessionUseCase {
         message: UNSUPPORTED_AUTHENTICATION_PROVIDER,
       });
     }
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        return await authGateway.getUser(context, token);
-      } catch (error) {
-        if (attempt >= MAX_RETRIES) {
-          throw error;
-        }
+    return retryWithBackoff(() => authGateway.getUser(context, token), {
+      backoffMs: IDENTITY_PROVIDER_BACKOFF_MS,
+      shouldRetry: () => true,
+      onRetry: (error, attempt, maxAttempts) =>
         context.logger.error(
           MODULE_NAME,
-          `Identity provider call failed (attempt ${attempt}/${MAX_RETRIES})`,
+          `Identity provider call failed (attempt ${attempt}/${maxAttempts})`,
           error,
-        );
-        await delay(2 ** attempt * 1000);
+        ),
+    });
+  }
+
+  /** Retries each session-access read on its own, so one throttled read never repeats the other. */
+  private async readSessionAccessWithRetry(context: ApplicationContext, userId: string) {
+    const withRetry = async <T>(read: SessionAccessRead, fn: () => Promise<T>): Promise<T> => {
+      try {
+        return await retryWithBackoff(fn, {
+          backoffMs: SESSION_ACCESS_BACKOFF_MS,
+          shouldRetry: isTransientInfraError,
+          onRetry: (error: Error, attempt, maxAttempts) =>
+            context.logger.warn(
+              MODULE_NAME,
+              `SESSION_ACCESS read retry ${attempt}/${maxAttempts}`,
+              { userId, read, ...errorLogFields(error) },
+            ),
+        });
+      } catch (error) {
+        context.logger.error(MODULE_NAME, 'SESSION_ACCESS read failed', {
+          userId,
+          read,
+          ...errorLogFields(error),
+          message: error?.message,
+          transient: isTransientInfraError(error),
+        });
+        throw error;
       }
+    };
+    return readSessionAccess(context, userId, withRetry);
+  }
+
+  /**
+   * With cams-role-assignments on, roles and offices come only from the user's active permissions;
+   * the token's AD groups are ignored. A failed read denies the session (no AD fallback).
+   */
+  private async getAccess(
+    context: ApplicationContext,
+    userId: string,
+    groups: string[],
+  ): Promise<SessionAccess> {
+    if (!context.featureFlags['cams-role-assignments']) {
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groups);
+      const roles = UsersGroupManagement.getRolesFromGroupNames(groups);
+      return { roles, offices };
     }
+    const { access, permissionCount } = await this.readSessionAccessWithRetry(context, userId);
+    context.logger.info(MODULE_NAME, 'Session access from assignments', {
+      userId,
+      permissionCount,
+      roleCount: access.roles.length,
+      officeCount: access.offices.length,
+    });
+    if (permissionCount === 0) {
+      context.logger.warn(MODULE_NAME, 'SESSION_NO_PERMISSIONS', {
+        userId,
+        jwtGroupCount: groups.length,
+      });
+    }
+    return access;
   }
 
   private async writeSession(context: ApplicationContext, session: CamsSession) {
@@ -89,11 +176,11 @@ export class UserSessionUseCase {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
-      const offices = await UsersGroupManagement.getOfficesFromGroupNames(
+      const { roles, offices } = await this.getAccess(
         context,
+        camsUserReference.id,
         verifiedJwt.claims.groups || [],
       );
-      const roles = UsersGroupManagement.getRolesFromGroupNames(verifiedJwt.claims.groups || []);
 
       // Augment the user session with additional roles if applicable.
       const user = await UsersGroupManagement.getPrivilegedIdentityUser(
@@ -112,7 +199,7 @@ export class UserSessionUseCase {
 
       context.logger.debug(
         MODULE_NAME,
-        `Creating session for ${user.name} with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
+        `Creating session with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
         {
           userId: user.id,
           jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
@@ -134,7 +221,7 @@ export class UserSessionUseCase {
       throw isCamsError(originalError)
         ? originalError
         : new UnauthorizedError(MODULE_NAME, {
-            message: originalError.message,
+            message: originalError?.message,
             originalError,
           });
     }
