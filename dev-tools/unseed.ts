@@ -141,6 +141,7 @@ const COSMOS_COLLECTIONS: { db: string; name: string }[] = [
   { db: 'cams', name: 'case-trustee-appointments' },
   { db: 'cams', name: 'trustee-case-appointments' },
   { db: 'cams', name: 'trustee-match-verification' },
+  { db: 'cams', name: 'trustee-appointment-verification' },
   { db: 'cams', name: 'banks' },
   { db: 'cams', name: 'bankruptcy-software' },
 ];

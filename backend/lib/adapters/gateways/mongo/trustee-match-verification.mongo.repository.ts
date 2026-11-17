@@ -7,6 +7,7 @@ import {
   UpdateResult,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { isDuplicateKeyError } from './utils/duplicate-key-error';
 import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
 import {
@@ -14,7 +15,6 @@ import {
   TrusteeMatchVerification,
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
-import { isDuplicateKeyError } from './utils/duplicate-key-error';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';

@@ -13,11 +13,11 @@ import { CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
-import { readSessionAccess, SessionAccess } from '../user-access/session-access';
+import { readSessionAccess, SessionAccess, SessionAccessRead } from '../user-access/session-access';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
-const SESSION_ACCESS_MAX_ATTEMPTS = 3;
+const IDENTITY_PROVIDER_BACKOFF_MS = [2000, 4000];
 const SESSION_ACCESS_BACKOFF_MS = [250, 500];
 
 type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
@@ -29,6 +29,28 @@ function errorLogFields(error: Error & { status?: number; module?: string }) {
     status: error?.status,
     module: error?.module,
   };
+}
+
+type RetryPolicy = {
+  /** Wait before each retry; the number of attempts is one more than its length. */
+  backoffMs: number[];
+  shouldRetry: (error: unknown) => boolean;
+  onRetry: (error: unknown, attempt: number, maxAttempts: number) => void;
+};
+
+/** Calls `fn` until it succeeds, the error is not retryable, or the attempts run out. */
+async function retryWithBackoff<T>(fn: () => Promise<T>, policy: RetryPolicy): Promise<T> {
+  const maxAttempts = policy.backoffMs.length + 1;
+  for (let attempt = 1; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (!policy.shouldRetry(error)) throw error;
+      policy.onRetry(error, attempt, maxAttempts);
+      await delay(policy.backoffMs[attempt - 1]);
+    }
+  }
+  return fn();
 }
 
 export class UserSessionUseCase {
@@ -63,47 +85,44 @@ export class UserSessionUseCase {
         message: UNSUPPORTED_AUTHENTICATION_PROVIDER,
       });
     }
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        return await authGateway.getUser(context, token);
-      } catch (error) {
-        if (attempt >= MAX_RETRIES) {
-          throw error;
-        }
+    return retryWithBackoff(() => authGateway.getUser(context, token), {
+      backoffMs: IDENTITY_PROVIDER_BACKOFF_MS,
+      shouldRetry: () => true,
+      onRetry: (error, attempt, maxAttempts) =>
         context.logger.error(
           MODULE_NAME,
-          `Identity provider call failed (attempt ${attempt}/${MAX_RETRIES})`,
+          `Identity provider call failed (attempt ${attempt}/${maxAttempts})`,
           error,
-        );
-        await delay(2 ** attempt * 1000);
-      }
-    }
+        ),
+    });
   }
 
+  /** Retries each session-access read on its own, so one throttled read never repeats the other. */
   private async readSessionAccessWithRetry(context: ApplicationContext, userId: string) {
-    for (let attempt = 1; ; attempt++) {
+    const withRetry = async <T>(read: SessionAccessRead, fn: () => Promise<T>): Promise<T> => {
       try {
-        return await readSessionAccess(context, userId);
+        return await retryWithBackoff(fn, {
+          backoffMs: SESSION_ACCESS_BACKOFF_MS,
+          shouldRetry: isTransientInfraError,
+          onRetry: (error: Error, attempt, maxAttempts) =>
+            context.logger.warn(
+              MODULE_NAME,
+              `SESSION_ACCESS read retry ${attempt}/${maxAttempts}`,
+              { userId, read, ...errorLogFields(error) },
+            ),
+        });
       } catch (error) {
-        const transient = isTransientInfraError(error);
-        if (!transient || attempt >= SESSION_ACCESS_MAX_ATTEMPTS) {
-          context.logger.error(MODULE_NAME, 'SESSION_ACCESS read failed', {
-            userId,
-            ...errorLogFields(error),
-            message: error.message,
-            transient,
-          });
-          throw error;
-        }
-        context.logger.warn(
-          MODULE_NAME,
-          `SESSION_ACCESS read retry ${attempt}/${SESSION_ACCESS_MAX_ATTEMPTS}`,
-          { userId, ...errorLogFields(error) },
-        );
-        await delay(SESSION_ACCESS_BACKOFF_MS[attempt - 1]);
+        context.logger.error(MODULE_NAME, 'SESSION_ACCESS read failed', {
+          userId,
+          read,
+          ...errorLogFields(error),
+          message: error?.message,
+          transient: isTransientInfraError(error),
+        });
+        throw error;
       }
-    }
+    };
+    return readSessionAccess(context, userId, withRetry);
   }
 
   /**
@@ -202,7 +221,7 @@ export class UserSessionUseCase {
       throw isCamsError(originalError)
         ? originalError
         : new UnauthorizedError(MODULE_NAME, {
-            message: originalError.message,
+            message: originalError?.message,
             originalError,
           });
     }

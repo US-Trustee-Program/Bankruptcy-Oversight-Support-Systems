@@ -27,7 +27,7 @@ const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
 const PAGE_SIZE = 50; // Smaller page size for trustees with appointments
 // Records per heal-page message. ACMS professional records are small
 // (acmsProfessionalId + name + state), so 100 stays well within the 64KB
-// Azure Storage Queue message limit. Mirrors WRITE_BATCH_SIZE conventions.
+// Azure Storage Queue message limit.
 const HEAL_PAGE_SIZE = 100;
 
 // Queues

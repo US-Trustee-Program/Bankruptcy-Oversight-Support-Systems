@@ -261,7 +261,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const result = await this.collectionHumble.updateOne(mongoQuery, itemProperties);
       const unknownError = new UnknownError(this.moduleName, {
-        message: 'Failed to insert document into database.',
+        message: 'Failed to update document in database.',
       });
       const notFoundError = new NotFoundError(this.moduleName, {
         message: 'No matching item found.',
@@ -280,7 +280,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         modifiedCount: result.modifiedCount,
       };
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
+      throw this.handleError(originalError, `Failed to update item. ${originalError.message}`, {
         query,
         item: itemProperties,
       });

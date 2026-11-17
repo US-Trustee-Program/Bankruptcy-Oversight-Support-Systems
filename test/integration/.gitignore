@@ -31,3 +31,8 @@ backfill-unassigned-on/fixtures/
 # case-trustee-appointments and a real trustee-professional-ids export (both trustee/case PII).
 # Never committed — local-only, re-created per audit session.
 heal-sentinel-case-appointments-audit/fixtures/
+
+# sync-trustee-case-appointments: replay reads real staging exports (trustee PII) from another checkout.
+# Never copy them into this repo; this entry is only a safety net if one is dropped here by mistake.
+sync-trustee-case-appointments/fixtures/
+sync-trustee-case-appointments/data/

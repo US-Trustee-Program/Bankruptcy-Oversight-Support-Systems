@@ -9,6 +9,7 @@ import useFeatureFlags, {
 export enum AdminNavState {
   UNKNOWN,
   PRIVILEGED_IDENTITY,
+  TRUSTEE_TASK_REGIONS,
   BANKRUPTCY_SOFTWARE,
   CASE_RELOAD,
   BANKS,
@@ -35,6 +36,10 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
 
   function handleNavPermissions() {
     setActiveNav(AdminNavState.PERMISSIONS);
+  }
+
+  function handleNavTrusteeTaskRegions() {
+    setActiveNav(AdminNavState.TRUSTEE_TASK_REGIONS);
   }
 
   function handleNavBankruptcySoftware() {
@@ -84,6 +89,19 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           </li>
         )}
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/trustee-task-regions"
+            data-testid="trustee-task-regions-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.TRUSTEE_TASK_REGIONS)
+            }
+            onClick={handleNavTrusteeTaskRegions}
+            title="Manage trustee task regions"
+          >
+            Trustee Task Regions
+          </NavLink>
+        </li>
         <li className="usa-sidenav__item">
           <NavLink
             to={`/admin/bankruptcy-software`}

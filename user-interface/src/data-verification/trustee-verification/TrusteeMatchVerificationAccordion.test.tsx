@@ -418,6 +418,16 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.getByTestId('approve-candidate-trustee-2')).toBeInTheDocument();
     });
 
+    test('keeps Match Trustee enabled when affected cases are not covered by the candidate', async () => {
+      // CAMS-905 once disabled Match Trustee for uncovered cases; CAMS-956 opens an appointment
+      // task for them instead, so nothing may block the action.
+      renderWithProps();
+      await mockDetailAndExpand({ ...sampleOrderDetail, affectedCaseIds: ['case-1', 'case-2'] });
+
+      expect(screen.getByTestId('approve-candidate-trustee-1')).toBeEnabled();
+      expect(screen.getByTestId('approve-candidate-trustee-2')).toBeEnabled();
+    });
+
     test('gives the information received table the same col widths as the potential matches table for a pending task', async () => {
       renderWithProps();
       await mockDetailAndExpand();

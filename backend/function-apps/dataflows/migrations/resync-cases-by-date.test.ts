@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach, MockInstance } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as ExportAndLoadCaseModule from '../../../lib/use-cases/dataflows/export-and-load-case';
 import * as SyncCasesModule from '../../../lib/use-cases/dataflows/sync-cases';
@@ -12,7 +12,10 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-
+import { FIX_QUEUE_NAME } from './division-change-cleanup';
+import { DEFAULT_INVOCATION_BUDGET_MS } from '../../../lib/use-cases/dataflows/invocation-budget';
+import type * as ResyncModule from './resync-cases-by-date';
+import type { ObservabilityGateway } from '../../../lib/use-cases/gateways.types';
 const makeInvocationContext = (): InvocationContext =>
   ({
     invocationId: 'test-id',
@@ -21,36 +24,194 @@ const makeInvocationContext = (): InvocationContext =>
     log: vi.fn(),
   }) as unknown as InvocationContext;
 
-type PageMessage = { events: CaseSyncEvent[]; retryCount?: number };
+type PageMessage = { events: CaseSyncEvent[]; retryCount?: number; firstAttemptAt?: string };
+
+const PAGE_QUEUE = 'resync-cases-by-date-page';
+const WRITER_QUEUE = 'resync-cases-by-date-writer';
+const DLQ_QUEUE = 'resync-cases-by-date-dlq';
+const LANE_COUNT_ENV = 'RESYNC_CASES_BY_DATE_LANE_COUNT';
+
+type SentMessage = { text: string; visibilityTimeout?: number; messageTimeToLive?: number };
+type StoredMessage = {
+  messageId: string;
+  popReceipt: string;
+  messageText: string;
+  leased: boolean;
+  dequeueCount: number;
+};
+
+/**
+ * In-memory stand-in for one storage queue. Records every send and delete in a log shared with
+ * the other queues so tests can assert that follow-up messages are sent before a page is deleted.
+ */
+class FakeQueue {
+  readonly sent: SentMessage[] = [];
+  readonly leasesRequested: number[] = [];
+  private readonly stored: StoredMessage[] = [];
+  private sequence = 0;
+
+  constructor(
+    readonly name: string,
+    private readonly log: string[],
+  ) {}
+
+  get remaining(): string[] {
+    return this.stored.map((message) => message.messageText);
+  }
+
+  seed(
+    messageText: string,
+    { leased = false, dequeueCount = 0 }: { leased?: boolean; dequeueCount?: number } = {},
+  ) {
+    this.stored.push({
+      messageId: `${this.name}-${++this.sequence}`,
+      popReceipt: 'receipt',
+      messageText,
+      leased,
+      dequeueCount,
+    });
+  }
+
+  async sendMessage(text: string, visibilityTimeout?: number, messageTimeToLive?: number) {
+    this.sent.push({ text, visibilityTimeout, messageTimeToLive });
+    this.log.push(`send:${this.name}`);
+    this.seed(text);
+  }
+
+  async receiveMessage(visibilityTimeout: number) {
+    this.leasesRequested.push(visibilityTimeout);
+    const message = this.stored.find((candidate) => !candidate.leased);
+    if (!message) return undefined;
+    message.leased = true;
+    message.dequeueCount += 1;
+    return {
+      messageId: message.messageId,
+      popReceipt: message.popReceipt,
+      messageText: message.messageText,
+      dequeueCount: message.dequeueCount,
+    };
+  }
+
+  async deleteMessage(messageId: string, _popReceipt: string): Promise<boolean> {
+    this.log.push(`delete:${this.name}`);
+    const index = this.stored.findIndex((message) => message.messageId === messageId);
+    if (index === -1) return false;
+    this.stored.splice(index, 1);
+    return true;
+  }
+
+  async getApproximateMessageCount() {
+    return this.stored.length;
+  }
+}
+
+class FakeQueues {
+  readonly log: string[] = [];
+  private readonly queues = new Map<string, FakeQueue>();
+
+  get(name: string): FakeQueue {
+    let queue = this.queues.get(name);
+    if (!queue) {
+      queue = new FakeQueue(name, this.log);
+      this.queues.set(name, queue);
+    }
+    return queue;
+  }
+}
+
+function stubQueues(): FakeQueues {
+  const queues = new FakeQueues();
+  vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockImplementation(
+    (_connectionString, queueName) => queues.get(queueName) as unknown as StorageQueueHumbleObject,
+  );
+  return queues;
+}
+
+function setLaneCount(value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[LANE_COUNT_ENV];
+  } else {
+    process.env[LANE_COUNT_ENV] = value;
+  }
+}
+
+function outputFor(invocationContext: InvocationContext, queueName: string): unknown {
+  const entry = Array.from(
+    (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+  ).find(([key]) => key.queueName === queueName);
+  return entry?.[1];
+}
+
+beforeEach(() => {
+  process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+});
+
+describe('resync-cases-by-date handler configuration', () => {
+  test.each([
+    {
+      handler: 'handleStart',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleStart({ fromDate: '2024-01-01' }, context),
+    },
+    {
+      handler: 'handleWriter',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleWriter({ runId: 'run-1', laneId: 0 }, context),
+    },
+    {
+      handler: 'handleRetry',
+      invoke: (module: typeof ResyncModule, context: InvocationContext) =>
+        module.handleRetry({ type: 'CASE_CHANGED', caseId: '001-25-00001' }, context),
+    },
+  ])('$handler rejects when AzureWebJobsDataflowsStorage is not set', async ({ invoke }) => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+    const module = await import('./resync-cases-by-date');
+
+    await expect(invoke(module, makeInvocationContext())).rejects.toThrow(
+      'Missing required environment variable: AzureWebJobsDataflowsStorage',
+    );
+  });
+});
 
 describe('resync-cases-by-date handleStart', () => {
-  beforeEach(() => {
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+  afterEach(() => {
+    setLaneCount(undefined);
   });
 
-  test('queues pages of events when cases are found', async () => {
-    const { handleStart } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
-    const invocationContext = makeInvocationContext();
+  test.each([
+    { laneCount: '3', expectedLanes: 3 },
+    { laneCount: undefined, expectedLanes: 40 },
+    { laneCount: '0', expectedLanes: 40 },
+    { laneCount: 'abc', expectedLanes: 40 },
+    { laneCount: '2.5', expectedLanes: 40 },
+  ])(
+    'sends each page to the PAGE queue with no expiry and emits $expectedLanes lane writers',
+    async ({ laneCount, expectedLanes }) => {
+      const { handleStart } = await import('./resync-cases-by-date');
+      const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
+      const invocationContext = makeInvocationContext();
+      setLaneCount(laneCount);
 
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
-      events,
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
+      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+        events,
+        lastCasesSyncDate: '2024-01-01',
+        lastTransactionsSyncDate: '2024-01-01',
+      });
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+      const queues = stubQueues();
 
-    await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+      await handleStart({ fromDate: '2024-01-01' }, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
-    expect(pageOutput).toBeDefined();
-    expect(pageOutput?.[1]).toEqual([{ events }]);
-  });
+      const [page] = queues.get(PAGE_QUEUE).sent;
+      expect(JSON.parse(page.text)).toEqual({ events });
+      expect(page.messageTimeToLive).toBe(-1);
+      expect(outputFor(invocationContext, WRITER_QUEUE)).toEqual(
+        Array.from({ length: expectedLanes }, (_, laneId) => ({ runId: 'test-id', laneId })),
+      );
+    },
+  );
 
   test('does nothing when fromDate is missing', async () => {
     const { handleStart } = await import('./resync-cases-by-date');
@@ -118,12 +279,6 @@ describe('resync-cases-by-date handleStart', () => {
         firstAttemptAt: expect.any(String),
       });
       expect(visibilityTimeout).toBeGreaterThan(0);
-      const outputs = Array.from(
-        (
-          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
-        ).entries(),
-      );
-      expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
     },
   );
 
@@ -150,7 +305,6 @@ describe('resync-cases-by-date handleStart', () => {
     const outputs = Array.from(
       (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
     );
-    expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
     const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
     expect(dlqOutput?.[1]).toEqual([
       expect.objectContaining({ type: 'QUEUE_ERROR', retryCount: RATE_LIMIT_RETRY_LIMIT }),
@@ -172,120 +326,6 @@ describe('resync-cases-by-date handleStart', () => {
       'Database connection failed',
     );
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
-  });
-});
-
-describe('resync-cases-by-date handlePage', () => {
-  beforeEach(() => {
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-  });
-
-  test('routes failed events to DLQ and division changes to FIX on success', async () => {
-    const { handlePage } = await import('./resync-cases-by-date');
-    const okEvent: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
-    const failedEvent: CaseSyncEvent = {
-      type: 'CASE_CHANGED',
-      caseId: '001-25-00002',
-      error: new CamsError('TEST', { message: 'bad' }),
-    };
-    const divisionChangeEvent: CaseSyncEvent = {
-      type: 'CASE_CHANGED',
-      caseId: '001-25-00003',
-      divisionChange: { orphanedCaseId: '081-25-00003', currentCaseId: '001-25-00003' },
-    };
-    const message: PageMessage = { events: [okEvent, failedEvent, divisionChangeEvent] };
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([
-      okEvent,
-      failedEvent,
-      divisionChangeEvent,
-    ]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handlePage(message, invocationContext);
-
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-    expect(dlqOutput?.[1]).toEqual([failedEvent]);
-    const fixOutput = outputs.find(([key]) => key.queueName?.includes('fix'));
-    expect(fixOutput?.[1]).toEqual([divisionChangeEvent.divisionChange]);
-  });
-
-  test('re-enqueues with backoff on a transient error instead of throwing', async () => {
-    const { handlePage } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
-    const message: PageMessage = { events, retryCount: 0 };
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(
-      new TooManyRequestsError('TEST'),
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-
-    await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
-    expect(mockSendMessage).toHaveBeenCalled();
-  });
-
-  test('routes to DLQ instead of throwing when the retry limit is exhausted, keeping the original page events', async () => {
-    const { handlePage } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [
-      {
-        type: 'CASE_CHANGED',
-        caseId: '001-25-00001',
-        divisionChange: { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' },
-      },
-    ];
-    const message: PageMessage = { events, retryCount: 10 };
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(
-      new TooManyRequestsError('TEST'),
-    );
-    const mockContext = await createMockApplicationContext();
-    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await expect(handlePage(message, invocationContext)).resolves.toBeUndefined();
-    const dlqCall = extraOutputsSetSpy.mock.calls.find(([output]) =>
-      (output as { queueName: string }).queueName.includes('dlq'),
-    );
-    expect(dlqCall?.[1]).toEqual([
-      expect.objectContaining({
-        message: {
-          events,
-          retryCount: 10,
-        },
-      }),
-    ]);
-  });
-
-  test('re-throws on a non-429 error', async () => {
-    const { handlePage } = await import('./resync-cases-by-date');
-    const events: CaseSyncEvent[] = [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }];
-    const message: PageMessage = { events };
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(
-      new Error('Database connection failed'),
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await expect(handlePage(message, invocationContext)).rejects.toThrow(
-      'Database connection failed',
-    );
   });
 });
 
@@ -332,11 +372,7 @@ describe('resync-cases-by-date handleError', () => {
 
     await handleError(event, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const retryOutput = outputs.find(([key]) => key.queueName?.includes('retry'));
-    expect(retryOutput).toBeUndefined();
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 
   test('clears the error and queues the event for retry when the error is not a NotFoundError', async () => {
@@ -452,6 +488,28 @@ describe('resync-cases-by-date handleRetry', () => {
     expect(hardStopEvent.retryCount).toBe(4);
   });
 
+  test('routes a retry result carrying both an error and a division change to DLQ, not FIX', async () => {
+    const { handleRetry } = await import('./resync-cases-by-date');
+    const event: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
+    const invocationContext = makeInvocationContext();
+    const camsError = new CamsError('TEST', { message: 'case sync failed' });
+    const divisionChange = { orphanedCaseId: '081-25-00001', currentCaseId: '001-25-00001' };
+
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockResolvedValue([
+      { ...event, error: camsError, divisionChange },
+    ]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    await handleRetry(event, invocationContext);
+
+    expect(outputFor(invocationContext, DLQ_QUEUE)).toEqual([
+      expect.objectContaining({ error: camsError }),
+    ]);
+    expect(outputFor(invocationContext, FIX_QUEUE_NAME)).toBeUndefined();
+  });
+
   test('routes to FIX when the retry detects a division change', async () => {
     const { handleRetry } = await import('./resync-cases-by-date');
     const event: CaseSyncEvent = { type: 'CASE_CHANGED', caseId: '001-25-00001' };
@@ -501,5 +559,657 @@ describe('resync-cases-by-date handleRetry', () => {
     );
 
     await expect(handleRetry(event, invocationContext)).rejects.toThrow('boom');
+  });
+});
+
+describe('resync-cases-by-date handleWriter', () => {
+  const TARGET_RU_ENV = 'RESYNC_CASES_BY_DATE_TARGET_RU_PER_SEC';
+  const writerMessage = { runId: 'run-1', laneId: 2 };
+  const FIRST_ATTEMPT_AT = '2026-11-01T00:00:00.000Z';
+  const [CASE_A, CASE_B, CASE_C, CASE_D] = [
+    '001-25-00001',
+    '001-25-00002',
+    '001-25-00003',
+    '001-25-00004',
+  ];
+  const caseEvent = (caseId: string): CaseSyncEvent => ({ type: 'CASE_CHANGED', caseId });
+  const divisionChange = { orphanedCaseId: '081-25-00001', currentCaseId: CASE_A };
+
+  beforeEach(() => {
+    // A very high target keeps the pacing sleep at zero so these tests do not wait on real time.
+    process.env[TARGET_RU_ENV] = '1e15';
+  });
+
+  afterEach(() => {
+    delete process.env[TARGET_RU_ENV];
+    vi.useRealTimers();
+  });
+
+  function stubExportAndLoad(handle: (event: CaseSyncEvent) => void = () => undefined) {
+    return vi
+      .spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad')
+      .mockImplementation(async (_context, events) => {
+        events.forEach(handle);
+        return events;
+      });
+  }
+
+  function exportedCaseIds(spy: ReturnType<typeof stubExportAndLoad>): string[] {
+    return spy.mock.calls.map(([, events]) => events[0].caseId);
+  }
+
+  function sentJson(queue: FakeQueue): unknown[] {
+    return queue.sent.map(({ text }) => JSON.parse(text));
+  }
+
+  function seedPage(queues: FakeQueues, body: PageMessage, { dequeueCount = 0 } = {}) {
+    queues.get(PAGE_QUEUE).seed(JSON.stringify(body), { dequeueCount });
+  }
+
+  function writerTraceResult(spy: MockInstance<ObservabilityGateway['completeTrace']>) {
+    const call = spy.mock.calls.find(
+      ([, , data]) => data?.properties?.handlerName === 'handleWriter',
+    );
+    return call?.[2];
+  }
+
+  async function givenContext() {
+    const context = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
+    return context;
+  }
+
+  test('syncs each case of a page one at a time, routes results, and deletes the page after the follow-up messages are sent', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_B) event.error = new CamsError('TEST', { message: 'bad' });
+      if (event.caseId === CASE_C) {
+        event.divisionChange = { orphanedCaseId: '081-25-00003', currentCaseId: CASE_C };
+      }
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B, CASE_C]);
+    expect(exportSpy.mock.calls.map(([, events]) => events.length)).toEqual([1, 1, 1]);
+    expect(sentJson(queues.get(FIX_QUEUE_NAME))).toEqual([
+      { orphanedCaseId: '081-25-00003', currentCaseId: CASE_C },
+    ]);
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        caseId: CASE_B,
+        error: expect.objectContaining({ message: 'bad' }),
+      }),
+    ]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+    const pageDeleted = queues.log.indexOf(`delete:${PAGE_QUEUE}`);
+    expect(pageDeleted).toBeGreaterThan(queues.log.indexOf(`send:${FIX_QUEUE_NAME}`));
+    expect(pageDeleted).toBeGreaterThan(queues.log.indexOf(`send:${DLQ_QUEUE}`));
+    // A is written; B failed; C's write is left to the FIX queue, so it counts as neither.
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: true,
+        error: undefined,
+        properties: expect.objectContaining({ runId: 'run-1', laneId: '2', outcome: 'waiting' }),
+        measurements: { documentsWritten: 1, documentsFailed: 1 },
+      }),
+    );
+  });
+
+  test('routes an event carrying both a division change and an error to DLQ, not FIX', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    stubExportAndLoad((event) => {
+      event.divisionChange = divisionChange;
+      event.error = new CamsError('TEST', { message: 'bad' });
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        caseId: CASE_A,
+        error: expect.objectContaining({ message: 'bad' }),
+      }),
+    ]);
+    expect(queues.get(FIX_QUEUE_NAME).sent).toEqual([]);
+  });
+
+  test('re-sends the lane without delay when the budget runs out after a page closes, leaving the next page queued', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B)] });
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) event.divisionChange = divisionChange;
+    });
+    // Publishing A's division change runs while its page is being closed. The clock then passes
+    // the budget with no page open.
+    vi.spyOn(queues.get(FIX_QUEUE_NAME), 'sendMessage').mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + DEFAULT_INVOCATION_BUDGET_MS);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([
+      JSON.stringify({ events: [caseEvent(CASE_B)] }),
+    ]);
+    const [laneSend] = queues.get(WRITER_QUEUE).sent;
+    expect(JSON.parse(laneSend.text)).toEqual(writerMessage);
+    expect(laneSend.visibilityTimeout).toBeUndefined();
+  });
+
+  test('keeps pulling pages in one invocation until the page queue is empty', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B)] });
+    const exportSpy = stubExportAndLoad();
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+  });
+
+  test('on a 429 at case k, requeues only cases k onward with the retry count bumped and ends the invocation', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    seedPage(queues, {
+      // C arrives carrying a result from an earlier attempt; the continuation drops it.
+      events: [caseEvent(CASE_A), caseEvent(CASE_B), { ...caseEvent(CASE_C), divisionChange }],
+      firstAttemptAt: FIRST_ATTEMPT_AT,
+    });
+    seedPage(queues, { events: [caseEvent(CASE_D)] });
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) event.divisionChange = divisionChange;
+      if (event.caseId === CASE_B) throw new TooManyRequestsError('TEST');
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B]);
+    expect(sentJson(queues.get(PAGE_QUEUE))).toEqual([
+      {
+        events: [caseEvent(CASE_B), caseEvent(CASE_C)],
+        retryCount: 1,
+        firstAttemptAt: FIRST_ATTEMPT_AT,
+      },
+    ]);
+    expect(queues.get(PAGE_QUEUE).sent[0].messageTimeToLive).toBe(-1);
+    expect(sentJson(queues.get(FIX_QUEUE_NAME))).toEqual([divisionChange]);
+    const [laneSend] = queues.get(WRITER_QUEUE).sent;
+    expect(JSON.parse(laneSend.text)).toEqual(writerMessage);
+    expect(laneSend.visibilityTimeout).toBeGreaterThanOrEqual(5);
+    expect(laneSend.visibilityTimeout).toBeLessThanOrEqual(10);
+    expect(queues.log.indexOf(`send:${PAGE_QUEUE}`)).toBeLessThan(
+      queues.log.indexOf(`delete:${PAGE_QUEUE}`),
+    );
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'rate-limited-requeued',
+        properties: expect.objectContaining({ outcome: 'rate-limited' }),
+      }),
+    );
+  });
+
+  test('on a 429 for a page already at the retry limit, sends the unfinished cases to DLQ and logs a lost-cases event', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    seedPage(queues, {
+      events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)],
+      retryCount: RATE_LIMIT_RETRY_LIMIT,
+    });
+    stubExportAndLoad((event) => {
+      if (event.caseId === CASE_B) throw new TooManyRequestsError('TEST');
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        retryCount: RATE_LIMIT_RETRY_LIMIT,
+        error: expect.objectContaining({ message: expect.stringContaining('retry limit') }),
+        message: {
+          events: [caseEvent(CASE_B), caseEvent(CASE_C)],
+          retryCount: RATE_LIMIT_RETRY_LIMIT,
+          firstAttemptAt: expect.any(String),
+        },
+      }),
+    ]);
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'ResyncCasesByDateLostCases',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({ caseIds: `${CASE_B},${CASE_C}` }),
+        measurements: { caseCount: 2 },
+      }),
+      undefined,
+      expect.anything(),
+    );
+  });
+
+  test('logs one structured line per page with its case, put-back, and retry counts', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const infoSpy = vi.spyOn(context.logger, 'info');
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
+    stubExportAndLoad((event) => {
+      if (event.caseId === CASE_B) throw new TooManyRequestsError('TEST');
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    const pageLine = infoSpy.mock.calls
+      .map(([, message]) => String(message))
+      .find((message) => message.includes('casesCompleted='));
+    expect(pageLine).toEqual(
+      expect.stringContaining(
+        'casesCompleted=1 casesPutBack=2 msSlept=0 retryCount=0 outcome=rate-limited',
+      ),
+    );
+  });
+
+  test('stops before a case that could cross the invocation budget, puts the open page back, and re-sends the lane without delay', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
+    // A single case that uses the whole invocation budget leaves no room for B.
+    const slowCaseMs = DEFAULT_INVOCATION_BUDGET_MS;
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A]);
+    expect(sentJson(queues.get(PAGE_QUEUE))).toEqual([
+      {
+        events: [caseEvent(CASE_B), caseEvent(CASE_C)],
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      },
+    ]);
+    const [laneSend] = queues.get(WRITER_QUEUE).sent;
+    expect(JSON.parse(laneSend.text)).toEqual(writerMessage);
+    expect(laneSend.visibilityTimeout).toBeUndefined();
+  });
+
+  test('closes the open page and re-sends the lane without an empty-check when the last case runs past the invocation budget', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    const slowCaseMs = DEFAULT_INVOCATION_BUDGET_MS;
+    stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(sentJson(queues.get(WRITER_QUEUE))).toEqual([writerMessage]);
+  });
+
+  test('puts the open page back when its cases push it past the page lease, then keeps pulling pages in the same invocation', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const infoSpy = vi.spyOn(context.logger, 'info');
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B), caseEvent(CASE_C)] });
+    seedPage(queues, { events: [caseEvent(CASE_D)] });
+    // One 200 s case is past the page lease threshold and far inside the invocation budget.
+    const slowCaseMs = 200_000;
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    // The put-back page is received again after D, so B and C are synced in the same invocation.
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_D, CASE_B, CASE_C]);
+    expect(sentJson(queues.get(PAGE_QUEUE))).toEqual([
+      {
+        events: [caseEvent(CASE_B), caseEvent(CASE_C)],
+        retryCount: 1,
+        firstAttemptAt: expect.any(String),
+      },
+    ]);
+    // The only lane message is the empty-queue recheck sent after the lane drained the queue; the
+    // lease escape itself did not end the invocation or re-send the lane.
+    expect(sentJson(queues.get(WRITER_QUEUE))).toEqual([{ ...writerMessage, emptyChecks: 1 }]);
+    const pageLines = infoSpy.mock.calls.map(([, message]) => String(message));
+    expect(pageLines).toContainEqual(expect.stringContaining('outcome=lease-expiring'));
+  });
+
+  test.each([
+    { slowCaseMs: 135_000, expectedPutBack: [[caseEvent(CASE_B)]] },
+    { slowCaseMs: 130_000, expectedPutBack: [] },
+  ])(
+    'after a $slowCaseMs ms case, puts the page back only when the next case could end inside the lease safety margin',
+    async ({ slowCaseMs, expectedPutBack }) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+      const { handleWriter } = await import('./resync-cases-by-date');
+      const queues = stubQueues();
+      await givenContext();
+      seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+      // B is estimated to take as long as A plus 5 s. A 300 s lease less its 30 s margin puts the
+      // threshold at A = 132.5 s.
+      stubExportAndLoad((event) => {
+        if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + slowCaseMs);
+      });
+
+      await handleWriter(writerMessage, makeInvocationContext());
+
+      const putBack = sentJson(queues.get(PAGE_QUEUE)) as PageMessage[];
+      expect(putBack.map((page) => page.events)).toEqual(expectedPutBack);
+    },
+  );
+
+  test('extends the lease on each new page by the slowest case so far, so one slow case does not make the lane put back fresh pages unsynced', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B), caseEvent(CASE_C)] });
+    // A is longer than the 270 s the default lease leaves after its safety margin.
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + 280_000);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B, CASE_C]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(DLQ_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).leasesRequested.slice(0, 2)).toEqual([300, 580]);
+  });
+
+  test('re-sends the lane without delay once the slowest case so far no longer fits in the budget, even after faster cases', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const startedAt = new Date('2026-11-11T00:00:00.000Z').getTime();
+    vi.setSystemTime(startedAt);
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+    seedPage(queues, { events: [caseEvent(CASE_C)] });
+    // A takes 100 s and B takes 1 s. Closing the page then leaves 50 s of budget, which fits B's
+    // cost but not A's.
+    const exportSpy = stubExportAndLoad((event) => {
+      if (event.caseId === CASE_A) vi.setSystemTime(Date.now() + 100_000);
+      if (event.caseId === CASE_B) {
+        vi.setSystemTime(Date.now() + 1_000);
+        event.divisionChange = divisionChange;
+      }
+    });
+    vi.spyOn(queues.get(FIX_QUEUE_NAME), 'sendMessage').mockImplementation(async () => {
+      vi.setSystemTime(startedAt + DEFAULT_INVOCATION_BUDGET_MS - 50_000);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([
+      JSON.stringify({ events: [caseEvent(CASE_C)] }),
+    ]);
+    expect(queues.get(WRITER_QUEUE).sent).toEqual([
+      expect.objectContaining({
+        text: JSON.stringify(writerMessage),
+        visibilityTimeout: undefined,
+      }),
+    ]);
+  });
+
+  test.each([
+    {
+      description: 'another lane still holds a page',
+      leasedPage: true,
+      emptyChecks: undefined,
+      expectedLane: { runId: 'run-1', laneId: 2 },
+    },
+    {
+      description: 'another lane still holds a page after an earlier empty check',
+      leasedPage: true,
+      emptyChecks: 1,
+      expectedLane: { runId: 'run-1', laneId: 2 },
+    },
+    {
+      description: 'the page queue is empty for the first time',
+      leasedPage: false,
+      emptyChecks: undefined,
+      expectedLane: { runId: 'run-1', laneId: 2, emptyChecks: 1 },
+    },
+    {
+      description: 'the page queue was already empty on the previous check',
+      leasedPage: false,
+      emptyChecks: 1,
+      expectedLane: undefined,
+    },
+  ])(
+    'when no page can be received and $description, re-sends the lane only if it has not finished',
+    async ({ leasedPage, emptyChecks, expectedLane }) => {
+      const { handleWriter } = await import('./resync-cases-by-date');
+      const queues = stubQueues();
+      await givenContext();
+      if (leasedPage) {
+        queues
+          .get(PAGE_QUEUE)
+          .seed(JSON.stringify({ events: [caseEvent(CASE_A)] }), { leased: true });
+      }
+      const exportSpy = stubExportAndLoad();
+
+      await handleWriter({ ...writerMessage, emptyChecks }, makeInvocationContext());
+
+      expect(exportSpy).not.toHaveBeenCalled();
+      expect(sentJson(queues.get(WRITER_QUEUE))).toEqual(expectedLane ? [expectedLane] : []);
+      expect(queues.get(WRITER_QUEUE).sent.map((sent) => sent.visibilityTimeout)).toEqual(
+        expectedLane ? [30] : [],
+      );
+    },
+  );
+
+  test("sleeps after each case for whatever is left of that case's share of the target rate and records the sleep on the page", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-11T00:00:00.000Z'));
+    // Default 40 lanes at 19 RU per case: 7600 RU/s gives 10 cases per second per lane, so each
+    // 100 ms slot holds a 40 ms case and a 60 ms sleep.
+    process.env[TARGET_RU_ENV] = '7600';
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const infoSpy = vi.spyOn(context.logger, 'info');
+    seedPage(queues, { events: [caseEvent(CASE_A), caseEvent(CASE_B)] });
+    stubExportAndLoad(() => {
+      vi.setSystemTime(Date.now() + 40);
+    });
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    const pageLine = infoSpy.mock.calls
+      .map(([, message]) => String(message))
+      .find((message) => message.includes('casesCompleted='));
+    expect(pageLine).toEqual(expect.stringContaining('msSlept=120 '));
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+  });
+
+  test('keeps pulling pages and logs a warning when a page delete reports its lease was already reclaimed', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    seedPage(queues, { events: [caseEvent(CASE_B)] });
+    const deleteSpy = vi
+      .spyOn(queues.get(PAGE_QUEUE), 'deleteMessage')
+      .mockResolvedValueOnce(false);
+    const exportSpy = stubExportAndLoad();
+
+    await expect(handleWriter(writerMessage, makeInvocationContext())).resolves.toBeUndefined();
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A, CASE_B]);
+    const [reclaimedMessageId] = deleteSpy.mock.calls[0];
+    expect(warnSpy.mock.calls.map(([, message]) => String(message))).toContainEqual(
+      expect.stringContaining(`runId=run-1 laneId=2 messageId=${reclaimedMessageId}`),
+    );
+  });
+
+  test('lets a non-transient error from exportAndLoad propagate and leaves the page on the queue', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    seedPage(queues, { events: [caseEvent(CASE_A)] });
+    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+
+    await expect(handleWriter(writerMessage, makeInvocationContext())).rejects.toThrow(
+      'Database connection failed',
+    );
+
+    expect(queues.log).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toHaveLength(1);
+    expect(writerTraceResult(completeTraceSpy)).toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'Database connection failed',
+        properties: expect.objectContaining({ outcome: 'error' }),
+      }),
+    );
+  });
+
+  test('sends a page to DLQ without syncing it once it has been received more times than the poison limit, then keeps pulling pages', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    const context = await givenContext();
+    const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    // Five earlier deliveries never finished the page; this receive is the sixth.
+    seedPage(
+      queues,
+      { events: [caseEvent(CASE_A), caseEvent(CASE_B)], firstAttemptAt: FIRST_ATTEMPT_AT },
+      { dequeueCount: 5 },
+    );
+    seedPage(queues, { events: [caseEvent(CASE_C)] });
+    const exportSpy = stubExportAndLoad();
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_C]);
+    expect(queues.get(PAGE_QUEUE).sent).toEqual([]);
+    expect(queues.get(PAGE_QUEUE).remaining).toEqual([]);
+    expect(sentJson(queues.get(DLQ_QUEUE))).toEqual([
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({
+          message: expect.stringContaining('without being closed'),
+        }),
+        message: {
+          events: [caseEvent(CASE_A), caseEvent(CASE_B)],
+          retryCount: 0,
+          firstAttemptAt: FIRST_ATTEMPT_AT,
+        },
+      }),
+    ]);
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'ResyncCasesByDateLostCases',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({ caseIds: `${CASE_A},${CASE_B}` }),
+        measurements: { caseCount: 2 },
+      }),
+      undefined,
+      expect.anything(),
+    );
+  });
+
+  test('still syncs a page received exactly as many times as the poison limit', async () => {
+    const { handleWriter } = await import('./resync-cases-by-date');
+    const queues = stubQueues();
+    await givenContext();
+    seedPage(queues, { events: [caseEvent(CASE_A)] }, { dequeueCount: 4 });
+    const exportSpy = stubExportAndLoad();
+
+    await handleWriter(writerMessage, makeInvocationContext());
+
+    expect(exportedCaseIds(exportSpy)).toEqual([CASE_A]);
+    expect(queues.get(DLQ_QUEUE).sent).toEqual([]);
+  });
+});
+
+describe('computePacingSleepMs', () => {
+  test.each([
+    { casesPerSec: 5, caseDurationMs: 50, expected: 150 },
+    { casesPerSec: 5, caseDurationMs: 200, expected: 0 },
+    { casesPerSec: 5, caseDurationMs: 30_000, expected: 0 },
+    { casesPerSec: 3, caseDurationMs: 0, expected: 333 },
+  ])(
+    'a $caseDurationMs ms case at $casesPerSec per second sleeps $expected ms',
+    async ({ casesPerSec, caseDurationMs, expected }) => {
+      const { computePacingSleepMs } = await import('./resync-cases-by-date');
+      expect(computePacingSleepMs(casesPerSec, caseDurationMs)).toBe(expected);
+    },
+  );
+});
+
+describe('resync-cases-by-date handleStart page splitting', () => {
+  test('splits cases into pages of 100 and sends every page with no expiry', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const events: CaseSyncEvent[] = Array.from({ length: 250 }, (_, index) => ({
+      type: 'CASE_CHANGED',
+      caseId: `001-25-${String(index).padStart(5, '0')}`,
+    }));
+    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+      events,
+      lastCasesSyncDate: '2024-01-01',
+      lastTransactionsSyncDate: '2024-01-01',
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const queues = stubQueues();
+
+    await handleStart({ fromDate: '2024-01-01' }, makeInvocationContext());
+
+    const pages = queues.get(PAGE_QUEUE).sent;
+    expect(pages.map((page) => JSON.parse(page.text).events.length)).toEqual([100, 100, 50]);
+    expect(pages.every((page) => page.messageTimeToLive === -1)).toBe(true);
+    expect(JSON.parse(pages[2].text).events.map((event: CaseSyncEvent) => event.caseId)).toEqual(
+      events.slice(200).map((event) => event.caseId),
+    );
   });
 });

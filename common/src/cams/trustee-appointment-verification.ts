@@ -1,0 +1,106 @@
+import { Auditable } from './auditable';
+import { OrderStatus } from './orders';
+import { AppointmentAgreement, TrusteeAppointment } from './trustee-appointments';
+
+export const TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE =
+  'TRUSTEE_APPOINTMENT_VERIFICATION' as const;
+
+/**
+ * Why a trustee's case appointment is not covered: the trustee has no appointment at all for the
+ * case's court, division and chapter ('no-appointment'), or has one but it is not active
+ * ('appointment-inactive').
+ */
+export type AppointmentTaskReason = 'no-appointment' | 'appointment-inactive';
+
+/** The tuple that identifies one appointment task. One task per tuple, joined by many cases. */
+export type AppointmentTaskKey = {
+  trusteeId: string;
+  courtId: string;
+  divisionCode: string;
+  chapter: string;
+};
+
+/**
+ * A "Trustee Appointment" data-verification task (CAMS-956): one or more cases were assigned to a
+ * trustee whose appointments don't include an active one for the cases' court, division and
+ * chapter. Keyed by (trusteeId, courtId, divisionCode, chapter); each further uncovered case for
+ * the same tuple joins caseIds instead of opening a second task.
+ */
+export type TrusteeAppointmentVerification = Auditable &
+  AppointmentTaskKey & {
+    id: string;
+    documentType: typeof TRUSTEE_APPOINTMENT_VERIFICATION_DOCUMENT_TYPE;
+    taskType: 'trustee-appointment';
+    /** Latest write wins: describes the trustee's state for this tuple as of the last join. */
+    reason: AppointmentTaskReason;
+    caseIds: string[];
+    status: OrderStatus;
+  };
+
+/**
+ * One appointment task as the Data Verification queue lists it. Court and division names are
+ * resolved by the backend when known; the UI falls back to courtId/divisionCode. taskDate is when
+ * the task was opened (createdOn), the sort key every queue row shares.
+ */
+export type TrusteeAppointmentVerificationListItem = Pick<
+  TrusteeAppointmentVerification,
+  | 'id'
+  | 'documentType'
+  | 'taskType'
+  | 'trusteeId'
+  | 'courtId'
+  | 'divisionCode'
+  | 'chapter'
+  | 'reason'
+  | 'status'
+> & {
+  courtName?: string;
+  courtDivisionName?: string;
+  taskDate: string;
+  caseCount: number;
+};
+
+/**
+ * One of the trustee's appointments as shown in the task's Appointments table, annotated with how closely it agrees with the task's (court, division, chapter) tuple. The UI
+ * marks a cell with a warning icon when the corresponding `agreement` flag is false; the list is
+ * already sorted closest-agreement-first (highest `agreement.score` first) by the backend.
+ */
+export type TrusteeAppointmentWithAgreement = TrusteeAppointment & {
+  agreement: AppointmentAgreement;
+};
+
+/**
+ * The full detail for one appointment task, fetched lazily when a data verifier expands its row. courtName/courtDivisionName are resolved the same way as the list
+ * item's; trusteeName is the trustee's current name, for the reason sentence's link to their
+ * profile; appointments is the trustee's full appointment list, sorted by agreement with this
+ * task's tuple.
+ */
+export type TrusteeAppointmentVerificationDetail = TrusteeAppointmentVerification & {
+  courtName?: string;
+  courtDivisionName?: string;
+  trusteeName: string;
+  appointments: TrusteeAppointmentWithAgreement[];
+};
+
+/**
+ * The outcome of a data verifier's "Refresh Trustee Appointments" on one appointment task.
+ * 'resolved': the trustee now holds an active covering appointment, so the
+ * task's cases were marked covered (updatedCaseCount counts only the cases still assigned to this
+ * trustee) and the task was approved. 'still-uncovered': nothing changed; the court, division and
+ * chapter names are for the verifier's warning message.
+ */
+export type TrusteeAppointmentRefreshResult =
+  | {
+      outcome: 'resolved';
+      trusteeName: string;
+      updatedCaseCount: number;
+      task: TrusteeAppointmentVerificationListItem;
+    }
+  | {
+      outcome: 'still-uncovered';
+      courtId: string;
+      courtName?: string;
+      divisionCode: string;
+      courtDivisionName?: string;
+      chapter: string;
+    };

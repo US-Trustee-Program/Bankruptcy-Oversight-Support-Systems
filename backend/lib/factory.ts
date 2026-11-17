@@ -27,8 +27,6 @@ import {
   RuntimeStateRepository,
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsRepository,
-  TrusteeAppointmentsSyncState,
-  TrusteePetitionSyncState,
   TrusteeStaffRepository,
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
@@ -81,6 +79,7 @@ import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/tr
 import { TrusteeCaseAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
 import { TrusteeStaffMongoRepository } from './adapters/gateways/mongo/trustee-staff.mongo.repository';
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
+import { TrusteeAppointmentVerificationMongoRepository } from './adapters/gateways/mongo/trustee-appointment-verification.mongo.repository';
 import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import { TrusteeVariationMongoRepository } from './adapters/gateways/mongo/trustee-variation.mongo.repository';
@@ -106,6 +105,7 @@ import {
   ObjectStorageGateway,
   ObservabilityGateway,
   TrusteeMatchVerificationRepository,
+  TrusteeAppointmentVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
@@ -139,8 +139,6 @@ let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
-let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
-let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
 
@@ -377,25 +375,6 @@ const getCaseAppointmentDateBackfillStateRepo = (
       getRuntimeStateRepository<CaseAppointmentDateBackfillState>(context);
   }
   return caseAppointmentDateBackfillStateRepo;
-};
-
-const getTrusteeAppointmentsSyncStateRepo = (
-  context: ApplicationContext,
-): RuntimeStateRepository<TrusteeAppointmentsSyncState> => {
-  if (!trusteeAppointmentsSyncStateRepo) {
-    trusteeAppointmentsSyncStateRepo =
-      getRuntimeStateRepository<TrusteeAppointmentsSyncState>(context);
-  }
-  return trusteeAppointmentsSyncStateRepo;
-};
-
-const getTrusteePetitionSyncStateRepo = (
-  context: ApplicationContext,
-): RuntimeStateRepository<TrusteePetitionSyncState> => {
-  if (!trusteePetitionSyncStateRepo) {
-    trusteePetitionSyncStateRepo = getRuntimeStateRepository<TrusteePetitionSyncState>(context);
-  }
-  return trusteePetitionSyncStateRepo;
 };
 
 const getTrusteeNotesMetricsSyncStateRepo = (
@@ -655,6 +634,17 @@ const getTrusteeMatchVerificationRepository = (
   return repo;
 };
 
+const getTrusteeAppointmentVerificationRepository = (
+  context: ApplicationContext,
+): TrusteeAppointmentVerificationRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeAppointmentVerificationMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getApiToDataflowsGateway = (_context: ApplicationContext): ApiToDataflowsGateway => {
   return new ApiToDataflowsGatewayImpl();
 };
@@ -726,8 +716,6 @@ const factory = {
   getCasesSyncStateRepo,
   getPhoneticBackfillStateRepo,
   getCaseAppointmentDateBackfillStateRepo,
-  getTrusteeAppointmentsSyncStateRepo,
-  getTrusteePetitionSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
@@ -743,6 +731,7 @@ const factory = {
   getTrusteeNotesRepository,
   getTrusteeUpcomingKeyDatesRepository,
   getTrusteeMatchVerificationRepository,
+  getTrusteeAppointmentVerificationRepository,
   getTrusteeProfessionalIdsRepository,
   getTrusteeVariationRepository,
   getListsGateway,
