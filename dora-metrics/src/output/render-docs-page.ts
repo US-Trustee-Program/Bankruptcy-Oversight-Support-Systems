@@ -50,7 +50,7 @@ export function renderDocsPage(summary: WeeklySummary, context: DocsPageContext)
   return [
     '# DORA Metrics',
     '',
-    'These numbers update weekly, after the Monday DORA Metrics run.',
+    'These numbers update weekly, after the Tuesday DORA Metrics run.',
     '',
     `## Week of ${formatDate(summary.periodStart)} – ${formatDate(lastDay)} (UTC)`,
     '',

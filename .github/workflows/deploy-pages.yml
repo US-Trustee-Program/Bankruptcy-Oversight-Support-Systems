@@ -7,7 +7,8 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/deploy-pages.yml'
-  # Refreshes docs/operations/dora-metrics.md weekly without a commit.
+  # Refreshes docs/operations/dora-metrics.md weekly without a commit. Runs whatever the DORA run's
+  # conclusion; the fetch step picks the newest run that rendered a page.
   workflow_run:
     workflows: [DORA Metrics]
     types: [completed]
@@ -23,8 +24,6 @@ permissions: read-all
 
 jobs:
   build:
-    # A failed DORA Metrics run leaves the site, and its last rendered page, as it was.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,27 +32,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Never fails the build: without a rendered page, the committed placeholder is served.
+      # Uses the page from the newest DORA Metrics run on main that rendered one, whatever the
+      # run's overall conclusion, so a failed publish job doesn't hold back a good page. Serves
+      # the committed placeholder only when no recent run has a page. Any other failure (an API
+      # error after retries, a failed download or copy) fails the build, so the published site,
+      # and its current page, stay as they are.
       - name: Fetch rendered DORA Metrics page
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -u
-          run_id=$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow dora-metrics.yml \
-            --branch main --status success --limit 1 \
-            --json databaseId --jq '.[0].databaseId // empty') || run_id=""
-          if [ -z "${run_id}" ]; then
-            echo "::warning::No successful DORA Metrics run on main found; serving the placeholder page."
-            exit 0
+          set -uo pipefail
+          page=docs/operations/dora-metrics.md
+
+          retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              [ "${attempt}" -lt 3 ] && sleep $((attempt * 5))
+            done
+            return 1
+          }
+
+          if ! run_ids=$(retry gh run list --repo "${GITHUB_REPOSITORY}" --workflow dora-metrics.yml \
+              --branch main --status completed --limit 10 --json databaseId --jq '.[].databaseId'); then
+            echo "::error::Could not list DORA Metrics runs; failing so the published site stays as it is."
+            exit 1
           fi
-          page_dir=$(mktemp -d)
-          if gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" --name dora-docs-page \
-              --dir "${page_dir}" && [ -s "${page_dir}/dora-metrics.md" ]; then
-            cp "${page_dir}/dora-metrics.md" docs/operations/dora-metrics.md
+
+          for run_id in ${run_ids}; do
+            if ! pages=$(retry gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts?name=dora-docs-page" \
+                --jq '[.artifacts[] | select(.expired | not)] | length'); then
+              echo "::error::Could not list artifacts for DORA Metrics run ${run_id}; failing so the published site stays as it is."
+              exit 1
+            fi
+            [ "${pages}" -gt 0 ] || continue
+
+            page_dir=$(mktemp -d)
+            if ! retry gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" \
+                --name dora-docs-page --dir "${page_dir}"; then
+              echo "::error::Could not download the page from DORA Metrics run ${run_id}; failing so the published site stays as it is."
+              exit 1
+            fi
+            if [ ! -s "${page_dir}/dora-metrics.md" ] || ! cp "${page_dir}/dora-metrics.md" "${page}"; then
+              echo "::error::Could not copy the page from DORA Metrics run ${run_id}; failing so the published site stays as it is."
+              exit 1
+            fi
             echo "Using the DORA Metrics page from run ${run_id}."
-          else
-            echo "::warning::DORA Metrics run ${run_id} has no dora-docs-page artifact; serving the placeholder page."
-          fi
+            exit 0
+          done
+
+          echo "::warning::None of the last 10 DORA Metrics runs on main has a dora-docs-page artifact; serving the placeholder page."
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

@@ -278,7 +278,8 @@ writer uses Entra ID (`--auth-mode login`) and needs a Storage Blob Data role on
 container. Deleted or overwritten blobs, and a deleted container, stay recoverable for 30 days.
 
 The latest complete week's numbers are shown on the [DORA Metrics](/operations/dora-metrics.md)
-page, which is rebuilt after each successful weekly run on `main`.
+page. The site is rebuilt after each weekly run on `main` (Tuesday 01:00 UTC) and shows the page
+from the newest run that rendered one, so a failed publish job does not hold it back.
 
 ### One-time setup
 

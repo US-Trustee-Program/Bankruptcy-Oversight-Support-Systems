@@ -2,7 +2,10 @@ name: DORA Metrics
 
 on:
   schedule:
-    - cron: '0 12 * * 1' # Weekly on Monday at 12:00 UTC
+    # Tuesday 01:00 UTC: the reports cover weeks ending Monday 00:00 UTC, and change failure rate
+    # counts bugs opened up to 24 hours after each deployment, so every deployment in the week
+    # has a closed window by then.
+    - cron: '0 1 * * 2'
   workflow_dispatch:
 
 permissions: read-all

@@ -41,7 +41,7 @@ describe('renderDocsPage', () => {
       [
         '# DORA Metrics',
         '',
-        'These numbers update weekly, after the Monday DORA Metrics run.',
+        'These numbers update weekly, after the Tuesday DORA Metrics run.',
         '',
         '## Week of Mon 2026-11-02 – Sun 2026-11-08 (UTC)',
         '',
