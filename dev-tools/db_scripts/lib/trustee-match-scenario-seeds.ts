@@ -48,3 +48,36 @@ export function scenarioTrusteeDocuments(...keys: TrusteeMatchScenarioKey[]) {
   );
   return [...documents.values()];
 }
+
+const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
+
+/**
+ * The surrogate CASE_APPOINTMENT the sync writes for a case it raised an identity task for. Its
+ * trusteeId is the task's fingerprint, which is how the task finds its affected cases.
+ */
+export function buildSurrogate(opts: {
+  slug: string;
+  caseId: string;
+  fingerprint: string;
+  chapter: string;
+  courtId: string;
+  courtDivisionCode: string;
+  appointedDate: string;
+}) {
+  return {
+    id: `seed-surrogate-${opts.slug}-${opts.caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId: opts.caseId,
+    trusteeId: opts.fingerprint,
+    assignedOn: `${opts.appointedDate}T00:00:00.000Z`,
+    appointedDate: opts.appointedDate,
+    isSurrogate: true,
+    chapter: opts.chapter,
+    courtId: opts.courtId,
+    courtDivisionCode: opts.courtDivisionCode,
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  };
+}

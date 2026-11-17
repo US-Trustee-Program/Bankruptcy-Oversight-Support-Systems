@@ -2752,5 +2752,379 @@
     "match": null,
     "skip": false,
     "error": null
+  },
+  "joinsAppointmentTask": {
+    "sourceRaw": {
+      "firstName": "Jules",
+      "lastName": "Joinmatch",
+      "fullName": "Jules Joinmatch"
+    },
+    "sourceNormalized": {
+      "firstName": "jules",
+      "middleName": "",
+      "lastName": "joinmatch",
+      "fullName": "Jules Joinmatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-join",
+          "firstName": "Julia",
+          "lastName": "Joinmatch",
+          "name": "Julia Joinmatch",
+          "address": {
+            "address1": "900 Match Pl",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10004",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-9100"
+          },
+          "email": "julia.joinmatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "julia",
+          "middleName": "",
+          "lastName": "joinmatch",
+          "phone": {
+            "number": "212-555-9100"
+          },
+          "email": "julia.joinmatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "julia joinmatch"
+        },
+        "memo": {
+          "isPlausibleNicknameByDistance": [
+            {
+              "key": "jules|julia",
+              "value": true
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "jules joinmatch|julia joinmatch",
+              "value": 0.902
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "jules joinmatch|julia joinmatch",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong",
+            "firstNameBySpellingOnly": true
+          },
+          "recallByAnchoredLevenshtein": {
+            "value": 2,
+            "threshold": 2,
+            "pass": true
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "reopensAppointmentTask": {
+    "sourceRaw": {
+      "firstName": "Remy",
+      "lastName": "Reopenmatch",
+      "fullName": "Remy Reopenmatch"
+    },
+    "sourceNormalized": {
+      "firstName": "remy",
+      "middleName": "",
+      "lastName": "reopenmatch",
+      "fullName": "Remy Reopenmatch",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-reopen",
+          "firstName": "Rowena",
+          "lastName": "Reopenmatch",
+          "name": "Rowena Reopenmatch",
+          "address": {
+            "address1": "910 Match Pl",
+            "city": "Wilmington",
+            "state": "DE",
+            "zipCode": "19801",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "302-555-9200"
+          },
+          "email": "rowena.reopenmatch@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "rowena",
+          "middleName": "",
+          "lastName": "reopenmatch",
+          "phone": {
+            "number": "302-555-9200"
+          },
+          "email": "rowena.reopenmatch@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "rowena reopenmatch"
+        },
+        "memo": {
+          "isPlausibleNicknameByDistance": [
+            {
+              "key": "remy|rowena",
+              "value": false
+            }
+          ],
+          "fullNameSimilarity": [
+            {
+              "key": "remy reopenmatch|rowena reopenmatch",
+              "value": 0.799
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "remy reopenmatch|rowena reopenmatch",
+              "value": 0.5
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": false
+          },
+          "doesNameMatch": {
+            "pass": false
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
+  },
+  "twoCandidatesOneCovers": {
+    "sourceRaw": {
+      "firstName": "V",
+      "lastName": "Coverpair",
+      "fullName": "V Coverpair",
+      "legacy": {
+        "address1": "1 Source Way",
+        "cityStateZipCountry": "New York NY 10005",
+        "phone": "212-555-9998",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10005"
+        }
+      }
+    },
+    "sourceNormalized": {
+      "firstName": "v",
+      "middleName": "",
+      "lastName": "coverpair",
+      "legacy": {
+        "address1": "1 Source Way",
+        "cityStateZipCountry": "New York NY 10005",
+        "phone": "212-555-9998",
+        "parsedCityStateZip": {
+          "city": "New York",
+          "state": "NY",
+          "zipCode": "10005"
+        }
+      },
+      "fullName": "V Coverpair",
+      "firstNameAlternates": [],
+      "lastNameAlternates": []
+    },
+    "memo": {},
+    "candidates": [
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-cover-a",
+          "firstName": "Vera",
+          "lastName": "Coverpair",
+          "name": "Vera Coverpair",
+          "address": {
+            "address1": "320 Cover Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10005",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3300"
+          },
+          "email": "vera.coverpair@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "vera",
+          "middleName": "",
+          "lastName": "coverpair",
+          "phone": {
+            "number": "212-555-3300"
+          },
+          "email": "vera.coverpair@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "vera coverpair"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "v coverpair|vera coverpair",
+              "value": 0.799
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "v coverpair|vera coverpair",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 4
+          }
+        },
+        "origin": "recallBySurnameExact"
+      },
+      {
+        "camsRaw": {
+          "trusteeId": "seed-trustee-match-cover-b",
+          "firstName": "Vince",
+          "lastName": "Coverpair",
+          "name": "Vince Coverpair",
+          "address": {
+            "address1": "321 Cover Ave",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10005",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-3301"
+          },
+          "email": "vince.coverpair@example.com"
+        },
+        "camsNormalized": {
+          "firstName": "vince",
+          "middleName": "",
+          "lastName": "coverpair",
+          "phone": {
+            "number": "212-555-3301"
+          },
+          "email": "vince.coverpair@example.com",
+          "firstNameAlternates": [],
+          "middleNameAlternates": [],
+          "lastNameAlternates": [],
+          "name": "vince coverpair"
+        },
+        "memo": {
+          "fullNameSimilarity": [
+            {
+              "key": "v coverpair|vince coverpair",
+              "value": 0.852
+            }
+          ],
+          "tokenNameMatchRate": [
+            {
+              "key": "v coverpair|vince coverpair",
+              "value": 1
+            }
+          ]
+        },
+        "scores": {
+          "doesCandidateTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesSourceTrusteeHaveAddressAndPhone": {
+            "pass": true
+          },
+          "doesNameMatch": {
+            "pass": true,
+            "quality": "strong"
+          },
+          "doesCityMatch": {
+            "pass": true
+          },
+          "doesStateMatch": {
+            "pass": true
+          },
+          "doesZipCodeMatch": {
+            "pass": true
+          },
+          "doesAddressMatch": {
+            "pass": true,
+            "quality": "moderate",
+            "points": 3,
+            "streetCloseness": 0
+          },
+          "doesPhoneMatch": {
+            "pass": false,
+            "phoneDigitDistance": 4
+          }
+        },
+        "origin": "recallBySurnameExact"
+      }
+    ],
+    "match": null,
+    "skip": false,
+    "error": null
   }
 }

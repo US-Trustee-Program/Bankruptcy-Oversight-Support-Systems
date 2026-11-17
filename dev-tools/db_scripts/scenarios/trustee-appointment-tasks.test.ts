@@ -18,6 +18,33 @@ function docs(ops: SeedOperation[], collectionOrTable: string) {
   return ops.filter((o) => o.collectionOrTable === collectionOrTable).flatMap((o) => o.data);
 }
 
+/** An identity task with its surrogate case appointment, its candidates and their coverage. */
+function identityTask(ops: SeedOperation[], id: string) {
+  const task = docs(ops, 'trustee-match-verification').find((t) => t.id === id);
+  const surrogates = docs(ops, 'trustee-case-appointments').filter(
+    (a) => task && a.trusteeId === task.fingerprint,
+  );
+  const findings = task?.findings as { candidates: { camsRaw: { trusteeId: string } }[] };
+  const candidateIds = (findings?.candidates ?? []).map((c) => c.camsRaw.trusteeId);
+  const appointments = docs(ops, 'trustee-appointments') as unknown as TrusteeAppointment[];
+  const covers = (trusteeId: string) =>
+    isAppointmentMatch(
+      appointments.filter((a) => a.trusteeId === trusteeId),
+      surrogates[0]?.courtId as string,
+      surrogates[0]?.courtDivisionCode as string,
+      surrogates[0]?.chapter as string,
+    );
+  const appointmentTasksFor = (trusteeId: string) =>
+    docs(ops, 'trustee-appointment-verification').filter(
+      (t) =>
+        t.trusteeId === trusteeId &&
+        t.courtId === surrogates[0]?.courtId &&
+        t.divisionCode === surrogates[0]?.courtDivisionCode &&
+        t.chapter === surrogates[0]?.chapter,
+    );
+  return { task, surrogates, candidateIds, covers, appointmentTasksFor };
+}
+
 describe('trustee-appointment-tasks (CAMS-956)', () => {
   test('should seed one task per (trustee, court, division, chapter)', async () => {
     const tasks = docs(await generate(context()), 'trustee-appointment-verification');
@@ -94,7 +121,9 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
     );
     const caseAppointments = docs(ops, 'trustee-case-appointments');
 
-    const placeholder = caseAppointments.find((a) => a.isSurrogate);
+    const placeholder = caseAppointments.find(
+      (a) => (a.checks as { matchedTrustee?: boolean } | undefined)?.matchedTrustee === false,
+    );
     const parked = caseAppointments.find((a) => a.documentType === 'CASE_APPOINTMENT_UNATTACHED');
     // Guards the lookups below from passing vacuously on an undefined case id.
     expect(placeholder).toBeDefined();
@@ -199,9 +228,17 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
       tasks.find((t) => (t.caseIds as string[]).includes(caseId as string));
 
     expect(generatedCases.length).toBeGreaterThan(0);
-    // Every generated case belongs to a task, except the one a placeholder sits on.
+    // Every generated case belongs to a task, except the one a placeholder sits on and the ones
+    // an identity task's surrogate sits on (approving that identity task adds them to a task).
+    const surrogateCaseIds = new Set(
+      docs(ops, 'trustee-case-appointments')
+        .filter((a) => a.isSurrogate)
+        .map((a) => a.caseId),
+    );
     const inTasks = generatedCases.filter((generated) => taskFor(generated.caseId));
-    expect(inTasks.length).toBe(generatedCases.length - 1);
+    expect(inTasks.length).toBe(
+      generatedCases.filter((generated) => !surrogateCaseIds.has(generated.caseId)).length,
+    );
     expect(
       inTasks.map((generated) => ({
         chapter: generated.chapter,
@@ -266,6 +303,71 @@ describe('trustee-appointment-tasks (CAMS-956)', () => {
       expect(rec.substring(107, 109)).toBe('VP');
       expect(petition).not.toHaveProperty('TX_ID');
     }
+  });
+
+  describe('identity tasks whose approval reaches an existing appointment task', () => {
+    test('should seed a pending identity task whose sole, uncovered candidate already has an open task on its case tuple', async () => {
+      const ops = await generate(context());
+      const { task, surrogates, candidateIds, covers, appointmentTasksFor } = identityTask(
+        ops,
+        'seed-match-appt-join',
+      );
+
+      expect(task?.status).toBe('pending');
+      expect(surrogates).toHaveLength(1);
+      expect(candidateIds).toHaveLength(1);
+      expect(covers(candidateIds[0])).toBe(false);
+      const existing = appointmentTasksFor(candidateIds[0]);
+      expect(existing.map((t) => t.status)).toEqual(['pending']);
+      expect(existing[0].caseIds).not.toContain(surrogates[0].caseId);
+    });
+
+    test('should seed a pending identity task whose sole candidate has a resolved task on its case tuple and lost coverage since', async () => {
+      const ops = await generate(context());
+      const { task, surrogates, candidateIds, covers, appointmentTasksFor } = identityTask(
+        ops,
+        'seed-match-appt-reopen',
+      );
+
+      expect(task?.status).toBe('pending');
+      expect(surrogates).toHaveLength(1);
+      expect(candidateIds).toHaveLength(1);
+      expect(covers(candidateIds[0])).toBe(false);
+      const existing = appointmentTasksFor(candidateIds[0]);
+      expect(existing.map((t) => t.status)).toEqual(['approved']);
+      expect(existing[0].caseIds).not.toContain(surrogates[0].caseId);
+    });
+
+    test('should seed a pending identity task with two candidates of which exactly one covers its case', async () => {
+      const ops = await generate(context());
+      const { task, surrogates, candidateIds, covers, appointmentTasksFor } = identityTask(
+        ops,
+        'seed-match-appt-stale',
+      );
+
+      expect(task?.status).toBe('pending');
+      expect(surrogates).toHaveLength(1);
+      expect(candidateIds).toHaveLength(2);
+      expect(candidateIds.map(covers).sort()).toEqual([false, true]);
+      expect(candidateIds.flatMap(appointmentTasksFor)).toEqual([]);
+    });
+
+    test('should dual-write each identity-task surrogate to both partitions and seed its candidates', async () => {
+      const ops = await generate(context());
+      const trusteeIds = new Set(docs(ops, 'trustees').map((t) => t.trusteeId));
+
+      const ids = ['seed-match-appt-join', 'seed-match-appt-reopen', 'seed-match-appt-stale'];
+      const tasks = ids.map((id) => identityTask(ops, id));
+
+      expect(tasks.map(({ surrogates }) => surrogates.length)).toEqual([1, 1, 1]);
+      for (const { surrogates } of tasks) {
+        expect(docs(ops, 'case-trustee-appointments')).toContainEqual(surrogates[0]);
+      }
+      const unseeded = tasks
+        .flatMap(({ candidateIds }) => candidateIds)
+        .filter((candidateId) => !trusteeIds.has(candidateId));
+      expect(unseeded).toEqual([]);
+    });
   });
 
   test('should use court, division and group combinations that exist in DXTR', async () => {

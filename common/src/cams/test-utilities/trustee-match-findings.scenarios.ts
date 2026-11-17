@@ -545,6 +545,74 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     trustees: [SAM_SEEDTRUSTEE, PAT_SEEDTRUSTEE],
     expectedCandidateCount: 2,
   },
+
+  // trustee-appointment-tasks (CAMS-956): the divisionMismatch shape. The sole candidate already
+  // has an open appointment task on the case's tuple, so approving joins it.
+  joinsAppointmentTask: {
+    source: { firstName: 'Jules', lastName: 'Joinmatch', fullName: 'Jules Joinmatch' },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-join',
+        firstName: 'Julia',
+        lastName: 'Joinmatch',
+        address: { address1: '900 Match Pl', city: 'New York', state: 'NY', zipCode: '10004' },
+        phone: '212-555-9100',
+        email: 'julia.joinmatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
+  // trustee-appointment-tasks (CAMS-956): the divisionMismatch shape. The sole candidate has a
+  // resolved appointment task on the case's tuple, so approving reopens it.
+  reopensAppointmentTask: {
+    source: { firstName: 'Remy', lastName: 'Reopenmatch', fullName: 'Remy Reopenmatch' },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-reopen',
+        firstName: 'Rowena',
+        lastName: 'Reopenmatch',
+        address: { address1: '910 Match Pl', city: 'Wilmington', state: 'DE', zipCode: '19801' },
+        phone: '302-555-9200',
+        email: 'rowena.reopenmatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
+  // trustee-appointment-tasks (CAMS-956): the multipleCandidates shape. One candidate covers the
+  // case and the other does not, so their approval previews differ.
+  twoCandidatesOneCovers: {
+    source: {
+      firstName: 'V',
+      lastName: 'Coverpair',
+      fullName: 'V Coverpair',
+      legacy: {
+        address1: '1 Source Way',
+        cityStateZipCountry: 'New York NY 10005',
+        phone: '212-555-9998',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-cover-a',
+        firstName: 'Vera',
+        lastName: 'Coverpair',
+        address: { address1: '320 Cover Ave', city: 'New York', state: 'NY', zipCode: '10005' },
+        phone: '212-555-3300',
+        email: 'vera.coverpair@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-cover-b',
+        firstName: 'Vince',
+        lastName: 'Coverpair',
+        address: { address1: '321 Cover Ave', city: 'New York', state: 'NY', zipCode: '10005' },
+        phone: '212-555-3301',
+        email: 'vince.coverpair@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
 } satisfies Record<string, TrusteeMatchFindingsScenario>;
 
 export type TrusteeMatchScenarioKey = keyof typeof TRUSTEE_MATCH_FINDINGS_SCENARIOS;

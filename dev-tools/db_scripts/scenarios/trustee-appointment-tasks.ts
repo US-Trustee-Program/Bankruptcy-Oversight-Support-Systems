@@ -30,6 +30,16 @@
  *  10. Records that must never join a task: a placeholder (checks.matchedTrustee false) and a
  *      parked record (CASE_APPOINTMENT_UNATTACHED). Neither appears in any task's case list.
  *
+ * Identity tasks whose approval reaches an appointment task (each with one surrogate case):
+ *  11. Join (Jules Joinmatch -> Julia Joinmatch, Manhattan Ch 13): Julia already has an open task
+ *      on that tuple with 1 case, so approving grows it to 2 cases and opens no new task.
+ *  12. Reopen (Remy Reopenmatch -> Rowena Reopenmatch, Delaware Ch 13): Rowena's task on that
+ *      tuple was resolved, then her appointment resigned, so approving reopens it. A reopen resets
+ *      the task's cases to just the new one: the cases it held were verified when it resolved.
+ *  13. Stale preview (V Coverpair -> Vera or Vince Coverpair, Manhattan Ch 7): Vera covers the
+ *      case and Vince does not, so the approval preview differs by candidate. Switching between
+ *      them shows whether a preview for one candidate can appear for the other.
+ *
  * Trustee appointments exist only for Chapters 7, 11, 12 and 13, so every task and appointment
  * here uses one of those. Cases:
  *  - Buffalo and court 0674 tasks reuse cases from cases-fuzzy-search.ts, which must be seeded
@@ -43,6 +53,11 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createCaseDocument, createTrusteeBase } from '../lib/test-data-utils.js';
+import {
+  buildSurrogate,
+  identityTaskFields,
+  scenarioTrusteeDocuments,
+} from '../lib/trustee-match-scenario-seeds.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 const SEEDED_ON = '2026-11-10T00:00:00.000Z';
@@ -227,6 +242,11 @@ const RESOLVED_CASES = seedCaseSet(90131, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '7
 const MANY_CASES = seedCaseSet(90141, MANHATTAN_COURT, NEW_YORK, '7', 12);
 const PARTIAL_CASES = seedCaseSet(90161, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '7', 3);
 const PLACEHOLDER_CASES = seedCaseSet(90171, MANHATTAN_COURT, NEW_YORK, '7', 1);
+const JOIN_TASK_CASES = seedCaseSet(90181, MANHATTAN_COURT, NEW_YORK, '13', 1);
+const JOIN_IDENTITY_CASES = seedCaseSet(90182, MANHATTAN_COURT, NEW_YORK, '13', 1);
+const REOPEN_TASK_CASES = seedCaseSet(90183, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '13', 1);
+const REOPEN_IDENTITY_CASES = seedCaseSet(90184, DELAWARE_COURT, DELAWARE_GEOGRAPHY, '13', 1);
+const STALE_IDENTITY_CASES = seedCaseSet(90185, MANHATTAN_COURT, NEW_YORK, '7', 1);
 const GENERATED_CASE_SETS = [
   MISMATCH_MANHATTAN_CASES,
   MISMATCH_DELAWARE_CASES,
@@ -235,6 +255,11 @@ const GENERATED_CASE_SETS = [
   MANY_CASES,
   PARTIAL_CASES,
   PLACEHOLDER_CASES,
+  JOIN_TASK_CASES,
+  JOIN_IDENTITY_CASES,
+  REOPEN_TASK_CASES,
+  REOPEN_IDENTITY_CASES,
+  STALE_IDENTITY_CASES,
 ];
 const GENERATED_CASES = GENERATED_CASE_SETS.flatMap((set) => set.docs);
 const GENERATED_DXTR_CASES = GENERATED_CASE_SETS.flatMap((set) => set.dxtrCases);
@@ -250,6 +275,10 @@ const T_MANY = 'seed-trustee-appt-many';
 const T_NAMELESS = 'seed-trustee-appt-nocourtname';
 const T_PARTIAL = 'seed-trustee-appt-partial';
 const T_REASSIGNED_TO = 'seed-trustee-appt-reassignedto';
+// The identity-task candidates (trustee-match-findings.scenarios.ts names them).
+const T_JOIN = 'seed-trustee-match-join';
+const T_REOPEN = 'seed-trustee-match-reopen';
+const T_COVER_A = 'seed-trustee-match-cover-a';
 
 type TaskSpec = {
   slug: string;
@@ -343,6 +372,60 @@ const TASKS: TaskSpec[] = [
     status: 'pending',
     createdOn: '2026-11-02T14:00:00.000Z',
   },
+  {
+    slug: 'join-manhattan-13',
+    trusteeId: T_JOIN,
+    tuple: { ...MANHATTAN, chapter: '13' },
+    reason: 'no-appointment',
+    caseIds: JOIN_TASK_CASES.caseIds,
+    status: 'pending',
+    createdOn: '2026-11-01T14:00:00.000Z',
+  },
+  {
+    slug: 'reopen-delaware-13',
+    trusteeId: T_REOPEN,
+    tuple: { ...DELAWARE, chapter: '13' },
+    reason: 'no-appointment',
+    caseIds: REOPEN_TASK_CASES.caseIds,
+    status: 'approved',
+    createdOn: '2026-10-30T14:00:00.000Z',
+  },
+];
+
+type IdentityTaskSpec = {
+  slug: string;
+  key: 'joinsAppointmentTask' | 'reopensAppointmentTask' | 'twoCandidatesOneCovers';
+  court: typeof MANHATTAN;
+  chapter: string;
+  caseId: string;
+  taskDate: string;
+};
+
+const IDENTITY_TASKS: IdentityTaskSpec[] = [
+  {
+    slug: 'join',
+    key: 'joinsAppointmentTask',
+    court: MANHATTAN,
+    chapter: '13',
+    caseId: JOIN_IDENTITY_CASES.caseIds[0],
+    taskDate: '2026-11-10T00:00:00.000Z',
+  },
+  {
+    slug: 'reopen',
+    key: 'reopensAppointmentTask',
+    court: DELAWARE,
+    chapter: '13',
+    caseId: REOPEN_IDENTITY_CASES.caseIds[0],
+    taskDate: '2026-11-11T00:00:00.000Z',
+  },
+  {
+    slug: 'stale',
+    key: 'twoCandidatesOneCovers',
+    court: MANHATTAN,
+    chapter: '7',
+    caseId: STALE_IDENTITY_CASES.caseIds[0],
+    taskDate: '2026-11-12T00:00:00.000Z',
+  },
 ];
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
@@ -356,6 +439,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     trustee(T_NAMELESS, 'Nolan', 'Nocourtnameappt'),
     trustee(T_PARTIAL, 'Paige', 'Partialappt'),
     trustee(T_REASSIGNED_TO, 'Reese', 'Reassignedtoappt'),
+    ...scenarioTrusteeDocuments(...IDENTITY_TASKS.map((task) => task.key)),
   ];
 
   const appointments = [
@@ -502,6 +586,27 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       status: 'active',
       appointedDate: '2026-11-01',
     }),
+
+    // T_JOIN: deliberately none, so its open Manhattan Ch 13 task stays uncovered.
+    // T_REOPEN: covered Delaware Ch 13 when its task was resolved, then resigned.
+    appointment({
+      id: 'seed-appt-reopen-1',
+      trusteeId: T_REOPEN,
+      chapter: '13',
+      appointmentType: 'standing',
+      court: DELAWARE_COURT,
+      status: 'resigned',
+      appointedDate: '2026-10-25',
+    }),
+    // T_COVER_A covers Manhattan Ch 7; its fellow candidate (cover-b) has no appointments.
+    appointment({
+      id: 'seed-appt-cover-a-1',
+      trusteeId: T_COVER_A,
+      chapter: '7',
+      appointmentType: 'panel',
+      court: MANHATTAN_COURT,
+      status: 'active',
+    }),
   ];
 
   const tasks = TASKS.map((task) => ({
@@ -616,7 +721,33 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ...audit,
     },
   ];
-  const caseAppointments = [...taskCaseAppointments, ...otherCaseAppointments];
+  const identityTasks = IDENTITY_TASKS.map((task) => ({
+    id: `seed-match-appt-${task.slug}`,
+    ...identityTaskFields(task.key),
+    caseId: task.caseId,
+    courtId: task.court.courtId,
+    status: 'pending',
+    taskDate: task.taskDate,
+    updatedOn: SEEDED_ON,
+    updatedBy: SEEDER,
+  }));
+  const identityTaskSurrogates = IDENTITY_TASKS.map((task, index) =>
+    buildSurrogate({
+      slug: `appt-${task.slug}`,
+      caseId: task.caseId,
+      fingerprint: identityTasks[index].fingerprint,
+      chapter: task.chapter,
+      courtId: task.court.courtId,
+      courtDivisionCode: task.court.divisionCode,
+      appointedDate: '2026-11-01',
+    }),
+  );
+
+  const caseAppointments = [
+    ...taskCaseAppointments,
+    ...otherCaseAppointments,
+    ...identityTaskSurrogates,
+  ];
 
   return [
     // DXTR rows first (case, debtor, petition), then the Cosmos cases they back (the runner orders them the same way).
@@ -648,5 +779,6 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     { db: 'cams', collectionOrTable: 'case-trustee-appointments', data: caseAppointments },
     { db: 'cams', collectionOrTable: 'trustee-case-appointments', data: caseAppointments },
     { db: 'cams', collectionOrTable: 'trustee-appointment-verification', data: tasks },
+    { db: 'cams', collectionOrTable: 'trustee-match-verification', data: identityTasks },
   ];
 }

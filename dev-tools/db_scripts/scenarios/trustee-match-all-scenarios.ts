@@ -67,6 +67,7 @@ import type { TrusteeMatchScenarioKey } from '@common/cams/test-utilities/truste
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createTrusteeBase } from '../lib/test-data-utils.js';
 import {
+  buildSurrogate,
   identityTaskFields,
   scenarioTrusteeDocuments,
 } from '../lib/trustee-match-scenario-seeds.js';
@@ -207,37 +208,6 @@ const DIVISION_MISMATCH_TRUSTEE_ID = 'seed-trustee-match-divisionmismatch';
 // The nothing-differs task's sole candidate: appointed in Buffalo (091) Chapter 12, covering that
 // task's case.
 const ACMS_LINK_CANDIDATE_TRUSTEE_ID = 'seed-trustee-match-unlisted';
-
-/**
- * The surrogate CASE_APPOINTMENT the sync writes for a case it raised an identity task for. Its
- * trusteeId is the task's fingerprint, which is how the task finds its affected cases.
- */
-function buildSurrogate(opts: {
-  slug: string;
-  caseId: string;
-  fingerprint: string;
-  chapter: string;
-  courtId: string;
-  courtDivisionCode: string;
-  appointedDate: string;
-}) {
-  return {
-    id: `seed-surrogate-${opts.slug}-${opts.caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId: opts.caseId,
-    trusteeId: opts.fingerprint,
-    assignedOn: `${opts.appointedDate}T00:00:00.000Z`,
-    appointedDate: opts.appointedDate,
-    isSurrogate: true,
-    chapter: opts.chapter,
-    courtId: opts.courtId,
-    courtDivisionCode: opts.courtDivisionCode,
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  };
-}
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   const singleCaseTasks = SINGLE_CASE_TASKS.map((task) => ({
