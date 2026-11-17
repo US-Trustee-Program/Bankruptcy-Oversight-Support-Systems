@@ -2,10 +2,10 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteeVariationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { isDuplicateKeyError } from './utils/duplicate-key-error';
 import QueryBuilder from '../../../query/query-builder';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 import { Creatable } from '@common/cams/creatable';
-import { isDuplicateKeyError } from './utils/duplicate-key-error';
 
 const MODULE_NAME = 'TRUSTEE-VARIATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-variation';

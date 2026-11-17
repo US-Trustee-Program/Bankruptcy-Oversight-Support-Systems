@@ -43,6 +43,10 @@ vi.mock('./notification-routing/NotificationRouting', () => ({
   NotificationRouting: () => <div data-testid="mocked-notification-routing" />,
 }));
 
+vi.mock('./trustee-task-regions/TrusteeTaskRegions', () => ({
+  TrusteeTaskRegions: () => <div data-testid="mocked-trustee-task-regions" />,
+}));
+
 vi.mock('./bankruptcy-software/BankruptcySoftwareDetail', () => ({
   BankruptcySoftwareDetail: () => <div data-testid="mocked-bankruptcy-software-detail" />,
 }));
@@ -100,6 +104,7 @@ describe('Admin screen tests', () => {
     ['bankruptcy-software', '/admin/bankruptcy-software', 'mocked-bankruptcy-software'],
     ['privileged-identity', '/admin/privileged-identity', 'mocked-privileged-identity'],
     ['permissions', '/admin/permissions/cams-users', 'mocked-permissions'],
+    ['trustee-task-regions', '/admin/trustee-task-regions', 'mocked-trustee-task-regions'],
     ['case-reload', '/admin/case-reload', 'mocked-case-reload'],
     ['banks', '/admin/banks', 'mocked-banks'],
     ['notification-routing', '/admin/notification-routing', 'mocked-notification-routing'],
@@ -115,6 +120,11 @@ describe('Admin screen tests', () => {
   test.each(adminRoutes)('should render the %s panel when path matches', (_name, path, panel) => {
     renderAtPath(path);
     expect(screen.getByTestId(panel)).toBeInTheDocument();
+  });
+
+  test('should render TrusteeTaskRegions component when navigating to /admin/trustee-task-regions', () => {
+    renderAtPath('/admin/trustee-task-regions');
+    expect(screen.getByTestId('mocked-trustee-task-regions')).toBeInTheDocument();
   });
 
   test('should render BankDetail component when navigating to /admin/banks/:bankId', () => {

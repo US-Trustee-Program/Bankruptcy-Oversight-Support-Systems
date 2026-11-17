@@ -314,7 +314,7 @@ describe('Mongo adapter', () => {
   test('should throw an error if updateOne does not update.', async () => {
     updateOne.mockResolvedValue({ acknowledged: false });
     await expect(adapter.updateOne(testQuery, {})).rejects.toThrow(
-      'Failed to insert document into database.',
+      'Failed to update document in database.',
     );
   });
 

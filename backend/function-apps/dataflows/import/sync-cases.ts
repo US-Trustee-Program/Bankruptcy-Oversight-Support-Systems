@@ -12,7 +12,7 @@ import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-st
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
-import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { SyncCasesPageMessage } from '@common/cams/dataflow-events';
 import type { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
@@ -23,12 +23,6 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
-
-type PageMessage = {
-  events: CaseSyncEvent[];
-  retryCount?: number;
-  firstAttemptAt?: string;
-};
 
 type SyncCasesStartMessage = StartMessage & {
   lastSyncDate?: string;
@@ -104,7 +98,7 @@ async function handleStart(
     let start = 0;
     let end = 0;
 
-    const pages: PageMessage[] = [];
+    const pages: SyncCasesPageMessage[] = [];
     while (end < events.length) {
       start = end;
       end += PAGE_SIZE;
@@ -179,10 +173,10 @@ async function handleStart(
 /**
  * handlePage
  *
- * @param {PageMessage} message
+ * @param {SyncCasesPageMessage} message
  * @param {InvocationContext} invocationContext
  */
-async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
+async function handlePage(message: SyncCasesPageMessage, invocationContext: InvocationContext) {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
   if (!connectionString) {
     throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');

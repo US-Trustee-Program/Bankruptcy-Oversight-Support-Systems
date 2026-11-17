@@ -510,6 +510,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_publish["Publish reports to storage"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
@@ -545,6 +546,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_publish
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
@@ -583,6 +585,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_publish job
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
@@ -1219,6 +1222,7 @@ flowchart LR
     dora_metrics_yml_lead_time["Report lead time for changes"]
     dora_metrics_yml_change_failure_rate["Report change failure rate"]
     dora_metrics_yml_mttr["Report mean time to restore"]
+    dora_metrics_yml_publish["Publish reports to storage"]
 
     trigger_workflow_dispatch --> dora_metrics_yml
     dora_metrics_yml --> dora_metrics_yml_deployment_frequency
@@ -1230,6 +1234,7 @@ flowchart LR
     dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
     dora_metrics_yml --> dora_metrics_yml_mttr
     dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_publish
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1244,6 +1249,7 @@ flowchart LR
     class dora_metrics_yml_lead_time job
     class dora_metrics_yml_change_failure_rate job
     class dora_metrics_yml_mttr job
+    class dora_metrics_yml_publish job
 ```
 
 #### Stand Alone E2E Test Runs
@@ -1521,7 +1527,7 @@ flowchart LR
   - Jobs: 1
 - **DORA Metrics** (`dora-metrics.yml`)
   - Triggers: schedule, workflow_dispatch
-  - Jobs: 4
+  - Jobs: 5
 - **Active Issue Notification** (`active-issue-notification.yml`)
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)

@@ -12,6 +12,7 @@ import {
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
+  SyncCasesPageMessage,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
@@ -51,7 +52,11 @@ describe('ApiToDataflowsGatewayImpl', () => {
   });
 
   describe('queueCaseReload', () => {
-    test('sends the case-reload event wrapped in an array to the page queue', async () => {
+    function sentPage(callIndex: number): SyncCasesPageMessage {
+      return JSON.parse(mockSendMessage.mock.calls[callIndex][0]);
+    }
+
+    test('sends the case-reload event as a sync-cases page message ({ events }) to the page queue', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
       const caseId = '081-12-34567';
 
@@ -61,26 +66,27 @@ describe('ApiToDataflowsGatewayImpl', () => {
         'UseDevelopmentStorage=true',
         SYNC_CASES_PAGE_QUEUE.queueName,
       );
-      expect(mockSendMessage).toHaveBeenCalledWith(
-        JSON.stringify([{ caseId, type: 'CASE_CHANGED' }]),
-      );
+      const expected: SyncCasesPageMessage = { events: [{ caseId, type: 'CASE_CHANGED' }] };
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      expect(sentPage(0)).toEqual(expected);
     });
 
-    test('sends each case reload independently', async () => {
+    test('sends one page message per reload, reusing the queue client', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
 
       await gateway.queueCaseReload('081-12-34567');
       await gateway.queueCaseReload('087-99-79400');
 
+      const first: SyncCasesPageMessage = {
+        events: [{ caseId: '081-12-34567', type: 'CASE_CHANGED' }],
+      };
+      const second: SyncCasesPageMessage = {
+        events: [{ caseId: '087-99-79400', type: 'CASE_CHANGED' }],
+      };
+      expect(fromConnectionStringSpy).toHaveBeenCalledTimes(1);
       expect(mockSendMessage).toHaveBeenCalledTimes(2);
-      expect(mockSendMessage).toHaveBeenNthCalledWith(
-        1,
-        JSON.stringify([{ caseId: '081-12-34567', type: 'CASE_CHANGED' }]),
-      );
-      expect(mockSendMessage).toHaveBeenNthCalledWith(
-        2,
-        JSON.stringify([{ caseId: '087-99-79400', type: 'CASE_CHANGED' }]),
-      );
+      expect(sentPage(0)).toEqual(first);
+      expect(sentPage(1)).toEqual(second);
     });
   });
 

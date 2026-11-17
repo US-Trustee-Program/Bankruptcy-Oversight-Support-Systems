@@ -7,6 +7,8 @@ import {
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { CamsError } from '../../../common-errors/cams-error';
+import { CleansingClassification } from './cleansing/ats-cleansing-types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 describe('ATS Gateway', () => {
   let context: ApplicationContext;
@@ -528,6 +530,159 @@ describe('ATS Gateway', () => {
           error: expect.any(String),
         }),
       );
+    });
+
+    test('should load the overrides cache only once across multiple calls', async () => {
+      const overridesModule = await import('./cleansing/ats-cleansing-overrides');
+      const loadOverridesSpy = vi
+        .spyOn(overridesModule, 'loadTrusteeOverrides')
+        .mockResolvedValue({ data: new Map() });
+
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      await gateway.getTrusteeAppointments(context, 1);
+      await gateway.getTrusteeAppointments(context, 2);
+
+      expect(loadOverridesSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should proceed without overrides when loadTrusteeOverrides returns neither data nor error', async () => {
+      const overridesModule = await import('./cleansing/ats-cleansing-overrides');
+      vi.spyOn(overridesModule, 'loadTrusteeOverrides').mockResolvedValueOnce({});
+
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      await gateway.getTrusteeAppointments(context, 1);
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        'ATS-GATEWAY',
+        'loadTrusteeOverrides returned no data and no error — proceeding without overrides',
+      );
+    });
+
+    test('should increment the skipped stat for a SKIP classification', async () => {
+      const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+      vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockReturnValue({
+        classification: CleansingClassification.SKIP,
+        courtIds: [],
+        mapType: 'OVERRIDE',
+        notes: ['skipped per override'],
+        skip: true,
+      });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 1 }] } });
+
+      const result = await gateway.getTrusteeAppointments(context, 1);
+
+      expect(result.stats.skipped).toBe(1);
+      expect(result.cleanAppointments).toHaveLength(0);
+    });
+
+    test('should increment the uncleansable stat (not problematic) for an UNCLEANSABLE classification', async () => {
+      const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+      vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockReturnValue({
+        classification: CleansingClassification.UNCLEANSABLE,
+        courtIds: [],
+        mapType: 'UNMAPPED',
+        notes: ['missing geography'],
+        skip: false,
+      });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 1 }] } });
+
+      const result = await gateway.getTrusteeAppointments(context, 1);
+
+      expect(result.stats.uncleansable).toBe(1);
+      expect(result.stats.problematic).toBe(0);
+      expect(result.failedAppointments).toHaveLength(1);
+    });
+
+    test('should increment the autoRecoverable stat and keep the appointment for an AUTO_RECOVERABLE classification', async () => {
+      const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+      const appointment: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '053N',
+        appointedDate: '2023-01-15',
+        status: 'active',
+        effectiveDate: '2023-01-15',
+      };
+      vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockReturnValue({
+        classification: CleansingClassification.AUTO_RECOVERABLE,
+        appointment,
+        courtIds: ['053N'],
+        mapType: '1:1-inferred',
+        notes: ['inferred from single-state district'],
+        skip: false,
+      });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 1 }] } });
+
+      const result = await gateway.getTrusteeAppointments(context, 1);
+
+      expect(result.stats.autoRecoverable).toBe(1);
+      expect(result.stats.clean).toBe(0);
+      expect(result.cleanAppointments).toEqual([appointment]);
+    });
+
+    test('should expand into multiple appointments when cleansing yields several court IDs with no single appointment', async () => {
+      const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+      const transformModule = await import('./cleansing/ats-cleansing-transform');
+      vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockReturnValue({
+        classification: CleansingClassification.CLEAN,
+        appointment: undefined,
+        courtIds: ['053N', '053S'],
+        mapType: '1:2',
+        notes: ['multi-district expansion'],
+        skip: false,
+      });
+      const transformSpy = vi
+        .spyOn(transformModule, 'transformAppointmentRecord')
+        .mockImplementation((_record, courtId) => ({
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId,
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
+        }));
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 1 }] } });
+      const loggerDebugSpy = vi.spyOn(context.logger, 'debug');
+
+      const result = await gateway.getTrusteeAppointments(context, 1);
+
+      expect(transformSpy).toHaveBeenCalledTimes(2);
+      expect(result.cleanAppointments.map((a) => a.courtId)).toEqual(['053N', '053S']);
+      expect(loggerDebugSpy).toHaveBeenCalledWith(
+        'ATS-GATEWAY',
+        expect.stringContaining('Multi-expansion'),
+        expect.any(Object),
+      );
+    });
+
+    test('should add nothing when cleansing yields neither a single appointment nor multiple court IDs', async () => {
+      const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+      vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockReturnValue({
+        classification: CleansingClassification.CLEAN,
+        appointment: undefined,
+        courtIds: [],
+        mapType: 'UNMAPPED',
+        notes: [],
+        skip: false,
+      });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 1 }] } });
+
+      const result = await gateway.getTrusteeAppointments(context, 1);
+
+      expect(result.cleanAppointments).toHaveLength(0);
+      expect(result.failedAppointments).toHaveLength(0);
+    });
+
+    test('should return zero when the trustee count query returns no rows', async () => {
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      const count = await gateway.getTrusteeCount(context);
+
+      expect(count).toBe(0);
     });
   });
 });

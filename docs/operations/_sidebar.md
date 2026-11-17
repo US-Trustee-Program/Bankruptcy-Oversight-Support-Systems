@@ -8,6 +8,7 @@
 - [Identify Duplicate Bank Names](/operations/identify-duplicate-bank-names.md)
 - [Okta Configuration](/operations/okta-configuration.md)
 - [Phonetic Backfill Migration](/operations/phonetic-backfill.md)
+- [Correct Trustee Zoom Phones Migration](/operations/correct-trustee-zoom-phones.md)
 - [Scripts](/operations/scripts.md)
 - [Slots](/operations/slots.md)
 - [E2E Tests](/operations/e2e-tests.md)

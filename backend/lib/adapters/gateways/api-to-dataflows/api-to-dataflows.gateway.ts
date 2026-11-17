@@ -7,6 +7,7 @@ import {
 } from '../../../storage-queues';
 import {
   CaseSyncEvent,
+  SyncCasesPageMessage,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
@@ -45,7 +46,8 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
 
   async queueCaseReload(caseId: string): Promise<void> {
     const event: CaseSyncEvent = { caseId, type: 'CASE_CHANGED' };
-    await this.enqueue(SYNC_CASES_PAGE_QUEUE, [event]);
+    const page: SyncCasesPageMessage = { events: [event] };
+    await this.enqueue(SYNC_CASES_PAGE_QUEUE, page);
   }
 
   async queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void> {

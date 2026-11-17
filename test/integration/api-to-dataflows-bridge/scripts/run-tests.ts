@@ -30,6 +30,7 @@
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isDeepStrictEqual } from 'util';
 import { QueueServiceClient } from '@azure/storage-queue';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
@@ -40,7 +41,10 @@ import {
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../../backend/lib/storage-queues';
-import { TrusteeVerificationRemapMessage } from '../../../../common/src/cams/dataflow-events';
+import {
+  SyncCasesPageMessage,
+  TrusteeVerificationRemapMessage,
+} from '../../../../common/src/cams/dataflow-events';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -179,21 +183,21 @@ async function run() {
     }
 
     // -------------------------------------------------------------------------
-    // Test 2: queueCaseReload — the one method that wraps its payload in an array
-    // (mirroring the array-nesting the old extraOutputs path required); confirms
-    // that wrapping survived the migration off extraOutputs unchanged.
+    // Test 2: queueCaseReload — sends a sync-cases page message ({ events: [...] }), the
+    // shape sync-cases handlePage reads. Until CAMS-946 (PR #3307) it sent a bare array,
+    // which handlePage could not read, so manual reloads silently did nothing.
     // -------------------------------------------------------------------------
-    console.log('\nTest 2: queueCaseReload sends the case-changed event wrapped in an array');
+    console.log('\nTest 2: queueCaseReload sends a sync-cases page message ({ events })');
     {
       const caseId = '081-24-33333';
       await gateway.queueCaseReload(caseId);
       const received = await receiveAndDecode(SYNC_CASES_PAGE_QUEUE.queueName);
-      const expected = [{ caseId, type: 'CASE_CHANGED' }];
-      if (JSON.stringify(received) === JSON.stringify(expected)) {
-        pass('case reload event round-tripped through the real queue, array-wrapped as expected');
+      const expected: SyncCasesPageMessage = { events: [{ caseId, type: 'CASE_CHANGED' }] };
+      if (isDeepStrictEqual(received, expected)) {
+        pass('case reload page message round-tripped through the real queue as { events }');
       } else {
         fail(
-          `case reload event mismatch: expected ${JSON.stringify(expected)}, got ${JSON.stringify(received)}`,
+          `case reload page message mismatch: expected ${JSON.stringify(expected)}, got ${JSON.stringify(received)}`,
         );
       }
     }
