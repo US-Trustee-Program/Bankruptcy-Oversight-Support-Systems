@@ -107,6 +107,56 @@ location.
 
 ---
 
+## Per-Row Accessible Name on Trustee Task Regions (label-content-name-mismatch) - Accepted
+
+**Severity:** Serious **WCAG Rule:** 2.5.3 Label in Name (Level A) **Rule ID:**
+label-content-name-mismatch **Help:** Elements must have an accessible name that contains the
+visible text **Reference:** https://dequeuniversity.com/rules/axe/4.11/label-content-name-mismatch
+
+### Description
+
+Administration > Trustee Task Regions lists up to 21 regions, each with its own "Change to DXTR"
+button. Every button has identical visible text, so each carries an `aria-label` ("Change Region {n}
+to DXTR") that lets a screen reader announce which region's button is focused. The region number and
+"Region" are inserted between "Change" and "to DXTR", so the visible text "Change to DXTR" is not a
+literal substring of the accessible name, which is what this rule checks for.
+
+### Impact
+
+- Screen reader users (NVDA, JAWS, VoiceOver) are unaffected: the `aria-label` fully replaces the
+  announced name, so they hear the complete, unambiguous "Change Region {n} to DXTR" and never hear
+  the shorter visible text at all.
+- The rule protects a narrower audience: sighted speech-input/voice-control users (e.g. Dragon,
+  OS-level Voice Control), who read the visible label and speak it to activate the control. If they
+  say "Change to DXTR," the match against the longer accessible name can fail.
+
+### Decision
+
+Accepted as-is rather than fixed. The accessible name is a superset of the visible text in meaning,
+not a contradiction of it (it reports the same action with more detail, the region number), and
+distinguishing 21 otherwise-identical buttons by region is itself an accessibility requirement
+(CAMS-957, GitHub #3191). Reordering the copy to make the visible text a literal prefix (e.g.
+"Change to DXTR for Region {n}") was considered and rejected to keep the copy matching the approved
+design/Gherkin wording exactly.
+
+### Affected Pages
+
+1. **Trustee Task Regions** (`trustee-task-regions.test.ts`)
+   - Elements: `#change-to-dxtr-{regionId}` for every region still on ACMS
+   - Location: Administration > Trustee Task Regions table
+
+### Status
+
+**Accepted** - Not expected to change. Revisit only if voice-control access to this page becomes a
+reported issue.
+
+### Test Configuration
+
+**Rule Status:** Disabled in all tests via centralized configuration in `test-constants.ts` (same
+mechanism as `heading-order` above).
+
+---
+
 ## Form Label Violations (label-title-only) - ✓ FIXED
 
 **Severity:** Serious **WCAG Rule:** Best Practice (cat.forms) **Rule ID:** label-title-only

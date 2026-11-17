@@ -2856,6 +2856,17 @@ async function getCaseAppointmentSources() {
   return get<RegionCaseAppointmentSource[]>('/dev-tools/case-appointment-source');
 }
 
+/** Echoes the switched region back as DXTR, unlike the generic patch(), which only echoes the body. */
+async function patchCaseAppointmentSource(regionId: string) {
+  const region = mockedCaseAppointmentSources().find((r) => r.regionId === regionId);
+  const data: RegionCaseAppointmentSource = {
+    regionId,
+    regionName: region?.regionName ?? regionId,
+    source: 'DXTR',
+  };
+  return { data };
+}
+
 async function getPrivilegedIdentityUser(userId: string) {
   return get<PrivilegedIdentityUser>(`/dev-tools/privileged-identity/${userId}`);
 }
@@ -3664,6 +3675,7 @@ const MockApi2 = {
   getPrivilegedIdentityUser,
   getRoleAndOfficeGroupNames,
   getCaseAppointmentSources,
+  patchCaseAppointmentSource,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,

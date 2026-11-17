@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './TrusteeTaskRegions.scss';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -13,6 +13,10 @@ import {
   CamsTableCell,
 } from '@/lib/components/cams/CamsTable';
 import { RegionCaseAppointmentSource } from '@common/cams/trustee-appointments';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { ChangeToDxtrConfirmModal, ChangeToDxtrConfirmModalRef } from './ChangeToDxtrConfirmModal';
+
+const CONFIRM_MODAL_ID = 'change-to-dxtr-confirm-modal';
 
 /** Displays a zero-padded region id ("02") as a plain number ("2"), matching the admin page design. */
 function formatRegionId(regionId: string): string {
@@ -23,6 +27,10 @@ export function TrusteeTaskRegions() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [sources, setSources] = useState<RegionCaseAppointmentSource[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [pendingRegionId, setPendingRegionId] = useState<string | null>(null);
+  const [focusRegionId, setFocusRegionId] = useState<string | null>(null);
+  const confirmModalRef = useRef<ChangeToDxtrConfirmModalRef>(null);
+  const alert = useGlobalAlert();
 
   async function loadSources() {
     try {
@@ -36,6 +44,39 @@ export function TrusteeTaskRegions() {
   useEffect(() => {
     loadSources().then(() => setIsLoaded(true));
   }, []);
+
+  useEffect(() => {
+    if (!focusRegionId) return;
+    const region = sources.find((source) => source.regionId === focusRegionId);
+    const elementId =
+      region?.source === 'DXTR' ? `using-dxtr-${focusRegionId}` : `change-to-dxtr-${focusRegionId}`;
+    document.getElementById(elementId)?.focus();
+    setFocusRegionId(null);
+  }, [focusRegionId, sources]);
+
+  function openConfirmModal(regionId: string) {
+    confirmModalRef.current?.show(regionId, formatRegionId(regionId));
+  }
+
+  async function handleConfirm(regionId: string) {
+    setPendingRegionId(regionId);
+    try {
+      const response = await Api2.patchCaseAppointmentSource(regionId);
+      if (!response?.data) {
+        throw new Error('No response data returned.');
+      }
+      const updatedSource = response.data;
+      setSources((previous) =>
+        previous.map((source) => (source.regionId === regionId ? updatedSource : source)),
+      );
+      alert?.success(`Region ${formatRegionId(regionId)} will change to DXTR on the next sync.`);
+    } catch {
+      alert?.error('Unable to change to DXTR. Please try again.');
+    } finally {
+      setPendingRegionId(null);
+      setFocusRegionId(regionId);
+    }
+  }
 
   return (
     <div className="trustee-task-regions-panel" data-testid="trustee-task-regions-panel">
@@ -64,12 +105,20 @@ export function TrusteeTaskRegions() {
                   </CamsTableCell>
                   <CamsTableCell data-cell="Source">
                     {source.source === 'DXTR' ? (
-                      'Using DXTR'
+                      <span
+                        id={`using-dxtr-${source.regionId}`}
+                        data-testid={`using-dxtr-${source.regionId}`}
+                        tabIndex={-1}
+                      >
+                        Using DXTR
+                      </span>
                     ) : (
                       <Button
                         id={`change-to-dxtr-${source.regionId}`}
+                        aria-label={`Change Region ${formatRegionId(source.regionId)} to DXTR`}
                         uswdsStyle={UswdsButtonStyle.Default}
-                        disabled
+                        disabled={pendingRegionId === source.regionId}
+                        onClick={() => openConfirmModal(source.regionId)}
                       >
                         Change to DXTR
                       </Button>
@@ -81,6 +130,11 @@ export function TrusteeTaskRegions() {
           </CamsTable>
         </div>
       )}
+      <ChangeToDxtrConfirmModal
+        ref={confirmModalRef}
+        modalId={CONFIRM_MODAL_ID}
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }

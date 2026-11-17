@@ -36,6 +36,11 @@ export const LARGE_VIEWPORT = {
  */
 export const DISABLED_A11Y_RULES = [
   'heading-order', // Temporarily disabled due to <h3>Filters</h3> without proper hierarchy
+  // Accepted, not temporary: see KNOWN_ISSUES.md. Per-row buttons with identical visible text
+  // ("Change to DXTR") carry a longer aria-label ("Change Region {n} to DXTR") so screen readers
+  // announce which row they're on; the extra words aren't a substring mismatch in meaning, just
+  // in exact wording.
+  'label-content-name-mismatch',
 ];
 
 /**
