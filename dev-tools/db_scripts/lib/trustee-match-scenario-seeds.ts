@@ -48,3 +48,47 @@ export function scenarioTrusteeDocuments(...keys: TrusteeMatchScenarioKey[]) {
   );
   return [...documents.values()];
 }
+
+const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
+const SYNCED_ON_FLOOR = '2025-03-01T00:00:00.000Z';
+
+/**
+ * The baseline sync timestamp these scenarios were written against, or the source date itself
+ * when that's later, so a seeded record's audit timestamps never predate the event it records.
+ */
+export function syncedOn(sourceDate: string): string {
+  return sourceDate > SYNCED_ON_FLOOR ? sourceDate : SYNCED_ON_FLOOR;
+}
+
+/**
+ * The surrogate CASE_APPOINTMENT the sync writes for a case it raised an identity task for. Its
+ * trusteeId is the task's fingerprint, which is how the task finds its affected cases.
+ */
+export function buildSurrogate(opts: {
+  slug: string;
+  caseId: string;
+  fingerprint: string;
+  chapter: string;
+  courtId: string;
+  courtDivisionCode: string;
+  appointedDate: string;
+}) {
+  const assignedOn = `${opts.appointedDate}T00:00:00.000Z`;
+  const syncTimestamp = syncedOn(assignedOn);
+  return {
+    id: `seed-surrogate-${opts.slug}-${opts.caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId: opts.caseId,
+    trusteeId: opts.fingerprint,
+    assignedOn,
+    appointedDate: opts.appointedDate,
+    isSurrogate: true,
+    chapter: opts.chapter,
+    courtId: opts.courtId,
+    courtDivisionCode: opts.courtDivisionCode,
+    createdOn: syncTimestamp,
+    createdBy: SEEDER,
+    updatedOn: syncTimestamp,
+    updatedBy: SEEDER,
+  };
+}

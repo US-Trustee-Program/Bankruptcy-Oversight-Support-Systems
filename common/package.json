@@ -33,7 +33,7 @@
     "@types/node": "26.6.6",
     "@typescript-eslint/parser": "8.72.1",
     "@vitest/coverage-v8": "5.1.0",
-    "dependency-cruiser": "18.7.1",
+    "dependency-cruiser": "18.7.2",
     "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.7",

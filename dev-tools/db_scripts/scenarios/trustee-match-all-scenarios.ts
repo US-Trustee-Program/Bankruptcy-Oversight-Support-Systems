@@ -53,6 +53,9 @@
  *    11. Pending, no match (1 candidate whose name passes but state differs, acmsNoMatchCaseless),
  *        caseless, with source 'ACMS' and an acmsProfessionalId - as the ACMS professional-id sync
  *        writes a no-match professional with a name-passing candidate (CAMS-954 Slice 2).
+ *    12. Pending, case-bearing, source 'ACMS' (acmsAmbiguousWithCase, acmsNoMatchWithCase), each
+ *        with its case's surrogate CASE_APPOINTMENT - as the ACMS case-appointment sync writes
+ *        them (CAMS-955).
  *
  * Inactive-trustee/appointment variations are not identity tasks (an appointment concern, see
  * CAMS-956), so this scenario no longer seeds them.
@@ -64,8 +67,10 @@ import type { TrusteeMatchScenarioKey } from '@common/cams/test-utilities/truste
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createTrusteeBase } from '../lib/test-data-utils.js';
 import {
+  buildSurrogate,
   identityTaskFields,
   scenarioTrusteeDocuments,
+  syncedOn,
 } from '../lib/trustee-match-scenario-seeds.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
@@ -142,6 +147,35 @@ const SINGLE_CASE_TASKS = [
   acmsProfessionalId?: string;
 }[];
 
+// ACMS case-appointment sync tasks (CAMS-955): source 'ACMS' but, unlike the professional-id sync
+// tasks, each carries the appointment's case. Existing Buffalo cases from cases-fuzzy-search.ts
+// that no other scenario gives an appointment.
+const ACMS_CASE_TASKS = [
+  {
+    slug: 'acms-case-ambiguous',
+    key: 'acmsAmbiguousWithCase',
+    caseId: '091-99-64660', // Ch 11
+    chapter: '11',
+    acmsProfessionalId: 'SEED-ACMS-CASE-AMBIGUOUS',
+    taskDate: '2026-11-02T00:00:00.000Z',
+  },
+  {
+    slug: 'acms-case-no-match',
+    key: 'acmsNoMatchWithCase',
+    caseId: '091-99-75623', // Ch 12
+    chapter: '12',
+    acmsProfessionalId: 'SEED-ACMS-CASE-NO-MATCH',
+    taskDate: '2026-11-03T00:00:00.000Z',
+  },
+] as const satisfies readonly {
+  slug: string;
+  key: TrusteeMatchScenarioKey;
+  caseId: string;
+  chapter: string;
+  acmsProfessionalId: string;
+  taskDate: string;
+}[];
+
 // Multi-case scenarios (3 distinct cases, all Chapter 11, Buffalo). None of these cases carries
 // another scenario's trustee appointments: the sync only raises a task for a case whose trustee
 // it could not resolve.
@@ -185,44 +219,59 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     courtId: '0209',
     status: 'pending',
     taskDate: task.taskDate,
-    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedOn: syncedOn(task.taskDate),
     updatedBy: SEEDER,
   }));
-  const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) => ({
-    id: `seed-surrogate-${slug}-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: singleCaseTasks[index].fingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter,
-    courtDivisionCode: '091',
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
+  const singleCaseSurrogates = SINGLE_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
+    buildSurrogate({
+      slug,
+      caseId,
+      fingerprint: singleCaseTasks[index].fingerprint,
+      chapter,
+      courtId: '0209',
+      courtDivisionCode: '091',
+      appointedDate: '2018-01-01',
+    }),
+  );
+
+  const acmsCaseTasks = ACMS_CASE_TASKS.map((task) => ({
+    id: `seed-match-${task.slug}-${task.caseId}`,
+    ...identityTaskFields(task.key, 'ACMS'),
+    acmsProfessionalId: task.acmsProfessionalId,
+    caseId: task.caseId,
+    courtId: '0209',
+    status: 'pending',
+    taskDate: task.taskDate,
+    updatedOn: syncedOn(task.taskDate),
     updatedBy: SEEDER,
   }));
+  const acmsCaseSurrogates = ACMS_CASE_TASKS.map(({ slug, caseId, chapter }, index) =>
+    buildSurrogate({
+      slug,
+      caseId,
+      fingerprint: acmsCaseTasks[index].fingerprint,
+      chapter,
+      courtId: '0209',
+      courtDivisionCode: '091',
+      appointedDate: '2026-10-15',
+    }),
+  );
 
   // Surrogates shared by the multi-case pending task below. Computed up front (rather than
   // inline in the array) so the fingerprint on the surrogates and the task can never drift apart.
   const multiCaseTask = identityTaskFields('multiCase');
   const multiCaseFingerprint = multiCaseTask.fingerprint;
-  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
-    id: `seed-surrogate-multicase-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: multiCaseFingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter: '11',
-    courtDivisionCode: '091',
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) =>
+    buildSurrogate({
+      slug: 'multicase',
+      caseId,
+      fingerprint: multiCaseFingerprint,
+      chapter: '11',
+      courtId: '0209',
+      courtDivisionCode: '091',
+      appointedDate: '2018-01-01',
+    }),
+  );
 
   // Surrogates for the division-mismatch scenario. Unlike multiCaseSurrogates above, the
   // bookkeeping courtDivisionCode genuinely differs per case here (091 for A/B, 081 for C) --
@@ -234,25 +283,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     [CASE_DIVISION_MISMATCH_B]: '091',
     [CASE_DIVISION_MISMATCH_C]: '081',
   };
+  const divisionMismatchCaseCourts: Record<string, string> = {
+    [CASE_DIVISION_MISMATCH_A]: '0209',
+    [CASE_DIVISION_MISMATCH_B]: '0209',
+    [CASE_DIVISION_MISMATCH_C]: '0208',
+  };
   const divisionMismatchSurrogates = [
     CASE_DIVISION_MISMATCH_A,
     CASE_DIVISION_MISMATCH_B,
     CASE_DIVISION_MISMATCH_C,
-  ].map((caseId) => ({
-    id: `seed-surrogate-divisionmismatch-${caseId}`,
-    documentType: 'CASE_APPOINTMENT',
-    caseId,
-    trusteeId: divisionMismatchFingerprint,
-    assignedOn: '2018-01-01T00:00:00.000Z',
-    appointedDate: '2018-01-01',
-    isSurrogate: true,
-    chapter: '11',
-    courtDivisionCode: divisionMismatchCaseDivisions[caseId],
-    createdOn: '2025-03-01T00:00:00.000Z',
-    createdBy: SEEDER,
-    updatedOn: '2025-03-01T00:00:00.000Z',
-    updatedBy: SEEDER,
-  }));
+  ].map((caseId) =>
+    buildSurrogate({
+      slug: 'divisionmismatch',
+      caseId,
+      fingerprint: divisionMismatchFingerprint,
+      chapter: '11',
+      courtId: divisionMismatchCaseCourts[caseId],
+      courtDivisionCode: divisionMismatchCaseDivisions[caseId],
+      appointedDate: '2018-01-01',
+    }),
+  );
 
   return [
     // ── Cosmos: Trustees named by the identity tasks ─────────────────────────
@@ -273,6 +323,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           'multipleCandidatesCaseless',
           'acmsAmbiguousCaseless',
           'acmsNoMatchCaseless',
+          'acmsAmbiguousWithCase',
+          'acmsNoMatchWithCase',
           'manyCandidates',
         ),
         TRUSTEE_RESOLVED,
@@ -476,6 +528,25 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
       ],
+    },
+
+    // 12. Pending case-bearing tasks as the ACMS case-appointment sync writes them (CAMS-955):
+    // source 'ACMS', an acmsProfessionalId, the appointment's case and its surrogate placeholder
+    // (dual-written like the bundles above).
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: acmsCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: acmsCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: acmsCaseTasks,
     },
 
     // 5. Already-approved task, no surviving surrogates: simulates the state after
