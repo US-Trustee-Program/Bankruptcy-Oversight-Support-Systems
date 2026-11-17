@@ -16,7 +16,6 @@ export type TrusteeDataReportSummary = {
   fieldDifferencesByField: Record<TrusteeProfileField, number>;
 };
 
-/** @public First consumer is S1.2 (report storage); drop this tag once it imports the type. */
 export type TrusteeDataReportRun = {
   runId: string;
   status: TrusteeDataReportRunStatus;

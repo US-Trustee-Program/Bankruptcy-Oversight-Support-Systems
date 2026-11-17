@@ -99,6 +99,7 @@ import {
   EmailBounceQueryGateway,
   EmailNotificationArchiveRepository,
   NotificationGateway,
+  TrusteeDataReportRepository,
   NotificationRoutingRepository,
   ObjectStorageGateway,
   ObservabilityGateway,
@@ -110,6 +111,7 @@ import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
 import { EmailNotificationArchiveMongoRepository } from './adapters/gateways/mongo/email-notification-archive.mongo.repository';
+import { TrusteeDataReportMongoRepository } from './adapters/gateways/mongo/trustee-data-report.mongo.repository';
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
 import { DnsDomainVerificationGateway } from './adapters/gateways/dns/dns-domain-verification.gateway';
@@ -556,6 +558,17 @@ const getEmailNotificationArchiveRepository = (
   return repo;
 };
 
+const getTrusteeDataReportRepository = (
+  context: ApplicationContext,
+): TrusteeDataReportRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeDataReportMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
   if (context.config.get('dbMock')) {
     return MockNotificationGateway.getInstance();
@@ -712,6 +725,7 @@ const factory = {
   getDomainVerificationGateway,
   getEmailBounceQueryGateway,
   getEmailNotificationArchiveRepository,
+  getTrusteeDataReportRepository,
   resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,

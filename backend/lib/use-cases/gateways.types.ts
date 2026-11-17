@@ -1,3 +1,4 @@
+import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
@@ -552,6 +553,16 @@ export interface EmailNotificationArchiveRepository extends Releasable {
   readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null>;
 }
 
+/** Stores trustee data report runs and their difference rows; never touches trustee data. */
+export interface TrusteeDataReportRepository extends Releasable {
+  upsertRun(run: TrusteeDataReportRun): Promise<void>;
+  readRun(runId: string): Promise<TrusteeDataReportRun | null>;
+  readLatestCompletedRun(): Promise<TrusteeDataReportRun | null>;
+  insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void>;
+  /** Deletes the run document and every difference row for the run. */
+  deleteRun(runId: string): Promise<void>;
+}
+
 export type BounceLogRow = {
   /** ISO 8601 (UTC) timestamp of the underlying resource log row. */
   timeGenerated: string;
@@ -613,6 +624,8 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
+  /** Returns every trustee whose legacy truIds contain any of the given TOD trustee IDs. */
+  findTrusteesByLegacyTruIds(truIds: string[]): Promise<Trustee[]>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
   findTrusteesByIds(trusteeIds: string[]): Promise<Trustee[]>;
   searchTrusteesByName(name: string): Promise<Trustee[]>;

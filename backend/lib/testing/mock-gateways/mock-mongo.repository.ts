@@ -15,6 +15,7 @@ import {
   EmailNotificationArchiveRecord,
   EmailNotificationArchiveRepository,
   ListsRepository,
+  TrusteeDataReportRepository,
   NotificationRoutingRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
@@ -44,6 +45,7 @@ import {
   ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
+import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
@@ -89,12 +91,15 @@ export class MockMongoRepository
     ListsRepository,
     NotificationRoutingRepository,
     EmailNotificationArchiveRepository,
+    TrusteeDataReportRepository,
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private trusteeVariations: TrusteeVariation[] = [];
   private notificationRouting = new Map<string, NotificationRoutingRecord>();
   private emailNotificationArchive = new Map<string, EmailNotificationArchiveRecord>();
+  private trusteeDataReportRuns = new Map<string, TrusteeDataReportRun>();
+  private trusteeDataReportDifferences: (TrusteeDataDifference & { runId: string })[] = [];
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -658,6 +663,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteesByLegacyTruIds(_ignore: string[]): Promise<Trustee[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteeByNameAndState(..._ignore): Promise<Trustee | null> {
     throw new Error('Method not implemented.');
   }
@@ -909,6 +918,33 @@ export class MockMongoRepository
 
   async readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null> {
     return this.emailNotificationArchive.get(messageId) ?? null;
+  }
+
+  // ── TrusteeDataReportRepository ───────────────────────────────────────────
+  async upsertRun(run: TrusteeDataReportRun): Promise<void> {
+    this.trusteeDataReportRuns.set(run.runId, run);
+  }
+
+  async readRun(runId: string): Promise<TrusteeDataReportRun | null> {
+    return this.trusteeDataReportRuns.get(runId) ?? null;
+  }
+
+  async readLatestCompletedRun(): Promise<TrusteeDataReportRun | null> {
+    const completed = [...this.trusteeDataReportRuns.values()]
+      .filter((run) => run.status === 'completed')
+      .sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
+    return completed[0] ?? null;
+  }
+
+  async insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void> {
+    this.trusteeDataReportDifferences.push(...differences.map((d) => ({ ...d, runId })));
+  }
+
+  async deleteRun(runId: string): Promise<void> {
+    this.trusteeDataReportRuns.delete(runId);
+    this.trusteeDataReportDifferences = this.trusteeDataReportDifferences.filter(
+      (d) => d.runId !== runId,
+    );
   }
 
   // Mock implementation for replaceOneInTrusteePartition
