@@ -46,6 +46,11 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 
 type ActivityName = 'handleStart' | 'handlePage';
 
+/** The ATS gateway's errors, including those its SQL client raises as "ABSTRACT-MSSQL-CLIENT (ATS-GATEWAY)". */
+function isTodModule(module: string): boolean {
+  return module === ATS_GATEWAY_MODULE_NAME || module.endsWith(`(${ATS_GATEWAY_MODULE_NAME})`);
+}
+
 /**
  * The reason shown on the Admin tab. Raw TOD and driver errors carry host names and say little
  * to a SuperUser, so they stay in the logs and the dead-letter entry; the run's own errors are
@@ -57,7 +62,7 @@ function describeFailure(error: unknown, runId: string): string {
   if (isCamsError(error) && error.module === RUN_TRUSTEE_DATA_REPORT_MODULE_NAME) {
     return error.message;
   }
-  if (isCamsError(error) && error.module === ATS_GATEWAY_MODULE_NAME) {
+  if (isCamsError(error) && isTodModule(error.module)) {
     return "Could not read from TOD. Check the dataflows app's ATS_MSSQL_* settings and its logs";
   }
   return `See the dataflows app's logs for run ${runId}`;

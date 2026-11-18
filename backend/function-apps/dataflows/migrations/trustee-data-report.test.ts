@@ -199,8 +199,15 @@ describe('trustee-data-report dataflow', () => {
         expected: 'TOD timed out and the retries ran out',
       },
       {
-        cause: 'TOD rejected the login',
+        cause: 'the ATS gateway rejects a query',
         error: new CamsError('ATS-GATEWAY', { message: 'Unknown Error' }),
+        retryCount: undefined,
+        expected: expect.stringContaining('Could not read from TOD'),
+      },
+      {
+        // The form the SQL client actually raises, seen in the integration harness.
+        cause: "TOD's SQL client rejects the login or query",
+        error: new CamsError('ABSTRACT-MSSQL-CLIENT (ATS-GATEWAY)', { message: 'Unknown Error' }),
         retryCount: undefined,
         expected: expect.stringContaining('Could not read from TOD'),
       },
