@@ -154,8 +154,9 @@ class Reporter {
     if (ok) this.pass(passMsg);
     else this.fail(failMsg);
   }
-  finish(status: Status) {
+  finish(status: Status): Status {
     outcomes.push({ name: this.name, group: this.group, status });
+    return status;
   }
 }
 
@@ -894,6 +895,12 @@ function describeAppointment(a: AppointmentDoc): string {
   return `${who} ${day(a.assignedOn)}→${day(a.unassignedOn) ?? 'open'}`;
 }
 
+/** Groups matchedBy values the way the fixtures assert them: 'PIPELINE' is any pipeline stage. */
+function linkMethod(matchedBy: string | undefined): string {
+  if (matchedBy === 'professional-id' || matchedBy === 'variation') return matchedBy;
+  return 'pipeline';
+}
+
 function matchesExpected(a: AppointmentDoc, e: ExpectedAppointment): string[] {
   const problems: string[] = [];
   const isPlaceholder = e.trustee === 'PLACEHOLDER';
@@ -911,7 +918,7 @@ function matchesExpected(a: AppointmentDoc, e: ExpectedAppointment): string[] {
   }
   const by = a.checks?.matchedBy;
   if (e.matchedBy === 'PIPELINE') {
-    if (!by || by === 'professional-id' || by === 'variation')
+    if (!by || linkMethod(by) !== 'pipeline')
       problems.push(`matchedBy "${by}" is not a pipeline stage`);
   } else if (e.matchedBy !== undefined && by !== e.matchedBy) {
     problems.push(`matchedBy "${by}" ≠ "${e.matchedBy}"`);
@@ -999,7 +1006,12 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
         problems.push(`source ${task.source} ≠ ${t.source}`);
       if (t.reason && task.mismatchReason !== t.reason)
         problems.push(`reason "${task.mismatchReason}" ≠ "${t.reason}"`);
-      if (t.acmsProfessionalId === null && task.acmsProfessionalId !== undefined)
+      // DXTR never carries an ACMS professional id (CAMS-873), so a DXTR task must not have one
+      // even when the expectation leaves the field out.
+      const expectAbsent =
+        t.acmsProfessionalId === null ||
+        (t.acmsProfessionalId === undefined && task.source === 'DXTR');
+      if (expectAbsent && task.acmsProfessionalId !== undefined)
         problems.push(`acmsProfessionalId ${task.acmsProfessionalId} should be absent`);
       else if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
         problems.push(`acmsProfessionalId ${task.acmsProfessionalId} ≠ ${t.acmsProfessionalId}`);
@@ -1016,20 +1028,43 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
   }
 }
 
+/** Every case the pass asserts expects no appointments: the pass should write nothing for them. */
+function expectsNothingWritten(expect: Expect): boolean {
+  const asserted = Object.values(expect.appointments ?? {});
+  return asserted.length > 0 && asserted.every((a) => a.length === 0);
+}
+
 async function assertExpect(
   r: Reporter,
   context: ApplicationContext,
   db: Db,
   expect: Expect,
-  outcome: { events: number; dlq: number; parked: number },
+  outcome: PassOutcome,
 ) {
   // "Nothing written" is identical to "the source never returned the row" unless the read is asserted.
-  const expectsNothing =
-    expect.appointments !== undefined &&
-    Object.keys(expect.appointments).length > 0 &&
-    Object.values(expect.appointments).every((a) => a.length === 0);
+  const expectsNothing = expectsNothingWritten(expect);
   if (expectsNothing && expect.sourceEvents === undefined) {
     r.fail('Fixture error: this pass expects nothing written but declares no sourceEvents');
+  }
+  // ...and it means nothing at all, not just no appointment: no stray task, park or dead letter.
+  if (expectsNothing) {
+    const expectsTask = (expect.tasks ?? []).some((t) => t.count > 0);
+    if (!expectsTask) {
+      r.step('Then', 'no identity task is created');
+      r.check(
+        outcome.tasksCreated === 0,
+        'no task created',
+        `${outcome.tasksCreated} task(s) created`,
+      );
+    }
+    if (expect.dlq === undefined) {
+      r.step('Then', 'nothing goes to the dead-letter queue');
+      r.check(outcome.dlq === 0, 'DLQ empty', `DLQ has ${outcome.dlq}`);
+    }
+    if (expect.parkedCount === undefined && expect.parked === undefined) {
+      r.step('Then', 'nothing is parked');
+      r.check(outcome.parked === 0, 'nothing parked', `${outcome.parked} parked`);
+    }
   }
   if (expect.sourceEvents !== undefined) {
     r.step('Then', `the source returns ${expect.sourceEvents} event(s)`);
@@ -1158,14 +1193,16 @@ type LaneObserver = {
   afterPass(db: Db, expect: Expect, outcome: PassOutcome): Promise<void>;
   afterScenario(db: Db): Promise<void>;
 };
-type PassOutcome = { events: number; dlq: number; parked: number };
+type PassOutcome = { events: number; dlq: number; parked: number; tasksCreated: number };
+
+const countTasks = (db: Db) => db.collection('trustee-match-verification').countDocuments();
 
 async function runScenarioLane(
   context: ApplicationContext,
   s: Scenario,
   lane: Lane,
   observer?: LaneObserver,
-): Promise<void> {
+): Promise<Status> {
   const r = new Reporter('scenario', `${s.title} [${lane}]`);
   line(
     `\n  Scenario: ${s.title}   [${lane}, region ${s.region ?? REGION}] (${s.basis}${s.note ? `; ${s.note}` : ''})`,
@@ -1206,12 +1243,14 @@ async function runScenarioLane(
             `${s.passes.length > 1 ? `pass ${i + 1}: ` : ''}the ${lane} source is read for region ${region} on ${pass.changeDate} and the sync runs (${pass.rows.length} source row(s))`,
           );
           const { events, failures } = await readSource(context, source, region, pass.changeDate);
+          const tasksBefore = await countTasks(db);
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
           const expect = expectFor(pass, s, lane);
           const outcome: PassOutcome = {
             events: events.length,
             dlq: failures + result.dlqMessages.length,
             parked: result.scenarioDistribution.parkedCount,
+            tasksCreated: (await countTasks(db)) - tasksBefore,
           };
           await assertExpect(r, context, db, expect, outcome);
           await observer?.afterPass(db, expect, outcome);
@@ -1223,15 +1262,14 @@ async function runScenarioLane(
     } finally {
       await client.close();
     }
-    r.finish(r.failures === 0 ? 'pass' : 'fail');
+    return r.finish(r.failures === 0 ? 'pass' : 'fail');
   } catch (e) {
     if (e instanceof NotImplementedError) {
       line(`      ⊘ NOT IMPLEMENTED: ${e.message}`);
-      r.finish('not-implemented');
-    } else {
-      r.fail(`error: ${(e as Error).message}`);
-      r.finish('fail');
+      return r.finish('not-implemented');
     }
+    r.fail(`error: ${(e as Error).message}`);
+    return r.finish('fail');
   }
 }
 
@@ -1642,6 +1680,21 @@ function parseArgs() {
   return { lane: get('--lane') as Lane | undefined, only: get('--only'), region: get('--region') };
 }
 
+/**
+ * A mistyped --only or an unmatched --region must not report success: with nothing selected,
+ * every pass/fail check is vacuously true. Sets exit code 1 and says why.
+ */
+function refuseEmptySelection(what: string, flags: Record<string, string | undefined>) {
+  const given = Object.entries(flags)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => `--${k} ${v}`)
+    .join(' ');
+  line(
+    `\n  Nothing to run: no ${what} matches ${given}. See \`list\` for keys, lanes and regions.`,
+  );
+  process.exitCode = 1;
+}
+
 async function run() {
   const { lane, only, region } = parseArgs();
   if (!(await preflight())) return;
@@ -1651,6 +1704,14 @@ async function run() {
       (!only || s.key === only) &&
       (!region || (s.region ?? REGION) === region || s.passes.some((p) => p.region === region)),
   );
+  const drivers = DRIVER_SCENARIOS.filter(
+    (d) => (!only || d.key === only) && (!region || d.regions.includes(region)),
+  );
+  const scenarioLanes = selected.flatMap((s) => s.lanes.filter((l) => !lane || l === lane));
+  const driversRun = !lane || lane === 'ACMS' ? drivers.length : 0;
+  if (scenarioLanes.length === 0 && driversRun === 0) {
+    return refuseEmptySelection('scenario or driver scenario', { only, region, lane });
+  }
 
   line('\n=== Layer 0: fixtures through the production ACMS query (passes today) ===');
   if (!lane || lane === 'ACMS') for (const s of selected) await runQueryGrounding(context, s);
@@ -1664,13 +1725,9 @@ async function run() {
     }
   }
 
-  const drivers = DRIVER_SCENARIOS.filter((d) => !only || d.key === only);
-  if (drivers.length > 0 && (!lane || lane === 'ACMS')) {
+  if (driversRun > 0) {
     line('\n=== Region driver: bookmark, catch-up, source routing and operator delete ===');
-    for (const d of drivers) {
-      if (region && !d.regions.includes(region)) continue;
-      await runDriverScenario(context, d);
-    }
+    for (const d of drivers) await runDriverScenario(context, d);
   }
 
   await wipeAll();
@@ -1720,12 +1777,6 @@ function bump(tally: Tally, outcomeClass: string, expected: number, actual: numb
   tally.set(outcomeClass, row);
 }
 
-/** Groups matchedBy values the way the fixtures assert them: 'PIPELINE' is any pipeline stage. */
-function linkMethod(matchedBy: string | undefined): string {
-  if (matchedBy === 'professional-id' || matchedBy === 'variation') return matchedBy;
-  return 'pipeline';
-}
-
 /**
  * Counts one pass's outcomes, expected (from the fixture's Expect) and actual (from Mongo and the
  * run). Only what the Expect asserts is counted, so expected and actual cover the same scope.
@@ -1766,11 +1817,9 @@ async function tallyPass(tally: Tally, db: Db, expect: Expect, outcome: PassOutc
     bump(tally, 'identity tasks in total', expect.tasksTotal, tasks.length);
 
   // A skip writes nothing at all: no appointment, no task, nothing parked, nothing dead-lettered.
-  const asserted = Object.keys(expect.appointments ?? {});
   const expectsSkip =
     (expect.sourceEvents ?? 0) > 0 &&
-    asserted.length > 0 &&
-    Object.values(expect.appointments ?? {}).every((a) => a.length === 0) &&
+    expectsNothingWritten(expect) &&
     (expect.tasks ?? []).every((t) => t.count === 0) &&
     !expect.parkedCount &&
     Object.values(expect.parked ?? {}).every((p) => p.length === 0) &&
@@ -1778,8 +1827,10 @@ async function tallyPass(tally: Tally, db: Db, expect: Expect, outcome: PassOutc
   if (expectsSkip) {
     const written = await db
       .collection('case-trustee-appointments')
-      .countDocuments({ caseId: { $in: asserted } });
-    bump(tally, 'skipped (nothing written)', 1, written === 0 ? 1 : 0);
+      .countDocuments({ caseId: { $in: Object.keys(expect.appointments ?? {}) } });
+    const skipped =
+      written === 0 && outcome.tasksCreated === 0 && outcome.parked === 0 && outcome.dlq === 0;
+    bump(tally, 'skipped (nothing written)', 1, skipped ? 1 : 0);
   }
 
   if (expect.parkedCount !== undefined) {
@@ -1802,13 +1853,19 @@ const WALL_CLOCK = /^\d{4}-\d{2}-\d{2}T(?!00:00:00\.000Z)\d{2}:\d{2}:\d{2}(\.\d+
 const VOLATILE_KEYS = new Set(['_id', 'id', 'updatedOn', 'createdOn', 'updatedBy', 'createdBy']);
 
 /**
- * Stable JSON for digesting: sorted keys, Mongo ids and audit fields dropped, generated uuids and
- * wall-clock timestamps replaced by placeholders. Anything else that differs between two runs on
- * the same fixtures is nondeterminism.
+ * Stable JSON for digesting: sorted keys, Mongo ids and audit fields dropped, generated uuids,
+ * ObjectIds and wall-clock timestamps replaced by placeholders. Anything else that differs between
+ * two runs on the same fixtures is nondeterminism. Every uuid becomes the same placeholder, so the
+ * digest compares document content, not which document a reference points at; the fixtures' own
+ * assertions check trustee identity.
  */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (value instanceof Date) return canonical(value.toISOString());
+  // BSON values (ObjectId, Long, Decimal128) have no enumerable fields and would all read as {}.
+  // ObjectIds are generated per run, so they are masked like uuids; the rest keep their value.
+  const bsonType = (value as { _bsontype?: string } | null)?._bsontype;
+  if (bsonType) return bsonType === 'ObjectId' ? '"<objectid>"' : JSON.stringify(String(value));
   if (value && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([k]) => !VOLATILE_KEYS.has(k))
@@ -1841,13 +1898,13 @@ async function backtestRun(
 ): Promise<BacktestRun> {
   const run: BacktestRun = { tally: new Map(), statusByKey: new Map(), digestByKey: new Map() };
   for (const s of scenarios) {
-    await runScenarioLane(context, s, 'DXTR', {
+    const status = await runScenarioLane(context, s, 'DXTR', {
       afterPass: (db, expect, outcome) => tallyPass(run.tally, db, expect, outcome),
       afterScenario: async (db) => {
         run.digestByKey.set(s.key, await digestCamsState(db));
       },
     });
-    run.statusByKey.set(s.key, outcomes[outcomes.length - 1].status);
+    run.statusByKey.set(s.key, status);
   }
   return run;
 }
@@ -1869,6 +1926,7 @@ async function backtest() {
       (!only || s.key === only) &&
       (!region || (s.region ?? REGION) === region || s.passes.some((p) => p.region === region)),
   );
+  if (selected.length === 0) return refuseEmptySelection('DXTR-lane scenario', { only, region });
 
   const runs: BacktestRun[] = [];
   for (const n of [1, 2]) {
