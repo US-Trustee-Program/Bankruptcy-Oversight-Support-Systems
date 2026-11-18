@@ -91,7 +91,7 @@ const RUN_TIMEOUT_MS = 3 * 60 * 1000;
 // Scenarios whose assertion fails because the report does not handle the case yet. Each stays
 // strict; the harness reports it as a known gap instead of a failure. Keep in step with README.md.
 const KNOWN_GAPS: Record<string, string> = {
-  S10: 'The comparison ignores the CAMS phone extension, and TOD keeps extension digits inside TELEPHONE, so the same phone is reported as a phone difference.',
+  S10: 'Latent: the comparison ignores the CAMS phone extension, and TOD keeps extension digits inside TELEPHONE, so once CAMS stores an extension separately the same phone is reported as a difference. No CAMS trustee has one today.',
   S44: "Active TOD codes come from TOD_STATUS_MAP only, which lacks '2'; the migration's CBC_STATUS_MAP knows 12CBC '2' is active, but the report ignores the chapter.",
   S33: 'Follows from S10 and S44: one false phone difference, and one missing TOD-only trustee.',
 };

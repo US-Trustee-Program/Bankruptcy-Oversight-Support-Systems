@@ -81,7 +81,7 @@ ones with their values.
 | S04 | TOD ZIP has a leading zero, with a `ZIP_PLUS`                                     | Nothing reported when CAMS has `02108-0001`                                 | Pass                 |
 | S05 | Only `DISP_ON_WEB_A2` is `y`                                                      | The A2 address is compared as public, the other as internal                 | Pass                 |
 | S06 | Both display flags are `y`                                                        | The first address stays public                                              | Pass                 |
-| S07 | TOD record has no person name and no company                                      | Nothing reported when CAMS has the migration's name, "Unknown"              | Pass                 |
+| S07 | TOD record has no person name; CAMS has a real name                               | A `name` difference against "Unknown" (open question)                       | Pass                 |
 | S08 | Middle initial, and a suffix inside `LAST_NAME`                                   | Nothing reported                                                            | Pass                 |
 | S09 | Empty-string TOD columns                                                          | Nothing reported against absent CAMS fields                                 | Pass                 |
 | S10 | TOD phone `503-555-0119 204`; CAMS phone `503-555-0119`, extension `204`          | Nothing reported                                                            | Known gap            |
@@ -105,7 +105,7 @@ ones with their values.
 | S28 | Merged trustee, both records on page 1, CAMS holds the more complete record       | Nothing reported                                                            | Pass                 |
 | S29 | CAMS-native trustee with no TOD IDs                                               | CAMS only                                                                   | Pass                 |
 | S30 | CAMS trustee whose only TOD ID no longer exists                                   | CAMS only                                                                   | Pass                 |
-| S31 | CAMS trustee whose only TOD ID is not a number                                    | CAMS only                                                                   | Pass                 |
+| S31 | CAMS trustee whose only TOD ID is not a number (none in CAMS today)               | CAMS only                                                                   | Pass                 |
 | S34 | Both display flags `N` (the most common combination)                              | The first address is public, A2 internal                                    | Pass                 |
 | S35 | `DISP_ON_WEB` missing, `DISP_ON_WEB_A2` `Y`                                       | The A2 address is public                                                    | Pass                 |
 | S36 | TOD trustee with no address at all                                                | Nothing reported against the empty CAMS address                             | Pass                 |
@@ -129,10 +129,11 @@ ones with their values.
 
 ### Known gaps and caveats
 
-Status is from the local run on 2026-11-18, after fitting the fixtures to the ATS_SUB profile and
-the Appointment Status Matrix: 48 pass, 3 known gaps.
+Status is from the local run on 2026-11-18 against `main` plus #3329, after fitting the fixtures to
+the ATS_SUB and CAMS profiles and the Appointment Status Matrix: 48 pass, 3 known gaps.
 
-- **S10, phone extension (known gap).** TOD has no extension field. ATS_SUB has no `x` or `ext`
+- **S10, phone extension (known gap, latent).** No CAMS trustee has a separate extension today (CAMS
+  profile: 0), so this cannot happen yet. TOD has no extension field. ATS_SUB has no `x` or `ext`
   markers, but 11 phones have 12 or 13 digits, which looks like extension digits after the number
   (`503-555-0119 204`). The migration copies such a phone as-is. CAMS stores an extension in its own
   field, and the comparison reads only `phone.number` and compares digits, so once a trustee's
@@ -148,12 +149,13 @@ the Appointment Status Matrix: 48 pass, 3 known gaps.
   records on different migration pages can hold a record that is not the most complete one. The
   report compares against the most complete record and reports the difference. This is the behavior
   today, pinned so a change is deliberate.
-- **S07, S29 and S41 (open questions, passing).** A TOD record with no name is compared against the
-  name "Unknown"; a CAMS-native trustee with no TOD IDs is reported as CAMS only; and an unlinked
-  TOD trustee whose only status is empty (10 appointment rows in ATS_SUB) is never TOD only. The
-  migration treats an unrecognized status as panel/active (`DEFAULT_STATUS_MAPPING`), so the report
-  and the migration disagree on those. All three pin current behavior; the product owner may want
-  them changed.
+- **S07, S29 and S41 (open questions, passing).** A TOD record with no name (3 in ATS_SUB) is
+  compared as "Unknown", so a linked CAMS trustee with a real name gets a `name` difference (no CAMS
+  trustee is named "Unknown"); a CAMS-native trustee with no TOD IDs is reported as CAMS only; and
+  an unlinked TOD trustee whose only status is empty (10 appointment rows in ATS_SUB) is never TOD
+  only. The migration treats an unrecognized status as panel/active (`DEFAULT_STATUS_MAPPING`), so
+  the report and the migration disagree on those. All three pin current behavior; the product owner
+  may want them changed.
 
 The first run also caught a bug, since fixed: L5 showed "See the dataflows app's logs" instead of
 "Could not read from TOD", because TOD's SQL client raises errors under the module

@@ -172,10 +172,12 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'S07',
     title:
-      'A TOD record with no name and no company matches the "Unknown" name the migration gave it',
+      'A TOD record with no name is compared as "Unknown", so a CAMS trustee with a real name gets a name difference (open question)',
     cams: {
       trusteeId: `${TRUSTEE_ID_PREFIX}S07`,
-      name: 'Unknown',
+      name: 'Pat Noname',
+      firstName: 'Pat',
+      lastName: 'Noname',
       public: {
         address: address('600 Commerce Dr', 'Columbus', 'OH', '43215'),
         phone: { number: '614-555-0116' },
@@ -183,7 +185,15 @@ export const SCENARIOS: Scenario[] = [
       legacy: { truIds: ['16'] },
     },
     compared: true,
-    expected: [],
+    expected: [
+      {
+        kind: 'field',
+        field: 'name',
+        camsValue: 'Pat Noname',
+        todValue: 'Unknown',
+        todIds: ['16'],
+      },
+    ],
   },
   {
     id: 'S08',
@@ -624,7 +634,8 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'S31',
-    title: 'A trustee whose only TOD ID is not a number is CAMS only',
+    title:
+      'A trustee whose only TOD ID is not a number is CAMS only (defensive: none in CAMS today)',
     cams: linked('S31', 'Zane', 'Malformed', ['not-a-number'], {
       address: springfield('3100 Odd Rd'),
     }),
