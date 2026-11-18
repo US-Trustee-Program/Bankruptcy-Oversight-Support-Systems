@@ -468,6 +468,64 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
     expectedCandidateCount: 1,
   },
 
+  // trustee-match-all-scenarios: the ACMS case-appointment sync (CAMS-955) raises a task that
+  // carries the appointment's case, unlike the caseless professional-id sync tasks above. Same
+  // tie-at-every-resolver shape as multipleCandidates; surnames stay distinct from the others.
+  acmsAmbiguousWithCase: {
+    source: {
+      firstName: 'B',
+      lastName: 'Acmscaseambiguous',
+      fullName: 'B Acmscaseambiguous',
+      legacy: {
+        address1: '2 Source Ct',
+        cityStateZipCountry: 'New York NY 10014',
+        phone: '212-555-9995',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-a',
+        firstName: 'Blair',
+        lastName: 'Acmscaseambiguous',
+        address: { address1: '506 Acms Ave', city: 'New York', state: 'NY', zipCode: '10014' },
+        phone: '212-555-9301',
+        email: 'blair.acmscaseambiguous@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-b',
+        firstName: 'Blake',
+        lastName: 'Acmscaseambiguous',
+        address: { address1: '507 Acms Ave', city: 'New York', state: 'NY', zipCode: '10014' },
+        phone: '212-555-9302',
+        email: 'blake.acmscaseambiguous@example.com',
+      }),
+    ],
+    expectedCandidateCount: 2,
+  },
+
+  // trustee-match-all-scenarios: a case-bearing 'no match' task from the ACMS case-appointment
+  // sync (CAMS-955). Same shape as acmsNoMatchCaseless: the one candidate passes the name check
+  // but its state differs.
+  acmsNoMatchWithCase: {
+    source: {
+      firstName: 'Nova',
+      lastName: 'Acmscasenomatch',
+      fullName: 'Nova Acmscasenomatch',
+      legacy: { cityStateZipCountry: 'Bristol TN' },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-acms-case-nomatch',
+        firstName: 'Nova',
+        lastName: 'Acmscasenomatch',
+        address: { address1: '2 State St', city: 'Bristol', state: 'VA', zipCode: '24201' },
+        phone: '276-555-0101',
+        email: 'nova.acmscasenomatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
   // trustee-match-all-scenarios: approved tasks whose pipeline run found no candidate.
   resolvedNoSurrogates: {
     source: { firstName: 'Riley', lastName: 'Resolvedmatch', fullName: 'Riley Resolvedmatch' },
@@ -485,6 +543,74 @@ export const TRUSTEE_MATCH_FINDINGS_SCENARIOS = {
   seedTrusteeNickname: {
     source: { firstName: 'Samuel', lastName: 'Seedtrustee', fullName: 'Samuel Seedtrustee' },
     trustees: [SAM_SEEDTRUSTEE, PAT_SEEDTRUSTEE],
+    expectedCandidateCount: 2,
+  },
+
+  // trustee-appointment-tasks (CAMS-956): the divisionMismatch shape. The sole candidate already
+  // has an open appointment task on the case's tuple, so approving joins it.
+  joinsAppointmentTask: {
+    source: { firstName: 'Jules', lastName: 'Joinmatch', fullName: 'Jules Joinmatch' },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-join',
+        firstName: 'Julia',
+        lastName: 'Joinmatch',
+        address: { address1: '900 Match Pl', city: 'New York', state: 'NY', zipCode: '10004' },
+        phone: '212-555-9100',
+        email: 'julia.joinmatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
+  // trustee-appointment-tasks (CAMS-956): the divisionMismatch shape. The sole candidate has a
+  // resolved appointment task on the case's tuple, so approving reopens it.
+  reopensAppointmentTask: {
+    source: { firstName: 'Remy', lastName: 'Reopenmatch', fullName: 'Remy Reopenmatch' },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-reopen',
+        firstName: 'Rowena',
+        lastName: 'Reopenmatch',
+        address: { address1: '910 Match Pl', city: 'Wilmington', state: 'DE', zipCode: '19801' },
+        phone: '302-555-9200',
+        email: 'rowena.reopenmatch@example.com',
+      }),
+    ],
+    expectedCandidateCount: 1,
+  },
+
+  // trustee-appointment-tasks (CAMS-956): the multipleCandidates shape. One candidate covers the
+  // case and the other does not, so their approval previews differ.
+  twoCandidatesOneCovers: {
+    source: {
+      firstName: 'V',
+      lastName: 'Coverpair',
+      fullName: 'V Coverpair',
+      legacy: {
+        address1: '1 Source Way',
+        cityStateZipCountry: 'New York NY 10005',
+        phone: '212-555-9998',
+      },
+    },
+    trustees: [
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-cover-a',
+        firstName: 'Vera',
+        lastName: 'Coverpair',
+        address: { address1: '320 Cover Ave', city: 'New York', state: 'NY', zipCode: '10005' },
+        phone: '212-555-3300',
+        email: 'vera.coverpair@example.com',
+      }),
+      camsTrustee({
+        trusteeId: 'seed-trustee-match-cover-b',
+        firstName: 'Vince',
+        lastName: 'Coverpair',
+        address: { address1: '321 Cover Ave', city: 'New York', state: 'NY', zipCode: '10005' },
+        phone: '212-555-3301',
+        email: 'vince.coverpair@example.com',
+      }),
+    ],
     expectedCandidateCount: 2,
   },
 } satisfies Record<string, TrusteeMatchFindingsScenario>;

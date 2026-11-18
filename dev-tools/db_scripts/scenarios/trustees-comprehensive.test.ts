@@ -2,12 +2,15 @@ import { describe, test, expect, vi } from 'vitest';
 import type { SeedContext } from '../../runner.js';
 import { generate } from './trustees-comprehensive.js';
 
+// CAMS-975's Zoom phone correction trustees: no appointments, since the Zoom edit form needs none.
+const ZOOMFIX_TRUSTEE_IDS = [1, 2, 3, 4, 5, 6].map((n) => `seed-trustee-cams975-0${n}`);
+
 describe('trustees-comprehensive scenario', () => {
   const mockContext: SeedContext = {
     generateCaseId: vi.fn(),
   };
 
-  test('generates 35 trustees and 43 appointments', async () => {
+  test('generates 41 trustees and 43 appointments', async () => {
     const ops = await generate(mockContext);
 
     expect(ops).toHaveLength(2);
@@ -16,7 +19,8 @@ describe('trustees-comprehensive scenario', () => {
     const appointmentsOp = ops.find((op) => op.collectionOrTable === 'trustee-appointments');
 
     expect(trusteesOp?.db).toBe('cams');
-    expect(trusteesOp?.data).toHaveLength(35);
+    // 35 trustees with appointments + 6 CAMS-975 Zoomfix trustees without any = 41.
+    expect(trusteesOp?.data).toHaveLength(41);
 
     // 35 single-court trustees + Patricia Manhattan's 5 extra cross-court
     // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) +
@@ -71,7 +75,7 @@ describe('trustees-comprehensive scenario', () => {
     });
   });
 
-  test('all 35 trustees are based in New York', async () => {
+  test('all 41 trustees are based in New York', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
 
@@ -85,7 +89,7 @@ describe('trustees-comprehensive scenario', () => {
     // All trustees are seeded with NY public addresses; Patricia Manhattan
     // (seed-trustee-ny-002) holds appointments in other states but the
     // trustee profile itself is NY.
-    expect(byState).toEqual({ NY: 35 });
+    expect(byState).toEqual({ NY: 41 });
   });
 
   test('includes all chapter types', async () => {
@@ -160,7 +164,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(statuses).toContain('inactive');
   });
 
-  test('each trustee has a corresponding appointment', async () => {
+  test('each trustee except the CAMS-975 Zoomfix trustees has a corresponding appointment', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
     const appointments =
@@ -171,9 +175,13 @@ describe('trustees-comprehensive scenario', () => {
       appointments.map((a: Record<string, unknown>) => a.trusteeId),
     );
 
-    expect(trusteeIds.size).toBe(35);
+    const withoutAppointments = [...trusteeIds].filter((id) => !appointmentTrusteeIds.has(id));
+
+    expect(trusteeIds.size).toBe(41);
     expect(appointmentTrusteeIds.size).toBe(35);
-    expect(trusteeIds).toEqual(appointmentTrusteeIds);
+    // Every appointment belongs to a seeded trustee, and only the Zoomfix trustees have none.
+    expect([...appointmentTrusteeIds].filter((id) => !trusteeIds.has(id))).toEqual([]);
+    expect(withoutAppointments.sort()).toEqual(ZOOMFIX_TRUSTEE_IDS);
   });
 
   // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel) + Marcus Whitfield's active and inactive Ch7 Elected appointments (Additional-26)

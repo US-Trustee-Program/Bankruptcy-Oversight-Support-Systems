@@ -153,11 +153,27 @@ const TRUSTEE_VARIATION_COLLECTION = { db: 'cams', name: 'trustee-variation' };
 
 // Collections legitimately seeded by many scenario files, so they can't be wiped
 // unconditionally — but a real (non-seed) trustee would never carry the
-// seed-trustee-match- prefix, unique to trustee-match-all-scenarios.ts's own candidates.
+// seed-trustee-match- prefix, unique to the seeded trustee-match candidates. Approving a seeded
+// identity task makes the app write documents for those candidates with non-seed ids: the
+// remapped case appointments and the appointment tasks it opens (CAMS-956).
 const TRUSTEE_MATCH_POLLUTED_COLLECTIONS = new Set([
   'case-trustee-appointments',
   'trustee-case-appointments',
+  'trustee-appointment-verification',
 ]);
+
+/** The documents unseed deletes from one Cosmos collection. */
+export function cosmosUnseedFilter(collectionName: string): { $or: object[] } {
+  // Anything whose id starts with "seed-" OR matches the seed case ID pattern.
+  const conditions: object[] = [
+    { id: { $regex: '^seed-' } },
+    { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } },
+  ];
+  if (TRUSTEE_MATCH_POLLUTED_COLLECTIONS.has(collectionName)) {
+    conditions.push({ trusteeId: { $regex: '^seed-trustee-match-' } });
+  }
+  return { $or: conditions };
+}
 
 async function unseedCosmos(): Promise<void> {
   const connectionString = process.env.MONGO_CONNECTION_STRING;
@@ -183,15 +199,11 @@ async function unseedCosmos(): Promise<void> {
       const db = client.db(dbName);
       const collection = db.collection(collectionName);
 
-      // Delete anything whose id starts with "seed-" OR matches the seed case ID pattern
-      const conditions: object[] = [
-        { id: { $regex: '^seed-' } },
-        { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } },
-      ];
-      if (TRUSTEE_MATCH_POLLUTED_COLLECTIONS.has(collectionName)) {
-        conditions.push({ trusteeId: { $regex: '^seed-trustee-match-' } });
-      }
-      const deletedCount = await deleteInChunks(collection, { $or: conditions }, collectionName);
+      const deletedCount = await deleteInChunks(
+        collection,
+        cosmosUnseedFilter(collectionName),
+        collectionName,
+      );
 
       if (deletedCount > 0) {
         console.log(`[${MODULE_NAME}] Deleted ${deletedCount} doc(s) from ${collectionName}`);
