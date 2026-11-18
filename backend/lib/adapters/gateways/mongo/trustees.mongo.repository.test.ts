@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { Score } from '../../../query/query-pipeline';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
@@ -306,6 +307,46 @@ describe('TrusteesMongoRepository', () => {
       );
 
       await expect(repository.findTrusteeByLegacyTruId('42')).rejects.toThrow();
+    });
+  });
+
+  describe('findTrusteesByLegacyTruIds', () => {
+    test('should find TRUSTEE documents whose legacy truIds contain any of the ids', async () => {
+      const trustees = [
+        MockData.getTrustee({ legacy: { truIds: ['1'] } }),
+        MockData.getTrustee({ legacy: { truIds: ['2', '3'] } }),
+      ];
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(trustees as TrusteeDocument[]);
+
+      const result = await repository.findTrusteesByLegacyTruIds(['1', '3']);
+
+      expect(result).toEqual(trustees);
+      expect(findSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          { condition: 'EQUALS', leftOperand: { name: 'documentType' }, rightOperand: 'TRUSTEE' },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'legacy.truIds' },
+            rightOperand: ['1', '3'],
+          },
+        ],
+      });
+    });
+
+    test('should return an empty list without querying when no ids are given', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      expect(await repository.findTrusteesByLegacyTruIds([])).toEqual([]);
+      expect(findSpy).not.toHaveBeenCalled();
+    });
+
+    test('should propagate database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.findTrusteesByLegacyTruIds(['1'])).rejects.toThrow();
     });
   });
 

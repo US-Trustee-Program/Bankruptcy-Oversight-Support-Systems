@@ -32,6 +32,7 @@ import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import PollNotificationBounces from './metrics/poll-notification-bounces';
 import TrusteeVerificationRemap from './trustee-verification-remap';
+import TrusteeDataReport from './migrations/trustee-data-report';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
@@ -130,6 +131,7 @@ dataflows.register(
   SyncTrusteeNotesMetrics,
   SyncTrusteeDueDateMetrics,
   TrusteeChangeNotificationEvent,
+  TrusteeDataReport,
   TrusteeVerificationRemap,
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
@@ -156,6 +158,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
   HealSentinelCaseAppointments,
+  TrusteeDataReport,
 );
 
 const additional = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);

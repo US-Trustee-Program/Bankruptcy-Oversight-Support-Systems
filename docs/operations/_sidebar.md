@@ -9,6 +9,7 @@
 - [Okta Configuration](/operations/okta-configuration.md)
 - [Phonetic Backfill Migration](/operations/phonetic-backfill.md)
 - [Correct Trustee Zoom Phones Migration](/operations/correct-trustee-zoom-phones.md)
+- [Trustee Data Report](/operations/trustee-data-report.md)
 - [Scripts](/operations/scripts.md)
 - [Slots](/operations/slots.md)
 - [E2E Tests](/operations/e2e-tests.md)

@@ -114,6 +114,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       queueCaseAssignmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeChangeNotification: vi.fn(),
+      queueTrusteeDataReportStart: vi.fn(),
     });
   });
 

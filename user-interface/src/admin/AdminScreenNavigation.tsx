@@ -15,6 +15,7 @@ export enum AdminNavState {
   BANKS,
   NOTIFICATION_ROUTING,
   PERMISSIONS,
+  TRUSTEE_DATA_REPORT,
 }
 
 function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -56,6 +57,10 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
 
   function handleNavNotificationRouting() {
     setActiveNav(AdminNavState.NOTIFICATION_ROUTING);
+  }
+
+  function handleNavTrusteeDataReport() {
+    setActiveNav(AdminNavState.TRUSTEE_DATA_REPORT);
   }
 
   return (
@@ -148,6 +153,19 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             title="Manage notification routing"
           >
             Notification Routing
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/trustee-data-report"
+            data-testid="trustee-data-report-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.TRUSTEE_DATA_REPORT)
+            }
+            onClick={handleNavTrusteeDataReport}
+            title="Compare CAMS trustee data with TOD"
+          >
+            Trustee Data Report
           </NavLink>
         </li>
       </ul>

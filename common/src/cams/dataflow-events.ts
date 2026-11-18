@@ -198,3 +198,18 @@ export type TrusteeMigrationStartEvent = {
    */
   importAll?: boolean;
 };
+
+/** Starts trustee data report run `runId`; the run document and lock already exist. */
+export type TrusteeDataReportStartMessage = {
+  runId: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+/** One page of the trustee data report: TOD trustees with ID greater than `cursor`. */
+export type TrusteeDataReportPageMessage = {
+  runId: string;
+  cursor: number | null;
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
