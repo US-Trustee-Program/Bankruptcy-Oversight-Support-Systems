@@ -50,7 +50,9 @@ their own region's court, the core identification/active-trustee/placeholder rul
 regions 03 and 04, and driver scenarios for per-region bookmarks and a region switched to DXTR. One
 driver scenario (`driver-two-regions-twice-no-duplicates`) runs a DXTR region and an ACMS region
 together, twice, and asserts no-match/ambiguous identity tasks on both lanes plus no duplicate
-appointments or tasks after the second run (CAMS-957 Slice 3 Task 2).
+appointments or tasks after the second run (CAMS-957 Slice 3 Task 2). Driver scenarios check
+appointments in both partitions (`case-trustee-appointments` and `trustee-case-appointments`) and,
+when a scenario runs twice, after each run.
 
 **Bookmark rule (maintainer decision):** for both ACMS and DXTR, a date is complete only when a
 later date exists, so the newest date is processed but never bookmarked. Legacy DXTR never held back

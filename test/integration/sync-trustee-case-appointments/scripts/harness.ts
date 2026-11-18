@@ -1295,6 +1295,9 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
 
       if (s.secondRun) {
+        // Assert after the first run too, so a wrong first write that the second run happens to
+        // overwrite into the expected shape cannot pass.
+        await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
         r.step(
           'And',
           `the driver runs again on ${s.secondRun.runDate} for region(s) ${s.regions.join(', ')}`,
@@ -1302,17 +1305,7 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         await runRegionDriver(context, { regions: s.regions, runDate: s.secondRun.runDate });
       }
 
-      for (const [caseId, expected] of Object.entries(s.expect.written)) {
-        r.step(
-          'Then',
-          `case ${caseId} (region ${regionOfCase(caseId)}) has ${expected.map(fmtExpected).join(', ')}`,
-        );
-        const docs = (await db
-          .collection('case-trustee-appointments')
-          .find({ documentType: 'CASE_APPOINTMENT', caseId })
-          .toArray()) as unknown as AppointmentDoc[];
-        assertAppointments(r, caseId, docs, expected);
-      }
+      await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
       for (const caseId of s.expect.notWritten) {
         r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) is untouched`);
         const n = await db.collection('case-trustee-appointments').countDocuments({ caseId });

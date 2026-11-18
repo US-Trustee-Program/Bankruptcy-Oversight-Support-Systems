@@ -2802,6 +2802,14 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       },
     },
     (() => {
+      const farAway = (tag: 'a' | 'b', phone: string): Partial<Person> => ({
+        address1: `${tag === 'a' ? 1 : 2} Tie Ave`,
+        city: 'Faraway',
+        state: 'FA',
+        zip: '99999',
+        phone,
+        email: `${tag}@example.org`,
+      });
       const cAcmsNoMatch = nextCase();
       const cAcmsAmbiguous = nextCase();
       const cDxtrNoMatch = nextCase(OTHER_DIVISION);
@@ -2831,17 +2839,13 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
           cDxtrIgnoredAcmsRow,
         ].map((caseId) => ({ caseId })),
         cams: {
+          // Each pair is equally far from its source row (as in ambiguous-pipeline-task): no shared
+          // street number, city, zip, phone or email, so no contact detail can break the tie.
           trustees: [
-            tr(
-              'T-AMB-ACMS-a',
-              person('Larchwood', { address1: '1 Larch Ave', phone: '5185550011' }),
-            ),
-            tr(
-              'T-AMB-ACMS-b',
-              person('Larchwood', { address1: '2 Larch Ave', phone: '5185550012' }),
-            ),
-            tr('T-AMB-DXTR-a', person('Boxwood', { address1: '1 Box Ave', phone: '5185550021' })),
-            tr('T-AMB-DXTR-b', person('Boxwood', { address1: '2 Box Ave', phone: '5185550022' })),
+            tr('T-AMB-ACMS-a', person('Larchwood', farAway('a', '5185550011'))),
+            tr('T-AMB-ACMS-b', person('Larchwood', farAway('b', '5185550012'))),
+            tr('T-AMB-DXTR-a', person('Boxwood', farAway('a', '5185550021'))),
+            tr('T-AMB-DXTR-b', person('Boxwood', farAway('b', '5185550022'))),
           ],
         },
         rows: [
