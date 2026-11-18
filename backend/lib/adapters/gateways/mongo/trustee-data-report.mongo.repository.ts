@@ -4,7 +4,11 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { TrusteeDataReportRepository } from '../../../use-cases/gateways.types';
-import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
+import {
+  TrusteeDataDifference,
+  TrusteeDataReportRun,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 
 const MODULE_NAME = 'TRUSTEE-DATA-REPORT-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-data-report';
@@ -15,11 +19,20 @@ const INSERT_BATCH_SIZE = 100;
 const { using, and } = QueryBuilder;
 
 type RunDocument = TrusteeDataReportRun & { documentType: 'TRUSTEE_DATA_REPORT_RUN' };
+// Difference rows and page counts carry the page that produced them, so a retried page can
+// replace its own results instead of adding them a second time.
 type DifferenceDocument = TrusteeDataDifference & {
   runId: string;
+  pageKey: string;
   documentType: 'TRUSTEE_DATA_REPORT_DIFFERENCE';
 };
-type ReportDocument = RunDocument | DifferenceDocument;
+type PageDocument = {
+  runId: string;
+  pageKey: string;
+  documentType: 'TRUSTEE_DATA_REPORT_PAGE';
+  summary: TrusteeDataReportSummary;
+};
+type ReportDocument = RunDocument | DifferenceDocument | PageDocument;
 
 function toRun({ documentType: _documentType, ...run }: RunDocument): TrusteeDataReportRun {
   return run;
@@ -34,6 +47,7 @@ export class TrusteeDataReportMongoRepository
 
   private readonly runDoc = using<RunDocument>();
   private readonly anyDoc = using<ReportDocument>();
+  private readonly resultDoc = using<DifferenceDocument | PageDocument>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -124,28 +138,74 @@ export class TrusteeDataReportMongoRepository
     }
   }
 
-  public async insertDifferences(
+  /**
+   * Replaces one page's difference rows and counts. Deleting first makes it safe to repeat when
+   * a page is retried. (A replace would not do: the adapter's replaceOne throws when an upsert
+   * changes nothing.)
+   */
+  public async replacePageResults(
     runId: string,
+    pageKey: string,
     differences: TrusteeDataDifference[],
+    summary: TrusteeDataReportSummary,
   ): Promise<void> {
     try {
-      const adapter = this.getAdapter<DifferenceDocument>();
+      await this.getAdapter<DifferenceDocument | PageDocument>().deleteMany(
+        and(this.resultDoc('runId').equals(runId), this.resultDoc('pageKey').equals(pageKey)),
+      );
+      const rows = this.getAdapter<DifferenceDocument>();
       for (let start = 0; start < differences.length; start += INSERT_BATCH_SIZE) {
         const batch = differences
           .slice(start, start + INSERT_BATCH_SIZE)
           .map<DifferenceDocument>((difference) => ({
             ...difference,
             runId,
+            pageKey,
             documentType: 'TRUSTEE_DATA_REPORT_DIFFERENCE',
           }));
-        await adapter.insertMany(batch);
+        await rows.insertMany(batch);
       }
+      await this.getAdapter<PageDocument>().insertOne({
+        runId,
+        pageKey,
+        documentType: 'TRUSTEE_DATA_REPORT_PAGE',
+        summary,
+      });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  /** Deletes the run document and every difference row for the run. */
+  public async readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]> {
+    try {
+      const page = using<PageDocument>();
+      const pages = await this.getAdapter<PageDocument>().find(
+        and(page('documentType').equals('TRUSTEE_DATA_REPORT_PAGE'), page('runId').equals(runId)),
+      );
+      return pages.map((doc) => doc.summary);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  /** Deletes the run's difference rows and page counts, keeping the run document. */
+  public async deleteRunResults(runId: string): Promise<void> {
+    try {
+      await this.getAdapter<DifferenceDocument | PageDocument>().deleteMany(
+        and(
+          this.resultDoc('runId').equals(runId),
+          this.resultDoc('documentType').contains([
+            'TRUSTEE_DATA_REPORT_DIFFERENCE',
+            'TRUSTEE_DATA_REPORT_PAGE',
+          ]),
+        ),
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  /** Deletes the run document and all of its results. */
   public async deleteRun(runId: string): Promise<void> {
     try {
       await this.getAdapter<ReportDocument>().deleteMany(this.anyDoc('runId').equals(runId));

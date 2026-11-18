@@ -19,7 +19,10 @@ export async function getLatestTrusteeDataReport(
   ]);
 
   const status: TrusteeDataReportStatus = {};
-  if (activeRun) status.activeRun = activeRun;
+  // A finished run can still hold the lock briefly, or until it goes stale if releasing it failed.
+  if (activeRun?.status === 'queued' || activeRun?.status === 'running') {
+    status.activeRun = activeRun;
+  }
   if (latestCompletedRun) status.latestCompletedRun = latestCompletedRun;
   if (
     latestFailedRun &&

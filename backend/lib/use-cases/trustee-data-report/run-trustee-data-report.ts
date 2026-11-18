@@ -60,29 +60,27 @@ async function requireLock(context: ApplicationContext, runId: string): Promise<
   }
 }
 
-/** Records a page's differences and adds its counts to the run's running summary. */
-async function recordDifferences(
+/**
+ * Records one page's differences and counts, replacing anything an earlier attempt at the same
+ * page wrote, so a retried page is never counted twice. The run's summary is added up from these
+ * page counts when the run finishes. The lock is checked again just before writing, so a run that
+ * was replaced while it read this page writes nothing.
+ */
+async function recordPage(
   context: ApplicationContext,
   runId: string,
+  pageKey: string,
   differences: TrusteeDataDifference[],
   trusteesCompared: number,
 ): Promise<void> {
-  if (differences.length === 0 && trusteesCompared === 0) {
-    // Nothing changed. Not just an optimization: the Mongo adapter's replaceOne throws when an
-    // upsert modifies nothing, so rewriting an unchanged run would fail the run.
-    return;
-  }
-  const reportRepo = factory.getTrusteeDataReportRepository(context);
-  await reportRepo.insertDifferences(runId, differences);
-  const run = await requireRun(context, runId);
-  await reportRepo.upsertRun({
-    ...run,
-    summary: addSummaries(
-      run.summary ?? summarize([], 0),
-      summarize(differences, trusteesCompared),
-    ),
-  });
+  await requireLock(context, runId);
+  await factory
+    .getTrusteeDataReportRepository(context)
+    .replacePageResults(runId, pageKey, differences, summarize(differences, trusteesCompared));
 }
+
+const FINALIZE_PAGE_KEY = 'finalize';
+const pageKeyFor = (cursor: number | null) => `page-${cursor ?? 'start'}`;
 
 /**
  * Moves a queued run to running. Returns 'skipped' for a missing run or one already past
@@ -174,7 +172,7 @@ async function processPage(
     );
   }
 
-  await recordDifferences(context, runId, differences, trusteesCompared);
+  await recordPage(context, runId, pageKeyFor(cursor), differences, trusteesCompared);
   context.logger.info(
     MODULE_NAME,
     `Run ${runId}: page after ${cursor ?? 'start'} read ${page.length} TOD trustees, compared ${trusteesCompared}, found ${differences.length} differences.`,
@@ -199,15 +197,20 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
     ),
   );
   const camsOnly = findCamsOnly(trustees, existingTodIds);
-  await recordDifferences(context, runId, camsOnly, 0);
+  await recordPage(context, runId, FINALIZE_PAGE_KEY, camsOnly, 0);
 
+  const summary = (await reportRepo.readPageSummaries(runId)).reduce(
+    addSummaries,
+    summarize([], 0),
+  );
   const previous = await reportRepo.readLatestCompletedRun();
   const run = await requireRun(context, runId);
+  await requireLock(context, runId);
   await reportRepo.upsertRun({
     ...run,
     status: 'completed',
     finishedAt: new Date().toISOString(),
-    summary: run.summary ?? summarize([], 0),
+    summary,
   });
   context.logger.info(
     MODULE_NAME,
@@ -235,24 +238,36 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
 }
 
 /**
- * Marks a run failed and drops its partial rows, leaving the previously completed run and its
- * rows untouched, then releases the lock if this run still holds it.
+ * Marks a queued or running run failed and drops its partial results, leaving the previously
+ * completed run untouched, then releases the lock if this run still holds it.
+ *
+ * A run that already finished is left as it is: a redelivered message, or a start replacing a
+ * completed run whose lock release failed, must not turn completed results into a failure.
+ * The run is rewritten as failed before its results are deleted, so a status check never sees
+ * the run missing.
  */
 async function failRun(context: ApplicationContext, runId: string, message: string): Promise<void> {
   const reportRepo = factory.getTrusteeDataReportRepository(context);
   const run = await reportRepo.readRun(runId);
-  if (run) {
-    await reportRepo.deleteRun(runId);
-    await reportRepo.upsertRun({
-      ...run,
-      status: 'failed',
-      finishedAt: new Date().toISOString(),
-      failureMessage: message,
-      summary: undefined,
-    });
+  if (run?.status === 'completed' || run?.status === 'failed') {
+    context.logger.warn(
+      MODULE_NAME,
+      `Run ${runId} already ${run.status}; not marking it failed (${message}).`,
+    );
+  } else {
+    if (run) {
+      await reportRepo.upsertRun({
+        ...run,
+        status: 'failed',
+        finishedAt: new Date().toISOString(),
+        failureMessage: message,
+        summary: undefined,
+      });
+      await reportRepo.deleteRunResults(runId);
+    }
+    context.logger.error(MODULE_NAME, `Run ${runId} failed: ${message}`);
   }
   await TrusteeDataReportLock.releaseRun(context, runId);
-  context.logger.error(MODULE_NAME, `Run ${runId} failed: ${message}`);
 }
 
 const RunTrusteeDataReport = { startRun, processPage, failRun };

@@ -184,37 +184,149 @@ describe('TrusteeDataReportMongoRepository', () => {
     });
   });
 
-  describe('insertDifferences', () => {
-    test('should insert rows tagged with runId and documentType in batches of 100', async () => {
-      const insertSpy = vi
+  describe('replacePageResults', () => {
+    const SUMMARY = {
+      trusteesCompared: 3,
+      todOnly: 1,
+      camsOnly: 0,
+      fieldDifferences: 2,
+      fieldDifferencesByField: {
+        name: 0,
+        companyName: 0,
+        publicAddress: 0,
+        internalAddress: 0,
+        phone: 2,
+        email: 0,
+      },
+    };
+
+    test('should delete the page before writing its rows in batches of 100 and its counts', async () => {
+      const calls: string[] = [];
+      const deleteSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockImplementation(async () => {
+          calls.push('delete');
+          return 0;
+        });
+      const insertManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
-        .mockResolvedValue([]);
+        .mockImplementation(async () => {
+          calls.push('insertMany');
+          return [];
+        });
+      const insertOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockImplementation(async () => {
+          calls.push('insertOne');
+          return 'id';
+        });
       const differences = Array.from({ length: 250 }, (_, i) => buildDifference(i));
 
-      await repository.insertDifferences('run-1', differences);
+      await repository.replacePageResults('run-1', 'page-100', differences, SUMMARY);
 
-      expect(insertSpy.mock.calls.map(([items]) => items.length)).toEqual([100, 100, 50]);
-      expect(insertSpy.mock.calls[0][0][0]).toEqual({
+      expect(calls[0]).toBe('delete');
+      expect(deleteSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          { condition: 'EQUALS', leftOperand: { name: 'runId' }, rightOperand: 'run-1' },
+          { condition: 'EQUALS', leftOperand: { name: 'pageKey' }, rightOperand: 'page-100' },
+        ],
+      });
+      expect(insertManySpy.mock.calls.map(([items]) => items.length)).toEqual([100, 100, 50]);
+      expect(insertManySpy.mock.calls[0][0][0]).toEqual({
         ...differences[0],
         runId: 'run-1',
+        pageKey: 'page-100',
         documentType: 'TRUSTEE_DATA_REPORT_DIFFERENCE',
+      });
+      expect(insertOneSpy).toHaveBeenCalledWith({
+        runId: 'run-1',
+        pageKey: 'page-100',
+        documentType: 'TRUSTEE_DATA_REPORT_PAGE',
+        summary: SUMMARY,
       });
     });
 
-    test('should not call the database when there are no differences', async () => {
-      const insertSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany');
+    test('should still write the page counts when the page has no differences', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(0);
+      const insertManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany');
+      const insertOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue('id');
 
-      await repository.insertDifferences('run-1', []);
+      await repository.replacePageResults('run-1', 'page-start', [], SUMMARY);
 
-      expect(insertSpy).not.toHaveBeenCalled();
+      expect(insertManySpy).not.toHaveBeenCalled();
+      expect(insertOneSpy).toHaveBeenCalledTimes(1);
     });
 
     test('should wrap database errors as CamsError', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(new Error('boom'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(new Error('boom'));
 
       await expect(
-        repository.insertDifferences('run-1', [buildDifference(1)]),
+        repository.replacePageResults('run-1', 'page-start', [buildDifference(1)], SUMMARY),
       ).rejects.toBeInstanceOf(CamsError);
+    });
+  });
+
+  describe('readPageSummaries', () => {
+    test('should return the counts of every page of the run', async () => {
+      const summary = { trusteesCompared: 1 };
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        {
+          runId: 'run-1',
+          pageKey: 'page-start',
+          documentType: 'TRUSTEE_DATA_REPORT_PAGE',
+          summary,
+        },
+      ]);
+
+      expect(await repository.readPageSummaries('run-1')).toEqual([summary]);
+      expect(findSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_DATA_REPORT_PAGE',
+          },
+          { condition: 'EQUALS', leftOperand: { name: 'runId' }, rightOperand: 'run-1' },
+        ],
+      });
+    });
+
+    test('should wrap database errors as CamsError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.readPageSummaries('run-1')).rejects.toBeInstanceOf(CamsError);
+    });
+  });
+
+  describe('deleteRunResults', () => {
+    test("should delete the run's difference rows and page counts but not the run document", async () => {
+      const deleteSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(3);
+
+      await repository.deleteRunResults('run-1');
+
+      expect(deleteSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          { condition: 'EQUALS', leftOperand: { name: 'runId' }, rightOperand: 'run-1' },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: ['TRUSTEE_DATA_REPORT_DIFFERENCE', 'TRUSTEE_DATA_REPORT_PAGE'],
+          },
+        ],
+      });
+    });
+
+    test('should wrap database errors as CamsError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.deleteRunResults('run-1')).rejects.toBeInstanceOf(CamsError);
     });
   });
 

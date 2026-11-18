@@ -85,6 +85,16 @@ describe('getLatestTrusteeDataReport', () => {
     expect(await getLatestTrusteeDataReport(context)).toEqual({ latestFailedRun: failed });
   });
 
+  test.each(['completed', 'failed'] as const)(
+    'should not report a %s run as active while its lock remains',
+    async (status) => {
+      vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue('run-done');
+      vi.spyOn(reportRepo, 'readRun').mockResolvedValue(run('run-done', status));
+
+      expect((await getLatestTrusteeDataReport(context)).activeRun).toBeUndefined();
+    },
+  );
+
   test('should omit the active run when the lock names a run that no longer exists', async () => {
     vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue('run-gone');
     vi.spyOn(reportRepo, 'readRun').mockResolvedValue(null);

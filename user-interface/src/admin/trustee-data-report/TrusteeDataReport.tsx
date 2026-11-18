@@ -84,17 +84,29 @@ export function TrusteeDataReport() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [startError, setStartError] = useState<{ title: string; message?: string } | null>(null);
+  const [startError, setStartError] = useState<{
+    title: string;
+    message?: string;
+    alreadyRunning?: boolean;
+  } | null>(null);
+  // Counts finished status checks, so every check (even one failing exactly like the last)
+  // schedules the next one while a run is active.
+  const [checks, setChecks] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
       const response = await Api2.getTrusteeDataReport();
       setStatus(response.data);
       setLoadError(null);
+      if (!response.data.activeRun) {
+        // The run that blocked a start has ended, so "already running" no longer applies.
+        setStartError((current) => (current?.alreadyRunning ? null : current));
+      }
     } catch (error) {
       setLoadError((error as Error)?.message ?? 'Reason unknown.');
     } finally {
       setIsLoading(false);
+      setChecks((count) => count + 1);
     }
   }, []);
 
@@ -102,13 +114,13 @@ export function TrusteeDataReport() {
     refresh();
   }, [refresh]);
 
-  // Poll while a run is queued or running; each refresh schedules the next one. A failed check
-  // keeps polling, so the next good response clears the error.
+  // Poll while a run is queued or running; each finished check schedules the next one. A failed
+  // check keeps polling, so the next good response clears the error.
   useEffect(() => {
     if (!status?.activeRun) return;
     const timer = setTimeout(refresh, POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [status, loadError, refresh]);
+  }, [status, checks, refresh]);
 
   // The status region is the tab's single announcer. It speaks transitions only: what was already
   // true when the tab opened is on screen and is not announced.
@@ -140,14 +152,15 @@ export function TrusteeDataReport() {
       }
     } catch (error) {
       if (error instanceof CamsHttpError && error.status === HttpStatusCodes.CONFLICT) {
-        setStartError({ title: 'A report is already running' });
-        await refresh();
+        setStartError({ title: 'A report is already running', alreadyRunning: true });
       } else {
         setStartError({
           title: 'The report could not be started',
           message: (error as Error)?.message,
         });
       }
+      // Show the run that is blocking the start, or the run this start recorded as failed.
+      await refresh();
     } finally {
       setIsStarting(false);
     }
@@ -204,11 +217,17 @@ export function TrusteeDataReport() {
           )}
 
           {activeRun && (
-            // aria-hidden: the spinner is its own live region; the status region announces instead.
-            <div data-testid="trustee-data-report-active" aria-hidden="true">
-              <LoadingSpinner
-                caption={`Report ${activeRun.status}, started by ${activeRun.startedBy.name}. This page updates when it finishes.`}
-              />
+            <div
+              data-testid="trustee-data-report-active"
+              className="display-flex flex-align-center"
+            >
+              {/* The spinner is its own live region, so it is hidden; the status region announces
+                  changes, and the text below stays readable. */}
+              <LoadingSpinner aria-hidden="true" />
+              <p data-testid="trustee-data-report-active-text">
+                Report {activeRun.status}, started by {activeRun.startedBy.name}. This page updates
+                when it finishes.
+              </p>
             </div>
           )}
 

@@ -116,7 +116,10 @@ describe('TrusteeDataReport', () => {
     expectStartBlocked(true);
     await userEvent.click(startButton());
     expect(post).not.toHaveBeenCalled();
-    expect(screen.getByTestId('trustee-data-report-active')).toHaveAttribute('aria-hidden', 'true');
+    // The run's status is readable; only the spinner (itself a live region) is hidden.
+    const activeText = screen.getByTestId('trustee-data-report-active-text');
+    expect(activeText).toHaveTextContent('running, started by Test SuperUser');
+    expect(activeText.closest('[aria-hidden="true"]')).toBeNull();
     expect(liveStatus()).toHaveTextContent('');
     expect(screen.getByTestId('trustee-data-report-finished-at')).toBeInTheDocument();
   });
@@ -171,8 +174,35 @@ describe('TrusteeDataReport', () => {
     await waitFor(() => expectStartBlocked(true));
   });
 
-  test('should report any other start failure', async () => {
-    mockGet({});
+  test('should clear the "already running" message once that run ends', async () => {
+    mockGet(
+      { latestCompletedRun: COMPLETED },
+      { activeRun: RUNNING, latestCompletedRun: COMPLETED },
+      { latestCompletedRun: COMPLETED },
+    );
+    vi.spyOn(Api2, 'postTrusteeDataReport').mockRejectedValue(
+      new CamsHttpError(409, 'A trustee data report is already running.'),
+    );
+
+    await renderLoaded();
+    await userEvent.click(startButton());
+    expect(await screen.findByTestId('alert-trustee-data-report-start-error')).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('alert-trustee-data-report-start-error')).toBeNull(),
+    );
+  });
+
+  test('should report any other start failure and show the run it recorded as failed', async () => {
+    const failed = run({
+      runId: 'run-new',
+      status: 'failed',
+      finishedAt: '2026-11-17T12:00:00.000Z',
+      failureMessage: 'The report could not be started.',
+    });
+    mockGet({}, { latestFailedRun: failed });
     vi.spyOn(Api2, 'postTrusteeDataReport').mockRejectedValue(new Error('Network down'));
 
     await renderLoaded();
@@ -183,6 +213,7 @@ describe('TrusteeDataReport', () => {
         'The report could not be started',
       ),
     );
+    expect(await screen.findByTestId('alert-trustee-data-report-failed')).toBeInTheDocument();
     expectStartBlocked(false);
   });
 
@@ -202,6 +233,23 @@ describe('TrusteeDataReport', () => {
     expect(failure).toHaveTextContent(formatDateTime(failed.finishedAt));
     expect(screen.getByTestId('trustee-data-report-finished-at')).toBeInTheDocument();
     expectStartBlocked(false);
+  });
+
+  test('should keep checking through repeated identical failures during a run', async () => {
+    vi.spyOn(Api2, 'getTrusteeDataReport')
+      .mockResolvedValueOnce({ data: { activeRun: RUNNING } })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValue({ data: { latestCompletedRun: COMPLETED } });
+
+    await renderLoaded();
+    for (let check = 0; check < 4; check++) {
+      await act(() => vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS));
+    }
+
+    expect(await screen.findByTestId('trustee-data-report-finished-at')).toBeInTheDocument();
+    expect(screen.queryByTestId('alert-trustee-data-report-load-error')).toBeNull();
   });
 
   test('should keep checking after a failed status check during a run, and recover', async () => {

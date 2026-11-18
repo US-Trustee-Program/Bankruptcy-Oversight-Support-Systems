@@ -1,7 +1,11 @@
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { Trustee } from '@common/cams/trustees';
-import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
+import {
+  TrusteeDataDifference,
+  TrusteeDataReportRun,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -18,7 +22,8 @@ import RunTrusteeDataReport from './run-trustee-data-report';
 
 class InMemoryReportRepository implements TrusteeDataReportRepository {
   runs = new Map<string, TrusteeDataReportRun>();
-  rows: (TrusteeDataDifference & { runId: string })[] = [];
+  rows: (TrusteeDataDifference & { runId: string; pageKey: string })[] = [];
+  pages: { runId: string; pageKey: string; summary: TrusteeDataReportSummary }[] = [];
 
   async upsertRun(run: TrusteeDataReportRun) {
     this.runs.set(run.runId, structuredClone(run));
@@ -37,12 +42,34 @@ class InMemoryReportRepository implements TrusteeDataReportRepository {
     runs.sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
     return runs[0] ?? null;
   }
-  async insertDifferences(runId: string, differences: TrusteeDataDifference[]) {
-    this.rows.push(...differences.map((difference) => ({ ...difference, runId })));
+  async replacePageResults(
+    runId: string,
+    pageKey: string,
+    differences: TrusteeDataDifference[],
+    summary: TrusteeDataReportSummary,
+  ) {
+    const otherPage = (doc: { runId: string; pageKey: string }) =>
+      doc.runId !== runId || doc.pageKey !== pageKey;
+    this.rows = [
+      ...this.rows.filter(otherPage),
+      ...differences.map((difference) => ({ ...difference, runId, pageKey })),
+    ];
+    this.pages = [...this.pages.filter(otherPage), { runId, pageKey, summary }];
+  }
+  async readPageSummaries(runId: string) {
+    return this.pages.filter((page) => page.runId === runId).map((page) => page.summary);
+  }
+  async deleteRunResults(runId: string) {
+    this.rows = this.rows.filter((row) => row.runId !== runId);
+    this.pages = this.pages.filter((page) => page.runId !== runId);
   }
   async deleteRun(runId: string) {
     this.runs.delete(runId);
-    this.rows = this.rows.filter((row) => row.runId !== runId);
+    await this.deleteRunResults(runId);
+  }
+  /** Test setup: rows of an earlier run. */
+  seedRows(runId: string, differences: TrusteeDataDifference[]) {
+    this.rows.push(...differences.map((difference) => ({ ...difference, runId, pageKey: 'seed' })));
   }
   rowsFor(runId: string) {
     return this.rows.filter((row) => row.runId === runId);
@@ -270,9 +297,7 @@ describe('RunTrusteeDataReport', () => {
         finishedAt: '2026-11-16T10:00:00.000Z',
       };
       await reportRepo.upsertRun(previous);
-      await reportRepo.insertDifferences('run-old', [
-        { kind: 'tod-only', todIds: ['1'], trusteeName: 'A' },
-      ]);
+      reportRepo.seedRows('run-old', [{ kind: 'tod-only', todIds: ['1'], trusteeName: 'A' }]);
 
       await runToCompletion(100);
 
@@ -329,11 +354,12 @@ describe('RunTrusteeDataReport', () => {
       expect((await reportRepo.readRun(RUN_ID))?.status).toBe('completed');
     });
 
-    test('should throw when the run document is gone mid-run', async () => {
+    test('should throw at finalize when the run document is gone', async () => {
       await RunTrusteeDataReport.startRun(context, RUN_ID);
       reportRepo.runs.delete(RUN_ID);
 
-      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).rejects.toThrow(
+      // Page 6 onward is empty, so this page finalizes the run.
+      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, 6, 100)).rejects.toThrow(
         'not found',
       );
     });
@@ -348,15 +374,68 @@ describe('RunTrusteeDataReport', () => {
   });
 
   describe('processPage', () => {
-    test('should not rewrite the run when a page changes no counts', async () => {
+    test('should not rewrite the run document while paging', async () => {
       await RunTrusteeDataReport.startRun(context, RUN_ID);
       const upsertSpy = vi.spyOn(reportRepo, 'upsertRun');
 
-      // TOD 6 is unlinked and has no active appointment, so it is out of scope.
-      expect(await RunTrusteeDataReport.processPage(context, RUN_ID, 5, 1)).toEqual({
-        nextCursor: 6,
+      expect(await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).toEqual({
+        nextCursor: 2,
       });
       expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    test('should record a retried page once, so rows and counts are not doubled', async () => {
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+
+      await runToCompletion(2); // processes the first page again, as a throttling retry would
+
+      const rows = reportRepo.rowsFor(RUN_ID);
+      expect(rows.filter((row) => row.kind === 'field')).toHaveLength(1);
+      expect(rows.filter((row) => row.kind === 'tod-only')).toHaveLength(2);
+      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
+        expect.objectContaining({
+          trusteesCompared: 3,
+          todOnly: 2,
+          camsOnly: 2,
+          fieldDifferences: 1,
+        }),
+      );
+    });
+
+    test('should write nothing for a page if the lock is taken over while it is read', async () => {
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      const readPage = ats.getTrusteesPage.bind(ats);
+      vi.spyOn(ats, 'getTrusteesPage').mockImplementationOnce(async (...args) => {
+        lockRepo.docs.set('TRUSTEE_DATA_REPORT_RUN', {
+          documentType: 'TRUSTEE_DATA_REPORT_RUN',
+          runId: 'someone-else',
+          startedAt: '2026-11-17T12:00:00.000Z',
+        });
+        return readPage(...args);
+      });
+
+      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).rejects.toThrow(
+        'no longer holds the run lock',
+      );
+      expect(reportRepo.rowsFor(RUN_ID)).toEqual([]);
+    });
+
+    test('should not complete a run whose lock is taken over while it finalizes', async () => {
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      vi.spyOn(trusteesRepo, 'listTrustees').mockImplementationOnce(async () => {
+        lockRepo.docs.set('TRUSTEE_DATA_REPORT_RUN', {
+          documentType: 'TRUSTEE_DATA_REPORT_RUN',
+          runId: 'someone-else',
+          startedAt: '2026-11-17T12:00:00.000Z',
+        });
+        return camsTrustees;
+      });
+
+      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, 6, 100)).rejects.toThrow(
+        'no longer holds the run lock',
+      );
+      expect((await reportRepo.readRun(RUN_ID))?.status).toBe('running');
     });
 
     test('should throw when the run no longer holds the lock', async () => {
@@ -417,15 +496,57 @@ describe('RunTrusteeDataReport', () => {
   });
 
   describe('failRun', () => {
+    test('should leave a completed run and its results alone, only releasing a lock it still holds', async () => {
+      await runToCompletion(100);
+      const completed = await reportRepo.readRun(RUN_ID);
+      const rows = reportRepo.rowsFor(RUN_ID);
+      // As after a failed lock release that later went stale, or a redelivered final page.
+      lockRepo.docs.set('TRUSTEE_DATA_REPORT_RUN', {
+        documentType: 'TRUSTEE_DATA_REPORT_RUN',
+        runId: RUN_ID,
+        startedAt: '2026-11-17T10:00:00.000Z',
+      });
+
+      await RunTrusteeDataReport.failRun(context, RUN_ID, 'redelivered page');
+
+      expect(await reportRepo.readRun(RUN_ID)).toEqual(completed);
+      expect(reportRepo.rowsFor(RUN_ID)).toEqual(rows);
+      expect(lockRepo.holder()).toBeUndefined();
+    });
+
+    test('should leave an already failed run as it was', async () => {
+      const failed: TrusteeDataReportRun = {
+        ...queuedRun(),
+        status: 'failed',
+        finishedAt: '2026-11-17T11:00:00.000Z',
+        failureMessage: 'first failure',
+      };
+      await reportRepo.upsertRun(failed);
+
+      await RunTrusteeDataReport.failRun(context, RUN_ID, 'second failure');
+
+      expect(await reportRepo.readRun(RUN_ID)).toEqual(failed);
+    });
+
+    test('should never remove the run document while failing it', async () => {
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+      const deleteRun = vi.spyOn(reportRepo, 'deleteRun');
+
+      await RunTrusteeDataReport.failRun(context, RUN_ID, 'TOD query failed');
+
+      expect(deleteRun).not.toHaveBeenCalled();
+      expect((await reportRepo.readRun(RUN_ID))?.status).toBe('failed');
+      expect(reportRepo.rowsFor(RUN_ID)).toEqual([]);
+    });
+
     test('should mark the run failed, drop its rows, release the lock and keep the previous run', async () => {
       await reportRepo.upsertRun({
         ...queuedRun('run-old'),
         status: 'completed',
         finishedAt: '2026-11-16T10:00:00.000Z',
       });
-      await reportRepo.insertDifferences('run-old', [
-        { kind: 'tod-only', todIds: ['1'], trusteeName: 'A' },
-      ]);
+      reportRepo.seedRows('run-old', [{ kind: 'tod-only', todIds: ['1'], trusteeName: 'A' }]);
       await RunTrusteeDataReport.startRun(context, RUN_ID);
       await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
 

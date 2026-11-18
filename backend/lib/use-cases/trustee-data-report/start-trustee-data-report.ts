@@ -24,26 +24,33 @@ export async function startTrusteeDataReport(
       message: 'A trustee data report is already running.',
     });
   }
-  if (claim.replacedStaleRunId) {
-    await RunTrusteeDataReport.failRun(
-      context,
-      claim.replacedStaleRunId,
-      'The run did not finish within 2 hours and was replaced by a new run.',
-    );
-  }
-
   const run: TrusteeDataReportRun = {
     runId,
     status: 'queued',
     startedBy: getCamsUserReference(context.session.user),
     queuedAt: new Date().toISOString(),
   };
-  await factory.getTrusteeDataReportRepository(context).upsertRun(run);
-
   try {
+    if (claim.replacedStaleRunId) {
+      await RunTrusteeDataReport.failRun(
+        context,
+        claim.replacedStaleRunId,
+        'The run did not finish within 2 hours and was replaced by a new run.',
+      );
+    }
+    await factory.getTrusteeDataReportRepository(context).upsertRun(run);
     await factory.getApiToDataflowsGateway(context).queueTrusteeDataReportStart({ runId });
   } catch (error) {
-    await RunTrusteeDataReport.failRun(context, runId, 'The report could not be queued to start.');
+    // This start holds the lock, so it must give it back (and fail its run, if it was saved);
+    // otherwise every start would be refused until the lock goes stale.
+    try {
+      await RunTrusteeDataReport.failRun(context, runId, 'The report could not be started.');
+    } catch (cleanupError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Could not release the lock after a failed start: ${(cleanupError as Error).message}`,
+      );
+    }
     throw error;
   }
   return run;

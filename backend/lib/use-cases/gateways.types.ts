@@ -1,4 +1,8 @@
-import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
+import {
+  TrusteeDataDifference,
+  TrusteeDataReportRun,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
@@ -564,8 +568,17 @@ export interface TrusteeDataReportRepository extends Releasable {
   readRun(runId: string): Promise<TrusteeDataReportRun | null>;
   readLatestCompletedRun(): Promise<TrusteeDataReportRun | null>;
   readLatestFailedRun(): Promise<TrusteeDataReportRun | null>;
-  insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void>;
-  /** Deletes the run document and every difference row for the run. */
+  /** Replaces one page's difference rows and counts; safe to repeat when a page is retried. */
+  replacePageResults(
+    runId: string,
+    pageKey: string,
+    differences: TrusteeDataDifference[],
+    summary: TrusteeDataReportSummary,
+  ): Promise<void>;
+  readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]>;
+  /** Deletes the run's difference rows and page counts, keeping the run document. */
+  deleteRunResults(runId: string): Promise<void>;
+  /** Deletes the run document and all of its results. */
   deleteRun(runId: string): Promise<void>;
 }
 

@@ -82,6 +82,30 @@ describe('startTrusteeDataReport', () => {
     expect(gateway.queueTrusteeDataReportStart).toHaveBeenCalledWith({ runId: run.runId });
   });
 
+  test.each([
+    { step: 'saving the queued run', fail: 'upsertRun' as const },
+    { step: 'failing the stale run it replaced', fail: 'failStale' as const },
+  ])('should release the lock and pass on the error when $step fails', async ({ fail }) => {
+    vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({
+      claimed: true,
+      replacedStaleRunId: 'run-crashed',
+    });
+    if (fail === 'upsertRun') {
+      vi.spyOn(reportRepo, 'upsertRun').mockRejectedValue(new Error('cosmos down'));
+    } else {
+      vi.mocked(RunTrusteeDataReport.failRun).mockRejectedValueOnce(new Error('cosmos down'));
+    }
+
+    await expect(startTrusteeDataReport(context)).rejects.toThrow('cosmos down');
+    const newRunId = vi.mocked(TrusteeDataReportLock.claimRun).mock.calls[0][1];
+    expect(RunTrusteeDataReport.failRun).toHaveBeenLastCalledWith(
+      context,
+      newRunId,
+      expect.any(String),
+    );
+    expect(gateway.queueTrusteeDataReportStart).not.toHaveBeenCalled();
+  });
+
   test('should fail the new run and pass on the queue error when its start cannot be queued', async () => {
     vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({ claimed: true });
     vi.spyOn(gateway, 'queueTrusteeDataReportStart').mockRejectedValue(new Error('queue down'));

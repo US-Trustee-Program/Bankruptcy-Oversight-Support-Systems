@@ -49,7 +49,11 @@ import {
   ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
-import { TrusteeDataDifference, TrusteeDataReportRun } from '@common/cams/trustee-data-report';
+import {
+  TrusteeDataDifference,
+  TrusteeDataReportRun,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 import { MOCK_TRUSTEES_LINKED_TO_MOCK_TOD } from './mock-trustee-data-report.fixtures';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
@@ -106,7 +110,15 @@ export class MockMongoRepository
   // Static: the factory makes a new mock per call, and a local (dbMock) report run spans many
   // queue messages, so its runs, rows and lock must outlive any one instance.
   private static trusteeDataReportRuns = new Map<string, TrusteeDataReportRun>();
-  private static trusteeDataReportDifferences: (TrusteeDataDifference & { runId: string })[] = [];
+  private static trusteeDataReportDifferences: (TrusteeDataDifference & {
+    runId: string;
+    pageKey: string;
+  })[] = [];
+  private static trusteeDataReportPages: {
+    runId: string;
+    pageKey: string;
+    summary: TrusteeDataReportSummary;
+  }[] = [];
   private static trusteeDataReportLock: TrusteeDataReportRunState | null = null;
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
@@ -972,16 +984,41 @@ export class MockMongoRepository
     return runs[0] ?? null;
   }
 
-  async insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void> {
-    MockMongoRepository.trusteeDataReportDifferences.push(
-      ...differences.map((d) => ({ ...d, runId })),
+  async replacePageResults(
+    runId: string,
+    pageKey: string,
+    differences: TrusteeDataDifference[],
+    summary: TrusteeDataReportSummary,
+  ): Promise<void> {
+    const otherPage = (doc: { runId: string; pageKey: string }) =>
+      doc.runId !== runId || doc.pageKey !== pageKey;
+    MockMongoRepository.trusteeDataReportDifferences = [
+      ...MockMongoRepository.trusteeDataReportDifferences.filter(otherPage),
+      ...differences.map((d) => ({ ...d, runId, pageKey })),
+    ];
+    MockMongoRepository.trusteeDataReportPages = [
+      ...MockMongoRepository.trusteeDataReportPages.filter(otherPage),
+      { runId, pageKey, summary },
+    ];
+  }
+
+  async readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]> {
+    return MockMongoRepository.trusteeDataReportPages
+      .filter((page) => page.runId === runId)
+      .map((page) => page.summary);
+  }
+
+  async deleteRunResults(runId: string): Promise<void> {
+    MockMongoRepository.trusteeDataReportDifferences =
+      MockMongoRepository.trusteeDataReportDifferences.filter((d) => d.runId !== runId);
+    MockMongoRepository.trusteeDataReportPages = MockMongoRepository.trusteeDataReportPages.filter(
+      (page) => page.runId !== runId,
     );
   }
 
   async deleteRun(runId: string): Promise<void> {
     MockMongoRepository.trusteeDataReportRuns.delete(runId);
-    MockMongoRepository.trusteeDataReportDifferences =
-      MockMongoRepository.trusteeDataReportDifferences.filter((d) => d.runId !== runId);
+    await this.deleteRunResults(runId);
   }
 
   // Mock implementation for replaceOneInTrusteePartition
