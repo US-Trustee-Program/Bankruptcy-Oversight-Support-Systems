@@ -66,10 +66,45 @@ ACMS names are upper-case (the renderer upper-cases every ACMS text field, so ev
 also proves case-insensitive matching), suffixes and decorations inside the last name, multi-word
 and initial-only first names, 4% with no address and 3.5% with no city/state/zip, phone `0` for 14%,
 ZIP+4 everywhere. DXTR variants vary generation, address line 2, phone punctuation, ZIP+4, email and
-case. Jurisdiction scenarios span court, division, chapter (7, 11, 12, 13) and appointment status
-(active, voluntarily-suspended, resigned) for CAMS-956. Seeded CAMS trustees carry `phoneticTokens`
-and the `legacy` block, as real ones do, and the Mongo client uses `ignoreUndefined` like
-production.
+case. `DXTR_NAME_SHAPES` (CAMS-957 Slice 4; no staging access to confirm real counts, basis `code`
+once observed) covers first/middle swapped, a nickname, a suffix embedded in the last name, a
+hyphenated surname where CAMS holds only one half, and trailing role text — all resolve via the
+pipeline because identical address/phone/email data carries the link despite the name mismatch.
+Jurisdiction scenarios span court, division, chapter (7, 11, 12, 13) and appointment status (active,
+voluntarily-suspended, resigned) for CAMS-956. Seeded CAMS trustees carry `phoneticTokens` and the
+`legacy` block, as real ones do, and the Mongo client uses `ignoreUndefined` like production.
+
+### ACMS-only scenarios (and why)
+
+CAMS-957 Slice 4 (`cams-0pqfs.4.2`) opened every source-neutral matching/lifecycle scenario to the
+DXTR lane. What's left ACMS-only, and why (each scenario's own `note` says the same):
+
+- **ACMS professional-id concepts with no DXTR equivalent** (DXTR carries no `acmsProfessionalId`,
+  CAMS-873/882): `professional-id-beats-name-mismatch`, `one-trustee-two-professional-ids`,
+  `ambiguous-link-not-used`, `compound-professional-key`,
+  `compound-professional-key-across-regions`. `known-by-professional-id` and the per-region
+  `${tag}-known-by-professional-id` are the exception: they run on both lanes, since the DXTR row
+  carrying the same group+code but resolving via the pipeline instead is exactly the `.feature`
+  scenario "A DXTR professional code does not link a trustee."
+- **ACMS-only fields**: DISP_DATE (`disp-date-closes-matching`, `reappointed-after-disposition`, the
+  per-region `${tag}-disp-date-closes-matching`), raw `CURR_CASE_CHAPT`
+  (`invalid-chapter-goes-to-dlq-alone`, `chapter-7a-normalized`, `chapter-7n-normalized`), and
+  `CLOSED_BY_COURT_DATE`/`CLOSED_BY_UST_DATE`/the CMMKE reopen key event
+  (`closed-and-reopened-case-dates`, `closed-by-ust-only`, `closed-before-appointed`) —
+  `toTrusteeAppointmentEvent` (DXTR gateway) never sets `closedDate`/`reopenedDate` at all.
+- **`zero-appointment-date`**: DXTR always has an `appointedDate` (`toTrusteeAppointmentEvent` falls
+  back to the NOT NULL `TX_DATE` whenever the REC-embedded date is blank or unparseable), so it
+  can't reproduce the missing-`appointedDate` DLQ an ACMS `APPT_DATE` of 0 produces.
+- **`source-filters`**: ACMS SQL-level read filters (`getCmmapAppointmentsRaw`); DXTR's own read
+  filter (`REGION_TRUSTEE_APPOINTMENT_FILTER`) is a different query, not tested here.
+- **`identity-tasks-carry-their-region`**: its two passes target different regions with different
+  per-pass task shapes, which the scenario-level `dxtrExpect` (one flat override applied to every
+  pass) can't express per pass. Not a coverage gap: the region-court-on-task fact is already proven
+  by the per-region `${tag}-unknown-open-placeholder-and-task` scenarios and the
+  `driver-two-regions-twice-no-duplicates` driver scenario (Slice 3).
+- **`acms-name-shape-parenthetical-decoration`** (the one `NAME_VARIANTS` entry still
+  ACMS-prefixed): `acmsLastSuffix` is purely an ACMS CMMPR last-name rendering quirk; DXTR's `AO_PY`
+  has no decoration to append, so there's nothing DXTR-specific to test.
 
 ### Replaying real exports (aggregate output only)
 
