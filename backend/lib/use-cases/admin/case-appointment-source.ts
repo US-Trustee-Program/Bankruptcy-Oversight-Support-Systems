@@ -70,8 +70,8 @@ export async function getCaseAppointmentSources(
 /**
  * A CAMS SuperUser's one-way switch of a region's trustee-appointment source to DXTR (CAMS-957
  * Slice 1). A region already on DXTR is a no-op -- its stored source record, the audit trail of
- * the original switch, is never overwritten. The sync dataflow ignores region.<id>.source until
- * Slice 2, so this only stores the switch.
+ * the original switch, is never overwritten. This only stores the switch; the region driver
+ * (trustee-appointment-region-driver.ts) reads region.<id>.source to pick the source.
  */
 export async function switchCaseAppointmentSourceToDxtr(
   context: ApplicationContext,
