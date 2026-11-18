@@ -2830,13 +2830,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc', async () => {
-      // acmsProfessionalId is a CAMS construct, not a native DXTR/ACMS field - the gateway only
-      // crosses raw groupDesignator + profCode facts; this format ("{group}-{profCode}") is built
-      // here in the use-case layer. It's never used to pick or auto-link a trustee (see
-      // isSentinelWithNoIdentity's doc comment, which keys off the underlying raw profCode) -
-      // it's persisted purely so a reviewer can distinguish a genuine unmatched trustee from a
-      // sentinel-coded ("00000"/"99999") placeholder without cross-referencing DXTR directly.
+    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc for an ACMS event', async () => {
+      // acmsProfessionalId is a CAMS construct ("{group}-{profCode}") built here in the use-case
+      // layer. Approving the identity task writes it as a verified professional-id link, so only an
+      // ACMS event, whose group designator and professional code are ACMS's own key, may supply it.
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeUnresolvedState(0));
@@ -2846,6 +2843,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '12345',
             groupDesignator: 'NY',
             sourceTrustee: {
@@ -2863,6 +2861,37 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('should omit acmsProfessionalId from the persisted verification doc for a DXTR event', async () => {
+      // CAMS-873: DXTR's copy of the ACMS professional code can be wrong. Approving the identity
+      // task writes acmsProfessionalId as a verified link, so a DXTR event must not supply one even
+      // when its groupDesignator and profCode are both present.
+      (
+        pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(makeUnresolvedState(0));
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            source: 'DXTR',
+            profCode: '12345',
+            groupDesignator: 'NY',
+            sourceTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'DXTR', acmsProfessionalId: undefined }),
+      );
+    });
+
     test('should omit acmsProfessionalId from the persisted verification doc when profCode is a sentinel value', async () => {
       // A formatted sentinel ID (e.g. "NY-99999") would read to a reviewer as a real professional
       // ID rather than the "ID unavailable" placeholder it actually is - suppress it entirely
@@ -2876,6 +2905,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '99999',
             groupDesignator: 'NY',
             sourceTrustee: {
@@ -2903,6 +2933,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '12345',
             sourceTrustee: {
               fullName: 'Nobody Real',
