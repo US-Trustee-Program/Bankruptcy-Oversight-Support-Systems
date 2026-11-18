@@ -566,9 +566,10 @@ async function renderDxtr(
       .input('caseId', mssql.VarChar(10), caseNumber)
       .input('div', mssql.VarChar(3), division.dxtrDivision ?? divisionCode)
       .input('chapter', mssql.VarChar(3), c.chapter ?? '7')
-      .input('grp', mssql.VarChar(2), division.group).query(`
-        INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES)
-        VALUES (@id, @court, @caseId, @div, @chapter, @grp)`);
+      .input('grp', mssql.VarChar(2), division.group)
+      .input('filed', mssql.DateTime2, new Date(`${c.filed ?? '2026-01-15'}T00:00:00Z`)).query(`
+        INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES, CS_DATE_FILED)
+        VALUES (@id, @court, @caseId, @div, @chapter, @grp, @filed)`);
   }
   for (const r of rows) {
     const dxtrId = dxtrIdByCase.get(r.caseId)!;
@@ -995,7 +996,9 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
         problems.push(`source ${task.source} ≠ ${t.source}`);
       if (t.reason && task.mismatchReason !== t.reason)
         problems.push(`reason "${task.mismatchReason}" ≠ "${t.reason}"`);
-      if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
+      if (t.acmsProfessionalId === null && task.acmsProfessionalId !== undefined)
+        problems.push(`acmsProfessionalId ${task.acmsProfessionalId} should be absent`);
+      else if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
         problems.push(`acmsProfessionalId ${task.acmsProfessionalId} ≠ ${t.acmsProfessionalId}`);
       if (t.court && task.courtId !== t.court)
         problems.push(`courtId ${task.courtId} ≠ ${t.court}`);
@@ -1291,17 +1294,18 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
       );
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
 
-      for (const [caseId, expected] of Object.entries(s.expect.written)) {
+      if (s.secondRun) {
+        // Assert after the first run too, so a wrong first write that the second run happens to
+        // overwrite into the expected shape cannot pass.
+        await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
         r.step(
-          'Then',
-          `case ${caseId} (region ${regionOfCase(caseId)}) has ${expected.map(fmtExpected).join(', ')}`,
+          'And',
+          `the driver runs again on ${s.secondRun.runDate} for region(s) ${s.regions.join(', ')}`,
         );
-        const docs = (await db
-          .collection('case-trustee-appointments')
-          .find({ documentType: 'CASE_APPOINTMENT', caseId })
-          .toArray()) as unknown as AppointmentDoc[];
-        assertAppointments(r, caseId, docs, expected);
+        await runRegionDriver(context, { regions: s.regions, runDate: s.secondRun.runDate });
       }
+
+      await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
       for (const caseId of s.expect.notWritten) {
         r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) is untouched`);
         const n = await db.collection('case-trustee-appointments').countDocuments({ caseId });

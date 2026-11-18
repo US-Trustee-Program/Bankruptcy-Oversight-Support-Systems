@@ -115,8 +115,8 @@ export type TrusteeAppointmentSyncEvent = {
   unassignedOn?: string;
   appointedDate?: string;
   /**
-   * ISO date (YYYY-MM-DD) the case was filed (ACMS CMMDB CASE_FILED_DATE). The ACMS source always
-   * sets it; optional only because the DXTR source does not.
+   * ISO date (YYYY-MM-DD) the case was filed (ACMS CMMDB CASE_FILED_DATE, DXTR AO_CS.CS_DATE_FILED).
+   * Optional because a NULL CS_DATE_FILED leaves it unset for DXTR.
    */
   dateFiled?: string;
   /**

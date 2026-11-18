@@ -984,11 +984,29 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test.each([
-        ['a resolved trustee', () => makeResolvedState('trustee-123')],
-        ['an unknown trustee (placeholder)', () => makeUnresolvedState(0)],
+        [
+          'a resolved ACMS trustee',
+          () => makeResolvedState('trustee-123'),
+          () => parkedEvent('John Doe'),
+        ],
+        [
+          'an unknown ACMS trustee (placeholder)',
+          () => makeUnresolvedState(0),
+          () => parkedEvent('John Doe'),
+        ],
+        [
+          'a resolved DXTR trustee',
+          () => makeResolvedState('trustee-123'),
+          () => makeEvent('case-001', 'John Doe'),
+        ],
+        [
+          'an unknown DXTR trustee (placeholder)',
+          () => makeUnresolvedState(0),
+          () => makeEvent('case-001', 'John Doe'),
+        ],
       ])(
         'a parked write for %s without dateFiled is dead-lettered, never parked',
-        async (_label, state) => {
+        async (_label, state, buildEvent) => {
           (
             pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
           ).mockResolvedValueOnce(state());
@@ -996,7 +1014,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           const { dlqMessages, scenarioDistribution } =
             await SyncTrusteeCaseAppointments.processAppointments(
               SyncTrusteeCaseAppointments.createDeps(context),
-              [{ ...parkedEvent('John Doe'), dateFiled: undefined }],
+              [{ ...buildEvent(), dateFiled: undefined }],
             );
 
           expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
@@ -1010,6 +1028,58 @@ describe('SyncTrusteeCaseAppointments', () => {
           expect(scenarioDistribution.parkedCount).toBe(0);
         },
       );
+
+      test('a resolved DXTR trustee with dateFiled is written as a parked appointment, not dead-lettered', async () => {
+        const event = { ...makeEvent('case-001', 'John Doe'), dateFiled: '2026-10-30' };
+
+        const { dlqMessages, successCount, scenarioDistribution } =
+          await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [event],
+          );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            dateFiled: '2026-10-30',
+          }),
+          'CASE_APPOINTMENT_UNATTACHED',
+        );
+        expect(dlqMessages).toHaveLength(0);
+        expect(successCount).toBe(1);
+        expect(scenarioDistribution.parkedCount).toBe(1);
+      });
+
+      test('an unresolved DXTR trustee with dateFiled is parked as a placeholder and gets a pending identity task with source DXTR', async () => {
+        (
+          pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+        ).mockResolvedValueOnce(makeUnresolvedState(0));
+        const event = { ...makeEvent('case-001', 'Ghost Trustee'), dateFiled: '2026-10-30' };
+        const fingerprint = computeFingerprint(buildVariant(event.sourceTrustee));
+
+        const { dlqMessages, scenarioDistribution } =
+          await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [event],
+          );
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ source: 'DXTR' }),
+        );
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: fingerprint,
+            isSurrogate: true,
+            dateFiled: '2026-10-30',
+          }),
+          'CASE_APPOINTMENT_UNATTACHED',
+        );
+        expect(dlqMessages).toHaveLength(0);
+        expect(scenarioDistribution.noMatchCount).toBe(1);
+        expect(scenarioDistribution.parkedCount).toBe(1);
+      });
     });
 
     test('should skip and not error when getCaseOrMovedCase returns a transferred case', async () => {

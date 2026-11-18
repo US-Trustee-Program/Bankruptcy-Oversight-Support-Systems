@@ -269,7 +269,8 @@ export type ExpectedTask = {
   count: number;
   source?: Lane;
   reason?: 'no match' | 'ambiguous';
-  acmsProfessionalId?: string;
+  /** string = must equal; null = must be absent (DXTR tasks never carry one, CAMS-873). */
+  acmsProfessionalId?: string | null;
   /** The task's courtId, which carries the case's region (see DIVISIONS). */
   court?: string;
 };
@@ -1541,9 +1542,10 @@ for (const n of PLACEHOLDER_NAMES) {
     title: 'An appointment for a case not yet in CAMS is parked',
     basis: 'feature',
     note:
-      'ACMS only: parking needs dateFiled, which only the ACMS source sets (the DXTR source is unused ' +
-      'until #3191). The heal (Task 6) attaches it once the case loads.',
-    lanes: ['ACMS'],
+      'CAMS-957 Slice 3: DXTR now sets dateFiled from AO_CS.CS_DATE_FILED, so parking works on both ' +
+      'lanes. The DXTR event carries no acmsProfessionalId (step 1 never fires), so it resolves via ' +
+      'the pipeline instead of the professional-id link. The heal (Task 6) attaches it once the case loads.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
     passes: [
@@ -1558,6 +1560,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      parked: { [c]: [{ trustee: 'T-1', assignedOn: D1, matchedBy: 'PIPELINE' }] },
+    },
   });
 }
 
@@ -1568,8 +1573,10 @@ for (const n of PLACEHOLDER_NAMES) {
     key: 'unknown-trustee-case-not-yet-synced-parked-placeholder',
     title: 'An unknown trustee on a case not yet in CAMS is parked as a placeholder',
     basis: 'feature',
-    note: 'The identity task lists the case even though the case is not in CAMS yet.',
-    lanes: ['ACMS'],
+    note:
+      'The identity task lists the case even though the case is not in CAMS yet. CAMS-957 Slice 3: ' +
+      'DXTR now sets dateFiled, so this also parks on the DXTR lane.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [] },
     passes: [
@@ -1585,6 +1592,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      tasks: [{ last: 'Tupelo', count: 1, source: 'DXTR', reason: 'no match' }],
+    },
   });
 }
 
@@ -2382,6 +2392,13 @@ export type DriverScenario = {
    * those regions assigned within the range are deleted and the bookmarks rewound.
    */
   delete?: { from?: string; to?: string };
+  /**
+   * A second driver run after the first, for the same `regions`. Expectations are checked only once,
+   * after this run. The same runDate re-reads whatever the bookmark rule held back from the first run
+   * (CAMS-957 Slice 3): proving that re-read is idempotent (no duplicate appointments or tasks). A
+   * later runDate would instead exercise bookmark advancement across two runs.
+   */
+  secondRun?: { runDate: string };
   expect: {
     /** Exact appointments per case that must have been written (content, not just presence). */
     written: Record<string, ExpectedAppointment[]>;
@@ -2784,6 +2801,135 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         stillSwitchedToDxtr: [OTHER_REGION],
       },
     },
+    (() => {
+      const farAway = (tag: 'a' | 'b', phone: string): Partial<Person> => ({
+        address1: `${tag === 'a' ? 1 : 2} Tie Ave`,
+        city: 'Faraway',
+        state: 'FA',
+        zip: '99999',
+        phone,
+        email: `${tag}@example.org`,
+      });
+      const cAcmsNoMatch = nextCase();
+      const cAcmsAmbiguous = nextCase();
+      const cDxtrNoMatch = nextCase(OTHER_DIVISION);
+      const cDxtrAmbiguous = nextCase(OTHER_DIVISION);
+      const cAcmsIgnoredDxtrRow = nextCase();
+      const cDxtrIgnoredAcmsRow = nextCase(OTHER_DIVISION);
+      const RUN_DATE = '2026-07-05';
+      const scenario: DriverScenario = {
+        key: 'driver-two-regions-twice-no-duplicates',
+        title:
+          'A DXTR region and an ACMS region run together, twice, with no-match and ambiguous outcomes on both and no duplicates',
+        basis: 'bead',
+        note:
+          `cams-0pqfs.3.2 (supersedes cams-rxb7a.1): region ${REGION} (NY, Manhattan) stays on ACMS; ` +
+          `region ${OTHER_REGION} (PA, synthetic) is switched to DXTR. Each region gets a no-match and ` +
+          `an ambiguous row, plus a cross-source row that must be ignored (an ACMS row in the DXTR ` +
+          `region, a DXTR row in the ACMS region). Both runs use the same runDate (${RUN_DATE}) so the ` +
+          `second run re-reads exactly what the bookmark rule held back from the first (the newest ` +
+          `date, never bookmarked) and proves that re-read is idempotent: the same appointments and ` +
+          `tasks exist after both runs, with no duplicates. ${BOOKMARK_RULE}`,
+        cases: [
+          cAcmsNoMatch,
+          cAcmsAmbiguous,
+          cDxtrNoMatch,
+          cDxtrAmbiguous,
+          cAcmsIgnoredDxtrRow,
+          cDxtrIgnoredAcmsRow,
+        ].map((caseId) => ({ caseId })),
+        cams: {
+          // Each pair is equally far from its source row (as in ambiguous-pipeline-task): no shared
+          // street number, city, zip, phone or email, so no contact detail can break the tie.
+          trustees: [
+            tr('T-AMB-ACMS-a', person('Larchwood', farAway('a', '5185550011'))),
+            tr('T-AMB-ACMS-b', person('Larchwood', farAway('b', '5185550012'))),
+            tr('T-AMB-DXTR-a', person('Boxwood', farAway('a', '5185550021'))),
+            tr('T-AMB-DXTR-b', person('Boxwood', farAway('b', '5185550022'))),
+          ],
+        },
+        rows: [
+          {
+            source: 'ACMS',
+            caseId: cAcmsNoMatch,
+            prof: prof(71, person('Elmcrest')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cAcmsAmbiguous,
+            prof: prof(72, person('Larchwood')),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrNoMatch,
+            prof: prof(73, person('Fircrest'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrAmbiguous,
+            prof: prof(74, person('Boxwood'), OTHER_DIVISION),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cAcmsIgnoredDxtrRow,
+            prof: prof(75, person('IgnoredInAcmsRegion')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cDxtrIgnoredAcmsRow,
+            prof: prof(76, person('IgnoredInDxtrRegion'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+        ],
+        switchedToDxtr: [OTHER_REGION],
+        runDate: RUN_DATE,
+        secondRun: { runDate: RUN_DATE },
+        regions: [REGION, OTHER_REGION],
+        expect: {
+          written: {
+            [cAcmsNoMatch]: by('PLACEHOLDER', D1),
+            [cAcmsAmbiguous]: by('PLACEHOLDER', D2),
+            [cDxtrNoMatch]: by('PLACEHOLDER', D1),
+            [cDxtrAmbiguous]: by('PLACEHOLDER', D2),
+          },
+          notWritten: [cAcmsIgnoredDxtrRow, cDxtrIgnoredAcmsRow],
+          bookmarks: { [REGION]: D1, [OTHER_REGION]: D1 },
+          tasks: [
+            { last: 'Elmcrest', count: 1, source: 'ACMS', reason: 'no match', court: COURT_ID },
+            { last: 'Larchwood', count: 1, source: 'ACMS', reason: 'ambiguous', court: COURT_ID },
+            {
+              last: 'Fircrest',
+              count: 1,
+              source: 'DXTR',
+              reason: 'no match',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+            {
+              last: 'Boxwood',
+              count: 1,
+              source: 'DXTR',
+              reason: 'ambiguous',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+          ],
+          tasksTotal: 4,
+        },
+      };
+      return scenario;
+    })(),
   ];
   return list;
 })();

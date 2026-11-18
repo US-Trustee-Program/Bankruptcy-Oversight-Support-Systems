@@ -73,9 +73,10 @@ function placedPlaceholderFrom(row: ParkedAppointment): CaseAppointmentInput {
 }
 
 /**
- * Rebuilds the event-shaped input applyResolvedTrustee takes from the stored row. Parked rows only
- * ever come from the ACMS source. Court fields are whatever the row recorded when it was written;
- * a missing one leaves the appointment uncovered (see attachParkedAppointment).
+ * Rebuilds the event-shaped input applyResolvedTrustee takes from the stored row. The heal path is
+ * source-agnostic and never reads the hard-coded source below; it exists only because
+ * TrusteeAppointmentSyncEvent requires it. Court fields are whatever the row recorded when it was
+ * written; a missing one leaves the appointment uncovered (see attachParkedAppointment).
  */
 function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
   return {
