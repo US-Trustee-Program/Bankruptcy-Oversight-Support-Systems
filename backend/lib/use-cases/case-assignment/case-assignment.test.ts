@@ -130,6 +130,7 @@ describe('Case assignment tests', () => {
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
         queueTrusteeChangeNotification: vi.fn(),
+        queueTrusteeDataReportStart: vi.fn(),
       });
     });
 

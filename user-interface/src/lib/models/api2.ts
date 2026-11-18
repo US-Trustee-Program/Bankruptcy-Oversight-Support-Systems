@@ -1,4 +1,5 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
+import { TrusteeDataReportRun, TrusteeDataReportStatus } from '@common/cams/trustee-data-report';
 import {
   CaseDetail,
   CaseDocket,
@@ -743,6 +744,14 @@ async function postCaseReload(caseId: string) {
   await api().post('/dev-tools/case-reload', { caseId });
 }
 
+async function getTrusteeDataReport() {
+  return api().get<TrusteeDataReportStatus>('/dev-tools/trustee-data-report');
+}
+
+async function postTrusteeDataReport() {
+  return api().post<TrusteeDataReportRun>('/dev-tools/trustee-data-report', {});
+}
+
 async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
@@ -865,6 +874,8 @@ export const _Api2 = {
   getSoftwareBankTrustees,
   getOversightStaff,
   postCaseReload,
+  getTrusteeDataReport,
+  postTrusteeDataReport,
   getCaseTrusteeAppointment,
   getNotificationRouting,
   updateNotificationRouting,

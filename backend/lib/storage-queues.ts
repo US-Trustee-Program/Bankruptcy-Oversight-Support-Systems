@@ -73,3 +73,9 @@ export const HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS, 'DLQ'),
   connection,
 });
+
+// The API enqueues here to start a trustee data report run (CAMS-977).
+export const TRUSTEE_DATA_REPORT_START_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_DATA_REPORT, 'start'),
+  connection,
+});

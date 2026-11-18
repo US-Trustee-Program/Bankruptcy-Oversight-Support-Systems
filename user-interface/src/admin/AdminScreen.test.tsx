@@ -31,6 +31,10 @@ vi.mock('./case-reload/CaseReload', () => ({
   CaseReload: () => <div data-testid="mocked-case-reload" />,
 }));
 
+vi.mock('./trustee-data-report/TrusteeDataReport', () => ({
+  TrusteeDataReport: () => <div data-testid="mocked-trustee-data-report" />,
+}));
+
 vi.mock('./banks/Banks', () => ({
   Banks: () => <div data-testid="mocked-banks" />,
 }));
@@ -108,6 +112,7 @@ describe('Admin screen tests', () => {
     ['case-reload', '/admin/case-reload', 'mocked-case-reload'],
     ['banks', '/admin/banks', 'mocked-banks'],
     ['notification-routing', '/admin/notification-routing', 'mocked-notification-routing'],
+    ['trustee-data-report', '/admin/trustee-data-report', 'mocked-trustee-data-report'],
   ];
 
   test.each(adminRoutes)('should select %s nav when path matches', (name, path) => {

@@ -41,6 +41,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     const queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+      queueTrusteeDataReportStart: vi.fn(),
       queueCaseAssignmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeVerificationRemap: vi.fn(),
