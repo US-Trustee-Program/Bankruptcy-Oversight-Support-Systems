@@ -184,19 +184,27 @@ Feature: Switch a region's trustee appointments to DXTR
   # SLICE 3: DXTR records go through the full identity pipeline
   # Dependencies: Slice 2
   # User Value: Unknown DXTR trustees reach data verifiers as identity tasks, the same as ACMS records
-  # Includes: a DXTR name-normalization step beside the ACMS step; the ACMS/DXTR integration harness
-  #           (see bead cams-rxb7a.1, to be reconciled in this slice's design).
+  # Includes: the ACMS/DXTR integration harness, extended in test/integration/sync-trustee-case-appointments
+  #           (supersedes bead cams-rxb7a.1). No new filtering and no DXTR-specific name normalization:
+  #           normalizeSourceName applies the same rules to both sources (Matt Stankey, 2026-11-18).
 
-  Scenario Outline: Placeholder professional codes are filtered
+  Scenario Outline: A placeholder professional code with no identity is skipped
     Given region "01" has a source record with system DXTR
-    And a DXTR transaction with professional code "<code>"
+    And a DXTR transaction with professional code "<code>" and no usable name or contact details
     When the sync runs
-    Then the transaction is filtered as a placeholder and no trustee link is attempted
+    Then no case appointment or identity task is created for that transaction
 
     Examples:
       | code  |
       | 00000 |
       | 99999 |
+
+  Scenario: A placeholder professional code on a named trustee is matched by name, never by code
+    Given region "01" has a source record with system DXTR
+    And a DXTR transaction with professional code "99999" whose trustee has a real name and contact details
+    When the sync runs
+    Then the trustee-match pipeline resolves the trustee by name and contact details
+    And the professional code is not used to link the trustee
 
   Scenario: Administrative placeholders are skipped
     Given region "01" has a source record with system DXTR
