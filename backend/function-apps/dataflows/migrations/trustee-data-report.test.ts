@@ -159,7 +159,11 @@ describe('trustee-data-report dataflow', () => {
         invocationContext,
       );
 
-      expect(failRun).toHaveBeenCalledWith(appContext, 'run-1', expect.any(String));
+      expect(failRun).toHaveBeenCalledWith(
+        appContext,
+        'run-1',
+        'CAMS was too busy and the retries ran out',
+      );
       // The retry helper's dead letter (with the original message) is kept, not overwritten.
       expect(outputs(DLQ_QUEUE_NAME)).toEqual([
         expect.objectContaining({
@@ -200,16 +204,26 @@ describe('trustee-data-report dataflow', () => {
       },
       {
         cause: 'the ATS gateway rejects a query',
-        error: new CamsError('ATS-GATEWAY', { message: 'Unknown Error' }),
+        error: new CamsError('ATS-GATEWAY', {
+          message: 'Invalid object name on tod.example.internal',
+        }),
         retryCount: undefined,
         expected: expect.stringContaining('Could not read from TOD'),
       },
       {
         // The form the SQL client actually raises, seen in the integration harness.
         cause: "TOD's SQL client rejects the login or query",
-        error: new CamsError('ABSTRACT-MSSQL-CLIENT (ATS-GATEWAY)', { message: 'Unknown Error' }),
+        error: new CamsError('ABSTRACT-MSSQL-CLIENT (ATS-GATEWAY)', {
+          message: 'Login failed for tod.example.internal',
+        }),
         retryCount: undefined,
         expected: expect.stringContaining('Could not read from TOD'),
+      },
+      {
+        cause: 'another SQL client fails',
+        error: new CamsError('ABSTRACT-MSSQL-CLIENT (DXTR-GATEWAY)', { message: 'Unknown Error' }),
+        retryCount: undefined,
+        expected: "See the dataflows app's logs for run run-1",
       },
       {
         cause: 'the run lost its lock',
