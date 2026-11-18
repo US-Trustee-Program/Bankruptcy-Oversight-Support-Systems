@@ -2557,5 +2557,36 @@ describe('region-scoped trustee appointment transactions', () => {
       );
       result.events.forEach((event) => expect(event).not.toHaveProperty('acmsProfessionalId'));
     });
+
+    test('selects AO_CS.CS_DATE_FILED so DXTR events can carry the case filing date', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
+
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain('CONVERT(VARCHAR(10), C.CS_DATE_FILED, 23) AS dateFiled');
+    });
+
+    test('maps a row with a filed date onto event.dateFiled', async () => {
+      querySpy.mockResolvedValue(queryResult([trusteeRow({ dateFiled: '2026-01-15' })]));
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result.events[0].dateFiled).toBe('2026-01-15');
+    });
+
+    test('leaves event.dateFiled undefined when CS_DATE_FILED is NULL', async () => {
+      querySpy.mockResolvedValue(queryResult([trusteeRow({ dateFiled: null })]));
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result.events[0].dateFiled).toBeUndefined();
+    });
   });
 });
