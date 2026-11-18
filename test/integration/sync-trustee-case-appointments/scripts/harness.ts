@@ -996,7 +996,9 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
         problems.push(`source ${task.source} ≠ ${t.source}`);
       if (t.reason && task.mismatchReason !== t.reason)
         problems.push(`reason "${task.mismatchReason}" ≠ "${t.reason}"`);
-      if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
+      if (t.acmsProfessionalId === null && task.acmsProfessionalId !== undefined)
+        problems.push(`acmsProfessionalId ${task.acmsProfessionalId} should be absent`);
+      else if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
         problems.push(`acmsProfessionalId ${task.acmsProfessionalId} ≠ ${t.acmsProfessionalId}`);
       if (t.court && task.courtId !== t.court)
         problems.push(`courtId ${task.courtId} ≠ ${t.court}`);
@@ -1291,6 +1293,14 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         `the driver runs on ${s.runDate} for region(s) ${s.regions.join(', ')}`,
       );
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
+
+      if (s.secondRun) {
+        r.step(
+          'And',
+          `the driver runs again on ${s.secondRun.runDate} for region(s) ${s.regions.join(', ')}`,
+        );
+        await runRegionDriver(context, { regions: s.regions, runDate: s.secondRun.runDate });
+      }
 
       for (const [caseId, expected] of Object.entries(s.expect.written)) {
         r.step(
