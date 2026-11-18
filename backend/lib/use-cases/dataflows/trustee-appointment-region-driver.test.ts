@@ -513,8 +513,8 @@ describe('RegionDriver.runRegionDriver', () => {
     expect(mockRegionStateRepo.setField).not.toHaveBeenCalled();
   });
 
-  // cams-fd8qd.33: a bookmarked date is never re-read, so its results must reach their queues
-  // before the bookmark moves past it -- not only at the end of the invocation.
+  // A bookmarked date is never re-read, so its results must reach their queues before the
+  // bookmark moves past it -- not only at the end of the invocation.
   test("hands each finished date's results to onDateComplete before advancing its bookmark", async () => {
     getLatestCmmapChangeDateForRegion.mockResolvedValue('2026-07-03');
     getCmmapAppointmentsRaw.mockImplementation(
@@ -967,6 +967,60 @@ describe('RegionDriver.runRegionDriver', () => {
         'region.01.lastSyncDate',
         CUTOVER_DATE,
       );
+    });
+
+    test('logs which source each region is read from', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(stateWith({ '01': { source: DXTR_SOURCE } }));
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      await RegionDriver.runRegionDriver(context, { regions: ['01', '02'], runDate: '2026-09-20' });
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        RegionDriver.MODULE_NAME,
+        'Reading region from source',
+        expect.objectContaining({ regionId: '01', source: 'DXTR' }),
+      );
+      expect(infoSpy).toHaveBeenCalledWith(
+        RegionDriver.MODULE_NAME,
+        'Reading region from source',
+        expect.objectContaining({ regionId: '02', source: 'ACMS' }),
+      );
+    });
+
+    test('warns when a continuation carries a cursor from a different source than the region reads now', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await RegionDriver.runRegionDriver(context, {
+        regions: ['01'],
+        runDate: '2026-09-20',
+        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '987654', source: 'ACMS' },
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        RegionDriver.MODULE_NAME,
+        'Continuation cursor came from a different source; restarting the date',
+        expect.objectContaining({ regionId: '01', source: 'DXTR', resumeSource: 'ACMS' }),
+      );
+    });
+
+    test('does not warn when the continuation cursor came from the same source', async () => {
+      mockRegionStateRepo.read.mockResolvedValue(
+        stateWith({ '01': { lastSyncDate: '2026-09-14', source: DXTR_SOURCE } }),
+      );
+      getLatestTrusteeAppointmentTxDateForRegion.mockResolvedValue('2026-09-16');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await RegionDriver.runRegionDriver(context, {
+        regions: ['01'],
+        runDate: '2026-09-20',
+        resumeFrom: { regionId: '01', date: '2026-09-15', lastId: '5001', source: 'DXTR' },
+      });
+
+      expect(warnSpy).not.toHaveBeenCalled();
     });
 
     // A region can be switched while a continuation is queued. An ACMS lastId (a CMMAP id) means

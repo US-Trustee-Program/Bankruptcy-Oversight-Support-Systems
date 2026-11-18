@@ -45,8 +45,8 @@ async function getRegionNamesById(context: ApplicationContext): Promise<Map<stri
 
 /**
  * Every region from CAMS office data, paired with its appointment source from runtime-state
- * (region.<id>.source) -- absent means the region is still on ACMS, the default until CAMS-957's
- * SuperUser switch sets it to DXTR. For the Case Appointments admin page (CAMS-955 Slice 4).
+ * (region.<id>.source) -- absent means the region is still on ACMS, the default until a SuperUser
+ * switches it to DXTR. For the Case Appointments admin page.
  */
 export async function getCaseAppointmentSources(
   context: ApplicationContext,
@@ -68,9 +68,9 @@ export async function getCaseAppointmentSources(
 }
 
 /**
- * A CAMS SuperUser's one-way switch of a region's trustee-appointment source to DXTR (CAMS-957
- * Slice 1). A region already on DXTR is a no-op -- its stored source record, the audit trail of
- * the original switch, is never overwritten. This only stores the switch; the region driver
+ * A CAMS SuperUser's one-way switch of a region's trustee-appointment source to DXTR. A region
+ * already on DXTR is a no-op -- its stored source record, the audit trail of the original switch,
+ * is never overwritten. This only stores the switch; the region driver
  * (trustee-appointment-region-driver.ts) reads region.<id>.source to pick the source.
  */
 export async function switchCaseAppointmentSourceToDxtr(

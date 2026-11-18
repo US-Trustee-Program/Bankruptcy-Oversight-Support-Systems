@@ -4,7 +4,6 @@ import {
   TransactionIdRangeForDate,
   TrusteeAppointmentEventsPage,
   TrusteeAppointmentEventsPageRequest,
-  TrusteeAppointmentsResult,
   UpdatedCaseIds,
 } from '../../../use-cases/cases/cases.interface';
 import { TrusteeAppointmentSyncEvent, DxtrTrusteeParty } from '@common/cams/dataflow-events';
@@ -27,21 +26,6 @@ import { Trustee } from '@common/cams/trustees';
 import { toRegionId } from '../../../use-cases/gateways.types';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
-
-const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
-
-const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
-  const raw = process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS;
-  if (!raw) return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    console.warn(
-      `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS="${raw}", using default ${DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS}ms (10 min)`,
-    );
-    return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
-  }
-  return parsed;
-})();
 
 // The region-scoped trustee appointment reads (one region, one day per page) are bounded to match
 // the ACMS request timeout, because the trustee appointment region driver only starts a page when
@@ -104,7 +88,6 @@ const TRUSTEE_APPOINTMENT_EVENT_COLUMNS = `
         P.PY_E_MAIL AS email,
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
-        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
         CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
         CONVERT(VARCHAR(10), C.CS_DATE_FILED, 23) AS dateFiled`;
 
@@ -153,7 +136,6 @@ type TrusteeAppointmentEventRecord = {
   email?: string;
   phone?: string;
   fax?: string;
-  latestSyncDate: string;
   aptDate?: string;
   txDate: string;
   profCode?: string;
@@ -1314,99 +1296,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   }
 
   /**
-   * Get trustee appointments with party data from DXTR.
-   * Queries for trustee appointment transactions (TX_TYPE='A', TX_CODE='TR')
-   * and joins with party table to get trustee contact information.
-   *
-   * @param context Application context
-   * @param transactionsStart Start date for transaction query
-   * @returns TrusteeAppointmentSyncEvent[] and latest sync date
-   */
-  async getTrusteeAppointments(
-    context: ApplicationContext,
-    transactionsStart: string,
-  ): Promise<TrusteeAppointmentsResult> {
-    const params: DbTableFieldSpec[] = [
-      {
-        name: 'transactionsStart',
-        type: mssql.DateTime,
-        value: transactionsStart,
-      },
-    ];
-
-    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = 'A'", "TX.TX_CODE IN ('TR')");
-
-    const queryResult: QueryResults = await this.executeQuery(
-      context,
-      query,
-      params,
-      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
-    );
-
-    const records = handleQueryResult<TrusteeAppointmentEventRecord[]>(
-      context,
-      queryResult,
-      MODULE_NAME,
-      this.trusteeAppointmentsQueryCallback,
-    );
-
-    return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
-  }
-
-  /**
-   * Retrieves trustee-party data from DXTR case-open petition transactions (TX_TYPE='1'/
-   * TX_CODE='1') and runs it through the same result shape as getTrusteeAppointments, so
-   * petition-time trustee data can flow through the same matching pipeline.
-   *
-   * @param context Application context
-   * @param transactionsStart Start date for transaction query
-   * @returns TrusteeAppointmentSyncEvent[] and latest sync date
-   */
-  async getTrusteePetitionEvents(
-    context: ApplicationContext,
-    transactionsStart: string,
-  ): Promise<TrusteeAppointmentsResult> {
-    const params: DbTableFieldSpec[] = [
-      {
-        name: 'transactionsStart',
-        type: mssql.DateTime,
-        value: transactionsStart,
-      },
-    ];
-
-    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = '1'", "TX.TX_CODE IN ('1')");
-
-    const queryResult: QueryResults = await this.executeQuery(
-      context,
-      query,
-      params,
-      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
-    );
-
-    const records = handleQueryResult<TrusteeAppointmentEventRecord[]>(
-      context,
-      queryResult,
-      MODULE_NAME,
-      this.trusteeAppointmentsQueryCallback,
-    );
-
-    return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
-  }
-
-  private trusteeAppointmentEventsQuery(txTypeCondition: string, txCodeCondition: string): string {
-    return `
-      SELECT
-        ${TRUSTEE_APPOINTMENT_EVENT_COLUMNS},
-        ${TRUSTEE_APPOINTMENT_REC_COLUMNS}
-      ${TRUSTEE_APPOINTMENT_EVENT_JOINS}
-      WHERE ${txTypeCondition}
-        AND ${txCodeCondition}
-        AND TX.TX_DATE > @transactionsStart
-      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
-    `;
-  }
-
-  /**
    * Newest TX_DATE (YYYY-MM-DD) among a region's trustee appointment and petition transactions, or
    * undefined when the region has none. Uses the same rows as getTrusteeAppointmentEventsForRegionDate.
    */
@@ -1488,25 +1377,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     // Rows are ordered by TX_ID, so the last row carries the page's greatest id.
     const lastTxId = records[records.length - 1].txId;
     return { events: records.map((record) => this.toTrusteeAppointmentEvent(record)), lastTxId };
-  }
-
-  private mapTrusteeAppointmentEventRecords(
-    records: TrusteeAppointmentEventRecord[],
-    transactionsStart: string,
-  ): TrusteeAppointmentsResult {
-    if (!records || records.length === 0) {
-      return {
-        events: [],
-        latestSyncDate: transactionsStart,
-      };
-    }
-
-    const events = records.map((record) => this.toTrusteeAppointmentEvent(record));
-
-    return {
-      events,
-      latestSyncDate: records[0].latestSyncDate,
-    };
   }
 
   private toTrusteeAppointmentEvent(
@@ -1612,7 +1482,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   // REC's embedded date can be blank/'000000'/malformed; TX.TX_DATE is a
   // datetime2 NOT NULL column on the same 'Trustee Appointed' transaction row and can never be
   // missing, so it's used whenever REC's date fails to parse (same fallback as
-  // mapTrusteeAppointmentEventRecords above).
+  // toTrusteeAppointmentEvent above).
   private getMostRecentAppointmentDates(
     records: { caseId: string; aptDate?: string; txDate: string }[],
   ): Map<string, string> {

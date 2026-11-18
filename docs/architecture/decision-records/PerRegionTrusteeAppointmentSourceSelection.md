@@ -29,12 +29,15 @@ recorded on DXTR, no operation moves it back to ACMS, so a region's read path ca
 reinterpreted after the fact. Moving a region that is already on DXTR a second time is a no-op — it
 does not overwrite who made the original switch or when.
 
-A backtest against synthetic DXTR fixtures must pass before the first region moves. After a region
-moves, a gap report is intended to compare DXTR's own transaction history for that region against
-what CAMS wrote at and immediately after the switch, so a transaction DXTR already held before the
-switch, but that CAMS never wrote, is detectable rather than silently lost. The gap report is a
-planned follow-up and is deliberately not built yet; until it exists, the backtest is the only
-pre-switch check.
+A backtest against synthetic DXTR fixtures must pass before the first region moves. That gate is
+procedural: the backtest runs only against local databases, and nothing in the switch endpoint or
+the admin page checks that it ran or passed, so the people switching a region must confirm it first.
+Because its fixtures are synthetic, a pass shows the pipeline handles the cases those fixtures
+describe, not that a region's real DXTR data is clean. After a region moves, a gap report is
+intended to compare DXTR's own transaction history for that region against what CAMS wrote at and
+immediately after the switch, so a transaction DXTR already held before the switch, but that CAMS
+never wrote, is detectable rather than silently lost. The gap report is a planned follow-up and is
+deliberately not built yet; until it exists, the backtest is the only pre-switch check.
 
 ## Status
 

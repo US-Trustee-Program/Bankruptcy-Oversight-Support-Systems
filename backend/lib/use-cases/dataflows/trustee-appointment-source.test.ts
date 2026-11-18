@@ -76,10 +76,6 @@ describe('AcmsTrusteeAppointmentSource', () => {
     context = await createMockApplicationContext();
   });
 
-  test('has source name ACMS', () => {
-    expect(new AcmsTrusteeAppointmentSource().name).toBe('ACMS');
-  });
-
   describe('getLatestChangeDate', () => {
     test('delegates to the ACMS gateway for the given region', async () => {
       const getLatestCmmapChangeDateForRegion = vi.fn().mockResolvedValue('2026-07-01');
@@ -242,10 +238,6 @@ describe('DxtrTrusteeAppointmentSource', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-  });
-
-  test('has source name DXTR', () => {
-    expect(new DxtrTrusteeAppointmentSource().name).toBe('DXTR');
   });
 
   test("getLatestChangeDate returns the region's newest DXTR transaction date", async () => {

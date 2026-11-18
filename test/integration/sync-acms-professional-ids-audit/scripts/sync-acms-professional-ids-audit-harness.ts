@@ -11,8 +11,8 @@
  * instead of a real trustee. This harness scores each record's `evidence.sourceRaw` (already a
  * CanonicalTrusteeSource/DxtrTrusteeParty — no decoding needed) against CAMS trustees using the
  * scoring functions from trustee-match.helpers.ts (calculateNameScore, calculateAddressScore,
- * calculatePhoneScore, calculateEmailScore). The production pipeline no longer calls them; they
- * are kept for audit harnesses like this one. Two passes:
+ * calculatePhoneScore, calculateEmailScore). The production pipeline does not call them; they
+ * are exported for audit harnesses like this one. Two passes:
  *
  *   1. Linked records (disposition === 'linked'): score sourceRaw against the trustee it was
  *      actually linked to, to surface a past auto-link that looks like a poor match (false

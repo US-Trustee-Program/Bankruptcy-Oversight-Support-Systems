@@ -9,11 +9,6 @@ export type UpdatedCaseIds = {
   latestTransactionsSyncDate: string;
 };
 
-export type TrusteeAppointmentsResult = {
-  events: TrusteeAppointmentSyncEvent[];
-  latestSyncDate: string;
-};
-
 /** One region's trustee appointment transactions for one TX_DATE day, after afterTxId. */
 export type TrusteeAppointmentEventsPageRequest = {
   regionId: string;
@@ -66,16 +61,6 @@ export interface CasesInterface {
   ): Promise<TransactionIdRangeForDate>;
 
   findMaxTransactionId(context: ApplicationContext): Promise<string>;
-
-  getTrusteeAppointments(
-    context: ApplicationContext,
-    transactionsStart: string,
-  ): Promise<TrusteeAppointmentsResult>;
-
-  getTrusteePetitionEvents(
-    context: ApplicationContext,
-    transactionsStart: string,
-  ): Promise<TrusteeAppointmentsResult>;
 
   getLatestTrusteeAppointmentTxDateForRegion(
     context: ApplicationContext,

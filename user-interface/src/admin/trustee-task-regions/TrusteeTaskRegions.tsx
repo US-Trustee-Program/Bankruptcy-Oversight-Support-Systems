@@ -27,7 +27,7 @@ export function TrusteeTaskRegions() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [sources, setSources] = useState<RegionCaseAppointmentSource[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [pendingRegionId, setPendingRegionId] = useState<string | null>(null);
+  const [pendingRegionIds, setPendingRegionIds] = useState<string[]>([]);
   const [focusRegionId, setFocusRegionId] = useState<string | null>(null);
   const confirmModalRef = useRef<ChangeToDxtrConfirmModalRef>(null);
   const alert = useGlobalAlert();
@@ -59,7 +59,7 @@ export function TrusteeTaskRegions() {
   }
 
   async function handleConfirm(regionId: string) {
-    setPendingRegionId(regionId);
+    setPendingRegionIds((previous) => [...previous, regionId]);
     try {
       const response = await Api2.patchCaseAppointmentSource(regionId);
       if (!response?.data) {
@@ -73,7 +73,7 @@ export function TrusteeTaskRegions() {
     } catch {
       alert?.error('Unable to change to DXTR. Please try again.');
     } finally {
-      setPendingRegionId(null);
+      setPendingRegionIds((previous) => previous.filter((id) => id !== regionId));
       setFocusRegionId(regionId);
     }
   }
@@ -110,13 +110,16 @@ export function TrusteeTaskRegions() {
                         data-testid={`using-dxtr-${source.regionId}`}
                         tabIndex={-1}
                       >
-                        Using DXTR
+                        Using DXTR{' '}
+                        <span className="usa-sr-only">
+                          for Region {formatRegionId(source.regionId)}
+                        </span>
                       </span>
                     ) : (
                       <Button
                         id={`change-to-dxtr-${source.regionId}`}
                         uswdsStyle={UswdsButtonStyle.Default}
-                        disabled={pendingRegionId === source.regionId}
+                        disabled={pendingRegionIds.includes(source.regionId)}
                         onClick={() => openConfirmModal(source.regionId)}
                       >
                         Change to DXTR{' '}

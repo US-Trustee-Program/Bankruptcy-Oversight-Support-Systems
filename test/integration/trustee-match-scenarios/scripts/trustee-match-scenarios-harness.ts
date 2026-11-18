@@ -24,9 +24,9 @@
  *   9.  case-not-yet-synced          - resolves fine, but no SYNCED_CASE doc exists yet
  *   10. case-moved                   - resolves fine, but the case was moved (skipped)
  *   11. re-verification              - a second sync of an already-resolved case
- *   12. fingerprint-repeat (Slice 5)  - byte-identical repeat of #2's trustee auto-links via the
+ *   12. fingerprint-repeat           - byte-identical repeat of #2's trustee auto-links via the
  *                                       TRUSTEE_VARIATION bucket, bypassing matchTrusteeByName
- *   13. fingerprint-no-false-collapse (Slice 5) - a genuinely different person sharing #2's
+ *   13. fingerprint-no-false-collapse - a genuinely different person sharing #2's
  *                                       ambiguous name does NOT false-collapse to #2's trustee
  *
  * Scenarios 12-13 exercise the fingerprint/variant memoization mechanism
@@ -67,7 +67,7 @@
  *     replaceOneInTrusteePartition — proof against a real trustee partition collection, which a
  *     mocked repository's recorded call args cannot provide.
  *
- *   Stage 8 (bad REC date fallback) - proves CasesDxtrGateway.getTrusteeAppointments falls back
+ *   Stage 8 (bad REC date fallback) - proves CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate falls back
  *     to TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable,
  *     against a real SQL Server row rather than a mocked query result.
  *
@@ -269,7 +269,7 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
 // scenario 14, CS_CASEID 999999413) — it exists specifically to prove the real SQL fallback,
 // which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 12-scenario
 // matching pipeline (no Cosmos synced-case fixture, no trustee, never passed to
-// processAppointments) since it's read directly via casesGateway.getTrusteeAppointments.
+// processAppointments) since it's read directly via casesGateway.getTrusteeAppointmentEventsForRegionDate.
 const BAD_REC_DATE_CASE_ID = '083-26-88913';
 const BAD_REC_DATE_TX_DATE = '2026-01-14';
 
@@ -632,7 +632,7 @@ async function seedCosmos() {
         email: 'perfect.pid@example.com',
       },
       {
-        // Slice 5 (scenarios 12/13): shares perfectPid's exact name so matchTrusteeByName
+        // Scenarios 12/13: shares perfectPid's exact name so matchTrusteeByName
         // alone would be ambiguous between them. Demographics match scenario 13's DXTR data,
         // not scenario 2/12's, so the matching pipeline should resolve scenario
         // 13 here (not to perfectPid) once the fingerprint bucket misses.
@@ -807,7 +807,7 @@ async function seedCosmos() {
         chapter: CHAPTER,
         status: 'active',
       },
-      // Slice 5 (scenarios 12/13): same court/div/chapter as perfectPid, so scenario 13's
+      // Scenarios 12/13: same court/div/chapter as perfectPid, so scenario 13's
       // appointment coverage ties between the two candidates, isolating the
       // winner to address/name/phone/email — where the decoy's data (matching scenario 13)
       // clearly wins.
@@ -1049,7 +1049,7 @@ type StoredIdentityTask = {
 
 /**
  * Confirms a resolved candidate's stored scores carry what the identity-task UI reads directly
- * (CAMS-953 Slice 3's explanation sentence and comparison table): a graded name score always, and
+ * (its explanation sentence and comparison table): a graded name score always, and
  * - when both the source and the candidate have a state - a doesStateMatch record. Proves real
  * sync output carries what the UI depends on, rather than only what hand-written seeds carried.
  */
@@ -1121,20 +1121,22 @@ async function runScenarios() {
   console.log('');
 
   // ── Stage 1: Read path ────────────────────────────────────────────────────
-  console.log('Stage 1: SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents()');
+  console.log('Stage 1: CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate()');
 
   const context = await getAppContext();
   const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
 
-  const { events } = await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
-    deps,
-    undefined,
-    true,
-  );
+  // Every fixture sits in region 02 on a TX_DATE from 2026-01-01 through 2026-01-18
+  // (seed/01-seed-dxtr-data.sql), read newest date first.
+  const events = [];
+  for (let day = 18; day >= 1; day--) {
+    const txDate = `2026-01-${String(day).padStart(2, '0')}`;
+    events.push(...(await readRegionDateEvents(deps, '02', txDate)));
+  }
   const testEvents = events.filter((e) => (ALL_CASE_IDS as string[]).includes(e.caseId));
 
   if (testEvents.length === ALL_CASE_IDS.length) {
-    pass(`getAppointmentEvents returned ${testEvents.length} events`);
+    pass(`region read returned ${testEvents.length} events`);
   } else {
     fail(`expected ${ALL_CASE_IDS.length} events, got ${testEvents.length}`);
     return;
@@ -1145,12 +1147,12 @@ async function runScenarios() {
   // ── Stage 2: Match + write path (first pass) ──────────────────────────────
   console.log('\nStage 2: SyncTrusteeCaseAppointmentsUseCase.processAppointments() — first pass\n');
 
-  // Reserve the re-verification case (Stage 4) and the Slice 5 fingerprint cases (Stage 3.5)
+  // Reserve the re-verification case (Stage 4) and the fingerprint cases (Stage 3.5)
   // for their own later passes, so their outcomes don't affect scenarioDistribution
   // assertions below. Scenarios 12/13 specifically MUST run after this pass completes:
   // scenario 2's TRUSTEE_VARIATION is only written once scenario 2 itself resolves, and
   // running 12/13 in a separate later call (rather than relying on same-batch ordering)
-  // sidesteps the DXTR query's TX_DATE DESC ordering entirely.
+  // sidesteps any dependence on the order events arrive in.
   const deferredCaseIds: string[] = [
     CASES.reVerification.caseId,
     CASES.fingerprintRepeat.caseId,
@@ -1183,9 +1185,8 @@ async function runScenarios() {
     }
   }
 
-  // CAMS-955 Slice 3: a case not yet in CAMS is parked (CASE_APPOINTMENT_UNATTACHED) instead of
-  // requeued. Parking needs dateFiled, which these DXTR-shaped events do not carry, so this event is
-  // dead-lettered (the DXTR source is unused until GitHub #3191).
+  // A case not yet in CAMS is parked (CASE_APPOINTMENT_UNATTACHED) instead of requeued. Parking
+  // needs dateFiled, which these hand-built events do not carry, so this event is dead-lettered.
   const notYetSyncedCaseInDlq = result.dlqMessages.some(
     (m) => 'caseId' in m && m.caseId === CASES.caseNotYetSynced.caseId,
   );
@@ -1248,7 +1249,7 @@ async function runScenarios() {
 
     // 4. inactive appointment: the identity resolves, so the appointment is written; its only
     // appointment for this court/division/chapter is voluntarily-suspended, so it does not cover
-    // the case. Appointment coverage is an appointment concern (CAMS-956), not an identity task.
+    // the case. Appointment coverage is an appointment concern, not an identity task.
     assertResolvedAppointment(
       '4. inactive-appointment',
       await appointmentFor(CASES.perfectMatchInactiveStatus.caseId),
@@ -1301,8 +1302,8 @@ async function runScenarios() {
       TRUSTEES.weakSurnameTokenOnly.id,
     ]);
 
-    // 9. case-not-yet-synced: no verification, no appointment (already asserted via
-    //    notYetSyncedEvents above).
+    // 9. case-not-yet-synced: no verification, no appointment (the parked row is asserted
+    //    above).
     const verification9 = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.caseNotYetSynced.caseId });
@@ -1334,14 +1335,14 @@ async function runScenarios() {
 
   if (hasFailures) {
     console.log(
-      '\nSkipping Slice 5 fingerprint pass and re-verification pass (earlier assertions failed).',
+      '\nSkipping fingerprint pass and re-verification pass (earlier assertions failed).',
     );
     console.log('\n' + JSON.stringify(result, null, 2));
     return;
   }
 
-  // ── Stage 3.5: Slice 5 fingerprint pass ───────────────────────────────────
-  console.log('\nStage 3.5: Slice 5 fingerprint memoization — scenarios 12/13\n');
+  // ── Stage 3.5: fingerprint pass ───────────────────────────────────
+  console.log('\nStage 3.5: fingerprint memoization — scenarios 12/13\n');
   console.log(
     '  12. fingerprint-repeat: byte-identical repeat of scenario 2 -> fingerprint hit -> auto-link to perfectPid',
   );
@@ -1987,8 +1988,36 @@ async function runDivergenceRepairStage(
 // ---------------------------------------------------------------------------
 
 /**
- * Proves CasesDxtrGateway.getTrusteeAppointments (cases.dxtr.gateway.ts) falls back to
- * TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
+ * Reads every trustee appointment event DXTR holds for one region and TX_DATE day, paging the way
+ * the region driver does. Stages 8 and 9 read this way because the seeded fixtures all sit in
+ * region 02 on known dates.
+ */
+async function readRegionDateEvents(
+  deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
+  regionId: string,
+  txDate: string,
+) {
+  const casesGateway = factory.getCasesGateway(deps.context);
+  const events: Awaited<
+    ReturnType<typeof casesGateway.getTrusteeAppointmentEventsForRegionDate>
+  >['events'] = [];
+  let afterTxId = '0';
+  for (;;) {
+    const page = await casesGateway.getTrusteeAppointmentEventsForRegionDate(deps.context, {
+      regionId,
+      txDate,
+      afterTxId,
+      limit: 2500,
+    });
+    if (page.lastTxId === undefined) return events;
+    events.push(...page.events);
+    afterTxId = page.lastTxId;
+  }
+}
+
+/**
+ * Proves CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate (cases.dxtr.gateway.ts) falls
+ * back to TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
  * real SQL Server AO_TX row rather than a mocked query result. A mocked-gateway
  * unit test can assert the TypeScript fallback logic runs, but only a real database round trip
  * proves the SQL actually compiles and returns the expected value shape — this is exactly how
@@ -2002,10 +2031,7 @@ async function runBadRecDateFallbackStage(
 ) {
   console.log('\nStage 8: bad REC date falls back to TX_DATE — real DXTR round trip, no mocks\n');
 
-  const { events } = await deps.casesGateway.getTrusteeAppointments(
-    deps.context,
-    '2026-01-01T00:00:00.000Z',
-  );
+  const events = await readRegionDateEvents(deps, '02', BAD_REC_DATE_TX_DATE);
   const event = events.find((e) => e.caseId === BAD_REC_DATE_CASE_ID);
 
   if (!event) {
@@ -2093,14 +2119,15 @@ async function runSentinelProfCodeStage(
     NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
   ];
 
-  const { events } = await deps.casesGateway.getTrusteeAppointments(
-    deps.context,
-    '2026-01-01T00:00:00.000Z',
-  );
+  // Fixtures 15a-15d carry TX_DATEs 2026-01-15 through 2026-01-18 (seed/01-seed-dxtr-data.sql).
+  const events = [];
+  for (const txDate of ['2026-01-15', '2026-01-16', '2026-01-17', '2026-01-18']) {
+    events.push(...(await readRegionDateEvents(deps, '02', txDate)));
+  }
   const stageEvents = events.filter((e) => stageCaseIds.includes(e.caseId));
 
   if (stageEvents.length === stageCaseIds.length) {
-    pass(`9. getTrusteeAppointments returned all ${stageCaseIds.length} Stage 9 events`);
+    pass(`9. region read returned all ${stageCaseIds.length} Stage 9 events`);
   } else {
     fail(`9. expected ${stageCaseIds.length} Stage 9 events, got ${stageEvents.length}`);
     return;
@@ -2193,7 +2220,7 @@ async function runSentinelProfCodeStage(
 // ---------------------------------------------------------------------------
 
 /**
- * Proves approveVerification's professional-id link (CAMS-953 Slice 6) against real Mongo:
+ * Proves approveVerification's professional-id link against real Mongo:
  * mocked unit tests can only show which repository calls were made, not that the stale link and
  * the fingerprint-keyed rows are actually gone afterward while an unrelated link on the same
  * stale trustee survives. Seeds directly (no DXTR sync pass): a surrogate on scenario 3's case

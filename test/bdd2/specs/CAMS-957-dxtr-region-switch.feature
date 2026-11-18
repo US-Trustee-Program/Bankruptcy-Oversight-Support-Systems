@@ -262,6 +262,8 @@ Feature: Switch a region's trustee appointments to DXTR
     And switching region "01" back to ACMS is rejected
 
   # SLICE 5: Gap report and runbook
+  # Status: not built. Nothing implements the scenarios in this slice; the per-region source ADR
+  # records the gap report as a planned follow-up.
   # Dependencies: Slice 2 (a region must have had its first DXTR run)
   # User Value: The SuperUser and dev team can prove no DXTR appointment was lost at the switch point
 

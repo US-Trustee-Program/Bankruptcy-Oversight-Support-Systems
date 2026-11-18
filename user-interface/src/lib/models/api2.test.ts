@@ -441,7 +441,7 @@ describe('_Api2 functions', async () => {
     );
   });
 
-  test('getUpcomingKeyDates strips an explicit null on a generic field (cams-2upxm)', async () => {
+  test('getUpcomingKeyDates strips an explicit null on a generic field', async () => {
     vi.spyOn(api.default, 'get').mockResolvedValue({
       data: { id: 'doc-id', tirCompletionYear: 2024, tirCompletionStatus: null },
     });

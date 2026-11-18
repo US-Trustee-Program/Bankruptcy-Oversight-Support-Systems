@@ -115,14 +115,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         source: 'DXTR',
         courtDivisionCode: '081',
         chapter: '7',
-        // appointedDate must be present: applyResolvedTrustee now throws rather than falling
-        // back to wall-clock time when it's missing, since wall-clock would break upsert()'s
-        // natural-key idempotency across retries.
+        // appointedDate must be present: applyResolvedTrustee throws rather than falling back to
+        // wall-clock time when it's missing, since wall-clock would break upsert()'s natural-key
+        // idempotency across retries.
         appointedDate: '2024-01-15',
-        // firstName/lastName are derived from fullName (rather than left undefined like the
-        // real fullName-only shape used to be) so each distinct fullName in this test file
+        // firstName/lastName are derived from fullName so each distinct fullName in this test file
         // produces a distinct trustee-variant fingerprint — otherwise every event sharing the
-        // all-undefined structured-name fields would collide on the Slice 5 memoization bucket.
+        // all-undefined structured-name fields would collide on the same memoization bucket.
         sourceTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
       };
     };
@@ -243,7 +242,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    describe('appointment task (CAMS-956)', () => {
+    describe('appointment task', () => {
       const expectedKey = {
         trusteeId: 'trustee-123',
         courtId: '081',
@@ -555,10 +554,9 @@ describe('SyncTrusteeCaseAppointments', () => {
     test('produces the same assignedOn (and thus one natural-key row, not two) when the same event is reprocessed', async () => {
       // Regression test for the double-insert bug: upsert()'s natural key is
       // documentType + caseId + trusteeId + assignedOn. If assignedOn were derived from
-      // wall-clock time (the old behavior), reprocessing the identical event would produce a
-      // different assignedOn on each call, so the real repository's replaceOne(..., upsert:
-      // true) would INSERT a second row instead of replacing the first — leaving two active
-      // appointments. Deriving assignedOn from the event's own stable appointedDate means the
+      // wall-clock time, reprocessing the identical event would produce a different assignedOn
+      // on each call, so the real repository's replaceOne(..., upsert: true) would INSERT a
+      // second row instead of replacing the first — leaving two active appointments. Deriving assignedOn from the event's own stable appointedDate means the
       // natural key — and therefore the upsert target — is identical across reprocessing.
       const event: TrusteeAppointmentSyncEvent = {
         ...makeEvent('case-001', 'John Doe'),
@@ -725,7 +723,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     test('repairs a stranded old-trustee trusteePartition row left behind by a failed reassignment retry', async () => {
       // Mirror-direction divergence to the "repairs trusteePartition" test above: a prior
       // reassignment attempt soft-closed the OLD trustee's casePartition row (so
-      // getActiveByCaseId now returns null — nothing active in casePartition for this case) but
+      // getActiveByCaseId returns null — nothing active in casePartition for this case) but
       // failed transiently on that same old trustee's trusteePartition write, leaving a stranded
       // active row behind. Without this repair, that row would remain permanently active with no
       // telemetry, and the old trustee's case list would incorrectly keep showing this case.
@@ -2115,8 +2113,8 @@ describe('SyncTrusteeCaseAppointments', () => {
 
     describe('professional-id identification step', () => {
       test("a DXTR event's group designator and professional code never resolve a trustee by professional-id link", async () => {
-        // DXTR can carry an incorrect ACMS professional code (CAMS-873, CAMS-882), so DXTR events
-        // carry no acmsProfessionalId. The raw groupDesignator/profCode below are the trap: they
+        // DXTR can carry an incorrect ACMS professional code, so DXTR events carry no
+        // acmsProfessionalId. The raw groupDesignator/profCode below are the trap: they
         // form exactly the key ('NY-00063') the mocked link answers to, so any future change that
         // builds a professional id from them for matching would land this appointment on
         // 'trustee-linked' and fail. The DXTR gateway test is the other half: it asserts DXTR
@@ -2807,10 +2805,9 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should no-op (not an identity task, not DLQ) when the pipeline itself skips as an administrative placeholder', async () => {
-      // A new edge case that didn't exist under the old numeric-scoring resolver: this file's own
-      // DXTR-specific skip checks (resolvePreMatchShortCircuit/handleBogusTrusteeCloseOnly) have
-      // already passed by the time the pipeline runs, but the pipeline's own
-      // skipAdministrativePlaceholder stage can still fire (e.g. "U.S. Trustee").
+      // This file's own DXTR-specific skip checks (resolvePreMatchShortCircuit/
+      // handleBogusTrusteeCloseOnly) have already passed by the time the pipeline runs, but the
+      // pipeline's own skipAdministrativePlaceholder stage can still fire (e.g. "U.S. Trustee").
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeSkippedState());
@@ -2932,9 +2929,9 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should omit acmsProfessionalId from the persisted verification doc for a DXTR event', async () => {
-      // CAMS-873: DXTR's copy of the ACMS professional code can be wrong. Approving the identity
-      // task writes acmsProfessionalId as a verified link, so a DXTR event must not supply one even
-      // when its groupDesignator and profCode are both present.
+      // DXTR's copy of the ACMS professional code can be wrong. Approving the identity task writes
+      // acmsProfessionalId as a verified link, so a DXTR event must not supply one even when its
+      // groupDesignator and profCode are both present.
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeUnresolvedState(0));
@@ -3053,9 +3050,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeResolvedState('t-1', 'resolveByAddress'));
       // The winner only has an active appointment in the same court on a DIFFERENT division
-      // ('082', not the event's '081') — decision 1a (2026-10-27) removed the old coverage gate
-      // that used to route this to a human-review IMPERFECT_MATCH task; the appointment is still
-      // written, with checks.matchedTrusteeAppointment recording the miss for #3190.
+      // ('082', not the event's '081'). There is no coverage gate (decision 1a, 2026-10-27), so
+      // the appointment is still written, with checks.matchedTrusteeAppointment recording the miss.
       (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([
         { ...coveringAppointment(), trusteeId: 't-1', divisionCodes: ['082'] },
       ]);
@@ -3124,7 +3120,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         // Drives execution through processAppointments' single outer catch (originalError) block
         // in sync-trustee-case-appointments.ts — resolveTrusteeViaPipeline never catches
         // runTrusteeMatchPipeline's own rejection itself, so this is the only way to exercise the
-        // control-flow this file relies on (see isTransientInfraError's doc comment / cams-o5gh):
+        // control-flow this file relies on (see isTransientInfraError's doc comment):
         // a rethrow from the pipeline call alone would not prove the outer file routes it
         // correctly.
         (
@@ -3284,7 +3280,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(auditCalls).toHaveLength(3);
     });
 
-    describe("DISP_DATE closes an already-placeholder'd fingerprint (cams-fd8qd.1.9)", () => {
+    describe("DISP_DATE closes an already-placeholder'd fingerprint", () => {
       test('closes the open surrogate with the disposition as given and writes no new task when the fingerprint is already unresolved', async () => {
         (
           pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
@@ -3617,7 +3613,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('does not fire when the pipeline resolves the trustee (handled by cams-fd8qd.1.8 instead)', async () => {
+      test('does not fire when the pipeline resolves the trustee', async () => {
         const getSurrogatesByFingerprint =
           mockTrusteeCaseAppointmentsRepo.getSurrogatesByFingerprint as ReturnType<typeof vi.fn>;
         const existingAppointment: CaseAppointment = {
@@ -3769,7 +3765,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       test('does not write a verification doc for an auto-matched outcome', async () => {
         // Auto-matched cases were never reviewed by a human, so nothing belongs in the
-        // human-review queue -- writing status: 'approved' here previously mislabeled these as
+        // human-review queue -- writing status: 'approved' here would mislabel these as
         // "Verified" in the Data Verification UI even though no one had looked at them.
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
@@ -3922,8 +3918,8 @@ describe('SyncTrusteeCaseAppointments', () => {
     describe('parsedCityStateZip enrichment', () => {
       // Enrichment mutates event.sourceTrustee.legacy in place before matching runs, so these
       // assert directly on the event object rather than on a downstream repo call — auto-matched
-      // outcomes (the default mock setup in this describe block) no longer write a verification
-      // doc at all, so that's no longer an available observation point.
+      // outcomes (the default mock setup in this describe block) write no verification doc at
+      // all, so there is no repo call to observe.
       test('populates dxtrTrustee.legacy.parsedCityStateZip when cityStateZipCountry is parseable', async () => {
         const event: TrusteeAppointmentSyncEvent = {
           ...makeEvent('case-001', 'John Doe'),
@@ -4071,10 +4067,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       test('produces the same assignedOn (and thus one natural-key row, not two) when the same surrogate-triggering event is reprocessed', async () => {
         // Regression test for the double-insert bug: upsert()'s natural key is
         // documentType + caseId + trusteeId + assignedOn. If assignedOn were derived from
-        // wall-clock time (the old behavior), reprocessing the identical event would produce a
-        // different assignedOn on each call, so the real repository's replaceOne(..., upsert:
-        // true) would INSERT a second row instead of replacing the first — leaving two active
-        // surrogate appointments for the same fingerprint. Deriving assignedOn from the event's
+        // wall-clock time, reprocessing the identical event would produce a different assignedOn
+        // on each call, so the real repository's replaceOne(..., upsert: true) would INSERT a
+        // second row instead of replacing the first — leaving two active surrogate appointments
+        // for the same fingerprint. Deriving assignedOn from the event's
         // own stable appointedDate means the natural key — and therefore the upsert target — is
         // identical across reprocessing.
         const event: TrusteeAppointmentSyncEvent = {

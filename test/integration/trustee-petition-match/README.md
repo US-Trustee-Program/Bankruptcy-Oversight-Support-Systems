@@ -6,9 +6,9 @@ instance (mimicked locally with SQL Edge), instead of the mocked recordsets used
 
 ## What it tests
 
-1. **Read path** — `getAppointmentEvents()` reads `AO_TX`/`AO_CS`/`AO_CS_DIV`/`AO_PY` via
-   `CasesDxtrGateway` and returns correctly-parsed events for both transaction types the use case
-   cares about:
+1. **Read path** — `getTrusteeAppointmentEventsForRegionDate()` reads
+   `AO_TX`/`AO_CS`/`AO_CS_DIV`/`AO_GRP_DES`/`AO_PY` via `CasesDxtrGateway` for the fixture case's
+   region and returns correctly-parsed events for both transaction types the use case cares about:
    - `TX_TYPE='A'`, `TX_CODE='TR'` — trustee appointment transactions
    - `TX_TYPE='1'`, `TX_CODE='1'` — petition transactions
 2. **Match + write path** — `processAppointments()` matches each event to a CAMS trustee by name,
@@ -17,18 +17,11 @@ instance (mimicked locally with SQL Edge), instead of the mocked recordsets used
    was never reviewed by a human, so nothing belongs in the human-review queue.
 
 No DDL for the DXTR schema exists elsewhere in this repo — `seed/00-seed-dxtr-schema.sql` is a
-hand-crafted subset covering only the columns/joins those two gateway queries use, see its header
-comment and the `cams-gateways` skill's `dxtr-schema/` reference files for the full column
-definitions this was derived from.
+hand-crafted subset covering only the columns/joins the region-scoped gateway reads use; see its
+header comment.
 
-## Warning: isolated databases only
-
-`clean` (and `run`, which calls `clean` first) resets the `TRUSTEE_APPOINTMENTS_SYNC_STATE` and
-`TRUSTEE_PETITION_SYNC_STATE` runtime-state documents. These are dataflow-wide singleton watermarks
-(keyed only by `documentType`, not by case) — there's no way to scope the reset to just this
-harness's fixture case. Only run this harness against an isolated local/test Cosmos database.
-Running it against a shared environment would reset the sync cursor for every case the real
-`sync-trustee-case-appointments` dataflow is tracking, not just this test's data.
+`clean` (and `run`, which calls `clean` first) removes only the documents and rows this harness
+seeds for its fixture case and trustee.
 
 ## Environments
 

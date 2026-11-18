@@ -1755,446 +1755,6 @@ describe('Test DXTR Gateway', () => {
   });
 });
 
-describe('getTrusteeAppointments', () => {
-  let querySpy: ReturnType<typeof vi.spyOn>;
-  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
-  let gateway: CasesDxtrGateway;
-
-  beforeEach(async () => {
-    vi.restoreAllMocks();
-    applicationContext = await createMockApplicationContext();
-    gateway = new CasesDxtrGateway(applicationContext);
-    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  test('queries TX_TYPE=A/TX_CODE=TR and maps chapter/courtDivisionCode into the result', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteeAppointments(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_TYPE = 'A'"),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_CODE IN ('TR')"),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(result.events[0].chapter).toBe('7');
-    expect(result.events[0].courtDivisionCode).toBe('081');
-  });
-
-  test('maps groupDesignator into the result alongside profCode', async () => {
-    // groupDesignator (AO_CS.GRP_DES) is a raw DXTR/ACMS fact crossed as-is - it is NOT combined
-    // into a formatted acmsProfessionalId here. That CAMS-specific construction (and its
-    // sentinel-suppression rule) belongs to the use-case layer that consumes this event, not this
-    // gateway - see resolveAcmsProfessionalIdForVerification in sync-trustee-case-appointments.ts.
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            groupDesignator: ' NY ',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-            profCode: '00123',
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteeAppointments(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events[0].groupDesignator).toBe('NY');
-    expect(result.events[0].profCode).toBe('00123');
-  });
-
-  test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 24, 6)"),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.any(String),
-      expect.any(Array),
-      600000,
-    );
-  });
-
-  test('reads profCode from the type-A (TR) REC offset 17-21', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 17, 5)"),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test.each([
-    { raw: '00000', expected: '00000', label: 'a clean sentinel value' },
-    { raw: '99999', expected: '99999', label: 'the other sentinel value' },
-    { raw: '  00000  ', expected: '00000', label: 'a whitespace-padded sentinel value' },
-  ])('carries profCode onto the mapped TrusteeAppointmentSyncEvent ($label)', async (testCase) => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-            profCode: testCase.raw,
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteeAppointments(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events[0].profCode).toBe(testCase.expected);
-  });
-});
-
-describe('getTrusteePetitionEvents', () => {
-  let querySpy: ReturnType<typeof vi.spyOn>;
-  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
-  let gateway: CasesDxtrGateway;
-
-  beforeEach(async () => {
-    vi.restoreAllMocks();
-    applicationContext = await createMockApplicationContext();
-    gateway = new CasesDxtrGateway(applicationContext);
-    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  test('queries TX_TYPE=1/TX_CODE=1 instead of TX_TYPE=A/TX_CODE=TR', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_TYPE = '1'"),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining("TX.TX_CODE IN ('1')"),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test.each([
-    { label: 'aptDate', expectedFragment: 'ELSE SUBSTRING(TX.REC, 91, 6) END AS aptDate' },
-    // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not
-    // FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
-    // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
-    // enabled on this instance." (confirmed against a real SQL Edge container).
-    { label: 'txDate', expectedFragment: 'CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate' },
-  ])('reads $label as part of the type-1 (petition) query', async (testCase) => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining(testCase.expectedFragment),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test('maps rows into TrusteeAppointmentSyncEvent[] with the same shape as getTrusteeAppointments', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteePetitionEvents(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events).toHaveLength(1);
-    expect(result.events[0]).toMatchObject({
-      caseId: '081-24-12345',
-      courtId: '081',
-      chapter: '7',
-      courtDivisionCode: '081',
-      appointedDate: '2026-04-07',
-    });
-    expect(result.events[0].sourceTrustee.fullName).toBe('Jane Doe');
-    expect(result.latestSyncDate).toBe('2026-04-07T00:00:00.000Z');
-  });
-
-  test('a petition transaction with no AO_PY/PY_ROLE=tr row produces no event (join filters it, no special-case code)', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteePetitionEvents(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events).toEqual([]);
-  });
-
-  test('reads profCode from the type-1 (N1TRUS) REC offset 86-90', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining('ELSE SUBSTRING(TX.REC, 86, 5) END AS profCode'),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test('carries profCode onto the mapped TrusteeAppointmentSyncEvent', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-            profCode: '00000',
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteePetitionEvents(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events[0].profCode).toBe('00000');
-  });
-
-  // REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a genuine DXTR
-  // data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same 'Trustee Appointed'
-  // transaction row and can never be missing, so appointedDate must fall back to it rather than
-  // leaving the event stuck with no appointedDate at all — but REC's date is still preferred
-  // when it parses, since it's the more precise, pre-existing source.
-  test.each([
-    { aptDate: '000000', txDate: '2026-04-07', expected: '2026-04-07', label: 'falls back' },
-    { aptDate: '260407', txDate: '2026-04-09', expected: '2026-04-07', label: 'prefers REC' },
-  ])('$label to the correct appointedDate (aptDate=$aptDate, txDate=$txDate)', async (testCase) => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: testCase.aptDate,
-            txDate: testCase.txDate,
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteePetitionEvents(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events[0].appointedDate).toBe(testCase.expected);
-  });
-});
-
 describe('getAppointmentDatesByCaseIds', () => {
   let querySpy: ReturnType<typeof vi.spyOn>;
   let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
@@ -2360,7 +1920,6 @@ describe('region-scoped trustee appointment transactions', () => {
       groupDesignator: 'NY ',
       firstName: 'Jane',
       lastName: 'Doe',
-      latestSyncDate: '2026-09-15T10:00:00.000Z',
       aptDate: '260910',
       txDate: '2026-09-15',
       profCode: '00063',
@@ -2450,6 +2009,14 @@ describe('region-scoped trustee appointment transactions', () => {
       );
 
       expect(result).toBeUndefined();
+    });
+
+    test('throws when the query fails, so the driver never treats a failed read as no data', async () => {
+      querySpy.mockResolvedValue({ success: false, results: {}, message: 'boom' } as QueryResults);
+
+      await expect(
+        gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '02'),
+      ).rejects.toThrow(CamsError);
     });
   });
 
@@ -2550,12 +2117,76 @@ describe('region-scoped trustee appointment transactions', () => {
         expect.objectContaining({
           source: 'DXTR',
           courtId: '0208',
+          chapter: '7',
+          courtDivisionCode: '081',
           groupDesignator: 'NY',
           profCode: '00063',
           appointedDate: '2026-09-10',
         }),
       );
       result.events.forEach((event) => expect(event).not.toHaveProperty('acmsProfessionalId'));
+    });
+
+    test.each([
+      { raw: '00000', expected: '00000', label: 'a clean sentinel value' },
+      { raw: '99999', expected: '99999', label: 'the other sentinel value' },
+      { raw: '  00000  ', expected: '00000', label: 'a whitespace-padded sentinel value' },
+    ])('carries profCode onto the mapped event ($label)', async (testCase) => {
+      querySpy.mockResolvedValue(queryResult([trusteeRow({ profCode: testCase.raw })]));
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result.events[0].profCode).toBe(testCase.expected);
+    });
+
+    // REC's fixed-width embedded date is occasionally blank/'000000'/malformed. TX.TX_DATE is a
+    // datetime2 NOT NULL column on the same transaction row, so appointedDate falls back to it
+    // rather than leaving the event with no appointedDate; REC's date is still preferred when it
+    // parses because it is the more precise source.
+    test.each([
+      { aptDate: '000000', txDate: '2026-04-07', expected: '2026-04-07', label: 'falls back' },
+      { aptDate: '260407', txDate: '2026-04-09', expected: '2026-04-07', label: 'prefers REC' },
+    ])(
+      '$label to the correct appointedDate (aptDate=$aptDate, txDate=$txDate)',
+      async (testCase) => {
+        querySpy.mockResolvedValue(
+          queryResult([trusteeRow({ aptDate: testCase.aptDate, txDate: testCase.txDate })]),
+        );
+
+        const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+          applicationContext,
+          page,
+        );
+
+        expect(result.events[0].appointedDate).toBe(testCase.expected);
+      },
+    );
+
+    test('maps the trustee name parts into the event fullName', async () => {
+      querySpy.mockResolvedValue(queryResult([trusteeRow()]));
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result.events[0].sourceTrustee.fullName).toBe('Jane Doe');
+    });
+
+    // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not FORMAT)
+    // is required: FORMAT() depends on the CLR, which is disabled by default on SQL Edge and many
+    // SQL Server instances and fails with "Common Language Runtime(CLR) is not enabled".
+    test('selects TX_DATE as txDate with CONVERT rather than FORMAT', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
+
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain('CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate');
+      expect(sql).not.toContain('FORMAT(');
     });
 
     test('selects AO_CS.CS_DATE_FILED so DXTR events can carry the case filing date', async () => {

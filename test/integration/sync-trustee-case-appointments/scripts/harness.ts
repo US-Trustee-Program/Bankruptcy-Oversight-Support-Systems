@@ -5,15 +5,15 @@
  * and a real MongoDB, then driven IN-PROCESS: source.getEventsForDate -> processAppointments, and
  * asserted against the CAMS state left in Mongo. No Azure Functions host, queues or mocks.
  *
- * Fixtures are segmented by region (three regions; region 02 has two divisions) because CAMS-955/956/957
- * all work per region: per-region bookmarks, per-region ACMS/DXTR source, per-region tasks.
+ * Fixtures are segmented by region (three regions; region 02 has two divisions) because the sync
+ * works per region: per-region bookmarks, per-region ACMS/DXTR source, per-region tasks.
  *
  * Groups of checks, each reported separately:
- *   query     ACMS fixtures run through the REAL getCmmapAppointmentsRaw. Passes today; keeps the
+ *   query     ACMS fixtures run through the REAL getCmmapAppointmentsRaw; keeps the
  *             fixtures and DDL honest against the production SQL.
- *   scenario  source -> sync -> CAMS state, per lane. Fails (NOT IMPLEMENTED) until the ACMS source
- *             exists; later fails on real behavior gaps. That is the point.
- *   driver    per-region bookmark/catch-up/source-routing flow. NOT IMPLEMENTED until the driver exists.
+ *   scenario  source -> sync -> CAMS state, per lane. Fails on real behavior gaps; reports NOT
+ *             IMPLEMENTED when a binding in bindings.ts cannot be resolved.
+ *   driver    per-region bookmark/catch-up/source-routing flow.
  *
  * Usage (from test/integration/):
  *   npm run sync-trustee-case-appointments -- <command> [options]
@@ -23,8 +23,8 @@
  *   seed-schema  Create ACMS_INT and DXTR_INT, apply DDL, load office reference data
  *   run          Run every scenario; options: --lane ACMS|DXTR, --region 02, --only <key>, --verbose
  *   backtest     Run every DXTR-lane scenario twice; report expected vs actual counts per outcome and
- *                fail unless every fixture passes and both runs leave identical CAMS state (CAMS-957
- *                Slice 4). Options: --region 02, --only <key>, --verbose. Exit 0 pass, 1 fail, 3, 4 as run.
+ *                fail unless every fixture passes and both runs leave identical CAMS state.
+ *                Options: --region 02, --only <key>, --verbose. Exit 0 pass, 1 fail, 3, 4 as run.
  *   list         List scenarios with region, lanes and basis
  *   replay       Run real staging exports through the ACMS source and print AGGREGATE outcomes only:
  *                  replay --professional-ids <file> --trustees <file> [--region 02] [--limit 500]
@@ -839,8 +839,8 @@ async function seedEventDerivedState(
 
 /**
  * Every page the source returns for one region and change date: the converted events, and the rows
- * it could not convert. Production (the region driver) sends each failure to the DLQ on its own
- * (cams-fd8qd.24), so the harness counts them as DLQ entries.
+ * it could not convert. Production (the region driver) sends each failure to the DLQ on its own,
+ * so the harness counts them as DLQ entries.
  */
 async function readSource(
   context: ApplicationContext,
@@ -1006,8 +1006,9 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
         problems.push(`source ${task.source} ≠ ${t.source}`);
       if (t.reason && task.mismatchReason !== t.reason)
         problems.push(`reason "${task.mismatchReason}" ≠ "${t.reason}"`);
-      // DXTR never carries an ACMS professional id (CAMS-873), so a DXTR task must not have one
-      // even when the expectation leaves the field out.
+      // DXTR's copy of the ACMS professional code can be wrong, so DXTR never carries an ACMS
+      // professional id and a DXTR task must not have one even when the expectation leaves the
+      // field out.
       const expectAbsent =
         t.acmsProfessionalId === null ||
         (t.acmsProfessionalId === undefined && task.source === 'DXTR');
@@ -1713,7 +1714,7 @@ async function run() {
     return refuseEmptySelection('scenario or driver scenario', { only, region, lane });
   }
 
-  line('\n=== Layer 0: fixtures through the production ACMS query (passes today) ===');
+  line('\n=== Layer 0: fixtures through the production ACMS query ===');
   if (!lane || lane === 'ACMS') for (const s of selected) await runQueryGrounding(context, s);
 
   line('\n=== Scenarios: source → sync → CAMS state ===');
@@ -1756,7 +1757,7 @@ function summarize() {
     );
     process.exitCode = 1;
   } else if (targets > 0) {
-    line(`\n  No failures. ${targets} not implemented (targets while CAMS-955 is being built).`);
+    line(`\n  No failures. ${targets} not implemented (targets).`);
     process.exitCode = 2;
   } else {
     line('\n  All scenarios pass.');
@@ -1765,7 +1766,7 @@ function summarize() {
 }
 
 // ---------------------------------------------------------------------------
-// Backtest (CAMS-957 Slice 4): the DXTR fixtures, run twice, against their declared outcomes
+// Backtest: the DXTR fixtures, run twice, against their declared outcomes
 // ---------------------------------------------------------------------------
 
 type Tally = Map<string, { expected: number; actual: number }>;
@@ -1912,8 +1913,8 @@ async function backtestRun(
 /**
  * Runs every DXTR-lane scenario twice and reports each outcome class against what the fixtures
  * declare. Passes only when every fixture gets its expected outcome on both runs and both runs
- * leave identical CAMS state. No thresholds and no LLM grading (CAMS-957 Slice 4 decisions,
- * Matt Stankey, 2026-11-18). Driver scenarios are not part of it; `run` covers region routing.
+ * leave identical CAMS state. No thresholds and no LLM grading: every verdict is a deterministic
+ * comparison. Driver scenarios are not part of it; `run` covers region routing.
  * Exit codes: 0 pass, 1 a fixture failed or the runs differ, 3 infrastructure down, 4 refused.
  */
 async function backtest() {

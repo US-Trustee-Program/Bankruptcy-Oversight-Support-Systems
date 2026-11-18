@@ -36,8 +36,7 @@ export const CUTOVER_DATE = '2026-07-01';
  * - ACMS: ACMS_REQUEST_TIMEOUT_MS in acms.gateway.ts (DEFAULT_ACMS_REQUEST_TIMEOUT_MS, 5 minutes,
  *   overridable by env).
  * - DXTR: REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS in cases.dxtr.gateway.ts (fixed 5
- *   minutes). The 10-minute TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS there belongs to the older
- *   all-region DXTR reads, which this driver does not use.
+ *   minutes).
  * A page is not started unless this much budget remains, so a slow page cannot carry the
  * invocation past the host's functionTimeout and get killed and redelivered. Raising either
  * timeout above 5 minutes requires raising this cost too.
@@ -101,9 +100,8 @@ async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
 }
 
 /**
- * Only ACMS rows can fail conversion today: DxtrTrusteeAppointmentSource always returns
- * failures: [], so the DXTR form of this message is not yet reachable. sourceName is kept so a
- * future DXTR conversion failure is labeled correctly without changing this helper.
+ * Dead-letter entry for a source row that could not be converted. Only ACMS rows can fail
+ * conversion: DxtrTrusteeAppointmentSource always returns failures: [].
  */
 function toRowFailureDlqEntry(
   sourceName: TrusteeAppointmentSource['name'],
@@ -143,8 +141,8 @@ type RegionDriverOptions = {
   safeThresholdMs?: number;
   /**
    * Receives each finished date's results before the date's bookmark is written, so results for
-   * a bookmarked date (never re-read) are delivered before the bookmark makes them unrecoverable
-   * (cams-fd8qd.33). Results it receives are not returned again. If it throws a transient error
+   * a bookmarked date (never re-read) are delivered before the bookmark makes them unrecoverable.
+   * Results it receives are not returned again. If it throws a transient error
    * the bookmark is not written and the continuation re-reads the whole date. Without it, results
    * accumulate and are returned.
    */
@@ -179,7 +177,7 @@ type RegionDriverResult = {
  * bookmark rule: "a date is complete only when a later date exists" -- the single newest date
  * known to have data (source.getLatestChangeDate) is always processed but never
  * bookmarked, since the replica could still be mid-write for it. A later run that discovers a
- * genuinely later date proves the previously-withheld date complete and bookmarks it then.
+ * genuinely later date proves the withheld date complete and bookmarks it then.
  *
  * Stops early, returning a continuation, when the invocation budget runs out or a transient error
  * is thrown. Each step records the resume point it would need before doing its work, so the
@@ -238,6 +236,18 @@ async function runRegionDriver(
       const source = getSourceForRegion(state.region[regionId]);
       const resumeHere = options.resumeFrom?.regionId === regionId ? options.resumeFrom : undefined;
       resumeAt = resumeHere;
+
+      context.logger.info(MODULE_NAME, 'Reading region from source', {
+        regionId,
+        source: source.name,
+      });
+      if (resumeHere && resumeHere.source !== source.name) {
+        context.logger.warn(
+          MODULE_NAME,
+          'Continuation cursor came from a different source; restarting the date',
+          { regionId, source: source.name, resumeSource: resumeHere.source },
+        );
+      }
 
       // The latest-date read can take as long as a page, so it needs the same budget check.
       if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {

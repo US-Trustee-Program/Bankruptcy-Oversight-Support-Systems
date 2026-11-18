@@ -2,16 +2,15 @@
 
 ## Context
 
-This pipeline decides which CAMS trustee record, if any, corresponds to a source trustee record —
-originally an ACMS professional record (CMMPR), and since CAMS-957 a DXTR trustee-appointment party
-as well. Both legacy shapes implement `CanonicalTrusteeSource`, the common interface this pipeline
-reads, so no source-specific matcher exists: `sync-trustee-case-appointments.ts` resolves a DXTR
-event's trustee through the same pipeline orchestrator the ACMS professional-id sync uses. An
-earlier, DXTR-only scoring path (`resolveNameCollisionByScoring` and `findInactivePerfectMatch`,
-which combined the `calculate*Score` functions in `trustee-match.helpers.ts`) was removed from
-production matching under CAMS-953 once this pipeline covered DXTR case-appointment matching too.
-The `calculate*Score` functions themselves remain exported, called only by their unit tests and the
-integration audit harnesses, not by the pipeline.
+This pipeline decides which CAMS trustee record, if any, corresponds to a source trustee record — an
+ACMS professional record (CMMPR) or a DXTR trustee-appointment party. Both legacy shapes implement
+`CanonicalTrusteeSource`, the common interface this pipeline reads, so no source-specific matcher
+exists: `sync-trustee-case-appointments.ts` resolves a DXTR event's trustee through the same
+pipeline orchestrator the ACMS professional-id sync uses. No DXTR-only scoring path
+(`resolveNameCollisionByScoring`, `findInactivePerfectMatch`, which combined the `calculate*Score`
+functions in `trustee-match.helpers.ts`) takes part in production matching. The `calculate*Score`
+functions themselves remain exported, called only by their unit tests and the integration audit
+harnesses, not by the pipeline.
 
 Matching implemented as one nested branching function, where each new signal is another conditional
 branch or threaded argument, has two costs. Testing one branch in isolation requires mocking most of
