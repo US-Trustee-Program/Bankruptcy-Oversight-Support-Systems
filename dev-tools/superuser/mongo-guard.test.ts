@@ -5,6 +5,7 @@ describe('assertAllowedMongo', () => {
   describe('without a Cosmos host (local only)', () => {
     test.each([
       { uri: 'mongodb://localhost:27017/cams', hosts: ['localhost'] },
+      { uri: 'mongodb://localhost', hosts: ['localhost'] },
       { uri: 'mongodb://127.0.0.1:27017', hosts: ['127.0.0.1'] },
       { uri: 'mongodb://[::1]:27017/cams?retrywrites=false', hosts: ['::1'] },
       { uri: 'mongodb://mongodb:27017/cams-e2e?retrywrites=false', hosts: ['mongodb'] },
@@ -48,6 +49,21 @@ describe('assertAllowedMongo', () => {
         caseName: 'another loopback-looking address',
         uri: 'mongodb://127.0.0.2/cams',
         refused: '127.0.0.2',
+      },
+      {
+        caseName: 'a query string that mentions localhost after @',
+        uri: 'mongodb://db.example.com?authSource=x@localhost',
+        refused: 'db.example.com',
+      },
+      {
+        caseName: 'an @ inside the credentials',
+        uri: 'mongodb://a:b@localhost:1@evil.com/cams', // pragma: allowlist secret
+        refused: 'evil.com',
+      },
+      {
+        caseName: 'a remote host with no path or options',
+        uri: 'mongodb://db.example.com',
+        refused: 'db.example.com',
       },
     ])('should refuse $caseName, naming the host', ({ uri, refused }) => {
       expect(() => assertAllowedMongo(uri)).toThrow(refused);
@@ -104,7 +120,7 @@ describe('assertAllowedMongo', () => {
     });
 
     test('should refuse a blank Cosmos host', () => {
-      expect(() => assertAllowedMongo(uri, { cosmosHost: ' ' })).toThrow('--cosmos-host');
+      expect(() => assertAllowedMongo(uri, { cosmosHost: ' ' })).toThrow('--cosmos-host is blank.');
     });
   });
 });

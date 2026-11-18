@@ -3,21 +3,24 @@
 /**
  * Grants or revokes an unscoped Super User permission (CAMS-940 Slice 5).
  *
- * Local Mongo (default; reads .env-dev-local):
- *   npm run superuser:grant
- *   npm run superuser:revoke
- *   MONGO_CONNECTION_STRING must point at localhost, 127.0.0.1, ::1 or the Podman 'mongodb'
- *   service, and the database is 'cams'. The user defaults to the Flexion Team account.
+ * Flexion's dev and main Cosmos accounts (the 'cams' database branch deploys share):
+ *   npm run superuser:grant:dev    npm run superuser:revoke:dev     (reads .env-dev-local)
+ *   npm run superuser:grant:main   npm run superuser:revoke:main    (reads .env-dev-main)
+ *   The user defaults to the Flexion Team account.
  *
- * A shared Cosmos account (the Azure DevOps step, or a developer targeting a branch deploy):
+ * Any other Cosmos account (e.g. the Azure DevOps step against USTP's):
  *   tsx superuser/superuser.ts grant|revoke --cosmos-host <account>.mongo.cosmos.azure.us --database <name>
  *   Every host in MONGO_CONNECTION_STRING must be exactly --cosmos-host, and SEED_SUPERUSER_ID is
  *   required (no default user).
  *
+ * A Mongo on this machine (no --cosmos-host): MONGO_CONNECTION_STRING must point at localhost,
+ *   127.0.0.1, ::1 or the Podman 'mongodb' service, and the database is 'cams'. The user defaults
+ *   to the Flexion Team account.
+ *
  * Anything else is refused before connecting. The user is SEED_SUPERUSER_ID (Okta user id),
  * SEED_SUPERUSER_NAME and SEED_SUPERUSER_EMAIL. There is no Okta "USTP Cams Users" check, so a
  * mistyped id writes a permission nobody can use; revoke it. Revoking deactivates the permission
- * and never deletes it (locally, `npm run unseed:local` clears it with the rest of the seed data).
+ * and never deletes it; `unseed` does not touch these collections.
  */
 
 import { MongoClient } from 'mongodb';
@@ -36,6 +39,10 @@ const FLEXION_TEAM: SuperUserTarget = {
   name: 'Flexion Team',
   email: 'doj-ustp-cms-team@flexion.us',
 };
+const FLEXION_HOSTS = new Set([
+  'cosmos-mongo-ustp-cams-dev.mongo.cosmos.azure.us',
+  'cosmos-mongo-ustp-cams.mongo.cosmos.azure.us',
+]);
 
 export type SuperUserCommandDeps = {
   openStore(
@@ -105,9 +112,14 @@ export async function run(
     if (!databaseOption?.trim()) throw new Error('--database is required with --cosmos-host.');
     database = databaseOption.trim();
     const id = env.SEED_SUPERUSER_ID?.trim();
-    if (!id) throw new Error('SEED_SUPERUSER_ID is required with --cosmos-host.');
-    const email = env.SEED_SUPERUSER_EMAIL?.trim();
-    target = { id, name: envOr(env, 'SEED_SUPERUSER_NAME', id), ...(email ? { email } : {}) };
+    if (id) {
+      const email = env.SEED_SUPERUSER_EMAIL?.trim();
+      target = { id, name: envOr(env, 'SEED_SUPERUSER_NAME', id), ...(email ? { email } : {}) };
+    } else if (FLEXION_HOSTS.has(hosts[0])) {
+      target = FLEXION_TEAM;
+    } else {
+      throw new Error('SEED_SUPERUSER_ID is required with --cosmos-host.');
+    }
   }
   console.log(`[SUPERUSER] ${action} ${target.id} in ${hosts.join(',')}/${database}`);
 

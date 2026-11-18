@@ -99,7 +99,7 @@ export async function revokeSuperUser(
   if (!held) return { outcome: 'nothing-to-revoke' };
 
   const revoked = await store.assignments.findOneAndUpdate(
-    { id: held.id, active: true },
+    { userId: held.userId, id: held.id, active: true },
     { $set: { active: false, activeKey: inactiveKeyFor(held.id) } },
     { returnDocument: 'after' },
   );

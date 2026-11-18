@@ -134,6 +134,27 @@ describe('superuser command', () => {
       ).rejects.toThrow('SEED_SUPERUSER_ID');
       expect(openStore).not.toHaveBeenCalled();
     });
+
+    test.each([
+      'cosmos-mongo-ustp-cams-dev.mongo.cosmos.azure.us',
+      'cosmos-mongo-ustp-cams.mongo.cosmos.azure.us',
+    ])(
+      'should grant the Flexion Team account when SEED_SUPERUSER_ID is unset on the Flexion host %s',
+      async (flexionHost) => {
+        const { deps, grantSuperUser } = fakeDeps();
+        const flexionEnv = {
+          MONGO_CONNECTION_STRING: `mongodb://acct:key@${flexionHost}:10255/?ssl=true`, // pragma: allowlist secret
+        };
+
+        await run(['grant', '--cosmos-host', flexionHost, '--database', 'cams'], flexionEnv, deps);
+
+        expect(grantSuperUser).toHaveBeenCalledWith(expect.anything(), {
+          id: '00uxy2nwugG682IKt697',
+          name: 'Flexion Team',
+          email: 'doj-ustp-cms-team@flexion.us',
+        });
+      },
+    );
   });
 
   test.each([[['grant', '--database']], [['grant', '--unknown', 'x']], [['grant', 'extra']]])(

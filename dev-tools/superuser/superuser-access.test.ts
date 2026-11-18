@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { CamsRole } from '@common/cams/roles.js';
 import type { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access.js';
 import { grantSuperUser, revokeSuperUser, type SuperUserStore } from './superuser-access.js';
@@ -19,11 +19,17 @@ function fakeCollection() {
       docs.push({ ...doc });
       return { acknowledged: true };
     },
-    async findOneAndUpdate(filter: Doc, update: { $set: Doc }) {
+    /** Like Mongo, returns the document as it was before the update unless told otherwise. */
+    async findOneAndUpdate(
+      filter: Doc,
+      update: { $set: Doc },
+      options?: { returnDocument?: 'before' | 'after' },
+    ) {
       const doc = docs.find((d) => matches(d, filter));
       if (!doc) return null;
+      const before = { ...doc };
       Object.assign(doc, update.$set);
-      return { ...doc };
+      return options?.returnDocument === 'after' ? { ...doc } : before;
     },
   };
 }
@@ -86,6 +92,12 @@ describe('superuser grant and revoke', () => {
     ]);
   });
 
+  test('should leave email off the permission when the target has none', async () => {
+    await grantSuperUser(store, { id: target.id, name: target.name }, NOW);
+
+    expect(assignments.docs[0]).not.toHaveProperty('email');
+  });
+
   test('should write nothing when the user already holds Super User', async () => {
     await grantSuperUser(store, target, NOW);
 
@@ -136,5 +148,50 @@ describe('superuser grant and revoke', () => {
     expect(assignments.docs.map((d) => d.active)).toEqual([false, true]);
     expect(assignments.docs[0].id).not.toEqual(assignments.docs[1].id);
     expect(audits.docs.map((d) => d.action)).toEqual(['CREATED', 'DEACTIVATED', 'CREATED']);
+  });
+
+  test("should revoke only the named user's permission", async () => {
+    const other = { id: '00uother0000000000000', name: 'Bob Brown' };
+    await grantSuperUser(store, other, NOW);
+    await grantSuperUser(store, target, NOW);
+
+    await revokeSuperUser(store, target.id, NOW);
+
+    expect(assignments.docs.map((d) => [d.userId, d.active])).toEqual([
+      [other.id, true],
+      [target.id, false],
+    ]);
+  });
+
+  test('should revoke the newer permission after a revoke and a second grant', async () => {
+    await grantSuperUser(store, target, NOW);
+    await revokeSuperUser(store, target.id, NOW);
+    await grantSuperUser(store, target, NOW);
+
+    const result = await revokeSuperUser(store, target.id, NOW);
+
+    expect(result.outcome).toEqual('revoked');
+    expect(assignments.docs.map((d) => d.active)).toEqual([false, false]);
+    expect(audits.docs.map((d) => [d.action, d.assignmentId])).toEqual([
+      ['CREATED', assignments.docs[0].id],
+      ['DEACTIVATED', assignments.docs[0].id],
+      ['CREATED', assignments.docs[1].id],
+      ['DEACTIVATED', assignments.docs[1].id],
+    ]);
+  });
+
+  test('should report nothing to revoke and write no audit when another revoke wins the race', async () => {
+    await grantSuperUser(store, target, NOW);
+    const realFindOne = assignments.findOne;
+    vi.spyOn(assignments, 'findOne').mockImplementationOnce(async (filter) => {
+      const held = await realFindOne(filter);
+      await revokeSuperUser(store, target.id, NOW); // the competing revoke
+      return held;
+    });
+
+    const result = await revokeSuperUser(store, target.id, NOW);
+
+    expect(result.outcome).toEqual('nothing-to-revoke');
+    expect(audits.docs.map((d) => d.action)).toEqual(['CREATED', 'DEACTIVATED']);
   });
 });
