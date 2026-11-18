@@ -2,9 +2,13 @@
 
 ## Context
 
-This pipeline decides which CAMS trustee record, if any, corresponds to an ACMS professional record
-(CMMPR). DXTR case-appointment matching does not use it: `sync-trustee-case-appointments.ts` scores
-candidates with the `calculate*Score` functions in `trustee-match.helpers.ts`.
+This pipeline decides which CAMS trustee record, if any, corresponds to a source trustee record —
+originally an ACMS professional record (CMMPR), and since CAMS-957 a DXTR trustee-appointment party
+as well. Both legacy shapes implement `CanonicalTrusteeSource`, the common interface this pipeline
+reads, so no source-specific matcher exists: `sync-trustee-case-appointments.ts` resolves a DXTR
+event's trustee through the same pipeline orchestrator the ACMS professional-id sync uses. An
+earlier, DXTR-only scoring path (the `calculate*Score` functions in `trustee-match.helpers.ts`) was
+removed under CAMS-953 once this pipeline covered DXTR case-appointment matching too.
 
 Matching implemented as one nested branching function, where each new signal is another conditional
 branch or threaded argument, has two costs. Testing one branch in isolation requires mocking most of
