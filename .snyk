@@ -179,27 +179,6 @@ ignore:
           Severity (CVE-2026-125336). Fixed in 1.4.3; also embargoed
           until 2026-11-18 (CAMS .npmrc min-release-age=14).
         expires: 2026-11-19T00:00:00.000Z
-  SNYK-JS-FASTXMLPARSER-22409021:
-    - '*':
-        reason: >-
-          Inefficient Algorithmic Complexity (CVE pending, Snyk ID
-          SNYK-JS-FASTXMLPARSER-22409021) in fast-xml-parser@5.7.3's
-          readStopNodeData(): a crafted stop-node body with many
-          unclosed '<a' fragments causes quadratic rescanning that can
-          block the event loop. Only applications that set the
-          non-default `stopNodes` parser option are exploitable. Not
-          reachable in CAMS: fast-xml-parser is not a direct dependency —
-          its only consumers are @azure/core-xml (via
-          @azure/storage-blob@12.34.0 and @azure/storage-queue@12.32.0),
-          which builds its XMLParser/XMLBuilder options internally
-          (checked node_modules/@azure/core-xml's parseOptionsFor
-          helpers) and never sets `stopNodes`. Fixed in 5.12.0 (published
-          2026-11-03), blocked by CAMS's 14-day minimum npm release-age
-          policy (.npmrc min-release-age=14) until 2026-11-17. No direct
-          override is in place today since fast-xml-parser isn't pinned
-          elsewhere; add one bumping to 5.12.0 and remove this ignore once
-          the embargo lifts.
-        expires: 2026-11-18T00:00:00.000Z
   SNYK-JS-AZUREMSALNODE-21689163:
     - '*':
         reason: >-
