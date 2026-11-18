@@ -237,13 +237,15 @@ describe('superuser command', () => {
     );
   });
 
-  test.each([[['grant', '--database']], [['grant', '--unknown', 'x']], [['grant', 'extra']]])(
-    'should refuse malformed options: %j',
-    async (argv) => {
-      const { deps, openStore } = fakeDeps();
+  test.each([
+    [['grant', '--database']],
+    [['grant', '--cosmos-host', '--database']],
+    [['grant', '--unknown', 'x']],
+    [['grant', 'extra']],
+  ])('should refuse malformed options: %j', async (argv) => {
+    const { deps, openStore } = fakeDeps();
 
-      await expect(run(argv, { MONGO_CONNECTION_STRING: LOCAL }, deps)).rejects.toThrow('Usage:');
-      expect(openStore).not.toHaveBeenCalled();
-    },
-  );
+    await expect(run(argv, { MONGO_CONNECTION_STRING: LOCAL }, deps)).rejects.toThrow('Usage:');
+    expect(openStore).not.toHaveBeenCalled();
+  });
 });

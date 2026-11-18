@@ -12,8 +12,10 @@ function fakeCollection() {
     Object.entries(filter).every(([key, value]) => doc[key] === value);
   return {
     docs,
+    /** Like Mongo, returns a copy: later updates don't change what an earlier read returned. */
     async findOne(filter: Doc) {
-      return docs.find((doc) => matches(doc, filter)) ?? null;
+      const doc = docs.find((d) => matches(d, filter));
+      return doc ? { ...doc } : null;
     },
     async insertOne(doc: Doc) {
       docs.push({ ...doc });
@@ -111,23 +113,33 @@ describe('superuser grant and revoke', () => {
   test('should deactivate the permission, never delete it, and write a DEACTIVATED audit entry', async () => {
     await grantSuperUser(store, target, NOW);
     const granted = { ...assignments.docs[0] };
+    const revokedAt = new Date('2026-11-13T09:30:00.000Z');
 
-    const result = await revokeSuperUser(store, target.id, NOW);
+    const result = await revokeSuperUser(store, target.id, revokedAt);
 
     expect(result.outcome).toEqual('revoked');
     expect(assignments.docs).toEqual([
       { ...granted, active: false, activeKey: `inactive|${granted.id}` },
     ]);
-    expect(audits.docs[1]).toEqual(
-      expect.objectContaining({
-        action: 'DEACTIVATED',
-        assignmentId: granted.id,
-        previousState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
-        newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: false },
-        replacedByAssignmentId: null,
-        performedAt: NOW.toISOString(),
-      }),
-    );
+    expect(audits.docs).toHaveLength(2);
+    expect(audits.docs[1]).toEqual({
+      documentType: 'ROLE_ASSIGNMENT_AUDIT',
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      assignmentId: granted.id as string,
+      action: 'DEACTIVATED',
+      userId: target.id,
+      userName: 'Alice Adams',
+      role: CamsRole.SuperUser,
+      regionId: null,
+      officeCode: null,
+      performedBy: 'SUPERUSER_COMMAND',
+      performedByName: 'Superuser command',
+      performedAt: revokedAt.toISOString(),
+      previousState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
+      newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: false },
+      replacedByAssignmentId: null,
+    } satisfies RoleAssignmentAuditEntry);
+    expect(audits.docs[1].id).not.toEqual(audits.docs[0].id);
   });
 
   test('should report nothing to revoke and write nothing when the user holds no Super User', async () => {

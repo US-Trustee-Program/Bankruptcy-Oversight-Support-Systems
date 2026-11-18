@@ -3,7 +3,10 @@ import type { Collection } from 'mongodb';
 import { CamsRole } from '@common/cams/roles.js';
 import {
   activeKeyFor,
-  inactiveKeyFor,
+  deactivationOf,
+  newRoleAssignment,
+  roleAssignmentAuditEntry,
+  roleAssignmentState,
   type RoleAssignmentAuditEntry,
   type UserRoleAssignment,
 } from '@common/cams/user-access.js';
@@ -18,30 +21,6 @@ export type SuperUserTarget = { id: string; name: string; email?: string };
 
 const PERFORMER = { id: 'SUPERUSER_COMMAND', name: 'Superuser command' };
 const SUPER_USER_KEY = activeKeyFor(CamsRole.SuperUser, null, null);
-const SCOPE = { role: CamsRole.SuperUser, regionId: null, officeCode: null };
-
-function audit(
-  action: RoleAssignmentAuditEntry['action'],
-  assignment: UserRoleAssignment,
-  previousActive: boolean | null,
-  now: string,
-): RoleAssignmentAuditEntry {
-  return {
-    documentType: 'ROLE_ASSIGNMENT_AUDIT',
-    id: randomUUID(),
-    assignmentId: assignment.id,
-    action,
-    userId: assignment.userId,
-    userName: assignment.userName,
-    ...SCOPE,
-    performedBy: PERFORMER.id,
-    performedByName: PERFORMER.name,
-    performedAt: now,
-    previousState: previousActive === null ? null : { ...SCOPE, active: previousActive },
-    newState: { ...SCOPE, active: assignment.active },
-    replacedByAssignmentId: null,
-  };
-}
 
 const activeSuperUser = (userId: string) => ({
   documentType: 'USER_ROLE_ASSIGNMENT' as const,
@@ -64,22 +43,27 @@ export async function grantSuperUser(
   if (held) return { outcome: 'already-held', assignment: held };
 
   const assignedAt = now.toISOString();
-  const assignment: UserRoleAssignment = {
-    documentType: 'USER_ROLE_ASSIGNMENT',
+  const assignment = newRoleAssignment({
     id: randomUUID(),
-    userId: target.id,
-    userName: target.name,
-    ...(target.email ? { email: target.email } : {}),
-    ...SCOPE,
-    assignedBy: PERFORMER.id,
-    assignedByName: PERFORMER.name,
+    user: target,
+    role: CamsRole.SuperUser,
+    scope: { regionId: null, officeCode: null },
+    assignedBy: PERFORMER,
     assignedAt,
-    expiresAt: null,
-    active: true,
-    activeKey: SUPER_USER_KEY,
-  };
+  });
   await store.assignments.insertOne(assignment);
-  await store.audits.insertOne(audit('CREATED', assignment, null, assignedAt));
+  await store.audits.insertOne(
+    roleAssignmentAuditEntry({
+      id: randomUUID(),
+      action: 'CREATED',
+      assignment,
+      previousState: null,
+      newState: roleAssignmentState(assignment),
+      performer: PERFORMER,
+      performedAt: assignedAt,
+      replacedByAssignmentId: null,
+    }),
+  );
   return { outcome: 'granted', assignment };
 }
 
@@ -99,11 +83,23 @@ export async function revokeSuperUser(
 
   const revoked = await store.assignments.findOneAndUpdate(
     { userId: held.userId, id: held.id, active: true },
-    { $set: { active: false, activeKey: inactiveKeyFor(held.id) } },
+    { $set: deactivationOf(held) },
     { returnDocument: 'after' },
   );
   if (!revoked) return { outcome: 'nothing-to-revoke' };
 
-  await store.audits.insertOne(audit('DEACTIVATED', revoked, true, now.toISOString()));
+  await store.audits.insertOne(
+    roleAssignmentAuditEntry({
+      id: randomUUID(),
+      action: 'DEACTIVATED',
+      assignment: revoked,
+      previousState: roleAssignmentState(held),
+      newState: roleAssignmentState(revoked),
+      performer: PERFORMER,
+      performedAt: now.toISOString(),
+      // Revoked, not replaced by a newer permission.
+      replacedByAssignmentId: null,
+    }),
+  );
   return { outcome: 'revoked', assignment: revoked };
 }
