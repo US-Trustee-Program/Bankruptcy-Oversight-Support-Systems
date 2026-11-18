@@ -86,6 +86,22 @@ describe('assertAllowedMongo', () => {
     ])('should refuse $caseName', ({ uri, message }) => {
       expect(() => assertAllowedMongo(uri)).toThrow(message);
     });
+
+    test.each([
+      { caseName: 'ssl=true', uri: 'mongodb://acct:key@localhost:10255/?ssl=true' }, // pragma: allowlist secret
+      { caseName: 'tls=true', uri: 'mongodb://localhost:10255/cams?tls=true' },
+      { caseName: 'an upper-case option name', uri: 'mongodb://localhost/cams?TLS=true' },
+      { caseName: 'a TLS file option', uri: 'mongodb://localhost/cams?tlsCAFile=ca.pem' },
+      { caseName: 'a proxy', uri: 'mongodb://localhost/cams?proxyHost=jump.example.com' },
+    ])('should refuse a local host with $caseName (a tunnel to a shared database)', ({ uri }) => {
+      expect(() => assertAllowedMongo(uri)).toThrow(
+        'Refusing TLS or proxy options without --cosmos-host',
+      );
+    });
+
+    test('should accept a local host with TLS turned off', () => {
+      expect(assertAllowedMongo('mongodb://localhost/cams?tls=false').hosts).toEqual(['localhost']);
+    });
   });
 
   describe('with an explicit Cosmos host (pipeline mode)', () => {

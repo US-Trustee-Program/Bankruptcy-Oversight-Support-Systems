@@ -13,6 +13,19 @@ function hostName(hostAndPort: string): string {
 }
 
 /**
+ * A local Mongo here never uses TLS or a proxy, but Cosmos requires TLS. So a local host with
+ * either is likely a tunnel to a shared database (e.g. ssh -L to Cosmos). Option names are
+ * case-insensitive in Mongo URIs.
+ */
+function usesTlsOrProxy(query: string): boolean {
+  return [...new URLSearchParams(query)].some(([name, value]) => {
+    const key = name.toLowerCase();
+    if (key === 'tls' || key === 'ssl') return value !== 'false';
+    return key.startsWith('tls') || key.startsWith('proxy');
+  });
+}
+
+/**
  * Throws unless every host in the connection string is allowed: local hosts by default, or
  * exactly `cosmosHost` when one is given. Parses the URI rather than matching substrings, so
  * credentials, ports and host lists can't hide another host. Anything it can't parse is refused.
@@ -51,6 +64,14 @@ export function assertAllowedMongo(
         ? `Refusing to write to ${refused}: the connection string is not for ${cosmosHost}.`
         : `Refusing to write to ${refused}: without --cosmos-host, superuser commands write to a ` +
             `local Mongo only (${[...LOCAL_HOSTS].join(', ')}).`,
+    );
+  }
+
+  const queryStart = rest.indexOf('?');
+  if (!cosmosHost && queryStart !== -1 && usesTlsOrProxy(rest.slice(queryStart + 1))) {
+    throw new Error(
+      'Refusing TLS or proxy options without --cosmos-host: a local Mongo uses neither, so this ' +
+        'may be a tunnel to a shared database.',
     );
   }
 

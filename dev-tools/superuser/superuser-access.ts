@@ -8,7 +8,7 @@ import {
   type UserRoleAssignment,
 } from '@common/cams/user-access.js';
 
-/** The two collections the commands write. Local Mongo only; see local-mongo-guard.ts. */
+/** The two collections the commands write. mongo-guard.ts decides which Mongo they live in. */
 export type SuperUserStore = {
   assignments: Collection<UserRoleAssignment>;
   audits: Collection<RoleAssignmentAuditEntry>;
@@ -16,7 +16,7 @@ export type SuperUserStore = {
 
 export type SuperUserTarget = { id: string; name: string; email?: string };
 
-const PERFORMER = { id: 'SYSTEM_SEED', name: 'Local superuser command' };
+const PERFORMER = { id: 'SUPERUSER_COMMAND', name: 'Superuser command' };
 const SUPER_USER_KEY = activeKeyFor(CamsRole.SuperUser, null, null);
 const SCOPE = { role: CamsRole.SuperUser, regionId: null, officeCode: null };
 
@@ -28,8 +28,7 @@ function audit(
 ): RoleAssignmentAuditEntry {
   return {
     documentType: 'ROLE_ASSIGNMENT_AUDIT',
-    // The seed- prefix lets unseed clear local Super Users with the rest of the seed data.
-    id: `seed-superuser-audit-${randomUUID()}`,
+    id: randomUUID(),
     assignmentId: assignment.id,
     action,
     userId: assignment.userId,
@@ -54,7 +53,7 @@ const activeSuperUser = (userId: string) => ({
 /**
  * Gives the user an unscoped Super User permission, with the same documents the access use case
  * writes. Each grant gets a new id, so granting again after a revoke keeps the old record and its
- * history. There is no Okta "USTP Cams Users" check locally.
+ * history. There is no Okta "USTP Cams Users" check.
  */
 export async function grantSuperUser(
   store: SuperUserStore,
@@ -67,7 +66,7 @@ export async function grantSuperUser(
   const assignedAt = now.toISOString();
   const assignment: UserRoleAssignment = {
     documentType: 'USER_ROLE_ASSIGNMENT',
-    id: `seed-superuser-${randomUUID()}`,
+    id: randomUUID(),
     userId: target.id,
     userName: target.name,
     ...(target.email ? { email: target.email } : {}),

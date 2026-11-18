@@ -174,13 +174,13 @@ variables below to grant someone else. A named user never inherits Flexion Team'
 **Caution:** `superuser:revoke:dev` with no variables set removes Super User from the shared Flexion
 Team login for everyone who uses it.
 
-Not a seed scenario: each grant writes a new `seed-superuser-<uuid>` document to
+Not a seed scenario: each grant writes a new permission (a random UUID id) to
 `user-role-assignments` (role `SuperUser`, `regionId`/`officeCode` null, `activeKey`
-`SuperUser|*|*`, `assignedBy` `SYSTEM_SEED`) plus a CREATED entry in `role-assignment-audit`.
-Granting a user who already holds Super User writes nothing. Revoking deactivates the permission
-(`active: false`, `activeKey` `inactive|<id>`) and writes a DEACTIVATED audit entry; nothing is
-deleted, so a later grant keeps the history. `unseed` does not touch these collections; use
-`revoke`.
+`SuperUser|*|*`, `assignedBy` `SUPERUSER_COMMAND`, `assignedByName` `Superuser command`) plus a
+CREATED entry in `role-assignment-audit` with the same performer. Granting a user who already holds
+Super User writes nothing. Revoking deactivates the permission (`active: false`, `activeKey`
+`inactive|<id>`) and writes a DEACTIVATED audit entry; nothing is deleted, so a later grant keeps
+the history. `unseed` does not touch these collections; use `revoke`.
 
 **Any other Cosmos account** (e.g. the USTP pipeline step) must be named explicitly. Put
 `MONGO_CONNECTION_STRING` and `SEED_SUPERUSER_ID` in an env file rather than on the command line, so

@@ -55,15 +55,15 @@ describe('superuser grant and revoke', () => {
     expect(assignments.docs).toEqual([
       {
         documentType: 'USER_ROLE_ASSIGNMENT',
-        id: expect.stringMatching(/^seed-superuser-[0-9a-f-]{36}$/),
+        id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
         userId: target.id,
         userName: 'Alice Adams',
         email: 'alice@example.com',
         role: CamsRole.SuperUser,
         regionId: null,
         officeCode: null,
-        assignedBy: 'SYSTEM_SEED',
-        assignedByName: 'Local superuser command',
+        assignedBy: 'SUPERUSER_COMMAND',
+        assignedByName: 'Superuser command',
         assignedAt: NOW.toISOString(),
         expiresAt: null,
         active: true,
@@ -74,7 +74,7 @@ describe('superuser grant and revoke', () => {
     expect(audits.docs).toEqual([
       {
         documentType: 'ROLE_ASSIGNMENT_AUDIT',
-        id: expect.stringMatching(/^seed-superuser-audit-[0-9a-f-]{36}$/),
+        id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
         assignmentId,
         action: 'CREATED',
         userId: target.id,
@@ -82,8 +82,8 @@ describe('superuser grant and revoke', () => {
         role: CamsRole.SuperUser,
         regionId: null,
         officeCode: null,
-        performedBy: 'SYSTEM_SEED',
-        performedByName: 'Local superuser command',
+        performedBy: 'SUPERUSER_COMMAND',
+        performedByName: 'Superuser command',
         performedAt: NOW.toISOString(),
         previousState: null,
         newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
