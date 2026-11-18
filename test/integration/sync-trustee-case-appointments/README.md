@@ -66,13 +66,16 @@ ACMS names are upper-case (the renderer upper-cases every ACMS text field, so ev
 also proves case-insensitive matching), suffixes and decorations inside the last name, multi-word
 and initial-only first names, 4% with no address and 3.5% with no city/state/zip, phone `0` for 14%,
 ZIP+4 everywhere. DXTR variants vary generation, address line 2, phone punctuation, ZIP+4, email and
-case. `DXTR_NAME_SHAPES` (CAMS-957 Slice 4; no staging access to confirm real counts, basis `code`
-once observed) covers first/middle swapped, a nickname, a suffix embedded in the last name, a
-hyphenated surname where CAMS holds only one half, and trailing role text — all resolve via the
-pipeline because identical address/phone/email data carries the link despite the name mismatch.
-Jurisdiction scenarios span court, division, chapter (7, 11, 12, 13) and appointment status (active,
-voluntarily-suspended, resigned) for CAMS-956. Seeded CAMS trustees carry `phoneticTokens` and the
-`legacy` block, as real ones do, and the Mongo client uses `ignoreUndefined` like production.
+case. `DXTR_NAME_SHAPES` (CAMS-957 Slice 4; basis `provisional`, since there was no staging access
+to confirm real counts) covers first/middle swapped, a nickname, a suffix embedded in the last name,
+a hyphenated surname where CAMS holds only one half, and trailing role text. All five link via the
+pipeline. Every resolve stage requires a passing name check, so in each case the name passes after
+normalization, and phone plus city/state/zip corroborate it. Street and email are identical only for
+the swapped and nickname shapes: `person()` derives both from the last name, so they differ for the
+other three. Jurisdiction scenarios span court, division, chapter (7, 11, 12, 13) and appointment
+status (active, voluntarily-suspended, resigned) for CAMS-956. Seeded CAMS trustees carry
+`phoneticTokens` and the `legacy` block, as real ones do, and the Mongo client uses
+`ignoreUndefined` like production.
 
 ### ACMS-only scenarios (and why)
 
@@ -86,11 +89,11 @@ DXTR lane. What's left ACMS-only, and why (each scenario's own `note` says the s
   `${tag}-known-by-professional-id` are the exception: they run on both lanes, since the DXTR row
   carrying the same group+code but resolving via the pipeline instead is exactly the `.feature`
   scenario "A DXTR professional code does not link a trustee."
-- **ACMS-only fields**: DISP_DATE (`disp-date-closes-matching`, `reappointed-after-disposition`, the
-  per-region `${tag}-disp-date-closes-matching`), raw `CURR_CASE_CHAPT`
-  (`invalid-chapter-goes-to-dlq-alone`, `chapter-7a-normalized`, `chapter-7n-normalized`), and
-  `CLOSED_BY_COURT_DATE`/`CLOSED_BY_UST_DATE`/the CMMKE reopen key event
-  (`closed-and-reopened-case-dates`, `closed-by-ust-only`, `closed-before-appointed`) —
+- **ACMS-only fields**: DISP_DATE (`disp-date-closes-matching`, `reappointed-after-disposition`,
+  `unknown-closed-removes-placeholder`, the per-region `${tag}-disp-date-closes-matching`), raw
+  `CURR_CASE_CHAPT` (`invalid-chapter-goes-to-dlq-alone`, `chapter-7a-normalized`,
+  `chapter-7n-normalized`), and `CLOSED_BY_COURT_DATE`/`CLOSED_BY_UST_DATE`/the CMMKE reopen key
+  event (`closed-and-reopened-case-dates`, `closed-by-ust-only`, `closed-before-appointed`) —
   `toTrusteeAppointmentEvent` (DXTR gateway) never sets `closedDate`/`reopenedDate` at all.
 - **`zero-appointment-date`**: DXTR always has an `appointedDate` (`toTrusteeAppointmentEvent` falls
   back to the NOT NULL `TX_DATE` whenever the REC-embedded date is blank or unparseable), so it
@@ -149,10 +152,15 @@ routing is covered by `run`.
   scope. A row marked `✗` disagrees; the scenario's own `✗` lines say why.
 - **Determinism.** After each scenario the harness hashes every harness Mongo collection (sha256 of
   documents with sorted keys; `_id`, `id`, `createdOn`/`updatedOn`/`createdBy`/`updatedBy` dropped;
-  generated uuids and wall-clock (non-midnight) ISO timestamps replaced by placeholders). Any
-  scenario whose hash differs between run 1 and run 2 fails the backtest, as does any difference in
-  the outcome counts.
-- **Exit codes:** `0` passed, `1` a fixture failed or the runs differ, `3` and `4` as for `run`.
+  generated uuids, ObjectIds and wall-clock (non-midnight) ISO timestamps replaced by placeholders).
+  Any scenario whose hash differs between run 1 and run 2 fails the backtest, as does any difference
+  in the outcome counts. Scope: both runs execute in the same process, and every uuid becomes the
+  same placeholder, so the digest compares document content, not which document a reference points
+  at. The fixtures' own assertions check trustee identity.
+- **Nothing selected.** If `--only` or `--region` matches no DXTR-lane scenario, the backtest runs
+  nothing and exits `1` instead of reporting a vacuous pass. `run` does the same.
+- **Exit codes:** `0` passed, `1` a fixture failed, the runs differ or nothing was selected, `3` and
+  `4` as for `run`.
 
 ## The seams
 
@@ -209,8 +217,9 @@ writes (`seed-schema`, `run`, `replay`, `clean`) unless the Mongo host, `ACMS_MS
 convention as `../_lib/ephemeral-cosmos-database.ts`). It exits 4 when it refuses.
 
 **Exit codes:** `0` all pass, `1` at least one failure (a regression, an unmet expectation or
-infrastructure trouble), `2` no failures but some scenarios are `NOT IMPLEMENTED` (targets), `3` a
-database is unreachable (preflight), `4` refused by the local-only guard.
+infrastructure trouble) or nothing matched `--only`/`--region`/`--lane`, `2` no failures but some
+scenarios are `NOT IMPLEMENTED` (targets), `3` a database is unreachable (preflight), `4` refused by
+the local-only guard.
 
 `.env.local` can be assembled from the sibling `../CAMS` checkout's `test/integration/*/.env.local`
 (Mongo + ACMS from `migrate-case-appointments`, DXTR from `trustee-match-scenarios`). The two used

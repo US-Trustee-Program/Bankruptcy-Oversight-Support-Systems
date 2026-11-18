@@ -269,12 +269,20 @@ export type ExpectedTask = {
   count: number;
   source?: Lane;
   reason?: 'no match' | 'ambiguous';
-  /** string = must equal; null = must be absent (DXTR tasks never carry one, CAMS-873). */
+  /**
+   * string = must equal; null = must be absent. Omitted = not asserted, except on a DXTR task,
+   * where the harness always requires it absent (DXTR never carries one, CAMS-873).
+   */
   acmsProfessionalId?: string | null;
   /** The task's courtId, which carries the case's region (see DIVISIONS). */
   court?: string;
 };
 
+/**
+ * What one pass must leave behind. A pass that expects nothing written (every asserted case has no
+ * appointments) is also held to no new identity task, nothing parked and nothing dead-lettered,
+ * unless it declares dlq, parked or parkedCount itself.
+ */
 export type Expect = {
   /** Exact set of CaseAppointment documents per case, after this pass. Omitted case = not asserted. */
   appointments?: Record<string, ExpectedAppointment[]>;
@@ -700,6 +708,7 @@ function add(s: Scenario): void {
           sourceEvents: 1,
           appointments: { [c]: [{ trustee: 'T-1', assignedOn: D1 }] },
           untouched: [c],
+          tasksTotal: 0,
         },
       },
     ],
@@ -1143,11 +1152,11 @@ jurisdictionScenario({
     basis: 'feature',
     note:
       'cams-fd8qd.1.9: the disposition closes the placeholder as given; it is not deleted, and the identity ' +
-      'task itself stays. CAMS-957 Slice 4: pass 2 is ACMS DISP_DATE, not representable in DXTR, so the DXTR ' +
-      "lane's pass 2 is a no-op re-read that leaves the placeholder open, unlike ACMS which closes it; " +
-      'dxtrExpect states that open-for-both-passes shape (the same value happens to be correct for pass 1 ' +
-      "unchanged and pass 2's DXTR-specific outcome).",
-    lanes: ['ACMS', 'DXTR'],
+      'task itself stays. CAMS-957 Slice 4: ACMS-only. The closing input is ACMS DISP_DATE, which DXTR ' +
+      'cannot represent (same reason as disp-date-closes-matching); on DXTR pass 2 would be a no-op ' +
+      're-read, so the scenario could only pass there by asserting the opposite of its title. Placeholder ' +
+      'replay on DXTR is covered by replay-placeholders-and-tasks.',
+    lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [] },
     passes: [
@@ -1172,10 +1181,6 @@ jurisdictionScenario({
         },
       },
     ],
-    dxtrExpect: {
-      appointments: { [c]: [{ trustee: 'PLACEHOLDER', assignedOn: D1 }] },
-      tasks: [{ last: 'Oak', count: 1, source: 'DXTR' }],
-    },
   });
 }
 
@@ -1410,6 +1415,7 @@ for (const v of NAME_VARIANTS) {
         expect: {
           appointments: { [c]: [{ trustee: 'T-N', assignedOn: D1, matchedBy: 'PIPELINE' }] },
           tasks: [{ last: acmsPerson.last, count: 0 }],
+          tasksTotal: 0,
         },
       },
     ],
@@ -2304,11 +2310,16 @@ for (const v of DXTR_NAME_SHAPES) {
   const c = nextCase();
   const dxtrPerson = person(v.dxtr.last as string, v.dxtr);
   const camsPerson = person(v.cams.last as string, v.cams);
+  // person() derives address1 and email from the last name, so they differ when the shape changes it.
+  const contact =
+    dxtrPerson.last === camsPerson.last
+      ? 'address, phone and email are identical'
+      : 'phone, city, state and zip are identical, but street and email differ (person() derives both from the last name)';
   add({
     key: `dxtr-name-shape-${v.key}`,
     title: `DXTR ${v.key.replace(/-/g, ' ')} against the pipeline`,
-    basis: 'code',
-    note: `${v.note} Observed (2026-11-18): the name mismatch alone does not block the link -- identical address/phone/email (person() defaults, unchanged by these overrides) are enough for the pipeline to resolve it regardless of the name shape.`,
+    basis: 'provisional',
+    note: `${v.note} Observed (2026-11-18): links via the pipeline. Every resolve stage requires a passing name check, so the name passes after normalization; ${contact}.`,
     lanes: ['DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-N', camsPerson)] },
@@ -2319,6 +2330,7 @@ for (const v of DXTR_NAME_SHAPES) {
         expect: {
           appointments: { [c]: [{ trustee: 'T-N', assignedOn: D1, matchedBy: 'PIPELINE' }] },
           tasks: [{ last: dxtrPerson.last, count: 0 }],
+          tasksTotal: 0,
         },
       },
     ],
