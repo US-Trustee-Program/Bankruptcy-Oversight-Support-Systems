@@ -242,15 +242,16 @@ Feature: Switch a region's trustee appointments to DXTR
   # SLICE 4: Deterministic backtest gates the first production switch
   # Dependencies: Slice 3
   # User Value: The team knows DXTR records match trustees well enough before any production region switches
-  # Pass bar: set in refinement before the backtest runs (open question on the epic).
+  # Pass bar: each fixture declares its expected outcome; there are no manual thresholds
+  # (Matt Stankey, 2026-11-18). Fixtures are synthetic, committed, and shaped like staging DXTR data.
 
-  Scenario: The backtest reports against the pass bar
-    Given staging DXTR trustee-appointment records
-    And the pass bar thresholds are recorded
-    When the deterministic backtest runs the trustee-match pipeline on those records
-    Then it reports each threshold's measured value and whether it passed
+  Scenario: The backtest passes only when every DXTR fixture gets its expected outcome
+    Given synthetic DXTR trustee-appointment fixtures, each declaring its expected outcome
+    When the deterministic backtest runs those fixtures through the sync and the trustee-match pipeline
+    Then it reports expected and actual counts for each outcome: linked, identity task by reason, skipped, parked and dead-lettered
+    And it passes only when every fixture gets its expected outcome
     And no LLM grading is used
-    And running it twice on the same data gives the same result
+    And running it twice on the same fixtures gives the same result
 
   Scenario: The staging switch test
     Given staging is purged
