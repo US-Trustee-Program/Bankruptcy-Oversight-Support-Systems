@@ -999,6 +999,11 @@ describe('SyncTrusteeCaseAppointments', () => {
           () => makeResolvedState('trustee-123'),
           () => makeEvent('case-001', 'John Doe'),
         ],
+        [
+          'an unknown DXTR trustee (placeholder)',
+          () => makeUnresolvedState(0),
+          () => makeEvent('case-001', 'John Doe'),
+        ],
       ])(
         'a parked write for %s without dateFiled is dead-lettered, never parked',
         async (_label, state, buildEvent) => {
