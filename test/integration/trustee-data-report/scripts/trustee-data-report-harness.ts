@@ -92,8 +92,9 @@ const RUN_TIMEOUT_MS = 3 * 60 * 1000;
 // strict; the harness reports it as a known gap instead of a failure. Keep in step with README.md.
 const KNOWN_GAPS: Record<string, string> = {
   S10: 'Latent: the comparison ignores the CAMS phone extension, and TOD keeps extension digits inside TELEPHONE, so once CAMS stores an extension separately the same phone is reported as a difference. No CAMS trustee has one today.',
-  S44: "Active TOD codes come from TOD_STATUS_MAP only, which lacks '2'; the migration's CBC_STATUS_MAP knows 12CBC '2' is active, but the report ignores the chapter.",
-  S33: 'Follows from S10 and S44: one false phone difference, and one missing TOD-only trustee.',
+  S44: "Status '2' on 12CBC is active (product decision, matching the migration's CBC_STATUS_MAP), but the report's active codes come from TOD_STATUS_MAP only, which lacks '2', and ignore the chapter.",
+  S41: 'An empty status should flag an unlinked trustee for review as TOD only (product decision); the report treats it as inactive and omits the trustee.',
+  S33: 'Follows from S10, S41 and S44: one false phone difference and two missing TOD-only trustees.',
 };
 
 // ---------------------------------------------------------------------------

@@ -172,7 +172,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'S07',
     title:
-      'A TOD record with no name is compared as "Unknown", so a CAMS trustee with a real name gets a name difference (open question)',
+      'A TOD record with no name is compared as "Unknown", so a CAMS trustee with a real name gets a name difference',
     cams: {
       trusteeId: `${TRUSTEE_ID_PREFIX}S07`,
       name: 'Pat Noname',
@@ -461,9 +461,9 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'S41',
-    title: 'An unlinked TOD trustee whose only status is empty is not reported',
+    title: 'An unlinked TOD trustee whose only status is empty is flagged for review as TOD only',
     todIds: ['51'],
-    expected: [],
+    expected: [{ kind: 'tod-only', trusteeName: 'Hale Emptystatus', todIds: ['51'] }],
   },
 
   // ── Merged trustees ──────────────────────────────────────────────────────────
