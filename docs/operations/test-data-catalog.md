@@ -170,8 +170,9 @@ in `dev-tools`:
 | `npm run superuser:grant:main` / `superuser:revoke:main` | Flexion main Cosmos (`cosmos-mongo-ustp-cams`), `cams` database. Reads `.env-dev-main`.                                                  |
 
 On these two accounts the user defaults to the Flexion Team account; set the `SEED_SUPERUSER_*`
-variables below to grant someone else. **Caution:** `superuser:revoke:dev` with no variables set
-removes Super User from the shared Flexion Team login for everyone who uses it.
+variables below to grant someone else. A named user never inherits Flexion Team's name or email.
+**Caution:** `superuser:revoke:dev` with no variables set removes Super User from the shared Flexion
+Team login for everyone who uses it.
 
 Not a seed scenario: each grant writes a new `seed-superuser-<uuid>` document to
 `user-role-assignments` (role `SuperUser`, `regionId`/`officeCode` null, `activeKey`
@@ -201,8 +202,8 @@ user defaults to Flexion Team. Anything else exits before connecting.
 | Variable               | Default (Flexion accounts and local) | Meaning                                                                                   |
 | ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
 | `SEED_SUPERUSER_ID`    | `00uxy2nwugG682IKt697`               | Okta user id: the access token's `uid` claim, which CAMS also uses as the session user id |
-| `SEED_SUPERUSER_NAME`  | `Flexion Team`                       | Display name                                                                              |
-| `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us`       | Email                                                                                     |
+| `SEED_SUPERUSER_NAME`  | `Flexion Team`                       | Display name. Required to grant when `SEED_SUPERUSER_ID` is set                           |
+| `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us`       | Email. Optional when `SEED_SUPERUSER_ID` is set                                           |
 
 The command doesn't check Okta's "USTP Cams Users" group. A mistyped id writes a permission nobody
 can use. A correct id for someone outside the group still gets a working Super User session, but

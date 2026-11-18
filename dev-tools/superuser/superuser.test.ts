@@ -72,6 +72,54 @@ describe('superuser command', () => {
     expect(revokeSuperUser).toHaveBeenCalledWith(expect.anything(), '00uabc1234567890abcd');
   });
 
+  test.each(['', ' '])(
+    'should treat blank SEED_SUPERUSER_* variables (%j) as unset and grant the Flexion Team account',
+    async (blank) => {
+      const { deps, grantSuperUser } = fakeDeps();
+      const env = {
+        MONGO_CONNECTION_STRING: LOCAL,
+        SEED_SUPERUSER_ID: blank,
+        SEED_SUPERUSER_NAME: blank,
+        SEED_SUPERUSER_EMAIL: blank,
+      };
+
+      await run(['grant'], env, deps);
+
+      expect(grantSuperUser.mock.calls[0][1]).toStrictEqual({
+        id: '00uxy2nwugG682IKt697',
+        name: 'Flexion Team',
+        email: 'doj-ustp-cms-team@flexion.us',
+      });
+    },
+  );
+
+  test("should refuse to grant a named user without SEED_SUPERUSER_NAME instead of using Flexion Team's", async () => {
+    const { deps, openStore } = fakeDeps();
+    const env = { MONGO_CONNECTION_STRING: LOCAL, SEED_SUPERUSER_ID: '00uabc1234567890abcd' };
+
+    await expect(run(['grant'], env, deps)).rejects.toThrow(
+      'SEED_SUPERUSER_NAME is required with SEED_SUPERUSER_ID.',
+    );
+    expect(openStore).not.toHaveBeenCalled();
+  });
+
+  test('should revoke a named user without SEED_SUPERUSER_NAME', async () => {
+    const { deps, revokeSuperUser } = fakeDeps();
+    const env = { MONGO_CONNECTION_STRING: LOCAL, SEED_SUPERUSER_ID: '00uabc1234567890abcd' };
+
+    expect(await run(['revoke'], env, deps)).toEqual('revoked');
+    expect(revokeSuperUser).toHaveBeenCalledWith(expect.anything(), '00uabc1234567890abcd');
+  });
+
+  test('should refuse --database without --cosmos-host', async () => {
+    const { deps, openStore } = fakeDeps();
+
+    await expect(
+      run(['grant', '--database', 'cams-e2e'], { MONGO_CONNECTION_STRING: LOCAL }, deps),
+    ).rejects.toThrow('--database is only used with --cosmos-host.');
+    expect(openStore).not.toHaveBeenCalled();
+  });
+
   test('should close the connection when the write fails', async () => {
     const { deps, grantSuperUser, close } = fakeDeps();
     grantSuperUser.mockRejectedValue(new Error('write failed'));
@@ -96,10 +144,42 @@ describe('superuser command', () => {
       await run(['grant', '--cosmos-host', host, '--database', 'cams-prd'], env, deps);
 
       expect(openStore).toHaveBeenCalledWith(env.MONGO_CONNECTION_STRING, 'cams-prd');
-      expect(grantSuperUser).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ id: '00uabc1234567890abcd', name: 'Alice Adams' }),
-      );
+      expect(grantSuperUser.mock.calls[0][1]).toStrictEqual({
+        id: '00uabc1234567890abcd',
+        name: 'Alice Adams',
+      });
+    });
+
+    test.each([
+      { caseName: 'set', email: 'alice@example.com', expected: { email: 'alice@example.com' } },
+      { caseName: 'blank', email: ' ', expected: {} },
+    ])(
+      'should pass SEED_SUPERUSER_EMAIL through only when $caseName',
+      async ({ email, expected }) => {
+        const { deps, grantSuperUser } = fakeDeps();
+
+        await run(
+          ['grant', '--cosmos-host', host, '--database', 'cams'],
+          { ...env, SEED_SUPERUSER_EMAIL: email },
+          deps,
+        );
+
+        expect(grantSuperUser.mock.calls[0][1]).toStrictEqual({
+          id: '00uabc1234567890abcd',
+          name: 'Alice Adams',
+          ...expected,
+        });
+      },
+    );
+
+    test('should require SEED_SUPERUSER_NAME to grant a named user', async () => {
+      const { deps, openStore } = fakeDeps();
+      const { SEED_SUPERUSER_NAME: _unused, ...noName } = env;
+
+      await expect(
+        run(['grant', '--cosmos-host', host, '--database', 'cams'], noName, deps),
+      ).rejects.toThrow('SEED_SUPERUSER_NAME is required with SEED_SUPERUSER_ID.');
+      expect(openStore).not.toHaveBeenCalled();
     });
 
     test('should refuse a connection string for a different host before connecting', async () => {

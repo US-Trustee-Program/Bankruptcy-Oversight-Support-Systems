@@ -23,6 +23,7 @@
  * and never deletes it; `unseed` does not touch these collections.
  */
 
+import { pathToFileURL } from 'node:url';
 import { MongoClient } from 'mongodb';
 import { assertAllowedMongo } from './mongo-guard.js';
 import {
@@ -72,9 +73,34 @@ const defaultDeps: SuperUserCommandDeps = {
   revokeSuperUser,
 };
 
-/** An unset or blank variable (e.g. `SEED_SUPERUSER_ID=` in .env) uses the fallback. */
-function envOr(env: Record<string, string | undefined>, name: string, fallback: string) {
-  return env[name]?.trim() || fallback;
+/** A blank variable (e.g. `SEED_SUPERUSER_ID=` in .env) counts as unset. */
+function envValue(env: Record<string, string | undefined>, name: string) {
+  return env[name]?.trim() || undefined;
+}
+
+/**
+ * The user named by SEED_SUPERUSER_*, or the Flexion Team account when none is named and the
+ * target allows it. A named user's display name comes only from SEED_SUPERUSER_NAME, never from
+ * Flexion Team or the id; it is optional here because revoke needs only the id.
+ */
+function targetFrom(
+  env: Record<string, string | undefined>,
+  flexionDefaultAllowed: boolean,
+): Omit<SuperUserTarget, 'name'> & { name?: string } {
+  const id = envValue(env, 'SEED_SUPERUSER_ID');
+  if (!id) {
+    if (flexionDefaultAllowed) return FLEXION_TEAM;
+    throw new Error('SEED_SUPERUSER_ID is required with --cosmos-host.');
+  }
+  const name = envValue(env, 'SEED_SUPERUSER_NAME');
+  const email = envValue(env, 'SEED_SUPERUSER_EMAIL');
+  return { id, ...(name ? { name } : {}), ...(email ? { email } : {}) };
+}
+
+/** A grant writes the display name onto the permission and its audit entries, so it needs one. */
+function withName({ name, ...rest }: ReturnType<typeof targetFrom>): SuperUserTarget {
+  if (!name) throw new Error('SEED_SUPERUSER_NAME is required with SEED_SUPERUSER_ID.');
+  return { ...rest, name };
 }
 
 function parseArgs(argv: string[]) {
@@ -97,38 +123,26 @@ export async function run(
   deps: SuperUserCommandDeps = defaultDeps,
 ): Promise<string> {
   const { action, cosmosHost, database: databaseOption } = parseArgs(argv);
+  if (cosmosHost === undefined && databaseOption !== undefined) {
+    throw new Error('--database is only used with --cosmos-host.');
+  }
   const uri = env.MONGO_CONNECTION_STRING;
   const { hosts } = assertAllowedMongo(uri, cosmosHost === undefined ? {} : { cosmosHost });
 
   let database = LOCAL_DATABASE;
-  let target: SuperUserTarget;
-  if (cosmosHost === undefined) {
-    target = {
-      id: envOr(env, 'SEED_SUPERUSER_ID', FLEXION_TEAM.id),
-      name: envOr(env, 'SEED_SUPERUSER_NAME', FLEXION_TEAM.name),
-      email: envOr(env, 'SEED_SUPERUSER_EMAIL', FLEXION_TEAM.email!),
-    };
-  } else {
+  if (cosmosHost !== undefined) {
     if (!databaseOption?.trim()) throw new Error('--database is required with --cosmos-host.');
     database = databaseOption.trim();
-    const id = env.SEED_SUPERUSER_ID?.trim();
-    if (id) {
-      const email = env.SEED_SUPERUSER_EMAIL?.trim();
-      target = { id, name: envOr(env, 'SEED_SUPERUSER_NAME', id), ...(email ? { email } : {}) };
-    } else if (FLEXION_HOSTS.has(hosts[0])) {
-      target = FLEXION_TEAM;
-    } else {
-      throw new Error('SEED_SUPERUSER_ID is required with --cosmos-host.');
-    }
   }
+  const target = targetFrom(env, cosmosHost === undefined || FLEXION_HOSTS.has(hosts[0]));
+  const grantTarget = action === 'grant' ? withName(target) : null;
   console.log(`[SUPERUSER] ${action} ${target.id} in ${hosts.join(',')}/${database}`);
 
   const { store, close } = await deps.openStore(uri!, database);
   try {
-    const result =
-      action === 'grant'
-        ? await deps.grantSuperUser(store, target)
-        : await deps.revokeSuperUser(store, target.id);
+    const result = grantTarget
+      ? await deps.grantSuperUser(store, grantTarget)
+      : await deps.revokeSuperUser(store, target.id);
     console.log(`[SUPERUSER] ${result.outcome}`);
     return result.outcome;
   } finally {
@@ -138,7 +152,7 @@ export async function run(
 
 // Only run when executed directly, not when imported by the test.
 const isMainModule =
-  process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainModule) {
   run(process.argv.slice(2), process.env).catch((error: Error) => {
     console.error(`[SUPERUSER] ${error.message}`);
