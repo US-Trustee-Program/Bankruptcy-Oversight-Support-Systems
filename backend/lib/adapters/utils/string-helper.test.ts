@@ -60,8 +60,17 @@ describe('Test formatCityStateZipCountry', () => {
     expect(result).toBeUndefined();
   });
 
-  test('Should return undefined when city, state, and zip are blank, even if country is set', () => {
-    const result = formatCityStateZipCountry('', '', '', 'USA');
-    expect(result).toBeUndefined();
-  });
+  test.each([
+    { city: '', state: '', zip: '', country: 'USA' },
+    { city: '  ', state: '', zip: '', country: 'USA' },
+    { city: '', state: '  ', zip: '', country: 'USA' },
+    { city: '', state: '', zip: '  ', country: 'USA' },
+    { city: '  ', state: '  ', zip: '  ', country: undefined },
+  ])(
+    'Should return undefined when city, state, and zip are blank, even if country is set ($city|$state|$zip|$country)',
+    ({ city, state, zip, country }) => {
+      const result = formatCityStateZipCountry(city, state, zip, country);
+      expect(result).toBeUndefined();
+    },
+  );
 });
