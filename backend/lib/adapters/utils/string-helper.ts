@@ -15,5 +15,9 @@ export function formatCityStateZipCountry(
   zip: string | undefined,
   country: string | undefined,
 ): string | undefined {
-  return removeExtraSpaces([city, state, zip, country].filter(Boolean).join(' '));
+  const cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+  if (!cityStateZip) {
+    return undefined;
+  }
+  return removeExtraSpaces([cityStateZip, country].filter(Boolean).join(' '));
 }

@@ -59,4 +59,9 @@ describe('Test formatCityStateZipCountry', () => {
     const result = formatCityStateZipCountry(undefined, undefined, undefined, undefined);
     expect(result).toBeUndefined();
   });
+
+  test('Should return undefined when city, state, and zip are blank, even if country is set', () => {
+    const result = formatCityStateZipCountry('', '', '', 'USA');
+    expect(result).toBeUndefined();
+  });
 });
