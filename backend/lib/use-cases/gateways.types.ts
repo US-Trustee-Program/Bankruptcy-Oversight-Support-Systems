@@ -1,3 +1,8 @@
+import {
+  TrusteeDataDifference,
+  TrusteeDataReportRun,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
@@ -32,6 +37,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
   TrusteeChangeNotificationEvent,
+  TrusteeDataReportStartMessage,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
@@ -432,6 +438,10 @@ export interface AtsGateway {
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
+  /** Read-only: the TOD trustee records that exist among the given IDs. */
+  getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;
+  /** Read-only: the given TOD trustee IDs that have at least one active appointment status. */
+  getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,
@@ -552,6 +562,27 @@ export interface EmailNotificationArchiveRepository extends Releasable {
   readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null>;
 }
 
+/** Stores trustee data report runs and their difference rows; never touches trustee data. */
+export interface TrusteeDataReportRepository extends Releasable {
+  upsertRun(run: TrusteeDataReportRun): Promise<void>;
+  readRun(runId: string): Promise<TrusteeDataReportRun | null>;
+  readLatestCompletedRun(): Promise<TrusteeDataReportRun | null>;
+  readLatestFailedRun(): Promise<TrusteeDataReportRun | null>;
+  listCompletedRunIds(): Promise<string[]>;
+  /** Replaces one page's difference rows and counts; safe to repeat when a page is retried. */
+  replacePageResults(
+    runId: string,
+    pageKey: string,
+    differences: TrusteeDataDifference[],
+    summary: TrusteeDataReportSummary,
+  ): Promise<void>;
+  readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]>;
+  /** Deletes the run's difference rows and page counts, keeping the run document. */
+  deleteRunResults(runId: string): Promise<void>;
+  /** Deletes the run document and all of its results. */
+  deleteRun(runId: string): Promise<void>;
+}
+
 export type BounceLogRow = {
   /** ISO 8601 (UTC) timestamp of the underlying resource log row. */
   timeGenerated: string;
@@ -613,6 +644,8 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
+  /** Returns every trustee whose legacy truIds contain any of the given TOD trustee IDs. */
+  findTrusteesByLegacyTruIds(truIds: string[]): Promise<Trustee[]>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
   findTrusteesByIds(trusteeIds: string[]): Promise<Trustee[]>;
   searchTrusteesByName(name: string): Promise<Trustee[]>;
@@ -838,7 +871,8 @@ export type RuntimeStateDocumentType =
   | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
   | 'ACS_BOUNCE_POLL_STATE'
   | 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE'
-  | 'TRUSTEE_APPOINTMENT_SYNC_RUN';
+  | 'TRUSTEE_APPOINTMENT_SYNC_RUN'
+  | 'TRUSTEE_DATA_REPORT_RUN';
 
 export type RuntimeState = {
   id?: string;
@@ -920,6 +954,13 @@ export type TrusteeAppointmentSyncRunState = RuntimeState & {
   startedAt: string;
   /** Lanes that have not yet finished cleanly; the lane that brings this to 0 deletes the lock. */
   lanesRemaining: number;
+};
+
+/** Lock held by the trustee data report run in progress; only one report runs at a time. */
+export type TrusteeDataReportRunState = RuntimeState & {
+  documentType: 'TRUSTEE_DATA_REPORT_RUN';
+  runId: string;
+  startedAt: string;
 };
 
 /**
@@ -1036,6 +1077,7 @@ export interface ApiToDataflowsGateway {
   queueCaseReload(caseId: string): Promise<void>;
   queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void>;
   queueTrusteeChangeNotification(event: TrusteeChangeNotificationEvent): Promise<void>;
+  queueTrusteeDataReportStart(message: TrusteeDataReportStartMessage): Promise<void>;
 }
 
 export interface ObservabilityTrace {

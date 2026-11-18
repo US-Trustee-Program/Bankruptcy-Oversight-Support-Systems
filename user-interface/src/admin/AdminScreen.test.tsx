@@ -26,6 +26,10 @@ vi.mock('./case-reload/CaseReload', () => ({
   CaseReload: () => <div data-testid="mocked-case-reload" />,
 }));
 
+vi.mock('./trustee-data-report/TrusteeDataReport', () => ({
+  TrusteeDataReport: () => <div data-testid="mocked-trustee-data-report" />,
+}));
+
 vi.mock('./banks/Banks', () => ({
   Banks: () => <div data-testid="mocked-banks" />,
 }));
@@ -102,10 +106,16 @@ describe('Admin screen tests', () => {
     ['case-reload', '/admin/case-reload', 'case-reload-nav-link'],
     ['banks', '/admin/banks', 'banks-nav-link'],
     ['notification-routing', '/admin/notification-routing', 'notification-routing-nav-link'],
+    ['trustee-data-report', '/admin/trustee-data-report', 'trustee-data-report-nav-link'],
   ])('should select %s nav when path matches', (_desc, path, testId) => {
     renderAtPath(path);
     const navLink = screen.getByTestId(testId);
     expect(navLink).toHaveClass('usa-current');
+  });
+
+  test('should render TrusteeDataReport component when navigating to /admin/trustee-data-report', () => {
+    renderAtPath('/admin/trustee-data-report');
+    expect(screen.getByTestId('mocked-trustee-data-report')).toBeInTheDocument();
   });
 
   test('should render Banks component when navigating to /admin/banks', () => {

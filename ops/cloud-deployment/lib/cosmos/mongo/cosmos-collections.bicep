@@ -506,6 +506,14 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
             ]
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'legacy.truIds'
+            ]
+          }
+        }
       ]
     }
   }
@@ -897,6 +905,43 @@ resource emailNotificationArchiveCollection 'Microsoft.DocumentDB/databaseAccoun
           }
           options: {
             expireAfterSeconds: -1
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource trusteeDataReportCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustee-data-report'
+  properties: {
+    resource: {
+      id: 'trustee-data-report'
+      shardKey: {
+        runId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'runId'
+            ]
+          }
+        }
+        {
+          // Each page write first deletes that page's earlier rows by runId and pageKey.
+          key: {
+            keys: [
+              'runId'
+              'pageKey'
+            ]
           }
         }
       ]

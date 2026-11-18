@@ -10,6 +10,7 @@ import {
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
+  TRUSTEE_DATA_REPORT_START_QUEUE,
 } from '../../../storage-queues';
 import {
   SyncCasesPageMessage,
@@ -155,6 +156,20 @@ describe('ApiToDataflowsGatewayImpl', () => {
 
   // Shared behavior across all four queue methods: each delegates to the private enqueue(),
   // so a send failure must propagate the same way regardless of which public method was called.
+  describe('queueTrusteeDataReportStart', () => {
+    test('sends the start message to the trustee data report start queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
+
+      await gateway.queueTrusteeDataReportStart({ runId: 'run-1' });
+
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        TRUSTEE_DATA_REPORT_START_QUEUE.queueName,
+      );
+      expect(JSON.parse(mockSendMessage.mock.calls[0][0])).toEqual({ runId: 'run-1' });
+    });
+  });
+
   describe('when the underlying send fails', () => {
     test.each([
       [

@@ -23,6 +23,7 @@ function buildChangeSet(): TrusteeChangeSet {
 function buildGateway(): ApiToDataflowsGateway {
   return {
     queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
+    queueTrusteeDataReportStart: vi.fn(),
     queueCaseAssignmentEvent: vi.fn(),
     queueCaseReload: vi.fn(),
     queueTrusteeVerificationRemap: vi.fn(),

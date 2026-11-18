@@ -187,7 +187,7 @@ function calculateAddressScore(atsTrustee: AtsTrusteeRecord): number {
  * @param records - Array of ATS trustee records (same person, different TOD IDs)
  * @returns Primary record with the most complete address
  */
-function selectPrimaryRecord(records: AtsTrusteeRecord[]): AtsTrusteeRecord {
+export function selectPrimaryRecord(records: AtsTrusteeRecord[]): AtsTrusteeRecord {
   if (records.length === 0) {
     throw new Error('Cannot select primary record from empty array');
   }

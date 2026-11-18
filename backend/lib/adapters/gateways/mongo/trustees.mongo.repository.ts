@@ -285,6 +285,22 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async findTrusteesByLegacyTruIds(truIds: string[]): Promise<Trustee[]> {
+    if (truIds.length === 0) return [];
+    try {
+      const doc = using<TrusteeDocumentQueryable>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('legacy.truIds').contains(truIds),
+      );
+      return await this.getAdapter<TrusteeDocumentQueryable>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustees by legacy TRU_IDs.`,
+      });
+    }
+  }
+
   async searchTrusteesByName(name: string): Promise<Trustee[]> {
     try {
       const normalized = normalizeName(name);
