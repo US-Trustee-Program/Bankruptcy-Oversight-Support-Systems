@@ -52,7 +52,6 @@ import { generateSearchTokens } from '../../../../backend/lib/adapters/utils/pho
 import factory from '../../../../backend/lib/factory';
 import { ApplicationContext } from '../../../../backend/lib/adapters/types/basic';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
-import DateHelper from '../../../../common/src/date-helper';
 import {
   SCENARIOS,
   DRIVER_SCENARIOS,
@@ -81,6 +80,7 @@ import {
   runRegionDriver,
   seedRegionState,
   readRegionBookmark,
+  readRegionSource,
   deleteAppointments,
 } from './bindings';
 
@@ -840,17 +840,15 @@ async function seedEventDerivedState(
 async function readSource(
   context: ApplicationContext,
   source: TrusteeAppointmentSource,
-  lane: Lane,
   region: string,
   changeDate: string,
 ): Promise<{ events: TrusteeAppointmentSyncEvent[]; failures: number }> {
-  // The DXTR read is "transactions AFTER this date" (TX_DATE > start), so ask from the day before.
-  const readDate = lane === 'DXTR' ? DateHelper.subtractDays(changeDate, 1) : changeDate;
+  // Both sources read exactly one change date (DXTR: TX_DATE on that day), paged by id.
   const events: TrusteeAppointmentSyncEvent[] = [];
   let failures = 0;
   let lastId: string | undefined;
   for (let page = 0; page < 10000; page += 1) {
-    const result = await source.getEventsForDate(context, region, readDate, lastId);
+    const result = await source.getEventsForDate(context, region, changeDate, lastId);
     events.push(...result.events);
     failures += result.failures.length;
     if (!result.lastId) return { events, failures };
@@ -862,11 +860,10 @@ async function readSource(
 async function readEvents(
   context: ApplicationContext,
   source: TrusteeAppointmentSource,
-  lane: Lane,
   region: string,
   changeDate: string,
 ): Promise<TrusteeAppointmentSyncEvent[]> {
-  return (await readSource(context, source, lane, region, changeDate)).events;
+  return (await readSource(context, source, region, changeDate)).events;
 }
 
 // ---------------------------------------------------------------------------
@@ -1185,7 +1182,7 @@ async function runScenarioLane(
             firstPass &&
             ((s.cams?.variations?.length ?? 0) > 0 || (s.cams?.pendingTasks?.length ?? 0) > 0)
           ) {
-            const probe = await readEvents(context, source, lane, region, pass.changeDate);
+            const probe = await readEvents(context, source, region, pass.changeDate);
             await seedEventDerivedState(db, s, probe, lane);
           }
           firstPass = false;
@@ -1194,13 +1191,7 @@ async function runScenarioLane(
             'When',
             `${s.passes.length > 1 ? `pass ${i + 1}: ` : ''}the ${lane} source is read for region ${region} on ${pass.changeDate} and the sync runs (${pass.rows.length} source row(s))`,
           );
-          const { events, failures } = await readSource(
-            context,
-            source,
-            lane,
-            region,
-            pass.changeDate,
-          );
+          const { events, failures } = await readSource(context, source, region, pass.changeDate);
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
           await assertExpect(r, context, db, expectFor(pass, s, lane), {
             events: events.length,
@@ -1328,6 +1319,11 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         r.step('Then', `the bookmark for region ${region} is ${expected}`);
         const actual = await readRegionBookmark(db, region);
         r.check(actual === expected, `bookmark ${actual}`, `bookmark is ${actual ?? 'unset'}`);
+      }
+      for (const region of s.expect.stillSwitchedToDxtr ?? []) {
+        r.step('Then', `region ${region} is still switched to DXTR`);
+        const system = await readRegionSource(db, region);
+        r.check(system === 'DXTR', 'source DXTR', `source is ${system ?? 'unset'}`);
       }
       await assertTasks(r, db, s.expect.tasks ?? [], s.expect.tasksTotal);
     } finally {
@@ -1537,7 +1533,7 @@ async function replay() {
     }
     line('  Running the sync...');
     const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
-    const events = await readEvents(context, source, 'ACMS', region, changeDate);
+    const events = await readEvents(context, source, region, changeDate);
     const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
 
     // Aggregates only.

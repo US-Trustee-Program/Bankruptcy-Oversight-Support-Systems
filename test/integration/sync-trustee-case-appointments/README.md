@@ -165,8 +165,8 @@ images are pinned (`mongo:7.0.37`, `azure-sql-edge:1.0.7`).
 - **A skip is only proven if the read is.** A pass that expects nothing written must also declare
   `sourceEvents`, otherwise "nothing written" cannot be told from "the source never returned the
   row". `tasksTotal` counts tasks under any name.
-- **DXTR is read as the stub exists today** (`DxtrTrusteeAppointmentSource`, ignores `regionId`,
-  reads `TX_DATE > start`), so the harness asks from the day before each change date.
+- **DXTR is read one region and one `TX_DATE` day at a time** (`DxtrTrusteeAppointmentSource`, paged
+  by `TX_ID`), the same unit as ACMS, so the harness asks for each change date directly.
 - **Dual-partition check.** Every appointment assertion also checks that `case-trustee-appointments`
   and `trustee-case-appointments` agree. Seeded appointments share one `id` across both, as
   production writes them.
@@ -178,10 +178,6 @@ images are pinned (`mongo:7.0.37`, `azure-sql-edge:1.0.7`).
   through to variation and the pipeline. Scenario `ambiguous-link-not-used` follows the latter.
 - **Bookmark rule for DXTR** is new production behavior (above); `cams-rxb7a` should state it.
 - No open bead exists for `AcmsTrusteeAppointmentSource` itself.
-- **Region switch to DXTR (CAMS-957) is not built.** The driver reads ACMS for every region, so
-  `seedRegionState` throws `NotImplementedError` for a scenario that switches a region and the four
-  switch scenarios report `NOT IMPLEMENTED`. Remove that guard in `bindings.ts` when `cams-rxb7a`
-  lands.
 
 Resolved (cams-fd8qd.37): "United States Trustee (NY)" is now skipped as U.S. Trustee staff
 (`UST_STAFF_PATTERN` matches the spelled-out form); the ACMS sync carries the case's closed and

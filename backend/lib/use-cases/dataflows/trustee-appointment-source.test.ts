@@ -10,6 +10,7 @@ import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { DEFAULT_FETCH_SIZE } from './sync-trustee-case-appointments-constants';
+import { CasesInterface } from '../cases/cases.interface';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},
@@ -216,36 +217,112 @@ describe('AcmsTrusteeAppointmentSource', () => {
 describe('DxtrTrusteeAppointmentSource', () => {
   let context: ApplicationContext;
 
+  function dxtrEvent(caseId: string): TrusteeAppointmentSyncEvent {
+    return {
+      caseId,
+      courtId: '0208',
+      source: 'DXTR',
+      sourceTrustee: { fullName: 'Jane Doe' },
+      groupDesignator: 'NY',
+      profCode: '00063',
+    };
+  }
+
+  type DxtrRegionReads = Pick<
+    CasesInterface,
+    'getLatestTrusteeAppointmentTxDateForRegion' | 'getTrusteeAppointmentEventsForRegionDate'
+  >;
+
+  function setupCasesGateway(reads: Partial<DxtrRegionReads>) {
+    vi.spyOn(factory, 'getCasesGateway').mockReturnValue(
+      reads as ReturnType<typeof factory.getCasesGateway>,
+    );
+  }
+
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
   });
 
-  test('getLatestChangeDate is not supported', async () => {
-    await expect(new DxtrTrusteeAppointmentSource().getLatestChangeDate()).rejects.toThrow(
-      'not supported',
-    );
+  test('has source name DXTR', () => {
+    expect(new DxtrTrusteeAppointmentSource().name).toBe('DXTR');
   });
 
-  test('getEventsForDate returns appointment and petition events together, with no failures', async () => {
-    const appointment = { caseId: '081-24-00001' } as TrusteeAppointmentSyncEvent;
-    const petition = { caseId: '081-24-00002' } as TrusteeAppointmentSyncEvent;
-    const casesGateway = {
-      getTrusteeAppointments: vi.fn().mockResolvedValue({ events: [appointment] }),
-      getTrusteePetitionEvents: vi.fn().mockResolvedValue({ events: [petition] }),
-    };
-    vi.spyOn(factory, 'getCasesGateway').mockReturnValue(
-      casesGateway as unknown as ReturnType<typeof factory.getCasesGateway>,
-    );
+  test("getLatestChangeDate returns the region's newest DXTR transaction date", async () => {
+    const getLatestTrusteeAppointmentTxDateForRegion = vi.fn().mockResolvedValue('2026-09-16');
+    setupCasesGateway({ getLatestTrusteeAppointmentTxDateForRegion });
 
-    const page = await new DxtrTrusteeAppointmentSource().getEventsForDate(
-      context,
-      '02',
-      '2026-07-01',
-    );
+    const result = await new DxtrTrusteeAppointmentSource().getLatestChangeDate(context, '02');
 
-    expect(page).toEqual({ events: [appointment, petition], failures: [] });
-    expect(casesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2026-07-01');
-    expect(casesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(context, '2026-07-01');
+    expect(result).toBe('2026-09-16');
+    expect(getLatestTrusteeAppointmentTxDateForRegion).toHaveBeenCalledWith(context, '02');
+  });
+
+  describe('getEventsForDate', () => {
+    test('requests the first page of the region and date from afterTxId 0 with the default fetch size', async () => {
+      const getTrusteeAppointmentEventsForRegionDate = vi.fn().mockResolvedValue({ events: [] });
+      setupCasesGateway({ getTrusteeAppointmentEventsForRegionDate });
+
+      await new DxtrTrusteeAppointmentSource().getEventsForDate(context, '02', '2026-09-15');
+
+      expect(getTrusteeAppointmentEventsForRegionDate).toHaveBeenCalledWith(context, {
+        regionId: '02',
+        txDate: '2026-09-15',
+        afterTxId: '0',
+        limit: DEFAULT_FETCH_SIZE,
+      });
+    });
+
+    test("returns the gateway's events with no failures and its lastTxId as lastId", async () => {
+      setupCasesGateway({
+        getTrusteeAppointmentEventsForRegionDate: vi
+          .fn()
+          .mockResolvedValue({ events: [dxtrEvent('081-26-12345')], lastTxId: '1001' }),
+      });
+
+      const page = await new DxtrTrusteeAppointmentSource().getEventsForDate(
+        context,
+        '02',
+        '2026-09-15',
+      );
+
+      expect(page).toEqual({
+        events: [dxtrEvent('081-26-12345')],
+        failures: [],
+        lastId: '1001',
+      });
+    });
+
+    test('continues after lastId', async () => {
+      const getTrusteeAppointmentEventsForRegionDate = vi.fn().mockResolvedValue({ events: [] });
+      setupCasesGateway({ getTrusteeAppointmentEventsForRegionDate });
+
+      await new DxtrTrusteeAppointmentSource().getEventsForDate(
+        context,
+        '02',
+        '2026-09-15',
+        '1001',
+      );
+
+      expect(getTrusteeAppointmentEventsForRegionDate).toHaveBeenCalledWith(
+        context,
+        expect.objectContaining({ afterTxId: '1001' }),
+      );
+    });
+
+    test('returns no lastId when the page is empty, ending the date', async () => {
+      setupCasesGateway({
+        getTrusteeAppointmentEventsForRegionDate: vi.fn().mockResolvedValue({ events: [] }),
+      });
+
+      const page = await new DxtrTrusteeAppointmentSource().getEventsForDate(
+        context,
+        '02',
+        '2026-09-15',
+      );
+
+      expect(page.events).toEqual([]);
+      expect(page.lastId).toBeUndefined();
+    });
   });
 });

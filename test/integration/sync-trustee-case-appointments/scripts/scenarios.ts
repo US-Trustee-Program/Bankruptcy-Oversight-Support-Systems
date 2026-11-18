@@ -2395,6 +2395,8 @@ export type DriverScenario = {
     deleted?: string[];
     tasks?: ExpectedTask[];
     tasksTotal?: number;
+    /** Regions whose region.<id>.source must still say DXTR after the run. */
+    stillSwitchedToDxtr?: string[];
   };
 };
 
@@ -2752,6 +2754,34 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         deleted: [c03a],
         kept: [c0701],
         bookmarks: { [OTHER_REGION]: '2026-07-01', [REGION]: '2026-07-20' },
+      },
+    },
+    {
+      key: 'driver-delete-switched-region-keeps-switch',
+      title:
+        "An operator's delete of a region switched to DXTR keeps the switch and rebuilds from DXTR",
+      basis: 'decision',
+      note:
+        "Epic cams-0pqfs decision 5 (Matt Stankey, 2026-11-17): any reset of a region's sync state keeps " +
+        'its source record and clears only region.<id>.lastSyncDate. Run against real Mongo so the ' +
+        `bookmark write is shown to leave the sibling source field in place. ${BOOKMARK_RULE}`,
+      cases: casesAll,
+      cams: { ...camsBase, existing: [{ caseId: c03a, trustee: 'T-3', assignedOn: '2026-05-01' }] },
+      rows: [dxtrRow(c03late, '2026-07-01', prof03), dxtrRow(c03b, '2026-07-02', prof03)],
+      bookmarks: { [OTHER_REGION]: '2026-07-20' },
+      switchedToDxtr: [OTHER_REGION],
+      runDate: '2026-07-25',
+      regions: [OTHER_REGION],
+      delete: {},
+      expect: {
+        written: {
+          [c03late]: by('T-3', DXTR_ASSIGNED),
+          [c03b]: by('T-3', DXTR_ASSIGNED),
+        },
+        notWritten: [],
+        deleted: [c03a],
+        bookmarks: { [OTHER_REGION]: '2026-07-01' },
+        stillSwitchedToDxtr: [OTHER_REGION],
       },
     },
   ];

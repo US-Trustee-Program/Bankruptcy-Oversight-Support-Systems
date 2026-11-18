@@ -42,18 +42,14 @@ export async function getAcmsSource(): Promise<TrusteeAppointmentSource> {
   return new (Ctor as new () => TrusteeAppointmentSource)();
 }
 
-/**
- * The DXTR source as it exists today (a non-functional stub per its own docblock, until GitHub #3191):
- * it ignores regionId and reads by transaction date. The harness drives it as-is so DXTR keeps flowing
- * through the same seam.
- */
+/** The DXTR source: one region's trustee appointment transactions per TX_DATE day, paged by TX_ID. */
 export function getDxtrSource(): TrusteeAppointmentSource {
   return new DxtrTrusteeAppointmentSource();
 }
 
 /**
  * Seam 2: the per-region driver (cams-fd8qd.1.10). For each region named, reads its bookmark
- * (ACMS unconditionally -- the CAMS-957 source switch is a separate, not-yet-built ticket), walks
+ * and source (DXTR when region.<id>.source.system is 'DXTR', else ACMS -- CAMS-957), walks
  * change dates (catch-up from 2026-07-01, a date is complete only when a later date exists, the
  * run date itself is never read), processes events, and advances the bookmark.
  */
@@ -80,13 +76,6 @@ export async function seedRegionState(
   db: Db,
   state: { bookmarks?: Record<string, string>; switchedToDxtr?: string[] },
 ): Promise<void> {
-  // The driver reads ACMS for every region regardless of region.<id>.source until CAMS-957
-  // (cams-rxb7a) builds the switch. Remove this guard when it lands.
-  if ((state.switchedToDxtr ?? []).length > 0) {
-    throw new NotImplementedError(
-      'Region source switch to DXTR (CAMS-957, cams-rxb7a): the driver ignores region.<id>.source',
-    );
-  }
   const region: Record<string, { lastSyncDate?: string; source?: unknown }> = {};
   for (const [id, lastSyncDate] of Object.entries(state.bookmarks ?? {})) {
     region[id] = { ...region[id], lastSyncDate };
@@ -111,6 +100,14 @@ export async function readRegionBookmark(db: Db, region: string): Promise<string
     .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
   const value = doc?.region?.[region]?.lastSyncDate as string | undefined;
   return value ? value.slice(0, 10) : undefined;
+}
+
+/** The region's stored source system ('DXTR' once switched), or undefined. Same assumed shape as seedRegionState. */
+export async function readRegionSource(db: Db, region: string): Promise<string | undefined> {
+  const doc = await db
+    .collection('runtime-state')
+    .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
+  return doc?.region?.[region]?.source?.system as string | undefined;
 }
 
 /**

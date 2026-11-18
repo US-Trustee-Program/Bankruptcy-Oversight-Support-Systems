@@ -1136,10 +1136,15 @@ const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
  * (e.g. "NY-00000") would read to a reviewer as a real professional ID rather than the "no
  * trustee appointed"/"ID unavailable" placeholder it actually is — better to omit it than
  * mislead.
+ * Returns undefined for any non-ACMS event: approving the identity task writes this id as a
+ * verified professional-id link, and DXTR's copy of the ACMS professional code can be wrong
+ * (CAMS-873), so it must never become a link.
  */
 function resolveAcmsProfessionalIdForVerification(
   event: TrusteeAppointmentSyncEvent,
 ): string | undefined {
+  if (event.source !== 'ACMS') return undefined;
+
   const isSentinel =
     event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
     event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;

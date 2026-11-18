@@ -2044,6 +2044,44 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     describe('professional-id identification step', () => {
+      test("a DXTR event's group designator and professional code never resolve a trustee by professional-id link", async () => {
+        // DXTR can carry an incorrect ACMS professional code (CAMS-873, CAMS-882), so DXTR events
+        // carry no acmsProfessionalId. The raw groupDesignator/profCode below are the trap: they
+        // form exactly the key ('NY-00063') the mocked link answers to, so any future change that
+        // builds a professional id from them for matching would land this appointment on
+        // 'trustee-linked' and fail. The DXTR gateway test is the other half: it asserts DXTR
+        // events never get acmsProfessionalId.
+        const event = {
+          ...makeEvent('case-001', 'Jane Doe'),
+          groupDesignator: 'NY',
+          profCode: '00063',
+        };
+        // A link to a different trustee than the pipeline's default ('trustee-123'), so the
+        // assertion below can tell which path resolved the event.
+        vi.mocked(mockProfessionalIdsRepo.findByAcmsProfessionalId!).mockResolvedValue([
+          {
+            camsTrusteeId: 'trustee-linked',
+            acmsProfessionalId: 'NY-00063',
+            disposition: 'linked',
+          },
+        ] as Awaited<ReturnType<TrusteeProfessionalIdsRepository['findByAcmsProfessionalId']>>);
+
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [event],
+        );
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: 'trustee-123',
+            checks: expect.objectContaining({
+              matchedBy: expect.not.stringMatching(/^professional-id$/),
+            }),
+          }),
+        );
+      });
+
       test('resolves directly when exactly one CAMS trustee is linked, with matchedBy "professional-id"', async () => {
         const event = makeAcmsEvent('case-001', 'Jane Doe', 'NY-00063');
         mockProfessionalIdsRepo.findByAcmsProfessionalId = vi
@@ -2131,17 +2169,6 @@ describe('SyncTrusteeCaseAppointments', () => {
             checks: expect.objectContaining({ matchedBy: 'professional-id' }),
           }),
         );
-      });
-
-      test('is not consulted for a DXTR event (no acmsProfessionalId)', async () => {
-        const event = makeEvent('case-001', 'Jane Doe');
-
-        await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          [event],
-        );
-
-        expect(mockProfessionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
       });
 
       test('a resolved professional-id link short-circuits the verification-bucket-hit check', async () => {
@@ -2803,13 +2830,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc', async () => {
-      // acmsProfessionalId is a CAMS construct, not a native DXTR/ACMS field - the gateway only
-      // crosses raw groupDesignator + profCode facts; this format ("{group}-{profCode}") is built
-      // here in the use-case layer. It's never used to pick or auto-link a trustee (see
-      // isSentinelWithNoIdentity's doc comment, which keys off the underlying raw profCode) -
-      // it's persisted purely so a reviewer can distinguish a genuine unmatched trustee from a
-      // sentinel-coded ("00000"/"99999") placeholder without cross-referencing DXTR directly.
+    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc for an ACMS event', async () => {
+      // acmsProfessionalId is a CAMS construct ("{group}-{profCode}") built here in the use-case
+      // layer. Approving the identity task writes it as a verified professional-id link, so only an
+      // ACMS event, whose group designator and professional code are ACMS's own key, may supply it.
       (
         pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
       ).mockResolvedValueOnce(makeUnresolvedState(0));
@@ -2819,6 +2843,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '12345',
             groupDesignator: 'NY',
             sourceTrustee: {
@@ -2836,6 +2861,37 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('should omit acmsProfessionalId from the persisted verification doc for a DXTR event', async () => {
+      // CAMS-873: DXTR's copy of the ACMS professional code can be wrong. Approving the identity
+      // task writes acmsProfessionalId as a verified link, so a DXTR event must not supply one even
+      // when its groupDesignator and profCode are both present.
+      (
+        pipelineOrchestrator.runTrusteeMatchPipeline as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(makeUnresolvedState(0));
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            source: 'DXTR',
+            profCode: '12345',
+            groupDesignator: 'NY',
+            sourceTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'DXTR', acmsProfessionalId: undefined }),
+      );
+    });
+
     test('should omit acmsProfessionalId from the persisted verification doc when profCode is a sentinel value', async () => {
       // A formatted sentinel ID (e.g. "NY-99999") would read to a reviewer as a real professional
       // ID rather than the "ID unavailable" placeholder it actually is - suppress it entirely
@@ -2849,6 +2905,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '99999',
             groupDesignator: 'NY',
             sourceTrustee: {
@@ -2876,6 +2933,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         [
           {
             ...makeEvent('case-001', 'Nobody Real'),
+            source: 'ACMS',
             profCode: '12345',
             sourceTrustee: {
               fullName: 'Nobody Real',
@@ -4214,6 +4272,20 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(mockRegionStateRepo.setField.mock.calls).toEqual([
         ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', '2026-07-31'],
+      ]);
+    });
+
+    test("with a named region and no date bound, clears only that region's bookmark and writes nothing else", async () => {
+      // mockRegionStateRepo exposes only read and setField on purpose: any other write (e.g. a
+      // whole-document replace) throws, which would surface as result.error. That a reset keeps a
+      // region's DXTR switch (region.<id>.source) is proven against real Mongo by the integration
+      // harness scenario driver-delete-switched-region-keeps-switch.
+      const result = await deleteAppointments({ regions: ['02'] });
+
+      expect(result.error).toBeUndefined();
+      expect(result).toEqual({ data: { deleted: 3 } });
+      expect(mockRegionStateRepo.setField.mock.calls).toEqual([
+        ['TRUSTEE_APPOINTMENT_REGION_SYNC_STATE', 'region.02.lastSyncDate', null],
       ]);
     });
 

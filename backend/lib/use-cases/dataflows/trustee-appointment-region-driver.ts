@@ -13,6 +13,7 @@ import {
 import { isAcmsTimeoutError } from './acms-timeout-error';
 import {
   AcmsTrusteeAppointmentSource,
+  DxtrTrusteeAppointmentSource,
   TrusteeAppointmentSourceRowFailure,
   TrusteeAppointmentSource,
 } from './trustee-appointment-source';
@@ -30,10 +31,16 @@ const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 export const CUTOVER_DATE = '2026-07-01';
 
 /**
- * Worst-case wall-clock cost of one page: an ACMS read can take up to the gateway's request
- * timeout (5 minutes by default), then its events are written to Cosmos. A page is not started
- * unless this much budget remains, so a slow page cannot carry the invocation past the host's
- * functionTimeout and get killed and redelivered.
+ * Worst-case wall-clock cost of one page: a source read can take up to its request timeout, then
+ * its events are written to Cosmos. Both sources' page reads are bounded at 5 minutes:
+ * - ACMS: ACMS_REQUEST_TIMEOUT_MS in acms.gateway.ts (DEFAULT_ACMS_REQUEST_TIMEOUT_MS, 5 minutes,
+ *   overridable by env).
+ * - DXTR: REGION_TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS in cases.dxtr.gateway.ts (fixed 5
+ *   minutes). The 10-minute TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS there belongs to the older
+ *   all-region DXTR reads, which this driver does not use.
+ * A page is not started unless this much budget remains, so a slow page cannot carry the
+ * invocation past the host's functionTimeout and get killed and redelivered. Raising either
+ * timeout above 5 minutes requires raising this cost too.
  */
 export const PAGE_STEP_COST_MS = 6 * 60 * 1000;
 
@@ -68,11 +75,15 @@ async function readRegionState(deps: RegionDriverDeps): Promise<TrusteeAppointme
 }
 
 /**
- * CAMS-957 (a SuperUser's one-way per-region switch to DXTR) is a separate, not-yet-built ticket
- * -- every region syncs from ACMS unconditionally for this bead, regardless of state.region.
+ * A region a SuperUser switched to DXTR (region.<id>.source, written by the Trustee Task Regions
+ * admin page) reads from DXTR; every other region reads from ACMS. The switch is one-way.
  */
-function getSourceForRegion(): TrusteeAppointmentSource {
-  return new AcmsTrusteeAppointmentSource();
+function getSourceForRegion(
+  regionState: TrusteeAppointmentRegionSyncState['region'][string] | undefined,
+): TrusteeAppointmentSource {
+  return regionState?.source?.system === 'DXTR'
+    ? new DxtrTrusteeAppointmentSource()
+    : new AcmsTrusteeAppointmentSource();
 }
 
 /**
@@ -89,12 +100,18 @@ async function getAllRegionIds(context: ApplicationContext): Promise<string[]> {
   return [...regionIds];
 }
 
+/**
+ * Only ACMS rows can fail conversion today: DxtrTrusteeAppointmentSource always returns
+ * failures: [], so the DXTR form of this message is not yet reachable. sourceName is kept so a
+ * future DXTR conversion failure is labeled correctly without changing this helper.
+ */
 function toRowFailureDlqEntry(
+  sourceName: TrusteeAppointmentSource['name'],
   regionId: string,
   changeDate: string,
   failure: TrusteeAppointmentSourceRowFailure,
 ): QueueError {
-  const message = `ACMS row ${failure.rowId} (case ${failure.caseId}, region ${regionId}, change date ${changeDate}) could not be converted: ${failure.reason}`;
+  const message = `${sourceName} row ${failure.rowId} (case ${failure.caseId}, region ${regionId}, change date ${changeDate}) could not be converted: ${failure.reason}`;
   return buildQueueError(
     getCamsError(new Error(message), MODULE_NAME, message),
     MODULE_NAME,
@@ -106,6 +123,8 @@ export type RegionDriverResumePoint = {
   regionId: string;
   date: string;
   lastId?: string;
+  /** The source lastId belongs to. A cursor from another source (or none recorded) is not reused. */
+  source?: TrusteeAppointmentSource['name'];
 };
 
 type RegionDriverRecordResults = {
@@ -158,7 +177,7 @@ type RegionDriverResult = {
 /**
  * Walks one region's unprocessed dates and advances its bookmark, respecting the maintainer's
  * bookmark rule: "a date is complete only when a later date exists" -- the single newest date
- * known to have data (getLatestCmmapChangeDateForRegion) is always processed but never
+ * known to have data (source.getLatestChangeDate) is always processed but never
  * bookmarked, since the replica could still be mid-write for it. A later run that discovers a
  * genuinely later date proves the previously-withheld date complete and bookmarks it then.
  *
@@ -216,9 +235,14 @@ async function runRegionDriver(
     for (let i = 0; i < options.regions.length; i++) {
       regionIndex = i;
       const regionId = options.regions[i];
-      const source = getSourceForRegion();
+      const source = getSourceForRegion(state.region[regionId]);
       const resumeHere = options.resumeFrom?.regionId === regionId ? options.resumeFrom : undefined;
       resumeAt = resumeHere;
+
+      // The latest-date read can take as long as a page, so it needs the same budget check.
+      if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {
+        return stopAt(i, resumeHere, 'invocation-budget');
+      }
 
       const latestChangeDate = await source.getLatestChangeDate(context, regionId);
       if (!latestChangeDate) {
@@ -237,18 +261,22 @@ async function runRegionDriver(
         : bookmark
           ? DateHelper.addDays(bookmark, 1)
           : CUTOVER_DATE;
-      let lastId = resumeHere?.lastId;
+      // A switch to DXTR can land while a continuation is queued; another source's cursor would
+      // skip rows, so restart the date instead (re-reading is safe: writes are idempotent).
+      let lastId = resumeHere?.source === source.name ? resumeHere.lastId : undefined;
 
       while (currentDate <= effectiveEnd) {
         while (true) {
-          resumeAt = { regionId, date: currentDate, lastId };
+          resumeAt = { regionId, date: currentDate, lastId, source: source.name };
           if (shouldEscape(startedAt, safeThresholdMs, PAGE_STEP_COST_MS)) {
             return stopAt(i, resumeAt, 'invocation-budget');
           }
 
           const page = await source.getEventsForDate(context, regionId, currentDate, lastId);
           for (const failure of page.failures) {
-            dateResults.dlqMessages.push(toRowFailureDlqEntry(regionId, currentDate, failure));
+            dateResults.dlqMessages.push(
+              toRowFailureDlqEntry(source.name, regionId, currentDate, failure),
+            );
           }
           if (page.events.length > 0) {
             const result = await SyncTrusteeCaseAppointments.processAppointments(
@@ -268,7 +296,7 @@ async function runRegionDriver(
         // re-reading regenerates them (writes are idempotent). A hand-off that failed part-way
         // already sent some messages, so the re-read sends those again: a duplicate DLQ entry or
         // retry page, which is harmless because processing an event twice writes the same rows.
-        resumeAt = { regionId, date: currentDate, lastId: undefined };
+        resumeAt = { regionId, date: currentDate, lastId: undefined, source: source.name };
         const finishedDateResults = dateResults;
         dateResults = { dlqMessages: [], retryableEvents: [] };
         await handOffDateResults(finishedDateResults);
@@ -278,6 +306,7 @@ async function runRegionDriver(
             regionId,
             date: DateHelper.addDays(currentDate, 1),
             lastId: undefined,
+            source: source.name,
           };
           await deps.regionStateRepo.setField(
             REGION_STATE_DOCUMENT_TYPE,

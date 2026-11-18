@@ -1878,7 +1878,7 @@ describe('getTrusteeAppointments', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 24, 6) AS aptDate'),
+      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 24, 6)"),
       expect.anything(),
       expect.anything(),
     );
@@ -1912,7 +1912,7 @@ describe('getTrusteeAppointments', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 17, 5) AS profCode'),
+      expect.stringContaining("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 17, 5)"),
       expect.anything(),
       expect.anything(),
     );
@@ -2000,7 +2000,7 @@ describe('getTrusteePetitionEvents', () => {
   });
 
   test.each([
-    { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
+    { label: 'aptDate', expectedFragment: 'ELSE SUBSTRING(TX.REC, 91, 6) END AS aptDate' },
     // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not
     // FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
     // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
@@ -2098,7 +2098,7 @@ describe('getTrusteePetitionEvents', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.stringContaining('ELSE SUBSTRING(TX.REC, 86, 5) END AS profCode'),
       expect.anything(),
       expect.anything(),
     );
@@ -2333,5 +2333,229 @@ describe('parseDxtrDate', () => {
 
   test('returns undefined for invalid day (00)', () => {
     expect(parseDxtrDate('260400')).toBeUndefined();
+  });
+});
+
+describe('region-scoped trustee appointment transactions', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  function queryResult(recordset: object[]): QueryResults {
+    return { success: true, results: { recordset }, message: '' } as QueryResults;
+  }
+
+  function paramValue(callIndex: number, name: string) {
+    const params = querySpy.mock.calls[callIndex][2] as DbTableFieldSpec[];
+    return params.find((p) => p.name === name)?.value;
+  }
+
+  function trusteeRow(override: object = {}) {
+    return {
+      txId: '1001',
+      caseId: '081-26-12345',
+      courtId: '0208',
+      chapter: '7',
+      courtDivisionCode: '081',
+      groupDesignator: 'NY ',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      latestSyncDate: '2026-09-15T10:00:00.000Z',
+      aptDate: '260910',
+      txDate: '2026-09-15',
+      profCode: '00063',
+      ...override,
+    };
+  }
+
+  const page = { regionId: '02', txDate: '2026-09-15', afterTxId: '0', limit: 2500 };
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  // The region driver asks for the newest date, then pages that date, so both reads must select
+  // the same rows: both trustee transaction kinds, for the region only.
+  test.each([
+    {
+      name: 'latest transaction date',
+      rows: [{ latestTxDate: null }],
+      read: () => gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '02'),
+    },
+    {
+      name: 'events page',
+      rows: [],
+      read: () => gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page),
+    },
+  ])(
+    'the $name read selects both trustee transaction kinds for the region only',
+    async ({ rows, read }) => {
+      querySpy.mockResolvedValue(queryResult(rows));
+
+      await read();
+
+      // The OR of the two kinds must be grouped: without the outer parentheses SQL Server binds
+      // the region condition to the second kind only, letting other regions' appointments through.
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toMatch(
+        /WHERE \(\(TX\.TX_TYPE = 'A' AND TX\.TX_CODE = 'TR'\) OR \(TX\.TX_TYPE = '1' AND TX\.TX_CODE = '1'\)\)\s+AND GRP\.REGION_ID = @regionId/,
+      );
+    },
+  );
+
+  describe('getLatestTrusteeAppointmentTxDateForRegion', () => {
+    test('returns the newest transaction date for the region', async () => {
+      querySpy.mockResolvedValue(queryResult([{ latestTxDate: '2026-09-16' }]));
+
+      const result = await gateway.getLatestTrusteeAppointmentTxDateForRegion(
+        applicationContext,
+        '02',
+      );
+
+      expect(result).toBe('2026-09-16');
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain('MAX(TX.TX_DATE)');
+    });
+
+    test('zero-pads the region id to match DXTR AO_GRP_DES.REGION_ID', async () => {
+      querySpy.mockResolvedValue(queryResult([{ latestTxDate: '2026-09-16' }]));
+
+      await gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '2');
+
+      expect(paramValue(0, 'regionId')).toBe('02');
+    });
+
+    test('uses a 5-minute request timeout', async () => {
+      querySpy.mockResolvedValue(queryResult([{ latestTxDate: null }]));
+
+      await gateway.getLatestTrusteeAppointmentTxDateForRegion(applicationContext, '02');
+
+      expect(querySpy).toHaveBeenCalledWith(
+        applicationContext,
+        expect.any(String),
+        expect.any(Array),
+        300000,
+      );
+    });
+
+    test('returns undefined when the region has no trustee appointment transactions', async () => {
+      querySpy.mockResolvedValue(queryResult([{ latestTxDate: null }]));
+
+      const result = await gateway.getLatestTrusteeAppointmentTxDateForRegion(
+        applicationContext,
+        '02',
+      );
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getTrusteeAppointmentEventsForRegionDate', () => {
+    test('binds region, date, afterTxId and limit as parameters', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, {
+        ...page,
+        regionId: '2',
+        afterTxId: '1000',
+      });
+
+      expect(paramValue(0, 'regionId')).toBe('02');
+      expect(paramValue(0, 'txDate')).toBe('2026-09-15');
+      expect(paramValue(0, 'afterTxId')).toBe('1000');
+      expect(paramValue(0, 'limit')).toBe(2500);
+    });
+
+    test("pages one calendar day by TX_ID, never splitting one transaction's rows across pages", async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
+
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain('TX.TX_DATE >= @txDate');
+      expect(sql).toContain('TX.TX_DATE < DATEADD(day, 1, @txDate)');
+      expect(sql).toContain('TX.TX_ID > @afterTxId');
+      expect(sql).toContain('SELECT TOP (@limit) WITH TIES');
+      expect(sql).toContain('ORDER BY TX.TX_ID ASC');
+    });
+
+    test('throws when the query fails, so the driver never treats a failed page as empty', async () => {
+      querySpy.mockResolvedValue({ success: false, results: {}, message: 'boom' } as QueryResults);
+
+      await expect(
+        gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page),
+      ).rejects.toThrow(CamsError);
+    });
+
+    test('reads each transaction kind at its own REC offsets', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
+
+      const sql = querySpy.mock.calls[0][1] as string;
+      expect(sql).toContain("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 24, 6)");
+      expect(sql).toContain('ELSE SUBSTRING(TX.REC, 91, 6)');
+      expect(sql).toContain("TX.TX_TYPE = 'A' THEN SUBSTRING(TX.REC, 17, 5)");
+      expect(sql).toContain('ELSE SUBSTRING(TX.REC, 86, 5)');
+    });
+
+    test('uses a 5-minute request timeout', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      await gateway.getTrusteeAppointmentEventsForRegionDate(applicationContext, page);
+
+      expect(querySpy).toHaveBeenCalledWith(
+        applicationContext,
+        expect.any(String),
+        expect.any(Array),
+        300000,
+      );
+    });
+
+    test('returns no events and no lastTxId when the page is empty', async () => {
+      querySpy.mockResolvedValue(queryResult([]));
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result).toEqual({ events: [] });
+    });
+
+    test("maps rows to DXTR events and returns the last row's transaction id as lastTxId", async () => {
+      querySpy.mockResolvedValue(
+        queryResult([
+          trusteeRow({ txId: '1001' }),
+          trusteeRow({ txId: '1002', caseId: '081-26-12346' }),
+          trusteeRow({ txId: '1003', caseId: '081-26-12347' }),
+        ]),
+      );
+
+      const result = await gateway.getTrusteeAppointmentEventsForRegionDate(
+        applicationContext,
+        page,
+      );
+
+      expect(result.lastTxId).toBe('1003');
+      expect(result.events.map((e) => e.caseId)).toEqual([
+        '081-26-12345',
+        '081-26-12346',
+        '081-26-12347',
+      ]);
+      expect(result.events[0]).toEqual(
+        expect.objectContaining({
+          source: 'DXTR',
+          courtId: '0208',
+          groupDesignator: 'NY',
+          profCode: '00063',
+          appointedDate: '2026-09-10',
+        }),
+      );
+      result.events.forEach((event) => expect(event).not.toHaveProperty('acmsProfessionalId'));
+    });
   });
 });
