@@ -1,10 +1,14 @@
+/* global connect, process, printjson -- mongosh shell globals */
 // CAMS trustees data-pattern profile for the trustee data report harness fixtures.
 //
-// Run read-only in mongosh against the environment's CAMS database:
-//   mongosh "<connection string>" --quiet --file cams-trustees-patterns.js
+// Run read-only in mongosh against the environment's CAMS database. The connection string is read
+// from the environment so it stays out of the command line (ps) and shell history:
+//   read -rs MONGO_CONNECTION_STRING && export MONGO_CONNECTION_STRING
+//   mongosh --nodb --quiet --file cams-trustees-patterns.js
 // Every result is a count; no trustee names or contact details are printed.
 
-const trustees = db.trustees;
+if (!process.env.MONGO_CONNECTION_STRING) throw new Error('Set MONGO_CONNECTION_STRING first.');
+const trustees = connect(process.env.MONGO_CONNECTION_STRING).trustees;
 const TRUSTEE = { documentType: 'TRUSTEE' };
 const count = (filter) => trustees.countDocuments({ ...TRUSTEE, ...filter });
 const blank = { $in: [null, ''] };

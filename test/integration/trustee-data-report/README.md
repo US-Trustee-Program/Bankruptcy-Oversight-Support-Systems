@@ -23,8 +23,9 @@ Manual dev tooling, not run in CI.
 All four run in the Podman pod `cams-trustee-data-report-pod`.
 
 **Local only.** The report reads every TOD trustee and every CAMS trustee, so its counts are only
-predictable against databases holding nothing but these fixtures. The harness checks that before
-running. A shared lower-environment database does not qualify, so there is no Azure mode.
+predictable against databases holding nothing but these fixtures. Seeding replaces every TOD row,
+and the harness checks that CAMS holds no other trustees before running. A shared lower-environment
+database does not qualify, so there is no Azure mode.
 
 ## 2. Prerequisites
 
@@ -50,7 +51,8 @@ cd trustee-data-report/scripts && ./stop-services.sh
 ```
 
 `run` exits non-zero on a failure, or when a known gap starts passing (update the table and
-`KNOWN_GAPS` in the harness). A known gap that still fails does not fail the run.
+`KNOWN_GAPS` in the harness). A known gap that still fails the documented way (`knownGapActual` in
+the fixtures) does not fail the run; one that fails any other way does.
 
 ## 4. Commands
 
@@ -67,8 +69,8 @@ clean        Remove report results, fixture trustees and the run lock; clear the
 
 TOD rows are in `seed/01-seed-trustees.sql` and `seed/02-seed-chapter-details.sql`; CAMS trustees
 and expected results in `scripts/trustee-data-report-fixtures.ts`. The report reads TOD 100 trustees
-per page; 100 filler rows (`seed/03-seed-filler.sql`) push TOD IDs 500 and 501 onto page 2 so S26
-and S27 are merged across pages.
+per page; 100 filler rows (`seed/03-seed-filler.sql`) push TOD IDs 500–503 onto page 2 so S26, S27
+and S42 are merged across pages.
 
 Each scenario asserts the exact set of difference rows the run records for it: none, or the listed
 ones with their values.
@@ -118,7 +120,8 @@ ones with their values.
 | S41 | Unlinked TOD trustee whose only status is empty                                   | TOD only, flagged for review                                                | Known gap                 |
 | S42 | Merged from three TOD records, two on page 2; CAMS holds the most complete        | Nothing reported                                                            | Pass                      |
 | S32 | Filler TOD trustees, and anything outside the scenarios                           | Nothing reported                                                            | Pass                      |
-| S33 | The whole run                                                                     | The run summary adds up to the scenarios                                    | Known gap (S10, S41, S44) |
+| S33 | The whole run                                                                     | Compared and CAMS-only counts add up to the scenarios                       | Pass                      |
+| S45 | The whole run                                                                     | TOD-only and field-difference counts add up to the scenarios                | Known gap (S10, S41, S44) |
 | L1  | A run started through the start use case                                          | Completes on real infrastructure                                            | Pass                      |
 | L2  | A run completes                                                                   | The lock is released                                                        | Pass                      |
 | L3  | A second start while a run is active                                              | Refused with 409                                                            | Pass                      |
@@ -128,9 +131,6 @@ ones with their values.
 | L7  | A page message is delivered again after the run completed                         | Dead-lettered; results and summary unchanged                                | Pass                      |
 
 ### Known gaps and caveats
-
-Status is from the local run on 2026-11-18 against `main` plus #3329, after fitting the fixtures to
-the ATS_SUB and CAMS profiles and the Appointment Status Matrix: 47 pass, 4 known gaps.
 
 - **S10, phone extension (known gap, latent).** No CAMS trustee has a separate extension today (CAMS
   profile: 0), so this cannot happen yet. TOD has no extension field. ATS_SUB has no `x` or `ext`
@@ -147,7 +147,7 @@ the ATS_SUB and CAMS profiles and the Appointment Status Matrix: 47 pass, 4 know
 - **S41, empty status (known gap).** The product owner (2026-11-18) wants an unlinked TOD trustee
   whose only status is empty flagged for review, so it should be reported as TOD only. The report
   treats an empty status as inactive and omits it. ATS_SUB has 10 such appointment rows.
-- **S33 (known gap).** Follows from S10, S41 and S44: one false phone difference and two missing
+- **S45 (known gap).** Follows from S10, S41 and S44: one false phone difference and two missing
   TOD-only trustees.
 - **S27 (caveat, passing).** The migration read TOD 50 trustees at a time, so a trustee merged from
   records on different migration pages can hold a record that is not the most complete one. The

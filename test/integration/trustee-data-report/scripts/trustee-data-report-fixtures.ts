@@ -49,6 +49,11 @@ export type Scenario = {
   todIds?: string[];
   /** Every difference the report should record for this scenario, and nothing else. */
   expected: ExpectedDifference[];
+  /**
+   * For a known gap: what the report records today instead of `expected`. The harness reports a
+   * known gap only while the actual rows match this; any other mismatch fails.
+   */
+  knownGapActual?: ExpectedDifference[];
   /** Whether the run counts this CAMS trustee as compared. */
   compared?: boolean;
 };
@@ -233,6 +238,15 @@ export const SCENARIOS: Scenario[] = [
     }),
     compared: true,
     expected: [],
+    knownGapActual: [
+      {
+        kind: 'field',
+        field: 'phone',
+        camsValue: '503-555-0119',
+        todValue: '503-555-0119 204',
+        todIds: ['19'],
+      },
+    ],
   },
   {
     id: 'S11',
@@ -458,12 +472,14 @@ export const SCENARIOS: Scenario[] = [
     title: "An unlinked TOD trustee active through chapter 12 case-by-case ('2') is TOD only",
     todIds: ['54'],
     expected: [{ kind: 'tod-only', trusteeName: 'Kit Casebycase', todIds: ['54'] }],
+    knownGapActual: [],
   },
   {
     id: 'S41',
     title: 'An unlinked TOD trustee whose only status is empty is flagged for review as TOD only',
     todIds: ['51'],
     expected: [{ kind: 'tod-only', trusteeName: 'Hale Emptystatus', todIds: ['51'] }],
+    knownGapActual: [],
   },
 
   // ── Merged trustees ──────────────────────────────────────────────────────────
@@ -643,9 +659,14 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
-/** The run summary the scenarios add up to. */
-export function expectedSummary() {
-  const all = SCENARIOS.flatMap((scenario) => scenario.expected);
+/**
+ * The run summary the scenarios add up to. With `knownGaps`, the summary the report produces
+ * today, using each known gap's `knownGapActual` in place of `expected`.
+ */
+export function expectedSummary(knownGaps = false) {
+  const all = SCENARIOS.flatMap((scenario) =>
+    knownGaps ? (scenario.knownGapActual ?? scenario.expected) : scenario.expected,
+  );
   const fieldDifferencesByField: Record<Field, number> = {
     name: 0,
     companyName: 0,

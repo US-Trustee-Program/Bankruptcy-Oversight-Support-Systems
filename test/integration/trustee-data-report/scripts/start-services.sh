@@ -50,12 +50,12 @@ podman rm -f \
 echo "Creating pod ${POD_NAME}..."
 podman pod create \
   --name "${POD_NAME}" \
-  --publish 1433:1433 \
-  --publish 27017:27017 \
-  --publish 10000:10000 \
-  --publish 10001:10001 \
-  --publish 10002:10002 \
-  --publish 7072:7072
+  --publish 127.0.0.1:1433:1433 \
+  --publish 127.0.0.1:27017:27017 \
+  --publish 127.0.0.1:10000:10000 \
+  --publish 127.0.0.1:10001:10001 \
+  --publish 127.0.0.1:10002:10002 \
+  --publish 127.0.0.1:7072:7072
 
 echo "Starting MongoDB..."
 podman run -d \

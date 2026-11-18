@@ -4,6 +4,10 @@
 -- Runs against the ATS_INT database, which the harness creates first. Drops and recreates the
 -- tables so a column change here always takes effect; seed-sql reloads the rows.
 
+-- Left behind if a run is killed while L5 has TRUSTEES renamed; the next L5 rename would fail.
+DROP TABLE IF EXISTS TRUSTEES_HIDDEN
+GO
+
 DROP TABLE IF EXISTS TRUSTEES
 GO
 

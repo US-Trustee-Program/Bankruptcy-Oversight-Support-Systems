@@ -89,12 +89,13 @@ const LOCK_DOCUMENT_TYPE = 'TRUSTEE_DATA_REPORT_RUN';
 const RUN_TIMEOUT_MS = 3 * 60 * 1000;
 
 // Scenarios whose assertion fails because the report does not handle the case yet. Each stays
-// strict; the harness reports it as a known gap instead of a failure. Keep in step with README.md.
+// strict; the harness reports it as a known gap instead of a failure only while the actual result
+// matches the documented one (`knownGapActual` in the fixtures). Keep in step with README.md.
 const KNOWN_GAPS: Record<string, string> = {
   S10: 'Latent: the comparison ignores the CAMS phone extension, and TOD keeps extension digits inside TELEPHONE, so once CAMS stores an extension separately the same phone is reported as a difference. No CAMS trustee has one today.',
   S44: "Status '2' on 12CBC is active (product decision, matching the migration's CBC_STATUS_MAP), but the report's active codes come from TOD_STATUS_MAP only, which lacks '2', and ignore the chapter.",
   S41: 'An empty status should flag an unlinked trustee for review as TOD only (product decision); the report treats it as inactive and omits the trustee.',
-  S33: 'Follows from S10, S41 and S44: one false phone difference and two missing TOD-only trustees.',
+  S45: 'Follows from S10, S41 and S44: one false phone difference and two missing TOD-only trustees.',
 };
 
 // ---------------------------------------------------------------------------
@@ -104,14 +105,23 @@ const KNOWN_GAPS: Record<string, string> = {
 type Outcome = 'PASS' | 'FAIL' | 'KNOWN GAP' | 'GAP CLOSED';
 const results: { id: string; title: string; outcome: Outcome; detail?: string }[] = [];
 
-function record(id: string, title: string, ok: boolean, detail?: string) {
+/**
+ * `matchesKnownGap` says whether a failed known-gap assertion still produced the documented
+ * result. A known gap that fails any other way is a FAIL, so a regression cannot hide behind it.
+ */
+function record(id: string, title: string, ok: boolean, detail?: string, matchesKnownGap = false) {
   const gap = KNOWN_GAPS[id];
-  const outcome: Outcome = gap ? (ok ? 'GAP CLOSED' : 'KNOWN GAP') : ok ? 'PASS' : 'FAIL';
+  let outcome: Outcome;
+  if (ok) outcome = gap ? 'GAP CLOSED' : 'PASS';
+  else outcome = gap && matchesKnownGap ? 'KNOWN GAP' : 'FAIL';
   results.push({ id, title, outcome, detail: ok ? undefined : detail });
   const mark = outcome === 'PASS' ? '✓' : outcome === 'FAIL' ? '✗' : '!';
   console.log(`  ${mark} ${outcome}: ${id} ${title}`);
   if (!ok && detail) console.log(`      ${detail.replace(/\n/g, '\n      ')}`);
   if (gap) console.log(`      known gap: ${gap}`);
+  if (gap && !ok && !matchesKnownGap) {
+    console.log('      and the result differs from the documented known-gap result');
+  }
 }
 
 function info(message: string) {
@@ -348,26 +358,20 @@ async function clean() {
   await clearQueues();
 }
 
-/** The report reads every trustee in both systems, so anything else would skew its counts. */
-async function checkDatabasesHoldOnlyFixtures(db: Db): Promise<boolean> {
+/**
+ * The report reads every trustee in both systems, so anything else would skew its counts. Only
+ * CAMS needs checking: seeding deletes every TOD row before inserting the fixtures, but deletes
+ * only the fixture trustees from CAMS.
+ */
+async function checkCamsHoldsOnlyFixtures(db: Db): Promise<boolean> {
   const others = await db.collection('trustees').countDocuments({
     documentType: 'TRUSTEE',
     trusteeId: { $not: { $regex: `^${TRUSTEE_ID_PREFIX}` } },
   });
-  const pool = await getSqlPool(ATS_DATABASE);
-  try {
-    const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM TRUSTEES');
-    const expectedTod = 146;
-    const ok = others === 0 && recordset[0].n === expectedTod;
-    if (!ok) {
-      console.log(
-        `  ✗ The databases must hold only the fixtures: ${others} other CAMS trustee(s), ${recordset[0].n} TOD trustees (expected ${expectedTod}).`,
-      );
-    }
-    return ok;
-  } finally {
-    await pool.close();
+  if (others > 0) {
+    console.log(`  ✗ CAMS must hold only the fixture trustees: found ${others} other trustee(s).`);
   }
+  return others === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -407,11 +411,16 @@ function assertScenarios(differences: DifferenceDocument[]) {
     const actual = sortedJson(differences.filter((d) => belongsTo(scenario, d)).map(comparable));
     const expected = sortedJson(scenario.expected.map(comparable));
     const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    const matchesKnownGap =
+      !!scenario.knownGapActual &&
+      JSON.stringify(actual) ===
+        JSON.stringify(sortedJson(scenario.knownGapActual.map(comparable)));
     record(
       scenario.id,
       scenario.title,
       ok,
       `expected ${JSON.stringify(expected)}\nactual   ${JSON.stringify(actual)}`,
+      matchesKnownGap,
     );
   }
 
@@ -428,6 +437,50 @@ function assertScenarios(differences: DifferenceDocument[]) {
   if (fillerReported) info('A filler TOD trustee was reported');
 }
 
+/**
+ * Split in two so the known gaps, which only change difference counts, cannot hide a change in
+ * which trustees are compared: most scenarios expect no rows and pass whether compared or not.
+ */
+function assertSummary(summary: RunDocument['summary']) {
+  const counted = (s: RunDocument['summary']) => ({
+    trusteesCompared: s?.trusteesCompared,
+    camsOnly: s?.camsOnly,
+  });
+  const differences = (s: RunDocument['summary']) => ({
+    todOnly: s?.todOnly,
+    fieldDifferences: s?.fieldDifferences,
+    fieldDifferencesByField: s?.fieldDifferencesByField,
+  });
+  const compare = (
+    id: string,
+    title: string,
+    pick: (s: RunDocument['summary']) => object,
+    matchesKnownGap = false,
+  ) => {
+    const expected = JSON.stringify(pick(expectedSummary()));
+    const actual = JSON.stringify(pick(summary));
+    record(
+      id,
+      title,
+      actual === expected,
+      `expected ${expected}\nactual   ${actual}`,
+      matchesKnownGap,
+    );
+  };
+
+  compare(
+    'S33',
+    'The run counts compared and CAMS-only trustees as the scenarios add up to',
+    counted,
+  );
+  compare(
+    'S45',
+    'The run counts TOD-only trustees and field differences as the scenarios add up to',
+    differences,
+    JSON.stringify(differences(summary)) === JSON.stringify(differences(expectedSummary(true))),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // run
 // ---------------------------------------------------------------------------
@@ -441,7 +494,7 @@ async function run() {
 
   const { client, db } = await getMongoDb();
   try {
-    if (!(await checkDatabasesHoldOnlyFixtures(db))) {
+    if (!(await checkCamsHoldsOnlyFixtures(db))) {
       process.exitCode = 1;
       return;
     }
@@ -460,12 +513,7 @@ async function run() {
     console.log('\nScenarios (run 1)\n');
     const firstDifferences = await readDifferences(db, firstRunId);
     assertScenarios(firstDifferences);
-    record(
-      'S33',
-      'The run summary adds up to the scenarios',
-      JSON.stringify(first.summary) === JSON.stringify(expectedSummary()),
-      `expected ${JSON.stringify(expectedSummary())}\nactual   ${JSON.stringify(first.summary)}`,
-    );
+    assertSummary(first.summary);
     record(
       'L2',
       'The lock is released when a run completes',
@@ -488,7 +536,11 @@ async function run() {
       'second start was not refused',
     );
     const second = await waitForRun(db, secondRunId);
-    const firstLeft = await db.collection(REPORT_COLLECTION).countDocuments({ runId: firstRunId });
+    // The run is marked completed before older runs are removed, so wait for the removal.
+    const countFirstRun = () =>
+      db.collection(REPORT_COLLECTION).countDocuments({ runId: firstRunId });
+    await pollUntil(async () => (await countFirstRun()) === 0, 10_000);
+    const firstLeft = await countFirstRun();
     record(
       'L4',
       'A completed run replaces the previous run, which is removed with all of its rows',
