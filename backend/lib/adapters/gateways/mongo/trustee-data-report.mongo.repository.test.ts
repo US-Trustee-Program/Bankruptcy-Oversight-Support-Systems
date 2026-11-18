@@ -139,35 +139,38 @@ describe('TrusteeDataReportMongoRepository', () => {
     });
   });
 
-  describe('readLatestCompletedRun', () => {
-    test('should return the completed run that finished most recently', async () => {
-      const older = buildRun({ runId: 'run-old', finishedAt: '2026-11-16T10:00:00.000Z' });
-      const newer = buildRun({ runId: 'run-new', finishedAt: '2026-11-17T10:00:00.000Z' });
+  describe.each([
+    { method: 'readLatestCompletedRun', status: 'completed' },
+    { method: 'readLatestFailedRun', status: 'failed' },
+  ] as const)('$method', ({ method, status }) => {
+    test(`should return the ${status} run that finished most recently`, async () => {
+      const older = buildRun({ runId: 'run-old', status, finishedAt: '2026-11-16T10:00:00.000Z' });
+      const newer = buildRun({ runId: 'run-new', status, finishedAt: '2026-11-17T10:00:00.000Z' });
       const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
         { ...older, documentType: 'TRUSTEE_DATA_REPORT_RUN' },
         { ...newer, documentType: 'TRUSTEE_DATA_REPORT_RUN' },
       ]);
 
-      expect(await repository.readLatestCompletedRun()).toEqual(newer);
+      expect(await repository[method]()).toEqual(newer);
       expect(findSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           values: expect.arrayContaining([
-            expect.objectContaining({ leftOperand: { name: 'status' }, rightOperand: 'completed' }),
+            expect.objectContaining({ leftOperand: { name: 'status' }, rightOperand: status }),
           ]),
         }),
       );
     });
 
-    test('should return null when no run has completed', async () => {
+    test(`should return null when no run is ${status}`, async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
-      expect(await repository.readLatestCompletedRun()).toBeNull();
+      expect(await repository[method]()).toBeNull();
     });
 
     test('should wrap database errors as CamsError', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
 
-      await expect(repository.readLatestCompletedRun()).rejects.toBeInstanceOf(CamsError);
+      await expect(repository[method]()).rejects.toBeInstanceOf(CamsError);
     });
   });
 

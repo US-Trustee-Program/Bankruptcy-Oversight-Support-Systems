@@ -27,9 +27,15 @@ class InMemoryReportRepository implements TrusteeDataReportRepository {
     return this.runs.get(runId) ?? null;
   }
   async readLatestCompletedRun() {
-    const completed = [...this.runs.values()].filter((run) => run.status === 'completed');
-    completed.sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
-    return completed[0] ?? null;
+    return this.latestWithStatus('completed');
+  }
+  async readLatestFailedRun() {
+    return this.latestWithStatus('failed');
+  }
+  private latestWithStatus(status: TrusteeDataReportRun['status']) {
+    const runs = [...this.runs.values()].filter((run) => run.status === status);
+    runs.sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
+    return runs[0] ?? null;
   }
   async insertDifferences(runId: string, differences: TrusteeDataDifference[]) {
     this.rows.push(...differences.map((difference) => ({ ...difference, runId })));

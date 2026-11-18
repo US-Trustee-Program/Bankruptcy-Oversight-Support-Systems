@@ -1,3 +1,4 @@
+import { CamsHttpError } from '@/lib/models/api';
 import { ResponseBody } from '@common/api/response';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
@@ -66,6 +67,11 @@ import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeSerializedState } from '@common/cams/trustee-match-pipeline';
 import generatedTrusteeMatchFindings from '@common/cams/test-utilities/trustee-match-findings.generated.json';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import {
+  TrusteeDataReportRun,
+  TrusteeDataReportStatus,
+  TrusteeDataReportSummary,
+} from '@common/cams/trustee-data-report';
 
 // Helper to generate a random ID
 function randomId() {
@@ -3349,6 +3355,69 @@ async function postCaseReload(_caseId: string) {
   return;
 }
 
+// Fake API: a stateful trustee data report. It starts with one completed run. A POST queues a
+// run; the next GET reports it running and the one after that completes it.
+const MOCK_TRUSTEE_DATA_REPORT_SUMMARY: TrusteeDataReportSummary = {
+  trusteesCompared: 1184,
+  todOnly: 6,
+  camsOnly: 3,
+  fieldDifferences: 14,
+  fieldDifferencesByField: {
+    name: 2,
+    companyName: 1,
+    publicAddress: 5,
+    internalAddress: 1,
+    phone: 4,
+    email: 1,
+  },
+};
+
+let mockTrusteeDataReport: TrusteeDataReportStatus = {
+  latestCompletedRun: {
+    runId: 'mock-trustee-data-report-1',
+    status: 'completed',
+    startedBy: { id: 'mock-superuser', name: 'Mock SuperUser' },
+    queuedAt: '2026-11-16T14:00:00.000Z',
+    startedAt: '2026-11-16T14:00:05.000Z',
+    finishedAt: '2026-11-16T14:03:40.000Z',
+    summary: MOCK_TRUSTEE_DATA_REPORT_SUMMARY,
+  },
+};
+
+async function getTrusteeDataReport(): Promise<ResponseBody<TrusteeDataReportStatus>> {
+  const active = mockTrusteeDataReport.activeRun;
+  if (active?.status === 'queued') {
+    mockTrusteeDataReport = {
+      ...mockTrusteeDataReport,
+      activeRun: { ...active, status: 'running', startedAt: new Date().toISOString() },
+    };
+  } else if (active?.status === 'running') {
+    mockTrusteeDataReport = {
+      latestCompletedRun: {
+        ...active,
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+        summary: MOCK_TRUSTEE_DATA_REPORT_SUMMARY,
+      },
+    };
+  }
+  return { data: structuredClone(mockTrusteeDataReport) };
+}
+
+async function postTrusteeDataReport(): Promise<ResponseBody<TrusteeDataReportRun>> {
+  if (mockTrusteeDataReport.activeRun) {
+    throw new CamsHttpError(409, 'A trustee data report is already running.');
+  }
+  const run: TrusteeDataReportRun = {
+    runId: `mock-trustee-data-report-${Date.now()}`,
+    status: 'queued',
+    startedBy: { id: 'mock-superuser', name: 'Mock SuperUser' },
+    queuedAt: new Date().toISOString(),
+  };
+  mockTrusteeDataReport = { ...mockTrusteeDataReport, activeRun: run };
+  return { data: run };
+}
+
 async function getCaseTrusteeAppointment(
   _caseId: string,
 ): Promise<ResponseBody<CaseTrusteeAppointmentHistory>> {
@@ -3625,6 +3694,8 @@ const MockApi2 = {
   createTrusteeOversightAssignment,
   getOversightStaff,
   postCaseReload,
+  getTrusteeDataReport,
+  postTrusteeDataReport,
   getCaseTrusteeAppointment,
   getNotificationRouting,
   updateNotificationRouting,

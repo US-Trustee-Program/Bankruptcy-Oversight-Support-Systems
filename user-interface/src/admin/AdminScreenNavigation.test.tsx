@@ -43,6 +43,12 @@ const NAV_LINKS = [
     href: '/admin/notification-routing',
     navState: AdminNavState.NOTIFICATION_ROUTING,
   },
+  {
+    name: 'Trustee Data Report',
+    testId: 'trustee-data-report-nav-link',
+    href: '/admin/trustee-data-report',
+    navState: AdminNavState.TRUSTEE_DATA_REPORT,
+  },
 ];
 
 describe('Admin screen navigation tests', () => {

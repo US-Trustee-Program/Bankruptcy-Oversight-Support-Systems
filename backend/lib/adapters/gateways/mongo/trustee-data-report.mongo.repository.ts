@@ -97,10 +97,20 @@ export class TrusteeDataReportMongoRepository
    * so the newest is chosen here rather than through a separate pointer document.
    */
   public async readLatestCompletedRun(): Promise<TrusteeDataReportRun | null> {
+    return this.readLatestRunWithStatus('completed');
+  }
+
+  public async readLatestFailedRun(): Promise<TrusteeDataReportRun | null> {
+    return this.readLatestRunWithStatus('failed');
+  }
+
+  private async readLatestRunWithStatus(
+    status: TrusteeDataReportRun['status'],
+  ): Promise<TrusteeDataReportRun | null> {
     try {
       const query = and(
         this.runDoc('documentType').equals('TRUSTEE_DATA_REPORT_RUN'),
-        this.runDoc('status').equals('completed'),
+        this.runDoc('status').equals(status),
       );
       const runs = await this.getAdapter<RunDocument>().find(query);
       const latest = runs.reduce<RunDocument | null>(

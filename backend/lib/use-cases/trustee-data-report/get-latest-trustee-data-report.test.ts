@@ -48,6 +48,38 @@ describe('getLatestTrusteeDataReport', () => {
     expect(reportRepo.readRun).toHaveBeenCalledWith('run-active');
   });
 
+  test('should return a failed run that finished after the latest completed run', async () => {
+    const completed = { ...run('run-done', 'completed'), finishedAt: '2026-11-16T10:00:00.000Z' };
+    const failed = { ...run('run-failed', 'failed'), finishedAt: '2026-11-17T10:00:00.000Z' };
+    vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestCompletedRun').mockResolvedValue(completed);
+    vi.spyOn(reportRepo, 'readLatestFailedRun').mockResolvedValue(failed);
+
+    expect(await getLatestTrusteeDataReport(context)).toEqual({
+      latestCompletedRun: completed,
+      latestFailedRun: failed,
+    });
+  });
+
+  test('should omit a failed run that a later completed run replaced', async () => {
+    const failed = { ...run('run-failed', 'failed'), finishedAt: '2026-11-16T10:00:00.000Z' };
+    const completed = { ...run('run-done', 'completed'), finishedAt: '2026-11-17T10:00:00.000Z' };
+    vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestCompletedRun').mockResolvedValue(completed);
+    vi.spyOn(reportRepo, 'readLatestFailedRun').mockResolvedValue(failed);
+
+    expect(await getLatestTrusteeDataReport(context)).toEqual({ latestCompletedRun: completed });
+  });
+
+  test('should return a failed run when no run has ever completed', async () => {
+    const failed = { ...run('run-failed', 'failed'), finishedAt: '2026-11-17T10:00:00.000Z' };
+    vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestCompletedRun').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestFailedRun').mockResolvedValue(failed);
+
+    expect(await getLatestTrusteeDataReport(context)).toEqual({ latestFailedRun: failed });
+  });
+
   test('should omit the active run when the lock names a run that no longer exists', async () => {
     vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue('run-gone');
     vi.spyOn(reportRepo, 'readRun').mockResolvedValue(null);

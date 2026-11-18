@@ -563,6 +563,7 @@ export interface TrusteeDataReportRepository extends Releasable {
   upsertRun(run: TrusteeDataReportRun): Promise<void>;
   readRun(runId: string): Promise<TrusteeDataReportRun | null>;
   readLatestCompletedRun(): Promise<TrusteeDataReportRun | null>;
+  readLatestFailedRun(): Promise<TrusteeDataReportRun | null>;
   insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void>;
   /** Deletes the run document and every difference row for the run. */
   deleteRun(runId: string): Promise<void>;

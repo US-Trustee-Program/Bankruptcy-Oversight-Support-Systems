@@ -956,10 +956,20 @@ export class MockMongoRepository
   }
 
   async readLatestCompletedRun(): Promise<TrusteeDataReportRun | null> {
-    const completed = [...MockMongoRepository.trusteeDataReportRuns.values()]
-      .filter((run) => run.status === 'completed')
+    return this.readLatestTrusteeDataReportRun('completed');
+  }
+
+  async readLatestFailedRun(): Promise<TrusteeDataReportRun | null> {
+    return this.readLatestTrusteeDataReportRun('failed');
+  }
+
+  private readLatestTrusteeDataReportRun(
+    status: TrusteeDataReportRun['status'],
+  ): TrusteeDataReportRun | null {
+    const runs = [...MockMongoRepository.trusteeDataReportRuns.values()]
+      .filter((run) => run.status === status)
       .sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
-    return completed[0] ?? null;
+    return runs[0] ?? null;
   }
 
   async insertDifferences(runId: string, differences: TrusteeDataDifference[]): Promise<void> {

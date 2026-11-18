@@ -40,8 +40,12 @@ export type TrusteeDataDifference = {
   todValue?: string;
 };
 
-/** GET /api/dev-tools/trustee-data-report: the run in progress, if any, and the latest results. */
+/**
+ * GET /api/dev-tools/trustee-data-report: the run in progress, if any, the latest results, and
+ * the latest failed run when it failed after those results were produced.
+ */
 export type TrusteeDataReportStatus = {
   activeRun?: TrusteeDataReportRun;
   latestCompletedRun?: TrusteeDataReportRun;
+  latestFailedRun?: TrusteeDataReportRun;
 };
