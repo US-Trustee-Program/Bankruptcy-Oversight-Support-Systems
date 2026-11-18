@@ -47,7 +47,10 @@ A case id's division prefix determines its region, group and court everywhere (C
 DXTR `GRP_DES`, the `SYNCED_CASE` document, the identity task's `courtId`). Scenarios cover read
 isolation across regions and change dates, the compound-key rule across regions, tasks carrying
 their own region's court, the core identification/active-trustee/placeholder rules repeated in
-regions 03 and 04, and driver scenarios for per-region bookmarks and a region switched to DXTR.
+regions 03 and 04, and driver scenarios for per-region bookmarks and a region switched to DXTR. One
+driver scenario (`driver-two-regions-twice-no-duplicates`) runs a DXTR region and an ACMS region
+together, twice, and asserts no-match/ambiguous identity tasks on both lanes plus no duplicate
+appointments or tasks after the second run (CAMS-957 Slice 3 Task 2).
 
 **Bookmark rule (maintainer decision):** for both ACMS and DXTR, a date is complete only when a
 later date exists, so the newest date is processed but never bookmarked. Legacy DXTR never held back
@@ -189,9 +192,6 @@ reopened dates, so `caseStatus` is derived from them.
 - A long date continues in a fresh message — needs an injectable invocation budget.
 - Slice 4 admin page, the CAMS-956 Trustee Appointment task, and the CAMS-957 gap report /
   SuperUser-only switch — not built, or API-level.
-- A two-region driver run (one DXTR, one ACMS) repeated twice, asserting no duplicates — CAMS-957
-  Slice 3 Task 2 (`cams-0pqfs.3.2`), which also closes `cams-rxb7a.1` as superseded; the driver
-  scenarios already model region source routing for a single run.
 - Empty first names (83 of 6,770 real ACMS records) — expected outcome unknown.
 - `trustee-match-verification.findings` for **seeded** pending tasks is `{}`, not a real serialized
   pipeline state. Tasks the sync itself creates are real.

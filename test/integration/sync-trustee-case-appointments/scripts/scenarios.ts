@@ -269,7 +269,8 @@ export type ExpectedTask = {
   count: number;
   source?: Lane;
   reason?: 'no match' | 'ambiguous';
-  acmsProfessionalId?: string;
+  /** string = must equal; null = must be absent (DXTR tasks never carry one, CAMS-873). */
+  acmsProfessionalId?: string | null;
   /** The task's courtId, which carries the case's region (see DIVISIONS). */
   court?: string;
 };
@@ -2391,6 +2392,13 @@ export type DriverScenario = {
    * those regions assigned within the range are deleted and the bookmarks rewound.
    */
   delete?: { from?: string; to?: string };
+  /**
+   * A second driver run after the first, for the same `regions`. Expectations are checked only once,
+   * after this run. The same runDate re-reads whatever the bookmark rule held back from the first run
+   * (CAMS-957 Slice 3): proving that re-read is idempotent (no duplicate appointments or tasks). A
+   * later runDate would instead exercise bookmark advancement across two runs.
+   */
+  secondRun?: { runDate: string };
   expect: {
     /** Exact appointments per case that must have been written (content, not just presence). */
     written: Record<string, ExpectedAppointment[]>;
@@ -2793,6 +2801,131 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         stillSwitchedToDxtr: [OTHER_REGION],
       },
     },
+    (() => {
+      const cAcmsNoMatch = nextCase();
+      const cAcmsAmbiguous = nextCase();
+      const cDxtrNoMatch = nextCase(OTHER_DIVISION);
+      const cDxtrAmbiguous = nextCase(OTHER_DIVISION);
+      const cAcmsIgnoredDxtrRow = nextCase();
+      const cDxtrIgnoredAcmsRow = nextCase(OTHER_DIVISION);
+      const RUN_DATE = '2026-07-05';
+      const scenario: DriverScenario = {
+        key: 'driver-two-regions-twice-no-duplicates',
+        title:
+          'A DXTR region and an ACMS region run together, twice, with no-match and ambiguous outcomes on both and no duplicates',
+        basis: 'bead',
+        note:
+          `cams-0pqfs.3.2 (supersedes cams-rxb7a.1): region ${REGION} (NY, Manhattan) stays on ACMS; ` +
+          `region ${OTHER_REGION} (PA, synthetic) is switched to DXTR. Each region gets a no-match and ` +
+          `an ambiguous row, plus a cross-source row that must be ignored (an ACMS row in the DXTR ` +
+          `region, a DXTR row in the ACMS region). Both runs use the same runDate (${RUN_DATE}) so the ` +
+          `second run re-reads exactly what the bookmark rule held back from the first (the newest ` +
+          `date, never bookmarked) and proves that re-read is idempotent: the same appointments and ` +
+          `tasks exist after both runs, with no duplicates. ${BOOKMARK_RULE}`,
+        cases: [
+          cAcmsNoMatch,
+          cAcmsAmbiguous,
+          cDxtrNoMatch,
+          cDxtrAmbiguous,
+          cAcmsIgnoredDxtrRow,
+          cDxtrIgnoredAcmsRow,
+        ].map((caseId) => ({ caseId })),
+        cams: {
+          trustees: [
+            tr(
+              'T-AMB-ACMS-a',
+              person('Larchwood', { address1: '1 Larch Ave', phone: '5185550011' }),
+            ),
+            tr(
+              'T-AMB-ACMS-b',
+              person('Larchwood', { address1: '2 Larch Ave', phone: '5185550012' }),
+            ),
+            tr('T-AMB-DXTR-a', person('Boxwood', { address1: '1 Box Ave', phone: '5185550021' })),
+            tr('T-AMB-DXTR-b', person('Boxwood', { address1: '2 Box Ave', phone: '5185550022' })),
+          ],
+        },
+        rows: [
+          {
+            source: 'ACMS',
+            caseId: cAcmsNoMatch,
+            prof: prof(71, person('Elmcrest')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cAcmsAmbiguous,
+            prof: prof(72, person('Larchwood')),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrNoMatch,
+            prof: prof(73, person('Fircrest'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrAmbiguous,
+            prof: prof(74, person('Boxwood'), OTHER_DIVISION),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cAcmsIgnoredDxtrRow,
+            prof: prof(75, person('IgnoredInAcmsRegion')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cDxtrIgnoredAcmsRow,
+            prof: prof(76, person('IgnoredInDxtrRegion'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+        ],
+        switchedToDxtr: [OTHER_REGION],
+        runDate: RUN_DATE,
+        secondRun: { runDate: RUN_DATE },
+        regions: [REGION, OTHER_REGION],
+        expect: {
+          written: {
+            [cAcmsNoMatch]: by('PLACEHOLDER', D1),
+            [cAcmsAmbiguous]: by('PLACEHOLDER', D2),
+            [cDxtrNoMatch]: by('PLACEHOLDER', D1),
+            [cDxtrAmbiguous]: by('PLACEHOLDER', D2),
+          },
+          notWritten: [cAcmsIgnoredDxtrRow, cDxtrIgnoredAcmsRow],
+          bookmarks: { [REGION]: D1, [OTHER_REGION]: D1 },
+          tasks: [
+            { last: 'Elmcrest', count: 1, source: 'ACMS', reason: 'no match', court: COURT_ID },
+            { last: 'Larchwood', count: 1, source: 'ACMS', reason: 'ambiguous', court: COURT_ID },
+            {
+              last: 'Fircrest',
+              count: 1,
+              source: 'DXTR',
+              reason: 'no match',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+            {
+              last: 'Boxwood',
+              count: 1,
+              source: 'DXTR',
+              reason: 'ambiguous',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+          ],
+          tasksTotal: 4,
+        },
+      };
+      return scenario;
+    })(),
   ];
   return list;
 })();
