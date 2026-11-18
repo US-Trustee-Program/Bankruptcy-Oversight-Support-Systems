@@ -10,9 +10,9 @@
  * disposition is not 'linked', `camsTrusteeId` is set to the ACMS variant's fingerprint
  * instead of a real trustee. This harness scores each record's `evidence.sourceRaw` (already a
  * CanonicalTrusteeSource/DxtrTrusteeParty — no decoding needed) against CAMS trustees using the
- * SAME scoring functions production matching uses (calculateNameScore, calculateAddressScore,
- * calculatePhoneScore, calculateEmailScore from trustee-match.helpers.ts) — not a new,
- * separately-tuned comparison. Two passes:
+ * scoring functions from trustee-match.helpers.ts (calculateNameScore, calculateAddressScore,
+ * calculatePhoneScore, calculateEmailScore). The production pipeline no longer calls them; they
+ * are kept for audit harnesses like this one. Two passes:
  *
  *   1. Linked records (disposition === 'linked'): score sourceRaw against the trustee it was
  *      actually linked to, to surface a past auto-link that looks like a poor match (false
