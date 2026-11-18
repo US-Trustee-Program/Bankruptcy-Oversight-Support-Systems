@@ -94,6 +94,31 @@ dispositions. It prints no names or addresses.
 - **Never copy exports into this repo.** Keep them in the checkout where they are gitignored.
   (`fixtures/` and `data/` under this directory are ignored only as a safety net.)
 
+## Backtest (CAMS-957 Slice 4)
+
+`npm run sync-trustee-case-appointments -- backtest` is the deterministic backtest that gates the
+first production DXTR region switch (bead `cams-0pqfs.4`). It runs every scenario whose `lanes`
+include `DXTR`, on the DXTR lane only, twice, each scenario on wiped databases. `--only` and
+`--region` filter as for `run`; `--lane` is ignored. Driver scenarios are not part of it: region
+routing is covered by `run`.
+
+- **Pass bar.** Each fixture's `Expect` is the bar. The backtest passes only when every DXTR fixture
+  gets its declared outcome on both runs. There are no thresholds and no LLM grading (decisions by
+  Matt Stankey, 2026-11-18).
+- **Outcome table.** Expected (from each pass's `Expect`) vs actual (from Mongo and the run) counts
+  for: linked, by method (`professional-id`, `variation`, or `pipeline` for any pipeline stage;
+  "method not asserted" when the fixture names no method); placeholder appointment; identity task,
+  by reason (or "reason not asserted"); identity tasks in total; skipped (the pass asserts the
+  source returned events and nothing was written: no appointment, task, parked record or DLQ);
+  parked; dead-lettered. Only what an `Expect` asserts is counted, so both columns cover the same
+  scope. A row marked `✗` disagrees; the scenario's own `✗` lines say why.
+- **Determinism.** After each scenario the harness hashes every harness Mongo collection (sha256 of
+  documents with sorted keys; `_id`, `id`, `createdOn`/`updatedOn`/`createdBy`/`updatedBy` dropped;
+  generated uuids and wall-clock (non-midnight) ISO timestamps replaced by placeholders). Any
+  scenario whose hash differs between run 1 and run 2 fails the backtest, as does any difference in
+  the outcome counts.
+- **Exit codes:** `0` passed, `1` a fixture failed or the runs differ, `3` and `4` as for `run`.
+
 ## The seams
 
 [`scripts/bindings.ts`](scripts/bindings.ts) is the only file that touches unbuilt production code
@@ -137,6 +162,7 @@ npm run sync-trustee-case-appointments -- run --region 03
 npm run sync-trustee-case-appointments -- run --only known-by-variation
 npm run sync-trustee-case-appointments -- run --only driver-delete-region-date-range-replaces   # a driver scenario
 npm run sync-trustee-case-appointments -- run --verbose       # show production log lines
+npm run sync-trustee-case-appointments -- backtest              # DXTR fixtures twice, against their declared outcomes
 npm run sync-trustee-case-appointments -- clean
 
 cd sync-trustee-case-appointments && scripts/stop-services.sh

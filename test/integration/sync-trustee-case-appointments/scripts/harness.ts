@@ -22,6 +22,9 @@
  *   check-env    Verify environment
  *   seed-schema  Create ACMS_INT and DXTR_INT, apply DDL, load office reference data
  *   run          Run every scenario; options: --lane ACMS|DXTR, --region 02, --only <key>, --verbose
+ *   backtest     Run every DXTR-lane scenario twice; report expected vs actual counts per outcome and
+ *                fail unless every fixture passes and both runs leave identical CAMS state (CAMS-957
+ *                Slice 4). Options: --region 02, --only <key>, --verbose. Exit 0 pass, 1 fail, 3, 4 as run.
  *   list         List scenarios with region, lanes and basis
  *   replay       Run real staging exports through the ACMS source and print AGGREGATE outcomes only:
  *                  replay --professional-ids <file> --trustees <file> [--region 02] [--limit 500]
@@ -39,7 +42,7 @@ import * as path from 'path';
 import { InvocationContext } from '@azure/functions';
 import { MongoClient, Db } from 'mongodb';
 import * as mssql from 'mssql';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { CaseTrusteeAppointmentUseCase } from '../../../../backend/lib/use-cases/cases/case-trustee-appointment.use-case';
@@ -1150,10 +1153,18 @@ function expectFor(pass: Pass, s: Scenario, lane: Lane): Expect {
 
 const regionOf = (s: Scenario, pass: Pass) => pass.region ?? s.region ?? REGION;
 
+/** Optional hooks the backtest uses to tally outcomes and digest CAMS state; `run` passes none. */
+type LaneObserver = {
+  afterPass(db: Db, expect: Expect, outcome: PassOutcome): Promise<void>;
+  afterScenario(db: Db): Promise<void>;
+};
+type PassOutcome = { events: number; dlq: number; parked: number };
+
 async function runScenarioLane(
   context: ApplicationContext,
   s: Scenario,
   lane: Lane,
+  observer?: LaneObserver,
 ): Promise<void> {
   const r = new Reporter('scenario', `${s.title} [${lane}]`);
   line(
@@ -1196,12 +1207,16 @@ async function runScenarioLane(
           );
           const { events, failures } = await readSource(context, source, region, pass.changeDate);
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
-          await assertExpect(r, context, db, expectFor(pass, s, lane), {
+          const expect = expectFor(pass, s, lane);
+          const outcome: PassOutcome = {
             events: events.length,
             dlq: failures + result.dlqMessages.length,
             parked: result.scenarioDistribution.parkedCount,
-          });
+          };
+          await assertExpect(r, context, db, expect, outcome);
+          await observer?.afterPass(db, expect, outcome);
         }
+        await observer?.afterScenario(db);
       } finally {
         await sqlPool.close();
       }
@@ -1692,6 +1707,217 @@ function summarize() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Backtest (CAMS-957 Slice 4): the DXTR fixtures, run twice, against their declared outcomes
+// ---------------------------------------------------------------------------
+
+type Tally = Map<string, { expected: number; actual: number }>;
+
+function bump(tally: Tally, outcomeClass: string, expected: number, actual: number) {
+  const row = tally.get(outcomeClass) ?? { expected: 0, actual: 0 };
+  row.expected += expected;
+  row.actual += actual;
+  tally.set(outcomeClass, row);
+}
+
+/** Groups matchedBy values the way the fixtures assert them: 'PIPELINE' is any pipeline stage. */
+function linkMethod(matchedBy: string | undefined): string {
+  if (matchedBy === 'professional-id' || matchedBy === 'variation') return matchedBy;
+  return 'pipeline';
+}
+
+/**
+ * Counts one pass's outcomes, expected (from the fixture's Expect) and actual (from Mongo and the
+ * run). Only what the Expect asserts is counted, so expected and actual cover the same scope.
+ */
+async function tallyPass(tally: Tally, db: Db, expect: Expect, outcome: PassOutcome) {
+  for (const [caseId, expected] of Object.entries(expect.appointments ?? {})) {
+    const actual = (await db
+      .collection('case-trustee-appointments')
+      .find({ documentType: 'CASE_APPOINTMENT', caseId })
+      .toArray()) as unknown as AppointmentDoc[];
+    const methodAsserted = expected.some((e) => e.trustee !== 'PLACEHOLDER' && e.matchedBy);
+    const linkClass = (matchedBy: string | undefined) =>
+      methodAsserted ? `linked by ${linkMethod(matchedBy)}` : 'linked (method not asserted)';
+    for (const e of expected) {
+      bump(
+        tally,
+        e.trustee === 'PLACEHOLDER' ? 'placeholder appointment' : linkClass(e.matchedBy),
+        1,
+        0,
+      );
+    }
+    for (const a of actual) {
+      bump(tally, a.isSurrogate ? 'placeholder appointment' : linkClass(a.checks?.matchedBy), 0, 1);
+    }
+  }
+
+  const tasks = await db.collection('trustee-match-verification').find({}).toArray();
+  for (const t of expect.tasks ?? []) {
+    const matching = tasks.filter((task) =>
+      eventMatchesKey({ sourceTrustee: task.sourceTrustee } as TrusteeAppointmentSyncEvent, t.last),
+    );
+    const taskClass = (reason?: string) => `identity task (${reason ?? 'reason not asserted'})`;
+    bump(tally, taskClass(t.reason), t.count, 0);
+    for (const task of matching)
+      bump(tally, taskClass(t.reason ? task.mismatchReason : undefined), 0, 1);
+  }
+  if (expect.tasksTotal !== undefined)
+    bump(tally, 'identity tasks in total', expect.tasksTotal, tasks.length);
+
+  // A skip writes nothing at all: no appointment, no task, nothing parked, nothing dead-lettered.
+  const asserted = Object.keys(expect.appointments ?? {});
+  const expectsSkip =
+    (expect.sourceEvents ?? 0) > 0 &&
+    asserted.length > 0 &&
+    Object.values(expect.appointments ?? {}).every((a) => a.length === 0) &&
+    (expect.tasks ?? []).every((t) => t.count === 0) &&
+    !expect.parkedCount &&
+    Object.values(expect.parked ?? {}).every((p) => p.length === 0) &&
+    !expect.dlq;
+  if (expectsSkip) {
+    const written = await db
+      .collection('case-trustee-appointments')
+      .countDocuments({ caseId: { $in: asserted } });
+    bump(tally, 'skipped (nothing written)', 1, written === 0 ? 1 : 0);
+  }
+
+  if (expect.parkedCount !== undefined) {
+    bump(tally, 'parked', expect.parkedCount, outcome.parked);
+  } else if (expect.parked) {
+    for (const [caseId, expected] of Object.entries(expect.parked)) {
+      const actual = await db
+        .collection('case-trustee-appointments')
+        .countDocuments({ documentType: 'CASE_APPOINTMENT_UNATTACHED', caseId });
+      bump(tally, 'parked', expected.length, actual);
+    }
+  }
+
+  if (expect.dlq !== undefined) bump(tally, 'dead-lettered', expect.dlq, outcome.dlq);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A wall-clock ISO timestamp (fixture dates are date-only or midnight UTC). */
+const WALL_CLOCK = /^\d{4}-\d{2}-\d{2}T(?!00:00:00\.000Z)\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const VOLATILE_KEYS = new Set(['_id', 'id', 'updatedOn', 'createdOn', 'updatedBy', 'createdBy']);
+
+/**
+ * Stable JSON for digesting: sorted keys, Mongo ids and audit fields dropped, generated uuids and
+ * wall-clock timestamps replaced by placeholders. Anything else that differs between two runs on
+ * the same fixtures is nondeterminism.
+ */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value instanceof Date) return canonical(value.toISOString());
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([k]) => !VOLATILE_KEYS.has(k))
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
+  }
+  if (typeof value === 'string' && UUID.test(value)) return '"<uuid>"';
+  if (typeof value === 'string' && WALL_CLOCK.test(value)) return '"<timestamp>"';
+  return JSON.stringify(value) ?? 'null';
+}
+
+async function digestCamsState(db: Db): Promise<string> {
+  const hash = createHash('sha256');
+  for (const name of MONGO_COLLECTIONS) {
+    const docs = (await db.collection(name).find({}).toArray()).map(canonical).sort();
+    hash.update(`${name}:${docs.join('\n')}\n`);
+  }
+  return hash.digest('hex');
+}
+
+type BacktestRun = {
+  tally: Tally;
+  statusByKey: Map<string, Status>;
+  digestByKey: Map<string, string>;
+};
+
+async function backtestRun(
+  context: ApplicationContext,
+  scenarios: Scenario[],
+): Promise<BacktestRun> {
+  const run: BacktestRun = { tally: new Map(), statusByKey: new Map(), digestByKey: new Map() };
+  for (const s of scenarios) {
+    await runScenarioLane(context, s, 'DXTR', {
+      afterPass: (db, expect, outcome) => tallyPass(run.tally, db, expect, outcome),
+      afterScenario: async (db) => {
+        run.digestByKey.set(s.key, await digestCamsState(db));
+      },
+    });
+    run.statusByKey.set(s.key, outcomes[outcomes.length - 1].status);
+  }
+  return run;
+}
+
+/**
+ * Runs every DXTR-lane scenario twice and reports each outcome class against what the fixtures
+ * declare. Passes only when every fixture gets its expected outcome on both runs and both runs
+ * leave identical CAMS state. No thresholds and no LLM grading (CAMS-957 Slice 4 decisions,
+ * Matt Stankey, 2026-11-18). Driver scenarios are not part of it; `run` covers region routing.
+ * Exit codes: 0 pass, 1 a fixture failed or the runs differ, 3 infrastructure down, 4 refused.
+ */
+async function backtest() {
+  const { only, region } = parseArgs();
+  if (!(await preflight())) return;
+  const context = await getContext();
+  const selected = SCENARIOS.filter(
+    (s) =>
+      s.lanes.includes('DXTR') &&
+      (!only || s.key === only) &&
+      (!region || (s.region ?? REGION) === region || s.passes.some((p) => p.region === region)),
+  );
+
+  const runs: BacktestRun[] = [];
+  for (const n of [1, 2]) {
+    line(`\n=== Backtest run ${n} of 2: ${selected.length} DXTR fixture(s) ===`);
+    runs.push(await backtestRun(context, selected));
+  }
+  await wipeAll();
+
+  const [first, second] = runs;
+  line('\n=== Backtest: outcomes, expected vs actual (run 1) ===');
+  line(`  ${'outcome'.padEnd(36)} ${'expected'.padStart(8)} ${'actual'.padStart(8)}`);
+  for (const [outcomeClass, { expected, actual }] of [...first.tally].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (expected === 0 && actual === 0) continue;
+    const flag = expected === actual ? '' : '   ✗';
+    line(
+      `  ${outcomeClass.padEnd(36)} ${String(expected).padStart(8)} ${String(actual).padStart(8)}${flag}`,
+    );
+  }
+
+  const failedKeys = selected
+    .map((s) => s.key)
+    .filter((k) => first.statusByKey.get(k) !== 'pass' || second.statusByKey.get(k) !== 'pass');
+  const differingKeys = selected
+    .map((s) => s.key)
+    .filter((k) => first.digestByKey.get(k) !== second.digestByKey.get(k));
+  const tallyDiffers = canonical([...first.tally]) !== canonical([...second.tally]);
+
+  line('\n=== Backtest: result ===');
+  line(
+    `  fixtures: ${selected.length - failedKeys.length} passed, ${failedKeys.length} failed (of ${selected.length})`,
+  );
+  for (const k of failedKeys) {
+    line(
+      `   ✗ ${k} (run 1 ${first.statusByKey.get(k)}, run 2 ${second.statusByKey.get(k)}); see its ✗ lines above`,
+    );
+  }
+  line(
+    `  determinism: ${differingKeys.length === 0 && !tallyDiffers ? 'both runs left identical CAMS state' : 'runs differ'}`,
+  );
+  for (const k of differingKeys) line(`   ✗ ${k}: CAMS state digest differs between runs`);
+  if (tallyDiffers) line('   ✗ the outcome counts differ between runs');
+
+  const ok = failedKeys.length === 0 && differingKeys.length === 0 && !tallyDiffers;
+  line(ok ? '\n  BACKTEST PASSED.' : '\n  BACKTEST FAILED.');
+  process.exitCode = ok ? 0 : 1;
+}
+
 /** Fail fast, with its own exit code, when a database is unreachable, instead of 94 identical failures. */
 async function preflight(): Promise<boolean> {
   const problems: string[] = [];
@@ -1814,7 +2040,7 @@ function assertLocalTargets() {
 async function main() {
   const command = process.argv[2] ?? 'help';
   if (command !== 'list' && command !== 'help') loadEnv();
-  if (['seed-schema', 'run', 'replay', 'clean'].includes(command)) assertLocalTargets();
+  if (['seed-schema', 'run', 'backtest', 'replay', 'clean'].includes(command)) assertLocalTargets();
   switch (command) {
     case 'check-env':
       return checkEnv();
@@ -1822,6 +2048,8 @@ async function main() {
       return seedSchema();
     case 'run':
       return run();
+    case 'backtest':
+      return backtest();
     case 'list':
       return list();
     case 'replay':
