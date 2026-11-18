@@ -1,0 +1,24 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsDataflowsStorage": "UseDevelopmentStorage=true",
+    "DATABASE_MOCK": "false",
+    "CAMS_LOGIN_PROVIDER": "mock",
+    "FEATURE_FLAG_SDK_KEY": "",
+    "MONGO_CONNECTION_STRING": "mongodb://localhost:27017/cams-integration?retrywrites=false",
+    "COSMOS_DATABASE_NAME": "cams-integration",
+    "ATS_MSSQL_HOST": "localhost",
+    "ATS_MSSQL_DATABASE": "ATS_INT",
+    "ATS_MSSQL_USER": "sa",
+    "ATS_MSSQL_PASS": "YourStrong!Passw0rd",
+    "ATS_MSSQL_ENCRYPT": "false",
+    "ATS_MSSQL_TRUST_UNSIGNED_CERT": "true"
+  },
+  "ConnectionStrings": {},
+  "Host": {
+    "LocalHttpPort": 7072,
+    "CORS": "*"
+  }
+}

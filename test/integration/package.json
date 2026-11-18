@@ -40,6 +40,8 @@
     "sync-trustee-case-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json sync-trustee-case-appointments/scripts/harness.ts",
     "trustee-verification-remap": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts",
     "trustee-verification-remap:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts",
-    "trustee-verification-remap:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts"
+    "trustee-verification-remap:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-verification-remap/scripts/trustee-verification-remap-harness.ts",
+    "trustee-data-report": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-data-report/scripts/trustee-data-report-harness.ts",
+    "trustee-data-report:local": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-data-report/scripts/trustee-data-report-harness.ts"
   }
 }
