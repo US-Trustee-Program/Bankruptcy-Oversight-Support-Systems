@@ -12,6 +12,7 @@ import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 import { handlePage, handleStart } from './trustee-data-report';
 
 const MODULE_NAME = 'TRUSTEE-DATA-REPORT';
+const START_QUEUE_NAME = buildQueueName(MODULE_NAME, 'start');
 const PAGE_QUEUE_NAME = buildQueueName(MODULE_NAME, 'page');
 const DLQ_QUEUE_NAME = buildQueueName(MODULE_NAME, 'dlq');
 
@@ -80,6 +81,24 @@ describe('trustee-data-report dataflow', () => {
       expect(failRun).toHaveBeenCalledWith(appContext, 'run-1', expect.stringContaining('boom'));
       expect(outputs(DLQ_QUEUE_NAME)).toBeDefined();
     });
+
+    test('should requeue the start, not a page, when Cosmos throttles, without failing the run', async () => {
+      vi.spyOn(RunTrusteeDataReport, 'startRun').mockRejectedValue(
+        new TooManyRequestsError('TEST'),
+      );
+      const sendMessage = vi.fn().mockResolvedValue(undefined);
+      const queueClient = vi
+        .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+        .mockReturnValue({ sendMessage } as unknown as StorageQueueHumbleObject);
+
+      await handleStart({ runId: 'run-1' }, invocationContext);
+
+      expect(queueClient).toHaveBeenCalledWith(expect.any(String), START_QUEUE_NAME);
+      expect(JSON.parse(sendMessage.mock.calls[0][0])).toEqual(
+        expect.objectContaining({ runId: 'run-1', retryCount: 1 }),
+      );
+      expect(failRun).not.toHaveBeenCalled();
+    });
   });
 
   describe('handlePage', () => {
@@ -131,7 +150,12 @@ describe('trustee-data-report dataflow', () => {
       );
 
       expect(failRun).toHaveBeenCalledWith(appContext, 'run-1', expect.any(String));
-      expect(outputs(DLQ_QUEUE_NAME)).toBeDefined();
+      // The retry helper's dead letter (with the original message) is kept, not overwritten.
+      expect(outputs(DLQ_QUEUE_NAME)).toEqual([
+        expect.objectContaining({
+          message: expect.objectContaining({ runId: 'run-1', cursor: 100 }),
+        }),
+      ]);
     });
 
     test('should fail the run and dead-letter the message on an unexpected error', async () => {
@@ -144,7 +168,9 @@ describe('trustee-data-report dataflow', () => {
         'run-1',
         expect.stringContaining('TOD is down'),
       );
-      expect(outputs(DLQ_QUEUE_NAME)).toBeDefined();
+      expect(outputs(DLQ_QUEUE_NAME)).toEqual(
+        expect.objectContaining({ type: 'QUEUE_ERROR', activityName: 'handlePage' }),
+      );
     });
 
     test('should still dead-letter the message if marking the run failed also fails', async () => {

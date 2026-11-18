@@ -142,6 +142,31 @@ describe('compareTrusteeProfile', () => {
     },
   );
 
+  test.each([
+    {
+      side: 'only CAMS',
+      tod: todRecord({ COMPANY: undefined }),
+      camsCompany: 'New Co',
+      expected: { camsValue: 'New Co', todValue: undefined },
+    },
+    {
+      side: 'only TOD',
+      tod: todRecord(),
+      camsCompany: undefined,
+      expected: { camsValue: undefined, todValue: 'Example Trustee Services' },
+    },
+  ])(
+    'should report a value filled in on $side, leaving the blank side empty',
+    ({ tod, camsCompany, expected }) => {
+      const base = migratedTrustee(tod, ['101']);
+      const cams: Trustee = { ...base, public: { ...base.public, companyName: camsCompany } };
+
+      expect(compareTrusteeProfile(cams, [tod])).toEqual([
+        expect.objectContaining({ field: 'companyName', ...expected }),
+      ]);
+    },
+  );
+
   test('should report nothing for case, whitespace, phone-punctuation and email-case differences', () => {
     const tod = todRecord();
     const base = migratedTrustee(tod, ['101']);

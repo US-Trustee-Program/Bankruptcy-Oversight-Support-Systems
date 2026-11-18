@@ -233,6 +233,7 @@ export function TrusteeDataReport() {
             <CompletedRunSummary run={latestCompletedRun} />
           ) : (
             !activeRun &&
+            !latestFailedRun &&
             !loadError && (
               <p data-testid="trustee-data-report-empty">
                 No report has been run yet. Start a report to compare CAMS with TOD.

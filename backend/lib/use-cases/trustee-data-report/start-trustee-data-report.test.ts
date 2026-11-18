@@ -40,6 +40,7 @@ describe('startTrusteeDataReport', () => {
     expect(claim).toHaveBeenCalledWith(context, run.runId);
     expect(reportRepo.upsertRun).toHaveBeenCalledWith(run);
     expect(gateway.queueTrusteeDataReportStart).toHaveBeenCalledWith({ runId: run.runId });
+    expect(RunTrusteeDataReport.failRun).not.toHaveBeenCalled();
   });
 
   test('should mint a new runId for every start', async () => {
@@ -64,26 +65,28 @@ describe('startTrusteeDataReport', () => {
     expect(gateway.queueTrusteeDataReportStart).not.toHaveBeenCalled();
   });
 
-  test('should mark a stale run it replaced as failed', async () => {
+  test('should mark a stale run it replaced as failed, then still start the new run', async () => {
     vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({
       claimed: true,
       replacedStaleRunId: 'run-crashed',
     });
 
-    await startTrusteeDataReport(context);
+    const run = await startTrusteeDataReport(context);
 
     expect(RunTrusteeDataReport.failRun).toHaveBeenCalledWith(
       context,
       'run-crashed',
-      expect.stringContaining('2 hours'),
+      expect.any(String),
     );
+    expect(reportRepo.upsertRun).toHaveBeenCalledWith(run);
+    expect(gateway.queueTrusteeDataReportStart).toHaveBeenCalledWith({ runId: run.runId });
   });
 
-  test('should fail the new run, releasing the lock, when its start cannot be queued', async () => {
+  test('should fail the new run and pass on the queue error when its start cannot be queued', async () => {
     vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({ claimed: true });
     vi.spyOn(gateway, 'queueTrusteeDataReportStart').mockRejectedValue(new Error('queue down'));
 
-    await expect(startTrusteeDataReport(context)).rejects.toThrow();
+    await expect(startTrusteeDataReport(context)).rejects.toThrow('queue down');
     const runId = vi.mocked(reportRepo.upsertRun).mock.calls[0][0].runId;
     expect(RunTrusteeDataReport.failRun).toHaveBeenCalledWith(context, runId, expect.any(String));
   });

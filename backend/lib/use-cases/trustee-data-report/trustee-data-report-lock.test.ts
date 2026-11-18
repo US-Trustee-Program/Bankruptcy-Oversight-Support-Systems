@@ -76,13 +76,11 @@ describe('TrusteeDataReportLock', () => {
       expect(lockRepo.doc?.runId).toBe('run-new');
     });
 
-    test('should report a lost race when another start overwrote the claim before it was confirmed', async () => {
-      const upsert = lockRepo.upsert.bind(lockRepo);
-      vi.spyOn(lockRepo, 'upsert').mockImplementation(async (doc) => {
-        await upsert(doc);
+    test('should report a lost race when another start overwrote the claim during the confirm pause', async () => {
+      // The competing write lands partway through the pause, so this fails if the pause is removed.
+      setTimeout(() => {
         lockRepo.doc = lockHeldBy('run-other', 0);
-        return doc;
-      });
+      }, CLAIM_CONFIRM_DELAY_MS / 2);
 
       expect(await claim('run-new')).toEqual({ claimed: false, activeRunId: 'run-other' });
     });

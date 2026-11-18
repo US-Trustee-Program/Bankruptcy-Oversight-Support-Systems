@@ -367,7 +367,52 @@ describe('RunTrusteeDataReport', () => {
         startedAt: '2026-11-17T12:00:00.000Z',
       });
 
-      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).rejects.toThrow();
+      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).rejects.toThrow(
+        'no longer holds the run lock',
+      );
+    });
+  });
+
+  describe('edge cases', () => {
+    test('should complete with all-zero counts when TOD and CAMS have no trustees', async () => {
+      vi.spyOn(ats, 'getTrusteesPage').mockResolvedValue([]);
+      camsTrustees = [];
+
+      await runToCompletion(100);
+
+      expect(await reportRepo.readRun(RUN_ID)).toEqual(
+        expect.objectContaining({
+          status: 'completed',
+          summary: expect.objectContaining({
+            trusteesCompared: 0,
+            todOnly: 0,
+            camsOnly: 0,
+            fieldDifferences: 0,
+          }),
+        }),
+      );
+    });
+
+    test('should report a CAMS trustee whose only TOD ID is not a number as CAMS-only, without querying TOD for it', async () => {
+      const malformed = MockData.getTrustee({ legacy: { truIds: ['not-a-number'] } });
+      camsTrustees = [malformed];
+      const lookup = vi.spyOn(ats, 'getTrusteesByIds');
+
+      await runToCompletion(100);
+
+      expect(reportRepo.rowsFor(RUN_ID)).toContainEqual(
+        expect.objectContaining({ kind: 'cams-only', camsTrusteeId: malformed.trusteeId }),
+      );
+      lookup.mock.calls.forEach(([, ids]) => expect(ids.every(Number.isInteger)).toBe(true));
+    });
+
+    test('should still release the lock when failing a run whose document is gone', async () => {
+      reportRepo.runs.delete(RUN_ID);
+
+      await RunTrusteeDataReport.failRun(context, RUN_ID, 'TOD query failed');
+
+      expect(lockRepo.holder()).toBeUndefined();
+      expect(await reportRepo.readRun(RUN_ID)).toBeNull();
     });
   });
 

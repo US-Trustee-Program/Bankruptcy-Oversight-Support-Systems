@@ -68,7 +68,9 @@ async function recordDifferences(
   trusteesCompared: number,
 ): Promise<void> {
   if (differences.length === 0 && trusteesCompared === 0) {
-    return; // Nothing changed; rewriting the run would be a no-op replace.
+    // Nothing changed. Not just an optimization: the Mongo adapter's replaceOne throws when an
+    // upsert modifies nothing, so rewriting an unchanged run would fail the run.
+    return;
   }
   const reportRepo = factory.getTrusteeDataReportRepository(context);
   await reportRepo.insertDifferences(runId, differences);

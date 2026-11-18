@@ -25,6 +25,11 @@ describe('getLatestTrusteeDataReport', () => {
     context = await createMockApplicationContext();
     reportRepo = new MockMongoRepository();
     vi.spyOn(factory, 'getTrusteeDataReportRepository').mockReturnValue(reportRepo);
+    // Explicit defaults, so no test depends on the in-memory mock's shared (static) run data.
+    vi.spyOn(TrusteeDataReportLock, 'activeRunId').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readRun').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestCompletedRun').mockResolvedValue(null);
+    vi.spyOn(reportRepo, 'readLatestFailedRun').mockResolvedValue(null);
   });
 
   test('should return nothing before any report has run', async () => {

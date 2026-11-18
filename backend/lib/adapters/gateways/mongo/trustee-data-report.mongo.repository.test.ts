@@ -55,29 +55,25 @@ describe('TrusteeDataReportMongoRepository', () => {
     TrusteeDataReportMongoRepository.dropInstance();
   });
 
-  describe('getInstance', () => {
-    test('should return the same instance when called multiple times', () => {
-      expect(TrusteeDataReportMongoRepository.getInstance(context)).toBe(
-        TrusteeDataReportMongoRepository.getInstance(context),
-      );
+  // Each test leaves the reference count where beforeEach/afterEach expect it: one acquire, one release.
+  describe('instance lifecycle', () => {
+    test('should share one instance until every reference is released', () => {
+      const second = TrusteeDataReportMongoRepository.getInstance(context);
+      expect(second).toBe(repository);
+
+      second.release();
+
+      expect(TrusteeDataReportMongoRepository.getInstance(context)).toBe(repository);
+      repository.release();
     });
 
-    test('should create a new instance when none exists', () => {
-      TrusteeDataReportMongoRepository.dropInstance();
-
-      expect(TrusteeDataReportMongoRepository.getInstance(context)).toBeInstanceOf(
-        TrusteeDataReportMongoRepository,
-      );
-    });
-  });
-
-  describe('release', () => {
-    test('should call dropInstance', () => {
-      const dropInstanceSpy = vi.spyOn(TrusteeDataReportMongoRepository, 'dropInstance');
-
+    test('should create a fresh instance after the last reference is released', () => {
       repository.release();
 
-      expect(dropInstanceSpy).toHaveBeenCalled();
+      const fresh = TrusteeDataReportMongoRepository.getInstance(context);
+
+      expect(fresh).not.toBe(repository);
+      repository = fresh;
     });
   });
 
@@ -143,23 +139,37 @@ describe('TrusteeDataReportMongoRepository', () => {
     { method: 'readLatestCompletedRun', status: 'completed' },
     { method: 'readLatestFailedRun', status: 'failed' },
   ] as const)('$method', ({ method, status }) => {
-    test(`should return the ${status} run that finished most recently`, async () => {
-      const older = buildRun({ runId: 'run-old', status, finishedAt: '2026-11-16T10:00:00.000Z' });
-      const newer = buildRun({ runId: 'run-new', status, finishedAt: '2026-11-17T10:00:00.000Z' });
-      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { ...older, documentType: 'TRUSTEE_DATA_REPORT_RUN' },
-        { ...newer, documentType: 'TRUSTEE_DATA_REPORT_RUN' },
-      ]);
+    test.each(['oldest first', 'newest first'])(
+      `should return the ${status} run that finished most recently when found %s`,
+      async (order) => {
+        const older = buildRun({
+          runId: 'run-old',
+          status,
+          finishedAt: '2026-11-16T10:00:00.000Z',
+        });
+        const newer = buildRun({
+          runId: 'run-new',
+          status,
+          finishedAt: '2026-11-17T10:00:00.000Z',
+        });
+        const found = [older, newer].map((run) => ({
+          ...run,
+          documentType: 'TRUSTEE_DATA_REPORT_RUN' as const,
+        }));
+        const findSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'find')
+          .mockResolvedValue(order === 'newest first' ? found.reverse() : found);
 
-      expect(await repository[method]()).toEqual(newer);
-      expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          values: expect.arrayContaining([
-            expect.objectContaining({ leftOperand: { name: 'status' }, rightOperand: status }),
-          ]),
-        }),
-      );
-    });
+        expect(await repository[method]()).toEqual(newer);
+        expect(findSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            values: expect.arrayContaining([
+              expect.objectContaining({ leftOperand: { name: 'status' }, rightOperand: status }),
+            ]),
+          }),
+        );
+      },
+    );
 
     test(`should return null when no run is ${status}`, async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);

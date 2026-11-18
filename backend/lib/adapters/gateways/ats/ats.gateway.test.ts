@@ -9,6 +9,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CamsError } from '../../../common-errors/cams-error';
 import { CleansingClassification } from './cleansing/ats-cleansing-types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { ACTIVE_STATUS_CODES } from './ats.constants';
 
 describe('ATS Gateway', () => {
   let context: ApplicationContext;
@@ -138,6 +139,26 @@ describe('ATS Gateway', () => {
       mockExecuteQuery = vi.spyOn(gateway as any, 'executeQuery');
     });
 
+    test.each([
+      {
+        method: 'getTrusteesByIds' as const,
+        rows: [[{ ID: 1 }], [{ ID: 501 }], [{ ID: 1001 }]],
+        expected: [{ ID: 1 }, { ID: 501 }, { ID: 1001 }],
+      },
+      {
+        method: 'getActiveTrusteeIds' as const,
+        rows: [[{ TRU_ID: 1 }], [{ TRU_ID: 501 }], [{ TRU_ID: 1001 }]],
+        expected: [1, 501, 1001],
+      },
+    ])('$method should combine the results of every batch', async ({ method, rows, expected }) => {
+      rows.forEach((recordset) =>
+        mockExecuteQuery.mockResolvedValueOnce({ results: { recordset } }),
+      );
+      const ids = Array.from({ length: 1200 }, (_, i) => i + 1);
+
+      expect(await gateway[method](context, ids)).toEqual(expected);
+    });
+
     describe('getTrusteesByIds', () => {
       test('should select trustees whose ID is in the list, one parameter per ID', async () => {
         const records = [{ ID: 7 }, { ID: 9 }];
@@ -186,7 +207,8 @@ describe('ATS Gateway', () => {
         const [, query] = mockExecuteQuery.mock.calls[0];
         expect(query).toContain('FROM CHAPTER_DETAILS CD');
         expect(query).toContain('CD.TRU_ID IN (@id0, @id1)');
-        expect(query).toMatch(/CD\.STATUS IN \('[^)]+'\)/);
+        const activeCodes = [...ACTIVE_STATUS_CODES].map((code) => `'${code}'`).join(',');
+        expect(query).toContain(`CD.STATUS IN (${activeCodes})`);
       });
 
       test('should not query when the list is empty', async () => {

@@ -7,6 +7,7 @@ import { buildQueueName } from '../dataflows-common';
 import factory from '../../../lib/factory';
 import { TrusteeDataReportRunState } from '../../../lib/use-cases/gateways.types';
 import { TrusteeDataReportPageMessage } from '@common/cams/dataflow-events';
+import TrusteeDataReportLock from '../../../lib/use-cases/trustee-data-report/trustee-data-report-lock';
 import { handlePage, handleStart } from './trustee-data-report';
 
 // End to end with dbMock=true: the real handlers, use case, in-memory repositories and
@@ -69,7 +70,8 @@ describe('trustee-data-report end to end (dbMock)', () => {
     await handleStart({ runId }, invocation);
     let next = pageOutput(invocation);
     let pages = 0;
-    while (next) {
+    // Bounded, so a run that never finishes fails the page-count check instead of hanging.
+    while (next && pages < 10) {
       invocation = invoke();
       await handlePage(next, invocation);
       next = pageOutput(invocation);
@@ -90,10 +92,6 @@ describe('trustee-data-report end to end (dbMock)', () => {
         }),
       }),
     );
-    await expect(
-      factory
-        .getRuntimeStateRepository<TrusteeDataReportRunState>(context)
-        .read('TRUSTEE_DATA_REPORT_RUN'),
-    ).rejects.toThrow();
+    expect(await TrusteeDataReportLock.activeRunId(context)).toBeNull();
   });
 });

@@ -223,6 +223,54 @@ describe('TrusteeDataReport', () => {
     expect(screen.getByTestId('trustee-data-report-finished-at')).toBeInTheDocument();
   });
 
+  test('should show a failed run without claiming no report has run when none has completed', async () => {
+    const failed = run({
+      runId: 'run-failed',
+      status: 'failed',
+      finishedAt: '2026-11-17T12:00:00.000Z',
+      failureMessage: 'TOD connection refused',
+    });
+    mockGet({ latestFailedRun: failed });
+
+    await renderLoaded();
+
+    expect(screen.getByTestId('alert-trustee-data-report-failed')).toHaveTextContent(
+      'TOD connection refused',
+    );
+    expect(screen.queryByTestId('trustee-data-report-empty')).toBeNull();
+  });
+
+  test('should announce a run that fails', async () => {
+    const failed = run({
+      runId: 'run-active',
+      status: 'failed',
+      finishedAt: '2026-11-17T12:00:00.000Z',
+      failureMessage: 'TOD query timed out',
+    });
+    mockGet(
+      { activeRun: RUNNING, latestCompletedRun: COMPLETED },
+      { latestCompletedRun: COMPLETED, latestFailedRun: failed },
+    );
+
+    await renderLoaded();
+    await act(() => vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS));
+
+    await waitFor(() => expect(liveStatus()).toHaveTextContent('failed'));
+  });
+
+  test('should ignore a second press while a start is still in flight', async () => {
+    mockGet({ latestCompletedRun: COMPLETED });
+    const post = vi.spyOn(Api2, 'postTrusteeDataReport').mockReturnValue(new Promise(() => {}));
+
+    await renderLoaded();
+    await userEvent.click(startButton());
+    await waitFor(() => expectStartBlocked(true));
+    await userEvent.click(startButton());
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(liveStatus()).toHaveTextContent('Starting the report');
+  });
+
   test('should show an error when the status cannot be loaded', async () => {
     vi.spyOn(Api2, 'getTrusteeDataReport').mockRejectedValue(new Error('Network down'));
 

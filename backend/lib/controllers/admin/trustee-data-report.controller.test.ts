@@ -55,11 +55,12 @@ describe('Trustee Data Report Controller tests', () => {
   );
 
   test('should start a run on POST and return it with 201', async () => {
-    vi.spyOn(StartUseCase, 'startTrusteeDataReport').mockResolvedValue(QUEUED_RUN);
+    const start = vi.spyOn(StartUseCase, 'startTrusteeDataReport').mockResolvedValue(QUEUED_RUN);
     const context = await contextFor('POST', [CamsRole.SuperUser]);
 
     const response = await controller.handleRequest(context);
 
+    expect(start).toHaveBeenCalledWith(context);
     expect(response.statusCode).toBe(HttpStatusCodes.CREATED);
     expect(response.body).toEqual({ data: QUEUED_RUN });
   });
@@ -77,11 +78,14 @@ describe('Trustee Data Report Controller tests', () => {
 
   test('should return the active and latest completed runs on GET', async () => {
     const latest = { latestCompletedRun: { ...QUEUED_RUN, status: 'completed' as const } };
-    vi.spyOn(GetLatestUseCase, 'getLatestTrusteeDataReport').mockResolvedValue(latest);
+    const getLatest = vi
+      .spyOn(GetLatestUseCase, 'getLatestTrusteeDataReport')
+      .mockResolvedValue(latest);
     const context = await contextFor('GET', [CamsRole.SuperUser]);
 
     const response = await controller.handleRequest(context);
 
+    expect(getLatest).toHaveBeenCalledWith(context);
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
     expect(response.body).toEqual({ data: latest });
   });
