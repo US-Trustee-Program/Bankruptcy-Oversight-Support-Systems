@@ -187,10 +187,11 @@ reopened dates, so `caseStatus` is derived from them.
 
 - A transient error retries in place — needs fault injection into Cosmos; covered by unit tests.
 - A long date continues in a fresh message — needs an injectable invocation budget.
-- Slice 3 parking (`CASE_APPOINTMENT_UNATTACHED`), Slice 2 lanes, Slice 4 admin page, the CAMS-956
-  Trustee Appointment task, and the CAMS-957 gap report / SuperUser-only switch — not built, or
-  API-level. `cams-rxb7a.1` should extend this harness; the driver scenarios already model region
-  source routing.
+- Slice 4 admin page, the CAMS-956 Trustee Appointment task, and the CAMS-957 gap report /
+  SuperUser-only switch — not built, or API-level.
+- A two-region driver run (one DXTR, one ACMS) repeated twice, asserting no duplicates — CAMS-957
+  Slice 3 Task 2 (`cams-0pqfs.3.2`), which also closes `cams-rxb7a.1` as superseded; the driver
+  scenarios already model region source routing for a single run.
 - Empty first names (83 of 6,770 real ACMS records) — expected outcome unknown.
 - `trustee-match-verification.findings` for **seeded** pending tasks is `{}`, not a real serialized
   pipeline state. Tasks the sync itself creates are real.

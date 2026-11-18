@@ -1541,9 +1541,10 @@ for (const n of PLACEHOLDER_NAMES) {
     title: 'An appointment for a case not yet in CAMS is parked',
     basis: 'feature',
     note:
-      'ACMS only: parking needs dateFiled, which only the ACMS source sets (the DXTR source is unused ' +
-      'until #3191). The heal (Task 6) attaches it once the case loads.',
-    lanes: ['ACMS'],
+      'CAMS-957 Slice 3: DXTR now sets dateFiled from AO_CS.CS_DATE_FILED, so parking works on both ' +
+      'lanes. The DXTR event carries no acmsProfessionalId (step 1 never fires), so it resolves via ' +
+      'the pipeline instead of the professional-id link. The heal (Task 6) attaches it once the case loads.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
     passes: [
@@ -1558,6 +1559,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      parked: { [c]: [{ trustee: 'T-1', assignedOn: D1, matchedBy: 'PIPELINE' }] },
+    },
   });
 }
 
@@ -1568,8 +1572,10 @@ for (const n of PLACEHOLDER_NAMES) {
     key: 'unknown-trustee-case-not-yet-synced-parked-placeholder',
     title: 'An unknown trustee on a case not yet in CAMS is parked as a placeholder',
     basis: 'feature',
-    note: 'The identity task lists the case even though the case is not in CAMS yet.',
-    lanes: ['ACMS'],
+    note:
+      'The identity task lists the case even though the case is not in CAMS yet. CAMS-957 Slice 3: ' +
+      'DXTR now sets dateFiled, so this also parks on the DXTR lane.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [] },
     passes: [
@@ -1585,6 +1591,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      tasks: [{ last: 'Tupelo', count: 1, source: 'DXTR', reason: 'no match' }],
+    },
   });
 }
 

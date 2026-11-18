@@ -105,7 +105,8 @@ const TRUSTEE_APPOINTMENT_EVENT_COLUMNS = `
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
         CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
-        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate`;
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
+        CONVERT(VARCHAR(10), C.CS_DATE_FILED, 23) AS dateFiled`;
 
 const TRUSTEE_APPOINTMENT_EVENT_JOINS = `
       FROM AO_TX TX
@@ -156,6 +157,7 @@ type TrusteeAppointmentEventRecord = {
   aptDate?: string;
   txDate: string;
   profCode?: string;
+  dateFiled?: string | null;
 };
 
 class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
@@ -1559,6 +1561,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
       profCode: record.profCode?.trim(),
       groupDesignator: record.groupDesignator?.trim(),
+      dateFiled: record.dateFiled ?? undefined,
     };
   }
 
