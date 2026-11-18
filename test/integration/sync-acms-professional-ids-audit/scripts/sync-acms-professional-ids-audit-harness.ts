@@ -202,8 +202,8 @@ function findBestCandidate(
   for (const trustee of trustees) {
     const scores = scoreAgainst(acmsTrustee, trustee);
     // A blunt, single-pass "does this look like the same person" signal for this exploratory
-    // scan — not calculateCandidateScore's full weighted blend, since that also needs
-    // district/chapter (appointment context this fixture-only harness never has). Name is the
+    // scan — not the trustee-match pipeline's full per-signal scoreCandidate breakdown, since that
+    // also needs district/chapter (appointment context this fixture-only harness never has). Name is the
     // primary signal; address as a tiebreaker among equally-named candidates.
     if (
       !best ||

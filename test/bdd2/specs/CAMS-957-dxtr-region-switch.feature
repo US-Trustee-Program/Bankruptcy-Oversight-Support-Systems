@@ -290,12 +290,11 @@ Feature: Switch a region's trustee appointments to DXTR
   # Dependencies: Slice 4 (the backtest must pass first)
   # User Value: One trustee-matching path to maintain; future readers know why sources are chosen per region
 
-  Scenario: The DXTR-only matcher is removed
+  Scenario: The DXTR-only matcher stays retired
     Given the backtest passed the pass bar
-    When the DXTR-only matcher is retired
     Then resolveNameCollisionByScoring, calculateCandidateScore, findInactivePerfectMatch and the
-      district/division and chapter scoring are removed from trustee-match.helpers.ts
-    And no integration harness still uses them
+      district/division and chapter scoring are absent from trustee-match.helpers.ts
+    And no integration harness still calls them
     And all trustee matching runs through the trustee-match pipeline
 
   Scenario: The ADRs are current
