@@ -37,6 +37,9 @@ class InMemoryReportRepository implements TrusteeDataReportRepository {
   async readLatestFailedRun() {
     return this.latestWithStatus('failed');
   }
+  async listCompletedRunIds() {
+    return [...this.runs.values()].filter((run) => run.status === 'completed').map((r) => r.runId);
+  }
   private latestWithStatus(status: TrusteeDataReportRun['status']) {
     const runs = [...this.runs.values()].filter((run) => run.status === status);
     runs.sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''));
@@ -305,6 +308,22 @@ describe('RunTrusteeDataReport', () => {
       expect(reportRepo.rowsFor('run-old')).toEqual([]);
     });
 
+    test('should remove every older completed run, including one an earlier run could not remove', async () => {
+      for (const [runId, finishedAt] of [
+        ['run-older', '2026-11-15T10:00:00.000Z'],
+        ['run-old', '2026-11-16T10:00:00.000Z'],
+      ]) {
+        await reportRepo.upsertRun({ ...queuedRun(runId), status: 'completed', finishedAt });
+        reportRepo.seedRows(runId, [{ kind: 'tod-only', todIds: ['1'], trusteeName: 'A' }]);
+      }
+
+      await runToCompletion(100);
+
+      expect([...reportRepo.runs.keys()]).toEqual([RUN_ID]);
+      expect(reportRepo.rowsFor('run-older')).toEqual([]);
+      expect(reportRepo.rowsFor('run-old')).toEqual([]);
+    });
+
     test('should still complete and release the lock if removing the previous run fails', async () => {
       await reportRepo.upsertRun({
         ...queuedRun('run-old'),
@@ -483,6 +502,17 @@ describe('RunTrusteeDataReport', () => {
         expect.objectContaining({ kind: 'cams-only', camsTrusteeId: malformed.trusteeId }),
       );
       lookup.mock.calls.forEach(([, ids]) => expect(ids.every(Number.isInteger)).toBe(true));
+    });
+
+    test('should not query TOD for a non-numeric linked ID that is off the page, and still compare the trustee once', async () => {
+      const mixed = migrated(1, { legacy: { truIds: ['1', 'not-a-number'] } });
+      camsTrustees = [mixed];
+      const lookup = vi.spyOn(ats, 'getTrusteesByIds');
+
+      await runToCompletion(100);
+
+      lookup.mock.calls.forEach(([, ids]) => expect(ids.every(Number.isInteger)).toBe(true));
+      expect((await reportRepo.readRun(RUN_ID))?.summary?.trusteesCompared).toBe(1);
     });
 
     test('should still release the lock when failing a run whose document is gone', async () => {

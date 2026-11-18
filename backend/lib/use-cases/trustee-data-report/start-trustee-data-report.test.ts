@@ -106,6 +106,19 @@ describe('startTrusteeDataReport', () => {
     expect(gateway.queueTrusteeDataReportStart).not.toHaveBeenCalled();
   });
 
+  test('should pass on the original error, and log the cleanup error, when releasing the lock also fails', async () => {
+    vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({ claimed: true });
+    vi.spyOn(reportRepo, 'upsertRun').mockRejectedValue(new Error('cosmos down'));
+    vi.mocked(RunTrusteeDataReport.failRun).mockRejectedValue(new Error('release failed'));
+    const logError = vi.spyOn(context.logger, 'error');
+
+    await expect(startTrusteeDataReport(context)).rejects.toThrow('cosmos down');
+    expect(logError).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('release failed'),
+    );
+  });
+
   test('should fail the new run and pass on the queue error when its start cannot be queued', async () => {
     vi.spyOn(TrusteeDataReportLock, 'claimRun').mockResolvedValue({ claimed: true });
     vi.spyOn(gateway, 'queueTrusteeDataReportStart').mockRejectedValue(new Error('queue down'));

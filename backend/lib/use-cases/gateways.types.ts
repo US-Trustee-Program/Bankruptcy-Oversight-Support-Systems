@@ -568,6 +568,7 @@ export interface TrusteeDataReportRepository extends Releasable {
   readRun(runId: string): Promise<TrusteeDataReportRun | null>;
   readLatestCompletedRun(): Promise<TrusteeDataReportRun | null>;
   readLatestFailedRun(): Promise<TrusteeDataReportRun | null>;
+  listCompletedRunIds(): Promise<string[]>;
   /** Replaces one page's difference rows and counts; safe to repeat when a page is retried. */
   replacePageResults(
     runId: string,

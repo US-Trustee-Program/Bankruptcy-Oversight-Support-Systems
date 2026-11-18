@@ -935,6 +935,15 @@ resource trusteeDataReportCollection 'Microsoft.DocumentDB/databaseAccounts/mong
             ]
           }
         }
+        {
+          // Each page write first deletes that page's earlier rows by runId and pageKey.
+          key: {
+            keys: [
+              'runId'
+              'pageKey'
+            ]
+          }
+        }
       ]
     }
   }

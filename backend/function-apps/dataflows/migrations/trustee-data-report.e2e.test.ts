@@ -10,9 +10,10 @@ import { TrusteeDataReportPageMessage } from '@common/cams/dataflow-events';
 import TrusteeDataReportLock from '../../../lib/use-cases/trustee-data-report/trustee-data-report-lock';
 import { handlePage, handleStart } from './trustee-data-report';
 
-// End to end with dbMock=true: the real handlers, use case, in-memory repositories and
-// MockAtsGateway, chained the way the page queue chains them. Only the queue transport is
-// simulated. Data: lib/testing/mock-gateways/mock-trustee-data-report.fixtures.ts.
+// With dbMock=true: the real handlers, use case, in-memory repositories and MockAtsGateway,
+// chained the way the page queue chains them. The queued run and its lock are seeded rather than
+// created by the start use case, and the queue transport is simulated; the integration harness
+// covers the real start. Data: lib/testing/mock-gateways/mock-trustee-data-report.fixtures.ts.
 
 const PAGE_QUEUE_NAME = buildQueueName('TRUSTEE-DATA-REPORT', 'page');
 
@@ -26,7 +27,7 @@ function pageOutput(
   return undefined;
 }
 
-describe('trustee-data-report end to end (dbMock)', () => {
+describe('trustee-data-report dataflow with dbMock', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockReturnValue(undefined);
@@ -41,12 +42,12 @@ describe('trustee-data-report end to end (dbMock)', () => {
     );
   });
 
-  test('should run from start to completion and report all three kinds of difference', async () => {
+  test('should run a seeded queued run to completion and report all three kinds of difference', async () => {
     const context = await createMockApplicationContext();
     expect(context.config.get('dbMock')).toBe(true);
     const runId = `e2e-${Date.now()}`;
 
-    // What S1.4's start use case will do: create the queued run and claim the lock.
+    // Seed what the start use case does: create the queued run and claim the lock.
     await factory.getTrusteeDataReportRepository(context).upsertRun({
       runId,
       status: 'queued',

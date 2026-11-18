@@ -27,7 +27,6 @@ export type TrusteeDataReportRun = {
   summary?: TrusteeDataReportSummary;
 };
 
-// Later slices add appointment-level kinds, a likely cause, and an email outcome.
 type TrusteeDataDifferenceKind = 'tod-only' | 'cams-only' | 'field';
 
 export type TrusteeDataDifference = {

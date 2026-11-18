@@ -16,7 +16,8 @@ import {
 } from './compare-trustee-profiles';
 import TrusteeDataReportLock from './trustee-data-report-lock';
 
-const MODULE_NAME = 'RUN-TRUSTEE-DATA-REPORT';
+export const RUN_TRUSTEE_DATA_REPORT_MODULE_NAME = 'RUN-TRUSTEE-DATA-REPORT';
+const MODULE_NAME = RUN_TRUSTEE_DATA_REPORT_MODULE_NAME;
 
 /** TOD trustees read per page message. */
 const PAGE_SIZE = 100;
@@ -181,9 +182,9 @@ async function processPage(
 }
 
 /**
- * Finds CAMS trustees with no TOD record, completes the run, then replaces the previously
- * completed run and releases the lock. Failures after completion are logged, not thrown, so a
- * completed run is never marked failed.
+ * Finds CAMS trustees with no TOD record, completes the run, then removes every older completed
+ * run and releases the lock. Failures after completion are logged, not thrown, so a completed run
+ * is never marked failed; an older run that could not be removed is removed by the next run.
  */
 async function finalizeRun(context: ApplicationContext, runId: string): Promise<void> {
   const reportRepo = factory.getTrusteeDataReportRepository(context);
@@ -203,7 +204,6 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
     addSummaries,
     summarize([], 0),
   );
-  const previous = await reportRepo.readLatestCompletedRun();
   const run = await requireRun(context, runId);
   await requireLock(context, runId);
   await reportRepo.upsertRun({
@@ -217,16 +217,7 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
     `Run ${runId} completed: ${camsOnly.length} CAMS trustees have no TOD record.`,
   );
 
-  if (previous && previous.runId !== runId) {
-    try {
-      await reportRepo.deleteRun(previous.runId);
-    } catch (error) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Run ${runId} completed but could not remove previous run ${previous.runId}: ${getCamsError(error, MODULE_NAME).message}`,
-      );
-    }
-  }
+  await removeOlderCompletedRuns(context, runId);
   try {
     await TrusteeDataReportLock.releaseRun(context, runId);
   } catch (error) {
@@ -234,6 +225,30 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
       MODULE_NAME,
       `Run ${runId} completed but could not release the run lock; it goes stale after 2 hours: ${getCamsError(error, MODULE_NAME).message}`,
     );
+  }
+}
+
+async function removeOlderCompletedRuns(context: ApplicationContext, runId: string) {
+  const reportRepo = factory.getTrusteeDataReportRepository(context);
+  let olderRunIds: string[];
+  try {
+    olderRunIds = (await reportRepo.listCompletedRunIds()).filter((id) => id !== runId);
+  } catch (error) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Run ${runId} completed but could not list older runs to remove: ${getCamsError(error, MODULE_NAME).message}`,
+    );
+    return;
+  }
+  for (const olderRunId of olderRunIds) {
+    try {
+      await reportRepo.deleteRun(olderRunId);
+    } catch (error) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Run ${runId} completed but could not remove older run ${olderRunId}: ${getCamsError(error, MODULE_NAME).message}`,
+      );
+    }
   }
 }
 

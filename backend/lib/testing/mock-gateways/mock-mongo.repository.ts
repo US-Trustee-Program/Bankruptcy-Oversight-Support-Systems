@@ -975,6 +975,12 @@ export class MockMongoRepository
     return this.readLatestTrusteeDataReportRun('failed');
   }
 
+  async listCompletedRunIds(): Promise<string[]> {
+    return [...MockMongoRepository.trusteeDataReportRuns.values()]
+      .filter((run) => run.status === 'completed')
+      .map((run) => run.runId);
+  }
+
   private readLatestTrusteeDataReportRun(
     status: TrusteeDataReportRun['status'],
   ): TrusteeDataReportRun | null {

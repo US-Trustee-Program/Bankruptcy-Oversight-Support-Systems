@@ -34,7 +34,11 @@ type PageDocument = {
 };
 type ReportDocument = RunDocument | DifferenceDocument | PageDocument;
 
-function toRun({ documentType: _documentType, ...run }: RunDocument): TrusteeDataReportRun {
+function toRun({
+  documentType: _documentType,
+  _id,
+  ...run
+}: RunDocument & { _id?: unknown }): TrusteeDataReportRun {
   return run;
 }
 
@@ -107,7 +111,7 @@ export class TrusteeDataReportMongoRepository
   }
 
   /**
-   * Completed runs are few: the dataflow deletes the previous run when a new one completes,
+   * Completed runs are few: the dataflow deletes older runs when a new one completes,
    * so the newest is chosen here rather than through a separate pointer document.
    */
   public async readLatestCompletedRun(): Promise<TrusteeDataReportRun | null> {
@@ -116,6 +120,20 @@ export class TrusteeDataReportMongoRepository
 
   public async readLatestFailedRun(): Promise<TrusteeDataReportRun | null> {
     return this.readLatestRunWithStatus('failed');
+  }
+
+  public async listCompletedRunIds(): Promise<string[]> {
+    try {
+      const runs = await this.getAdapter<RunDocument>().find(
+        and(
+          this.runDoc('documentType').equals('TRUSTEE_DATA_REPORT_RUN'),
+          this.runDoc('status').equals('completed'),
+        ),
+      );
+      return runs.map((run) => run.runId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   private async readLatestRunWithStatus(

@@ -100,7 +100,6 @@ describe('TrusteeDataReport', () => {
     Object.entries(counts).forEach(([key, value]) =>
       expect(screen.getByTestId(`trustee-data-report-count-${key}`)).toHaveTextContent(value),
     );
-    expect(screen.queryByTestId('trustee-data-report-difference-list')).toBeNull();
     // Per-field rows say which count they break down, not just "Phone".
     expect(
       screen.getByTestId('trustee-data-report-count-field-phone').closest('tr'),
@@ -215,6 +214,26 @@ describe('TrusteeDataReport', () => {
     );
     expect(await screen.findByTestId('alert-trustee-data-report-failed')).toBeInTheDocument();
     expectStartBlocked(false);
+  });
+
+  test('should not announce "completed" after a start fails without recording a run', async () => {
+    mockGet({ latestCompletedRun: COMPLETED });
+    vi.spyOn(Api2, 'postTrusteeDataReport').mockRejectedValue(new Error('Network down'));
+
+    await renderLoaded();
+    await userEvent.click(startButton());
+
+    expect(await screen.findByTestId('alert-trustee-data-report-start-error')).toBeInTheDocument();
+    await waitFor(() => expectStartBlocked(false));
+    expect(liveStatus()).not.toHaveTextContent('completed');
+  });
+
+  test('should describe a blocked start with the active run', async () => {
+    mockGet({ activeRun: RUNNING });
+
+    await renderLoaded();
+
+    expect(startButton()).toHaveAttribute('aria-describedby', 'trustee-data-report-active-text');
   });
 
   test('should show a failed latest run next to the last completed results', async () => {

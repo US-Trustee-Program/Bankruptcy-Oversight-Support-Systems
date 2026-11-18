@@ -51,11 +51,14 @@ reason next to the last completed results, and leaves those results in place.
    user-assigned identity. So a leftover user and password override managed identity.
 
    What bad TOD settings look like:
-   - **Login rejected:** the run fails on its first page with the login error.
+   - **Login rejected:** the run fails on its first page. The tab shows "Could not read from TOD";
+     the login error itself is only in the dataflows app's logs and the `TRUSTEE-DATA-REPORT`
+     dead-letter queue.
    - **TOD unreachable** (wrong host, firewall): the connection times out, and timeouts are retried
      the same way as Cosmos throttling, 10 times with growing delays. For **about 75 minutes** the
-     run shows as running and Start is blocked; then it fails with the timeout message. In
-     [Watching a run](#watching-a-run) these attempts count as `throttledRetries`, not failures.
+     run shows as running and Start is blocked; then it fails with "TOD timed out and the retries
+     ran out". In [Watching a run](#watching-a-run) these attempts count as `throttledRetries`, not
+     failures.
 
    Either way nothing else is affected.
 
@@ -76,6 +79,7 @@ In the dataflows app's Application Insights, set the time range to cover the run
 customEvents
 | where name == "DataflowHandlerComplete"
 | where tostring(customDimensions.moduleName) == "TRUSTEE-DATA-REPORT"
+// To see one run only, add: | where tostring(customDimensions.runId) == "<runId>"
 | extend handler = tostring(customDimensions.handlerName),
          success = tostring(customDimensions.success),
          error = tostring(customDimensions.error)
@@ -258,7 +262,8 @@ reads.
 | What you see                                                          | What it means                                                                                                                                                                                                                                                                       |
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "A report is already running" when starting                           | Another run holds the lock. Wait for it to finish; the tab shows its progress                                                                                                                                                                                                       |
-| The latest report failed with a TOD login or timeout error            | The dataflows app's `ATS_MSSQL_*` settings are missing or wrong. See [Before the first run](#before-the-first-run-in-an-environment)                                                                                                                                                |
+| "Could not read from TOD" or "TOD timed out"                          | The dataflows app's `ATS_MSSQL_*` settings are missing or wrong. The exact error is in the dataflows app's logs and the dead-letter queue. See [Before the first run](#before-the-first-run-in-an-environment)                                                                      |
+| "See the dataflows app's logs for run ..."                            | An unexpected error. Search the dataflows app's logs for the run ID                                                                                                                                                                                                                 |
 | "The run did not finish within 2 hours and was replaced by a new run" | The earlier run crashed or stalled, and a later start took over its lock. Check the dataflows app's logs and the `TRUSTEE-DATA-REPORT` dead-letter queue for the cause                                                                                                              |
 | "...no longer holds the run lock"                                     | The run ran past 2 hours and another start took over. If runs routinely take this long, report it                                                                                                                                                                                   |
 | A run stays "running" and the tab keeps waiting                       | If [Watching a run](#watching-a-run) shows throttled retries climbing with no new pages, TOD is probably unreachable; the run fails after about 75 minutes. Otherwise check the `TRUSTEE-DATA-REPORT` page and dead-letter queues. After 2 hours a new start can take over the lock |

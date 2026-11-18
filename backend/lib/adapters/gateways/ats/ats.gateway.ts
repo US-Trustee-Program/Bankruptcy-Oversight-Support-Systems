@@ -17,7 +17,8 @@ import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform'
 import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
 import { ACTIVE_STATUS_CODES } from './ats.constants';
 
-const MODULE_NAME = 'ATS-GATEWAY';
+export const ATS_GATEWAY_MODULE_NAME = 'ATS-GATEWAY';
+const MODULE_NAME = ATS_GATEWAY_MODULE_NAME;
 
 const TRUSTEE_COLUMNS = `
         T.ID,

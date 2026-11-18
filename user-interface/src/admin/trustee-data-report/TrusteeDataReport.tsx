@@ -123,17 +123,27 @@ export function TrusteeDataReport() {
   }, [status, checks, refresh]);
 
   // The status region is the tab's single announcer. It speaks transitions only: what was already
-  // true when the tab opened is on screen and is not announced.
+  // true when the tab opened is on screen and is not announced. A completed or failed report is
+  // announced only when a run was active before, so a start that fails (its alert speaks for it)
+  // never reads as "Report completed."
   const statusMessage = liveStatusMessage(status, isStarting);
-  const lastStatusMessage = useRef<string | null>(null);
+  const hasActiveRun = !!status?.activeRun;
+  const lastStatusMessageRef = useRef<string | null>(null);
+  const hadActiveRunRef = useRef(false);
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
     if (isLoading) return;
-    if (lastStatusMessage.current !== null && statusMessage !== lastStatusMessage.current) {
+    const isRunOutcome = !hasActiveRun && !isStarting;
+    if (
+      lastStatusMessageRef.current !== null &&
+      statusMessage !== lastStatusMessageRef.current &&
+      (!isRunOutcome || hadActiveRunRef.current)
+    ) {
       setAnnouncement(statusMessage);
     }
-    lastStatusMessage.current = statusMessage;
-  }, [statusMessage, isLoading]);
+    lastStatusMessageRef.current = statusMessage;
+    hadActiveRunRef.current = hasActiveRun;
+  }, [statusMessage, isLoading, hasActiveRun, isStarting]);
 
   const activeRun = status?.activeRun;
   const isStartBlocked = isStarting || !!activeRun;
@@ -173,8 +183,8 @@ export function TrusteeDataReport() {
     <div className="trustee-data-report-admin-panel" data-testid="trustee-data-report-panel">
       <h2>Trustee Data Report</h2>
       <p>
-        Compares trustee profiles in CAMS with TOD and counts the trustees and fields that differ. A
-        report takes a few minutes.
+        Compares trustee profiles in CAMS with TOD. It counts trustees found in only one system and
+        profile fields that differ. A report takes a few minutes.
       </p>
 
       <p className="usa-sr-only" role="status" data-testid="trustee-data-report-live-status">
@@ -190,6 +200,7 @@ export function TrusteeDataReport() {
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleStart}
             aria-disabled={isStartBlocked}
+            aria-describedby={activeRun ? 'trustee-data-report-active-text' : undefined}
           >
             Start report
           </Button>
@@ -224,7 +235,7 @@ export function TrusteeDataReport() {
               {/* The spinner is its own live region, so it is hidden; the status region announces
                   changes, and the text below stays readable. */}
               <LoadingSpinner aria-hidden="true" />
-              <p data-testid="trustee-data-report-active-text">
+              <p id="trustee-data-report-active-text" data-testid="trustee-data-report-active-text">
                 Report {activeRun.status}, started by {activeRun.startedBy.name}. This page updates
                 when it finishes.
               </p>
@@ -241,7 +252,7 @@ export function TrusteeDataReport() {
             >
               <p className="usa-alert__text">
                 The report that ended {formatDateTime(latestFailedRun.finishedAt)} failed:{' '}
-                {latestFailedRun.failureMessage ?? 'reason unknown'}.
+                {(latestFailedRun.failureMessage ?? 'reason unknown').replace(/\.$/, '')}.
                 {latestCompletedRun &&
                   ' The results below are from the last report that completed.'}
               </p>
