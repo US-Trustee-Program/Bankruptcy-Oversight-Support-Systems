@@ -6,8 +6,9 @@
  *      transaction and a '1'/'1' petition transaction) into a local DXTR mimic.
  *   2. Seeds a synced case, a Trustee, and an active TrusteeAppointment
  *      (perfect-match target) into Cosmos.
- *   3. Calls SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents() — reads DXTR,
- *      asserts both event types (appointment + petition) are parsed correctly.
+ *   3. Reads the case's region and transaction dates through
+ *      CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate() and asserts both event
+ *      types (appointment + petition) are parsed correctly.
  *   4. Calls .processAppointments(events) — asserts name-based matching auto-links
  *      both events to the seeded trustee and writes a case appointment. No
  *      trustee-match-verification record is written for this auto-matched
@@ -49,6 +50,7 @@ import { MongoClient } from 'mongodb';
 import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
+import factory from '../../../../backend/lib/factory';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -64,6 +66,7 @@ const TEST_CS_CASEID = '999999001';
 const TEST_COURT_ID = '0208';
 const TEST_CS_DIV = '081';
 const TEST_GRP_DES = 'NY';
+const TEST_REGION_ID = '02'; // AO_GRP_DES.REGION_ID for TEST_GRP_DES
 const TEST_CASE_ID = '081-26-99999'; // CS_DIV_ACMS + '-' + CASE_ID
 const TEST_CHAPTER = '7';
 
@@ -429,18 +432,6 @@ async function clean() {
       .collection('cases')
       .deleteMany({ documentType: 'SYNCED_CASE', caseId: TEST_CASE_ID });
     pass(`Deleted ${r6.deletedCount} synced case doc(s) for ${TEST_CASE_ID}`);
-
-    // These are dataflow-wide singleton watermarks (documentType only, no caseId) —
-    // there is no case-scoped filter possible here. This harness must only be run
-    // against an isolated local/test Cosmos database (see README): running it
-    // against a shared environment would reset the sync cursor for every case the
-    // real dataflow is tracking, not just this test's fixture.
-    await db.collection('runtime-state').deleteMany({
-      documentType: { $in: ['TRUSTEE_APPOINTMENTS_SYNC_STATE', 'TRUSTEE_PETITION_SYNC_STATE'] },
-    });
-    pass(
-      'Removed TRUSTEE_APPOINTMENTS_SYNC_STATE and TRUSTEE_PETITION_SYNC_STATE from runtime-state',
-    );
   } finally {
     await client.close();
   }
@@ -466,21 +457,27 @@ async function run() {
   console.log('');
 
   // ── Stage 1: Read path ────────────────────────────────────────────────────
-  console.log('Stage 1: SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents()');
-  console.log('  Reads AO_TX/AO_CS/AO_CS_DIV/AO_PY from DXTR SQL\n');
+  console.log('Stage 1: CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate()');
+  console.log('  Reads AO_TX/AO_CS/AO_CS_DIV/AO_GRP_DES/AO_PY from DXTR SQL\n');
 
   const context = await getAppContext();
   const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
 
-  const { events } = await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
-    deps,
-    undefined,
-    true,
-  );
+  const casesGateway = factory.getCasesGateway(context);
+  const events = [];
+  for (const txDate of [APPOINTMENT_DATE, PETITION_DATE]) {
+    const page = await casesGateway.getTrusteeAppointmentEventsForRegionDate(context, {
+      regionId: TEST_REGION_ID,
+      txDate,
+      afterTxId: '0',
+      limit: 2500,
+    });
+    events.push(...page.events);
+  }
   const testEvents = events.filter((e) => e.caseId === TEST_CASE_ID);
 
   if (testEvents.length === 2) {
-    pass(`getAppointmentEvents returned 2 events for case ${TEST_CASE_ID}`);
+    pass(`region read returned 2 events for case ${TEST_CASE_ID}`);
   } else {
     fail(`expected 2 events for case ${TEST_CASE_ID}, got ${testEvents.length}`);
     return;
@@ -553,10 +550,10 @@ async function run() {
       `expected 0 DLQ messages, got ${result.dlqMessages.length}: ${JSON.stringify(result.dlqMessages)}`,
     );
   }
-  if (result.notYetSyncedEvents.length === 0) {
-    pass('No notYetSyncedEvents (synced case was found)');
+  if (result.scenarioDistribution.parkedCount === 0) {
+    pass('No parked appointments (synced case was found)');
   } else {
-    fail(`expected 0 notYetSyncedEvents, got ${result.notYetSyncedEvents.length}`);
+    fail(`expected 0 parked appointments, got ${result.scenarioDistribution.parkedCount}`);
   }
 
   // ── Stage 3: Assert Cosmos side effects ───────────────────────────────────

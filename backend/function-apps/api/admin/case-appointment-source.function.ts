@@ -28,8 +28,8 @@ export default async function handler(
 }
 
 app.http('case-appointment-source', {
-  methods: ['GET'],
+  methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/case-appointment-source',
+  route: 'dev-tools/case-appointment-source/{regionId?}',
 });

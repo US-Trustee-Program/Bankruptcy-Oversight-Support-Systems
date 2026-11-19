@@ -45,7 +45,7 @@
     "@azure/monitor-query-logs": "1.0.0",
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
-    "@launchdarkly/node-server-sdk": "9.16.2",
+    "@launchdarkly/node-server-sdk": "9.16.3",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "8.2.0",
     "applicationinsights": "3.14.0",
@@ -53,7 +53,7 @@
     "express": "5.3.0",
     "jsonwebtoken": "9.0.3",
     "mongodb": "7.9.0",
-    "mssql": "12.7.13",
+    "mssql": "12.7.14",
     "name-match": "1.0.4",
     "natural": "8.2.6"
   },

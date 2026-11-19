@@ -1,10 +1,11 @@
 -- Fixture rows for the trustee-petition-match integration test. Idempotent: safe to re-run.
 -- One test case with a trustee party, plus one 'A'/'TR' appointment transaction and one
 -- '1'/'1' petition transaction — the two event types SyncTrusteeCaseAppointmentsUseCase
--- reads via getTrusteeAppointments() and getTrusteePetitionEvents().
+-- reads via getTrusteeAppointmentEventsForRegionDate().
 --
 -- Division: CS_DIV='081', GRP_DES='NY', COURT_ID='0208', CS_DIV_ACMS='081'
 --   → courtDivisionCode "081" (Manhattan), matches the real AO_CS_DIV row for div 081.
+-- Region: GRP_DES='NY' maps to REGION_ID '02', the region the region-scoped read selects by.
 -- Case: CS_CASEID='999999001', CASE_ID='26-99999' → caseId "081-26-99999"
 
 DELETE FROM dbo.AO_TX WHERE CS_CASEID = '999999001' AND COURT_ID = '0208';
@@ -23,8 +24,15 @@ INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, CS_DIV_ACMS)
 VALUES ('081', 'NY', '0208', '081');
 GO
 
-INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER)
-VALUES ('999999001', '0208', '26-99999', '081', '7');
+DELETE FROM dbo.AO_GRP_DES WHERE GRP_DES = 'NY';
+GO
+
+INSERT INTO dbo.AO_GRP_DES (GRP_DES, REGION_ID)
+VALUES ('NY', '02');
+GO
+
+INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES, CS_DATE_FILED)
+VALUES ('999999001', '0208', '26-99999', '081', '7', 'NY', '2026-01-15T00:00:00');
 GO
 
 INSERT INTO dbo.AO_PY (

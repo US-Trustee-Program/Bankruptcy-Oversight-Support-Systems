@@ -933,17 +933,6 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
 };
 
 /**
- * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
- * (the per-region driver). One document, one key per region, each written
- * independently with RuntimeStateRepository.setField's dotted path (e.g.
- * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
- * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a
- * (which disagreed with an earlier draft of this type that nested it under a `regions` key).
- *
- * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
- * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
- */
-/**
  * The one sync run (a kickoff plus every lane and continuation it spawns) that may work. The lock
  * has no expiry: it is deleted when the last lane finishes cleanly, or by an operator after a run
  * that died. While it exists, any start with a different runId skips.
@@ -990,6 +979,16 @@ export type CaseAppointmentDeleteFilter = {
   to?: string;
 };
 
+/**
+ * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
+ * (the per-region driver). One document, one key per region, each written
+ * independently with RuntimeStateRepository.setField's dotted path (e.g.
+ * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
+ * AcmsProfessionalIdSyncState above.
+ *
+ * source is absent for a region still on ACMS (the default); a SuperUser's one-way switch to DXTR
+ * sets it via createAuditRecord, and the server rejects switching a region back.
+ */
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
   region: Record<

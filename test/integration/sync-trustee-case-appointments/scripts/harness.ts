@@ -5,15 +5,15 @@
  * and a real MongoDB, then driven IN-PROCESS: source.getEventsForDate -> processAppointments, and
  * asserted against the CAMS state left in Mongo. No Azure Functions host, queues or mocks.
  *
- * Fixtures are segmented by region (three regions; region 02 has two divisions) because CAMS-955/956/957
- * all work per region: per-region bookmarks, per-region ACMS/DXTR source, per-region tasks.
+ * Fixtures are segmented by region (three regions; region 02 has two divisions) because the sync
+ * works per region: per-region bookmarks, per-region ACMS/DXTR source, per-region tasks.
  *
  * Groups of checks, each reported separately:
- *   query     ACMS fixtures run through the REAL getCmmapAppointmentsRaw. Passes today; keeps the
+ *   query     ACMS fixtures run through the REAL getCmmapAppointmentsRaw; keeps the
  *             fixtures and DDL honest against the production SQL.
- *   scenario  source -> sync -> CAMS state, per lane. Fails (NOT IMPLEMENTED) until the ACMS source
- *             exists; later fails on real behavior gaps. That is the point.
- *   driver    per-region bookmark/catch-up/source-routing flow. NOT IMPLEMENTED until the driver exists.
+ *   scenario  source -> sync -> CAMS state, per lane. Fails on real behavior gaps; reports NOT
+ *             IMPLEMENTED when a binding in bindings.ts cannot be resolved.
+ *   driver    per-region bookmark/catch-up/source-routing flow.
  *
  * Usage (from test/integration/):
  *   npm run sync-trustee-case-appointments -- <command> [options]
@@ -22,6 +22,9 @@
  *   check-env    Verify environment
  *   seed-schema  Create ACMS_INT and DXTR_INT, apply DDL, load office reference data
  *   run          Run every scenario; options: --lane ACMS|DXTR, --region 02, --only <key>, --verbose
+ *   backtest     Run every DXTR-lane scenario twice; report expected vs actual counts per outcome and
+ *                fail unless every fixture passes and both runs leave identical CAMS state.
+ *                Options: --region 02, --only <key>, --verbose. Exit 0 pass, 1 fail, 3, 4 as run.
  *   list         List scenarios with region, lanes and basis
  *   replay       Run real staging exports through the ACMS source and print AGGREGATE outcomes only:
  *                  replay --professional-ids <file> --trustees <file> [--region 02] [--limit 500]
@@ -39,7 +42,7 @@ import * as path from 'path';
 import { InvocationContext } from '@azure/functions';
 import { MongoClient, Db } from 'mongodb';
 import * as mssql from 'mssql';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { CaseTrusteeAppointmentUseCase } from '../../../../backend/lib/use-cases/cases/case-trustee-appointment.use-case';
@@ -52,7 +55,6 @@ import { generateSearchTokens } from '../../../../backend/lib/adapters/utils/pho
 import factory from '../../../../backend/lib/factory';
 import { ApplicationContext } from '../../../../backend/lib/adapters/types/basic';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
-import DateHelper from '../../../../common/src/date-helper';
 import {
   SCENARIOS,
   DRIVER_SCENARIOS,
@@ -81,6 +83,7 @@ import {
   runRegionDriver,
   seedRegionState,
   readRegionBookmark,
+  readRegionSource,
   deleteAppointments,
 } from './bindings';
 
@@ -151,8 +154,9 @@ class Reporter {
     if (ok) this.pass(passMsg);
     else this.fail(failMsg);
   }
-  finish(status: Status) {
+  finish(status: Status): Status {
     outcomes.push({ name: this.name, group: this.group, status });
+    return status;
   }
 }
 
@@ -566,9 +570,10 @@ async function renderDxtr(
       .input('caseId', mssql.VarChar(10), caseNumber)
       .input('div', mssql.VarChar(3), division.dxtrDivision ?? divisionCode)
       .input('chapter', mssql.VarChar(3), c.chapter ?? '7')
-      .input('grp', mssql.VarChar(2), division.group).query(`
-        INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES)
-        VALUES (@id, @court, @caseId, @div, @chapter, @grp)`);
+      .input('grp', mssql.VarChar(2), division.group)
+      .input('filed', mssql.DateTime2, new Date(`${c.filed ?? '2026-01-15'}T00:00:00Z`)).query(`
+        INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES, CS_DATE_FILED)
+        VALUES (@id, @court, @caseId, @div, @chapter, @grp, @filed)`);
   }
   for (const r of rows) {
     const dxtrId = dxtrIdByCase.get(r.caseId)!;
@@ -834,23 +839,21 @@ async function seedEventDerivedState(
 
 /**
  * Every page the source returns for one region and change date: the converted events, and the rows
- * it could not convert. Production (the region driver) sends each failure to the DLQ on its own
- * (cams-fd8qd.24), so the harness counts them as DLQ entries.
+ * it could not convert. Production (the region driver) sends each failure to the DLQ on its own,
+ * so the harness counts them as DLQ entries.
  */
 async function readSource(
   context: ApplicationContext,
   source: TrusteeAppointmentSource,
-  lane: Lane,
   region: string,
   changeDate: string,
 ): Promise<{ events: TrusteeAppointmentSyncEvent[]; failures: number }> {
-  // The DXTR read is "transactions AFTER this date" (TX_DATE > start), so ask from the day before.
-  const readDate = lane === 'DXTR' ? DateHelper.subtractDays(changeDate, 1) : changeDate;
+  // Both sources read exactly one change date (DXTR: TX_DATE on that day), paged by id.
   const events: TrusteeAppointmentSyncEvent[] = [];
   let failures = 0;
   let lastId: string | undefined;
   for (let page = 0; page < 10000; page += 1) {
-    const result = await source.getEventsForDate(context, region, readDate, lastId);
+    const result = await source.getEventsForDate(context, region, changeDate, lastId);
     events.push(...result.events);
     failures += result.failures.length;
     if (!result.lastId) return { events, failures };
@@ -862,11 +865,10 @@ async function readSource(
 async function readEvents(
   context: ApplicationContext,
   source: TrusteeAppointmentSource,
-  lane: Lane,
   region: string,
   changeDate: string,
 ): Promise<TrusteeAppointmentSyncEvent[]> {
-  return (await readSource(context, source, lane, region, changeDate)).events;
+  return (await readSource(context, source, region, changeDate)).events;
 }
 
 // ---------------------------------------------------------------------------
@@ -893,6 +895,12 @@ function describeAppointment(a: AppointmentDoc): string {
   return `${who} ${day(a.assignedOn)}→${day(a.unassignedOn) ?? 'open'}`;
 }
 
+/** Groups matchedBy values the way the fixtures assert them: 'PIPELINE' is any pipeline stage. */
+function linkMethod(matchedBy: string | undefined): string {
+  if (matchedBy === 'professional-id' || matchedBy === 'variation') return matchedBy;
+  return 'pipeline';
+}
+
 function matchesExpected(a: AppointmentDoc, e: ExpectedAppointment): string[] {
   const problems: string[] = [];
   const isPlaceholder = e.trustee === 'PLACEHOLDER';
@@ -910,7 +918,7 @@ function matchesExpected(a: AppointmentDoc, e: ExpectedAppointment): string[] {
   }
   const by = a.checks?.matchedBy;
   if (e.matchedBy === 'PIPELINE') {
-    if (!by || by === 'professional-id' || by === 'variation')
+    if (!by || linkMethod(by) !== 'pipeline')
       problems.push(`matchedBy "${by}" is not a pipeline stage`);
   } else if (e.matchedBy !== undefined && by !== e.matchedBy) {
     problems.push(`matchedBy "${by}" ≠ "${e.matchedBy}"`);
@@ -998,7 +1006,15 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
         problems.push(`source ${task.source} ≠ ${t.source}`);
       if (t.reason && task.mismatchReason !== t.reason)
         problems.push(`reason "${task.mismatchReason}" ≠ "${t.reason}"`);
-      if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
+      // DXTR's copy of the ACMS professional code can be wrong, so DXTR never carries an ACMS
+      // professional id and a DXTR task must not have one even when the expectation leaves the
+      // field out.
+      const expectAbsent =
+        t.acmsProfessionalId === null ||
+        (t.acmsProfessionalId === undefined && task.source === 'DXTR');
+      if (expectAbsent && task.acmsProfessionalId !== undefined)
+        problems.push(`acmsProfessionalId ${task.acmsProfessionalId} should be absent`);
+      else if (t.acmsProfessionalId && task.acmsProfessionalId !== t.acmsProfessionalId)
         problems.push(`acmsProfessionalId ${task.acmsProfessionalId} ≠ ${t.acmsProfessionalId}`);
       if (t.court && task.courtId !== t.court)
         problems.push(`courtId ${task.courtId} ≠ ${t.court}`);
@@ -1013,20 +1029,43 @@ async function assertTasks(r: Reporter, db: Db, tasks: ExpectedTask[], tasksTota
   }
 }
 
+/** Every case the pass asserts expects no appointments: the pass should write nothing for them. */
+function expectsNothingWritten(expect: Expect): boolean {
+  const asserted = Object.values(expect.appointments ?? {});
+  return asserted.length > 0 && asserted.every((a) => a.length === 0);
+}
+
 async function assertExpect(
   r: Reporter,
   context: ApplicationContext,
   db: Db,
   expect: Expect,
-  outcome: { events: number; dlq: number; parked: number },
+  outcome: PassOutcome,
 ) {
   // "Nothing written" is identical to "the source never returned the row" unless the read is asserted.
-  const expectsNothing =
-    expect.appointments !== undefined &&
-    Object.keys(expect.appointments).length > 0 &&
-    Object.values(expect.appointments).every((a) => a.length === 0);
+  const expectsNothing = expectsNothingWritten(expect);
   if (expectsNothing && expect.sourceEvents === undefined) {
     r.fail('Fixture error: this pass expects nothing written but declares no sourceEvents');
+  }
+  // ...and it means nothing at all, not just no appointment: no stray task, park or dead letter.
+  if (expectsNothing) {
+    const expectsTask = (expect.tasks ?? []).some((t) => t.count > 0);
+    if (!expectsTask) {
+      r.step('Then', 'no identity task is created');
+      r.check(
+        outcome.tasksCreated === 0,
+        'no task created',
+        `${outcome.tasksCreated} task(s) created`,
+      );
+    }
+    if (expect.dlq === undefined) {
+      r.step('Then', 'nothing goes to the dead-letter queue');
+      r.check(outcome.dlq === 0, 'DLQ empty', `DLQ has ${outcome.dlq}`);
+    }
+    if (expect.parkedCount === undefined && expect.parked === undefined) {
+      r.step('Then', 'nothing is parked');
+      r.check(outcome.parked === 0, 'nothing parked', `${outcome.parked} parked`);
+    }
   }
   if (expect.sourceEvents !== undefined) {
     r.step('Then', `the source returns ${expect.sourceEvents} event(s)`);
@@ -1150,11 +1189,21 @@ function expectFor(pass: Pass, s: Scenario, lane: Lane): Expect {
 
 const regionOf = (s: Scenario, pass: Pass) => pass.region ?? s.region ?? REGION;
 
+/** Optional hooks the backtest uses to tally outcomes and digest CAMS state; `run` passes none. */
+type LaneObserver = {
+  afterPass(db: Db, expect: Expect, outcome: PassOutcome): Promise<void>;
+  afterScenario(db: Db): Promise<void>;
+};
+type PassOutcome = { events: number; dlq: number; parked: number; tasksCreated: number };
+
+const countTasks = (db: Db) => db.collection('trustee-match-verification').countDocuments();
+
 async function runScenarioLane(
   context: ApplicationContext,
   s: Scenario,
   lane: Lane,
-): Promise<void> {
+  observer?: LaneObserver,
+): Promise<Status> {
   const r = new Reporter('scenario', `${s.title} [${lane}]`);
   line(
     `\n  Scenario: ${s.title}   [${lane}, region ${s.region ?? REGION}] (${s.basis}${s.note ? `; ${s.note}` : ''})`,
@@ -1185,7 +1234,7 @@ async function runScenarioLane(
             firstPass &&
             ((s.cams?.variations?.length ?? 0) > 0 || (s.cams?.pendingTasks?.length ?? 0) > 0)
           ) {
-            const probe = await readEvents(context, source, lane, region, pass.changeDate);
+            const probe = await readEvents(context, source, region, pass.changeDate);
             await seedEventDerivedState(db, s, probe, lane);
           }
           firstPass = false;
@@ -1194,35 +1243,34 @@ async function runScenarioLane(
             'When',
             `${s.passes.length > 1 ? `pass ${i + 1}: ` : ''}the ${lane} source is read for region ${region} on ${pass.changeDate} and the sync runs (${pass.rows.length} source row(s))`,
           );
-          const { events, failures } = await readSource(
-            context,
-            source,
-            lane,
-            region,
-            pass.changeDate,
-          );
+          const { events, failures } = await readSource(context, source, region, pass.changeDate);
+          const tasksBefore = await countTasks(db);
           const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
-          await assertExpect(r, context, db, expectFor(pass, s, lane), {
+          const expect = expectFor(pass, s, lane);
+          const outcome: PassOutcome = {
             events: events.length,
             dlq: failures + result.dlqMessages.length,
             parked: result.scenarioDistribution.parkedCount,
-          });
+            tasksCreated: (await countTasks(db)) - tasksBefore,
+          };
+          await assertExpect(r, context, db, expect, outcome);
+          await observer?.afterPass(db, expect, outcome);
         }
+        await observer?.afterScenario(db);
       } finally {
         await sqlPool.close();
       }
     } finally {
       await client.close();
     }
-    r.finish(r.failures === 0 ? 'pass' : 'fail');
+    return r.finish(r.failures === 0 ? 'pass' : 'fail');
   } catch (e) {
     if (e instanceof NotImplementedError) {
       line(`      ⊘ NOT IMPLEMENTED: ${e.message}`);
-      r.finish('not-implemented');
-    } else {
-      r.fail(`error: ${(e as Error).message}`);
-      r.finish('fail');
+      return r.finish('not-implemented');
     }
+    r.fail(`error: ${(e as Error).message}`);
+    return r.finish('fail');
   }
 }
 
@@ -1300,17 +1348,18 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
       );
       await runRegionDriver(context, { regions: s.regions, runDate: s.runDate });
 
-      for (const [caseId, expected] of Object.entries(s.expect.written)) {
+      if (s.secondRun) {
+        // Assert after the first run too, so a wrong first write that the second run happens to
+        // overwrite into the expected shape cannot pass.
+        await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
         r.step(
-          'Then',
-          `case ${caseId} (region ${regionOfCase(caseId)}) has ${expected.map(fmtExpected).join(', ')}`,
+          'And',
+          `the driver runs again on ${s.secondRun.runDate} for region(s) ${s.regions.join(', ')}`,
         );
-        const docs = (await db
-          .collection('case-trustee-appointments')
-          .find({ documentType: 'CASE_APPOINTMENT', caseId })
-          .toArray()) as unknown as AppointmentDoc[];
-        assertAppointments(r, caseId, docs, expected);
+        await runRegionDriver(context, { regions: s.regions, runDate: s.secondRun.runDate });
       }
+
+      await assertAppointmentDocuments(r, db, 'CASE_APPOINTMENT', s.expect.written);
       for (const caseId of s.expect.notWritten) {
         r.step('Then', `case ${caseId} (region ${regionOfCase(caseId)}) is untouched`);
         const n = await db.collection('case-trustee-appointments').countDocuments({ caseId });
@@ -1328,6 +1377,11 @@ async function runDriverScenario(context: ApplicationContext, s: DriverScenario)
         r.step('Then', `the bookmark for region ${region} is ${expected}`);
         const actual = await readRegionBookmark(db, region);
         r.check(actual === expected, `bookmark ${actual}`, `bookmark is ${actual ?? 'unset'}`);
+      }
+      for (const region of s.expect.stillSwitchedToDxtr ?? []) {
+        r.step('Then', `region ${region} is still switched to DXTR`);
+        const system = await readRegionSource(db, region);
+        r.check(system === 'DXTR', 'source DXTR', `source is ${system ?? 'unset'}`);
       }
       await assertTasks(r, db, s.expect.tasks ?? [], s.expect.tasksTotal);
     } finally {
@@ -1537,7 +1591,7 @@ async function replay() {
     }
     line('  Running the sync...');
     const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
-    const events = await readEvents(context, source, 'ACMS', region, changeDate);
+    const events = await readEvents(context, source, region, changeDate);
     const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
 
     // Aggregates only.
@@ -1627,6 +1681,21 @@ function parseArgs() {
   return { lane: get('--lane') as Lane | undefined, only: get('--only'), region: get('--region') };
 }
 
+/**
+ * A mistyped --only or an unmatched --region must not report success: with nothing selected,
+ * every pass/fail check is vacuously true. Sets exit code 1 and says why.
+ */
+function refuseEmptySelection(what: string, flags: Record<string, string | undefined>) {
+  const given = Object.entries(flags)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => `--${k} ${v}`)
+    .join(' ');
+  line(
+    `\n  Nothing to run: no ${what} matches ${given}. See \`list\` for keys, lanes and regions.`,
+  );
+  process.exitCode = 1;
+}
+
 async function run() {
   const { lane, only, region } = parseArgs();
   if (!(await preflight())) return;
@@ -1636,8 +1705,16 @@ async function run() {
       (!only || s.key === only) &&
       (!region || (s.region ?? REGION) === region || s.passes.some((p) => p.region === region)),
   );
+  const drivers = DRIVER_SCENARIOS.filter(
+    (d) => (!only || d.key === only) && (!region || d.regions.includes(region)),
+  );
+  const scenarioLanes = selected.flatMap((s) => s.lanes.filter((l) => !lane || l === lane));
+  const driversRun = !lane || lane === 'ACMS' ? drivers.length : 0;
+  if (scenarioLanes.length === 0 && driversRun === 0) {
+    return refuseEmptySelection('scenario or driver scenario', { only, region, lane });
+  }
 
-  line('\n=== Layer 0: fixtures through the production ACMS query (passes today) ===');
+  line('\n=== Layer 0: fixtures through the production ACMS query ===');
   if (!lane || lane === 'ACMS') for (const s of selected) await runQueryGrounding(context, s);
 
   line('\n=== Scenarios: source → sync → CAMS state ===');
@@ -1649,13 +1726,9 @@ async function run() {
     }
   }
 
-  const drivers = DRIVER_SCENARIOS.filter((d) => !only || d.key === only);
-  if (drivers.length > 0 && (!lane || lane === 'ACMS')) {
+  if (driversRun > 0) {
     line('\n=== Region driver: bookmark, catch-up, source routing and operator delete ===');
-    for (const d of drivers) {
-      if (region && !d.regions.includes(region)) continue;
-      await runDriverScenario(context, d);
-    }
+    for (const d of drivers) await runDriverScenario(context, d);
   }
 
   await wipeAll();
@@ -1684,12 +1757,224 @@ function summarize() {
     );
     process.exitCode = 1;
   } else if (targets > 0) {
-    line(`\n  No failures. ${targets} not implemented (targets while CAMS-955 is being built).`);
+    line(`\n  No failures. ${targets} not implemented (targets).`);
     process.exitCode = 2;
   } else {
     line('\n  All scenarios pass.');
     process.exitCode = 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Backtest: the DXTR fixtures, run twice, against their declared outcomes
+// ---------------------------------------------------------------------------
+
+type Tally = Map<string, { expected: number; actual: number }>;
+
+function bump(tally: Tally, outcomeClass: string, expected: number, actual: number) {
+  const row = tally.get(outcomeClass) ?? { expected: 0, actual: 0 };
+  row.expected += expected;
+  row.actual += actual;
+  tally.set(outcomeClass, row);
+}
+
+/**
+ * Counts one pass's outcomes, expected (from the fixture's Expect) and actual (from Mongo and the
+ * run). Only what the Expect asserts is counted, so expected and actual cover the same scope.
+ */
+async function tallyPass(tally: Tally, db: Db, expect: Expect, outcome: PassOutcome) {
+  for (const [caseId, expected] of Object.entries(expect.appointments ?? {})) {
+    const actual = (await db
+      .collection('case-trustee-appointments')
+      .find({ documentType: 'CASE_APPOINTMENT', caseId })
+      .toArray()) as unknown as AppointmentDoc[];
+    const methodAsserted = expected.some((e) => e.trustee !== 'PLACEHOLDER' && e.matchedBy);
+    const linkClass = (matchedBy: string | undefined) =>
+      methodAsserted ? `linked by ${linkMethod(matchedBy)}` : 'linked (method not asserted)';
+    for (const e of expected) {
+      bump(
+        tally,
+        e.trustee === 'PLACEHOLDER' ? 'placeholder appointment' : linkClass(e.matchedBy),
+        1,
+        0,
+      );
+    }
+    for (const a of actual) {
+      bump(tally, a.isSurrogate ? 'placeholder appointment' : linkClass(a.checks?.matchedBy), 0, 1);
+    }
+  }
+
+  const tasks = await db.collection('trustee-match-verification').find({}).toArray();
+  for (const t of expect.tasks ?? []) {
+    const matching = tasks.filter((task) =>
+      eventMatchesKey({ sourceTrustee: task.sourceTrustee } as TrusteeAppointmentSyncEvent, t.last),
+    );
+    const taskClass = (reason?: string) => `identity task (${reason ?? 'reason not asserted'})`;
+    bump(tally, taskClass(t.reason), t.count, 0);
+    for (const task of matching)
+      bump(tally, taskClass(t.reason ? task.mismatchReason : undefined), 0, 1);
+  }
+  if (expect.tasksTotal !== undefined)
+    bump(tally, 'identity tasks in total', expect.tasksTotal, tasks.length);
+
+  // A skip writes nothing at all: no appointment, no task, nothing parked, nothing dead-lettered.
+  const expectsSkip =
+    (expect.sourceEvents ?? 0) > 0 &&
+    expectsNothingWritten(expect) &&
+    (expect.tasks ?? []).every((t) => t.count === 0) &&
+    !expect.parkedCount &&
+    Object.values(expect.parked ?? {}).every((p) => p.length === 0) &&
+    !expect.dlq;
+  if (expectsSkip) {
+    const written = await db
+      .collection('case-trustee-appointments')
+      .countDocuments({ caseId: { $in: Object.keys(expect.appointments ?? {}) } });
+    const skipped =
+      written === 0 && outcome.tasksCreated === 0 && outcome.parked === 0 && outcome.dlq === 0;
+    bump(tally, 'skipped (nothing written)', 1, skipped ? 1 : 0);
+  }
+
+  if (expect.parkedCount !== undefined) {
+    bump(tally, 'parked', expect.parkedCount, outcome.parked);
+  } else if (expect.parked) {
+    for (const [caseId, expected] of Object.entries(expect.parked)) {
+      const actual = await db
+        .collection('case-trustee-appointments')
+        .countDocuments({ documentType: 'CASE_APPOINTMENT_UNATTACHED', caseId });
+      bump(tally, 'parked', expected.length, actual);
+    }
+  }
+
+  if (expect.dlq !== undefined) bump(tally, 'dead-lettered', expect.dlq, outcome.dlq);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A wall-clock ISO timestamp (fixture dates are date-only or midnight UTC). */
+const WALL_CLOCK = /^\d{4}-\d{2}-\d{2}T(?!00:00:00\.000Z)\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const VOLATILE_KEYS = new Set(['_id', 'id', 'updatedOn', 'createdOn', 'updatedBy', 'createdBy']);
+
+/**
+ * Stable JSON for digesting: sorted keys, Mongo ids and audit fields dropped, generated uuids,
+ * ObjectIds and wall-clock timestamps replaced by placeholders. Anything else that differs between
+ * two runs on the same fixtures is nondeterminism. Every uuid becomes the same placeholder, so the
+ * digest compares document content, not which document a reference points at; the fixtures' own
+ * assertions check trustee identity.
+ */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value instanceof Date) return canonical(value.toISOString());
+  // BSON values (ObjectId, Long, Decimal128) have no enumerable fields and would all read as {}.
+  // ObjectIds are generated per run, so they are masked like uuids; the rest keep their value.
+  const bsonType = (value as { _bsontype?: string } | null)?._bsontype;
+  if (bsonType) return bsonType === 'ObjectId' ? '"<objectid>"' : JSON.stringify(String(value));
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([k]) => !VOLATILE_KEYS.has(k))
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
+  }
+  if (typeof value === 'string' && UUID.test(value)) return '"<uuid>"';
+  if (typeof value === 'string' && WALL_CLOCK.test(value)) return '"<timestamp>"';
+  return JSON.stringify(value) ?? 'null';
+}
+
+async function digestCamsState(db: Db): Promise<string> {
+  const hash = createHash('sha256');
+  for (const name of MONGO_COLLECTIONS) {
+    const docs = (await db.collection(name).find({}).toArray()).map(canonical).sort();
+    hash.update(`${name}:${docs.join('\n')}\n`);
+  }
+  return hash.digest('hex');
+}
+
+type BacktestRun = {
+  tally: Tally;
+  statusByKey: Map<string, Status>;
+  digestByKey: Map<string, string>;
+};
+
+async function backtestRun(
+  context: ApplicationContext,
+  scenarios: Scenario[],
+): Promise<BacktestRun> {
+  const run: BacktestRun = { tally: new Map(), statusByKey: new Map(), digestByKey: new Map() };
+  for (const s of scenarios) {
+    const status = await runScenarioLane(context, s, 'DXTR', {
+      afterPass: (db, expect, outcome) => tallyPass(run.tally, db, expect, outcome),
+      afterScenario: async (db) => {
+        run.digestByKey.set(s.key, await digestCamsState(db));
+      },
+    });
+    run.statusByKey.set(s.key, status);
+  }
+  return run;
+}
+
+/**
+ * Runs every DXTR-lane scenario twice and reports each outcome class against what the fixtures
+ * declare. Passes only when every fixture gets its expected outcome on both runs and both runs
+ * leave identical CAMS state. No thresholds and no LLM grading: every verdict is a deterministic
+ * comparison. Driver scenarios are not part of it; `run` covers region routing.
+ * Exit codes: 0 pass, 1 a fixture failed or the runs differ, 3 infrastructure down, 4 refused.
+ */
+async function backtest() {
+  const { only, region } = parseArgs();
+  if (!(await preflight())) return;
+  const context = await getContext();
+  const selected = SCENARIOS.filter(
+    (s) =>
+      s.lanes.includes('DXTR') &&
+      (!only || s.key === only) &&
+      (!region || (s.region ?? REGION) === region || s.passes.some((p) => p.region === region)),
+  );
+  if (selected.length === 0) return refuseEmptySelection('DXTR-lane scenario', { only, region });
+
+  const runs: BacktestRun[] = [];
+  for (const n of [1, 2]) {
+    line(`\n=== Backtest run ${n} of 2: ${selected.length} DXTR fixture(s) ===`);
+    runs.push(await backtestRun(context, selected));
+  }
+  await wipeAll();
+
+  const [first, second] = runs;
+  line('\n=== Backtest: outcomes, expected vs actual (run 1) ===');
+  line(`  ${'outcome'.padEnd(36)} ${'expected'.padStart(8)} ${'actual'.padStart(8)}`);
+  for (const [outcomeClass, { expected, actual }] of [...first.tally].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (expected === 0 && actual === 0) continue;
+    const flag = expected === actual ? '' : '   ✗';
+    line(
+      `  ${outcomeClass.padEnd(36)} ${String(expected).padStart(8)} ${String(actual).padStart(8)}${flag}`,
+    );
+  }
+
+  const failedKeys = selected
+    .map((s) => s.key)
+    .filter((k) => first.statusByKey.get(k) !== 'pass' || second.statusByKey.get(k) !== 'pass');
+  const differingKeys = selected
+    .map((s) => s.key)
+    .filter((k) => first.digestByKey.get(k) !== second.digestByKey.get(k));
+  const tallyDiffers = canonical([...first.tally]) !== canonical([...second.tally]);
+
+  line('\n=== Backtest: result ===');
+  line(
+    `  fixtures: ${selected.length - failedKeys.length} passed, ${failedKeys.length} failed (of ${selected.length})`,
+  );
+  for (const k of failedKeys) {
+    line(
+      `   ✗ ${k} (run 1 ${first.statusByKey.get(k)}, run 2 ${second.statusByKey.get(k)}); see its ✗ lines above`,
+    );
+  }
+  line(
+    `  determinism: ${differingKeys.length === 0 && !tallyDiffers ? 'both runs left identical CAMS state' : 'runs differ'}`,
+  );
+  for (const k of differingKeys) line(`   ✗ ${k}: CAMS state digest differs between runs`);
+  if (tallyDiffers) line('   ✗ the outcome counts differ between runs');
+
+  const ok = failedKeys.length === 0 && differingKeys.length === 0 && !tallyDiffers;
+  line(ok ? '\n  BACKTEST PASSED.' : '\n  BACKTEST FAILED.');
+  process.exitCode = ok ? 0 : 1;
 }
 
 /** Fail fast, with its own exit code, when a database is unreachable, instead of 94 identical failures. */
@@ -1814,7 +2099,7 @@ function assertLocalTargets() {
 async function main() {
   const command = process.argv[2] ?? 'help';
   if (command !== 'list' && command !== 'help') loadEnv();
-  if (['seed-schema', 'run', 'replay', 'clean'].includes(command)) assertLocalTargets();
+  if (['seed-schema', 'run', 'backtest', 'replay', 'clean'].includes(command)) assertLocalTargets();
   switch (command) {
     case 'check-env':
       return checkEnv();
@@ -1822,6 +2107,8 @@ async function main() {
       return seedSchema();
     case 'run':
       return run();
+    case 'backtest':
+      return backtest();
     case 'list':
       return list();
     case 'replay':
