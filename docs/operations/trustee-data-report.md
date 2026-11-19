@@ -34,7 +34,7 @@ reason next to the last completed results, and leaves those results in place.
 1. **Deploy** the CAMS-977 changes, including
    `ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections.bicep`:
    - the new `trustee-data-report` collection;
-   - a new `(documentType, legacy.truIds)` index on `trustees`. Cosmos builds a new index on an
+   - a new single-field `legacy.truIds` index on `trustees`. Cosmos builds a new index on an
      existing collection in the background. Queries keep working meanwhile, but a run started before
      it finishes is slower.
 2. **Check the dataflows app's TOD settings.** List the setting names only; don't print values:

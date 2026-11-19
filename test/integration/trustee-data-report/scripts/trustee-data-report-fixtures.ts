@@ -541,6 +541,33 @@ export const SCENARIOS: Scenario[] = [
     expected: [],
   },
 
+  // ── Results written from TOD page 2 ──────────────────────────────────────────
+  {
+    id: 'S46',
+    title: 'An unlinked active TOD trustee that is only on page 2 is TOD only',
+    todIds: ['504'],
+    expected: [{ kind: 'tod-only', trusteeName: 'Rowan Latepage', todIds: ['504'] }],
+  },
+  {
+    id: 'S47',
+    title: 'A field difference for a trustee linked to one TOD record on page 2 is reported',
+    cams: linked('S47', 'Sage', 'Pagetwo', ['505'], {
+      address: springfield('5050 Second Pg'),
+      phone: { number: '217-555-0155' },
+      email: 'sage.pagetwo@example.org',
+    }),
+    compared: true,
+    expected: [
+      {
+        kind: 'field',
+        field: 'email',
+        camsValue: 'sage.pagetwo@example.org',
+        todValue: 'sage.pagetwo@example.com',
+        todIds: ['505'],
+      },
+    ],
+  },
+
   // ── Shapes from the ATS_SUB profile ──────────────────────────────────────────
   {
     id: 'S34',

@@ -4,14 +4,20 @@
 // Run read-only in mongosh against the environment's CAMS database. The connection string is read
 // from the environment so it stays out of the command line (ps) and shell history:
 //   read -rs MONGO_CONNECTION_STRING && export MONGO_CONNECTION_STRING
+//   export COSMOS_DATABASE_NAME=<the environment's CAMS database name>
 //   mongosh --nodb --quiet --file cams-trustees-patterns.js
 // Every result is a count; no trustee names or contact details are printed.
 
 if (!process.env.MONGO_CONNECTION_STRING) throw new Error('Set MONGO_CONNECTION_STRING first.');
-const trustees = connect(process.env.MONGO_CONNECTION_STRING).trustees;
+// Cosmos connection strings have no database path, so connect() alone would open `test`.
+if (!process.env.COSMOS_DATABASE_NAME) throw new Error('Set COSMOS_DATABASE_NAME first.');
+const trustees = connect(process.env.MONGO_CONNECTION_STRING).getSiblingDB(
+  process.env.COSMOS_DATABASE_NAME,
+).trustees;
 const TRUSTEE = { documentType: 'TRUSTEE' };
 const count = (filter) => trustees.countDocuments({ ...TRUSTEE, ...filter });
 const blank = { $in: [null, ''] };
+if (count({}) === 0) throw new Error('No trustees found: wrong database?');
 
 printjson({
   // Totals and TOD links (S18, S29-S31)

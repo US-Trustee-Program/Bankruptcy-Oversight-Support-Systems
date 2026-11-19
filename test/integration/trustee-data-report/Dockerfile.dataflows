@@ -18,7 +18,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Azure Functions Core Tools
-RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
+RUN npm install -g azure-functions-core-tools@4.12.1 --unsafe-perm true
 
 # Install workspace deps (cached layer — only busts on package file changes)
 # All workspace package.json files must be present for root npm ci to resolve

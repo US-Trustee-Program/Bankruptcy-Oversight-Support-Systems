@@ -307,12 +307,13 @@ async function seedSql() {
 
 /**
  * Indexes as cosmos-collections.bicep declares them (trusteeDataReportCollection and the
- * trustees (documentType, legacy.truIds) index). Keep in step with the bicep.
+ * trustees single-field legacy.truIds index; Cosmos rejects nested paths in compound indexes).
+ * Keep in step with the bicep.
  */
 async function createIndexes(db: Db) {
   await db.collection(REPORT_COLLECTION).createIndex({ documentType: 1, runId: 1 });
   await db.collection(REPORT_COLLECTION).createIndex({ runId: 1, pageKey: 1 });
-  await db.collection('trustees').createIndex({ documentType: 1, 'legacy.truIds': 1 });
+  await db.collection('trustees').createIndex({ 'legacy.truIds': 1 });
   info('Created the bicep-declared indexes');
 }
 

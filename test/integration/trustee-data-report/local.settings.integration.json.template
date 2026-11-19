@@ -7,6 +7,8 @@
     "DATABASE_MOCK": "false",
     "CAMS_LOGIN_PROVIDER": "mock",
     "FEATURE_FLAG_SDK_KEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
+    "CAMS_ENABLED_DATAFLOWS": "",
     "MONGO_CONNECTION_STRING": "mongodb://localhost:27017/cams-integration?retrywrites=false",
     "COSMOS_DATABASE_NAME": "cams-integration",
     "ATS_MSSQL_HOST": "localhost",

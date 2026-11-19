@@ -69,8 +69,8 @@ clean        Remove report results, fixture trustees and the run lock; clear the
 
 TOD rows are in `seed/01-seed-trustees.sql` and `seed/02-seed-chapter-details.sql`; CAMS trustees
 and expected results in `scripts/trustee-data-report-fixtures.ts`. The report reads TOD 100 trustees
-per page; 100 filler rows (`seed/03-seed-filler.sql`) push TOD IDs 500–503 onto page 2 so S26, S27
-and S42 are merged across pages.
+per page; 100 filler rows (`seed/03-seed-filler.sql`) push TOD IDs 500–505 onto page 2 so S26, S27
+and S42 are merged across pages, and S46 and S47 write their results from page 2.
 
 Each scenario asserts the exact set of difference rows the run records for it: none, or the listed
 ones with their values.
@@ -119,6 +119,8 @@ ones with their values.
 | S44 | Unlinked TOD trustee active through chapter 12 case-by-case (`2`)                 | TOD only                                                                    | Known gap                 |
 | S41 | Unlinked TOD trustee whose only status is empty                                   | TOD only, flagged for review                                                | Known gap                 |
 | S42 | Merged from three TOD records, two on page 2; CAMS holds the most complete        | Nothing reported                                                            | Pass                      |
+| S46 | Unlinked active TOD trustee on page 2 only                                        | TOD only                                                                    | Pass                      |
+| S47 | Trustee linked to one TOD record on page 2 only; email differs                    | One `email` difference                                                      | Pass                      |
 | S32 | Filler TOD trustees, and anything outside the scenarios                           | Nothing reported                                                            | Pass                      |
 | S33 | The whole run                                                                     | Compared and CAMS-only counts add up to the scenarios                       | Pass                      |
 | S45 | The whole run                                                                     | TOD-only and field-difference counts add up to the scenarios                | Known gap (S10, S41, S44) |
@@ -179,7 +181,7 @@ scenario for any pattern the fixtures do not cover. Both were checked against th
 ## 8. Keeping in step
 
 - Indexes are created in `seed-cosmos` to match `trusteeDataReportCollection` and the trustees
-  `(documentType, legacy.truIds)` index in
+  single-field `legacy.truIds` index in
   `ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections.bicep`. Change both together.
 - The TOD DDL holds only the columns the report reads (`TRUSTEE_COLUMNS` in `ats.gateway.ts`).
 - Fixtures are synthetic: invented names, `555-01xx` phones, `example.com`/`.org` emails. Do not add

@@ -26,7 +26,9 @@ VALUES
   (44, 'PA'), (45, 'PA'), (46, 'PA'), (47, 'PA'), (48, 'PA'), (49, 'PA'),
   -- S41: empty status only
   (51, ''),
-  (52, 'PA'), (500, 'PA'), (501, 'PA'), (502, 'PA'), (503, 'PA')
+  (52, 'PA'), (500, 'PA'), (501, 'PA'), (502, 'PA'), (503, 'PA'),
+  -- S46 and S47: page 2 only
+  (504, 'PA'), (505, 'PA')
 GO
 
 -- Chapter-dependent numeric codes, with their chapter.

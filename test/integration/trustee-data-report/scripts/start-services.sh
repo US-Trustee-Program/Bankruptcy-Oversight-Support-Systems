@@ -79,35 +79,29 @@ podman run -d \
   mcr.microsoft.com/azure-storage/azurite:3.21.0 \
   azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --skipApiVersionCheck
 
-echo "Waiting for SQL Edge..."
-for i in $(seq 1 60); do
-  if bash -c '</dev/tcp/localhost/1433' 2>/dev/null; then
-    echo "  SQL Edge ready"
-    break
-  fi
-  [ "$i" -eq 60 ] && echo "ERROR: SQL Edge failed to start" && exit 1
-  sleep 2
-done
+# Readiness comes from each container's own "ready" log line, not a TCP probe from the host:
+# on macOS the Podman port forwarder accepts a connection on a published port before anything in
+# the container is listening, so a host-side /dev/tcp check passes immediately.
+wait_for_log() {
+  local name="$1" container="$2" pattern="$3" attempts="$4" interval="$5"
+  echo "Waiting for ${name}..."
+  for _ in $(seq 1 "${attempts}"); do
+    if podman logs "${container}" 2>&1 | grep -qE "${pattern}"; then
+      echo "  ${name} ready"
+      return 0
+    fi
+    sleep "${interval}"
+  done
+  echo "ERROR: ${name} failed to start" >&2
+  exit 1
+}
 
-echo "Waiting for MongoDB..."
-for i in $(seq 1 30); do
-  if bash -c '</dev/tcp/localhost/27017' 2>/dev/null; then
-    echo "  MongoDB ready"
-    break
-  fi
-  [ "$i" -eq 30 ] && echo "ERROR: MongoDB failed to start" && exit 1
-  sleep 1
-done
-
-echo "Waiting for Azurite..."
-for i in $(seq 1 15); do
-  if bash -c '</dev/tcp/localhost/10000' 2>/dev/null; then
-    echo "  Azurite ready"
-    break
-  fi
-  [ "$i" -eq 15 ] && echo "ERROR: Azurite failed to start" && exit 1
-  sleep 1
-done
+wait_for_log "SQL Edge" cams-sqledge-trustee-data-report \
+  'SQL Server is now ready for client connections' 60 2
+wait_for_log "MongoDB" cams-mongodb-trustee-data-report \
+  'Waiting for connections' 30 1
+wait_for_log "Azurite" cams-azurite-trustee-data-report \
+  'Azurite Queue service is successfully listening' 15 1
 
 echo "Starting dataflows function app..."
 podman run -d \
@@ -115,15 +109,8 @@ podman run -d \
   --name cams-dataflows-trustee-data-report \
   "${IMAGE}"
 
-echo "Waiting for dataflows function app..."
-for i in $(seq 1 60); do
-  if bash -c '</dev/tcp/localhost/7072' 2>/dev/null; then
-    echo "  Dataflows ready"
-    break
-  fi
-  [ "$i" -eq 60 ] && echo "ERROR: Dataflows function app failed to start" && exit 1
-  sleep 2
-done
+wait_for_log "Dataflows function app" cams-dataflows-trustee-data-report \
+  'Host started' 90 2
 
 echo ""
 echo "All services ready."

@@ -7,7 +7,8 @@
 --
 -- ID layout: the report reads TOD 100 trustees per page in ID order. Scenario rows are 10-54,
 -- filler rows 200-299 (03-seed-filler.sql), and 500-503 hold the later records of merged
--- trustees, so those land on page 2 while their first records are on page 1.
+-- trustees, so those land on page 2 while their first records are on page 1. 504 and 505 are
+-- scenarios that live only on page 2, so a defect in a later page's results shows up.
 
 DELETE FROM CHAPTER_DETAILS
 GO
@@ -200,5 +201,13 @@ VALUES
    NULL, NULL, NULL, NULL, NULL, NULL, '217-555-0152', 'iris.triple@example.com'),
   (503, 'Triple', 'Iris', NULL, NULL,
    '5200 Merge St', 'Floor 5', 'Springfield', 'IL', '62701', '5200', 'Y', 'N',
-   NULL, NULL, NULL, NULL, NULL, NULL, '217-555-0152', 'iris.triple@example.com')
+   NULL, NULL, NULL, NULL, NULL, NULL, '217-555-0152', 'iris.triple@example.com'),
+  -- S46 unlinked and active, on page 2 only
+  (504, 'Latepage', 'Rowan', NULL, NULL,
+   '5040 Late Ln', NULL, 'Springfield', 'IL', '62701', NULL, 'Y', 'N',
+   NULL, NULL, NULL, NULL, NULL, NULL, '217-555-0154', 'rowan.latepage@example.com'),
+  -- S47 linked to one record on page 2 only; CAMS email differs
+  (505, 'Pagetwo', 'Sage', NULL, NULL,
+   '5050 Second Pg', NULL, 'Springfield', 'IL', '62701', NULL, 'Y', 'N',
+   NULL, NULL, NULL, NULL, NULL, NULL, '217-555-0155', 'sage.pagetwo@example.com')
 GO
