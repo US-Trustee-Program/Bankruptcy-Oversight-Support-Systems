@@ -17,6 +17,7 @@ import * as delayModule from '@common/delay';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { CamsRole } from '@common/cams/roles';
 import { UsersRepository } from '../gateways.types';
+import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -261,5 +262,128 @@ describe('user-session.gateway test', () => {
     expect(session.user.offices).toEqual([]);
 
     expect(upsertSpy).toHaveBeenCalled();
+  });
+
+  describe('sign-in telemetry', () => {
+    const SIGN_IN_EVENT = 'CAMS Sign-In';
+
+    function signInEventCalls(spy: MockInstance) {
+      return spy.mock.calls.filter(([, eventName]) => eventName === SIGN_IN_EVENT);
+    }
+
+    function givenNewSessionWithGroups(groups: string[], user: CamsUserReference = mockUser) {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+      getUserSpy.mockResolvedValue({
+        user,
+        jwt: { ...camsJwt, claims: { ...claims, groups } },
+      });
+    }
+
+    test('should emit exactly one sign-in event when a new session is built', async () => {
+      givenNewSessionWithGroups([]);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      expect(signInEventCalls(completeTraceSpy)).toHaveLength(1);
+    });
+
+    test('should not emit a sign-in event when a cached session is returned', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockCamsSession);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      expect(signInEventCalls(completeTraceSpy)).toHaveLength(0);
+    });
+
+    test('should record email, sorted distinct roles, offices, and distinct regions only', async () => {
+      givenNewSessionWithGroups(
+        [
+          'USTP CAMS Trial Attorney',
+          'USTP CAMS Region 3 Office Wilmington',
+          'USTP CAMS Region 2 Office Manhattan',
+          'USTP CAMS Region 2 Office Buffalo',
+          'USTP CAMS Case Assignment Manager',
+          'USTP CAMS Trial Attorney',
+        ],
+        { id: 'person-id', name: 'Pat Person', email: 'pat.person@example.gov' },
+      );
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      const [[, , completion]] = signInEventCalls(completeTraceSpy);
+      expect(completion).toEqual({
+        success: true,
+        properties: {
+          email: 'pat.person@example.gov',
+          roles: JSON.stringify([CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney]),
+          officeCodes: JSON.stringify([
+            'USTP_CAMS_Region_3_Office_Wilmington',
+            'USTP_CAMS_Region_2_Office_Manhattan',
+            'USTP_CAMS_Region_2_Office_Buffalo',
+          ]),
+          officeNames: JSON.stringify(['Wilmington', 'Manhattan', 'Buffalo']),
+          regionIds: JSON.stringify(['3', '2']),
+          regionNames: JSON.stringify(['PHILADELPHIA', 'NEW YORK']),
+        },
+        measurements: {},
+      });
+    });
+
+    test('should record an empty email when the identity provider supplies none', async () => {
+      givenNewSessionWithGroups([], { id: 'person-id', name: 'Pat Person' });
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      const [[, , completion]] = signInEventCalls(completeTraceSpy);
+      expect(completion.properties.email).toEqual('');
+    });
+
+    test('should record roles and offices granted through privileged identity elevation', async () => {
+      givenNewSessionWithGroups(['USTP CAMS Trial Attorney']);
+      const pimRecord: Partial<PrivilegedIdentityUser> = {
+        expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        claims: { groups: ['USTP CAMS Super User', 'USTP CAMS Region 2 Office Manhattan'] },
+      };
+      const mockUsersRepository: Partial<UsersRepository> = {
+        getPrivilegedIdentityUser: vi.fn().mockResolvedValue(pimRecord),
+      };
+      vi.spyOn(factory, 'getUsersRepository').mockReturnValue(
+        mockUsersRepository as UsersRepository,
+      );
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      const [[, , completion]] = signInEventCalls(completeTraceSpy);
+      expect(completion.properties).toEqual(
+        expect.objectContaining({
+          roles: JSON.stringify([CamsRole.SuperUser, CamsRole.TrialAttorney]),
+          officeCodes: JSON.stringify(['USTP_CAMS_Region_2_Office_Manhattan']),
+          regionIds: JSON.stringify(['2']),
+        }),
+      );
+    });
+
+    test('should still return the session and log an error when emitting the event fails', async () => {
+      givenNewSessionWithGroups([]);
+      vi.spyOn(context.observability, 'completeTrace').mockImplementation(() => {
+        throw new Error('telemetry down');
+      });
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const session = await gateway.lookup(context, jwtString);
+
+      expect(session.accessToken).toEqual(jwtString);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('sign-in'),
+        expect.any(Error),
+      );
+    });
   });
 });
