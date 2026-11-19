@@ -25,7 +25,7 @@ type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
  * The person's name and id are deliberately excluded.
  */
 function buildSignInEventProperties(user: CamsUser): Record<string, string> {
-  const offices = user.offices;
+  const offices = [...user.offices].sort((a, b) => a.officeCode.localeCompare(b.officeCode));
   const regions = new Map(offices.map((office) => [office.regionId, office.regionName]));
   return {
     email: user.email ?? '',

@@ -298,7 +298,7 @@ describe('user-session.gateway test', () => {
       expect(signInEventCalls(completeTraceSpy)).toHaveLength(0);
     });
 
-    test('should record email, sorted distinct roles, offices, and distinct regions only', async () => {
+    test('should record email, sorted distinct roles, sorted offices, and distinct regions only', async () => {
       givenNewSessionWithGroups(
         [
           'USTP CAMS Trial Attorney',
@@ -321,13 +321,13 @@ describe('user-session.gateway test', () => {
           email: 'pat.person@example.gov',
           roles: JSON.stringify([CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney]),
           officeCodes: JSON.stringify([
-            'USTP_CAMS_Region_3_Office_Wilmington',
-            'USTP_CAMS_Region_2_Office_Manhattan',
             'USTP_CAMS_Region_2_Office_Buffalo',
+            'USTP_CAMS_Region_2_Office_Manhattan',
+            'USTP_CAMS_Region_3_Office_Wilmington',
           ]),
-          officeNames: JSON.stringify(['Wilmington', 'Manhattan', 'Buffalo']),
-          regionIds: JSON.stringify(['3', '2']),
-          regionNames: JSON.stringify(['PHILADELPHIA', 'NEW YORK']),
+          officeNames: JSON.stringify(['Buffalo', 'Manhattan', 'Wilmington']),
+          regionIds: JSON.stringify(['2', '3']),
+          regionNames: JSON.stringify(['NEW YORK', 'PHILADELPHIA']),
         },
         measurements: {},
       });
@@ -371,6 +371,7 @@ describe('user-session.gateway test', () => {
 
     test('should still return the session and log an error when emitting the event fails', async () => {
       givenNewSessionWithGroups([]);
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
       vi.spyOn(context.observability, 'completeTrace').mockImplementation(() => {
         throw new Error('telemetry down');
       });
@@ -379,10 +380,11 @@ describe('user-session.gateway test', () => {
       const session = await gateway.lookup(context, jwtString);
 
       expect(session.accessToken).toEqual(jwtString);
+      expect(upsertSpy).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining('sign-in'),
-        expect.any(Error),
+        expect.any(String),
+        expect.objectContaining({ message: 'telemetry down' }),
       );
     });
   });
