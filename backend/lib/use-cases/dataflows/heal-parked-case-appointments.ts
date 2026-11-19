@@ -73,9 +73,10 @@ function placedPlaceholderFrom(row: ParkedAppointment): CaseAppointmentInput {
 }
 
 /**
- * Rebuilds the event-shaped input applyResolvedTrustee takes from the stored row. Parked rows only
- * ever come from the ACMS source. Court fields are whatever the row recorded when it was written;
- * a missing one leaves the appointment uncovered (see attachParkedAppointment).
+ * Rebuilds the event-shaped input applyResolvedTrustee takes from the stored row. The heal path is
+ * source-agnostic and never reads the hard-coded source below; it exists only because
+ * TrusteeAppointmentSyncEvent requires it. Court fields are whatever the row recorded when it was
+ * written; a missing one leaves the appointment uncovered (see attachParkedAppointment).
  */
 function eventFrom(row: ParkedAppointment): TrusteeAppointmentSyncEvent {
   return {
@@ -129,7 +130,7 @@ async function openOrJoinTaskForPlacedRow(
 
 /**
  * Returns false when the old trustee's appointment could not be closed (see healParkedPage). On
- * success, an uncovered attach opens or joins the trustee appointment task (CAMS-956) before the
+ * success, an uncovered attach opens or joins the trustee appointment task before the
  * caller deletes the parked row, so a failed task write leaves the row parked for the next run.
  */
 async function attachParkedAppointment(
@@ -186,7 +187,7 @@ async function attachParkedAppointment(
  * written but the previous trustee's appointment is still open. The parked row is kept and counted
  * failed, with the error logged for manual replay (the sync dead-letters the same case). The next
  * heal finds the new appointment as the superseding placed row, opens or joins its appointment
- * task (CAMS-956), and clears the parked row.
+ * task, and clears the parked row.
  *
  * Cursor-paged on _id, so rows left parked never stall progress. A transient error is rethrown
  * for the caller's rate-limit retry; any other per-row error is logged and the row left parked.

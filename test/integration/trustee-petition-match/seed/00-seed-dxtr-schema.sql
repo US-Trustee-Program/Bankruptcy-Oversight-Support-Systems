@@ -1,12 +1,14 @@
--- DXTR DDL: creates the tables read by CasesDxtrGateway.getTrusteeAppointments and
--- getTrusteePetitionEvents. Run against DXTR_INT database (created by seed-schema command).
+-- DXTR DDL: creates the tables read by CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate and
+-- getLatestTrusteeAppointmentTxDateForRegion. Run against DXTR_INT database (created by seed-schema command).
 --
 -- This is a hand-crafted subset of the real DXTR schema (no authoritative DDL for DXTR
 -- exists in this repo) covering only the columns those two queries actually select or
--- join on. See skills/cams-gateways dxtr-schema/ (AO_TX.md, AO_CS.md, AO_CS_DIV.md,
--- AO_PY.md) for the full column reference this was derived from.
+-- join on: AO_TX, AO_CS, AO_CS_DIV, AO_GRP_DES and AO_PY.
 
 IF OBJECT_ID('dbo.AO_TX', 'U') IS NOT NULL DROP TABLE dbo.AO_TX;
+GO
+
+IF OBJECT_ID('dbo.AO_GRP_DES', 'U') IS NOT NULL DROP TABLE dbo.AO_GRP_DES;
 GO
 
 IF OBJECT_ID('dbo.AO_PY', 'U') IS NOT NULL DROP TABLE dbo.AO_PY;
@@ -29,6 +31,15 @@ CREATE TABLE dbo.AO_CS_DIV (
 );
 GO
 
+-- Group designator to region mapping. The region-scoped trustee appointment reads select a
+-- region's transactions through AO_CS.GRP_DES -> AO_GRP_DES.REGION_ID (zero-padded, e.g. '02').
+CREATE TABLE dbo.AO_GRP_DES (
+  GRP_DES    VARCHAR(2) NOT NULL,
+  REGION_ID  VARCHAR(2) NOT NULL,
+  PRIMARY KEY (GRP_DES)
+);
+GO
+
 -- Case master. Compound key (CS_CASEID, COURT_ID) — CS_CASEID alone is NOT unique.
 CREATE TABLE dbo.AO_CS (
   CS_CASEID   VARCHAR(9)   NOT NULL,
@@ -36,6 +47,8 @@ CREATE TABLE dbo.AO_CS (
   CASE_ID     VARCHAR(10)  NULL, -- public court case number, e.g. "26-99999"
   CS_DIV      VARCHAR(3)   NOT NULL,
   CS_CHAPTER  VARCHAR(3)   NULL,
+  GRP_DES     VARCHAR(2)   NULL,
+  CS_DATE_FILED DATETIME2  NULL,
   PRIMARY KEY (CS_CASEID, COURT_ID)
 );
 GO

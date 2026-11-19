@@ -1,13 +1,12 @@
 -- DXTR DDL (copied from trustee-match-scenarios, with the office tables widened to the shape
 -- OfficesDxtrGateway.getOffices() queries, copied from sync-acms-professional-ids; duplicated on purpose
--- so this directory can be deleted alone). Creates the tables read by CasesDxtrGateway.getTrusteeAppointments,
--- getTrusteePetitionEvents, and (for Stage 10's gate A check) getCaseSummary. Run against
+-- so this directory can be deleted alone). Creates the tables read by CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate,
+-- getLatestTrusteeAppointmentTxDateForRegion, and (for Stage 10's gate A check) getCaseSummary. Run against
 -- DXTR_INT database (created by seed-schema command).
 --
 -- This is a hand-crafted subset of the real DXTR schema (no authoritative DDL for DXTR
 -- exists in this repo) covering only the columns those two queries actually select or
--- join on. See skills/cams-gateways dxtr-schema/ (AO_TX.md, AO_CS.md, AO_CS_DIV.md,
--- AO_PY.md) for the full column reference this was derived from.
+-- join on: AO_TX, AO_CS, AO_CS_DIV and AO_PY.
 
 IF OBJECT_ID('dbo.AO_TX', 'U') IS NOT NULL DROP TABLE dbo.AO_TX;
 GO
