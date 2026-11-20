@@ -42,6 +42,11 @@ function resolveStartDate(endDate: Date): Date {
     if (Number.isNaN(startDate.getTime())) {
       throw new Error(`Invalid DORA_START_DATE: ${raw}`);
     }
+    if (startDate.getTime() > endDate.getTime()) {
+      throw new Error(
+        `DORA_START_DATE ${raw} is after the report end ${endDate.toISOString()} (most recent Monday 00:00 UTC)`,
+      );
+    }
     return startDate;
   }
   return new Date(endDate.getTime() - DEFAULT_LOOKBACK_WEEKS * MS_PER_WEEK);

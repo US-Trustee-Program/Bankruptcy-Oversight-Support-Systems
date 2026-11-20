@@ -55,11 +55,21 @@ describe('parseCsv', () => {
     );
   });
 
-  test('throws naming the source and line when a row has the wrong number of fields', () => {
+  test('throws naming the source and line when a row has too few fields', () => {
     const text = 'periodStart,periodEnd,deploymentCount\n2026-11-02T00:00:00.000Z,24\n';
 
     expect(() => parseCsv(text, COLUMNS, 'deployment-frequency.csv')).toThrow(
       'deployment-frequency.csv line 2: expected 3 fields but found 2',
+    );
+  });
+
+  test('throws naming the source and line when a row has too many fields', () => {
+    const text =
+      'periodStart,periodEnd,deploymentCount\n' +
+      '2026-11-02T00:00:00.000Z,2026-11-09T00:00:00.000Z,24,extra\n';
+
+    expect(() => parseCsv(text, COLUMNS, 'deployment-frequency.csv')).toThrow(
+      'deployment-frequency.csv line 2: expected 3 fields but found 4',
     );
   });
 });
@@ -92,6 +102,13 @@ describe('readCsv', () => {
         deploymentCount: '24',
       },
     ]);
+  });
+
+  test('names the file path when the file cannot be parsed', async () => {
+    const filePath = join(workDir, 'deployment-frequency.csv');
+    await writeFile(filePath, 'periodStart,periodEnd,count\n', 'utf8');
+
+    await expect(readCsv(filePath, COLUMNS)).rejects.toThrow(`${filePath}: expected header`);
   });
 
   test('throws a clear error when the file does not exist', async () => {

@@ -12,7 +12,7 @@ export type DocsPageContext = {
   run?: { id: string; url: string };
 };
 
-export function formatDuration(hours: number): string {
+function formatDuration(hours: number): string {
   return hours < DAYS_THRESHOLD_HOURS
     ? `${hours.toFixed(1)} hours`
     : `${(hours / HOURS_PER_DAY).toFixed(1)} days`;
@@ -50,7 +50,8 @@ export function renderDocsPage(summary: WeeklySummary, context: DocsPageContext)
   return [
     '# DORA Metrics',
     '',
-    'These numbers update weekly, after the Tuesday DORA Metrics run.',
+    'These numbers update weekly, after the Tuesday DORA Metrics run. They cover the week before last,',
+    'so changes closed late in the week have time to deploy and incidents have time to close.',
     '',
     `## Week of ${formatDate(summary.periodStart)} – ${formatDate(lastDay)} (UTC)`,
     '',

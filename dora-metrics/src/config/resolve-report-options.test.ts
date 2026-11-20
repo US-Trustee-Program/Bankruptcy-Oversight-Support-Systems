@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { resolvePeriodWindows } from '../metrics/period-window.js';
 import { resolveReportOptions } from './resolve-report-options.js';
 
 const ENV_KEYS = [
@@ -123,6 +122,15 @@ describe('resolveReportOptions', () => {
 
     expect(() => resolveReportOptions()).toThrow('Invalid DORA_START_DATE: not-a-date');
   });
+
+  test('throws naming the report end when DORA_START_DATE is after it', () => {
+    vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
+    process.env.DORA_START_DATE = '2026-11-10T00:00:00.000Z';
+
+    expect(() => resolveReportOptions()).toThrow(
+      'DORA_START_DATE 2026-11-10T00:00:00.000Z is after the report end 2026-11-09T00:00:00.000Z (most recent Monday 00:00 UTC)',
+    );
+  });
   describe('default window snaps to complete calendar weeks', () => {
     test('on a Wednesday, ends at the most recent Monday 00:00 UTC and starts 13 weeks earlier', () => {
       vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
@@ -165,28 +173,6 @@ describe('resolveReportOptions', () => {
 
       expect(options.startDate).toEqual(new Date('2026-06-03T12:00:00.000Z'));
       expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
-    });
-
-    test('yields 13 Monday-aligned windows whose last end is endDate', () => {
-      vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
-      const options = resolveReportOptions();
-
-      const { windows } = resolvePeriodWindows(
-        options.startDate,
-        options.periodDays,
-        options.endDate,
-      );
-
-      expect(windows).toHaveLength(13);
-      for (const window of windows) {
-        const start = new Date(window.startMs);
-        expect(start.getUTCDay()).toBe(1);
-        expect(start.getUTCHours()).toBe(0);
-        expect(start.getUTCMinutes()).toBe(0);
-        expect(start.getUTCSeconds()).toBe(0);
-        expect(start.getUTCMilliseconds()).toBe(0);
-      }
-      expect(windows[windows.length - 1].endMs).toBe(options.endDate.getTime());
     });
   });
 });

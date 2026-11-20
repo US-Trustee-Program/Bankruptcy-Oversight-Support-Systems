@@ -74,11 +74,12 @@ Feature: DORA Metrics Capture
 
   # SLICE 5: This Week at a Glance (docs site)
   # Dependencies: Slices 1-4 (the four reports)
-  # User Value: The team finds last week's four DORA values on the team docs site without downloading or opening CSVs
-  Scenario: Team sees the most recent complete week's values
+  # User Value: The team finds a settled week's four DORA values on the team docs site without downloading or opening CSVs
+  Scenario: Team sees the week before last's values
     Given the weekly DORA Metrics run on main has produced all four reports
     When a team member opens the DORA Metrics page on the team docs site
-    Then they see the dates of the most recent complete Monday-to-Sunday (UTC) week
+    Then they see the dates of the latest Monday-to-Sunday (UTC) week that ended at least a week before the run
+    And on the weekly Tuesday run, that is the week before last, so changes closed late in it have had time to deploy and its incidents time to close
     And the deployment count and deployments per day for that week
     And the median lead time for changes, with the mean shown as secondary
     And the change failure rate as a percentage, with failed and total deployment counts
@@ -86,10 +87,11 @@ Feature: DORA Metrics Capture
     And when the numbers were generated, with a link to the run that produced them
 
   Scenario: A week with nothing to measure
-    Given the most recent complete week had no attributed incidents
+    Given the week shown had no deployed issues and no attributed incidents
     When a team member views that week's values
-    Then change failure rate shows 0% if deployments happened, and "no data" if none did
-    And time to restore shows "no data" rather than 0
+    Then change failure rate shows 0% if deployments happened, and "No data" if none did
+    And lead time for changes shows "No data" rather than 0
+    And time to restore shows "No data" rather than 0
 
   Scenario: All four reports agree on the same weeks
     Given the weekly DORA Metrics run produced all four reports
@@ -99,9 +101,9 @@ Feature: DORA Metrics Capture
   Scenario: The latest run failed
     Given the most recent weekly DORA Metrics run failed
     When a team member opens the DORA Metrics page
-    Then they see the values from the most recent successful run, with its generation date
+    Then they see the values from the most recent run that rendered the page, with its generation date
 
-  # SLICE 6: Weekly Slack Headline
+  # SLICE 6: Weekly Slack Headline (not yet built)
   # Dependencies: Slice 5
   # User Value: The team is told each week's numbers without having to go look
   Scenario: Team receives the weekly headline in Slack
@@ -109,7 +111,7 @@ Feature: DORA Metrics Capture
     When the DORA Metrics page has been updated
     Then the team's Slack channel receives the week's four headline values and a link to the DORA Metrics page
 
-  # SLICE 7: Recent Trend
+  # SLICE 7: Recent Trend (not yet built)
   # Dependencies: Slice 5
   # User Value: The team can tell whether each metric is improving or worsening over roughly the last 13 weeks
   Scenario: Team sees each metric's weekly trend within the report window
@@ -118,9 +120,9 @@ Feature: DORA Metrics Capture
     Then they see each metric's value for every week in the window, oldest to newest
     And weeks with no data appear as gaps, never as 0
 
-  # SLICE 8: Long-Term Trend
+  # SLICE 8: Long-Term Trend (not yet built)
   # Dependencies: Slice 7
-  # User Value: The team can see trends older than a single report's 90-day window
+  # User Value: The team can see trends older than a single report's 13-week window
   Scenario: Team sees weeks older than the current report window
     Given reports from earlier weekly runs are kept in storage
     When a team member opens the DORA Metrics page

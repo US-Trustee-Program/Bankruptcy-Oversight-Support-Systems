@@ -2,9 +2,9 @@ name: DORA Metrics
 
 on:
   schedule:
-    # Tuesday 01:00 UTC: the reports cover weeks ending Monday 00:00 UTC, and change failure rate
-    # counts bugs opened up to 24 hours after each deployment, so every deployment in the week
-    # has a closed window by then.
+    # Tuesday 01:00 UTC: the reports cover weeks ending Monday 00:00 UTC. The docs page shows the
+    # week before last, so that week's changes have had over a week to deploy, its incidents to
+    # close, and its deployments' 24-hour change-failure windows to end.
     - cron: '0 1 * * 2'
   workflow_dispatch:
 
@@ -112,6 +112,9 @@ jobs:
           name: dora-docs-page
           path: dora-metrics/data/dora-metrics.md
           if-no-files-found: error
+          # Deploy GitHub Pages fails rather than serve the placeholder once no recent run has an
+          # unexpired page, so a page must outlive any gap between successful weekly runs.
+          retention-days: 90
 
   publish:
     name: Publish reports to storage

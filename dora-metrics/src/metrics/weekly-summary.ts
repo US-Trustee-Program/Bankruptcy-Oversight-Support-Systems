@@ -1,4 +1,5 @@
 import type { CsvRow } from '../output/read-csv.js';
+import { MS_PER_DAY } from './period-window.js';
 
 // The four by-period CSVs the weekly summary is built from. Detail CSVs are deliberately
 // excluded: they hold issue text, and the summary is rendered onto a public page.
@@ -51,13 +52,17 @@ export type WeeklySummary = {
   restoreTime: DurationSummary;
 };
 
-// The report scripts write by-period rows oldest first, so the last eligible row is the latest week.
-function latestRowEndingBy(key: ReportKey, rows: CsvRow[], generatedAt: Date): CsvRow {
-  const eligible = rows.filter((row) => new Date(row.periodEnd).getTime() <= generatedAt.getTime());
+// A week is shown only once it ended at least this long ago. Lead time skips issues not yet deployed,
+// and time to restore skips incidents not yet closed, so a just-ended week reads too fast.
+const SETTLING_MS = 7 * MS_PER_DAY;
+
+// The report scripts write by-period rows oldest first, so the last eligible row is the latest settled week.
+function latestRowEndingBy(key: ReportKey, rows: CsvRow[], cutoff: Date): CsvRow {
+  const eligible = rows.filter((row) => new Date(row.periodEnd).getTime() <= cutoff.getTime());
   const latest: CsvRow | undefined = eligible[eligible.length - 1];
   if (!latest) {
     throw new Error(
-      `${BY_PERIOD_REPORTS[key].file} has no week ending at or before ${generatedAt.toISOString()}`,
+      `${BY_PERIOD_REPORTS[key].file} has no week ending at or before ${cutoff.toISOString()}`,
     );
   }
   return latest;
@@ -76,17 +81,20 @@ function weekLabel(row: CsvRow): string {
   return `${row.periodStart}–${row.periodEnd}`;
 }
 
-export function summarizeLatestWeek(reports: ByPeriodReports, generatedAt: Date): WeeklySummary {
+// Summarizes the latest week that ended at least a week before generatedAt. On the Tuesday run that is
+// the week before last.
+export function summarizeSettledWeek(reports: ByPeriodReports, generatedAt: Date): WeeklySummary {
+  const cutoff = new Date(generatedAt.getTime() - SETTLING_MS);
   const keys = Object.keys(BY_PERIOD_REPORTS) as ReportKey[];
   const latest = Object.fromEntries(
-    keys.map((key) => [key, latestRowEndingBy(key, reports[key], generatedAt)]),
+    keys.map((key) => [key, latestRowEndingBy(key, reports[key], cutoff)]),
   ) as Record<ReportKey, CsvRow>;
 
   const reference = latest.deploymentFrequency;
   for (const key of keys) {
     if (weekLabel(latest[key]) !== weekLabel(reference)) {
       throw new Error(
-        `By-period reports disagree on the latest week: ${BY_PERIOD_REPORTS.deploymentFrequency.file} has ${weekLabel(reference)} but ${BY_PERIOD_REPORTS[key].file} has ${weekLabel(latest[key])}`,
+        `By-period reports disagree on the week: ${BY_PERIOD_REPORTS.deploymentFrequency.file} has ${weekLabel(reference)} but ${BY_PERIOD_REPORTS[key].file} has ${weekLabel(latest[key])}`,
       );
     }
   }

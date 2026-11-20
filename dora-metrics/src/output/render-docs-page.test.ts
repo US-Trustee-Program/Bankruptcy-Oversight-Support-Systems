@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { WeeklySummary } from '../metrics/weekly-summary.js';
-import { formatDuration, renderDocsPage } from './render-docs-page.js';
+import { renderDocsPage } from './render-docs-page.js';
 
 const GENERATED_AT = new Date('2026-11-16T12:05:00.000Z');
 const RUN = {
@@ -21,18 +21,6 @@ function summaryWith(overrides: Partial<WeeklySummary> = {}): WeeklySummary {
   };
 }
 
-describe('formatDuration', () => {
-  test('shows durations under 48 hours in hours with one decimal', () => {
-    expect(formatDuration(47.9)).toBe('47.9 hours');
-    expect(formatDuration(3.6)).toBe('3.6 hours');
-  });
-
-  test('shows durations of 48 hours or more in days with one decimal', () => {
-    expect(formatDuration(48)).toBe('2.0 days');
-    expect(formatDuration(284.75)).toBe('11.9 days');
-  });
-});
-
 describe('renderDocsPage', () => {
   test('renders the full page for a typical week', () => {
     const page = renderDocsPage(summaryWith(), { generatedAt: GENERATED_AT, run: RUN });
@@ -41,7 +29,8 @@ describe('renderDocsPage', () => {
       [
         '# DORA Metrics',
         '',
-        'These numbers update weekly, after the Tuesday DORA Metrics run.',
+        'These numbers update weekly, after the Tuesday DORA Metrics run. They cover the week before last,',
+        'so changes closed late in the week have time to deploy and incidents have time to close.',
         '',
         '## Week of Mon 2026-11-02 – Sun 2026-11-08 (UTC)',
         '',
@@ -103,6 +92,42 @@ describe('renderDocsPage', () => {
 
     expect(page).toContain('| Lead time for changes | No data |');
     expect(page).toContain('| Time to restore service | No data |');
+  });
+
+  test('shows durations under 48 hours in hours and 48 hours or more in days', () => {
+    const page = renderDocsPage(
+      summaryWith({ restoreTime: { medianHours: 47.9, meanHours: 48 } }),
+      {
+        generatedAt: GENERATED_AT,
+        run: RUN,
+      },
+    );
+
+    expect(page).toContain('| Time to restore service | 47.9 hours (mean 2.0 days) |');
+  });
+
+  // 03:00 UTC on Monday is still Sunday in New York. Pinning TZ makes this fail on any machine,
+  // UTC CI runners included, if a local-time getter is used.
+  test('labels weekdays in UTC whatever the machine time zone', () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+    try {
+      const page = renderDocsPage(
+        summaryWith({
+          periodStart: new Date('2026-11-02T03:00:00.000Z'),
+          periodEnd: new Date('2026-11-09T03:00:00.000Z'),
+        }),
+        { generatedAt: GENERATED_AT, run: RUN },
+      );
+
+      expect(page).toContain('## Week of Mon 2026-11-02 – Sun 2026-11-08 (UTC)');
+    } finally {
+      if (originalTz === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTz;
+      }
+    }
   });
 
   test('credits a local run without a link when no run is given', () => {

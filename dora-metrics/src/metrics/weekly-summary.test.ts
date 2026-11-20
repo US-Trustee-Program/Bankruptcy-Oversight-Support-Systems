@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { type ByPeriodReports, summarizeLatestWeek } from './weekly-summary.js';
+import { type ByPeriodReports, summarizeSettledWeek } from './weekly-summary.js';
 
 const WEEK_1 = { periodStart: '2026-10-26T00:00:00.000Z', periodEnd: '2026-11-02T00:00:00.000Z' };
 const WEEK_2 = { periodStart: '2026-11-02T00:00:00.000Z', periodEnd: '2026-11-09T00:00:00.000Z' };
@@ -50,16 +50,32 @@ function reportsFor(week: Week, overrides: Partial<ByPeriodReports> = {}): ByPer
 
 const GENERATED_AT = new Date('2026-11-16T12:05:00.000Z');
 
-describe('summarizeLatestWeek', () => {
-  test('summarizes the latest week ending at or before the generation time', () => {
+describe('summarizeSettledWeek', () => {
+  test('on the Tuesday run, summarizes the week before last rather than the week just ended', () => {
     const reports: ByPeriodReports = {
-      deploymentFrequency: [deploymentRow(WEEK_1, 10, '1.43'), deploymentRow(WEEK_2, 23, '3.29')],
-      leadTime: [leadTimeRow(WEEK_1, 3, '1.00', '1.00'), leadTimeRow(WEEK_2, 5, '3.20', '3.60')],
-      changeFailureRate: [cfrRow(WEEK_1, 10, 0, '0.0000'), cfrRow(WEEK_2, 24, 2, '0.0833')],
-      mttr: [mttrRow(WEEK_1, 0, '0.00', '0.00'), mttrRow(WEEK_2, 1, '300.25', '284.75')],
+      deploymentFrequency: [
+        deploymentRow(WEEK_1, 10, '1.43'),
+        deploymentRow(WEEK_2, 23, '3.29'),
+        deploymentRow(WEEK_3, 7, '1.00'),
+      ],
+      leadTime: [
+        leadTimeRow(WEEK_1, 3, '1.00', '1.00'),
+        leadTimeRow(WEEK_2, 5, '3.20', '3.60'),
+        leadTimeRow(WEEK_3, 1, '0.50', '0.50'),
+      ],
+      changeFailureRate: [
+        cfrRow(WEEK_1, 10, 0, '0.0000'),
+        cfrRow(WEEK_2, 24, 2, '0.0833'),
+        cfrRow(WEEK_3, 7, 0, '0.0000'),
+      ],
+      mttr: [
+        mttrRow(WEEK_1, 0, '0.00', '0.00'),
+        mttrRow(WEEK_2, 1, '300.25', '284.75'),
+        mttrRow(WEEK_3, 0, '0.00', '0.00'),
+      ],
     };
 
-    const summary = summarizeLatestWeek(reports, new Date('2026-11-10T00:00:00.000Z'));
+    const summary = summarizeSettledWeek(reports, new Date('2026-11-17T01:00:00.000Z'));
 
     expect(summary).toEqual({
       periodStart: new Date(WEEK_2.periodStart),
@@ -72,23 +88,23 @@ describe('summarizeLatestWeek', () => {
     });
   });
 
-  test('ignores weeks that end after the generation time', () => {
-    const reports: ByPeriodReports = {
-      deploymentFrequency: [deploymentRow(WEEK_2, 24, '3.43'), deploymentRow(WEEK_3, 1, '0.14')],
-      leadTime: [leadTimeRow(WEEK_2, 5, '3.20', '3.60'), leadTimeRow(WEEK_3, 0, '0.00', '0.00')],
-      changeFailureRate: [cfrRow(WEEK_2, 24, 2, '0.0833'), cfrRow(WEEK_3, 1, 0, '0.0000')],
-      mttr: [mttrRow(WEEK_2, 1, '284.75', '284.75'), mttrRow(WEEK_3, 0, '0.00', '0.00')],
-    };
-
-    const summary = summarizeLatestWeek(reports, new Date('2026-11-15T23:59:59.999Z'));
+  test('includes a week that ended exactly one week before the generation time', () => {
+    const summary = summarizeSettledWeek(reportsFor(WEEK_2), new Date('2026-11-16T00:00:00.000Z'));
 
     expect(summary.periodEnd).toEqual(new Date(WEEK_2.periodEnd));
   });
 
-  test('includes a week whose end is exactly the generation time', () => {
-    const summary = summarizeLatestWeek(reportsFor(WEEK_2), new Date(WEEK_2.periodEnd));
+  test('ignores a week that ended less than one week before the generation time', () => {
+    const reports: ByPeriodReports = {
+      deploymentFrequency: [deploymentRow(WEEK_1, 10, '1.43'), deploymentRow(WEEK_2, 24, '3.43')],
+      leadTime: [leadTimeRow(WEEK_1, 3, '1.00', '1.00'), leadTimeRow(WEEK_2, 5, '3.20', '3.60')],
+      changeFailureRate: [cfrRow(WEEK_1, 10, 0, '0.0000'), cfrRow(WEEK_2, 24, 2, '0.0833')],
+      mttr: [mttrRow(WEEK_1, 0, '0.00', '0.00'), mttrRow(WEEK_2, 1, '284.75', '284.75')],
+    };
 
-    expect(summary.periodEnd).toEqual(new Date(WEEK_2.periodEnd));
+    const summary = summarizeSettledWeek(reports, new Date('2026-11-15T23:59:59.999Z'));
+
+    expect(summary.periodEnd).toEqual(new Date(WEEK_1.periodEnd));
   });
 
   test('reports zero deployments as zero and the change failure rate as no data', () => {
@@ -97,7 +113,7 @@ describe('summarizeLatestWeek', () => {
       changeFailureRate: [cfrRow(WEEK_2, 0, 0, '0.0000')],
     });
 
-    const summary = summarizeLatestWeek(reports, GENERATED_AT);
+    const summary = summarizeSettledWeek(reports, GENERATED_AT);
 
     expect(summary.deploymentCount).toBe(0);
     expect(summary.deploymentsPerDay).toBe(0);
@@ -111,7 +127,7 @@ describe('summarizeLatestWeek', () => {
   test('reports a zero change failure rate when deployments happened and none failed', () => {
     const reports = reportsFor(WEEK_2, { changeFailureRate: [cfrRow(WEEK_2, 13, 0, '0.0000')] });
 
-    const summary = summarizeLatestWeek(reports, GENERATED_AT);
+    const summary = summarizeSettledWeek(reports, GENERATED_AT);
 
     expect(summary.changeFailure).toEqual({ failedDeployments: 0, totalDeployments: 13, rate: 0 });
   });
@@ -119,7 +135,7 @@ describe('summarizeLatestWeek', () => {
   test('reports lead time as no data when no issues were measured', () => {
     const reports = reportsFor(WEEK_2, { leadTime: [leadTimeRow(WEEK_2, 0, '0.00', '0.00')] });
 
-    const summary = summarizeLatestWeek(reports, GENERATED_AT);
+    const summary = summarizeSettledWeek(reports, GENERATED_AT);
 
     expect(summary.leadTime).toBeNull();
   });
@@ -127,44 +143,57 @@ describe('summarizeLatestWeek', () => {
   test('reports time to restore as no data when there were no incidents', () => {
     const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_2, 0, '0.00', '0.00')] });
 
-    const summary = summarizeLatestWeek(reports, GENERATED_AT);
+    const summary = summarizeSettledWeek(reports, GENERATED_AT);
 
     expect(summary.restoreTime).toBeNull();
   });
 
-  test('throws naming the report when it has no week ending at or before the generation time', () => {
-    const unfinished = {
-      periodStart: '2026-11-16T00:00:00.000Z',
-      periodEnd: '2026-11-23T00:00:00.000Z',
-    };
-    const reports = reportsFor(WEEK_2, { mttr: [mttrRow(unfinished, 0, '0.00', '0.00')] });
+  test('throws naming the report when it has no week ending a week or more before the generation time', () => {
+    const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_3, 0, '0.00', '0.00')] });
 
-    expect(() => summarizeLatestWeek(reports, GENERATED_AT)).toThrow(
-      'mttr-by-period.csv has no week ending at or before 2026-11-16T12:05:00.000Z',
+    expect(() => summarizeSettledWeek(reports, GENERATED_AT)).toThrow(
+      'mttr-by-period.csv has no week ending at or before 2026-11-09T12:05:00.000Z',
     );
   });
 
-  test('throws when the reports disagree on the latest week boundaries', () => {
+  test('throws when the reports disagree on the week boundaries', () => {
     const shifted = {
       periodStart: '2026-11-02T00:00:03.000Z',
       periodEnd: '2026-11-09T00:00:03.000Z',
     };
     const reports = reportsFor(WEEK_2, { leadTime: [leadTimeRow(shifted, 5, '3.20', '3.60')] });
 
-    expect(() => summarizeLatestWeek(reports, GENERATED_AT)).toThrow(
-      'By-period reports disagree on the latest week: deployment-frequency.csv has 2026-11-02T00:00:00.000Z–2026-11-09T00:00:00.000Z but lead-time-by-period.csv has 2026-11-02T00:00:03.000Z–2026-11-09T00:00:03.000Z',
+    expect(() => summarizeSettledWeek(reports, GENERATED_AT)).toThrow(
+      'By-period reports disagree on the week: deployment-frequency.csv has 2026-11-02T00:00:00.000Z–2026-11-09T00:00:00.000Z but lead-time-by-period.csv has 2026-11-02T00:00:03.000Z–2026-11-09T00:00:03.000Z',
+    );
+  });
+
+  test('throws when the reports agree on the week end but not its start', () => {
+    const laterStart = { periodStart: '2026-11-03T00:00:00.000Z', periodEnd: WEEK_2.periodEnd };
+    const reports = reportsFor(WEEK_2, { leadTime: [leadTimeRow(laterStart, 5, '3.20', '3.60')] });
+
+    expect(() => summarizeSettledWeek(reports, GENERATED_AT)).toThrow(
+      'By-period reports disagree on the week:',
     );
   });
 
   // A blank cell must not be read as 0: Number('') is 0, and the page would show it as a real value.
-  test.each(['abc', ''])(
+  test.each(['abc', '', 'Infinity'])(
     'throws naming the report and column when a value is %j instead of a number',
     (raw) => {
       const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_2, 1, raw, '1.00')] });
 
-      expect(() => summarizeLatestWeek(reports, GENERATED_AT)).toThrow(
+      expect(() => summarizeSettledWeek(reports, GENERATED_AT)).toThrow(
         `mttr-by-period.csv: meanRestoreTimeHours is not a number: "${raw}"`,
       );
     },
   );
+
+  test('throws naming the lead time report and column when a value is not a number', () => {
+    const reports = reportsFor(WEEK_2, { leadTime: [leadTimeRow(WEEK_2, 5, '3.20', 'abc')] });
+
+    expect(() => summarizeSettledWeek(reports, GENERATED_AT)).toThrow(
+      'lead-time-by-period.csv: medianLeadTimeHours is not a number: "abc"',
+    );
+  });
 });
