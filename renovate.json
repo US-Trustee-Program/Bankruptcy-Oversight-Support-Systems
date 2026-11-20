@@ -170,6 +170,7 @@
       "managerFilePatterns": ["/test/e2e/Dockerfile\\.playwright/", "/^\\.github/workflows/build-playwright-msedge-image\\.yml$/"],
       "matchStrings": [
         "FROM mcr\\.microsoft\\.com/playwright:v(?<currentValue>[0-9.]+)-noble",
+        "ARG PLAYWRIGHT_VERSION=(?<currentValue>[0-9.]+)",
         "type=raw,value=v(?<currentValue>[0-9.]+)-noble"
       ],
       "depNameTemplate": "@playwright/test",
