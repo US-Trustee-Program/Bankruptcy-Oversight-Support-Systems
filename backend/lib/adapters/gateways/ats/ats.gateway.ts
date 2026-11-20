@@ -1,7 +1,7 @@
 import * as mssql from 'mssql';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
-import { AtsGateway } from '../../../use-cases/gateways.types';
+import { AtsGateway, TodOnlyCandidate } from '../../../use-cases/gateways.types';
 import {
   AtsTrusteeRecord,
   AtsAppointmentRecord,
@@ -15,7 +15,7 @@ import { cleanseAndMapAppointment } from './cleansing/ats-cleansing-pipeline';
 import { CleansingClassification, TrusteeOverride } from './cleansing/ats-cleansing-types';
 import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform';
 import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
-import { ACTIVE_STATUS_CODES } from './ats.constants';
+import { ACTIVE_STATUS_CODES, CHAPTER_ACTIVE_STATUS_CODES } from './ats.constants';
 
 export const ATS_GATEWAY_MODULE_NAME = 'ATS-GATEWAY';
 const MODULE_NAME = ATS_GATEWAY_MODULE_NAME;
@@ -58,6 +58,24 @@ function batches<T>(items: T[], size: number): T[][] {
   }
   return result;
 }
+
+const sqlList = (codes: Iterable<string>) => [...codes].map((code) => `'${code}'`).join(',');
+
+/**
+ * SQL condition on CHAPTER_DETAILS (alias CD) that is true when the appointment status is active:
+ * a code in ACTIVE_STATUS_CODES on any chapter, or a code active only on that case-by-case chapter
+ * (CHAPTER_ACTIVE_STATUS_CODES). Built from constants only, never from input.
+ */
+const ACTIVE_STATUS_CONDITION = [
+  `CD.STATUS IN (${sqlList(ACTIVE_STATUS_CODES)})`,
+  ...Object.entries(CHAPTER_ACTIVE_STATUS_CODES)
+    .filter(([, codes]) => codes.size > 0)
+    .map(([chapter, codes]) => `(CD.CHAPTER = '${chapter}' AND CD.STATUS IN (${sqlList(codes)}))`),
+].join(' OR ');
+
+const EMPTY_STATUS_CONDITION = "(CD.STATUS IS NULL OR LTRIM(RTRIM(CD.STATUS)) = '')";
+
+type StatusFlagsRow = { TRU_ID: number; HAS_ACTIVE: number; HAS_EMPTY: number };
 
 /**
  * Gateway for accessing the ATS (Attorney Trustee System) database.
@@ -120,13 +138,12 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       value: pageSize,
     });
 
-    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
     const activeFilter = importAll
       ? ''
       : `WHERE EXISTS (
         SELECT 1 FROM CHAPTER_DETAILS CD
         WHERE CD.TRU_ID = T.ID
-          AND CD.STATUS IN (${activeCodesInList})
+          AND (${ACTIVE_STATUS_CONDITION})
       )`;
 
     let query = `
@@ -195,28 +212,34 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
   }
 
-  async getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]> {
-    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
-    const activeIds: number[] = [];
+  async getTodOnlyCandidates(
+    context: ApplicationContext,
+    ids: number[],
+  ): Promise<TodOnlyCandidate[]> {
+    const candidates: TodOnlyCandidate[] = [];
     try {
       for (const batch of batches(ids, ID_BATCH_SIZE)) {
         const { placeholders, input } = idParameters(batch);
         const query = `
-          SELECT DISTINCT CD.TRU_ID
+          SELECT CD.TRU_ID,
+            MAX(CASE WHEN ${ACTIVE_STATUS_CONDITION} THEN 1 ELSE 0 END) AS HAS_ACTIVE,
+            MAX(CASE WHEN ${EMPTY_STATUS_CONDITION} THEN 1 ELSE 0 END) AS HAS_EMPTY
           FROM CHAPTER_DETAILS CD
           WHERE CD.TRU_ID IN (${placeholders})
-            AND CD.STATUS IN (${activeCodesInList})`;
-        const { results } = await this.executeQuery<{ TRU_ID: number }>(context, query, input);
-        activeIds.push(
-          ...(results as mssql.IResult<{ TRU_ID: number }>).recordset.map((row) => row.TRU_ID),
+          GROUP BY CD.TRU_ID`;
+        const { results } = await this.executeQuery<StatusFlagsRow>(context, query, input);
+        candidates.push(
+          ...(results as mssql.IResult<StatusFlagsRow>).recordset
+            .filter((row) => row.HAS_ACTIVE === 1 || row.HAS_EMPTY === 1)
+            .map((row) => ({ id: row.TRU_ID, statusMissing: row.HAS_ACTIVE !== 1 })),
         );
       }
-      return activeIds;
+      return candidates;
     } catch (originalError) {
       throw getCamsError(
         originalError as Error,
         MODULE_NAME,
-        'Failed to retrieve active trustee IDs from ATS',
+        'Failed to retrieve TOD trustee statuses from ATS',
       );
     }
   }
@@ -394,13 +417,12 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
    * Useful for progress tracking during migration.
    */
   async getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number> {
-    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
     const activeFilter = importAll
       ? ''
       : `WHERE EXISTS (
         SELECT 1 FROM CHAPTER_DETAILS CD
         WHERE CD.TRU_ID = T.ID
-          AND CD.STATUS IN (${activeCodesInList})
+          AND (${ACTIVE_STATUS_CONDITION})
       )`;
     const query = `
       SELECT COUNT(*) as totalCount

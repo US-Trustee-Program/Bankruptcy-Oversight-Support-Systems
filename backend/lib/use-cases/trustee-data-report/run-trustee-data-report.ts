@@ -36,6 +36,7 @@ function addSummaries(
   return {
     trusteesCompared: a.trusteesCompared + b.trusteesCompared,
     todOnly: a.todOnly + b.todOnly,
+    todOnlyStatusMissing: (a.todOnlyStatusMissing ?? 0) + (b.todOnlyStatusMissing ?? 0),
     camsOnly: a.camsOnly + b.camsOnly,
     fieldDifferences: a.fieldDifferences + b.fieldDifferences,
     fieldDifferencesByField: byField,
@@ -159,15 +160,21 @@ async function processPage(
 
   const unlinked = page.filter((record) => !linkedIds.has(String(record.ID)));
   if (unlinked.length > 0) {
-    const active = new Set(
-      await ats.getActiveTrusteeIds(
-        context,
-        unlinked.map((record) => record.ID),
-      ),
+    const candidates = new Map(
+      (
+        await ats.getTodOnlyCandidates(
+          context,
+          unlinked.map((record) => record.ID),
+        )
+      ).map((candidate) => [candidate.id, candidate]),
     );
     differences.push(
       ...findTodOnly(
-        unlinked.map((record) => ({ record, inScope: active.has(record.ID) })),
+        unlinked.map((record) => ({
+          record,
+          inScope: candidates.has(record.ID),
+          statusMissing: candidates.get(record.ID)?.statusMissing,
+        })),
         linkedIds,
       ),
     );

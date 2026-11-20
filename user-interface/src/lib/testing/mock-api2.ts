@@ -3371,6 +3371,7 @@ async function postCaseReload(_caseId: string) {
 const MOCK_TRUSTEE_DATA_REPORT_SUMMARY: TrusteeDataReportSummary = {
   trusteesCompared: 1184,
   todOnly: 6,
+  todOnlyStatusMissing: 1,
   camsOnly: 3,
   fieldDifferences: 14,
   fieldDifferencesByField: {

@@ -12,7 +12,7 @@ export type Field =
 
 export type ExpectedDifference =
   | { kind: 'field'; field: Field; camsValue?: string; todValue?: string; todIds: string[] }
-  | { kind: 'tod-only'; trusteeName: string; todIds: string[] }
+  | { kind: 'tod-only'; trusteeName: string; todIds: string[]; todStatusMissing?: true }
   | { kind: 'cams-only'; todIds: string[] };
 
 type Address = {
@@ -472,14 +472,14 @@ export const SCENARIOS: Scenario[] = [
     title: "An unlinked TOD trustee active through chapter 12 case-by-case ('2') is TOD only",
     todIds: ['54'],
     expected: [{ kind: 'tod-only', trusteeName: 'Kit Casebycase', todIds: ['54'] }],
-    knownGapActual: [],
   },
   {
     id: 'S41',
     title: 'An unlinked TOD trustee whose only status is empty is flagged for review as TOD only',
     todIds: ['51'],
-    expected: [{ kind: 'tod-only', trusteeName: 'Hale Emptystatus', todIds: ['51'] }],
-    knownGapActual: [],
+    expected: [
+      { kind: 'tod-only', trusteeName: 'Hale Emptystatus', todIds: ['51'], todStatusMissing: true },
+    ],
   },
 
   // ── Merged trustees ──────────────────────────────────────────────────────────
@@ -708,6 +708,9 @@ export function expectedSummary(knownGaps = false) {
   return {
     trusteesCompared: SCENARIOS.filter((scenario) => scenario.compared).length,
     todOnly: all.filter((difference) => difference.kind === 'tod-only').length,
+    todOnlyStatusMissing: all.filter(
+      (difference) => difference.kind === 'tod-only' && difference.todStatusMissing,
+    ).length,
     camsOnly: all.filter((difference) => difference.kind === 'cams-only').length,
     fieldDifferences: all.filter((difference) => difference.kind === 'field').length,
     fieldDifferencesByField,

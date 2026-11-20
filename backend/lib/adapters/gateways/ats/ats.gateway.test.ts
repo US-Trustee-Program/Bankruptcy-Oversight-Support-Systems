@@ -9,7 +9,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CamsError } from '../../../common-errors/cams-error';
 import { CleansingClassification } from './cleansing/ats-cleansing-types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { ACTIVE_STATUS_CODES } from './ats.constants';
+import { ACTIVE_STATUS_CODES, CHAPTER_ACTIVE_STATUS_CODES } from './ats.constants';
 
 describe('ATS Gateway', () => {
   let context: ApplicationContext;
@@ -50,8 +50,10 @@ describe('ATS Gateway', () => {
       expect(result[0]).toEqual((await gateway.getTrusteesPage(context, 1, 1, true))[0]);
     });
 
-    test('should return only active mock trustee IDs', async () => {
-      expect(await gateway.getActiveTrusteeIds(context, [5, 6, 99])).toEqual([5]);
+    test('should return only active mock trustees as TOD-only candidates', async () => {
+      expect(await gateway.getTodOnlyCandidates(context, [5, 6, 99])).toEqual([
+        { id: 5, statusMissing: false },
+      ]);
     });
 
     test('should return trustee appointments', async () => {
@@ -146,9 +148,9 @@ describe('ATS Gateway', () => {
         expected: [{ ID: 1 }, { ID: 501 }, { ID: 1001 }],
       },
       {
-        method: 'getActiveTrusteeIds' as const,
-        rows: [[{ TRU_ID: 1 }], [{ TRU_ID: 501 }], [{ TRU_ID: 1001 }]],
-        expected: [1, 501, 1001],
+        method: 'getTodOnlyCandidates' as const,
+        rows: [1, 501, 1001].map((id) => [{ TRU_ID: id, HAS_ACTIVE: 1, HAS_EMPTY: 0 }]),
+        expected: [1, 501, 1001].map((id) => ({ id, statusMissing: false })),
       },
     ])('$method should combine the results of every batch', async ({ method, rows, expected }) => {
       rows.forEach((recordset) =>
@@ -199,27 +201,95 @@ describe('ATS Gateway', () => {
       });
     });
 
-    describe('getActiveTrusteeIds', () => {
-      test('should return the IDs that have an active appointment status', async () => {
-        mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ TRU_ID: 3 }] } });
+    describe('getTodOnlyCandidates', () => {
+      test('should return trustees with an active status, and flag those with only an empty status', async () => {
+        mockExecuteQuery.mockResolvedValue({
+          results: {
+            recordset: [
+              { TRU_ID: 3, HAS_ACTIVE: 1, HAS_EMPTY: 1 },
+              { TRU_ID: 4, HAS_ACTIVE: 0, HAS_EMPTY: 1 },
+              { TRU_ID: 5, HAS_ACTIVE: 0, HAS_EMPTY: 0 },
+            ],
+          },
+        });
 
-        expect(await gateway.getActiveTrusteeIds(context, [3, 4])).toEqual([3]);
+        expect(await gateway.getTodOnlyCandidates(context, [3, 4, 5])).toEqual([
+          { id: 3, statusMissing: false },
+          { id: 4, statusMissing: true },
+        ]);
         const [, query] = mockExecuteQuery.mock.calls[0];
         expect(query).toContain('FROM CHAPTER_DETAILS CD');
-        expect(query).toContain('CD.TRU_ID IN (@id0, @id1)');
-        const activeCodes = [...ACTIVE_STATUS_CODES].map((code) => `'${code}'`).join(',');
-        expect(query).toContain(`CD.STATUS IN (${activeCodes})`);
+        expect(query).toContain('CD.TRU_ID IN (@id0, @id1, @id2)');
+        expect(query).toContain('GROUP BY CD.TRU_ID');
+        expect(query).toContain("CD.STATUS IS NULL OR LTRIM(RTRIM(CD.STATUS)) = ''");
+      });
+
+      test('should treat a status as active by chapter where the chapter changes its meaning', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+        await gateway.getTodOnlyCandidates(context, [1]);
+
+        const [, query] = mockExecuteQuery.mock.calls[0];
+        expect(query).toContain("(CD.CHAPTER = '12CBC' AND CD.STATUS IN ('2'))");
       });
 
       test('should not query when the list is empty', async () => {
-        expect(await gateway.getActiveTrusteeIds(context, [])).toEqual([]);
+        expect(await gateway.getTodOnlyCandidates(context, [])).toEqual([]);
         expect(mockExecuteQuery).not.toHaveBeenCalled();
       });
 
       test('should wrap query errors as CamsError', async () => {
         mockExecuteQuery.mockRejectedValue(new Error('boom'));
 
-        await expect(gateway.getActiveTrusteeIds(context, [1])).rejects.toBeInstanceOf(CamsError);
+        await expect(gateway.getTodOnlyCandidates(context, [1])).rejects.toBeInstanceOf(CamsError);
+      });
+    });
+
+    describe('active status codes', () => {
+      // Literal lists on purpose: adding or removing a code changes which trustees the trustee
+      // data report lists as "in TOD only" and which the migration loads by default.
+      test('should treat exactly these status codes as active on every chapter', () => {
+        expect([...ACTIVE_STATUS_CODES].sort()).toEqual([
+          '1',
+          '12',
+          '8',
+          'C',
+          'E',
+          'O',
+          'P',
+          'PA',
+          'S',
+          'V',
+        ]);
+      });
+
+      test('should treat exactly these status codes as active only on their case-by-case chapter', () => {
+        expect(
+          Object.fromEntries(
+            Object.entries(CHAPTER_ACTIVE_STATUS_CODES).map(([chapter, codes]) => [
+              chapter,
+              [...codes].sort(),
+            ]),
+          ),
+        ).toEqual({ '12CBC': ['2'], '13CBC': [] });
+      });
+
+      test.each([
+        {
+          method: 'getTrusteesPage' as const,
+          call: (g: AtsGatewayImpl) => g.getTrusteesPage(context, null, 50),
+        },
+        {
+          method: 'getTrusteeCount' as const,
+          call: (g: AtsGatewayImpl) => g.getTrusteeCount(context),
+        },
+      ])('$method should filter by the same chapter-aware active statuses', async ({ call }) => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+        await call(gateway);
+
+        const [, query] = mockExecuteQuery.mock.calls[0];
+        expect(query).toContain("(CD.CHAPTER = '12CBC' AND CD.STATUS IN ('2'))");
       });
     });
 
