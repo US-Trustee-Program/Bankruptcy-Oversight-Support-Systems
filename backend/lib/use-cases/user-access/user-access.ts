@@ -2,6 +2,9 @@ import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
   ALL_SCOPE,
+  newRoleAssignment,
+  roleAssignmentAuditEntry,
+  roleAssignmentState,
   PermissionScope,
   RoleAssignmentGrantResult,
   scopesOverlap,
@@ -83,45 +86,6 @@ function resolveScope(
   return { scope: { regionId: office.regionId, officeCode: office.officeCode } };
 }
 
-function stateOf(assignment: UserRoleAssignment) {
-  return {
-    role: assignment.role,
-    regionId: assignment.regionId,
-    officeCode: assignment.officeCode,
-    active: assignment.active,
-  };
-}
-
-function auditEntry(
-  action: RoleAssignmentAuditEntry['action'],
-  assignment: UserRoleAssignment,
-  previousState: RoleAssignmentAuditEntry['previousState'],
-  newState: RoleAssignmentAuditEntry['newState'],
-  performer: CamsUserReference,
-  performedAt: string,
-  replacedByAssignmentId: string | null,
-): RoleAssignmentAuditEntry {
-  // The top-level role and scope are read from the state so the two can't disagree.
-  const { role, regionId, officeCode } = newState;
-  return {
-    documentType: 'ROLE_ASSIGNMENT_AUDIT',
-    id: randomUUID(),
-    assignmentId: assignment.id,
-    action,
-    userId: assignment.userId,
-    userName: assignment.userName,
-    role,
-    regionId,
-    officeCode,
-    performedBy: performer.id,
-    performedByName: performer.name,
-    performedAt,
-    previousState,
-    newState,
-    replacedByAssignmentId,
-  };
-}
-
 export class UserAccessUseCase {
   private readonly assignmentRepository: UserRoleAssignmentRepository;
   private readonly auditRepository: RoleAssignmentAuditRepository;
@@ -196,29 +160,30 @@ export class UserAccessUseCase {
     let created = false;
 
     if (!permission) {
-      const assignment: UserRoleAssignment = {
-        documentType: 'USER_ROLE_ASSIGNMENT',
+      const assignment = newRoleAssignment({
         id: randomUUID(),
-        userId: member.id,
-        userName: member.name,
-        email: member.email,
+        user: member,
         role: request.role,
-        regionId: scope.regionId,
-        officeCode: scope.officeCode,
-        assignedBy: performer.id,
-        assignedByName: performer.name,
+        scope,
+        assignedBy: performer,
         assignedAt: now,
-        expiresAt: null,
-        active: true,
-        activeKey,
-      };
+      });
       const inserted = await this.assignmentRepository.create(assignment);
       if (inserted) {
         permission = inserted;
         created = true;
         await this.writeAudit(
           context,
-          auditEntry('CREATED', inserted, null, stateOf(inserted), performer, now, null),
+          roleAssignmentAuditEntry({
+            id: randomUUID(),
+            action: 'CREATED',
+            assignment: inserted,
+            previousState: null,
+            newState: roleAssignmentState(inserted),
+            performer,
+            performedAt: now,
+            replacedByAssignmentId: null,
+          }),
         );
       } else {
         // Another grant wrote the same permission between our read and our write.
@@ -249,15 +214,16 @@ export class UserAccessUseCase {
       replaced.push(deactivated);
       await this.writeAudit(
         context,
-        auditEntry(
-          'DEACTIVATED',
-          overlapping,
-          stateOf(overlapping),
-          stateOf(deactivated),
+        roleAssignmentAuditEntry({
+          id: randomUUID(),
+          action: 'DEACTIVATED',
+          assignment: overlapping,
+          previousState: roleAssignmentState(overlapping),
+          newState: roleAssignmentState(deactivated),
           performer,
-          now,
-          permission.id,
-        ),
+          performedAt: now,
+          replacedByAssignmentId: permission.id,
+        }),
       );
     }
 

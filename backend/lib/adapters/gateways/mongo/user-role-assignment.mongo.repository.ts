@@ -1,4 +1,4 @@
-import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
+import { deactivationOf, UserRoleAssignment } from '@common/cams/user-access';
 import { CamsRoleType } from '@common/cams/roles';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
@@ -66,7 +66,7 @@ export class UserRoleAssignmentMongoRepository
    * again. The filter includes userId, the collection's shard key.
    */
   async deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null> {
-    const changes = { active: false, activeKey: inactiveKeyFor(assignment.id) };
+    const changes = deactivationOf(assignment);
     try {
       return await this.getAdapter<UserRoleAssignment>().findOneAndUpdate(
         and(

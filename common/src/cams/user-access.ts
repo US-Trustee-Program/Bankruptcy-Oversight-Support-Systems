@@ -37,8 +37,9 @@ type RoleAssignmentState = {
 
 /**
  * An append-only record of a change to a UserRoleAssignment. A DEACTIVATED entry's
- * replacedByAssignmentId is the id of the permission that caused it (null for CREATED, and for a
- * DEACTIVATED entry nothing replaced, which cannot currently happen).
+ * replacedByAssignmentId is the id of the newer permission that replaced it, or null when the
+ * permission was revoked rather than replaced (the dev-tools superuser revoke). It is always null
+ * for CREATED.
  */
 export type RoleAssignmentAuditEntry = {
   documentType: 'ROLE_ASSIGNMENT_AUDIT';
@@ -113,6 +114,82 @@ export function activeKeyFor(
 /** The activeKey of a deactivated assignment: unique to it, so it never blocks a new grant. */
 export function inactiveKeyFor(assignmentId: string): string {
   return `inactive|${assignmentId}`;
+}
+
+/**
+ * The document for a new, active permission. The caller supplies its id (a random UUID) and the
+ * time, so every writer (the access use case, the dev-tools superuser command) builds the same
+ * shape.
+ */
+export function newRoleAssignment(grant: {
+  id: string;
+  user: CamsUserReference;
+  role: CamsRoleType;
+  scope: PermissionScope;
+  assignedBy: CamsUserReference;
+  assignedAt: string;
+}): UserRoleAssignment {
+  const { id, user, role, scope, assignedBy, assignedAt } = grant;
+  return {
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id,
+    userId: user.id,
+    userName: user.name,
+    ...(user.email ? { email: user.email } : {}),
+    role,
+    regionId: scope.regionId,
+    officeCode: scope.officeCode,
+    assignedBy: assignedBy.id,
+    assignedByName: assignedBy.name,
+    assignedAt,
+    expiresAt: null,
+    active: true,
+    activeKey: activeKeyFor(role, scope.regionId, scope.officeCode),
+  };
+}
+
+/** The fields that deactivate a permission. It is never deleted; its activeKey is freed. */
+export function deactivationOf(assignment: Pick<UserRoleAssignment, 'id'>) {
+  return { active: false, activeKey: inactiveKeyFor(assignment.id) };
+}
+
+/** A permission's role, scope and active flag, as an audit entry records them. */
+export function roleAssignmentState(assignment: UserRoleAssignment): RoleAssignmentState {
+  const { role, regionId, officeCode, active } = assignment;
+  return { role, regionId, officeCode, active };
+}
+
+/** The audit entry for one change to a permission. The caller supplies its id and the time. */
+export function roleAssignmentAuditEntry(change: {
+  id: string;
+  action: RoleAssignmentAuditEntry['action'];
+  assignment: UserRoleAssignment;
+  previousState: RoleAssignmentState | null;
+  newState: RoleAssignmentState;
+  performer: CamsUserReference;
+  performedAt: string;
+  replacedByAssignmentId: string | null;
+}): RoleAssignmentAuditEntry {
+  const { assignment, newState, performer } = change;
+  // The top-level role and scope are read from the new state so the two can't disagree.
+  const { role, regionId, officeCode } = newState;
+  return {
+    documentType: 'ROLE_ASSIGNMENT_AUDIT',
+    id: change.id,
+    assignmentId: assignment.id,
+    action: change.action,
+    userId: assignment.userId,
+    userName: assignment.userName,
+    role,
+    regionId,
+    officeCode,
+    performedBy: performer.id,
+    performedByName: performer.name,
+    performedAt: change.performedAt,
+    previousState: change.previousState,
+    newState,
+    replacedByAssignmentId: change.replacedByAssignmentId,
+  };
 }
 
 // Every CAMS role can be granted. (CamsRoles already leaves out PrivilegedIdentityUser.)

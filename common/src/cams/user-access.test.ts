@@ -3,7 +3,11 @@ import { CamsRole, CamsRoles } from './roles';
 import { validateObject, VALID } from './validation';
 import {
   activeKeyFor,
+  deactivationOf,
   inactiveKeyFor,
+  newRoleAssignment,
+  roleAssignmentAuditEntry,
+  roleAssignmentState,
   scopeLabel,
   scopesOverlap,
   RoleAssignmentGrantRequest,
@@ -29,6 +33,127 @@ describe('user-access', () => {
   describe('inactiveKeyFor', () => {
     test('should build a key unique to the deactivated assignment', () => {
       expect(inactiveKeyFor('assignment-1')).toEqual('inactive|assignment-1');
+    });
+  });
+
+  describe('document builders', () => {
+    const user = { id: 'user-1', name: 'Alice Adams', email: 'alice@example.com' };
+    const admin = { id: 'admin-1', name: 'Bob Admin' };
+    const region2 = { regionId: '02', officeCode: null };
+    const NOW = '2026-11-18T12:00:00.000Z';
+
+    function grant(overrides: Partial<Parameters<typeof newRoleAssignment>[0]> = {}) {
+      return newRoleAssignment({
+        id: 'assignment-1',
+        user,
+        role: CamsRole.TrialAttorney,
+        scope: region2,
+        assignedBy: admin,
+        assignedAt: NOW,
+        ...overrides,
+      });
+    }
+
+    test('newRoleAssignment should build an active permission keyed to its role and scope', () => {
+      expect(grant()).toStrictEqual({
+        documentType: 'USER_ROLE_ASSIGNMENT',
+        id: 'assignment-1',
+        userId: 'user-1',
+        userName: 'Alice Adams',
+        email: 'alice@example.com',
+        role: CamsRole.TrialAttorney,
+        regionId: '02',
+        officeCode: null,
+        assignedBy: 'admin-1',
+        assignedByName: 'Bob Admin',
+        assignedAt: NOW,
+        expiresAt: null,
+        active: true,
+        activeKey: 'TrialAttorney|02|*',
+      });
+    });
+
+    test('newRoleAssignment should leave email off when the user has none', () => {
+      expect(grant({ user: { id: 'user-1', name: 'Alice Adams' } })).not.toHaveProperty('email');
+    });
+
+    test('roleAssignmentState should record role, scope and whether it is active', () => {
+      expect(roleAssignmentState({ ...grant(), active: false })).toStrictEqual({
+        role: CamsRole.TrialAttorney,
+        regionId: '02',
+        officeCode: null,
+        active: false,
+      });
+    });
+
+    test('deactivationOf should mark the permission inactive and free its activeKey', () => {
+      expect(deactivationOf(grant())).toStrictEqual({
+        active: false,
+        activeKey: 'inactive|assignment-1',
+      });
+    });
+
+    test('roleAssignmentAuditEntry should record who changed which permission, and how', () => {
+      const replaced = grant({ id: 'assignment-0', scope: { regionId: '02', officeCode: 'X' } });
+      const after = { ...replaced, ...deactivationOf(replaced) };
+
+      expect(
+        roleAssignmentAuditEntry({
+          id: 'audit-1',
+          action: 'DEACTIVATED',
+          assignment: replaced,
+          previousState: roleAssignmentState(replaced),
+          newState: roleAssignmentState(after),
+          performer: admin,
+          performedAt: NOW,
+          replacedByAssignmentId: 'assignment-1',
+        }),
+      ).toStrictEqual({
+        documentType: 'ROLE_ASSIGNMENT_AUDIT',
+        id: 'audit-1',
+        assignmentId: 'assignment-0',
+        action: 'DEACTIVATED',
+        userId: 'user-1',
+        userName: 'Alice Adams',
+        role: CamsRole.TrialAttorney,
+        regionId: '02',
+        officeCode: 'X',
+        performedBy: 'admin-1',
+        performedByName: 'Bob Admin',
+        performedAt: NOW,
+        previousState: {
+          role: CamsRole.TrialAttorney,
+          regionId: '02',
+          officeCode: 'X',
+          active: true,
+        },
+        newState: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: 'X', active: false },
+        replacedByAssignmentId: 'assignment-1',
+      });
+    });
+
+    test('roleAssignmentAuditEntry should take the top-level role and scope from the new state', () => {
+      const entry = roleAssignmentAuditEntry({
+        id: 'audit-2',
+        action: 'CREATED',
+        assignment: grant(),
+        previousState: null,
+        newState: {
+          role: CamsRole.CaseAssignmentManager,
+          regionId: '03',
+          officeCode: 'Y',
+          active: true,
+        },
+        performer: admin,
+        performedAt: NOW,
+        replacedByAssignmentId: null,
+      });
+
+      expect(entry).toMatchObject({
+        role: CamsRole.CaseAssignmentManager,
+        regionId: '03',
+        officeCode: 'Y',
+      });
     });
   });
 

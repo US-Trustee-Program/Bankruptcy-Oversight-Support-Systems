@@ -1,127 +1,75 @@
 /**
- * Automatic data quality validation for ALL scenario files.
+ * Data quality validation for every scenario the runner seeds.
  *
- * This test suite validates every scenario file in this directory,
- * ensuring all test data meets quality standards:
- * - Debtors have phoneticTokens
- * - JointDebtors have phoneticTokens
- * - Trustees have phoneticTokens
- * - Phone numbers are in ###-###-#### format
- * - Emails contain @ symbol
+ * Scenarios are discovered the way the runner discovers them (every .ts file in this directory
+ * that isn't a test), so a new scenario is validated without being registered here.
  *
- * To add a new scenario to validation, import it below and add to the SCENARIOS array.
+ * Each scenario's operations go through validators.validateAllSeedOperations, the same check the
+ * runner applies before seeding. See that function for the rules; in short:
+ * - cases and transfer orders: DXTR linkage (dxtrId), debtor phoneticTokens and phone format,
+ *   attorney phone and email format
+ * - trustees: phoneticTokens, phone and email format
+ * - trustee appointments: required fields and division codes
+ * - trustee match verification: every recorded comparison is backed by data
+ * - bankruptcy software: contact phone and email format
+ * - notification routing: at least one recipient, each an email address
+ *
+ * A scenario must write at least one document the validator checks, so a scenario can't pass
+ * here only because nothing it seeds is checked.
  */
 
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { SeedContext } from '../../runner.js';
+import { readdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { describe, test, expect, vi } from 'vitest';
+import type { GeneratorScript, SeedContext } from '../../runner.js';
 import { validators } from '../lib/test-data-utils.js';
+import { sequentialCaseIds } from '../lib/scenario-test-doubles.js';
 
-// Mock mssql to prevent real database connections during tests
-vi.mock('mssql', () => ({
-  default: {
-    ConnectionPool: class {
-      async connect() {
-        return this;
-      }
-      request() {
-        const mockRequest: { query: ReturnType<typeof vi.fn>; input?: ReturnType<typeof vi.fn> } = {
-          query: vi.fn().mockResolvedValue({
-            recordset: [{ nextSeq: 1 }],
-          }),
-        };
-        // Support chaining
-        mockRequest.input = vi.fn().mockReturnValue(mockRequest);
-        return mockRequest;
-      }
-      async close() {
-        return undefined;
-      }
-    },
-    VarChar: 'VarChar',
-    Int: 'Int',
-  },
-}));
+// No real DXTR connection. A non-empty recordset because dxtr-historical-trustees reads
+// `nextSeq` from it; ensureDxtrCase then treats every case as already in DXTR, which doesn't
+// matter here because the validator doesn't check DXTR rows.
+vi.mock('mssql', async () =>
+  (await import('../lib/scenario-test-doubles.js')).fakeMssqlModule([{ nextSeq: 1 }]),
+);
 
-// Import all scenario generators
-import { generate as generateAccessManagement } from './access-management.js';
-import { generate as generateAdminData } from './admin-data.js';
-import { generate as generateCasesFuzzySearch } from './cases-fuzzy-search.js';
-import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
-import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
-import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
-import { generate as generateDxtrHistoricalTrustees } from './dxtr-historical-trustees.js';
-import { generate as generateOversightAssignments } from './oversight-assignments.js';
-import { generate as generateTrusteeStaff } from './trustee-staff.js';
-import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
-import { generate as generateTrusteeData } from './trustee-data.js';
-import { generate as generateTrusteeFuzzySearch } from './trustee-fuzzy-search.js';
-import { generate as generateTrusteeKeyDates } from './trustee-key-dates.js';
-import { generate as generateTrusteeMatchAllScenarios } from './trustee-match-all-scenarios.js';
-import { generate as generateTrusteesComprehensive } from './trustees-comprehensive.js';
-import { generate as generateTrusteeFilterConjunction } from './trustee-filter-conjunction.js';
-import { generate as generateNotificationRouting } from './notification-routing.js';
-import { generate as generateTrusteeAppointmentTasks } from './trustee-appointment-tasks.js';
+const SCENARIOS_DIR = dirname(fileURLToPath(import.meta.url));
+const SCENARIO_FILES = readdirSync(SCENARIOS_DIR).filter(
+  (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
+);
 
-// Array of all scenarios to validate
-const SCENARIOS = [
-  { name: 'access-management', generate: generateAccessManagement },
-  { name: 'admin-data', generate: generateAdminData },
-  { name: 'cases-fuzzy-search', generate: generateCasesFuzzySearch },
-  { name: 'ch11-with-transfer-orders', generate: generateCh11WithTransferOrders },
-  { name: 'ch7-with-assignment', generate: generateCh7WithAssignment },
-  { name: 'consolidation-scenarios', generate: generateConsolidationScenarios },
-  { name: 'dxtr-historical-trustees', generate: generateDxtrHistoricalTrustees },
-  { name: 'oversight-assignments', generate: generateOversightAssignments },
-  { name: 'trustee-staff', generate: generateTrusteeStaff },
-  { name: 'trustee-case-list', generate: generateTrusteeCaseList },
-  { name: 'trustee-data', generate: generateTrusteeData },
-  { name: 'trustee-fuzzy-search', generate: generateTrusteeFuzzySearch },
-  { name: 'trustee-key-dates', generate: generateTrusteeKeyDates },
-  { name: 'trustee-match-all-scenarios', generate: generateTrusteeMatchAllScenarios },
-  { name: 'trustees-comprehensive', generate: generateTrusteesComprehensive },
-  { name: 'trustee-filter-conjunction', generate: generateTrusteeFilterConjunction },
-  { name: 'notification-routing', generate: generateNotificationRouting },
-  { name: 'trustee-appointment-tasks', generate: generateTrusteeAppointmentTasks },
-];
-
-// Create mock context for scenario generation
-let mockContext: SeedContext;
-
-beforeEach(() => {
-  mockContext = {
-    generateCaseId: vi.fn().mockResolvedValue({
-      caseId: '081-99-99999',
-      caseNumber: '99-99999',
-      csCaseId: 'SEED99999',
-    }),
+function seedContext(): SeedContext {
+  return {
+    generateCaseId: sequentialCaseIds(),
     mongoClient: {
-      db: vi.fn().mockReturnValue({
-        collection: vi.fn().mockReturnValue({
-          findOne: vi.fn().mockResolvedValue(null),
-        }),
-      }),
+      db: () => ({ collection: () => ({ findOne: async () => null }) }),
     } as never,
   };
-});
+}
+
+async function operationsFor(file: string) {
+  const scenario = (await import(join(SCENARIOS_DIR, file))) as Partial<GeneratorScript>;
+  expect(scenario.generate, `${file} must export generate()`).toBeTypeOf('function');
+  return scenario.generate!(seedContext());
+}
 
 describe('Data Quality Validation (All Scenarios)', () => {
-  for (const scenario of SCENARIOS) {
-    test(`${scenario.name} meets data quality standards`, async () => {
-      // Generate the seed operations
-      const ops = await scenario.generate(mockContext);
+  test('finds the scenarios', () => {
+    expect(SCENARIO_FILES).toContain('admin-data.ts');
+    expect(SCENARIO_FILES).toContain('notification-routing.ts');
+    expect(SCENARIO_FILES).not.toContain('scenarios.test.ts');
+  });
 
-      // Validate all operations
-      const errors = validators.validateAllSeedOperations(ops);
+  test.each(SCENARIO_FILES)('%s meets data quality standards', async (file) => {
+    const ops = await operationsFor(file);
 
-      // If there are errors, fail the test with detailed messages
-      if (errors.length > 0) {
-        throw new Error(
-          `Data quality issues in ${scenario.name}:\n${errors.map((e) => `  - ${e}`).join('\n')}`,
-        );
-      }
-
-      // Explicitly pass if no errors
-      expect(errors).toEqual([]);
-    });
-  }
+    const checked = ops.filter(
+      (op) => validators.checksCollection(op.collectionOrTable) && op.data.length > 0,
+    );
+    expect(
+      checked,
+      `${file} writes nothing the validator checks; add a check for its collections`,
+    ).not.toHaveLength(0);
+    expect(validators.validateAllSeedOperations(ops)).toEqual([]);
+  });
 });
