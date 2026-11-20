@@ -83,10 +83,6 @@ describe('user-session.gateway test', () => {
     vi.spyOn(factory, 'getUsersRepository').mockReturnValue(mockUsersRepository as UsersRepository);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('should return valid session and add to cache when cache miss is encountered', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     getUserSpy.mockResolvedValue({ user: mockUser, jwt: camsJwt });
@@ -271,6 +267,16 @@ describe('user-session.gateway test', () => {
       return spy.mock.calls.filter(([, eventName]) => eventName === SIGN_IN_EVENT);
     }
 
+    function expectSignInEvent(spy: MockInstance, completion: unknown) {
+      expect(spy).toHaveBeenCalledWith(
+        expect.anything(),
+        SIGN_IN_EVENT,
+        completion,
+        undefined,
+        context.logger,
+      );
+    }
+
     function givenNewSessionWithGroups(groups: string[], user: CamsUserReference = mockUser) {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
@@ -305,6 +311,7 @@ describe('user-session.gateway test', () => {
           'USTP CAMS Region 3 Office Wilmington',
           'USTP CAMS Region 2 Office Manhattan',
           'USTP CAMS Region 2 Office Buffalo',
+          'USTP CAMS Region 18 Office Seattle',
           'USTP CAMS Case Assignment Manager',
           'USTP CAMS Trial Attorney',
         ],
@@ -314,23 +321,29 @@ describe('user-session.gateway test', () => {
 
       await gateway.lookup(context, jwtString);
 
-      const [[, , completion]] = signInEventCalls(completeTraceSpy);
-      expect(completion).toEqual({
-        success: true,
-        properties: {
-          email: 'pat.person@example.gov',
-          roles: JSON.stringify([CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney]),
-          officeCodes: JSON.stringify([
-            'USTP_CAMS_Region_2_Office_Buffalo',
-            'USTP_CAMS_Region_2_Office_Manhattan',
-            'USTP_CAMS_Region_3_Office_Wilmington',
-          ]),
-          officeNames: JSON.stringify(['Buffalo', 'Manhattan', 'Wilmington']),
-          regionIds: JSON.stringify(['2', '3']),
-          regionNames: JSON.stringify(['NEW YORK', 'PHILADELPHIA']),
+      expect(completeTraceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        SIGN_IN_EVENT,
+        {
+          success: true,
+          properties: {
+            email: 'pat.person@example.gov',
+            roles: JSON.stringify([CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney]),
+            officeCodes: JSON.stringify([
+              'USTP_CAMS_Region_18_Office_Seattle',
+              'USTP_CAMS_Region_2_Office_Buffalo',
+              'USTP_CAMS_Region_2_Office_Manhattan',
+              'USTP_CAMS_Region_3_Office_Wilmington',
+            ]),
+            officeNames: JSON.stringify(['Seattle', 'Buffalo', 'Manhattan', 'Wilmington']),
+            regionIds: JSON.stringify(['2', '3', '18']),
+            regionNames: JSON.stringify(['NEW YORK', 'PHILADELPHIA', 'SEATTLE']),
+          },
+          measurements: {},
         },
-        measurements: {},
-      });
+        undefined,
+        context.logger,
+      );
     });
 
     test('should record an empty email when the identity provider supplies none', async () => {
@@ -339,8 +352,38 @@ describe('user-session.gateway test', () => {
 
       await gateway.lookup(context, jwtString);
 
-      const [[, , completion]] = signInEventCalls(completeTraceSpy);
-      expect(completion.properties.email).toEqual('');
+      expectSignInEvent(
+        completeTraceSpy,
+        expect.objectContaining({ properties: expect.objectContaining({ email: '' }) }),
+      );
+    });
+
+    test('should record the email trimmed and lowercased', async () => {
+      givenNewSessionWithGroups([], {
+        id: 'person-id',
+        name: 'Pat Person',
+        email: '  Pat.Person@Example.GOV ',
+      });
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await gateway.lookup(context, jwtString);
+
+      expectSignInEvent(
+        completeTraceSpy,
+        expect.objectContaining({
+          properties: expect.objectContaining({ email: 'pat.person@example.gov' }),
+        }),
+      );
+    });
+
+    test('should not emit a sign-in event when the session cannot be saved', async () => {
+      givenNewSessionWithGroups([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('db down'));
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await expect(gateway.lookup(context, jwtString)).rejects.toThrow();
+
+      expect(signInEventCalls(completeTraceSpy)).toHaveLength(0);
     });
 
     test('should record roles and offices granted through privileged identity elevation', async () => {
@@ -359,12 +402,14 @@ describe('user-session.gateway test', () => {
 
       await gateway.lookup(context, jwtString);
 
-      const [[, , completion]] = signInEventCalls(completeTraceSpy);
-      expect(completion.properties).toEqual(
+      expectSignInEvent(
+        completeTraceSpy,
         expect.objectContaining({
-          roles: JSON.stringify([CamsRole.SuperUser, CamsRole.TrialAttorney]),
-          officeCodes: JSON.stringify(['USTP_CAMS_Region_2_Office_Manhattan']),
-          regionIds: JSON.stringify(['2']),
+          properties: expect.objectContaining({
+            roles: JSON.stringify([CamsRole.SuperUser, CamsRole.TrialAttorney]),
+            officeCodes: JSON.stringify(['USTP_CAMS_Region_2_Office_Manhattan']),
+            regionIds: JSON.stringify(['2']),
+          }),
         }),
       );
     });
@@ -379,12 +424,15 @@ describe('user-session.gateway test', () => {
 
       const session = await gateway.lookup(context, jwtString);
 
-      expect(session.accessToken).toEqual(jwtString);
+      expect(session).toEqual({
+        ...expectedSession,
+        expires: expect.any(Number),
+        issuer: expect.stringMatching(urlRegex),
+      });
       expect(upsertSpy).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.objectContaining({ message: 'telemetry down' }),
+        'USER-SESSION-GATEWAY',
+        'Failed to emit sign-in telemetry event: telemetry down',
       );
     });
   });
