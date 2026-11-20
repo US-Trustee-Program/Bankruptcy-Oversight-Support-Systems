@@ -205,10 +205,12 @@ user defaults to Flexion Team. Anything else exits before connecting.
 | `SEED_SUPERUSER_NAME`  | `Flexion Team`                       | Display name. Required to grant when `SEED_SUPERUSER_ID` is set                           |
 | `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us`       | Email. Optional when `SEED_SUPERUSER_ID` is set                                           |
 
-The command doesn't check Okta's "USTP Cams Users" group. A mistyped id writes a permission nobody
-can use. A correct id for someone outside the group still gets a working Super User session, but
-they won't appear on the Permissions screen, so only `revoke` can remove it. A session is cached for
-the life of its token, so a grant or revoke takes effect at the user's next login.
+The command doesn't check Okta's "USTP Cams Users" group, so a mistyped id writes a permission
+nobody can use and that won't appear on the Permissions screen; remove it with `revoke`. In USTP,
+Okta only lets members of that group log in to CAMS. The Flexion dev Okta org assigns users to the
+CAMS app directly instead, so there a correct id for someone outside the group can still log in as
+Super User. A session is cached for the life of its token, so a grant or revoke takes effect at the
+user's next login.
 
 ### Bank and Software Assignments
 
