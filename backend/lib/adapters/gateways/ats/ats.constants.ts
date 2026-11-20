@@ -109,6 +109,22 @@ export const CBC_STATUS_MAP: Record<
 };
 
 /**
+ * Status codes that are active only on a case-by-case chapter (CBC_STATUS_MAP), beyond those in
+ * ACTIVE_STATUS_CODES. For example, '2' is active on 12CBC but on no other chapter.
+ */
+export const CHAPTER_ACTIVE_STATUS_CODES: Readonly<Record<string, ReadonlySet<string>>> =
+  Object.fromEntries(
+    Object.entries(CBC_STATUS_MAP).map(([chapter, codes]) => [
+      chapter,
+      new Set(
+        Object.entries(codes)
+          .filter(([code, v]) => v.status === 'active' && !ACTIVE_STATUS_CODES.has(code))
+          .map(([code]) => code),
+      ),
+    ]),
+  );
+
+/**
  * Status codes that indicate Subchapter V appointments (Chapter 11).
  * When combined with Chapter 11, these resolve to '11-subchapter-v'.
  */

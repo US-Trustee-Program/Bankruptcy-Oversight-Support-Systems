@@ -13,6 +13,7 @@ import { POLL_INTERVAL_MS, TrusteeDataReport } from './TrusteeDataReport';
 const SUMMARY: TrusteeDataReportSummary = {
   trusteesCompared: 1200,
   todOnly: 4,
+  todOnlyStatusMissing: 1,
   camsOnly: 2,
   fieldDifferences: 9,
   fieldDifferencesByField: {
@@ -92,6 +93,7 @@ describe('TrusteeDataReport', () => {
     const counts = {
       'trustees-compared': '1,200',
       'tod-only': '4',
+      'tod-only-status-missing': '1',
       'cams-only': '2',
       'field-differences': '9',
       'field-publicAddress': '3',
@@ -104,6 +106,20 @@ describe('TrusteeDataReport', () => {
     expect(
       screen.getByTestId('trustee-data-report-count-field-phone').closest('tr'),
     ).toHaveTextContent('Field differences: Phone');
+    expect(
+      screen.getByTestId('trustee-data-report-count-tod-only-status-missing').closest('tr'),
+    ).toHaveTextContent('In TOD only: Status missing, needs review');
+  });
+
+  test('should show zero status-missing trustees for a run completed before that count existed', async () => {
+    const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
+    mockGet({ latestCompletedRun: { ...COMPLETED, summary: olderSummary } });
+
+    await renderLoaded();
+
+    expect(
+      screen.getByTestId('trustee-data-report-count-tod-only-status-missing'),
+    ).toHaveTextContent('0');
   });
 
   test('should block start while a run is in progress, without announcing what was already true on load', async () => {

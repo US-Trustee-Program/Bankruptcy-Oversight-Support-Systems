@@ -1,6 +1,6 @@
 -- TOD (ATS) tables the trustee data report reads, with only the columns it reads:
 -- TRUSTEE_COLUMNS in backend/lib/adapters/gateways/ats/ats.gateway.ts, and the
--- CHAPTER_DETAILS columns getActiveTrusteeIds filters on.
+-- CHAPTER_DETAILS columns getTodOnlyCandidates filters on.
 -- Runs against the ATS_INT database, which the harness creates first. Drops and recreates the
 -- tables so a column change here always takes effect; seed-sql reloads the rows.
 
@@ -41,7 +41,7 @@ GO
 
 CREATE TABLE CHAPTER_DETAILS (
     TRU_ID  INT         NOT NULL,
-    CHAPTER VARCHAR(10) NULL, -- not read by the report; documents chapter-dependent statuses
+    CHAPTER VARCHAR(10) NULL, -- some statuses are active only on one chapter, e.g. '2' on 12CBC
     STATUS  VARCHAR(5)  NULL
   )
 GO

@@ -50,15 +50,26 @@ function CompletedRunSummary({ run }: Readonly<{ run: TrusteeDataReportRun }>) {
         <table className="usa-table usa-table--borderless">
           <caption className="usa-sr-only">Trustee data report counts</caption>
           <tbody>
-            {[
-              ['trustees-compared', 'Trustees compared', summary.trusteesCompared],
-              ['tod-only', 'In TOD only', summary.todOnly],
-              ['cams-only', 'In CAMS only', summary.camsOnly],
-              ['field-differences', 'Field differences', summary.fieldDifferences],
-            ].map(([key, label, value]) => (
+            {(
+              [
+                ['trustees-compared', 'Trustees compared', summary.trusteesCompared],
+                ['tod-only', 'In TOD only', summary.todOnly],
+                [
+                  'tod-only-status-missing',
+                  'Status missing, needs review',
+                  summary.todOnlyStatusMissing ?? 0,
+                  'In TOD only: ',
+                ],
+                ['cams-only', 'In CAMS only', summary.camsOnly],
+                ['field-differences', 'Field differences', summary.fieldDifferences],
+              ] as [string, string, number, string?][]
+            ).map(([key, label, value, parent]) => (
               <tr key={key}>
-                <th scope="row">{label}</th>
-                <td data-testid={`trustee-data-report-count-${key}`}>{count(value as number)}</td>
+                <th scope="row" className={parent ? 'padding-left-4' : undefined}>
+                  {parent && <span className="usa-sr-only">{parent}</span>}
+                  {label}
+                </th>
+                <td data-testid={`trustee-data-report-count-${key}`}>{count(value)}</td>
               </tr>
             ))}
             {(Object.keys(FIELD_LABELS) as TrusteeProfileField[]).map((field) => (

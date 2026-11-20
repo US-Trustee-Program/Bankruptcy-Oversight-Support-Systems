@@ -14,6 +14,11 @@ A run reports three kinds of difference:
 | TOD only  | A TOD trustee with at least one active appointment that no CAMS trustee links to                   |
 | CAMS only | A CAMS trustee with no TOD IDs, or whose TOD IDs no longer exist in TOD                            |
 
+An appointment is active when its status is active on every chapter (for example `PA` or `1`), or
+active on its case-by-case chapter only (`2` on `12CBC`). A TOD trustee with no active appointment
+but an empty status on one is also listed as TOD only, flagged for review (`todStatusMissing` on the
+row), and counted again under "Status missing, needs review".
+
 Each CAMS trustee is compared with the profile the original migration would build from all of its
 linked TOD records. Differences the migration's own cleanup created are not reported, and neither
 are formatting-only differences: case, spacing, phone punctuation and email case.

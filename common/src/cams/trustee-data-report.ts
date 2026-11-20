@@ -11,6 +11,11 @@ export type TrusteeProfileField =
 export type TrusteeDataReportSummary = {
   trusteesCompared: number;
   todOnly: number;
+  /**
+   * Of todOnly, the trustees listed because their TOD status is empty, for review. Absent on runs
+   * completed before this count was added (2026-11-20).
+   */
+  todOnlyStatusMissing?: number;
   camsOnly: number;
   fieldDifferences: number;
   fieldDifferencesByField: Record<TrusteeProfileField, number>;
@@ -37,6 +42,8 @@ export type TrusteeDataDifference = {
   field?: TrusteeProfileField;
   camsValue?: string;
   todValue?: string;
+  /** tod-only only: listed for review because the trustee's TOD status is empty, not active. */
+  todStatusMissing?: boolean;
 };
 
 /**

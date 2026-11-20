@@ -75,62 +75,62 @@ and S42 are merged across pages, and S46 and S47 write their results from page 2
 Each scenario asserts the exact set of difference rows the run records for it: none, or the listed
 ones with their values.
 
-| ID  | Given                                                                             | Then                                                                        | Status                    |
-| --- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------- |
-| S01 | A linked trustee identical to TOD                                                 | Nothing reported                                                            | Pass                      |
-| S02 | Padded and double-spaced values, phone punctuation, email case                    | Nothing reported                                                            | Pass                      |
-| S03 | TOD has address line 2 and a separate `ZIP_PLUS`                                  | Nothing reported when CAMS has the same                                     | Pass                      |
-| S04 | TOD ZIP has a leading zero, with a `ZIP_PLUS`                                     | Nothing reported when CAMS has `02108-0001`                                 | Pass                      |
-| S05 | Only `DISP_ON_WEB_A2` is `y`                                                      | The A2 address is compared as public, the other as internal                 | Pass                      |
-| S06 | Both display flags are `y`                                                        | The first address stays public                                              | Pass                      |
-| S07 | TOD record has no person name; CAMS has a real name                               | A `name` difference against "Unknown"                                       | Pass                      |
-| S08 | Middle initial, and a suffix inside `LAST_NAME`                                   | Nothing reported                                                            | Pass                      |
-| S09 | Empty-string TOD columns                                                          | Nothing reported against absent CAMS fields                                 | Pass                      |
-| S10 | TOD phone `503-555-0119 204`; CAMS phone `503-555-0119`, extension `204`          | Nothing reported                                                            | Known gap                 |
-| S11 | Eleven-digit TOD phone with a country code                                        | Nothing reported                                                            | Pass                      |
-| S12 | Name differs                                                                      | One `name` difference with both values                                      | Pass                      |
-| S13 | Company name differs                                                              | One `companyName` difference                                                | Pass                      |
-| S14 | Public address differs                                                            | One `publicAddress` difference                                              | Pass                      |
-| S15 | Internal address differs                                                          | One `internalAddress` difference                                            | Pass                      |
-| S16 | Phone differs                                                                     | One `phone` difference                                                      | Pass                      |
-| S17 | Email differs                                                                     | One `email` difference                                                      | Pass                      |
-| S18 | Linked to one existing and one missing TOD ID                                     | Compared against the existing one; not CAMS only                            | Pass                      |
-| S19 | Linked TOD trustee has only inactive appointments                                 | Still compared                                                              | Pass                      |
-| S20 | Unlinked TOD trustee with one active and one resigned appointment                 | TOD only                                                                    | Pass                      |
-| S21 | Unlinked TOD trustee with only resigned appointments                              | Not reported                                                                | Pass                      |
-| S22 | Unlinked TOD trustee with no appointment rows                                     | Not reported                                                                | Pass                      |
-| S23 | The same person twice in TOD, neither record linked                               | TOD only, once per record                                                   | Pass                      |
-| S24 | An unlinked TOD record for a person CAMS links to a different TOD record          | The unlinked record is TOD only; the linked one matches                     | Pass                      |
-| S25 | Unlinked TOD trustee active through a converted-case (`O`) appointment            | TOD only                                                                    | Pass                      |
-| S26 | Merged trustee, TOD records on pages 1 and 2, CAMS holds the most complete record | Nothing reported; compared once                                             | Pass                      |
-| S27 | Merged trustee across pages, CAMS holds the less complete record                  | `publicAddress` difference against the most complete record (caveat)        | Pass                      |
-| S28 | Merged trustee, both records on page 1, CAMS holds the more complete record       | Nothing reported                                                            | Pass                      |
-| S29 | CAMS-native trustee with no TOD IDs                                               | CAMS only                                                                   | Pass                      |
-| S30 | CAMS trustee whose only TOD ID no longer exists                                   | CAMS only                                                                   | Pass                      |
-| S31 | CAMS trustee whose only TOD ID is not a number (none in CAMS today)               | CAMS only                                                                   | Pass                      |
-| S34 | Both display flags `N` (the most common combination)                              | The first address is public, A2 internal                                    | Pass                      |
-| S35 | `DISP_ON_WEB` missing, `DISP_ON_WEB_A2` `Y`                                       | The A2 address is public                                                    | Pass                      |
-| S36 | TOD trustee with no address at all                                                | Nothing reported against the empty CAMS address                             | Pass                      |
-| S37 | The public address has no state; the A2 address does                              | The public state comes from A2                                              | Pass                      |
-| S38 | `ZIP_PLUS` is not four digits                                                     | It is dropped; nothing reported against a five-digit CAMS ZIP               | Pass                      |
-| S39 | TOD phone has punctuation and no digits                                           | Nothing reported against a CAMS trustee with no phone                       | Pass                      |
-| S40 | Unlinked TOD trustee whose only status is inactive chapter 11 (`9`)               | Not reported                                                                | Pass                      |
-| S43 | Unlinked TOD trustee active through chapter 13 standing (`1`)                     | TOD only                                                                    | Pass                      |
-| S44 | Unlinked TOD trustee active through chapter 12 case-by-case (`2`)                 | TOD only                                                                    | Known gap                 |
-| S41 | Unlinked TOD trustee whose only status is empty                                   | TOD only, flagged for review                                                | Known gap                 |
-| S42 | Merged from three TOD records, two on page 2; CAMS holds the most complete        | Nothing reported                                                            | Pass                      |
-| S46 | Unlinked active TOD trustee on page 2 only                                        | TOD only                                                                    | Pass                      |
-| S47 | Trustee linked to one TOD record on page 2 only; email differs                    | One `email` difference                                                      | Pass                      |
-| S32 | Filler TOD trustees, and anything outside the scenarios                           | Nothing reported                                                            | Pass                      |
-| S33 | The whole run                                                                     | Compared and CAMS-only counts add up to the scenarios                       | Pass                      |
-| S45 | The whole run                                                                     | TOD-only and field-difference counts add up to the scenarios                | Known gap (S10, S41, S44) |
-| L1  | A run started through the start use case                                          | Completes on real infrastructure                                            | Pass                      |
-| L2  | A run completes                                                                   | The lock is released                                                        | Pass                      |
-| L3  | A second start while a run is active                                              | Refused with 409                                                            | Pass                      |
-| L4  | A second run completes                                                            | The first run and all of its rows are removed                               | Pass                      |
-| L5  | A run cannot read TOD (the `TRUSTEES` table is renamed for the run)               | Fails with "Could not read from TOD…"; previous results kept; lock released | Pass                      |
-| L6  | The lock is older than 2 hours                                                    | A start takes it over, marks that run failed, and completes                 | Pass                      |
-| L7  | A page message is delivered again after the run completed                         | Dead-lettered; results and summary unchanged                                | Pass                      |
+| ID  | Given                                                                             | Then                                                                        | Status          |
+| --- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------- |
+| S01 | A linked trustee identical to TOD                                                 | Nothing reported                                                            | Pass            |
+| S02 | Padded and double-spaced values, phone punctuation, email case                    | Nothing reported                                                            | Pass            |
+| S03 | TOD has address line 2 and a separate `ZIP_PLUS`                                  | Nothing reported when CAMS has the same                                     | Pass            |
+| S04 | TOD ZIP has a leading zero, with a `ZIP_PLUS`                                     | Nothing reported when CAMS has `02108-0001`                                 | Pass            |
+| S05 | Only `DISP_ON_WEB_A2` is `y`                                                      | The A2 address is compared as public, the other as internal                 | Pass            |
+| S06 | Both display flags are `y`                                                        | The first address stays public                                              | Pass            |
+| S07 | TOD record has no person name; CAMS has a real name                               | A `name` difference against "Unknown"                                       | Pass            |
+| S08 | Middle initial, and a suffix inside `LAST_NAME`                                   | Nothing reported                                                            | Pass            |
+| S09 | Empty-string TOD columns                                                          | Nothing reported against absent CAMS fields                                 | Pass            |
+| S10 | TOD phone `503-555-0119 204`; CAMS phone `503-555-0119`, extension `204`          | Nothing reported                                                            | Known gap       |
+| S11 | Eleven-digit TOD phone with a country code                                        | Nothing reported                                                            | Pass            |
+| S12 | Name differs                                                                      | One `name` difference with both values                                      | Pass            |
+| S13 | Company name differs                                                              | One `companyName` difference                                                | Pass            |
+| S14 | Public address differs                                                            | One `publicAddress` difference                                              | Pass            |
+| S15 | Internal address differs                                                          | One `internalAddress` difference                                            | Pass            |
+| S16 | Phone differs                                                                     | One `phone` difference                                                      | Pass            |
+| S17 | Email differs                                                                     | One `email` difference                                                      | Pass            |
+| S18 | Linked to one existing and one missing TOD ID                                     | Compared against the existing one; not CAMS only                            | Pass            |
+| S19 | Linked TOD trustee has only inactive appointments                                 | Still compared                                                              | Pass            |
+| S20 | Unlinked TOD trustee with one active and one resigned appointment                 | TOD only                                                                    | Pass            |
+| S21 | Unlinked TOD trustee with only resigned appointments                              | Not reported                                                                | Pass            |
+| S22 | Unlinked TOD trustee with no appointment rows                                     | Not reported                                                                | Pass            |
+| S23 | The same person twice in TOD, neither record linked                               | TOD only, once per record                                                   | Pass            |
+| S24 | An unlinked TOD record for a person CAMS links to a different TOD record          | The unlinked record is TOD only; the linked one matches                     | Pass            |
+| S25 | Unlinked TOD trustee active through a converted-case (`O`) appointment            | TOD only                                                                    | Pass            |
+| S26 | Merged trustee, TOD records on pages 1 and 2, CAMS holds the most complete record | Nothing reported; compared once                                             | Pass            |
+| S27 | Merged trustee across pages, CAMS holds the less complete record                  | `publicAddress` difference against the most complete record (caveat)        | Pass            |
+| S28 | Merged trustee, both records on page 1, CAMS holds the more complete record       | Nothing reported                                                            | Pass            |
+| S29 | CAMS-native trustee with no TOD IDs                                               | CAMS only                                                                   | Pass            |
+| S30 | CAMS trustee whose only TOD ID no longer exists                                   | CAMS only                                                                   | Pass            |
+| S31 | CAMS trustee whose only TOD ID is not a number (none in CAMS today)               | CAMS only                                                                   | Pass            |
+| S34 | Both display flags `N` (the most common combination)                              | The first address is public, A2 internal                                    | Pass            |
+| S35 | `DISP_ON_WEB` missing, `DISP_ON_WEB_A2` `Y`                                       | The A2 address is public                                                    | Pass            |
+| S36 | TOD trustee with no address at all                                                | Nothing reported against the empty CAMS address                             | Pass            |
+| S37 | The public address has no state; the A2 address does                              | The public state comes from A2                                              | Pass            |
+| S38 | `ZIP_PLUS` is not four digits                                                     | It is dropped; nothing reported against a five-digit CAMS ZIP               | Pass            |
+| S39 | TOD phone has punctuation and no digits                                           | Nothing reported against a CAMS trustee with no phone                       | Pass            |
+| S40 | Unlinked TOD trustee whose only status is inactive chapter 11 (`9`)               | Not reported                                                                | Pass            |
+| S43 | Unlinked TOD trustee active through chapter 13 standing (`1`)                     | TOD only                                                                    | Pass            |
+| S44 | Unlinked TOD trustee active through chapter 12 case-by-case (`2`)                 | TOD only                                                                    | Pass            |
+| S41 | Unlinked TOD trustee whose only status is empty                                   | TOD only, flagged for review                                                | Pass            |
+| S42 | Merged from three TOD records, two on page 2; CAMS holds the most complete        | Nothing reported                                                            | Pass            |
+| S46 | Unlinked active TOD trustee on page 2 only                                        | TOD only                                                                    | Pass            |
+| S47 | Trustee linked to one TOD record on page 2 only; email differs                    | One `email` difference                                                      | Pass            |
+| S32 | Filler TOD trustees, and anything outside the scenarios                           | Nothing reported                                                            | Pass            |
+| S33 | The whole run                                                                     | Compared and CAMS-only counts add up to the scenarios                       | Pass            |
+| S45 | The whole run                                                                     | TOD-only and field-difference counts add up to the scenarios                | Known gap (S10) |
+| L1  | A run started through the start use case                                          | Completes on real infrastructure                                            | Pass            |
+| L2  | A run completes                                                                   | The lock is released                                                        | Pass            |
+| L3  | A second start while a run is active                                              | Refused with 409                                                            | Pass            |
+| L4  | A second run completes                                                            | The first run and all of its rows are removed                               | Pass            |
+| L5  | A run cannot read TOD (the `TRUSTEES` table is renamed for the run)               | Fails with "Could not read from TOD…"; previous results kept; lock released | Pass            |
+| L6  | The lock is older than 2 hours                                                    | A start takes it over, marks that run failed, and completes                 | Pass            |
+| L7  | A page message is delivered again after the run completed                         | Dead-lettered; results and summary unchanged                                | Pass            |
 
 ### Known gaps and caveats
 
@@ -140,17 +140,12 @@ ones with their values.
   (`503-555-0119 204`). The migration copies such a phone as-is. CAMS stores an extension in its own
   field, and the comparison reads only `phone.number` and compares digits, so once a trustee's
   number and extension are stored separately the same phone is reported as a `phone` difference.
-- **S44, chapter 12 case-by-case status `2` (known gap).** Active, per the product owner
-  (2026-11-18), as the migration treats it (`CBC_STATUS_MAP`). The matrix lists "1 or 2" as active
-  for chapter 12 case-by-case. The report decides "active" from `ACTIVE_STATUS_CODES`, which is
-  built from `TOD_STATUS_MAP` alone and ignores the chapter, so an unlinked trustee active only
-  through `2` is never TOD only. ATS_SUB has 3 such appointment rows. The migration's default page
-  filter uses the same set.
-- **S41, empty status (known gap).** The product owner (2026-11-18) wants an unlinked TOD trustee
-  whose only status is empty flagged for review, so it should be reported as TOD only. The report
-  treats an empty status as inactive and omits it. ATS_SUB has 10 such appointment rows.
-- **S45 (known gap).** Follows from S10, S41 and S44: one false phone difference and two missing
-  TOD-only trustees.
+- **S45 (known gap).** Follows from S10: one false phone difference.
+- **S44 and S41 (product decisions, passing since 2026-11-20).** Confirmed by the product owner
+  (2026-11-18). Chapter 12 case-by-case status `2` is active, as the migration treats it
+  (`CBC_STATUS_MAP`); ATS_SUB has 3 such appointment rows. An unlinked TOD trustee with no active
+  status and an empty status is reported as TOD only and flagged for review (`todStatusMissing`);
+  ATS_SUB has 10 empty-status appointment rows.
 - **S27 (caveat, passing).** The migration read TOD 50 trustees at a time, so a trustee merged from
   records on different migration pages can hold a record that is not the most complete one. The
   report compares against the most complete record and reports the difference. This is the behavior

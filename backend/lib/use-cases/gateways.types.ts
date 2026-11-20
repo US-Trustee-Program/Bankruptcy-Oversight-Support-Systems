@@ -421,6 +421,9 @@ export interface AcmsGateway {
   ): Promise<string | undefined>;
 }
 
+/** A TOD trustee in scope for "in TOD only"; statusMissing when no appointment status is active. */
+export type TodOnlyCandidate = { id: number; statusMissing: boolean };
+
 export interface AtsGateway {
   getTrusteesPage(
     context: ApplicationContext,
@@ -440,8 +443,12 @@ export interface AtsGateway {
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   /** Read-only: the TOD trustee records that exist among the given IDs. */
   getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;
-  /** Read-only: the given TOD trustee IDs that have at least one active appointment status. */
-  getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]>;
+  /**
+   * Read-only: of the given TOD trustee IDs, those the trustee data report lists as "in TOD only"
+   * when unlinked: trustees with an active appointment status, and trustees with none whose
+   * status is empty on some appointment (statusMissing, for review).
+   */
+  getTodOnlyCandidates(context: ApplicationContext, ids: number[]): Promise<TodOnlyCandidate[]>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,

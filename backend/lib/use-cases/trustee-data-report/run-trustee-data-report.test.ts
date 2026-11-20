@@ -250,6 +250,25 @@ describe('RunTrusteeDataReport', () => {
       ]);
     });
 
+    test('should list an unlinked trustee whose TOD status is empty as tod-only, flagged for review', async () => {
+      // Mock TOD trustee 6 is unlinked and has no active status; here its status is empty.
+      vi.spyOn(ats, 'getTodOnlyCandidates').mockImplementation(async (_context, ids) =>
+        ids.map((id) => ({ id, statusMissing: id === 6 })),
+      );
+
+      await runToCompletion(2);
+
+      const todOnly = reportRepo.rowsFor(RUN_ID).filter((row) => row.kind === 'tod-only');
+      expect(todOnly.map((row) => [row.todIds, row.todStatusMissing])).toEqual([
+        [['4'], undefined],
+        [['5'], undefined],
+        [['6'], true],
+      ]);
+      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
+        expect.objectContaining({ todOnly: 3, todOnlyStatusMissing: 1 }),
+      );
+    });
+
     test('should complete the run with a summary, and release the lock', async () => {
       await runToCompletion(2);
 
@@ -260,6 +279,7 @@ describe('RunTrusteeDataReport', () => {
           summary: expect.objectContaining({
             trusteesCompared: 3,
             todOnly: 2,
+            todOnlyStatusMissing: 0,
             camsOnly: 2,
             fieldDifferences: 1,
             fieldDifferencesByField: expect.objectContaining({ phone: 1 }),

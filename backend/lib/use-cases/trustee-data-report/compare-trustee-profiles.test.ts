@@ -254,6 +254,14 @@ describe('findTodOnly', () => {
       { kind: 'tod-only', todIds: ['1'], trusteeName: 'Pat Q Example' },
     ]);
   });
+
+  test('should flag a record in scope only because its TOD status is empty', () => {
+    const records = [{ record: todRecord({ ID: 1 }), inScope: true, statusMissing: true }];
+
+    expect(findTodOnly(records, new Set())).toEqual<TrusteeDataDifference[]>([
+      { kind: 'tod-only', todIds: ['1'], trusteeName: 'Pat Q Example', todStatusMissing: true },
+    ]);
+  });
 });
 
 describe('findCamsOnly', () => {
@@ -292,6 +300,7 @@ describe('summarize', () => {
   test('should count differences by kind and field without names or contact details', () => {
     const differences: TrusteeDataDifference[] = [
       { kind: 'tod-only', todIds: ['1'], trusteeName: 'A' },
+      { kind: 'tod-only', todIds: ['2'], trusteeName: 'A2', todStatusMissing: true },
       { kind: 'cams-only', todIds: [], trusteeName: 'B' },
       { kind: 'cams-only', todIds: [], trusteeName: 'C' },
       {
@@ -322,7 +331,8 @@ describe('summarize', () => {
 
     expect(summarize(differences, 10)).toEqual({
       trusteesCompared: 10,
-      todOnly: 1,
+      todOnly: 2,
+      todOnlyStatusMissing: 1,
       camsOnly: 2,
       fieldDifferences: 3,
       fieldDifferencesByField: {
