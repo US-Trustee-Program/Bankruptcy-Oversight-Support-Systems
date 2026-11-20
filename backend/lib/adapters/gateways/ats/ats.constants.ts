@@ -60,9 +60,9 @@ export const TOD_STATUS_MAP: Record<
 };
 
 /**
- * Set of raw ATS STATUS codes that map to status: 'active' in TOD_STATUS_MAP.
- * Used by getTrusteesPage and getTrusteeCount to filter trustees to only those
- * with at least one active appointment in CHAPTER_DETAILS.
+ * Set of raw ATS STATUS codes that map to status: 'active' in TOD_STATUS_MAP, on every chapter.
+ * Together with CHAPTER_ACTIVE_STATUS_CODES it defines an active appointment for
+ * getTrusteesPage, getTrusteeCount and getTodOnlyCandidates.
  *
  * Derived programmatically — do not hardcode separately. If TOD_STATUS_MAP changes,
  * this set updates automatically.

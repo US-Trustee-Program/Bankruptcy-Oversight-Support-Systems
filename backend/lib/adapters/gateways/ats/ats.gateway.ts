@@ -59,10 +59,6 @@ function batches<T>(items: T[], size: number): T[][] {
   return result;
 }
 
-/**
- * Gateway for accessing the ATS (Attorney Trustee System) database.
- * Implements queries for trustee demographics and appointments.
- */
 const sqlList = (codes: Iterable<string>) => [...codes].map((code) => `'${code}'`).join(',');
 
 /**
@@ -81,6 +77,10 @@ const EMPTY_STATUS_CONDITION = "(CD.STATUS IS NULL OR LTRIM(RTRIM(CD.STATUS)) = 
 
 type StatusFlagsRow = { TRU_ID: number; HAS_ACTIVE: number; HAS_EMPTY: number };
 
+/**
+ * Gateway for accessing the ATS (Attorney Trustee System) database.
+ * Implements queries for trustee demographics and appointments.
+ */
 export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
   private overridesCache?: Map<string, TrusteeOverride[]>;
 
