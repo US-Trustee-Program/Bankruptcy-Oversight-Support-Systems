@@ -43,8 +43,8 @@ describe('resolveReportOptions', () => {
     expect(options.branch).toBe('main');
     expect(options.ticketLabelPattern).toEqual(/^CAMS-\d+$/);
     expect(options.periodDays).toBe(7);
-    expect(options.endDate).toEqual(new Date('2026-01-08T00:00:00.000Z'));
-    expect(options.startDate).toEqual(new Date('2025-10-10T00:00:00.000Z'));
+    expect(options.endDate).toEqual(new Date('2026-01-05T00:00:00.000Z'));
+    expect(options.startDate).toEqual(new Date('2025-10-06T00:00:00.000Z'));
   });
 
   test('reads owner, repo, workflowFileName, branch, and ticketLabelPattern from env vars when set', () => {
@@ -114,12 +114,65 @@ describe('resolveReportOptions', () => {
 
     const options = resolveReportOptions();
 
-    expect(options.startDate).toEqual(new Date('2025-10-10T00:00:00.000Z'));
+    expect(options.startDate).toEqual(new Date('2025-10-06T00:00:00.000Z'));
   });
 
   test('throws when DORA_START_DATE is not a valid date', () => {
     process.env.DORA_START_DATE = 'not-a-date';
 
     expect(() => resolveReportOptions()).toThrow('Invalid DORA_START_DATE: not-a-date');
+  });
+
+  test('throws naming the report end when DORA_START_DATE is after it', () => {
+    vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
+    process.env.DORA_START_DATE = '2026-11-10T00:00:00.000Z';
+
+    expect(() => resolveReportOptions()).toThrow(
+      'DORA_START_DATE 2026-11-10T00:00:00.000Z is after the report end 2026-11-09T00:00:00.000Z (most recent Monday 00:00 UTC)',
+    );
+  });
+  describe('default window snaps to complete calendar weeks', () => {
+    test('on a Wednesday, ends at the most recent Monday 00:00 UTC and starts 13 weeks earlier', () => {
+      vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
+
+      const options = resolveReportOptions();
+
+      expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
+      expect(options.startDate).toEqual(new Date('2026-08-10T00:00:00.000Z'));
+    });
+
+    test('ends at the current instant when it is exactly Monday 00:00 UTC', () => {
+      vi.setSystemTime(new Date('2026-11-09T00:00:00.000Z'));
+
+      const options = resolveReportOptions();
+
+      expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
+    });
+
+    test('ends at a Monday in the previous month and year when the week spans New Year', () => {
+      vi.setSystemTime(new Date('2026-01-01T12:00:00.000Z'));
+
+      const options = resolveReportOptions();
+
+      expect(options.endDate).toEqual(new Date('2025-12-29T00:00:00.000Z'));
+    });
+
+    test('ends at the previous Monday on the last millisecond of Sunday', () => {
+      vi.setSystemTime(new Date('2026-11-15T23:59:59.999Z'));
+
+      const options = resolveReportOptions();
+
+      expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
+    });
+
+    test('still snaps endDate when DORA_START_DATE overrides the start', () => {
+      vi.setSystemTime(new Date('2026-11-11T15:30:00.000Z'));
+      process.env.DORA_START_DATE = '2026-06-03T12:00:00.000Z';
+
+      const options = resolveReportOptions();
+
+      expect(options.startDate).toEqual(new Date('2026-06-03T12:00:00.000Z'));
+      expect(options.endDate).toEqual(new Date('2026-11-09T00:00:00.000Z'));
+    });
   });
 });

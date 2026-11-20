@@ -3,9 +3,12 @@ const DEFAULT_REPO = 'Bankruptcy-Oversight-Support-Systems';
 const DEFAULT_WORKFLOW_FILE_NAME = 'continuous-deployment.yml';
 const DEFAULT_BRANCH = 'main';
 const DEFAULT_TICKET_LABEL_PATTERN = '^CAMS-\\d+$';
+// Buckets line up with calendar weeks (Monday 00:00 UTC) only at 7. Other DORA_PERIOD_DAYS values
+// still end on the snapped Monday but their bucket starts are not calendar-aligned.
 const DEFAULT_PERIOD_DAYS = 7;
-const DEFAULT_LOOKBACK_DAYS = 90;
+const DEFAULT_LOOKBACK_WEEKS = 13;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MS_PER_WEEK = 7 * MS_PER_DAY;
 
 export type ReportOptions = {
   owner: string;
@@ -23,16 +26,30 @@ function resolveEnvVar(name: string, defaultValue: string): string {
   return raw ? raw : defaultValue;
 }
 
-function resolveStartDate(): Date {
+// Most recent Monday 00:00:00.000 UTC at or before now, so reports cover complete calendar weeks only.
+function resolveEndDate(): Date {
+  const now = new Date();
+  const daysSinceMonday = (now.getUTCDay() + 6) % 7;
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysSinceMonday),
+  );
+}
+
+function resolveStartDate(endDate: Date): Date {
   const raw = process.env.DORA_START_DATE;
   if (raw) {
     const startDate = new Date(raw);
     if (Number.isNaN(startDate.getTime())) {
       throw new Error(`Invalid DORA_START_DATE: ${raw}`);
     }
+    if (startDate.getTime() > endDate.getTime()) {
+      throw new Error(
+        `DORA_START_DATE ${raw} is after the report end ${endDate.toISOString()} (most recent Monday 00:00 UTC)`,
+      );
+    }
     return startDate;
   }
-  return new Date(Date.now() - DEFAULT_LOOKBACK_DAYS * MS_PER_DAY);
+  return new Date(endDate.getTime() - DEFAULT_LOOKBACK_WEEKS * MS_PER_WEEK);
 }
 
 function resolvePeriodDays(): number {
@@ -50,14 +67,15 @@ function resolveTicketLabelPattern(): RegExp {
 }
 
 export function resolveReportOptions(): ReportOptions {
+  const endDate = resolveEndDate();
   return {
     owner: resolveEnvVar('DORA_OWNER', DEFAULT_OWNER),
     repo: resolveEnvVar('DORA_REPO', DEFAULT_REPO),
     workflowFileName: resolveEnvVar('DORA_WORKFLOW_FILE_NAME', DEFAULT_WORKFLOW_FILE_NAME),
     branch: resolveEnvVar('DORA_BRANCH', DEFAULT_BRANCH),
     ticketLabelPattern: resolveTicketLabelPattern(),
-    startDate: resolveStartDate(),
+    startDate: resolveStartDate(endDate),
     periodDays: resolvePeriodDays(),
-    endDate: new Date(),
+    endDate,
   };
 }
