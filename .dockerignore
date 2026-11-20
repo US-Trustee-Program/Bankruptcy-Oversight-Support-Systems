@@ -9,3 +9,11 @@ test/e2e/sqlserver-data/
 test/e2e/fixtures/*-harvested.json
 **/node_modules/
 **/.git/
+# Local secrets: never bake them into an image layer. The api and dataflows
+# prestart scripts copy the root .env into each function app, so match .env
+# files at any depth. Committed templates and examples stay in the context.
+**/.env
+**/.env.*
+!**/.env*.template
+!**/.env*.example
+backend/**/local.settings.json
