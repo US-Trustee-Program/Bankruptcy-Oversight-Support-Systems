@@ -188,6 +188,7 @@ describe('TrusteeDataReportMongoRepository', () => {
     const SUMMARY = {
       trusteesCompared: 3,
       todOnly: 1,
+      todOnlyStatusMissing: 0,
       camsOnly: 0,
       fieldDifferences: 2,
       fieldDifferencesByField: {

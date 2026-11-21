@@ -245,12 +245,14 @@ describe('normalizeForComparison', () => {
 describe('findTodOnly', () => {
   test('should list only in-scope TOD records that no CAMS trustee links to', () => {
     const records = [
-      { record: todRecord({ ID: 1 }), inScope: true },
-      { record: todRecord({ ID: 2 }), inScope: true },
+      { record: todRecord({ ID: 1 }), inScope: true, statusMissing: false },
+      // Linked, so not listed even though its status is missing.
+      { record: todRecord({ ID: 2 }), inScope: true, statusMissing: true },
       { record: todRecord({ ID: 3 }), inScope: false },
     ];
 
-    expect(findTodOnly(records, new Set(['2']))).toEqual<TrusteeDataDifference[]>([
+    // Strict: an active record has no todStatusMissing key at all, not false.
+    expect(findTodOnly(records, new Set(['2']))).toStrictEqual<TrusteeDataDifference[]>([
       { kind: 'tod-only', todIds: ['1'], trusteeName: 'Pat Q Example' },
     ]);
   });
@@ -258,7 +260,7 @@ describe('findTodOnly', () => {
   test('should flag a record in scope only because its TOD status is empty', () => {
     const records = [{ record: todRecord({ ID: 1 }), inScope: true, statusMissing: true }];
 
-    expect(findTodOnly(records, new Set())).toEqual<TrusteeDataDifference[]>([
+    expect(findTodOnly(records, new Set())).toStrictEqual<TrusteeDataDifference[]>([
       { kind: 'tod-only', todIds: ['1'], trusteeName: 'Pat Q Example', todStatusMissing: true },
     ]);
   });
@@ -297,7 +299,7 @@ describe('findCamsOnly', () => {
 });
 
 describe('summarize', () => {
-  test('should count differences by kind and field without names or contact details', () => {
+  test('should count differences by kind, field and missing TOD status, without names or contact details', () => {
     const differences: TrusteeDataDifference[] = [
       { kind: 'tod-only', todIds: ['1'], trusteeName: 'A' },
       { kind: 'tod-only', todIds: ['2'], trusteeName: 'A2', todStatusMissing: true },

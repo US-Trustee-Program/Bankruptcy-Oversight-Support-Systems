@@ -10,19 +10,20 @@ import {
 } from '@common/cams/trustee-data-report';
 import { POLL_INTERVAL_MS, TrusteeDataReport } from './TrusteeDataReport';
 
+// Every count differs, so a row showing the wrong count fails.
 const SUMMARY: TrusteeDataReportSummary = {
   trusteesCompared: 1200,
-  todOnly: 4,
-  todOnlyStatusMissing: 1,
+  todOnly: 7,
+  todOnlyStatusMissing: 3,
   camsOnly: 2,
-  fieldDifferences: 9,
+  fieldDifferences: 15,
   fieldDifferencesByField: {
     name: 1,
     companyName: 0,
-    publicAddress: 3,
-    internalAddress: 0,
-    phone: 4,
-    email: 1,
+    publicAddress: 4,
+    internalAddress: 5,
+    phone: 6,
+    email: 8,
   },
 };
 
@@ -92,15 +93,19 @@ describe('TrusteeDataReport', () => {
     );
     const counts = {
       'trustees-compared': '1,200',
-      'tod-only': '4',
-      'tod-only-status-missing': '1',
+      'tod-only': '7',
+      'tod-only-status-missing': '3',
       'cams-only': '2',
-      'field-differences': '9',
-      'field-publicAddress': '3',
-      'field-phone': '4',
+      'field-differences': '15',
+      'field-name': '1',
+      'field-companyName': '0',
+      'field-publicAddress': '4',
+      'field-internalAddress': '5',
+      'field-phone': '6',
+      'field-email': '8',
     };
     Object.entries(counts).forEach(([key, value]) =>
-      expect(screen.getByTestId(`trustee-data-report-count-${key}`)).toHaveTextContent(value),
+      expect(screen.getByTestId(`trustee-data-report-count-${key}`).textContent).toBe(value),
     );
     // Per-field rows say which count they break down, not just "Phone".
     expect(
@@ -109,17 +114,6 @@ describe('TrusteeDataReport', () => {
     expect(
       screen.getByTestId('trustee-data-report-count-tod-only-status-missing').closest('tr'),
     ).toHaveTextContent('In TOD only: Status missing, needs review');
-  });
-
-  test('should show zero status-missing trustees for a run completed before that count existed', async () => {
-    const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
-    mockGet({ latestCompletedRun: { ...COMPLETED, summary: olderSummary } });
-
-    await renderLoaded();
-
-    expect(
-      screen.getByTestId('trustee-data-report-count-tod-only-status-missing'),
-    ).toHaveTextContent('0');
   });
 
   test('should block start while a run is in progress, without announcing what was already true on load', async () => {

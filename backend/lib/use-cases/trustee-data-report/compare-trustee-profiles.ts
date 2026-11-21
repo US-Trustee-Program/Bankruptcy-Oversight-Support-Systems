@@ -138,9 +138,7 @@ export function summarize(
   for (const difference of differences) {
     if (difference.kind === 'tod-only') {
       summary.todOnly++;
-      if (difference.todStatusMissing) {
-        summary.todOnlyStatusMissing = (summary.todOnlyStatusMissing ?? 0) + 1;
-      }
+      if (difference.todStatusMissing) summary.todOnlyStatusMissing++;
     }
     if (difference.kind === 'cams-only') summary.camsOnly++;
     if (difference.kind === 'field' && difference.field) {
