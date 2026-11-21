@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import {
   BY_PERIOD_REPORTS,
   type ByPeriodReports,
-  summarizeSettledWeek,
+  summarizeSettledWeeks,
 } from './metrics/weekly-summary.js';
 import { readCsv } from './output/read-csv.js';
 import { renderDocsPage } from './output/render-docs-page.js';
@@ -22,7 +22,9 @@ async function main(): Promise<void> {
   );
   const reports = Object.fromEntries(entries) as ByPeriodReports;
 
-  const summary = summarizeSettledWeek(reports, generatedAt);
+  // Oldest first, so the newest settled week is the headline.
+  const summaries = summarizeSettledWeeks(reports, generatedAt);
+  const summary = summaries[summaries.length - 1];
   const page = renderDocsPage(summary, { generatedAt, run: resolveRun(process.env) });
 
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
