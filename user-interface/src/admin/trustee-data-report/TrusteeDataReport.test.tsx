@@ -116,17 +116,6 @@ describe('TrusteeDataReport', () => {
     ).toHaveTextContent('In TOD only: Status missing, needs review');
   });
 
-  test('should show zero status-missing trustees for a run completed before that count existed', async () => {
-    const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
-    mockGet({ latestCompletedRun: { ...COMPLETED, summary: olderSummary } });
-
-    await renderLoaded();
-
-    expect(
-      screen.getByTestId('trustee-data-report-count-tod-only-status-missing').textContent,
-    ).toBe('0');
-  });
-
   test('should block start while a run is in progress, without announcing what was already true on load', async () => {
     mockGet({ activeRun: RUNNING, latestCompletedRun: COMPLETED });
     const post = vi.spyOn(Api2, 'postTrusteeDataReport');

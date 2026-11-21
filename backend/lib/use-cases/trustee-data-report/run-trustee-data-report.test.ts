@@ -271,21 +271,6 @@ describe('RunTrusteeDataReport', () => {
       );
     });
 
-    test('should count a page recorded before the status-missing count existed as zero', async () => {
-      // A run in progress while that change deployed: its first page has no such count.
-      await RunTrusteeDataReport.startRun(context, RUN_ID);
-      let { nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
-      const firstPage = reportRepo.pages.find((page) => page.runId === RUN_ID)!;
-      delete firstPage.summary.todOnlyStatusMissing;
-      while (nextCursor !== null) {
-        ({ nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, nextCursor, 2));
-      }
-
-      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
-        expect.objectContaining({ todOnly: 2, todOnlyStatusMissing: 0 }),
-      );
-    });
-
     test('should complete the run with a summary, and release the lock', async () => {
       await runToCompletion(2);
 

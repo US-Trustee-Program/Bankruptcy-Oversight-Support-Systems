@@ -119,17 +119,14 @@ export function findCamsOnly(
     }));
 }
 
-/** A summary this code produced, so every count is present. */
-export type ReportTotals = TrusteeDataReportSummary & { todOnlyStatusMissing: number };
-
 export function summarize(
   differences: TrusteeDataDifference[],
   trusteesCompared: number,
-): ReportTotals {
+): TrusteeDataReportSummary {
   const fieldDifferencesByField = Object.fromEntries(
     PROFILE_FIELDS.map((field) => [field, 0]),
   ) as Record<TrusteeProfileField, number>;
-  const summary: ReportTotals = {
+  const summary: TrusteeDataReportSummary = {
     trusteesCompared,
     todOnly: 0,
     todOnlyStatusMissing: 0,

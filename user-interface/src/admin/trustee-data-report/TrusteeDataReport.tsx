@@ -62,7 +62,7 @@ function CompletedRunSummary({ run }: Readonly<{ run: TrusteeDataReportRun }>) {
               {
                 key: 'tod-only-status-missing',
                 label: 'Status missing, needs review',
-                value: summary.todOnlyStatusMissing ?? 0,
+                value: summary.todOnlyStatusMissing,
                 parent: TOD_ONLY_LABEL,
               },
               { key: 'cams-only', label: 'In CAMS only', value: summary.camsOnly },
