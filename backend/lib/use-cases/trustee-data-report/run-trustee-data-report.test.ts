@@ -251,21 +251,38 @@ describe('RunTrusteeDataReport', () => {
     });
 
     test('should list an unlinked trustee whose TOD status is empty as tod-only, flagged for review', async () => {
-      // Mock TOD trustee 6 is unlinked and has no active status; here its status is empty.
+      // Unlinked mock TOD trustees are 4 and 5 (active by default) and 6 (inactive). This stub
+      // makes every unlinked trustee a candidate, with 4 and 6 in scope only for an empty status.
+      // 4 and 6 are on different pages, so the run must add the two pages' counts.
       vi.spyOn(ats, 'getTodOnlyCandidates').mockImplementation(async (_context, ids) =>
-        ids.map((id) => ({ id, statusMissing: id === 6 })),
+        ids.map((id) => ({ id, statusMissing: id === 4 || id === 6 })),
       );
 
       await runToCompletion(2);
 
       const todOnly = reportRepo.rowsFor(RUN_ID).filter((row) => row.kind === 'tod-only');
       expect(todOnly.map((row) => [row.todIds, row.todStatusMissing])).toEqual([
-        [['4'], undefined],
+        [['4'], true],
         [['5'], undefined],
         [['6'], true],
       ]);
       expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
-        expect.objectContaining({ todOnly: 3, todOnlyStatusMissing: 1 }),
+        expect.objectContaining({ todOnly: 3, todOnlyStatusMissing: 2 }),
+      );
+    });
+
+    test('should count a page recorded before the status-missing count existed as zero', async () => {
+      // A run in progress while that change deployed: its first page has no such count.
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      let { nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+      const firstPage = reportRepo.pages.find((page) => page.runId === RUN_ID)!;
+      delete firstPage.summary.todOnlyStatusMissing;
+      while (nextCursor !== null) {
+        ({ nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, nextCursor, 2));
+      }
+
+      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
+        expect.objectContaining({ todOnly: 2, todOnlyStatusMissing: 0 }),
       );
     });
 
@@ -504,6 +521,7 @@ describe('RunTrusteeDataReport', () => {
           summary: expect.objectContaining({
             trusteesCompared: 0,
             todOnly: 0,
+            todOnlyStatusMissing: 0,
             camsOnly: 0,
             fieldDifferences: 0,
           }),

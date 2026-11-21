@@ -12,6 +12,7 @@ import {
   compareTrusteeProfile,
   findCamsOnly,
   findTodOnly,
+  ReportTotals,
   summarize,
 } from './compare-trustee-profiles';
 import TrusteeDataReportLock from './trustee-data-report-lock';
@@ -25,10 +26,11 @@ const PAGE_SIZE = 100;
 // This use case only reads trustees, appointments and TOD. Its only writes are to the
 // trustee-data-report collection and the run lock.
 
-function addSummaries(
-  a: TrusteeDataReportSummary,
-  b: TrusteeDataReportSummary,
-): TrusteeDataReportSummary {
+/**
+ * Adds a page's counts to the running totals. A page written by code from before the
+ * status-missing count existed (a run in progress during that deploy) has no such count.
+ */
+function addSummaries(a: ReportTotals, b: TrusteeDataReportSummary): ReportTotals {
   const byField = { ...a.fieldDifferencesByField };
   for (const [field, count] of Object.entries(b.fieldDifferencesByField)) {
     byField[field as keyof typeof byField] += count;
@@ -36,7 +38,7 @@ function addSummaries(
   return {
     trusteesCompared: a.trusteesCompared + b.trusteesCompared,
     todOnly: a.todOnly + b.todOnly,
-    todOnlyStatusMissing: (a.todOnlyStatusMissing ?? 0) + (b.todOnlyStatusMissing ?? 0),
+    todOnlyStatusMissing: a.todOnlyStatusMissing + (b.todOnlyStatusMissing ?? 0),
     camsOnly: a.camsOnly + b.camsOnly,
     fieldDifferences: a.fieldDifferences + b.fieldDifferences,
     fieldDifferencesByField: byField,

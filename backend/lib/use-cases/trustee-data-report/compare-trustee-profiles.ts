@@ -119,14 +119,17 @@ export function findCamsOnly(
     }));
 }
 
+/** A summary this code produced, so every count is present. */
+export type ReportTotals = TrusteeDataReportSummary & { todOnlyStatusMissing: number };
+
 export function summarize(
   differences: TrusteeDataDifference[],
   trusteesCompared: number,
-): TrusteeDataReportSummary {
+): ReportTotals {
   const fieldDifferencesByField = Object.fromEntries(
     PROFILE_FIELDS.map((field) => [field, 0]),
   ) as Record<TrusteeProfileField, number>;
-  const summary: TrusteeDataReportSummary = {
+  const summary: ReportTotals = {
     trusteesCompared,
     todOnly: 0,
     todOnlyStatusMissing: 0,
@@ -138,9 +141,7 @@ export function summarize(
   for (const difference of differences) {
     if (difference.kind === 'tod-only') {
       summary.todOnly++;
-      if (difference.todStatusMissing) {
-        summary.todOnlyStatusMissing = (summary.todOnlyStatusMissing ?? 0) + 1;
-      }
+      if (difference.todStatusMissing) summary.todOnlyStatusMissing++;
     }
     if (difference.kind === 'cams-only') summary.camsOnly++;
     if (difference.kind === 'field' && difference.field) {
