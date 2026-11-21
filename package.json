@@ -68,7 +68,7 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.7",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.44.1",
+    "knip": "6.44.2",
     "mongodb": "7.9.0",
     "mssql": "12.7.14",
     "prettier": "3.9.10",
