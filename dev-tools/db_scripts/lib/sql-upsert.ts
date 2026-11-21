@@ -1,4 +1,5 @@
 import * as sql from 'mssql';
+import { buildAtsSqlConfig } from './sql-config.js';
 
 /**
  * Upserts rows into a SQL Server table via MERGE statement.
@@ -6,25 +7,26 @@ import * as sql from 'mssql';
  * Reads connection config from environment variables based on dbPrefix:
  * - dxtr: MSSQL_HOST, MSSQL_DATABASE_DXTR, MSSQL_USER, MSSQL_PASS, etc.
  * - acms: ACMS_MSSQL_HOST, ACMS_MSSQL_DATABASE, ACMS_MSSQL_USER, ACMS_MSSQL_PASS, etc.
+ * - ats:  ATS_MSSQL_HOST, ATS_MSSQL_DATABASE, ATS_MSSQL_USER, ATS_MSSQL_PASS, etc. (TOD)
  *
  * Falls back to Azure AD auth (azure-active-directory-default) if user/pass not set.
  * Logs each upserted row and closes the connection pool in a finally block.
  *
- * @param dbPrefix - Database identifier ('dxtr' or 'acms')
+ * @param dbPrefix - Database identifier ('dxtr', 'acms' or 'ats')
  * @param tableName - SQL table name (e.g., 'AO_CS', 'AO_PY')
  * @param rows - Array of rows to upsert
  * @param primaryKey - Column name(s) to use as primary key(s) for MERGE
  * @param insertOnly - When true, omit WHEN MATCHED UPDATE branch (insert-only semantics)
  */
 export async function sqlUpsert(
-  dbPrefix: 'dxtr' | 'acms',
+  dbPrefix: 'dxtr' | 'acms' | 'ats',
   tableName: string,
   rows: Record<string, unknown>[],
   primaryKey: string | string[],
   insertOnly?: boolean,
 ): Promise<void> {
   const keys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
-  const config = buildSqlConfig(dbPrefix);
+  const config = dbPrefix === 'ats' ? buildAtsSqlConfig() : buildSqlConfig(dbPrefix);
   let pool: sql.ConnectionPool | null = null;
 
   try {

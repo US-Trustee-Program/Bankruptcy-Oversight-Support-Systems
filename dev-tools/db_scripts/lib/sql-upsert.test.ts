@@ -156,6 +156,16 @@ describe('sqlUpsert', () => {
     expect(mockClose).toHaveBeenCalledOnce();
   });
 
+  test('ats dbPrefix uses the ATS_MSSQL_* env vars and runs without error', async () => {
+    process.env.ATS_MSSQL_HOST = 'ats-host';
+    process.env.ATS_MSSQL_USER = 'atsUser';
+    process.env.ATS_MSSQL_PASS = 'atsPass';
+    const rows = [{ ID: 9900010, LAST_NAME: 'Exact' }];
+    await expect(sqlUpsert('ats', 'TRUSTEES', rows, 'ID')).resolves.toBeUndefined();
+    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
   test('multi-row: executes one query per row and closes pool exactly once', async () => {
     const rows = [
       { CASE_ID: 'ABC001', TITLE: 'First Case', STATUS: 'Open' },

@@ -2,10 +2,12 @@
 
 ## Architecture Overview
 
-**CAMS uses three databases:**
+**CAMS uses four databases:**
 
 - **DXTR (SQL Server)**: Source of truth for cases and court data. Synced from PACER.
 - **ACMS (SQL Server)**: Stores trustee data (trustees, appointments, professional IDs).
+- **TOD / ATS (SQL Server)**: The Office of Oversight's trustee records (`TRUSTEES`,
+  `CHAPTER_DETAILS`), compared with CAMS by the trustee data report.
 - **Cosmos DB (MongoDB)**: Stores synced cases for search, plus CAMS-specific entities (assignments,
   orders, consolidations, etc.)
 
@@ -28,9 +30,12 @@
   `disposition: 'linked'`, or no reader sees it)
 - `trustees` - Trustee records
 
-**In ATS (SQL Server):**
+**In TOD / ATS (SQL Server):**
 
-- TBD - May not need any seed data
+- `TRUSTEES` and `CHAPTER_DETAILS` - only for the `trustee-data-report` scenario, with IDs in the
+  reserved range `9900000`–`9900999` (`lib/tod-seed-ids.ts`). Seeds write only the columns the
+  report reads; if an environment's TOD tables require other columns, the insert fails with a SQL
+  error.
 
 ### ❌ Don't Seed These (Synced from Real Sources)
 
