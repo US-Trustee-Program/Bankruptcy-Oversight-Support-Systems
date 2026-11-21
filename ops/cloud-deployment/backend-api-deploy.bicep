@@ -394,6 +394,18 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   ]
 }
 
+// Deploy the People Usage workbook. It reads the "CAMS Sign-In" events the API sends to its own Application Insights.
+module peopleUsageWorkbooks 'lib/workbooks/people-usage-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${apiFunctionName}-people-usage-workbooks-module'
+  scope: resourceGroup()
+  params: {
+    location: location
+    stackName: stackName
+    appInsightsResourceId: apiFunctionAppInsights.outputs.id
+    tags: tags
+  }
+}
+
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
 
 // Flat object form of application settings for use with config/appsettings resources
