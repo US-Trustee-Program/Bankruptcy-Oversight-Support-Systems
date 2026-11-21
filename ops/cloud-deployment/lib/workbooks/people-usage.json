@@ -1,0 +1,107 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "name": "header",
+      "content": {
+        "json": "# CAMS People Usage\n\nOne row per person who signed in to CAMS during the chosen time range, with the roles, offices, and regions they held when they signed in. A person is identified by work email; names are not recorded.\n\n**This workbook shows work email addresses.** Access is limited to team members the product owner has approved for read access to the API's Application Insights. Dates are UTC. See *People Usage List* in the CAMS operations docs."
+      }
+    },
+    {
+      "type": 9,
+      "name": "parameters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 2592000000
+            }
+          },
+          {
+            "id": "coverage-note",
+            "version": "KqlParameterItem/1.0",
+            "name": "CoverageNote",
+            "type": 1,
+            "query": "let firstSignIn = toscalar(customEvents | where name == \"CAMS Sign-In\" | summarize min(timestamp));\nlet rangeStart = todatetime(\"{TimeRange:start}\");\nprint Note = case(\n    isnull(firstSignIn), \"No sign-in data has been recorded yet, so the list is empty.\",\n    rangeStart < startofday(firstSignIn), strcat(\"The chosen range starts before the earliest sign-in data still kept (\", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \"). The list covers \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \" onward.\"),\n    strcat(\"Earliest sign-in data still kept: \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \". The chosen range is fully covered.\")\n)\n",
+            "isHiddenWhenLocked": true,
+            "timeContext": {
+              "durationMs": 63072000000
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.insights/components"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 1,
+      "name": "coverage",
+      "content": {
+        "json": "{CoverageNote}"
+      }
+    },
+    {
+      "type": 3,
+      "name": "people-usage-list",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let roleLabels = datatable(role: string, label: string) [\n    \"SuperUser\", \"Super User\",\n    \"PrivilegedIdentityUser\", \"Privileged Identity Management\",\n    \"CaseAssignmentManager\", \"Case Assignment Manager\",\n    \"TrialAttorney\", \"Trial Attorney\",\n    \"LeadTrialAttorney\", \"Lead Trial Attorney\",\n    \"DataVerifier\", \"Data Verifier\",\n    \"TrusteeAdmin\", \"Trustee Admin\",\n    \"Auditor\", \"Auditor\",\n    \"Paralegal\", \"Paralegal\"\n];\nlet signIns = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"CAMS Sign-In\"\n    | extend Email = tostring(customDimensions.email)\n    | extend Email = iff(isempty(Email), \"(no email recorded)\", Email);\nlet lastUsed = signIns\n    | summarize LastUsed = max(timestamp) by Email;\nlet roles = signIns\n    | mv-expand role = parse_json(tostring(customDimensions.roles)) to typeof(string)\n    | where isnotempty(role)\n    | lookup kind=leftouter roleLabels on role\n    | summarize RoleSet = make_set(coalesce(label, role)) by Email\n    | project Email, Roles = strcat_array(array_sort_asc(RoleSet), \", \");\nlet offices = signIns\n    | mv-expand officeName = parse_json(tostring(customDimensions.officeNames)) to typeof(string)\n    | where isnotempty(officeName)\n    | summarize OfficeSet = make_set(officeName) by Email\n    | project Email, Offices = strcat_array(array_sort_asc(OfficeSet), \", \");\nlet regions = signIns\n    | extend regionIds = parse_json(tostring(customDimensions.regionIds)), regionNames = parse_json(tostring(customDimensions.regionNames))\n    | mv-expand regionId = regionIds to typeof(string), regionName = regionNames to typeof(string)\n    | where isnotempty(regionId)\n    | distinct Email, regionId, regionName\n    | extend RegionLabel = iff(isempty(regionName), strcat(\"Region \", regionId), strcat(\"Region \", regionId, \" (\", regionName, \")\"))\n    | summarize RegionList = make_list(bag_pack(\"n\", toint(regionId), \"label\", RegionLabel)) by Email\n    | mv-apply r = RegionList on (\n        order by toint(r.n) asc\n        | summarize Regions = strcat_array(make_list(tostring(r.label)), \", \")\n    )\n    | project Email, Regions;\nlastUsed\n| lookup kind=leftouter roles on Email\n| lookup kind=leftouter offices on Email\n| lookup kind=leftouter regions on Email\n| project Email, Roles, Offices, Regions, ['Last Used'] = format_datetime(LastUsed, \"yyyy-MM-dd\")\n| order by Email asc\n",
+        "size": 0,
+        "title": "People who signed in",
+        "noDataMessage": "No one signed in during the chosen time range.",
+        "showExportToExcel": true,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "filter": true,
+          "sortBy": [
+            {
+              "itemKey": "Email",
+              "sortOrder": 1
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev/providers/Microsoft.Insights/components/appi-ustp-cams-dev-373733-node-api"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

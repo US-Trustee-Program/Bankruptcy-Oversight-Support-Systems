@@ -8,6 +8,7 @@
 - [GHA Secret and Variable Deletion](/operations/gha-secret-deletion.md)
 - [Identify Duplicate Bank Names](/operations/identify-duplicate-bank-names.md)
 - [Okta Configuration](/operations/okta-configuration.md)
+- [People Usage List](/operations/people-usage-list.md)
 - [Phonetic Backfill Migration](/operations/phonetic-backfill.md)
 - [Correct Trustee Zoom Phones Migration](/operations/correct-trustee-zoom-phones.md)
 - [Trustee Data Report](/operations/trustee-data-report.md)
