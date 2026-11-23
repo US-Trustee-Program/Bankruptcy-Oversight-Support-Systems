@@ -15,8 +15,8 @@
   const USER_EMAIL = '';
   const DATABASE = 'cams';
 
-  if (USER_ID.startsWith('REPLACE') || USER_NAME.startsWith('REPLACE')) {
-    throw new Error('Set USER_ID and USER_NAME first.');
+  if (USER_ID.startsWith('REPLACE') || USER_NAME.startsWith('REPLACE') || USER_NAME.trim() === '') {
+    throw new Error('Set USER_ID and a non-blank USER_NAME first.');
   }
   if (!/^00u[A-Za-z0-9]{17}$/.test(USER_ID)) {
     throw new Error('USER_ID is not an Okta user id (00u + 17 characters).');
@@ -34,6 +34,22 @@
     active: true,
   });
   if (held) {
+    const heldAudit = audits.findOne({
+      documentType: 'ROLE_ASSIGNMENT_AUDIT',
+      assignmentId: held.id,
+      action: 'CREATED',
+    });
+    if (!heldAudit) {
+      throw new Error(
+        'INTERVENTION REQUIRED: ' +
+          USER_ID +
+          ' already holds Super User assignment ' +
+          held.id +
+          ' in ' +
+          DATABASE +
+          ' but it has no CREATED audit entry. Add the audit entry manually.',
+      );
+    }
     print('already-held: ' + USER_ID + ' in ' + DATABASE + ' (' + held.id + ')');
     return;
   }
@@ -58,23 +74,48 @@
   };
   if (USER_EMAIL) assignment.email = USER_EMAIL;
 
-  assignments.insertOne(assignment);
-  audits.insertOne({
-    documentType: 'ROLE_ASSIGNMENT_AUDIT',
-    id: UUID().toHexString(true),
-    assignmentId: assignmentId,
-    action: 'CREATED',
-    userId: USER_ID,
-    userName: USER_NAME,
-    role: 'SuperUser',
-    regionId: null,
-    officeCode: null,
-    performedBy: performer.id,
-    performedByName: performer.name,
-    performedAt: performedAt,
-    previousState: null,
-    newState: { role: 'SuperUser', regionId: null, officeCode: null, active: true },
-    replacedByAssignmentId: null,
-  });
+  try {
+    assignments.insertOne(assignment);
+  } catch (e) {
+    throw new Error(
+      'FAILED: no Super User assignment was written for ' +
+        USER_ID +
+        ' in ' +
+        DATABASE +
+        ': ' +
+        e.message,
+    );
+  }
+  try {
+    audits.insertOne({
+      documentType: 'ROLE_ASSIGNMENT_AUDIT',
+      id: UUID().toHexString(true),
+      assignmentId: assignmentId,
+      action: 'CREATED',
+      userId: USER_ID,
+      userName: USER_NAME,
+      role: 'SuperUser',
+      regionId: null,
+      officeCode: null,
+      performedBy: performer.id,
+      performedByName: performer.name,
+      performedAt: performedAt,
+      previousState: null,
+      newState: { role: 'SuperUser', regionId: null, officeCode: null, active: true },
+      replacedByAssignmentId: null,
+    });
+  } catch (e) {
+    throw new Error(
+      'INTERVENTION REQUIRED: assignment ' +
+        assignmentId +
+        ' for ' +
+        USER_ID +
+        ' in ' +
+        DATABASE +
+        ' WAS written but its CREATED audit entry was NOT: ' +
+        e.message +
+        '. Add the audit entry manually, or delete the assignment and rerun.',
+    );
+  }
   print('granted: ' + USER_ID + ' in ' + DATABASE + ' (' + assignmentId + ')');
 })();
