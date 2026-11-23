@@ -228,6 +228,7 @@ module executiveWorkbooks 'lib/workbooks/executive-workbooks.bicep' = if (create
     stackName: stackName
     appInsightsResourceId: webappInsights.outputs.id
     dataflowsAppInsightsResourceId: dataflowsAppInsightsId
+    nodeApiAppInsightsResourceId: nodeApiAppInsightsId
     tags: tags
   }
 }
