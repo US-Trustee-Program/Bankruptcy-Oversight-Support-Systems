@@ -7,6 +7,7 @@ Development tools for CAMS, including database seeding utilities and test data g
 ### Quick Start
 
 1. **Copy environment templates:**
+
    ```bash
    cd dev-tools
    cp .env.template .env
@@ -58,15 +59,17 @@ db_scripts/
 ├── acms/                        # ACMS SQL seeds
 │   ├── professionals/basic.ts   # PROF_CODE=99901
 │   └── appointments/basic.ts    # 2 appointments for NY-99901
-├── scenarios/                   # Cross-database scenarios (DXTR + CAMS)
+├── scenarios/                   # Cross-database scenarios (DXTR, TOD + CAMS)
 │   ├── ch7-with-assignment.ts   # Case + assignment + note
 │   ├── ch11-with-transfer-orders.ts  # Case + transfer orders
 │   ├── consolidation-scenarios.ts    # 3 cases + consolidations
 │   ├── trustee-data.ts          # Trustees + appointments + matching
 │   ├── oversight-assignments.ts # Trustees with oversight assignments (attorney/auditor/paralegal)
+│   ├── trustee-data-report.ts   # Linked CAMS + TOD trustees for the trustee data report
 │   └── admin-data.ts            # Banks + bankruptcy software
 └── lib/                         # Shared utilities
-    ├── sql-config.ts            # Shared SQL connection config
+    ├── sql-config.ts            # Shared SQL connection config (DXTR, ACMS, TOD)
+    ├── tod-seed-ids.ts          # Reserved TOD trustee ID range
     ├── sql-upsert.ts            # SQL upsert helpers
     ├── mongo-upsert.ts          # MongoDB upsert helpers
     └── ensure-dxtr-case.ts      # DXTR case creation helper
@@ -80,6 +83,7 @@ All seed data follows these patterns for easy identification and cleanup:
 - **Cosmos case IDs:** Match pattern `/^\d{3}-\d{2}-9\d{4}$/` (e.g., `091-99-87899`)
 - **Cosmos documents:** `id` field starts with `seed-` prefix
 - **ACMS cases:** `CASE_NUMBER` in 90000-99999 range
+- **TOD trustees:** `TRUSTEES.ID` and `CHAPTER_DETAILS.TRU_ID` in 9900000-9900999
 
 The `unseed` command removes all data matching these patterns.
 
@@ -87,20 +91,28 @@ The `unseed` command removes all data matching these patterns.
 
 **IMPORTANT: All seed scenarios must use existing DXTR case IDs.**
 
-The backend queries DXTR for full case details. If a case exists only in CAMS but not DXTR, case detail pages will fail to load.
+The backend queries DXTR for full case details. If a case exists only in CAMS but not DXTR, case
+detail pages will fail to load.
 
 #### Data Quality Standards
 
 All test data is validated before seeding to ensure quality:
 
 - **phoneticTokens**: All debtors, jointDebtors, and trustees must have phoneticTokens arrays
-- **DXTR linkage**: All cases must link to DXTR with numeric IDs (real) or SEED##### format (generated)
+- **DXTR linkage**: All cases must link to DXTR with numeric IDs (real) or SEED##### format
+  (generated)
 - **Phone format**: All phone numbers must be in ###-###-#### format
 - **Email format**: All emails must contain @ symbol
 
 **Helper functions** automatically ensure compliance (use these instead of manual objects):
+
 ```typescript
-import { createDebtor, createJointDebtor, createTrusteeBase, createCaseDocument } from '../lib/test-data-utils.js';
+import {
+  createDebtor,
+  createJointDebtor,
+  createTrusteeBase,
+  createCaseDocument,
+} from '../lib/test-data-utils.js';
 
 // Creates debtor with phoneticTokens
 const debtor = createDebtor('Smith, John', {
@@ -140,16 +152,19 @@ const caseDoc = createCaseDocument({
 });
 ```
 
-**Runtime validation** blocks seeding if data doesn't meet standards, reporting all errors across all scenarios at once for efficient batch fixing.
+**Runtime validation** blocks seeding if data doesn't meet standards, reporting all errors across
+all scenarios at once for efficient batch fixing.
 
 #### Creating New Test Data
 
 **Strategy when creating new test data:**
+
 1. **Reuse existing scenarios** - Check if current scenarios already cover your needs
 2. **Augment existing cases** - Add fields/documents to existing cases rather than creating new ones
 3. **Only create new scenarios** when reuse/augmentation won't work
 
 **Chapter availability in DXTR:**
+
 - ✅ Chapter 11 (~50 cases)
 - ✅ Chapter 12 (~495 cases)
 - ✅ Chapter 15 (~1297 cases)
@@ -160,6 +175,7 @@ const caseDoc = createCaseDocument({
 **Seeding patterns:**
 
 For **any chapter**, use `ensureDxtrCase()` helper to automatically seed DXTR if needed:
+
 ```typescript
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 
@@ -181,12 +197,14 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
 ```
 
 This helper:
+
 - Checks if case exists in DXTR AO_CS table
 - Returns empty operations if case already exists
 - Returns DXTR seed operations (AO_CS + AO_PY) if case doesn't exist
 - Works for all chapters (7, 11, 12, 13, 15, 9)
 
 For **other chapters**, reference existing DXTR cases (see `cases-fuzzy-search.ts`):
+
 ```typescript
 // Use real DXTR case IDs from available divisions
 const REAL_CASES = [
@@ -197,6 +215,7 @@ const REAL_CASES = [
 ```
 
 **Verification after seeding:**
+
 1. Check case detail pages load correctly (backend must find case in DXTR)
 2. Verify all expected data appears in the UI
 3. Check that relationships (assignments, notes, etc.) are correct
@@ -210,17 +229,24 @@ Three environment file templates are provided:
 - **`.env-dev-main.template`** — cosmos-mongo-ustp-cams (copied to `.env-dev-main`)
 
 Each file contains:
+
 - `MONGO_CONNECTION_STRING` — Cosmos MongoDB connection (different per env)
 - `MSSQL_*` vars — DXTR SQL Server connection (same in all files)
 - `ACMS_MSSQL_*` vars — ACMS SQL Server connection (same in all files)
+- `ATS_MSSQL_*` vars — TOD SQL Server connection, named as on the dataflows app (`ATS_MSSQL_HOST`,
+  `ATS_MSSQL_DATABASE`, then `ATS_MSSQL_USER`/`ATS_MSSQL_PASS` or
+  `ATS_MSSQL_AUTH_TYPE`/`ATS_MSSQL_CLIENT_ID`). Only the `trustee-data-report` scenario needs them;
+  unseed skips TOD when `ATS_MSSQL_HOST` is unset.
 
-DXTR and ACMS are shared SQL databases, so their connection strings are identical across all environments.
+DXTR and ACMS are shared SQL databases, so their connection strings are identical across all
+environments.
 
 **Note:** Actual `.env*` files are gitignored. Only templates are committed.
 
 ### User-Groups and Oversight Assignments
 
-The `oversight-assignments` scenario requires existing user-groups in the database. User-groups contain real Okta users for roles like Trial Attorney, Auditor, and Paralegal.
+The `oversight-assignments` scenario requires existing user-groups in the database. User-groups
+contain real Okta users for roles like Trial Attorney, Auditor, and Paralegal.
 
 **Syncing user-groups from production to dev:**
 
@@ -230,6 +256,7 @@ npx tsx sync-user-groups.ts
 ```
 
 This utility:
+
 - Reads user-groups from `cosmos-mongo-ustp-cams` (production)
 - Clears all user-groups from `cosmos-mongo-ustp-cams-dev`
 - Copies production user-groups to dev
@@ -241,6 +268,7 @@ npm run seed:local -- --scenario=oversight-assignments
 ```
 
 The `oversight-assignments` scenario:
+
 - **Dynamically queries** existing user-groups for real Okta users
 - Creates 5 test trustees with different oversight assignment states:
   - Oliver Attorneyonly (Trial Attorney assigned)
@@ -251,7 +279,8 @@ The `oversight-assignments` scenario:
 
 **SeedContext API:**
 
-Seed scripts can access the MongoDB client via `ctx.mongoClient` to query existing data during generation:
+Seed scripts can access the MongoDB client via `ctx.mongoClient` to query existing data during
+generation:
 
 ```typescript
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
@@ -271,8 +300,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
 
 CAMS uses two patterns for populating Cosmos:
 
-1. **Direct seed** — Data written directly to Cosmos via seed scripts (e.g., cases, banks, assignments)
-2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g., `SyncTrusteeCaseAppointments` reads ACMS.CMMAP → writes Cosmos case_appointments)
+1. **Direct seed** — Data written directly to Cosmos via seed scripts (e.g., cases, banks,
+   assignments)
+2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g.,
+   `SyncTrusteeCaseAppointments` reads ACMS.CMMAP → writes Cosmos case_appointments)
 
 Which pattern to use is determined per-feature during test data planning.
 
