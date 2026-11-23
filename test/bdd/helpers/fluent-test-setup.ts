@@ -40,9 +40,6 @@ import type {
   ConsolidationTo,
 } from '@common/cams/events';
 import type { Trustee, TrusteeHistory } from '@common/cams/trustees';
-import type { CamsUserReference } from '@common/cams/users';
-import type { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
-import { inactiveKeyFor } from '@common/cams/user-access';
 import type { TrusteeAppointmentVerification } from '@common/cams/trustee-appointment-verification';
 import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
@@ -100,7 +97,6 @@ export class TestSetup {
   private featureFlags: Record<string, boolean> = {};
   private trusteeAppointmentTasks: TrusteeAppointmentVerification[] = [];
   private customSpies: Record<string, Record<string, unknown>> = {};
-  private camsUsers: CamsUserReference[] | undefined;
 
   private constructor(session: CamsSession) {
     this.session = session;
@@ -347,39 +343,6 @@ export class TestSetup {
   }
 
   /**
-   * Provide the members of the "USTP Cams Users" Okta group, which is the list of CAMS users.
-   * Mocks OktaUserGroupGateway.getUserGroupWithUsers() for that group and clears the
-   * user-access use case's member cache so each test sees its own members.
-   *
-   * @param users The CAMS users
-   * @example
-   * ```typescript
-   * await TestSetup
-   *   .forUser(TestSessions.superUser())
-   *   .withFeatureFlag('cams-role-assignments')
-   *   .withCamsUsers([{ id: 'user-1', name: 'Sarah Williams', email: 'sarah@example.com' }])
-   *   .renderAt('/admin/permissions/cams-users');
-   * ```
-   */
-  withCamsUsers(users: CamsUserReference[]): TestSetup {
-    this.camsUsers = users;
-    return this;
-  }
-
-  /**
-   * Provide existing permissions (USER_ROLE_ASSIGNMENT documents). Reads and writes through the
-   * role assignment repositories use the returned TestState, so a grant made during the test
-   * appears in later reads. Audit records written during the test are available through
-   * TestState.getRoleAssignmentAudits().
-   *
-   * @param assignments The existing assignments
-   */
-  withRoleAssignments(assignments: UserRoleAssignment[]): TestSetup {
-    this.state.setRoleAssignments(assignments);
-    return this;
-  }
-
-  /**
    * Provide a single trustee for the test.
    * This will mock the TrusteesMongoRepository read() method to return this trustee.
    *
@@ -583,30 +546,6 @@ export class TestSetup {
    * ```
    */
   async renderAt(route: string): Promise<TestState> {
-    await this.setUpBackend();
-
-    // Render the app
-    renderApp({
-      initialRoute: route,
-      session: this.session,
-    });
-
-    return this.state;
-  }
-
-  /**
-   * Set up authentication, feature flags and every gateway/repository spy without rendering the
-   * app. Use this for API-level scenarios that call http://localhost:4000/api directly, so no
-   * background UI requests are left in flight when the test server stops.
-   *
-   * @returns The TestState backing the stateful spies
-   * @example
-   * ```typescript
-   * const state = await TestSetup.forUser(TestSessions.superUser()).setUpBackend();
-   * const response = await fetch('http://localhost:4000/api/me', { headers });
-   * ```
-   */
-  async setUpBackend(): Promise<TestState> {
     // Setup authentication
     await spyOnMeEndpoint(this.session);
 
@@ -776,6 +715,12 @@ export class TestSetup {
     // Setup stateful spies for write operations
     await this.setupStatefulSpies();
 
+    // Render the app
+    renderApp({
+      initialRoute: route,
+      session: this.session,
+    });
+
     return this.state;
   }
 
@@ -789,81 +734,6 @@ export class TestSetup {
   private async setupStatefulSpies(): Promise<void> {
     // Capture state in closure for use in spy implementations
     const state = this.state;
-
-    // ============ ROLE ASSIGNMENT (PERMISSION) OPERATIONS ============
-
-    const { UserRoleAssignmentMongoRepository } =
-      await import('../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
-    const { RoleAssignmentAuditMongoRepository } =
-      await import('../../../backend/lib/adapters/gateways/mongo/role-assignment-audit.mongo.repository');
-
-    // Like the unique {userId, activeKey} index: an exact duplicate of an active permission isn't
-    // written, and create reports that with null.
-    vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'create').mockImplementation(
-      async (assignment: UserRoleAssignment) => {
-        const duplicate = state
-          .getRoleAssignments()
-          .some(
-            (held) => held.userId === assignment.userId && held.activeKey === assignment.activeKey,
-          );
-        if (duplicate) return null;
-        state.addRoleAssignment(assignment);
-        return assignment;
-      },
-    );
-    vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'deactivate').mockImplementation(
-      async (assignment: UserRoleAssignment) => {
-        const stored = state.getRoleAssignments().find((held) => held.id === assignment.id);
-        if (!stored?.active) return null;
-        const deactivated = {
-          ...stored,
-          active: false,
-          activeKey: inactiveKeyFor(assignment.id),
-        };
-        state.updateRoleAssignment(deactivated);
-        return deactivated;
-      },
-    );
-    vi.spyOn(
-      UserRoleAssignmentMongoRepository.prototype,
-      'findActiveByUserAndRole',
-    ).mockImplementation(async (userId: string, role: string) =>
-      state
-        .getRoleAssignments()
-        .filter(
-          (assignment) =>
-            assignment.active && assignment.userId === userId && assignment.role === role,
-        ),
-    );
-    vi.spyOn(UserRoleAssignmentMongoRepository.prototype, 'findActiveByUserIds').mockImplementation(
-      async (userIds: string[]) =>
-        state
-          .getRoleAssignments()
-          .filter((assignment) => assignment.active && userIds.includes(assignment.userId)),
-    );
-    vi.spyOn(RoleAssignmentAuditMongoRepository.prototype, 'create').mockImplementation(
-      async (entry: RoleAssignmentAuditEntry) => {
-        state.addRoleAssignmentAudit(entry);
-      },
-    );
-
-    if (this.camsUsers) {
-      const camsUsers = this.camsUsers;
-      const { resetCamsUsersCache } =
-        await import('../../../backend/lib/use-cases/user-access/user-access');
-      resetCamsUsersCache();
-      const OktaUserGroupGateway = (
-        await import('../../../backend/lib/adapters/gateways/okta/okta-user-group-gateway')
-      ).default;
-      vi.spyOn(OktaUserGroupGateway.prototype, 'getUserGroupWithUsers').mockImplementation(
-        async (_context: unknown, groupName: string) => {
-          if (groupName !== 'USTP Cams Users') {
-            throw new Error(`[BDD TEST] Unmocked Okta group requested: "${groupName}"`);
-          }
-          return { id: 'cams-users-group', name: groupName, users: camsUsers };
-        },
-      );
-    }
 
     // ============ CASE NOTES OPERATIONS ============
 

@@ -16,10 +16,7 @@ async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
   await page.goto('/admin');
   await expect(page.locator('.admin-screen-navigation')).toBeVisible(timeoutOption);
   const permissionsLink = page.getByTestId('permissions-nav-link');
-  test.skip(
-    (await permissionsLink.count()) === 0,
-    'cams-role-assignments is off for the SuperUser account',
-  );
+  await expect(permissionsLink).toBeVisible(timeoutOption);
 
   const usersResponse = page.waitForResponse(
     (response) => isUsersResponse(response.url()) && response.ok(),
