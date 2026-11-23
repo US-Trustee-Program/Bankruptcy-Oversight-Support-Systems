@@ -94,6 +94,7 @@ The backend queries DXTR for full case details. If a case exists only in CAMS bu
 All test data is validated before seeding to ensure quality:
 
 - **phoneticTokens**: All debtors, jointDebtors, and trustees must have phoneticTokens arrays
+- **Debtor**: Every SYNCED_CASE must have a debtor
 - **DXTR linkage**: All cases must link to DXTR with numeric IDs (real) or SEED##### format (generated)
 - **Phone format**: All phone numbers must be in ###-###-#### format
 - **Email format**: All emails must contain @ symbol
@@ -132,7 +133,6 @@ const trustee = createTrusteeBase({
 
 // Creates case with DXTR linkage and phoneticTokens
 const caseDoc = createCaseDocument({
-  dxtrStrategy: 'real',
   dxtrId: '318723',
   caseId: '081-26-63921',
   debtorName: 'Smith, John',
