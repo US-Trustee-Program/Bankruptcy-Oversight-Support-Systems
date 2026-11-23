@@ -12,6 +12,11 @@ import { buildAtsSqlConfig } from './sql-config.js';
  * Falls back to Azure AD auth (azure-active-directory-default) if user/pass not set.
  * Logs each upserted row and closes the connection pool in a finally block.
  *
+ * Rows may supply a value for the table's identity column, as the TOD seed does with its reserved
+ * TRUSTEES.ID range. Those rows are written with IDENTITY_INSERT on, and afterwards the table's
+ * identity counter is reset to where it was, so the database keeps assigning its own IDs from the
+ * same place instead of from just past the seed's IDs.
+ *
  * @param dbPrefix - Database identifier ('dxtr', 'acms' or 'ats')
  * @param tableName - SQL table name (e.g., 'AO_CS', 'AO_PY')
  * @param rows - Array of rows to upsert
@@ -37,6 +42,9 @@ export async function sqlUpsert(
       (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
     pool = await new Pool(config).connect();
 
+    const identity = rows.length > 0 ? await findIdentity(pool, tableName) : undefined;
+    const writesIdentity = !!identity && rows.some((row) => identity.column in row);
+
     for (const row of rows) {
       for (const key of keys) {
         if (!(key in row)) {
@@ -46,13 +54,52 @@ export async function sqlUpsert(
         }
       }
 
-      await upsertRow(pool, tableName, row, keys, insertOnly);
+      await upsertRow(pool, tableName, row, keys, insertOnly, writesIdentity);
       const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
       console.log(`[SEED] ${tableName} ${keyValues}`);
+    }
+
+    if (writesIdentity && identity.current !== null) {
+      await resetIdentity(pool, tableName, identity.current);
     }
   } finally {
     await pool?.close();
   }
+}
+
+type TableIdentity = { column: string; current: number | null };
+
+/** The table's identity column, if it has one, and the last identity value it assigned. */
+async function findIdentity(
+  pool: sql.ConnectionPool,
+  tableName: string,
+): Promise<TableIdentity | undefined> {
+  const { recordset } = await pool
+    .request()
+    .input('table', `dbo.${tableName}`)
+    .query(
+      `SELECT c.name AS identityColumn, CAST(IDENT_CURRENT(@table) AS BIGINT) AS identCurrent
+       FROM sys.identity_columns c WHERE c.object_id = OBJECT_ID(@table)`,
+    );
+  const found = recordset?.[0];
+  if (!found) return undefined;
+  return {
+    column: found.identityColumn,
+    current: found.identCurrent === null ? null : Number(found.identCurrent),
+  };
+}
+
+/** Puts the table's identity counter back, so the next database-assigned ID follows `current`. */
+async function resetIdentity(
+  pool: sql.ConnectionPool,
+  tableName: string,
+  current: number,
+): Promise<void> {
+  if (!Number.isSafeInteger(current)) {
+    throw new Error(`[SEED] Unexpected identity value ${current} for table '${tableName}'`);
+  }
+  await pool.request().query(`DBCC CHECKIDENT ('dbo.${tableName}', RESEED, ${current})`);
+  console.log(`[SEED] ${tableName} identity counter reset to ${current}`);
 }
 
 /**
@@ -118,7 +165,8 @@ async function upsertRow(
   tableName: string,
   row: Record<string, unknown>,
   primaryKeys: string[],
-  insertOnly?: boolean,
+  insertOnly: boolean | undefined,
+  writesIdentity: boolean,
 ): Promise<void> {
   const columns = Object.keys(row);
   const keySet = new Set(primaryKeys);
@@ -139,7 +187,9 @@ async function upsertRow(
   const whenMatchedBranch =
     insertOnly || !setClause ? '' : `WHEN MATCHED THEN\n      UPDATE SET ${setClause}`;
 
-  const mergeQuery = `
+  // IDENTITY_INSERT applies to one connection, and the pool may hand each request a different one,
+  // so it is turned on and off in the same batch as the MERGE.
+  const merge = `
     MERGE INTO [dbo].[${tableName}] AS target
     USING (SELECT ${usingSelect}) AS source
     ON ${onClause}
@@ -148,6 +198,9 @@ async function upsertRow(
       INSERT (${insertColumns})
       VALUES (${insertValues});
   `;
+  const mergeQuery = writesIdentity
+    ? `SET IDENTITY_INSERT [dbo].[${tableName}] ON;${merge}SET IDENTITY_INSERT [dbo].[${tableName}] OFF;`
+    : merge;
 
   const request = pool.request();
   for (const [key, value] of Object.entries(row)) {
