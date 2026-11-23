@@ -27,7 +27,7 @@ const FIELD_LABELS: Record<TrusteeProfileField, string> = {
 // A stored run can predate a count added later, so a missing count must not break the tab, which
 // would also hide the button that starts the run that replaces it.
 const count = (value: number | undefined) =>
-  value === undefined ? 'Not counted' : value.toLocaleString('en-US');
+  value === undefined ? 'Not recorded' : value.toLocaleString('en-US');
 
 const TOD_ONLY_LABEL = 'In TOD only';
 

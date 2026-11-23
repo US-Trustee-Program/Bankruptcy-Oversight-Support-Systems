@@ -13,9 +13,8 @@ Development tools for CAMS, including database seeding utilities and test data g
    - `.env-dev-main` — cosmos-mongo-ustp-cams, the account the deployed dev app reads. Seed here to
      see the data in the dev app.
 
-   Each file sets `MONGO_CONNECTION_STRING` and `COSMOS_DATABASE_NAME` (`cams`). The SQL seeds also
-   need `MSSQL_*` (DXTR), `ACMS_MSSQL_*` (ACMS), or `ATS_MSSQL_*` (TOD) for the databases they
-   write.
+   Each file sets `MONGO_CONNECTION_STRING`; the seeder always writes to the `cams` database. See
+   [Environment Files](#environment-files) for the SQL variables.
 
 2. **For `seed:main`, allow your IP, then remove it.** cosmos-mongo-ustp-cams accepts connections
    only from the dev app's subnets and the Azure portal, so seeding from your machine fails with
@@ -224,11 +223,8 @@ const REAL_CASES = [
 
 ### Environment Files
 
-Three environment file templates are provided:
-
-- **`.env.template`** — Base template for custom seeding (copied to `.env`)
-- **`.env-dev-local.template`** — cosmos-mongo-ustp-cams-dev (copied to `.env-dev-local`)
-- **`.env-dev-main.template`** — cosmos-mongo-ustp-cams (copied to `.env-dev-main`)
+Create `.env`, `.env-dev-local`, and `.env-dev-main` yourself, as described in
+[Quick Start](#quick-start). No templates are provided.
 
 Each file contains:
 
@@ -243,7 +239,7 @@ Each file contains:
 DXTR and ACMS are shared SQL databases, so their connection strings are identical across all
 environments.
 
-**Note:** Actual `.env*` files are gitignored. Only templates are committed.
+**Note:** Actual `.env*` files are gitignored and not committed.
 
 ### User-Groups and Oversight Assignments
 

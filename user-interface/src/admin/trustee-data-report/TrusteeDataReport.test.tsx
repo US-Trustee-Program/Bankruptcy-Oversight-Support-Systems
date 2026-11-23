@@ -116,7 +116,7 @@ describe('TrusteeDataReport', () => {
     ).toHaveTextContent('In TOD only: Status missing, needs review');
   });
 
-  test('should show a count the latest run did not record as not counted, and still allow a start', async () => {
+  test('should show "Not recorded" for a count the latest run lacks, and still allow a start', async () => {
     // A run stored before a count existed has no value for it.
     const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
     mockGet({ latestCompletedRun: { ...COMPLETED, summary: olderSummary } });
@@ -125,7 +125,7 @@ describe('TrusteeDataReport', () => {
 
     expect(
       screen.getByTestId('trustee-data-report-count-tod-only-status-missing').textContent,
-    ).toBe('Not counted');
+    ).toBe('Not recorded');
     expect(screen.getByTestId('trustee-data-report-count-tod-only').textContent).toBe('7');
     expectStartBlocked(false);
   });
