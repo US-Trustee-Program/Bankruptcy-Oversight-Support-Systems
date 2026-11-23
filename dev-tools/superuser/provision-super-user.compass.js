@@ -7,8 +7,9 @@
 // mistyped id writes a permission nobody can use.
 //
 // It writes the same two documents the Permissions screen writes: a USER_ROLE_ASSIGNMENT and a
-// CREATED ROLE_ASSIGNMENT_AUDIT entry. Running it again changes nothing while the user holds an
-// active Super User permission.
+// CREATED ROLE_ASSIGNMENT_AUDIT entry. If the user already holds an active Super User permission
+// and its CREATED audit entry exists, it writes nothing and prints already-held; if the audit
+// entry is missing, it throws.
 (() => {
   const USER_ID = 'REPLACE_WITH_OKTA_USER_ID';
   const USER_NAME = 'REPLACE_WITH_DISPLAY_NAME';
