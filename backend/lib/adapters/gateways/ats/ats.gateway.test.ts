@@ -226,6 +226,7 @@ describe('ATS Gateway', () => {
         const [, query, input] = mockExecuteQuery.mock.calls[0];
         expect(query).toContain('FROM CHAPTER_DETAILS CD');
         expect(query).toContain('CD.TRU_ID IN (@id0, @id1)');
+        expect(query).toContain('GROUP BY CD.TRU_ID');
         expect(input).toEqual([
           expect.objectContaining({ name: 'id0', value: 3 }),
           expect.objectContaining({ name: 'id1', value: 4 }),
@@ -249,7 +250,8 @@ describe('ATS Gateway', () => {
 
     // The whole active-status condition, literally: the codes active on every chapter, then each
     // code active only on its case-by-case chapter. 13CBC has no such code and adds no clause, so
-    // no query ever contains an empty IN ().
+    // no query ever contains an empty IN (). The page and count queries apply it only to the
+    // trustee's own chapters.
     const ACTIVE_CONDITION =
       "CD.STATUS IN ('1','8','12','P','PA','O','C','S','E','V') OR (CD.CHAPTER = '12CBC' AND CD.STATUS IN ('2'))";
 
@@ -257,12 +259,12 @@ describe('ATS Gateway', () => {
       {
         method: 'getTrusteesPage' as const,
         call: (g: AtsGatewayImpl) => g.getTrusteesPage(context, null, 50),
-        expected: `AND (${ACTIVE_CONDITION})`,
+        expected: `WHERE CD.TRU_ID = T.ID AND (${ACTIVE_CONDITION})`,
       },
       {
         method: 'getTrusteeCount' as const,
         call: (g: AtsGatewayImpl) => g.getTrusteeCount(context),
-        expected: `AND (${ACTIVE_CONDITION})`,
+        expected: `WHERE CD.TRU_ID = T.ID AND (${ACTIVE_CONDITION})`,
       },
       {
         method: 'getTodOnlyCandidates' as const,
@@ -277,7 +279,8 @@ describe('ATS Gateway', () => {
         await call(gateway);
 
         const [, query] = mockExecuteQuery.mock.calls[0];
-        expect(query).toContain(expected);
+        // The page and count queries break the line between the trustee match and the condition.
+        expect(query.replace(/\s+/g, ' ')).toContain(expected);
         expect(query).not.toMatch(/IN \(\s*\)/);
       },
     );
