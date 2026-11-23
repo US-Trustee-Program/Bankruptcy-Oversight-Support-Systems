@@ -4,6 +4,7 @@ import { validateObject, VALID } from './validation';
 import {
   activeKeyFor,
   inactiveKeyFor,
+  isUnscopedRole,
   scopeLabel,
   scopesOverlap,
   RoleAssignmentGrantRequest,
@@ -160,6 +161,17 @@ describe('user-access', () => {
       },
     ])('should label $name as "$label"', ({ scope, officeName, label }) => {
       expect(scopeLabel(scope, officeName)).toEqual(label);
+    });
+  });
+
+  describe('isUnscopedRole', () => {
+    test('should treat only Super User as granted without a region or office', () => {
+      const unscoped = CamsRoles.filter((role) => isUnscopedRole(role));
+      expect(unscoped).toEqual([CamsRole.SuperUser]);
+    });
+
+    test('should treat no role selected as scoped', () => {
+      expect(isUnscopedRole(null)).toBe(false);
     });
   });
 });

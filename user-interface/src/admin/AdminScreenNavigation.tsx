@@ -22,6 +22,77 @@ function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavStat
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
+type AdminNavItem = {
+  state: AdminNavState;
+  to: string;
+  testId: string;
+  title: string;
+  label: string;
+  // Shown only when this feature flag is on.
+  flag?: string;
+};
+
+const ADMIN_NAV_ITEMS: AdminNavItem[] = [
+  {
+    state: AdminNavState.PRIVILEGED_IDENTITY,
+    to: '/admin/privileged-identity',
+    testId: 'privileged-identity-nav-link',
+    title: 'Manage privileged identity',
+    label: 'Privileged Identity',
+    flag: PRIVILEGED_IDENTITY_MANAGEMENT,
+  },
+  {
+    state: AdminNavState.PERMISSIONS,
+    to: '/admin/permissions',
+    testId: 'permissions-nav-link',
+    title: 'Manage CAMS user permissions',
+    label: 'Permissions',
+    flag: CAMS_ROLE_ASSIGNMENTS,
+  },
+  {
+    state: AdminNavState.TRUSTEE_TASK_REGIONS,
+    to: '/admin/trustee-task-regions',
+    testId: 'trustee-task-regions-nav-link',
+    title: 'Manage trustee task regions',
+    label: 'Trustee Task Regions',
+  },
+  {
+    state: AdminNavState.BANKRUPTCY_SOFTWARE,
+    to: '/admin/bankruptcy-software',
+    testId: 'bankruptcy-software-nav-link',
+    title: 'Manage bankruptcy software',
+    label: 'Bankruptcy Software',
+  },
+  {
+    state: AdminNavState.BANKS,
+    to: '/admin/banks',
+    testId: 'banks-nav-link',
+    title: 'Manage banks',
+    label: 'Banks',
+  },
+  {
+    state: AdminNavState.CASE_RELOAD,
+    to: '/admin/case-reload',
+    testId: 'case-reload-nav-link',
+    title: 'Manually reload cases from DXTR',
+    label: 'Reload Case',
+  },
+  {
+    state: AdminNavState.NOTIFICATION_ROUTING,
+    to: '/admin/notification-routing',
+    testId: 'notification-routing-nav-link',
+    title: 'Manage notification routing',
+    label: 'Notification Routing',
+  },
+  {
+    state: AdminNavState.TRUSTEE_DATA_REPORT,
+    to: '/admin/trustee-data-report',
+    testId: 'trustee-data-report-nav-link',
+    title: 'Compare CAMS trustee data with TOD',
+    label: 'Trustee Data Report',
+  },
+];
+
 interface AdminScreenNavigationProps {
   initiallySelectedNavLink: AdminNavState;
 }
@@ -31,143 +102,24 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
   const [activeNav, setActiveNav] = useState<AdminNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
 
-  function handleNavPrivilegedIdentity() {
-    setActiveNav(AdminNavState.PRIVILEGED_IDENTITY);
-  }
-
-  function handleNavPermissions() {
-    setActiveNav(AdminNavState.PERMISSIONS);
-  }
-
-  function handleNavTrusteeTaskRegions() {
-    setActiveNav(AdminNavState.TRUSTEE_TASK_REGIONS);
-  }
-
-  function handleNavBankruptcySoftware() {
-    setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE);
-  }
-
-  function handleNavBanks() {
-    setActiveNav(AdminNavState.BANKS);
-  }
-
-  function handleNavCaseReload() {
-    setActiveNav(AdminNavState.CASE_RELOAD);
-  }
-
-  function handleNavNotificationRouting() {
-    setActiveNav(AdminNavState.NOTIFICATION_ROUTING);
-  }
-
-  function handleNavTrusteeDataReport() {
-    setActiveNav(AdminNavState.TRUSTEE_DATA_REPORT);
-  }
-
   return (
     <nav className={`admin-screen-navigation`} aria-label="Admin Side navigation" role="navigation">
       <ul className="usa-sidenav">
-        {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
-          <li className="usa-sidenav__item">
-            <NavLink
-              to={`/admin/privileged-identity`}
-              data-testid="privileged-identity-nav-link"
-              className={
-                'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PRIVILEGED_IDENTITY)
-              }
-              onClick={handleNavPrivilegedIdentity}
-              title="Manage privileged identity"
-            >
-              Privileged Identity
-            </NavLink>
-          </li>
+        {ADMIN_NAV_ITEMS.filter((item) => !item.flag || isFlagEnabled(flags, item.flag)).map(
+          (item) => (
+            <li className="usa-sidenav__item" key={item.state}>
+              <NavLink
+                to={item.to}
+                data-testid={item.testId}
+                className={'usa-nav-link ' + setCurrentAdminNav(activeNav, item.state)}
+                onClick={() => setActiveNav(item.state)}
+                title={item.title}
+              >
+                {item.label}
+              </NavLink>
+            </li>
+          ),
         )}
-        {isFlagEnabled(flags, CAMS_ROLE_ASSIGNMENTS) && (
-          <li className="usa-sidenav__item">
-            <NavLink
-              to="/admin/permissions"
-              data-testid="permissions-nav-link"
-              className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PERMISSIONS)}
-              onClick={handleNavPermissions}
-              title="Manage CAMS user permissions"
-            >
-              Permissions
-            </NavLink>
-          </li>
-        )}
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/trustee-task-regions"
-            data-testid="trustee-task-regions-nav-link"
-            className={
-              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.TRUSTEE_TASK_REGIONS)
-            }
-            onClick={handleNavTrusteeTaskRegions}
-            title="Manage trustee task regions"
-          >
-            Trustee Task Regions
-          </NavLink>
-        </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to={`/admin/bankruptcy-software`}
-            data-testid="bankruptcy-software-nav-link"
-            className={
-              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
-            }
-            onClick={handleNavBankruptcySoftware}
-            title="Manage bankruptcy software"
-          >
-            Bankruptcy Software
-          </NavLink>
-        </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/banks"
-            data-testid="banks-nav-link"
-            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKS)}
-            onClick={handleNavBanks}
-            title="Manage banks"
-          >
-            Banks
-          </NavLink>
-        </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/case-reload"
-            data-testid="case-reload-nav-link"
-            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.CASE_RELOAD)}
-            onClick={handleNavCaseReload}
-            title="Manually reload cases from DXTR"
-          >
-            Reload Case
-          </NavLink>
-        </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/notification-routing"
-            data-testid="notification-routing-nav-link"
-            className={
-              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.NOTIFICATION_ROUTING)
-            }
-            onClick={handleNavNotificationRouting}
-            title="Manage notification routing"
-          >
-            Notification Routing
-          </NavLink>
-        </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/trustee-data-report"
-            data-testid="trustee-data-report-nav-link"
-            className={
-              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.TRUSTEE_DATA_REPORT)
-            }
-            onClick={handleNavTrusteeDataReport}
-            title="Compare CAMS trustee data with TOD"
-          >
-            Trustee Data Report
-          </NavLink>
-        </li>
       </ul>
     </nav>
   );

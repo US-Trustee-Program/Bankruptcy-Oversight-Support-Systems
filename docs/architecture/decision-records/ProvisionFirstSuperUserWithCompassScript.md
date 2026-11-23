@@ -51,6 +51,10 @@ pastes into the MongoDB Compass shell on the PAW, connected to that environment'
 - The script only grants. It writes one unscoped Super User role assignment and its matching
   creation audit entry, in the same shape the Permissions screen writes, and changes nothing if the
   user already holds an active Super User permission.
+- It writes nothing unless `user-role-assignments` already has its unique `{userId, activeKey}`
+  index. Cosmos adds a unique index only to an empty collection, so the Bicep deploy that creates
+  the collection with the index must run before the script. The application makes the same check
+  before its first write.
 - It runs in Compass's shell as-is: no module loading, no environment variables. The operator sets
   the target user and database at the top of the script before pasting.
 - The audit entry records a fixed performer that identifies the provisioning script, not the

@@ -1,6 +1,6 @@
-import { CamsRole, CamsRoleType } from '@common/cams/roles';
+import { CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { scopeContains, UserRoleAssignment } from '@common/cams/user-access';
+import { isUnscopedRole, scopeContains, UserRoleAssignment } from '@common/cams/user-access';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 
@@ -21,7 +21,7 @@ export function sessionAccessFrom(
 
   for (const permission of resolveOverlaps(permissions)) {
     roles.add(permission.role);
-    if (permission.role === CamsRole.SuperUser) continue;
+    if (isUnscopedRole(permission.role)) continue;
     for (const office of offices) {
       if (scopeContains(permission, office)) grantedOfficeCodes.add(office.officeCode);
     }

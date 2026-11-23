@@ -1,5 +1,6 @@
 import { CamsHttpError } from '@/lib/models/api';
 import { ResponseBody } from '@common/api/response';
+import { includesIgnoringCase } from '@common/string-helper';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import {
@@ -3407,11 +3408,7 @@ for (const [userId, role, regionId, officeCode] of SEEDED_PERMISSIONS) {
   );
 }
 
-function includesIgnoringCase(value: string | undefined, search: string | undefined) {
-  return !search || (value ?? '').toLowerCase().includes(search.toLowerCase());
-}
-
-// Same matching as the backend: case-insensitive contains on name and email, combined with AND.
+// The backend's matching (the shared includesIgnoringCase), on name and email, combined with AND.
 async function getCamsUsers(predicate: CamsUsersPredicate) {
   const matching = MOCK_CAMS_USERS.filter(
     (user) =>

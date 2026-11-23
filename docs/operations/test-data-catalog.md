@@ -166,8 +166,9 @@ Permissions until someone holds Super User, so the first one is written directly
 database: paste `dev-tools/superuser/provision-super-user.compass.js` into the MongoDB Compass shell
 connected to that environment, after setting `USER_ID`, `USER_NAME`, `USER_EMAIL` and `DATABASE` at
 the top. It writes one Super User permission and its CREATED audit entry, and does nothing if the
-user already holds Super User. The script comes from PR #3353. Grant every later permission from the
-Permissions screen. See
+user already holds Super User. It stops without writing if `user-role-assignments` doesn't have its
+unique `{userId, activeKey}` index yet; deploy `cosmos-collections.bicep` to the environment first.
+The script comes from PR #3353. Grant every later permission from the Permissions screen. See
 [ADR: Provision the first Super User with a Compass script](../architecture/decision-records/ProvisionFirstSuperUserWithCompassScript.md).
 
 **Removing a Super User.** There's no revoke on the Permissions screen yet; it's planned as future

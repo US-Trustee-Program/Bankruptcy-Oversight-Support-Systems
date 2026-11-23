@@ -1,4 +1,4 @@
-import { CamsRoles, CamsRoleType } from './roles';
+import { CamsRole, CamsRoles, CamsRoleType } from './roles';
 import { CamsUserReference } from './users';
 import { ValidationSpec } from './validation';
 import V from './validators';
@@ -116,6 +116,14 @@ export function inactiveKeyFor(assignmentId: string): string {
 
 // Every CAMS role can be granted. (CamsRoles already leaves out PrivilegedIdentityUser.)
 export const grantableRoles = [...CamsRoles];
+
+/**
+ * Whether a role is granted without a region or office. Such a permission is always unscoped, and
+ * gives a session the role but no offices.
+ */
+export function isUnscopedRole(role: CamsRoleType | null | undefined): boolean {
+  return role === CamsRole.SuperUser;
+}
 
 /**
  * Where a permission applies: one office (both set), a whole region (office null), or every region

@@ -898,4 +898,28 @@ describe('UserAccessUseCase', () => {
       });
     });
   });
+
+  // Last in the file: the DATABASE_MOCK repository keeps grants for the rest of the run.
+  describe('with the DATABASE_MOCK repository and no spies on it', () => {
+    test('should grant a permission, list it, and treat a repeat grant as already held', async () => {
+      spyOnMembers();
+      const request: RoleAssignmentGrantRequest = {
+        userId: 'user-b',
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: MANHATTAN.officeCode,
+      };
+
+      const first = await useCase.grantPermission(context, request);
+      const repeat = await useCase.grantPermission(context, request);
+      const { data } = await useCase.getCamsUsers(context, { name: 'Bob', limit: 20, offset: 0 });
+
+      expect(first.created).toBe(true);
+      expect(repeat).toEqual({
+        result: { permission: first.result.permission, replaced: [] },
+        created: false,
+      });
+      expect(data[0].permissions).toEqual([first.result.permission]);
+    });
+  });
 });

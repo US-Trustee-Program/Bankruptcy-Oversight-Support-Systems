@@ -9,12 +9,13 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
-import { CamsRole, CamsRoleLabels, CamsRoleType } from '@common/cams/roles';
+import { CamsRoleLabels, CamsRoleType } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   ALL_SCOPE,
   grantableRoles,
+  isUnscopedRole,
   PermissionScope,
   RoleAssignmentGrantRequest,
   scopeLabel,
@@ -128,9 +129,8 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
       () => new Map(offices.map((office) => [office.officeCode, office.officeName])),
       [offices],
     );
-    // Super User has no region or office.
-    const isSuperUser = role === CamsRole.SuperUser;
-    const scope = isSuperUser
+    const unscoped = isUnscopedRole(role);
+    const scope = unscoped
       ? { regionId: ALL_SCOPE, officeCode: ALL_SCOPE }
       : scopeOptions.find((option) => option.value === scopeValue)?.scope;
     const pending =
@@ -259,12 +259,12 @@ export const AddPermissionModal = forwardRef<AddPermissionModalRef, AddPermissio
               multiSelect={false}
               onUpdateSelection={(selections) => {
                 const selected = (selections[0]?.value as CamsRoleType) ?? null;
-                // The Region and Office field goes away for Super User and comes back empty.
-                if (selected === CamsRole.SuperUser) setScopeValue(null);
+                // The Region and Office field goes away for an unscoped role and comes back empty.
+                if (isUnscopedRole(selected)) setScopeValue(null);
                 setRole(selected);
               }}
             />
-            {!isSuperUser && (
+            {!unscoped && (
               <ComboBox
                 id={`${modalId}-office`}
                 ref={officeRef}

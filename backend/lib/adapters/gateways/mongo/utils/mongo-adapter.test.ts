@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { MongoServerError } from 'mongodb';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
@@ -30,6 +31,7 @@ const aggregate = vi.fn();
 const upsertOne = vi.fn();
 const updateMany = vi.fn();
 const bulkWrite = vi.fn();
+const listIndexes = vi.fn();
 
 const spies = {
   find,
@@ -46,6 +48,7 @@ const spies = {
   upsertOne,
   updateMany,
   bulkWrite,
+  listIndexes,
 };
 
 type TestType = {
@@ -392,6 +395,56 @@ describe('Mongo adapter', () => {
       );
     },
   );
+
+  describe('hasUniqueIndex', () => {
+    const indexes = (list: object[]) => listIndexes.mockReturnValue({ toArray: async () => list });
+
+    test.each([
+      {
+        name: 'a unique index on those fields',
+        list: [{ key: { _id: 1 } }, { key: { userId: 1, activeKey: 1 }, unique: true }],
+        expected: true,
+      },
+      {
+        name: 'a non-unique index on those fields',
+        list: [{ key: { userId: 1, activeKey: 1 } }],
+        expected: false,
+      },
+      {
+        name: 'a unique index on other fields',
+        list: [{ key: { userId: 1 }, unique: true }],
+        expected: false,
+      },
+      {
+        name: 'a unique index on the fields in another order',
+        list: [{ key: { activeKey: 1, userId: 1 }, unique: true }],
+        expected: false,
+      },
+    ])('should return $expected for $name', async ({ list, expected }) => {
+      indexes(list);
+      expect(await adapter.hasUniqueIndex(['userId', 'activeKey'])).toBe(expected);
+    });
+
+    test('should return false when the collection does not exist', async () => {
+      listIndexes.mockReturnValue({
+        toArray: async () => {
+          throw new MongoServerError({ message: 'ns does not exist', code: 26 });
+        },
+      });
+      expect(await adapter.hasUniqueIndex(['userId', 'activeKey'])).toBe(false);
+    });
+
+    test('should throw a CamsError for any other failure', async () => {
+      listIndexes.mockReturnValue({
+        toArray: async () => {
+          throw new Error('network');
+        },
+      });
+      await expect(adapter.hasUniqueIndex(['userId', 'activeKey'])).rejects.toEqual(
+        expect.objectContaining({ module: ADAPTER_MODULE_NAME }),
+      );
+    });
+  });
 
   test('should return a count of 5 for 5 items deleted', async () => {
     deleteMany.mockResolvedValue({ acknowledged: true, deletedCount: 5 });

@@ -34,6 +34,7 @@ describe('UserRoleAssignmentMongoRepository', () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
     repo = UserRoleAssignmentMongoRepository.getInstance(context);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex').mockResolvedValue(true);
   });
 
   afterEach(async () => {
@@ -42,6 +43,39 @@ describe('UserRoleAssignmentMongoRepository', () => {
   });
 
   describe('create', () => {
+    test('should refuse to write when the unique {userId, activeKey} index is missing', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex').mockResolvedValue(false);
+      const insertOne = vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
+
+      await expect(repo.create(assignment)).rejects.toThrow(
+        'Unable to create role assignment: user-role-assignments has no unique {userId, activeKey} index.',
+      );
+      expect(insertOne).not.toHaveBeenCalled();
+    });
+
+    test('should check for the index on its first write only', async () => {
+      const hasUniqueIndex = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex')
+        .mockResolvedValue(true);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(assignment.id);
+
+      await repo.create(assignment);
+      await repo.create(assignment);
+
+      expect(hasUniqueIndex).toHaveBeenCalledTimes(1);
+      expect(hasUniqueIndex).toHaveBeenCalledWith(['userId', 'activeKey']);
+    });
+
+    test('should write nothing when the index check fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex').mockRejectedValue(
+        new Error('listIndexes failed'),
+      );
+      const insertOne = vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
+
+      await expect(repo.create(assignment)).rejects.toThrow();
+      expect(insertOne).not.toHaveBeenCalled();
+    });
+
     test('should insert the assignment with its own id and return it', async () => {
       const insertOne = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')

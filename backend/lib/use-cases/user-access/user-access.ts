@@ -7,15 +7,16 @@ import {
   scopesOverlap,
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  isUnscopedRole,
   RoleAssignmentAuditEntry,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
   UserRoleAssignment,
 } from '@common/cams/user-access';
-import { CamsRole } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
+import { includesIgnoringCase } from '@common/string-helper';
 import { flatten, validateObject } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -37,10 +38,6 @@ let memberCache: { members: CamsUserReference[]; expiresAt: number } | null = nu
 
 export function resetCamsUsersCache() {
   memberCache = null;
-}
-
-function includesIgnoringCase(value: string | undefined, search: string | undefined): boolean {
-  return !search || (value ?? '').toLowerCase().includes(search.toLowerCase());
 }
 
 function byRegionThenOffice(a: UserRoleAssignment, b: UserRoleAssignment): number {
@@ -68,7 +65,7 @@ function resolveScope(
 ): { scope: PermissionScope } {
   const everyRegion = request.regionId === ALL_SCOPE;
   const everyOffice = request.officeCode === ALL_SCOPE;
-  if (request.role === CamsRole.SuperUser) {
+  if (isUnscopedRole(request.role)) {
     if (!everyRegion || !everyOffice) throw badRequest('Super User has no region or office.');
     return { scope: { regionId: null, officeCode: null } };
   }

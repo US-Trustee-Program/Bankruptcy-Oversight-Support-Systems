@@ -3,7 +3,7 @@ import { Request } from 'express';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
-import { testFeatureFlags } from '@common/feature-flags';
+import { flagsWithoutLaunchDarkly } from '../lib/adapters/utils/feature-flag';
 import { CamsError } from '../lib/common-errors/cams-error';
 import factory from '../lib/factory';
 import ContextCreator from './application-context-creator';
@@ -47,7 +47,7 @@ describe('Express Application Context Creator', () => {
     // Flags on the finished context reflect the authenticated user, not an
     // anonymous evaluation.
     expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
-    expect(context.featureFlags).toEqual(testFeatureFlags);
+    expect(context.featureFlags).toEqual(flagsWithoutLaunchDarkly);
   });
 
   test('should resolve the session with feature flags available to it', async () => {
@@ -70,7 +70,7 @@ describe('Express Application Context Creator', () => {
 
     await ContextCreator.applicationContextCreator(request);
 
-    expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
+    expect(flagsSeenDuringLookup).toEqual(flagsWithoutLaunchDarkly);
   });
 
   test('should populate feature flags when getApplicationContext is called directly', async () => {
@@ -79,7 +79,7 @@ describe('Express Application Context Creator', () => {
 
     const context = await ContextCreator.getApplicationContext(request, logger, 'test-request-id');
 
-    expect(context.featureFlags).toEqual(testFeatureFlags);
+    expect(context.featureFlags).toEqual(flagsWithoutLaunchDarkly);
   });
 
   describe('expressToCamsHttpRequest', () => {

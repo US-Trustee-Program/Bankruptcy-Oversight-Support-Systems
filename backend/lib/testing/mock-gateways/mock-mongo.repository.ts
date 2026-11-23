@@ -125,6 +125,8 @@ export class MockMongoRepository
     summary: TrusteeDataReportSummary;
   }[] = [];
   private static trusteeDataReportLock: TrusteeDataReportRunState | null = null;
+  // Role assignments granted while DATABASE_MOCK=true, kept for the life of the process.
+  private static roleAssignments: UserRoleAssignment[] = [];
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -332,27 +334,51 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  findActiveByUserIds(_userIds: string[]): Promise<UserRoleAssignment[]> {
-    return Promise.resolve([]);
+  findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter((a) => a.active && userIds.includes(a.userId)),
+    );
   }
 
-  findActiveByUserAndRole(_userId: string, _role: string): Promise<UserRoleAssignment[]> {
-    return Promise.resolve([]);
+  findActiveByUserAndRole(userId: string, role: string): Promise<UserRoleAssignment[]> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter(
+        (a) => a.active && a.userId === userId && a.role === role,
+      ),
+    );
   }
 
   deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
-    return Promise.resolve({
+    const deactivated = {
       ...assignment,
       active: false,
       activeKey: inactiveKeyFor(assignment.id),
-    });
+    };
+    MockMongoRepository.roleAssignments = MockMongoRepository.roleAssignments.map((a) =>
+      a.id === assignment.id ? deactivated : a,
+    );
+    return Promise.resolve(deactivated);
   }
 
   deleteByUserId(_userId: string): Promise<void> {
     return Promise.resolve();
   }
 
-  create(..._ignore): Promise<any> {
+  create(...args): Promise<any> {
+    const item = args[0];
+    if (item?.documentType === 'USER_ROLE_ASSIGNMENT') {
+      // Mirrors the unique {userId, activeKey} index: a duplicate returns null.
+      const assignment = item as UserRoleAssignment;
+      const duplicate = MockMongoRepository.roleAssignments.some(
+        (a) => a.userId === assignment.userId && a.activeKey === assignment.activeKey,
+      );
+      if (duplicate) return Promise.resolve(null);
+      MockMongoRepository.roleAssignments.push(assignment);
+      return Promise.resolve(assignment);
+    }
+    if (item?.documentType === 'ROLE_ASSIGNMENT_AUDIT') {
+      return Promise.resolve();
+    }
     throw new Error('Method not implemented.');
   }
 

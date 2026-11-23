@@ -1,5 +1,6 @@
 import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
 import { CamsRoleType } from '@common/cams/roles';
+import { CamsError } from '../../../common-errors/cams-error';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { UserRoleAssignmentRepository } from '../../../use-cases/gateways.types';
@@ -10,6 +11,8 @@ import { isDuplicateKeyError } from './utils/duplicate-key-error';
 const MODULE_NAME = 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'user-role-assignments';
 
+const UNIQUE_INDEX_FIELDS = ['userId', 'activeKey'];
+
 const { and, using } = QueryBuilder;
 const doc = using<UserRoleAssignment>();
 
@@ -19,6 +22,7 @@ export class UserRoleAssignmentMongoRepository
 {
   private static referenceCount: number = 0;
   private static instance: UserRoleAssignmentMongoRepository | null = null;
+  private uniqueIndexConfirmed = false;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -49,8 +53,12 @@ export class UserRoleAssignmentMongoRepository
   /**
    * Inserts the assignment, or returns null when the unique {userId, activeKey} index shows the user
    * already holds that exact active permission (for example, another grant just wrote it).
+   *
+   * Refuses to write until it has confirmed the index exists: without it, duplicate grants would be
+   * stored silently, and Cosmos cannot add a unique index once the collection has documents.
    */
   async create(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null> {
+    await this.requireUniqueIndex();
     try {
       await this.getAdapter<UserRoleAssignment>().insertOne(assignment, { useProvidedId: true });
       return assignment;
@@ -58,6 +66,22 @@ export class UserRoleAssignmentMongoRepository
       if (isDuplicateKeyError(originalError)) return null;
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create role assignment.');
     }
+  }
+
+  private async requireUniqueIndex() {
+    if (this.uniqueIndexConfirmed) return;
+    let present: boolean;
+    try {
+      present = await this.getAdapter<UserRoleAssignment>().hasUniqueIndex(UNIQUE_INDEX_FIELDS);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to create role assignment.');
+    }
+    if (!present) {
+      throw new CamsError(MODULE_NAME, {
+        message: `Unable to create role assignment: ${COLLECTION_NAME} has no unique {userId, activeKey} index.`,
+      });
+    }
+    this.uniqueIndexConfirmed = true;
   }
 
   /**
