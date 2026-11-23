@@ -4,19 +4,19 @@
  * Each scenario is written once, source-neutral, and rendered by harness.ts into ACMS rows
  * (CMMAP/CMMDB/CMMPR/CMMKE), DXTR rows (AO_CS/AO_PY/AO_TX), or both. Scenarios are BDD in principle:
  * Given (cases, trustees, links, prior CAMS state) / When (a source read + sync pass) / Then
- * (expected CAMS state). Expectations describe DESIRED behavior; where production code does not yet
+ * (expected CAMS state). Expectations describe DESIRED behavior; where production code does not
  * behave that way the scenario fails, and that failure is the harness doing its job.
  *
  * `basis` says where each expectation comes from, so nobody mistakes a guess for a requirement:
  *   feature     - scenario of the same name in test/bdd2/specs/CAMS-955-acms-case-appointment-sync.feature
- *   bead        - a beads issue (referenced in `note`)
- *   code        - read from production code (referenced in `note`); not yet a stated requirement
- *   decision    - stated by a maintainer in review (named in `note`)
+ *   bead        - a requirement recorded in the issue tracker (summarized in `note`)
+ *   code        - read from production code (referenced in `note`); not a stated requirement
+ *   decision    - stated by a maintainer in review (summarized in `note`)
  *   provisional - a conceivable edge case with a reasonable but UNCONFIRMED expectation; confirm or
- *                 correct it when the behavior is built
+ *                 correct it with the owners of the behavior
  *
  * REGIONS. Region is a first-class axis: every case belongs to a division, every division to a group
- * and a region (DIVISIONS below), and CAMS-955/956/957 all segment by region (per-region bookmarks,
+ * and a region (DIVISIONS below), and the sync segments by region (per-region bookmarks,
  * per-region ACMS/DXTR source). Fixtures are therefore spread over three regions, and region 02 has
  * two divisions in two groups so one region exercises multi-division behavior.
  *
@@ -269,11 +269,21 @@ export type ExpectedTask = {
   count: number;
   source?: Lane;
   reason?: 'no match' | 'ambiguous';
-  acmsProfessionalId?: string;
+  /**
+   * string = must equal; null = must be absent. Omitted = not asserted, except on a DXTR task,
+   * where the harness always requires it absent (DXTR's copy of the ACMS professional code can be
+   * wrong, so DXTR never carries one).
+   */
+  acmsProfessionalId?: string | null;
   /** The task's courtId, which carries the case's region (see DIVISIONS). */
   court?: string;
 };
 
+/**
+ * What one pass must leave behind. A pass that expects nothing written (every asserted case has no
+ * appointments) is also held to no new identity task, nothing parked and nothing dead-lettered,
+ * unless it declares dlq, parked or parkedCount itself.
+ */
 export type Expect = {
   /** Exact set of CaseAppointment documents per case, after this pass. Omitted case = not asserted. */
   appointments?: Record<string, ExpectedAppointment[]>;
@@ -281,7 +291,7 @@ export type Expect = {
   /** Number of events the SOURCE returned for this pass (grounds query-level filtering). */
   sourceEvents?: number;
   /** Rows the ACMS query returns, when it differs from sourceEvents (rows the source cannot
-   *  convert are reported as failures, not events -- cams-fd8qd.24). Defaults to sourceEvents. */
+   *  convert are reported as failures, not events). Defaults to sourceEvents. */
   sourceRows?: number;
   dlq?: number;
   /** Exact set of parked (CASE_APPOINTMENT_UNATTACHED) documents per case. Omitted case = not asserted. */
@@ -293,8 +303,7 @@ export type Expect = {
   /** Existing seeded appointments for these caseIds must be byte-for-byte untouched (same updatedOn). */
   untouched?: string[];
   /**
-   * Ports the retired test/integration/case-trustee-appointments harness's read-path check
-   * (cams-rsn9a): calls CaseTrusteeAppointmentUseCase.getCaseTrusteeAppointmentHistory(caseId)
+   * Read-path check: calls CaseTrusteeAppointmentUseCase.getCaseTrusteeAppointmentHistory(caseId)
    * directly against whatever this pass actually wrote, and asserts history length and that the
    * first (most-recently-closed) entry's trustee name resolved correctly. The sort/history-vs-
    * current logic itself is exhaustively unit-tested (case-trustee-appointment.use-case.test.ts);
@@ -397,13 +406,17 @@ function add(s: Scenario): void {
     key: 'known-by-professional-id',
     title: 'Known trustee with no active appointment on the case',
     basis: 'feature',
-    note: 'cams-fd8qd.1.7. matchedBy "professional-id" is a new value this slice introduces.',
-    lanes: ['ACMS'],
+    note:
+      'matchedBy is "professional-id" when the ACMS link resolves the trustee. ' +
+      'The DXTR row carries the same group+code as the ACMS link (NY-00063) via dxtrProfCode, per the .feature ' +
+      'scenario "A DXTR professional code does not link a trustee" -- DXTR never reads it for step 1, so it ' +
+      'resolves the same trustee via the pipeline instead.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
     passes: [
       {
-        rows: [{ caseId: c, prof: nyProf(63, t1), apptDate: D1 }],
+        rows: [{ caseId: c, prof: nyProf(63, t1), apptDate: D1, dxtrProfCode: '00063' }],
         changeDate: D2,
         expect: {
           sourceEvents: 1,
@@ -421,6 +434,18 @@ function add(s: Scenario): void {
         },
       },
     ],
+    dxtrExpect: {
+      appointments: {
+        [c]: [
+          {
+            trustee: 'T-1',
+            assignedOn: D1,
+            matchedBy: 'PIPELINE',
+            matchedTrusteeAppointment: true,
+          },
+        ],
+      },
+    },
   });
 }
 
@@ -433,7 +458,10 @@ function add(s: Scenario): void {
     key: 'professional-id-beats-name-mismatch',
     title: 'A linked professional id resolves even when the ACMS name differs from the CAMS name',
     basis: 'provisional',
-    note: 'Step 1 (verified link) precedes the pipeline; the link is the identity signal, not the name.',
+    note:
+      'Step 1 (verified link) precedes the pipeline; the link is the identity signal, not the name. ' +
+      'ACMS-only -- DXTR has no professional-id link to "beat" a name mismatch with; a ' +
+      'DXTR row would just produce an ordinary no-match outcome, already covered elsewhere.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -462,8 +490,9 @@ function add(s: Scenario): void {
     title: 'One CAMS trustee linked from several ACMS professional ids resolves from each',
     basis: 'bead',
     note:
-      'cams-gateways: one real person has several ACMS ids (e.g. NY-00063 and UT-05321). In the 2026-10-05 ' +
-      'export 1,227 CAMS trustees have more than one id (max 11).',
+      'One real person has several ACMS ids (e.g. NY-00063 and UT-05321). In a staging export ' +
+      '1,227 CAMS trustees have more than one id (max 11). ACMS-only -- multiple ' +
+      'ACMS professional ids per trustee is an ACMS-only concept; DXTR has none.',
     lanes: ['ACMS'],
     cases: [{ caseId: cNy }, { caseId: cUt }, { caseId: cPa }],
     cams: {
@@ -550,10 +579,11 @@ function add(s: Scenario): void {
     title: 'An ambiguous professional-id link is not used',
     basis: 'feature',
     note:
-      'cams-fd8qd.1.7 and the .feature: an ambiguous link falls through to variation and the pipeline and ' +
-      'never picks one. DISCREPANCY: the CAMS-955 bead (cams-nd7ns) says 2+ links is an integrity error that ' +
-      'goes straight to a "multiple linked trustees" identity task. Resolve which is intended; this scenario ' +
-      'follows the .feature and .1.7.',
+      'An ambiguous link falls through to variation and the pipeline and never picks one, per the ' +
+      '.feature. DISCREPANCY: another tracker requirement says 2+ links is an integrity error that ' +
+      'goes straight to a "multiple linked trustees" identity task. Resolve which is intended; this ' +
+      'scenario follows the .feature. ACMS-only -- an ambiguous ACMS professional-id link ' +
+      'is an ACMS-only concept; DXTR has no links to be ambiguous.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: {
@@ -586,9 +616,10 @@ function add(s: Scenario): void {
     title: 'The same PROF_CODE in a different group is a different professional',
     basis: 'bead',
     note:
-      'cams-gateways PROCEDURE 1 step 2B: ACMS ids are (GROUP_DESIGNATOR, PROF_CODE), never PROF_CODE alone. ' +
+      'ACMS ids are (GROUP_DESIGNATOR, PROF_CODE), never PROF_CODE alone. ' +
       'NY-00063 is linked to T-1; UT-00063 (Utica, same region) is an unrelated professional and must not ' +
-      'resolve to T-1.',
+      'resolve to T-1. ACMS-only -- the compound ACMS link key is an ACMS-only concept; ' +
+      'DXTR has no links at all.',
     lanes: ['ACMS'],
     cases: [{ caseId: cNy }, { caseId: cUt }],
     cams: { trustees: [tr('T-1', shared)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -621,7 +652,9 @@ function add(s: Scenario): void {
     key: 'compound-professional-key-across-regions',
     title: 'The same PROF_CODE in another region is a different professional',
     basis: 'bead',
-    note: 'Region-level variant of the compound-key rule: NY-00063 (region 02) is linked; PA-00063 (region 03) is not.',
+    note:
+      'Region-level variant of the compound-key rule: NY-00063 (region 02) is linked; PA-00063 (region 03) ' +
+      'is not. ACMS-only -- same reason as compound-professional-key.',
     lanes: ['ACMS'],
     cases: [{ caseId: cNy }, { caseId: cPa }],
     cams: { trustees: [tr('T-1', shared)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -659,7 +692,8 @@ function add(s: Scenario): void {
     key: 'same-trustee-already-active',
     title: 'Same trustee already active writes nothing',
     basis: 'feature',
-    lanes: ['ACMS'],
+    note: 'the active-trustee rule is source-agnostic once a trustee is resolved; no matchedBy assertion, so DXTR (resolved via pipeline instead of a link) exercises the same rule.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: {
       trustees: [tr('T-1', t1)],
@@ -674,6 +708,7 @@ function add(s: Scenario): void {
           sourceEvents: 1,
           appointments: { [c]: [{ trustee: 'T-1', assignedOn: D1 }] },
           untouched: [c],
+          tasksTotal: 0,
         },
       },
     ],
@@ -688,7 +723,8 @@ function add(s: Scenario): void {
     key: 'newer-different-trustee-closes-active',
     title: 'A newer appointment for a different trustee closes the active one',
     basis: 'feature',
-    lanes: ['ACMS'],
+    note: 'source-agnostic once resolved; no matchedBy assertion.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: {
       trustees: [tr('T-1', t1), tr('T-2', t2)],
@@ -709,8 +745,8 @@ function add(s: Scenario): void {
               { trustee: 'T-2', assignedOn: '2026-08-10' },
             ],
           },
-          // cams-rsn9a: proves the case-appointment history read works end-to-end against a real
-          // ACMS-sync-written, now-closed appointment (T-1) -- T-2 is still open, so it's `current`,
+          // Proves the case-appointment history read works end-to-end against a real
+          // ACMS-sync-written, closed appointment (T-1) -- T-2 is still open, so it's `current`,
           // not `history`.
           historyRead: { caseId: c, expectedLength: 1, expectedFirstTrusteeName: 'Fixture Q Fir' },
         },
@@ -727,8 +763,8 @@ function add(s: Scenario): void {
     key: 'same-day-replacement',
     title: 'A same-day replacement never closes before the active appointment starts',
     basis: 'feature',
-    note: 'deriveUnassignedOn clamps to the existing assignedOn.',
-    lanes: ['ACMS'],
+    note: 'deriveUnassignedOn clamps to the existing assignedOn. source-agnostic once resolved.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: {
       trustees: [tr('T-1', t1), tr('T-2', t2)],
@@ -763,8 +799,10 @@ function add(s: Scenario): void {
     key: 'older-appointment-written-closed',
     title: 'An older appointment is written already closed',
     basis: 'feature',
-    note: 'New behavior (cams-fd8qd.1.8): an out-of-order older row must not displace the active appointment.',
-    lanes: ['ACMS'],
+    note:
+      'An out-of-order older row must not displace the active appointment. ' +
+      'Source-agnostic once resolved.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: {
       trustees: [tr('T-2', t2), tr('T-3', t3)],
@@ -798,7 +836,9 @@ function add(s: Scenario): void {
     key: 'disp-date-closes-matching',
     title: 'DISP_DATE closes the matching appointment',
     basis: 'feature',
-    note: 'cams-fd8qd.1.8: the one genuinely new code path - close with no replacement.',
+    note:
+      'Closes the appointment with no replacement. ' +
+      'ACMS-only -- DISP_DATE is not representable in DXTR (Row.dispDate comment).',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -828,7 +868,7 @@ function add(s: Scenario): void {
     basis: 'provisional',
     note:
       'Two CMMAP rows (RECORD_SEQ_NBR 1 closed, 2 open) for one professional on one case. The 2026-09-14 ' +
-      'export has one such case in 10,000.',
+      'export has one such case in 10,000. ACMS-only -- uses DISP_DATE, not representable in DXTR.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -853,8 +893,8 @@ function add(s: Scenario): void {
   });
 }
 
-// ===== Jurisdiction check (checks.matchedTrusteeAppointment). CAMS-955 writes the appointment either
-// way; CAMS-956 later turns `false` into a "Trustee Appointment" task, so these fixtures span the
+// ===== Jurisdiction check (checks.matchedTrusteeAppointment). The sync writes the appointment either
+// way; a `false` result turns into a "Trustee Appointment" task, so these fixtures span the
 // courts, divisions, chapters and statuses that task needs. =====
 
 function jurisdictionScenario(args: {
@@ -876,8 +916,10 @@ function jurisdictionScenario(args: {
     key: args.key,
     title: args.title,
     basis: args.basis ?? 'bead',
-    note: args.note,
-    lanes: ['ACMS'],
+    note:
+      `${args.note} jurisdiction coverage is checked after a trustee is already ` +
+      'resolved, source-agnostic, and no matchedBy is asserted, so DXTR exercises the same rule.',
+    lanes: ['ACMS', 'DXTR'],
     region: regionOfDivision(args.caseDivision ?? DIVISION),
     cases: [{ caseId: c, chapter: args.chapter }],
     cams: { trustees: [trWith('T-J', p, args.appointments)], links: [{ acms, trustee: 'T-J' }] },
@@ -909,7 +951,7 @@ jurisdictionScenario({
   key: 'jurisdiction-no-appointment',
   title: 'Jurisdiction check fails but the appointment is still written',
   basis: 'feature',
-  note: 'Decision 1a. Also covers "matchedTrusteeAppointment defaults to false": the field is present and false. No task (CAMS-956).',
+  note: 'Also covers "matchedTrusteeAppointment defaults to false": the field is present and false. No task.',
   chapter: '7',
   appointments: [],
   expectCovered: false,
@@ -919,7 +961,7 @@ jurisdictionScenario({
 jurisdictionScenario({
   key: 'jurisdiction-inactive-appointment',
   title: 'A matching but inactive trustee appointment does not cover the case',
-  note: 'CAMS-956 task reason "appointment inactive": a matching appointment exists but is not active.',
+  note: 'Task reason "appointment inactive": a matching appointment exists but is not active.',
   chapter: '7',
   appointments: [covering('7', DIVISION, 'voluntarily-suspended')],
   expectCovered: false,
@@ -939,7 +981,7 @@ jurisdictionScenario({
 jurisdictionScenario({
   key: 'jurisdiction-wrong-chapter',
   title: 'A chapter 7 appointment does not cover a chapter 13 case',
-  note: 'CAMS-956: an appointment task covers one (trustee, court, division, chapter).',
+  note: 'An appointment task covers one (trustee, court, division, chapter).',
   chapter: '13',
   appointments: [covering('7')],
   expectCovered: false,
@@ -1045,10 +1087,11 @@ jurisdictionScenario({
     title: 'A stale ACMS phone or email does not veto a pipeline link',
     basis: 'bead',
     note:
-      'bd memory acms-phone-no-match-not-disqualifier (CAMS-876): 431 of 539 state-only links had a ' +
-      'phone/email no-match and were the same person. In the 2026-10-05 export 705 of 5,751 links have a phone ' +
-      'mismatch.',
-    lanes: ['ACMS'],
+      'An ACMS phone no-match is the absence of a strong signal, not a disqualifier: 431 of 539 state-only ' +
+      'links had a phone/email no-match and were the same person. In a staging export 705 of 5,751 links have a ' +
+      'phone mismatch. matchedBy is the PIPELINE sentinel already, so DXTR (no link to begin with) ' +
+      'exercises the same tolerant-contact-data rule.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-4', camsPerson)] },
     passes: [
@@ -1107,7 +1150,12 @@ jurisdictionScenario({
     key: 'unknown-closed-removes-placeholder',
     title: 'Unknown trustee with a closed appointment closes the open placeholder',
     basis: 'feature',
-    note: 'cams-fd8qd.1.9: the disposition closes the placeholder as given; it is not deleted, and the identity task itself stays.',
+    note:
+      'The disposition closes the placeholder as given; it is not deleted, and the identity ' +
+      'task itself stays. ACMS-only. The closing input is ACMS DISP_DATE, which DXTR ' +
+      'cannot represent (same reason as disp-date-closes-matching); on DXTR pass 2 would be a no-op ' +
+      're-read, so the scenario could only pass there by asserting the opposite of its title. Placeholder ' +
+      'replay on DXTR is covered by replay-placeholders-and-tasks.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [] },
@@ -1283,6 +1331,8 @@ type NameVariant = {
   note: string;
   acms: Partial<Person>;
   cams: Partial<Person>;
+  /** True when the shape is an ACMS rendering quirk with no DXTR equivalent at all (stays ACMS-only). */
+  acmsOnly?: boolean;
 };
 
 const NAME_VARIANTS: NameVariant[] = [
@@ -1312,9 +1362,13 @@ const NAME_VARIANTS: NameVariant[] = [
   },
   {
     key: 'parenthetical-decoration',
-    note: '104 real last names carry a trailing "(XX)" decoration.',
+    note:
+      '104 real last names carry a trailing "(XX)" decoration. ACMS-only: acmsLastSuffix is purely an ACMS ' +
+      "CMMPR last-name rendering quirk (harness.ts acmsLastName); DXTR's AO_PY has no equivalent decoration " +
+      'to append, so there is nothing DXTR-specific to test here.',
     acms: { last: 'Walnut', acmsLastSuffix: ' (NY)' },
     cams: { last: 'Walnut' },
+    acmsOnly: true,
   },
   {
     key: 'multiword-first',
@@ -1347,11 +1401,11 @@ for (const v of NAME_VARIANTS) {
   const acmsPerson = person(v.acms.last as string, v.acms);
   const camsPerson = person(v.cams.last as string, v.cams);
   add({
-    key: `acms-name-shape-${v.key}`,
-    title: `ACMS ${v.key.replace(/-/g, ' ')} matches the CAMS trustee through the pipeline`,
+    key: v.acmsOnly ? `acms-name-shape-${v.key}` : `name-shape-${v.key}`,
+    title: `${v.key.replace(/-/g, ' ')} matches the CAMS trustee through the pipeline`,
     basis: 'provisional',
     note: `${v.note} ACMS is upper-cased by the renderer; CAMS keeps natural case.`,
-    lanes: ['ACMS'],
+    lanes: v.acmsOnly ? ['ACMS'] : ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-N', camsPerson)] },
     passes: [
@@ -1361,6 +1415,7 @@ for (const v of NAME_VARIANTS) {
         expect: {
           appointments: { [c]: [{ trustee: 'T-N', assignedOn: D1, matchedBy: 'PIPELINE' }] },
           tasks: [{ last: acmsPerson.last, count: 0 }],
+          tasksTotal: 0,
         },
       },
     ],
@@ -1376,11 +1431,13 @@ for (const v of NAME_VARIANTS) {
     email: undefined,
   });
   add({
-    key: 'acms-sparse-contact-unique-name-links',
-    title: 'An ACMS record with no address, city/state/zip or phone still links on a unique name',
+    key: 'sparse-contact-unique-name-links',
+    title: 'A record with no address, city/state/zip or phone still links on a unique name',
     basis: 'provisional',
-    note: '4% of real records have no address, 3.5% no city/state/zip, 14% phone 0; 126 real links resolved by name only.',
-    lanes: ['ACMS'],
+    note:
+      '4% of real ACMS records have no address, 3.5% no city/state/zip, 14% phone 0; 126 real links resolved ' +
+      'by name only. matchedBy is the PIPELINE sentinel already, so DXTR exercises the same rule.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-N', person('Ailanthus'))] },
     passes: [
@@ -1405,11 +1462,11 @@ for (const v of NAME_VARIANTS) {
     email: undefined,
   });
   add({
-    key: 'acms-sparse-contact-unknown-task',
-    title: 'An ACMS record with no contact details and no CAMS trustee becomes an identity task',
+    key: 'sparse-contact-unknown-task',
+    title: 'A record with no contact details and no CAMS trustee becomes an identity task',
     basis: 'provisional',
-    note: '637 of 881 real no-match professional ids had no candidate at all.',
-    lanes: ['ACMS'],
+    note: '637 of 881 real ACMS no-match professional ids had no candidate at all.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [] },
     passes: [
@@ -1422,6 +1479,9 @@ for (const v of NAME_VARIANTS) {
         },
       },
     ],
+    dxtrExpect: {
+      tasks: [{ last: 'Baobab', count: 1, source: 'DXTR', reason: 'no match' }],
+    },
   });
 }
 
@@ -1440,7 +1500,7 @@ const PLACEHOLDER_NAMES: {
     last: 'Trustee 11',
     basis: 'code',
     note:
-      'Skipped today by the matching pipeline (UST_STAFF_PATTERN / NON_PERSON_ONLY_WORDS in ' +
+      'Skipped by the matching pipeline (UST_STAFF_PATTERN / NON_PERSON_ONLY_WORDS in ' +
       'source-name-normalization.helpers.ts), not by isUnattributableBogusName.',
   },
   {
@@ -1456,7 +1516,7 @@ const PLACEHOLDER_NAMES: {
     last: 'Trustee Assigned',
     basis: 'code',
     note:
-      '20 of 118 real skipped names contain "NO TRUSTEE". Skipped today by the pipeline (NON_PERSON_ONLY_WORDS), ' +
+      '20 of 118 real skipped names contain "NO TRUSTEE". Skipped by the pipeline (NON_PERSON_ONLY_WORDS), ' +
       'not by isUnattributableBogusName.',
   },
   {
@@ -1466,7 +1526,7 @@ const PLACEHOLDER_NAMES: {
     basis: 'code',
     note:
       'Real exports have "...UNITED STATES TRUSTEE" names among their 118 skipped professionals. Reviewer-verified: ' +
-      'without a state suffix the pipeline skips this, so it is expected to pass today.',
+      'without a state suffix the pipeline skips this.',
   },
   {
     key: 'united-states-trustee',
@@ -1474,9 +1534,9 @@ const PLACEHOLDER_NAMES: {
     last: 'Trustee (NY)',
     basis: 'decision',
     note:
-      'MAINTAINER DECISION (PR 3263 review): this is a US Trustee, so the matching pipeline must filter it. ' +
+      'MAINTAINER DECISION: this is a US Trustee, so the matching pipeline must filter it. ' +
       'UST_STAFF_PATTERN (source-name-normalization.helpers.ts) matches the spelled-out "United States Trustee" ' +
-      'as well as "U.S. Trustee" and "(UST)", so the pipeline skips it as U.S. Trustee staff (cams-fd8qd.37).',
+      'as well as "U.S. Trustee" and "(UST)", so the pipeline skips it as U.S. Trustee staff.',
   },
 ];
 
@@ -1541,9 +1601,10 @@ for (const n of PLACEHOLDER_NAMES) {
     title: 'An appointment for a case not yet in CAMS is parked',
     basis: 'feature',
     note:
-      'ACMS only: parking needs dateFiled, which only the ACMS source sets (the DXTR source is unused ' +
-      'until #3191). The heal (Task 6) attaches it once the case loads.',
-    lanes: ['ACMS'],
+      'DXTR sets dateFiled from AO_CS.CS_DATE_FILED, so parking works on both ' +
+      'lanes. The DXTR event carries no acmsProfessionalId (step 1 never fires), so it resolves via ' +
+      'the pipeline instead of the professional-id link. The heal attaches it once the case loads.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
     passes: [
@@ -1558,6 +1619,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      parked: { [c]: [{ trustee: 'T-1', assignedOn: D1, matchedBy: 'PIPELINE' }] },
+    },
   });
 }
 
@@ -1568,8 +1632,10 @@ for (const n of PLACEHOLDER_NAMES) {
     key: 'unknown-trustee-case-not-yet-synced-parked-placeholder',
     title: 'An unknown trustee on a case not yet in CAMS is parked as a placeholder',
     basis: 'feature',
-    note: 'The identity task lists the case even though the case is not in CAMS yet.',
-    lanes: ['ACMS'],
+    note:
+      'The identity task lists the case even though the case is not in CAMS yet. ' +
+      'DXTR sets dateFiled, so this also parks on the DXTR lane.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c, cams: 'absent' }],
     cams: { trustees: [] },
     passes: [
@@ -1585,6 +1651,9 @@ for (const n of PLACEHOLDER_NAMES) {
         },
       },
     ],
+    dxtrExpect: {
+      tasks: [{ last: 'Tupelo', count: 1, source: 'DXTR', reason: 'no match' }],
+    },
   });
 }
 
@@ -1598,9 +1667,10 @@ for (const n of PLACEHOLDER_NAMES) {
     title: 'A record that fails on every attempt goes to the dead-letter queue alone',
     basis: 'feature',
     note:
-      'CURR_CASE_CHAPT "AC" is not a chapter CAMS recognizes (acms-case-appointment.helpers.ts). Since ' +
-      'cams-fd8qd.24 the source reports the row as a conversion failure instead of an event, and the driver ' +
-      'sends it to the DLQ alone. The other record on the page is still processed.',
+      'CURR_CASE_CHAPT "AC" is not a chapter CAMS recognizes (acms-case-appointment.helpers.ts). ' +
+      'The source reports the row as a conversion failure instead of an event, and the driver ' +
+      'sends it to the DLQ alone. The other record on the page is still processed. ' +
+      'ACMS-only -- acmsChapterRaw (CURR_CASE_CHAPT) is an ACMS-only field.',
     lanes: ['ACMS'],
     cases: [{ caseId: cBad, acmsChapterRaw: 'AC' }, { caseId: cGood }],
     cams: {
@@ -1637,7 +1707,10 @@ for (const n of PLACEHOLDER_NAMES) {
     basis: 'provisional',
     note:
       'APPT_DATE 0 maps to a null apptDate (rawToAppointmentRecord) and assertAppointedDate rejects a ' +
-      'missing appointedDate. Expectation: DLQ, nothing written. Confirm against the as-built source.',
+      'missing appointedDate. Expectation: DLQ, nothing written. Confirm against the as-built source. ' +
+      'ACMS-only -- DXTR always has an appointedDate: toTrusteeAppointmentEvent falls back ' +
+      'to TX_DATE (a NOT NULL column) whenever the REC-embedded aptDate is blank or unparseable, so DXTR can ' +
+      'never reproduce a missing-appointedDate DLQ the way an ACMS APPT_DATE of 0 does.',
     lanes: ['ACMS'],
     cases: [{ caseId: c }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1686,7 +1759,9 @@ for (const raw of ['7A', '7N']) {
     key: `chapter-${raw.toLowerCase()}-normalized`,
     title: `ACMS chapter ${raw} is written as chapter 7`,
     basis: 'code',
-    note: 'normalizeAcmsCaseChapter (acms.gateway.helper). 7A and 7N both map to 7.',
+    note:
+      'normalizeAcmsCaseChapter (acms.gateway.helper). 7A and 7N both map to 7. ' +
+      'ACMS-only -- acmsChapterRaw (CURR_CASE_CHAPT) is an ACMS-only field.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, acmsChapterRaw: raw }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1708,9 +1783,11 @@ for (const raw of ['7A', '7N']) {
     title: 'Case closed and reopen dates are carried onto the appointment',
     basis: 'decision',
     note:
-      'cams-fd8qd.37 (Matt Stankey, 2026-11-11): the ACMS row is the source. rawToTrusteeAppointmentSyncEvent ' +
+      'The ACMS row is the source. rawToTrusteeAppointmentSyncEvent ' +
       'takes closedDate from CLOSED_BY_COURT_DATE (else CLOSED_BY_UST_DATE) and reopenedDate from the CMMKE OCO ' +
-      'key event; the repository derives caseStatus from them. 78% of real appointments are on closed cases.',
+      'key event; the repository derives caseStatus from them. 78% of real appointments are on closed cases. ' +
+      'ACMS-only -- toTrusteeAppointmentEvent (DXTR gateway) never sets closedDate or ' +
+      'reopenedDate; DXTR has no equivalent fields.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, closedByCourt: '2026-05-01', reopenedOn: '2026-06-10' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1742,7 +1819,9 @@ for (const raw of ['7A', '7N']) {
     key: 'closed-by-ust-only',
     title: 'A case closed only by the UST carries that closed date',
     basis: 'decision',
-    note: 'cams-fd8qd.37: rawToTrusteeAppointmentSyncEvent falls back to CLOSED_BY_UST_DATE when the court date is 0.',
+    note:
+      'rawToTrusteeAppointmentSyncEvent falls back to CLOSED_BY_UST_DATE when the court date ' +
+      'is 0. ACMS-only -- same reason as closed-and-reopened-case-dates.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, closedByUst: '2026-06-15' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1767,7 +1846,8 @@ for (const raw of ['7A', '7N']) {
     basis: 'provisional',
     note:
       'Data quality edge: 30 of 10,000 real appointments have a closedDate earlier than the appointed date. ' +
-      'Expectation: written as-is with the closed date carried; confirm whether it should be flagged instead.',
+      'Expectation: written as-is with the closed date carried; confirm whether it should be flagged instead. ' +
+      'ACMS-only -- same reason as closed-and-reopened-case-dates.',
     lanes: ['ACMS'],
     cases: [{ caseId: c, closedByCourt: '2026-05-01' }],
     cams: { trustees: [tr('T-1', t1)], links: [{ acms: 'NY-00063', trustee: 'T-1' }] },
@@ -1813,7 +1893,8 @@ for (const raw of ['7A', '7N']) {
       '(97999 is the last real code and IS read), APPT_TYPE != TR, and cases closed on or before 2018-01-01. ' +
       '31 of 10,000 real migrated appointments carry sentinel codes 00000/99999. The sentinel rows deliberately ' +
       'keep a CMMPR row so the PROF_CODE filter is exercised independently of the INNER JOIN; the 96000 row has no ' +
-      'CMMPR row at all, which only the join excludes.',
+      'CMMPR row at all, which only the join excludes. ACMS-only -- these are ACMS SQL-level ' +
+      'read filters (getCmmapAppointmentsRaw); DXTR has its own, separately tested filter (REGION_TRUSTEE_APPOINTMENT_FILTER).',
     lanes: ['ACMS'],
     cases: [
       { caseId: cDel },
@@ -1893,8 +1974,9 @@ for (const raw of ['7A', '7N']) {
     basis: 'feature',
     note:
       'Per-region, per-day reads are the unit of the sync (TrusteeAppointmentSource.getEventsForDate). The same ' +
-      'rows are present for every pass; only the requested region changes, and each region sees only its own.',
-    lanes: ['ACMS'],
+      'rows are present for every pass; only the requested region changes, and each region sees only its own. ' +
+      'no matchedBy assertion, so DXTR exercises the same region/date filtering.',
+    lanes: ['ACMS', 'DXTR'],
     cases: [{ caseId: c02 }, { caseId: c03 }, { caseId: c04 }, { caseId: cLate }],
     cams: {
       trustees: [
@@ -1969,7 +2051,13 @@ for (const raw of ['7A', '7N']) {
     key: 'identity-tasks-carry-their-region',
     title: 'Identity tasks created for unknown trustees carry the court of their own region',
     basis: 'bead',
-    note: 'cams-rxb7a staging script: a region produces its own Data Verification tasks to work by hand.',
+    note:
+      'A region produces its own Data Verification tasks to work by hand. ' +
+      "Left ACMS-only -- this scenario's two passes target different regions with " +
+      'different per-pass task shapes, which the single flat dxtrExpect override cannot express per pass. ' +
+      "DXTR identity tasks carrying their own region's court is already proven by the region-03/04 " +
+      '${tag}-unknown-open-placeholder-and-task scenarios and the driver-two-regions-twice-no-duplicates ' +
+      'scenario, so there is no coverage gap.',
     lanes: ['ACMS'],
     cases: [{ caseId: c02 }, { caseId: c03 }],
     cams: { trustees: [] },
@@ -2104,7 +2192,7 @@ for (const [key, p, expectSkipped, note] of [
     key: `dxtr-${key}`,
     title: key.replace(/-/g, ' '),
     basis: 'code',
-    note: `${note} (trustee-match-scenarios 15a-15d; CAMS-957 requires the same placeholder rules for DXTR events.)`,
+    note: `${note} (trustee-match-scenarios 15a-15d; DXTR events follow the same placeholder rules.)`,
     lanes: ['DXTR'],
     cases: [{ caseId: c }],
     cams: { trustees: [] },
@@ -2169,6 +2257,86 @@ for (const [key, p, expectSkipped, note] of [
   });
 }
 
+// ===== DXTR name shapes: pipeline matching under shape mismatches =====
+// Shapes missing from NAME_VARIANTS (which run on both lanes) and DXTR_VARIANTS (variation-seeded).
+// There is no retained staging DXTR export to confirm real counts, so every entry is basis
+// 'provisional' and says so.
+
+type DxtrNameShape = { key: string; note: string; dxtr: Partial<Person>; cams: Partial<Person> };
+const DXTR_NAME_SHAPES: DxtrNameShape[] = [
+  {
+    key: 'first-middle-swapped',
+    note:
+      'Provisional, no staging access to confirm a real count: DXTR AO_PY may carry a two-word first name ' +
+      'split into first+middle in the wrong order relative to the CAMS record.',
+    dxtr: { first: 'Ann', middle: 'Mary', last: 'Nightshade' },
+    cams: { first: 'Mary Ann', middle: undefined, last: 'Nightshade' },
+  },
+  {
+    key: 'nickname-first-name',
+    note:
+      'Provisional, no staging access to confirm a real count: a common nickname (Bill/William) in the ' +
+      'DXTR record where CAMS holds the formal name.',
+    dxtr: { first: 'Bill', last: 'Oleander' },
+    cams: { first: 'William', last: 'Oleander' },
+  },
+  {
+    key: 'suffix-inside-last-name',
+    note:
+      'Provisional, no staging access to confirm a real count: the generation suffix embedded in the DXTR ' +
+      'last-name field itself, unlike generation-suffix (NAME_VARIANTS), which carries it in a separate field.',
+    dxtr: { last: 'Periwinkle III' },
+    cams: { last: 'Periwinkle', generation: 'III' },
+  },
+  {
+    key: 'hyphenated-surname-cams-has-half',
+    note:
+      'Provisional, no staging access to confirm a real count: the DXTR record carries a hyphenated surname ' +
+      'but the CAMS trustee record holds only one half.',
+    dxtr: { last: 'Thorn-Whitlock' },
+    cams: { last: 'Whitlock' },
+  },
+  {
+    key: 'trailing-role-text',
+    note:
+      "Provisional, no staging access to confirm a real count: a real trustee's name with trailing role " +
+      'text in the DXTR record, unlike PLACEHOLDER_NAMES (entirely administrative names).',
+    dxtr: { last: 'Rosewood, Trustee' },
+    cams: { last: 'Rosewood' },
+  },
+];
+
+for (const v of DXTR_NAME_SHAPES) {
+  const c = nextCase();
+  const dxtrPerson = person(v.dxtr.last as string, v.dxtr);
+  const camsPerson = person(v.cams.last as string, v.cams);
+  // person() derives address1 and email from the last name, so they differ when the shape changes it.
+  const contact =
+    dxtrPerson.last === camsPerson.last
+      ? 'address, phone and email are identical'
+      : 'phone, city, state and zip are identical, but street and email differ (person() derives both from the last name)';
+  add({
+    key: `dxtr-name-shape-${v.key}`,
+    title: `DXTR ${v.key.replace(/-/g, ' ')} against the pipeline`,
+    basis: 'provisional',
+    note: `${v.note} Observed (2026-11-18): links via the pipeline. Every resolve stage requires a passing name check, so the name passes after normalization; ${contact}.`,
+    lanes: ['DXTR'],
+    cases: [{ caseId: c }],
+    cams: { trustees: [tr('T-N', camsPerson)] },
+    passes: [
+      {
+        rows: [{ caseId: c, prof: nyProf(93, dxtrPerson), apptDate: D1 }],
+        changeDate: D2,
+        expect: {
+          appointments: { [c]: [{ trustee: 'T-N', assignedOn: D1, matchedBy: 'PIPELINE' }] },
+          tasks: [{ last: dxtrPerson.last, count: 0 }],
+          tasksTotal: 0,
+        },
+      },
+    ],
+  });
+}
+
 // ===== Core behaviors per region =====
 // The same identification, active-trustee and placeholder rules must hold in every region, on that
 // region's own group, division, court and state. Region 02 is covered above; this repeats the core
@@ -2197,13 +2365,16 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
       key: `${tag}-known-by-professional-id`,
       title: `Region ${region}: a linked professional id resolves the trustee`,
       basis: 'feature',
+      note:
+        'the DXTR row carries the same group+code as the ACMS link via dxtrProfCode; DXTR ' +
+        'never reads it for step 1, so it resolves via the pipeline instead (same as top-level known-by-professional-id).',
       region,
-      lanes: ['ACMS'],
+      lanes: ['ACMS', 'DXTR'],
       cases: [{ caseId: c }],
       cams: { trustees: [trWith('T-1', t1, [covering('7', division)])], links: [link(63, 'T-1')] },
       passes: [
         {
-          rows: [{ caseId: c, prof: prof(63, t1, division), apptDate: D1 }],
+          rows: [{ caseId: c, prof: prof(63, t1, division), apptDate: D1, dxtrProfCode: '00063' }],
           changeDate: D2,
           expect: {
             sourceEvents: 1,
@@ -2220,6 +2391,18 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
           },
         },
       ],
+      dxtrExpect: {
+        appointments: {
+          [c]: [
+            {
+              trustee: 'T-1',
+              assignedOn: D1,
+              matchedBy: 'PIPELINE',
+              matchedTrusteeAppointment: true,
+            },
+          ],
+        },
+      },
     });
   }
 
@@ -2230,8 +2413,9 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
       key: `${tag}-pipeline-links-unknown`,
       title: `Region ${region}: the pipeline links an unknown trustee`,
       basis: 'feature',
+      note: 'matchedBy is the PIPELINE sentinel already, so DXTR exercises the same rule.',
       region,
-      lanes: ['ACMS'],
+      lanes: ['ACMS', 'DXTR'],
       cases: [{ caseId: c }],
       cams: { trustees: [trWith('T-4', p, [covering('7', division)])] },
       passes: [
@@ -2253,8 +2437,9 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
       key: `${tag}-unknown-open-placeholder-and-task`,
       title: `Region ${region}: an unknown trustee gets a placeholder and a task carrying the region's court`,
       basis: 'feature',
+      note: 'DXTR carries no acmsProfessionalId (its copy of the ACMS professional code can be wrong); the task source differs by lane.',
       region,
-      lanes: ['ACMS'],
+      lanes: ['ACMS', 'DXTR'],
       cases: [{ caseId: c }],
       cams: { trustees: [] },
       passes: [
@@ -2276,6 +2461,9 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
           },
         },
       ],
+      dxtrExpect: {
+        tasks: [{ last: p.last, count: 1, source: 'DXTR', reason: 'no match', court: d.court }],
+      },
     });
   }
 
@@ -2287,8 +2475,9 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
       key: `${tag}-newer-different-trustee-closes-active`,
       title: `Region ${region}: a newer appointment for a different trustee closes the active one`,
       basis: 'feature',
+      note: 'source-agnostic once resolved; no matchedBy assertion.',
       region,
-      lanes: ['ACMS'],
+      lanes: ['ACMS', 'DXTR'],
       cases: [{ caseId: c }],
       cams: {
         trustees: [
@@ -2322,6 +2511,7 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
       key: `${tag}-disp-date-closes-matching`,
       title: `Region ${region}: DISP_DATE closes the matching appointment`,
       basis: 'feature',
+      note: 'ACMS-only -- DISP_DATE is not representable in DXTR (same reason as the top-level disp-date-closes-matching).',
       region,
       lanes: ['ACMS'],
       cases: [{ caseId: c }],
@@ -2346,18 +2536,18 @@ for (const division of [OTHER_DIVISION, THIRD_DIVISION]) {
 
 // ---------------------------------------------------------------------------
 // Region driver scenarios (bookmark, catch-up, run-date exclusion, named regions, per-region source
-// routing). These need the per-region driver (cams-fd8qd.1.10) and the region source switch (CAMS-957)
-// and are reported "NOT IMPLEMENTED" until wired into bindings.ts.
+// routing). They run through the per-region driver bound in bindings.ts and report
+// "NOT IMPLEMENTED" if that binding cannot be resolved.
 // ---------------------------------------------------------------------------
 
 export type DriverRow = Row & { source: Lane };
 
 /**
- * BOOKMARK RULE (maintainer decision, PR 3263 review): for BOTH sources, a date is complete only when a
+ * BOOKMARK RULE (maintainer decision): for BOTH sources, a date is complete only when a
  * later date exists, so the newest date is processed but never bookmarked and is read again on the next
- * run. Legacy DXTR ran to the end of its result set and never held back the newest date, so for DXTR this
- * is NEW behavior the production driver must implement (see cams-rxb7a). Every bookmark expectation below
- * follows it: each region needs a row on a later date than the one it expects to be bookmarked.
+ * run. The region driver holds back the newest date for DXTR as well as ACMS. Every bookmark
+ * expectation below follows it: each region needs a row on a later date than the one it expects to be
+ * bookmarked.
  */
 export const BOOKMARK_RULE =
   'A date is complete only when a later date exists, for both ACMS and DXTR (maintainer decision).';
@@ -2378,10 +2568,17 @@ export type DriverScenario = {
   runDate: string;
   regions: string[];
   /**
-   * An operator's delete, run for `regions` before the driver (cams-fd8qd.32): the appointments in
+   * An operator's delete, run for `regions` before the driver: the appointments in
    * those regions assigned within the range are deleted and the bookmarks rewound.
    */
   delete?: { from?: string; to?: string };
+  /**
+   * A second driver run after the first, for the same `regions`. Expectations are checked only once,
+   * after this run. The same runDate re-reads whatever the bookmark rule held back from the first
+   * run, which proves the re-read is idempotent (no duplicate appointments or tasks). A later
+   * runDate would instead exercise bookmark advancement across two runs.
+   */
+  secondRun?: { runDate: string };
   expect: {
     /** Exact appointments per case that must have been written (content, not just presence). */
     written: Record<string, ExpectedAppointment[]>;
@@ -2395,6 +2592,8 @@ export type DriverScenario = {
     deleted?: string[];
     tasks?: ExpectedTask[];
     tasksTotal?: number;
+    /** Regions whose region.<id>.source must still say DXTR after the run. */
+    stillSwitchedToDxtr?: string[];
   };
 };
 
@@ -2465,7 +2664,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       title: "A region's first run catches up from 2026-07-01",
       basis: 'feature',
       note:
-        `cams-fd8qd.1.10. ${BOOKMARK_RULE} The bookmark ends at 07-02 because 07-03 is the latest date in ` +
+        `${BOOKMARK_RULE} The bookmark ends at 07-02 because 07-03 is the latest date in ` +
         'the replica; 07-03 is processed but not yet bookmarked.',
       cases: casesAll,
       cams: camsBase,
@@ -2494,7 +2693,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       note:
         `${BOOKMARK_RULE} The run-date row is never read, but it proves the days before it are complete, so ` +
         'the driver reads through 07-04 (the day before the run date). The bookmark advances through every ' +
-        'date before that last date, empty ones included (cams-fd8qd.27), so it ends at 07-03.',
+        'date before that last date, empty ones included, so it ends at 07-03.',
       cases: casesAll,
       cams: camsBase,
       rows: [acmsRow(c0702, '2026-07-02'), acmsRow(cRun, '2026-07-05')],
@@ -2532,7 +2731,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       key: 'driver-bookmarks-are-per-region',
       title: 'Each region advances its own bookmark independently',
       basis: 'bead',
-      note: `cams-nd7ns: region.<regionId>.lastSyncDate, one per region, written with setField. ${BOOKMARK_RULE}`,
+      note: `region.<regionId>.lastSyncDate, one per region, written with setField. ${BOOKMARK_RULE}`,
       cases: casesAll,
       cams: camsBase,
       rows: [
@@ -2560,7 +2759,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       title: 'A region switched to DXTR syncs from DXTR while the others stay on ACMS',
       basis: 'bead',
       note:
-        'cams-rxb7a staging script: switch one region to DXTR before its first run, every other region stays ' +
+        'Switch one region to DXTR before its first run, every other region stays ' +
         `ACMS. ACMS rows for the switched region and DXTR rows for the unswitched region must be ignored. ${BOOKMARK_RULE}`,
       cases: casesAll,
       cams: camsBase,
@@ -2590,7 +2789,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       key: 'driver-switched-region-first-run-starts-at-2026-07-01',
       title: 'A region switched to DXTR before its first run starts from 2026-07-01',
       basis: 'bead',
-      note: `cams-rxb7a: continues from lastSyncDate, or from 2026-07-01 if switched before its first run. ${BOOKMARK_RULE}`,
+      note: `A switched region continues from lastSyncDate, or from 2026-07-01 if switched before its first run. ${BOOKMARK_RULE}`,
       cases: casesAll,
       cams: camsBase,
       rows: [
@@ -2611,7 +2810,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       key: 'driver-switch-keeps-existing-records',
       title: 'Switching a region to DXTR keeps the appointments ACMS already wrote',
       basis: 'bead',
-      note: `cams-rxb7a: existing records are kept when a region switches (no data loss or rewrite). ${BOOKMARK_RULE}`,
+      note: `Existing records are kept when a region switches (no data loss or rewrite). ${BOOKMARK_RULE}`,
       cases: casesAll,
       cams: { ...camsBase, existing: [{ caseId: c03a, trustee: 'T-3', assignedOn: '2026-06-15' }] },
       rows: [dxtrRow(c03b, '2026-07-01', prof03), dxtrRow(c03late, '2026-07-02', prof03)],
@@ -2630,7 +2829,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
       title: 'An unknown trustee in a DXTR-switched region becomes an identity task from DXTR',
       basis: 'bead',
       note:
-        'cams-rxb7a: DXTR events go through the same identity order and pipeline; unresolved ones become identity ' +
+        'DXTR events go through the same identity order and pipeline; unresolved ones become identity ' +
         `tasks. The second row is the same professional on a later date, so it reuses the pending task. ${BOOKMARK_RULE}`,
       cases: casesAll,
       cams: { trustees: [] },
@@ -2682,7 +2881,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         "An operator's delete removes a region's appointments in a date range and the sync replaces them",
       basis: 'decision',
       note:
-        'cams-fd8qd.32 (Matt Stankey, 2026-11-11): operators delete by region and assignedOn range, whatever ' +
+        'Operators delete by region and assignedOn range, whatever ' +
         'loaded the row. The seeded rows have no courtId, like rows from the pre-2026-07-01 migration. ' +
         `Region ${REGION} covers divisions 081 and 066, so both are deleted. Its bookmark (09-30) is rewound to ` +
         `07-31, so the run re-reads 08-01 onward; without the delete case ${c0630} would end with two rows. ` +
@@ -2723,7 +2922,7 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         "An operator's delete with no dates clears a region and the sync rebuilds it from 2026-07-01",
       basis: 'decision',
       note:
-        `cams-fd8qd.32: with no dates, every appointment in the region goes, including one assigned before ` +
+        `With no dates, every appointment in the region goes, including one assigned before ` +
         `2026-07-01, and its bookmark is cleared so the run starts at 2026-07-01. Region ${REGION} is untouched. ` +
         BOOKMARK_RULE,
       cases: casesAll,
@@ -2754,6 +2953,163 @@ export const DRIVER_SCENARIOS: DriverScenario[] = (() => {
         bookmarks: { [OTHER_REGION]: '2026-07-01', [REGION]: '2026-07-20' },
       },
     },
+    {
+      key: 'driver-delete-switched-region-keeps-switch',
+      title:
+        "An operator's delete of a region switched to DXTR keeps the switch and rebuilds from DXTR",
+      basis: 'decision',
+      note:
+        "Maintainer decision: any reset of a region's sync state keeps " +
+        'its source record and clears only region.<id>.lastSyncDate. Run against real Mongo so the ' +
+        `bookmark write is shown to leave the sibling source field in place. ${BOOKMARK_RULE}`,
+      cases: casesAll,
+      cams: { ...camsBase, existing: [{ caseId: c03a, trustee: 'T-3', assignedOn: '2026-05-01' }] },
+      rows: [dxtrRow(c03late, '2026-07-01', prof03), dxtrRow(c03b, '2026-07-02', prof03)],
+      bookmarks: { [OTHER_REGION]: '2026-07-20' },
+      switchedToDxtr: [OTHER_REGION],
+      runDate: '2026-07-25',
+      regions: [OTHER_REGION],
+      delete: {},
+      expect: {
+        written: {
+          [c03late]: by('T-3', DXTR_ASSIGNED),
+          [c03b]: by('T-3', DXTR_ASSIGNED),
+        },
+        notWritten: [],
+        deleted: [c03a],
+        bookmarks: { [OTHER_REGION]: '2026-07-01' },
+        stillSwitchedToDxtr: [OTHER_REGION],
+      },
+    },
+    (() => {
+      const farAway = (tag: 'a' | 'b', phone: string): Partial<Person> => ({
+        address1: `${tag === 'a' ? 1 : 2} Tie Ave`,
+        city: 'Faraway',
+        state: 'FA',
+        zip: '99999',
+        phone,
+        email: `${tag}@example.org`,
+      });
+      const cAcmsNoMatch = nextCase();
+      const cAcmsAmbiguous = nextCase();
+      const cDxtrNoMatch = nextCase(OTHER_DIVISION);
+      const cDxtrAmbiguous = nextCase(OTHER_DIVISION);
+      const cAcmsIgnoredDxtrRow = nextCase();
+      const cDxtrIgnoredAcmsRow = nextCase(OTHER_DIVISION);
+      const RUN_DATE = '2026-07-05';
+      const scenario: DriverScenario = {
+        key: 'driver-two-regions-twice-no-duplicates',
+        title:
+          'A DXTR region and an ACMS region run together, twice, with no-match and ambiguous outcomes on both and no duplicates',
+        basis: 'bead',
+        note:
+          `Region ${REGION} (NY, Manhattan) stays on ACMS; ` +
+          `region ${OTHER_REGION} (PA, synthetic) is switched to DXTR. Each region gets a no-match and ` +
+          `an ambiguous row, plus a cross-source row that must be ignored (an ACMS row in the DXTR ` +
+          `region, a DXTR row in the ACMS region). Both runs use the same runDate (${RUN_DATE}) so the ` +
+          `second run re-reads exactly what the bookmark rule held back from the first (the newest ` +
+          `date, never bookmarked) and proves that re-read is idempotent: the same appointments and ` +
+          `tasks exist after both runs, with no duplicates. ${BOOKMARK_RULE}`,
+        cases: [
+          cAcmsNoMatch,
+          cAcmsAmbiguous,
+          cDxtrNoMatch,
+          cDxtrAmbiguous,
+          cAcmsIgnoredDxtrRow,
+          cDxtrIgnoredAcmsRow,
+        ].map((caseId) => ({ caseId })),
+        cams: {
+          // Each pair is equally far from its source row (as in ambiguous-pipeline-task): no shared
+          // street number, city, zip, phone or email, so no contact detail can break the tie.
+          trustees: [
+            tr('T-AMB-ACMS-a', person('Larchwood', farAway('a', '5185550011'))),
+            tr('T-AMB-ACMS-b', person('Larchwood', farAway('b', '5185550012'))),
+            tr('T-AMB-DXTR-a', person('Boxwood', farAway('a', '5185550021'))),
+            tr('T-AMB-DXTR-b', person('Boxwood', farAway('b', '5185550022'))),
+          ],
+        },
+        rows: [
+          {
+            source: 'ACMS',
+            caseId: cAcmsNoMatch,
+            prof: prof(71, person('Elmcrest')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cAcmsAmbiguous,
+            prof: prof(72, person('Larchwood')),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrNoMatch,
+            prof: prof(73, person('Fircrest'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'DXTR',
+            caseId: cDxtrAmbiguous,
+            prof: prof(74, person('Boxwood'), OTHER_DIVISION),
+            apptDate: D2,
+            changeDate: D2,
+          },
+          {
+            source: 'DXTR',
+            caseId: cAcmsIgnoredDxtrRow,
+            prof: prof(75, person('IgnoredInAcmsRegion')),
+            apptDate: D1,
+            changeDate: D1,
+          },
+          {
+            source: 'ACMS',
+            caseId: cDxtrIgnoredAcmsRow,
+            prof: prof(76, person('IgnoredInDxtrRegion'), OTHER_DIVISION),
+            apptDate: D1,
+            changeDate: D1,
+          },
+        ],
+        switchedToDxtr: [OTHER_REGION],
+        runDate: RUN_DATE,
+        secondRun: { runDate: RUN_DATE },
+        regions: [REGION, OTHER_REGION],
+        expect: {
+          written: {
+            [cAcmsNoMatch]: by('PLACEHOLDER', D1),
+            [cAcmsAmbiguous]: by('PLACEHOLDER', D2),
+            [cDxtrNoMatch]: by('PLACEHOLDER', D1),
+            [cDxtrAmbiguous]: by('PLACEHOLDER', D2),
+          },
+          notWritten: [cAcmsIgnoredDxtrRow, cDxtrIgnoredAcmsRow],
+          bookmarks: { [REGION]: D1, [OTHER_REGION]: D1 },
+          tasks: [
+            { last: 'Elmcrest', count: 1, source: 'ACMS', reason: 'no match', court: COURT_ID },
+            { last: 'Larchwood', count: 1, source: 'ACMS', reason: 'ambiguous', court: COURT_ID },
+            {
+              last: 'Fircrest',
+              count: 1,
+              source: 'DXTR',
+              reason: 'no match',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+            {
+              last: 'Boxwood',
+              count: 1,
+              source: 'DXTR',
+              reason: 'ambiguous',
+              court: DIVISIONS[OTHER_DIVISION].court,
+              acmsProfessionalId: null,
+            },
+          ],
+          tasksTotal: 4,
+        },
+      };
+      return scenario;
+    })(),
   ];
   return list;
 })();
@@ -2769,33 +3125,36 @@ export const PENDING_BEHAVIORS: { title: string; reason: string }[] = [
   {
     title: 'A long date continues in a fresh message',
     reason:
-      'Needs an invocation time budget the harness can shrink; becomes feasible once the driver ' +
-      '(cams-fd8qd.1.10) accepts an injectable budget.',
+      'Needs an invocation time budget the harness can shrink. The driver accepts startedAt and ' +
+      'safeThresholdMs, but runRegionDriver in bindings.ts does not pass them through.',
   },
   {
     title: 'ACMS ambiguous link: integrity-error task vs fall-through',
     reason:
-      'cams-nd7ns says 2+ links goes straight to a "multiple linked trustees" identity task; the .feature and ' +
-      'cams-fd8qd.1.7 say it falls through. The "ambiguous-link-not-used" scenario follows the latter; revisit when decided.',
+      'A tracker requirement says 2+ links goes straight to a "multiple linked trustees" identity task; the ' +
+      '.feature says it falls through. The "ambiguous-link-not-used" scenario follows the .feature; revisit when decided.',
   },
   {
-    title: 'Slice 3: daily heal and abandoned counts',
+    title: 'Daily heal and abandoned counts',
     reason:
-      'Parking is covered by the two parked scenarios. Heal (cams-fd8qd.3.7) needs a pass type that ' +
-      'loads the case into CAMS and then runs healParkedPage; the harness only runs processAppointments.',
+      'Parking is covered by the two parked scenarios. The heal needs a pass type that ' +
+      'loads the case into CAMS and then runs healParkedPage; the harness only runs processAppointments. ' +
+      'The heal itself is unit-tested (heal-parked-case-appointments.test.ts).',
   },
   {
-    title: 'Slice 2 lanes and Slice 4 admin page',
-    reason: 'Not built (cams-fd8qd.5, .4).',
-  },
-  {
-    title: 'CAMS-956 Trustee Appointment task (placeholders and parked records never join)',
+    title: 'Lane assignment and the Case Appointments admin page',
     reason:
-      'Not built. The jurisdiction-* scenarios already span court, division, chapter, inactive and missing ' +
-      'appointments; add task assertions when the trustee-appointment-verification collection exists.',
+      'Not driven by this harness. Lane assignment is unit-tested (lane-assignment.test.ts); the admin ' +
+      'page is outside what a sync harness exercises.',
   },
   {
-    title: 'CAMS-957 gap report, SuperUser-only switch and rejecting a switch back to ACMS',
+    title: 'Trustee Appointment task (placeholders and parked records never join)',
+    reason:
+      'The jurisdiction-* scenarios span court, division, chapter, inactive and missing appointments, but ' +
+      'assert only checks.matchedTrusteeAppointment, not the task documents themselves.',
+  },
+  {
+    title: 'Gap report, SuperUser-only switch and rejecting a switch back to ACMS',
     reason:
       'API and admin behavior, not sync behavior; test at the API/BDD layer. Region routing itself is in the driver scenarios.',
   },

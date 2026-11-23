@@ -10,9 +10,9 @@
  * disposition is not 'linked', `camsTrusteeId` is set to the ACMS variant's fingerprint
  * instead of a real trustee. This harness scores each record's `evidence.sourceRaw` (already a
  * CanonicalTrusteeSource/DxtrTrusteeParty — no decoding needed) against CAMS trustees using the
- * SAME scoring functions production matching uses (calculateNameScore, calculateAddressScore,
- * calculatePhoneScore, calculateEmailScore from trustee-match.helpers.ts) — not a new,
- * separately-tuned comparison. Two passes:
+ * scoring functions from trustee-match.helpers.ts (calculateNameScore, calculateAddressScore,
+ * calculatePhoneScore, calculateEmailScore). The production pipeline does not call them; they
+ * are exported for audit harnesses like this one. Two passes:
  *
  *   1. Linked records (disposition === 'linked'): score sourceRaw against the trustee it was
  *      actually linked to, to surface a past auto-link that looks like a poor match (false
@@ -202,8 +202,8 @@ function findBestCandidate(
   for (const trustee of trustees) {
     const scores = scoreAgainst(acmsTrustee, trustee);
     // A blunt, single-pass "does this look like the same person" signal for this exploratory
-    // scan — not calculateCandidateScore's full weighted blend, since that also needs
-    // district/chapter (appointment context this fixture-only harness never has). Name is the
+    // scan — not the trustee-match pipeline's full per-signal scoreCandidate breakdown, since that
+    // also needs district/chapter (appointment context this fixture-only harness never has). Name is the
     // primary signal; address as a tiebreaker among equally-named candidates.
     if (
       !best ||

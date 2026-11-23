@@ -1,10 +1,9 @@
 /**
- * The ONLY place this harness binds to production code or persisted shapes that do not exist yet.
+ * The ONLY place this harness binds to production modules by name or assumes a persisted shape.
  *
- * Everything else in the harness calls code that exists today. The seams below are the parts of
- * CAMS-955/957 still to be built; until then they throw NotImplementedError (or assume a shape, said
- * so in the comment) and the scenarios that need them report "NOT IMPLEMENTED". When the production
- * code lands, wire it here and the scenarios start running for real.
+ * Everything else in the harness imports production code directly. The seams below look their
+ * target up by name, so a missing export or an unwired seam throws NotImplementedError and the
+ * scenarios that need it report "NOT IMPLEMENTED" instead of failing the whole run.
  */
 import { Db } from 'mongodb';
 import { randomUUID } from 'crypto';
@@ -23,9 +22,8 @@ export class NotImplementedError extends Error {
 
 /**
  * Seam 1: the ACMS TrusteeAppointmentSource (reads CMMAP/CMMDB/CMMPR for one region and change date,
- * paged by id). Expected to be exported from trustee-appointment-source.ts as
- * `AcmsTrusteeAppointmentSource` with a no-argument constructor, like DxtrTrusteeAppointmentSource.
- * Adjust the lookup below if it lands under another name or location.
+ * paged by id). Exported from trustee-appointment-source.ts as `AcmsTrusteeAppointmentSource`
+ * with a no-argument constructor, like DxtrTrusteeAppointmentSource.
  */
 export async function getAcmsSource(): Promise<TrusteeAppointmentSource> {
   const mod =
@@ -42,18 +40,14 @@ export async function getAcmsSource(): Promise<TrusteeAppointmentSource> {
   return new (Ctor as new () => TrusteeAppointmentSource)();
 }
 
-/**
- * The DXTR source as it exists today (a non-functional stub per its own docblock, until GitHub #3191):
- * it ignores regionId and reads by transaction date. The harness drives it as-is so DXTR keeps flowing
- * through the same seam.
- */
+/** The DXTR source: one region's trustee appointment transactions per TX_DATE day, paged by TX_ID. */
 export function getDxtrSource(): TrusteeAppointmentSource {
   return new DxtrTrusteeAppointmentSource();
 }
 
 /**
- * Seam 2: the per-region driver (cams-fd8qd.1.10). For each region named, reads its bookmark
- * (ACMS unconditionally -- the CAMS-957 source switch is a separate, not-yet-built ticket), walks
+ * Seam 2: the per-region driver. For each region named, reads its bookmark
+ * and source (DXTR when region.<id>.source.system is 'DXTR', else ACMS), walks
  * change dates (catch-up from 2026-07-01, a date is complete only when a later date exists, the
  * run date itself is never read), processes events, and advances the bookmark.
  */
@@ -70,9 +64,9 @@ export async function runRegionDriver(
 /**
  * Seam 3: the per-region runtime-state document, one document with a `region` map:
  * {documentType, region: {<regionId>: {lastSyncDate?, source?: {system, updatedOn, updatedBy}}}}
- * (TrusteeAppointmentRegionSyncState, gateways.types.ts -- cams-fd8qd.1.3). Matches the .feature
- * file and cams-nd7ns ("region.<regionId>.lastSyncDate", written with setField) and cams-rxb7a
- * ("region.<regionId>.source"). `source` unset means ACMS.
+ * (TrusteeAppointmentRegionSyncState, gateways.types.ts). The bookmark is written with setField at
+ * "region.<regionId>.lastSyncDate" and the source at "region.<regionId>.source". `source` unset
+ * means ACMS.
  */
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 
@@ -80,13 +74,6 @@ export async function seedRegionState(
   db: Db,
   state: { bookmarks?: Record<string, string>; switchedToDxtr?: string[] },
 ): Promise<void> {
-  // The driver reads ACMS for every region regardless of region.<id>.source until CAMS-957
-  // (cams-rxb7a) builds the switch. Remove this guard when it lands.
-  if ((state.switchedToDxtr ?? []).length > 0) {
-    throw new NotImplementedError(
-      'Region source switch to DXTR (CAMS-957, cams-rxb7a): the driver ignores region.<id>.source',
-    );
-  }
   const region: Record<string, { lastSyncDate?: string; source?: unknown }> = {};
   for (const [id, lastSyncDate] of Object.entries(state.bookmarks ?? {})) {
     region[id] = { ...region[id], lastSyncDate };
@@ -113,8 +100,16 @@ export async function readRegionBookmark(db: Db, region: string): Promise<string
   return value ? value.slice(0, 10) : undefined;
 }
 
+/** The region's stored source system ('DXTR' once switched), or undefined. Same assumed shape as seedRegionState. */
+export async function readRegionSource(db: Db, region: string): Promise<string | undefined> {
+  const doc = await db
+    .collection('runtime-state')
+    .findOne({ documentType: REGION_STATE_DOCUMENT_TYPE });
+  return doc?.region?.[region]?.source?.system as string | undefined;
+}
+
 /**
- * The operator delete (cams-fd8qd.32): deletes the appointments in the named regions assigned
+ * The operator delete: deletes the appointments in the named regions assigned
  * within the date range and rewinds those regions' bookmarks, as handleStart does for a start
  * message carrying `delete`.
  */

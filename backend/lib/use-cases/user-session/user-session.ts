@@ -9,7 +9,7 @@ import {
 import { CamsSession } from '@common/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import UsersGroupManagement from '../users/usersGroupManagement';
-import { CamsUserReference } from '@common/cams/users';
+import { CamsUser, CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
@@ -19,6 +19,7 @@ import { isTransientInfraError } from '../../common-errors/transient-infra-error
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 const IDENTITY_PROVIDER_BACKOFF_MS = [2000, 4000];
 const SESSION_ACCESS_BACKOFF_MS = [250, 500];
+const SIGN_IN_EVENT_NAME = 'CAMS Sign-In';
 
 type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
 
@@ -51,6 +52,47 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, policy: RetryPolicy): P
     }
   }
   return fn();
+}
+
+/**
+ * Builds the "CAMS Sign-In" event properties. Slices 2-4 of CAMS-979 query these
+ * property names, so do not rename them without updating those queries.
+ * The person's name and id are deliberately excluded. The email is trimmed and
+ * lowercased so one person always counts once. Offices are sorted by office code
+ * and regions by region number.
+ */
+function buildSignInEventProperties(user: CamsUser): Record<string, string> {
+  const offices = [...(user.offices ?? [])].sort((a, b) =>
+    a.officeCode.localeCompare(b.officeCode),
+  );
+  const regions = new Map(
+    [...offices]
+      .sort((a, b) => Number(a.regionId) - Number(b.regionId))
+      .map((office) => [office.regionId, office.regionName]),
+  );
+  return {
+    email: (user.email ?? '').trim().toLowerCase(),
+    roles: JSON.stringify([...new Set(user.roles ?? [])].sort()),
+    officeCodes: JSON.stringify(offices.map((office) => office.officeCode)),
+    officeNames: JSON.stringify(offices.map((office) => office.officeName)),
+    regionIds: JSON.stringify([...regions.keys()]),
+    regionNames: JSON.stringify([...regions.values()]),
+  };
+}
+
+function emitSignInEvent(context: ApplicationContext, user: CamsUser) {
+  try {
+    const trace = context.observability.startTrace(context.invocationId);
+    context.observability.completeTrace(
+      trace,
+      SIGN_IN_EVENT_NAME,
+      { success: true, properties: buildSignInEventProperties(user), measurements: {} },
+      undefined,
+      context.logger,
+    );
+  } catch (error) {
+    context.logger.error(MODULE_NAME, `Failed to emit sign-in telemetry event: ${error?.message}`);
+  }
 }
 
 export class UserSessionUseCase {
@@ -216,6 +258,7 @@ export class UserSessionUseCase {
         issuer: verifiedJwt.claims.iss,
       };
       await this.writeSession(context, newSession);
+      emitSignInEvent(context, user);
       return newSession;
     } catch (originalError) {
       throw isCamsError(originalError)

@@ -423,6 +423,9 @@ export interface AcmsGateway {
   ): Promise<string | undefined>;
 }
 
+/** A TOD trustee in scope for "in TOD only"; statusMissing when no appointment status is active. */
+export type TodOnlyCandidate = { id: number; statusMissing: boolean };
+
 export interface AtsGateway {
   getTrusteesPage(
     context: ApplicationContext,
@@ -442,8 +445,12 @@ export interface AtsGateway {
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   /** Read-only: the TOD trustee records that exist among the given IDs. */
   getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;
-  /** Read-only: the given TOD trustee IDs that have at least one active appointment status. */
-  getActiveTrusteeIds(context: ApplicationContext, ids: number[]): Promise<number[]>;
+  /**
+   * Read-only: of the given TOD trustee IDs, those the trustee data report lists as "in TOD only"
+   * when unlinked: trustees with an active appointment status, and trustees with none whose
+   * status is empty on some appointment (statusMissing, for review).
+   */
+  getTodOnlyCandidates(context: ApplicationContext, ids: number[]): Promise<TodOnlyCandidate[]>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,
@@ -935,17 +942,6 @@ export type AcmsProfessionalIdSyncState = RuntimeState & {
 };
 
 /**
- * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
- * (the per-region driver). One document, one key per region, each written
- * independently with RuntimeStateRepository.setField's dotted path (e.g.
- * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
- * AcmsProfessionalIdSyncState above, settled against the .feature file and cams-nd7ns/cams-rxb7a
- * (which disagreed with an earlier draft of this type that nested it under a `regions` key).
- *
- * source is absent for a region still on ACMS (the default); CAMS-957's one-way SuperUser switch
- * to DXTR sets it via createAuditRecord, and the server rejects switching a region back.
- */
-/**
  * The one sync run (a kickoff plus every lane and continuation it spawns) that may work. The lock
  * has no expiry: it is deleted when the last lane finishes cleanly, or by an operator after a run
  * that died. While it exists, any start with a different runId skips.
@@ -992,6 +988,16 @@ export type CaseAppointmentDeleteFilter = {
   to?: string;
 };
 
+/**
+ * Per-region bookmark + appointment source for the daily ACMS/DXTR trustee-appointment sync
+ * (the per-region driver). One document, one key per region, each written
+ * independently with RuntimeStateRepository.setField's dotted path (e.g.
+ * "region.02.lastSyncDate", "region.02.source") -- the same per-key-map precedent as
+ * AcmsProfessionalIdSyncState above.
+ *
+ * source is absent for a region still on ACMS (the default); a SuperUser's one-way switch to DXTR
+ * sets it via createAuditRecord, and the server rejects switching a region back.
+ */
 export type TrusteeAppointmentRegionSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
   region: Record<

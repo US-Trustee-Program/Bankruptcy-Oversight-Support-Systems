@@ -20,7 +20,12 @@ const PROFILE_FIELDS: TrusteeProfileField[] = [
 
 type ProfileSource = Pick<Trustee, 'name' | 'public' | 'internal'> | TrusteeInput;
 
-export type ScopedTodRecord = { record: AtsTrusteeRecord; inScope: boolean };
+/** A TOD record and whether it is in scope for "in TOD only", and if so, why. */
+export type ScopedTodRecord = {
+  record: AtsTrusteeRecord;
+  inScope: boolean;
+  statusMissing?: boolean;
+};
 
 function renderAddress(address: Partial<Address> | undefined): string {
   if (!address) return '';
@@ -92,10 +97,11 @@ export function findTodOnly(
 ): TrusteeDataDifference[] {
   return todRecords
     .filter(({ record, inScope }) => inScope && !linkedTruIds.has(record.ID.toString()))
-    .map(({ record }) => ({
+    .map(({ record, statusMissing }) => ({
       kind: 'tod-only',
       todIds: [record.ID.toString()],
       trusteeName: transformTrusteeRecord(record).name,
+      ...(statusMissing ? { todStatusMissing: true } : {}),
     }));
 }
 
@@ -123,13 +129,19 @@ export function summarize(
   const summary: TrusteeDataReportSummary = {
     trusteesCompared,
     todOnly: 0,
+    todOnlyStatusMissing: 0,
     camsOnly: 0,
     fieldDifferences: 0,
     fieldDifferencesByField,
   };
 
   for (const difference of differences) {
-    if (difference.kind === 'tod-only') summary.todOnly++;
+    if (difference.kind === 'tod-only') {
+      summary.todOnly++;
+      if (difference.todStatusMissing) {
+        summary.todOnlyStatusMissing = (summary.todOnlyStatusMissing ?? 0) + 1;
+      }
+    }
     if (difference.kind === 'cams-only') summary.camsOnly++;
     if (difference.kind === 'field' && difference.field) {
       summary.fieldDifferences++;

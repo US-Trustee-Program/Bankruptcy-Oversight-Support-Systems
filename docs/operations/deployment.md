@@ -277,6 +277,17 @@ run. The account is defined in `ops/cloud-deployment/dora-metrics-storage.bicep`
 writer uses Entra ID (`--auth-mode login`) and needs a Storage Blob Data role on the `dora-metrics`
 container. Deleted or overwritten blobs, and a deleted container, stay recoverable for 30 days.
 
+Runs from CAMS-72 (November 2026) on cover the 13 complete calendar weeks before the most recent
+Monday 00:00 UTC. Earlier runs covered the 90 days up to the moment of the run, with a partial last
+week, so weekly buckets and detail CSVs from the two eras don't line up and the newer ones omit
+activity since that Monday.
+
+The week before last is shown on the [DORA Metrics](/operations/dora-metrics.md) page; the most
+recent week is left out until its changes have had time to deploy and its incidents to close. The
+site is rebuilt after each weekly run on `main` (Tuesday 01:00 UTC) and shows the page from the
+newest scheduled or manually dispatched run that rendered one, so a failed publish job does not hold
+it back.
+
 ### One-time setup
 
 In this order:

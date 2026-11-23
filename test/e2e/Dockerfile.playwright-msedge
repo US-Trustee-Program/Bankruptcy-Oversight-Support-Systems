@@ -17,8 +17,15 @@
 # keyed on @playwright/test), matching the pattern already used by
 # test/e2e/Dockerfile.playwright. Keep in lockstep with @playwright/test
 # in test/e2e/package.json and user-interface/package.json — Renovate
-# updates this tag and the matching one in build-playwright-msedge-image.yml
+# updates the PLAYWRIGHT_VERSION ARG and the matching tag in build-playwright-msedge-image.yml
 # together whenever @playwright/test bumps.
-FROM mcr.microsoft.com/playwright:v1.64.1-noble
+#
+# The Playwright CLI is pinned to the same version as the base image. An
+# unpinned `npx playwright install` fetches npm's latest, and a newer
+# Playwright's install step garbage-collects the base image's chromium
+# and chromium_headless_shell builds, so tests fail at browser launch.
+ARG PLAYWRIGHT_VERSION=1.65.0
+FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
+ARG PLAYWRIGHT_VERSION
 
-RUN npx playwright install msedge --with-deps
+RUN npx playwright@${PLAYWRIGHT_VERSION} install msedge --with-deps

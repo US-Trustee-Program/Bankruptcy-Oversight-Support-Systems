@@ -11,6 +11,7 @@
     "report:lead-time": "tsx src/report-lead-time.ts",
     "report:change-failure-rate": "tsx src/report-change-failure-rate.ts",
     "report:mttr": "tsx src/report-mttr.ts",
+    "report:docs-page": "tsx src/report-docs-page.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npx tsc --noEmit"

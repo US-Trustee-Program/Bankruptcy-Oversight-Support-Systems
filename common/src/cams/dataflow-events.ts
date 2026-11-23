@@ -115,8 +115,8 @@ export type TrusteeAppointmentSyncEvent = {
   unassignedOn?: string;
   appointedDate?: string;
   /**
-   * ISO date (YYYY-MM-DD) the case was filed (ACMS CMMDB CASE_FILED_DATE). The ACMS source always
-   * sets it; optional only because the DXTR source does not.
+   * ISO date (YYYY-MM-DD) the case was filed (ACMS CMMDB CASE_FILED_DATE, DXTR AO_CS.CS_DATE_FILED).
+   * Optional because a NULL CS_DATE_FILED leaves it unset for DXTR.
    */
   dateFiled?: string;
   /**
@@ -133,7 +133,7 @@ export type TrusteeAppointmentSyncEvent = {
   profCode?: string;
   /**
    * Raw DXTR group designator (AO_CS.GRP_DES) for this record - one half of ACMS's compound
-   * professional key (GROUP_DESIGNATOR + PROF_CODE, see /cams-gateways). A native DXTR/ACMS fact,
+   * professional key (GROUP_DESIGNATOR + PROF_CODE). A native DXTR/ACMS fact,
    * not yet the CAMS-formatted acmsProfessionalId string - that construction (and its
    * sentinel-suppression rule) belongs to the use-case layer that consumes this event, not the
    * gateway that surfaces the raw fields.

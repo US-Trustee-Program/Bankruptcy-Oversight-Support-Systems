@@ -26,6 +26,8 @@ const FIELD_LABELS: Record<TrusteeProfileField, string> = {
 
 const count = (value: number) => value.toLocaleString('en-US');
 
+const TOD_ONLY_LABEL = 'In TOD only';
+
 function liveStatusMessage(status: TrusteeDataReportStatus | null, isStarting: boolean): string {
   if (isStarting) return 'Starting the report.';
   if (status?.activeRun) return `Report ${status.activeRun.status}.`;
@@ -51,14 +53,31 @@ function CompletedRunSummary({ run }: Readonly<{ run: TrusteeDataReportRun }>) {
           <caption className="usa-sr-only">Trustee data report counts</caption>
           <tbody>
             {[
-              ['trustees-compared', 'Trustees compared', summary.trusteesCompared],
-              ['tod-only', 'In TOD only', summary.todOnly],
-              ['cams-only', 'In CAMS only', summary.camsOnly],
-              ['field-differences', 'Field differences', summary.fieldDifferences],
-            ].map(([key, label, value]) => (
+              {
+                key: 'trustees-compared',
+                label: 'Trustees compared',
+                value: summary.trusteesCompared,
+              },
+              { key: 'tod-only', label: TOD_ONLY_LABEL, value: summary.todOnly },
+              {
+                key: 'tod-only-status-missing',
+                label: 'Status missing, needs review',
+                value: summary.todOnlyStatusMissing ?? 0,
+                parent: TOD_ONLY_LABEL,
+              },
+              { key: 'cams-only', label: 'In CAMS only', value: summary.camsOnly },
+              {
+                key: 'field-differences',
+                label: 'Field differences',
+                value: summary.fieldDifferences,
+              },
+            ].map(({ key, label, value, parent }) => (
               <tr key={key}>
-                <th scope="row">{label}</th>
-                <td data-testid={`trustee-data-report-count-${key}`}>{count(value as number)}</td>
+                <th scope="row" className={parent ? 'padding-left-4' : undefined}>
+                  {parent && <span className="usa-sr-only">{parent}: </span>}
+                  {label}
+                </th>
+                <td data-testid={`trustee-data-report-count-${key}`}>{count(value)}</td>
               </tr>
             ))}
             {(Object.keys(FIELD_LABELS) as TrusteeProfileField[]).map((field) => (

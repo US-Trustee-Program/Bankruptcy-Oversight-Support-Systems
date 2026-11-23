@@ -31,6 +31,7 @@
 - [Office Assignees Collection Management](/architecture/decision-records/OfficeAssigneesCollectionManagement.md)
 - [SAST Baseline Comparison](/architecture/decision-records/SastBaselineComparison.md)
 - [Phonetic Debtor Search](/architecture/decision-records/PhoneticDebtorSearch.md)
+- [Per-Region Trustee Appointment Source Selection](/architecture/decision-records/PerRegionTrusteeAppointmentSourceSelection.md)
 - [Storage Queue](/architecture/decision-records/StorageQueue.md)
 - [Trustee Matching Pipeline](/architecture/decision-records/TrusteeMatchingPipeline.md)
 - [Zero Downtime](/architecture/decision-records/ZeroDowntimeDeployment.md)

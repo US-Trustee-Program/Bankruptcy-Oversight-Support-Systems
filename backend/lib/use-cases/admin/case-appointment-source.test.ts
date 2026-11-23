@@ -4,9 +4,13 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { TrusteeAppointmentRegionSyncState } from '../gateways.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { getCamsUserReference } from '@common/cams/session';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { getCaseAppointmentSources } from './case-appointment-source';
+import {
+  getCaseAppointmentSources,
+  switchCaseAppointmentSourceToDxtr,
+} from './case-appointment-source';
 
 const REGION_STATE_DOCUMENT_TYPE = 'TRUSTEE_APPOINTMENT_REGION_SYNC_STATE';
 
@@ -151,6 +155,94 @@ describe('getCaseAppointmentSources', () => {
         isCamsError: true,
         module: 'CASE-APPOINTMENT-SOURCE-USE-CASE',
         originalError: expect.stringContaining(message),
+      }),
+    );
+  });
+});
+
+describe('switchCaseAppointmentSourceToDxtr', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+    mockOffices([makeOffice('02')]);
+    mockRegionState(stateWith({}));
+  });
+
+  test('writes region.<id>.source with createAuditRecord values and returns the region as DXTR', async () => {
+    const setFieldSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'setField')
+      .mockResolvedValue(undefined);
+
+    const result = await switchCaseAppointmentSourceToDxtr(context, '02');
+
+    expect(result).toEqual({ regionId: '02', regionName: 'Region 02', source: 'DXTR' });
+    expect(setFieldSpy).toHaveBeenCalledWith(REGION_STATE_DOCUMENT_TYPE, 'region.02.source', {
+      system: 'DXTR',
+      updatedOn: expect.any(String) as unknown as string,
+      updatedBy: getCamsUserReference(context.session.user),
+    });
+  });
+
+  test('is a no-op when the region is already on DXTR', async () => {
+    mockRegionState(stateWith({ '02': { source: DXTR_SOURCE } }));
+    const setFieldSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'setField')
+      .mockResolvedValue(undefined);
+
+    const result = await switchCaseAppointmentSourceToDxtr(context, '02');
+
+    expect(result).toEqual({ regionId: '02', regionName: 'Region 02', source: 'DXTR' });
+    expect(setFieldSpy).not.toHaveBeenCalled();
+  });
+
+  test('switches successfully when the runtime-state document has never been written', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError('TEST'));
+    const setFieldSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'setField')
+      .mockResolvedValue(undefined);
+
+    const result = await switchCaseAppointmentSourceToDxtr(context, '02');
+
+    expect(result).toEqual({ regionId: '02', regionName: 'Region 02', source: 'DXTR' });
+    expect(setFieldSpy).toHaveBeenCalledOnce();
+  });
+
+  test('throws NotFoundError for a regionId not in CAMS office data, writing nothing', async () => {
+    const setFieldSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'setField')
+      .mockResolvedValue(undefined);
+
+    await expect(switchCaseAppointmentSourceToDxtr(context, '99')).rejects.toEqual(
+      expect.objectContaining({ isCamsError: true, status: 404 }),
+    );
+    expect(setFieldSpy).not.toHaveBeenCalled();
+  });
+
+  test('logs an info entry with the region id and switching user id on a successful write', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'setField').mockResolvedValue(undefined);
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await switchCaseAppointmentSourceToDxtr(context, '02');
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      'CASE-APPOINTMENT-SOURCE-USE-CASE',
+      expect.stringContaining('02'),
+    );
+    expect(infoSpy.mock.calls[0][1]).toContain(context.session.user.id);
+  });
+
+  test('wraps a setField failure in a CamsError for this module', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'setField').mockRejectedValue(
+      new Error('Cosmos throttled'),
+    );
+
+    await expect(switchCaseAppointmentSourceToDxtr(context, '02')).rejects.toEqual(
+      expect.objectContaining({
+        isCamsError: true,
+        module: 'CASE-APPOINTMENT-SOURCE-USE-CASE',
+        originalError: expect.stringContaining('Cosmos throttled'),
       }),
     );
   });

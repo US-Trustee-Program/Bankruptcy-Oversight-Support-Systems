@@ -141,8 +141,7 @@ type ProcessAppointmentsResult = {
 // isTransientInfraError (shared, see ../../common-errors/transient-infra-error.ts) is the check
 // that decides whether processOneEvent's one catch block reports 'retryable' instead of routing
 // to the DLQ - the trustee-match pipeline returns (rather than throws) for business outcomes, so
-// that catch is the only place in the per-event pipeline a transient error can surface (see
-// cams-o5gh for the bug this fixed when a second, independent recheck was still required).
+// that catch is the only place in the per-event pipeline a transient error can surface.
 // throwIfTransientSoftCloseFailure below calls it directly.
 
 /**
@@ -201,9 +200,9 @@ export async function createNewAppointment(
   checks: CaseAppointmentChecks,
   // The source's own disposition (DISP_DATE), recorded as given.
   unassignedOn?: string,
-  // Set only for an out-of-order older row with no source disposition (cams-fd8qd.1.8): a derived
-  // close so it never displaces the case's currently-active appointment. Used only when no
-  // disposition is already stored, so it never replaces a court date (PR #3283 review).
+  // Set only for an out-of-order older row with no source disposition: a derived close so it
+  // never displaces the case's currently-active appointment. Used only when no disposition is
+  // already stored, so it never replaces a court date.
   fallbackUnassignedOn?: string,
 ): Promise<void> {
   const appointment = {
@@ -346,9 +345,9 @@ export async function softCloseExistingAppointment(
     // processAppointments, which already routes isTooManyRequestsError/isGatewayTimeoutError
     // to retryableEvents (see that catch block for the exact mechanism this mirrors). Nothing
     // has been written for this event, so nothing is corrupt; a later retry re-reads state and
-    // does close-then-create cleanly. Creating the new appointment here regardless of close
-    // outcome (the old behavior) left two simultaneously active appointments when the close
-    // failed — a real data-integrity defect, not just a missed optimization.
+    // does close-then-create cleanly. Creating the new appointment regardless of the close
+    // outcome would leave two simultaneously active appointments when the close failed — a real
+    // data-integrity defect, not just a missed optimization.
     throwIfTransientSoftCloseFailure(
       context,
       event,
@@ -423,7 +422,7 @@ function assertAppointedDate(
  * written in that case (see softCloseExistingAppointment). unassignedOn is set when that
  * appointment is closed as written: a source disposition (DISP_DATE), or an out-of-order row closed
  * behind the case's later active appointment. Callers use it to skip opening an appointment task
- * for a historical appointment (CAMS-956).
+ * for a historical appointment.
  */
 export type AppliedTrustee = {
   dlqFailure: TrusteeAppointmentSyncError | null;
@@ -500,8 +499,8 @@ export async function applyResolvedTrustee(
       );
     }
 
-    // ACMS DISP_DATE closes this same trustee's active appointment with no replacement
-    // (cams-fd8qd.1.8). The disposition is the court's closure date itself, recorded as given.
+    // ACMS DISP_DATE closes this same trustee's active appointment with no replacement. The
+    // disposition is the court's closure date itself, recorded as given.
     // getActiveByCaseId returns only open appointments, so an already-disposed row is never
     // re-closed here.
     const disposition = sourceDisposition(context, event, existingAppointment.assignedOn);
@@ -516,8 +515,8 @@ export async function applyResolvedTrustee(
 
   if (existingAppointment) {
     if (assignedOn < existingAppointment.assignedOn.slice(0, 10)) {
-      // Out-of-order: this row is older than the case's currently-active appointment (cams-fd8qd.1.8). The active appointment is still current and must
-      // not be displaced. The court's own disposition for this row is recorded as given; only
+      // Out-of-order: this row is older than the case's currently-active appointment. The active
+      // appointment is still current and must not be displaced. The court's own disposition for this row is recorded as given; only
       // when the source gives none, and none is stored, is the row closed one day before the
       // active appointment starts.
       const disposition = sourceDisposition(context, event, assignedOn);
@@ -590,7 +589,7 @@ export async function applyResolvedTrustee(
     );
   }
 
-  // An ACMS row carrying DISP_DATE (cams-fd8qd.23) is already disposed on arrival, so the new
+  // An ACMS row carrying DISP_DATE is already disposed on arrival, so the new
   // appointment is written closed rather than left open where nothing downstream would close it.
   const unassignedOn = sourceDisposition(context, event, assignedOn);
   await createNewAppointment(
@@ -670,8 +669,8 @@ async function parkAppointment(
  * (professional-id) or step 2 (variation bucket) — only a pipeline match seeds a new variation),
  * log the outcome, and update the audit entry. Does NOT write a TrusteeMatchVerification document
  * — an auto-matched case was never reviewed by a human, so there is nothing to record in the
- * human-review queue; doing so previously mislabeled these as "Verified" in the Data Verification
- * UI even though no one had looked at them. Callers remain responsible for successCount and any
+ * human-review queue; a document here would label these "Verified" in the Data Verification UI
+ * even though no one had looked at them. Callers remain responsible for successCount and any
  * control-flow (e.g. continue) since those are not part of this shared side-effect sequence.
  *
  * Returns what applyResolvedTrustee wrote (AppliedTrustee), including the soft-close DLQ failure,
@@ -744,8 +743,7 @@ export function assertSyncedCase(syncedCase: SyncedCase | undefined): SyncedCase
 
 /**
  * Builds the shared repo/gateway bundle threaded through every function below as its first
- * argument, replacing what used to be private fields wired in a class constructor. Plain object,
- * no behavior — factory.get*(context) calls are unchanged from the prior constructor.
+ * argument. Plain object, no behavior — just the factory.get*(context) calls.
  */
 function createDeps(context: ApplicationContext) {
   return {
@@ -846,7 +844,7 @@ function courtFieldsFromEvent(
     ...(event.courtDivisionCode ? { courtDivisionCode: event.courtDivisionCode } : {}),
     ...(event.chapter ? { chapter: assertValidChapter(event.caseId, event.chapter) } : {}),
     ...(event.dateFiled ? { dateFiled: event.dateFiled } : {}),
-    // The repository derives caseStatus from these (cams-fd8qd.37).
+    // The repository derives caseStatus from these.
     ...(event.closedDate ? { closedDate: event.closedDate } : {}),
     ...(event.reopenedDate ? { reopenedDate: event.reopenedDate } : {}),
   };
@@ -963,8 +961,8 @@ async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityRes
 
   // The pipeline's own skipAdministrativePlaceholder stage (disavowal phrases, "U.S.
   // Trustee"/"(UST)", no-person wording) can fire on a record that already passed this file's
-  // own DXTR skip checks (resolvePreMatchShortCircuit/handleBogusTrusteeCloseOnly) — a new edge
-  // case that didn't exist under the old numeric-scoring resolver. Treated as a plain no-op, the
+  // own DXTR skip checks (resolvePreMatchShortCircuit/handleBogusTrusteeCloseOnly), because the
+  // pipeline's placeholder rules are not identical to this file's. Treated as a plain no-op, the
   // same as those DXTR-specific skip reasons; counted and logged separately so an unexpectedly
   // high rate (e.g. a real "United States Trustee" DXTR appointee) is visible rather than silent.
   if (state.skip) {
@@ -985,8 +983,8 @@ async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityRes
     };
   }
 
-  // cams-fd8qd.1.9: a disposed row for a fingerprint already placeholdered on this case writes its
-  // (closed) placeholder and nothing else: no identity task, no match counters. The identity task
+  // A disposed row for a fingerprint already placeholdered on this case writes its (closed)
+  // placeholder and nothing else: no identity task, no match counters. The identity task
   // is left in place for a later, still-unresolved row for the same contact details.
   if (event.unassignedOn && (await hasPlaceholderOnCase(deps, event.caseId, fingerprint))) {
     await writeSurrogateAppointment(ctx);
@@ -1025,14 +1023,13 @@ async function resolveTrusteeViaPipeline(ctx: MatchContext): Promise<IdentityRes
 /**
  * Applies any resolved trusteeId — from a pipeline match or a fingerprint/variation-bucket hit —
  * by always writing the real case appointment, recording what was checked (checks.matchedBy,
- * checks.matchedTrusteeAppointment) rather than gating the write on coverage. Decision 1a
- * (2026-10-27): no more IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS identity tasks — an
- * uncovered or inactive-appointment match still auto-links. CAMS-956: an uncovered attached write
- * then opens or joins the trustee appointment task for its court, division and chapter
- * (openOrJoinAppointmentTask, which skips parked, closed and covered writes). This includes a
- * write whose previous trustee's soft-close permanently failed: the resolved trustee's appointment
- * is written all the same, so its task opens now, and the event is still dead-lettered for the
- * soft-close replay.
+ * checks.matchedTrusteeAppointment) rather than gating the write on coverage. An uncovered or
+ * inactive-appointment match still auto-links and never becomes an identity task (decision 1a,
+ * 2026-10-27). An uncovered attached write then opens or joins the trustee appointment task for
+ * its court, division and chapter (openOrJoinAppointmentTask, which skips parked, closed and
+ * covered writes). This includes a write whose previous trustee's soft-close permanently failed:
+ * the resolved trustee's appointment is written all the same, so its task opens in this same call,
+ * and the event is still dead-lettered for the soft-close replay.
  *
  * Same never-catch rule as resolveTrusteeViaPipeline above.
  */
@@ -1126,8 +1123,8 @@ const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
 /**
  * Constructs the acmsProfessionalId to persist on a TrusteeMatchVerification doc, formatted
  * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") per the CAMS<->ACMS professional-ID mapping
- * convention (see /cams-gateways: GROUP_DESIGNATOR + PROF_CODE form ACMS's compound professional
- * key, never PROF_CODE alone). This is a CAMS-specific construct, not a native DXTR/ACMS field —
+ * convention (GROUP_DESIGNATOR + PROF_CODE form ACMS's compound professional key, never
+ * PROF_CODE alone). This is a CAMS-specific construct, not a native DXTR/ACMS field —
  * event.groupDesignator and event.profCode are raw legacy facts crossed from the gateway; the
  * formatting decision (and the sentinel-suppression rule below) belongs here in the use-case
  * layer, not the gateway.
@@ -1136,10 +1133,15 @@ const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
  * (e.g. "NY-00000") would read to a reviewer as a real professional ID rather than the "no
  * trustee appointed"/"ID unavailable" placeholder it actually is — better to omit it than
  * mislead.
+ * Returns undefined for any non-ACMS event: approving the identity task writes this id as a
+ * verified professional-id link, and DXTR's copy of the ACMS professional code can be wrong, so
+ * it must never become a link.
  */
 function resolveAcmsProfessionalIdForVerification(
   event: TrusteeAppointmentSyncEvent,
 ): string | undefined {
+  if (event.source !== 'ACMS') return undefined;
+
   const isSentinel =
     event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
     event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;
@@ -1165,6 +1167,20 @@ const BOGUS_TRUSTEE_NAME_KEYWORDS = [
 ];
 
 /**
+ * True when the case's chapter can never have a CAMS trustee appointment at all, regardless of
+ * identity: AppointmentChapterType (common/src/cams/trustees.ts) has no '9' or '15' member, so
+ * isAppointmentMatch can never return true for a chapter 9 or chapter 15 case -- no trustee,
+ * present or future, could ever satisfy it. Routing these to trustee-match-verification anyway
+ * would create a permanently-pending, permanently-unapprovable reviewer task (and, if bundled
+ * with other cases under the same fingerprint, permanently block the whole bundle from ever
+ * fully approving too, since approval is all-or-nothing). This is a simple stopgap that only
+ * excludes by chapter.
+ */
+function isUnappointableChapter(event: TrusteeAppointmentSyncEvent): boolean {
+  return event.chapter === '9' || event.chapter === '15';
+}
+
+/**
  * True when a record's name is itself a bogus/administrative placeholder rather than a genuine
  * trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName, falling back to
  * fullName (both via normalizeName, so a whitespace-only lastName correctly falls back to fullName
@@ -1172,20 +1188,6 @@ const BOGUS_TRUSTEE_NAME_KEYWORDS = [
  * contain one of these substrings, so this check alone is never disqualifying on its own; callers
  * (isSentinelWithNoIdentity, isUnattributableBogusName) combine it with other evidence.
  */
-/**
- * True when the case's chapter can never have a CAMS trustee appointment at all, regardless of
- * identity: AppointmentChapterType (common/src/cams/trustees.ts) has no '9' or '15' member, so
- * isAppointmentMatch can never return true for a chapter 9 or chapter 15 case -- no trustee,
- * present or future, could ever satisfy it. Routing these to trustee-match-verification anyway
- * would create a permanently-pending, permanently-unapprovable reviewer task (and, if bundled
- * with other cases under the same fingerprint, permanently block the whole bundle from ever
- * fully approving too, since approval is all-or-nothing). This is a simple stopgap -- CAMS-947
- * owns the fuller, more durable version of this exclusion.
- */
-function isUnappointableChapter(event: TrusteeAppointmentSyncEvent): boolean {
-  return event.chapter === '9' || event.chapter === '15';
-}
-
 function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
   const { sourceTrustee } = event;
   const name = (
@@ -1312,8 +1314,7 @@ function isSentinelWithNoIdentity(
  * trustee appointment can legitimately exist for a chapter 9/15 case in the first place (the
  * closed AppointmentChapterType union structurally prevents creating one), so there is nothing
  * for a stray real appointment on such a case to represent other than a pre-existing data error —
- * out of scope for this simple stopgap (see isUnappointableChapter; CAMS-947 owns the fuller
- * version of this exclusion).
+ * out of scope for this simple stopgap (see isUnappointableChapter).
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1525,19 +1526,16 @@ function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
 /**
  * Processes a single trustee appointment event end to end: fingerprint lookup, case-sync/
  * moved-case resolution (resolveCaseInCams), verification-bucket-hit short-circuit
- * (handleVerificationBucketHit),
- * trustee resolution (resolveTrusteeIdByName/resolveByScoring), and match-outcome application
- * (applyMatchOutcome). Extracted from processAppointments' main loop for the same reason as every
- * helper above — whole-procedure extraction removes a decision's branching and nesting cost from
- * the measured function, not merely reorganizing its contents. Every helper this function calls
- * follows the same rule; see MatchContext's doc comment for the shared per-event state they take.
+ * (handleVerificationBucketHit), trustee resolution (matchTrusteeByProfessionalId,
+ * matchTrusteeByVariation, then resolveTrusteeViaPipeline), and match-outcome application
+ * (applyResolvedMatch). Each of those is its own function so the decision's branching and nesting
+ * cost is measured on that function rather than on this one; see MatchContext's doc comment for
+ * the shared per-event state they take.
  *
- * This function OWNS the one transient-error catch boundary for this event — moved here from
- * processAppointments' loop body, not duplicated. None of the helpers above ever catch anything
- * themselves; every repo call's thrown error propagates up to the one catch below, exactly as
- * before this extraction. See isTransientInfraError's doc comment for why a second, independent
- * recheck used to be required and no longer is (cams-o5gh). The pre-match steps before the try
- * are outside it; processOneEventOrDlq routes anything they throw to the DLQ.
+ * This function OWNS the one transient-error catch boundary for this event. None of the helpers
+ * above ever catch anything themselves; every repo call's thrown error propagates up to the one
+ * catch below. The pre-match steps before the try are outside it; processOneEventOrDlq routes
+ * anything they throw to the DLQ.
  */
 async function processOneEvent(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1619,7 +1617,7 @@ async function processOneEvent(
       matchedBy = resolution.matchedBy;
     }
 
-    // A trusteeId already known from step 1 or 2 must not seed a new TrusteeVariation (cams-fd8qd.28).
+    // A trusteeId already known from step 1 or 2 must not seed a new TrusteeVariation.
     const matchOutcome = await applyResolvedMatch(ctx, trusteeId, matchedBy, knownTrusteeId);
     return { kind: 'success', dlqFailure: matchOutcome.dlqFailure };
   } catch (originalError) {
@@ -1638,9 +1636,8 @@ async function processOneEvent(
     // this pipeline — the fingerprint lookup, case sync, and the trustee-match pipeline itself
     // (whose own non-transient errors are rethrown by resolveTrusteeViaPipeline, landing here too)
     // — runs inside the try block above at the same nesting depth, so any transient error from any
-    // of them surfaces here, in this one enclosing catch, with no second, independent recheck
-    // required (contrast with the pre-Move-B nested catch (fuzzyError), which needed its own
-    // recheck because it lived one frame deeper — see cams-o5gh).
+    // of them surfaces here, in this one enclosing catch. A catch nested deeper would need its own
+    // transient check, which is why none exists.
     if (isTransientInfraError(originalError)) {
       context.logger.warn(
         MODULE_NAME,
@@ -1698,11 +1695,11 @@ async function processOneEventOrDlq(
  * 3. Creating a pending identity task (source 'DXTR', with the pipeline's serialized findings)
  *    only when the pipeline could not resolve a trusteeId at all
  *
- * A thin loop over processOneEvent above, which owns the entire per-event pipeline (previously
- * inline here) — fingerprint/case-sync/verification-bucket checks, identity resolution,
- * match-outcome application, and the one transient-error catch boundary. This function
- * only aggregates each event's EventOutcome into the four result buckets below; scenarioDistribution
- * is updated by reference inside processOneEvent and its callees, so nothing here re-derives it.
+ * A thin loop over processOneEvent above, which owns the entire per-event pipeline —
+ * fingerprint/case-sync/verification-bucket checks, identity resolution, match-outcome
+ * application, and the one transient-error catch boundary. This function only aggregates each
+ * event's EventOutcome into the four result buckets below; scenarioDistribution is updated by
+ * reference inside processOneEvent and its callees, so nothing here re-derives it.
  *
  * Ground truth for the outcome taxonomy this pipeline produces (see
  * test/integration/trustee-match-scenarios for the integration harness that exercises each of
@@ -1723,12 +1720,11 @@ async function processOneEventOrDlq(
  *   otherwise DLQ).
  *
  * Match-outcome application (applyResolvedMatch), once a trusteeId is known (from either the
- * pipeline or a fingerprint/variation-bucket hit): always auto-links — decision 1a (2026-10-27)
- * removed the old appointment-coverage gate that used to send an uncovered or inactive-only
- * match to a human-review identity task (IMPERFECT_MATCH/PERFECT_MATCH_INACTIVE_STATUS no longer
- * exist). checks.matchedTrusteeAppointment records isAppointmentMatch's result (a SINGLE active
- * appointment covering court+division+chapter together), not as a gate on whether to write; an
- * uncovered attached write then opens or joins a trustee appointment task (CAMS-956).
+ * pipeline or a fingerprint/variation-bucket hit): always auto-links, with no appointment-coverage
+ * gate and no human-review identity task for an uncovered or inactive-only match (decision 1a,
+ * 2026-10-27). checks.matchedTrusteeAppointment records isAppointmentMatch's result (a SINGLE
+ * active appointment covering court+division+chapter together), not as a gate on whether to
+ * write; an uncovered attached write then opens or joins a trustee appointment task.
  *
  * Case not in CAMS yet (no SYNCED_CASE document): identification runs as usual and the write
  * parks the row as CASE_APPOINTMENT_UNATTACHED (parkedCount); the daily heal attaches it later.

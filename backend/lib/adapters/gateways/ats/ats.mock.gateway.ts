@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { AtsGateway } from '../../../use-cases/gateways.types';
+import { AtsGateway, TodOnlyCandidate } from '../../../use-cases/gateways.types';
 import {
   AtsTrusteeRecord,
   AtsAppointmentRecord,
@@ -384,8 +384,13 @@ export class MockAtsGateway implements AtsGateway {
     return ids.filter((id) => MOCK_TRUSTEE_IDS.includes(id)).map(mockAtsTrusteeRecord);
   }
 
-  async getActiveTrusteeIds(_context: ApplicationContext, ids: number[]): Promise<number[]> {
-    return ids.filter((id) => MOCK_ACTIVE_TRUSTEE_IDS.has(id));
+  async getTodOnlyCandidates(
+    _context: ApplicationContext,
+    ids: number[],
+  ): Promise<TodOnlyCandidate[]> {
+    return ids
+      .filter((id) => MOCK_ACTIVE_TRUSTEE_IDS.has(id))
+      .map((id) => ({ id, statusMissing: false }));
   }
 
   async getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number> {

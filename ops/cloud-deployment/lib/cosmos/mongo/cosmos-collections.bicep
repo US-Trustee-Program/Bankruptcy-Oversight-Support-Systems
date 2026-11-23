@@ -508,10 +508,8 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
         }
         {
           key: {
-            keys: [
-              'documentType'
-              'legacy.truIds'
-            ]
+            // Cosmos rejects nested paths in compound indexes; keep single-field.
+            keys: ['legacy.truIds']
           }
         }
       ]

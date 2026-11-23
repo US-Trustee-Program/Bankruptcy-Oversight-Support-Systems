@@ -9,15 +9,14 @@ professional ID matching was retired).
 
 ## Scope
 
-The pipeline decides (CAMS-953 Slice 2): a **resolved** match writes the case appointment and
-records in `checks.matchedTrusteeAppointment` whether one of the trustee's appointments covers the
-case; an **unresolved** match writes a pending identity task (`trustee-match-verification`) with
+The pipeline decides: a **resolved** match writes the case appointment and records in
+`checks.matchedTrusteeAppointment` whether one of the trustee's appointments covers the case; an
+**unresolved** match writes a pending identity task (`trustee-match-verification`) with
 `source: 'DXTR'`, `mismatchReason` `'ambiguous'` (2+ candidates passing `doesNameMatch` with genuine
-evidence, the rule shared with the ACMS professional-id sync, amended by CAMS-954) or `'no match'`
-(anything else), and the pipeline's serialized state as `findings` - never `matchCandidates`.
-Scenarios 12-13 test the **fingerprint/variant memoization** (`trustee-variant.helpers.ts`,
-`TRUSTEE_VARIATION`) layered on top: a fingerprint hit resolves `trusteeId` directly, a miss falls
-through to the pipeline.
+evidence, the rule shared with the ACMS professional-id sync) or `'no match'` (anything else), and
+the pipeline's serialized state as `findings` - never `matchCandidates`. Scenarios 12-13 test the
+**fingerprint/variant memoization** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on
+top: a fingerprint hit resolves `trusteeId` directly, a miss falls through to the pipeline.
 
 ## What it tests
 
@@ -34,8 +33,8 @@ through to the pipeline.
 | 9   | case-not-yet-synced                              | resolves fine, but no `SYNCED_CASE` Cosmos doc exists yet                                                                                                     | Event lands in `notYetSyncedEvents` (requeued) — no task, no appointment                                                              |
 | 10  | case-moved                                       | resolves fine, but the seeded `SYNCED_CASE` carries `movedToCaseId`                                                                                           | Skipped silently — no task, no appointment, no counter incremented                                                                    |
 | 11  | re-verification                                  | an already-`approved` task is resynced                                                                                                                        | `reVerificationCount++`; the approved task is **not** overwritten                                                                     |
-| 12  | fingerprint-repeat (Slice 5)                     | byte-identical repeat of #2's trustee                                                                                                                         | Auto-linked to #2's trustee via the `TRUSTEE_VARIATION` fingerprint bucket, without matching                                          |
-| 13  | fingerprint-no-false-collapse (Slice 5)          | same ambiguous name as #2/#12, but genuinely different address/phone/email (matches the decoy)                                                                | Fingerprint bucket misses; the pipeline resolves to the decoy — **not** #2's trustee — and auto-links, same as #7                     |
+| 12  | fingerprint-repeat                               | byte-identical repeat of #2's trustee                                                                                                                         | Auto-linked to #2's trustee via the `TRUSTEE_VARIATION` fingerprint bucket, without matching                                          |
+| 13  | fingerprint-no-false-collapse                    | same ambiguous name as #2/#12, but genuinely different address/phone/email (matches the decoy)                                                                | Fingerprint bucket misses; the pipeline resolves to the decoy — **not** #2's trustee — and auto-links, same as #7                     |
 
 Scenario 11 runs in two extra `processAppointments` calls after the main first pass. Its seeded CAMS
 trustee is deliberately named differently from the DXTR party, so the first call writes a pending
@@ -69,18 +68,19 @@ directly into Cosmos (no DXTR row involved):
   one `case-trustee-appointments` document exists afterward — proof against a real `replaceOne`
   upsert, which a mocked repository's recorded call args cannot provide.
 
-- **Stage 8 (bad REC date falls back to TX_DATE)** — `CasesDxtrGateway.getTrusteeAppointments`
-  (`cases.dxtr.gateway.ts`) falls back to `TX.TX_DATE` when REC's fixed-width embedded appointment
-  date is blank/unparseable. Seeds one `AO_TX` row (CS_CASEID `999999413`, case `083-26-88913`) with
-  a blank REC date and asserts the real DXTR query still returns the correct `appointedDate`,
-  sourced from `TX_DATE` via `CONVERT(VARCHAR(10), TX.TX_DATE, 120)` — proof this SQL actually
-  compiles and returns the expected value against a real SQL Server table, which a mocked-gateway
-  unit test cannot provide. This exact stage caught an earlier version of the fix that used
-  `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` instead, which fails against SQL Edge (and many SQL Server
-  instances) with "Common Language Runtime(CLR) is not enabled on this instance." — `FORMAT` depends
-  on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR (via
-  `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
-  standalone: excluded from the 12-scenario matching pipeline, no Cosmos writes.
+- **Stage 8 (bad REC date falls back to TX_DATE)** —
+  `CasesDxtrGateway.getTrusteeAppointmentEventsForRegionDate` (`cases.dxtr.gateway.ts`) falls back
+  to `TX.TX_DATE` when REC's fixed-width embedded appointment date is blank/unparseable. Seeds one
+  `AO_TX` row (CS_CASEID `999999413`, case `083-26-88913`) with a blank REC date and asserts the
+  real DXTR query still returns the correct `appointedDate`, sourced from `TX_DATE` via
+  `CONVERT(VARCHAR(10), TX.TX_DATE, 120)` — proof this SQL actually compiles and returns the
+  expected value against a real SQL Server table, which a mocked-gateway unit test cannot provide.
+  This exact stage caught an earlier version of the fix that used `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')`
+  instead, which fails against SQL Edge (and many SQL Server instances) with "Common Language
+  Runtime(CLR) is not enabled on this instance." — `FORMAT` depends on the CLR; `CONVERT` does not.
+  Unlike Stages 5-7, this DOES round-trip through DXTR (via
+  `casesGateway.getTrusteeAppointmentEventsForRegionDate` directly, not `processAppointments`) but
+  is otherwise standalone: excluded from the 12-scenario matching pipeline, no Cosmos writes.
 
 - **Stage 9 (sentinel professional code skip rule)** — `sync-trustee-case-appointments.ts` skips a
   DXTR trustee-appointment event when its embedded professional code (`AO_TX.REC` offset 17-21 for
@@ -101,7 +101,7 @@ directly into Cosmos (no DXTR row involved):
   test cannot provide. Seeds two Cosmos `SYNCED_CASE` fixtures (one for each of the two cases that
   reach matching) directly in the stage itself rather than joining the shared 12-scenario fixture
   set.
-- **Stage 10 (manual professional-id link on approval, CAMS-953 Slice 6)** — calls the real
+- **Stage 10 (manual professional-id link on approval)** — calls the real
   `TrusteeMatchVerificationUseCase.approveVerification()` on a pending identity task carrying an
   `acmsProfessionalId`, against scenario 3's DXTR case (`083-26-88902`) and its covering trustee, so
   gate A's real `getCaseSummary` + `isAppointmentMatch` check passes. Asserts in

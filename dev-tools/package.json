@@ -18,12 +18,12 @@
   },
   "author": "",
   "dependencies": {
-    "@azure/cosmos": "4.10.1",
+    "@azure/cosmos": "4.10.2",
     "@azure/identity": "4.14.1",
     "@faker-js/faker": "10.5.0",
     "@types/node": "26.6.6",
     "mongodb": "7.9.0",
-    "mssql": "12.7.13",
+    "mssql": "12.7.14",
     "tsx": "4.23.15"
   },
   "devDependencies": {
