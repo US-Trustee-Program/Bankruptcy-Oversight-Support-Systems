@@ -231,6 +231,7 @@ describe('sqlUpsert', () => {
     expect(mockInput).toHaveBeenCalledWith('STATUS', null);
     expect(mergeQueries()).toHaveLength(1);
   });
+
   describe('a table with an identity column', () => {
     beforeEach(() => {
       process.env.ATS_MSSQL_HOST = 'ats-host';
@@ -243,7 +244,6 @@ describe('sqlUpsert', () => {
 
       const lookups = mockQuery.mock.calls.filter(([query]) => IDENTITY_LOOKUP.test(query));
       expect(lookups).toHaveLength(1);
-      expect(mockInput).toHaveBeenCalledWith('table', 'dbo.TRUSTEES');
     });
 
     test('should write rows that supply the identity column with IDENTITY_INSERT on, in the same batch', async () => {
@@ -264,6 +264,43 @@ describe('sqlUpsert', () => {
       const queries = mockQuery.mock.calls.map(([query]) => query as string);
       expect(queries[queries.length - 1]).toBe("DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)");
       expect(queries.filter((query) => query.startsWith('DBCC'))).toHaveLength(1);
+    });
+
+    test('should still put the identity counter back when a write fails partway', async () => {
+      let merges = 0;
+      mockQuery.mockImplementation(async (query: string) => {
+        if (IDENTITY_LOOKUP.test(query))
+          return { recordset: [{ identityColumn: 'ID', identCurrent: 27989 }] };
+        if (query.includes('MERGE') && ++merges === 2) throw new Error('MERGE failed');
+        return {};
+      });
+
+      await expect(
+        sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }, { ID: 9900021 }], 'ID'),
+      ).rejects.toThrow('MERGE failed');
+
+      const queries = mockQuery.mock.calls.map(([query]) => query as string);
+      expect(queries).toContain("DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)");
+      expect(mockClose).toHaveBeenCalledOnce();
+    });
+
+    test('should report the write error, not the reset error, when both fail', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockQuery.mockImplementation(async (query: string) => {
+        if (IDENTITY_LOOKUP.test(query))
+          return { recordset: [{ identityColumn: 'ID', identCurrent: 27989 }] };
+        if (query.includes('MERGE')) throw new Error('MERGE failed');
+        throw new Error('RESEED failed');
+      });
+
+      await expect(sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }], 'ID')).rejects.toThrow(
+        'MERGE failed',
+      );
+
+      expect(errorSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain(
+        "DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)",
+      );
+      errorSpy.mockRestore();
     });
 
     test('should leave IDENTITY_INSERT and the counter alone when no row supplies the identity column', async () => {

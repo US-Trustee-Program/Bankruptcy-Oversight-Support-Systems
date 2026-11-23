@@ -45,22 +45,26 @@ export async function sqlUpsert(
     const identity = rows.length > 0 ? await findIdentity(pool, tableName) : undefined;
     const writesIdentity = !!identity && rows.some((row) => identity.column in row);
 
-    for (const row of rows) {
-      for (const key of keys) {
-        if (!(key in row)) {
-          throw new Error(
-            `[SEED] Row missing primary key '${key}' in table '${tableName}': ${JSON.stringify(row)}`,
-          );
+    try {
+      for (const row of rows) {
+        for (const key of keys) {
+          if (!(key in row)) {
+            throw new Error(
+              `[SEED] Row missing primary key '${key}' in table '${tableName}': ${JSON.stringify(row)}`,
+            );
+          }
         }
+
+        await upsertRow(pool, tableName, row, keys, insertOnly, writesIdentity);
+        const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
+        console.log(`[SEED] ${tableName} ${keyValues}`);
       }
-
-      await upsertRow(pool, tableName, row, keys, insertOnly, writesIdentity);
-      const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
-      console.log(`[SEED] ${tableName} ${keyValues}`);
-    }
-
-    if (writesIdentity && identity.current !== null) {
-      await resetIdentity(pool, tableName, identity.current);
+    } finally {
+      // Reset even when a write fails: rows already written stay committed and have moved the
+      // counter into the reserved range, and a rerun would read that as the baseline.
+      if (writesIdentity && identity.current !== null) {
+        await resetIdentity(pool, tableName, identity.current);
+      }
     }
   } finally {
     await pool?.close();
@@ -89,17 +93,28 @@ async function findIdentity(
   };
 }
 
-/** Puts the table's identity counter back, so the next database-assigned ID follows `current`. */
+/**
+ * Puts the table's identity counter back, so the next database-assigned ID follows `current`.
+ * Logs a failure instead of throwing, so it never hides the error from a failed write.
+ */
 async function resetIdentity(
   pool: sql.ConnectionPool,
   tableName: string,
   current: number,
 ): Promise<void> {
-  if (!Number.isSafeInteger(current)) {
-    throw new Error(`[SEED] Unexpected identity value ${current} for table '${tableName}'`);
+  const reseed = `DBCC CHECKIDENT ('dbo.${tableName}', RESEED, ${current})`;
+  try {
+    if (!Number.isSafeInteger(current)) {
+      throw new Error(`Unexpected identity value ${current}`);
+    }
+    await pool.request().query(reseed);
+    console.log(`[SEED] ${tableName} identity counter reset to ${current}`);
+  } catch (error) {
+    console.error(
+      `[SEED] Could not reset the ${tableName} identity counter (${(error as Error).message}). ` +
+        `Run this by hand so TOD does not assign IDs in the reserved range: ${reseed}`,
+    );
   }
-  await pool.request().query(`DBCC CHECKIDENT ('dbo.${tableName}', RESEED, ${current})`);
-  console.log(`[SEED] ${tableName} identity counter reset to ${current}`);
 }
 
 /**

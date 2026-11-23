@@ -37,7 +37,9 @@
   report reads; if an environment's TOD tables require other columns, the insert fails with a SQL
   error. Where `TRUSTEES.ID` is an identity column (as in dev), the seed writes its IDs with
   `IDENTITY_INSERT` on and then resets the identity counter, so TOD keeps assigning its own IDs from
-  where it was, outside the reserved range. The login needs `ALTER` on the table for this.
+  where it was, outside the reserved range. Only for that case does the `ats` login need `ALTER` on
+  `TRUSTEES`. The counter is reset even if a write fails partway. If the reset itself fails, the
+  seed logs the `DBCC CHECKIDENT` command to run by hand.
 
 ### ❌ Don't Seed These (Synced from Real Sources)
 
