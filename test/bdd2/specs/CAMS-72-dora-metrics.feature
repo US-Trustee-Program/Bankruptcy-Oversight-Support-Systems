@@ -111,7 +111,7 @@ Feature: DORA Metrics Capture
     When the DORA Metrics page has been updated
     Then the team's Slack channel receives the week's four headline values and a link to the DORA Metrics page
 
-  # SLICE 7: Recent Trend (not yet built)
+  # SLICE 7: Recent Trend
   # Dependencies: Slice 5
   # User Value: The team can tell whether each metric is improving or worsening over roughly the last 12 settled weeks
   Scenario: Team sees each metric's weekly trend within the report window

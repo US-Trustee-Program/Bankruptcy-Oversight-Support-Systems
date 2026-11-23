@@ -23,15 +23,15 @@ async function main(): Promise<void> {
   const reports = Object.fromEntries(entries) as ByPeriodReports;
 
   // Oldest first, so the newest settled week is the headline.
-  const summaries = summarizeSettledWeeks(reports, generatedAt);
-  const summary = summaries[summaries.length - 1];
-  const page = renderDocsPage(summary, { generatedAt, run: resolveRun(process.env) });
+  const weeks = summarizeSettledWeeks(reports, generatedAt);
+  const headline = weeks[weeks.length - 1];
+  const page = renderDocsPage(weeks, { generatedAt, run: resolveRun(process.env) });
 
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, page, 'utf8');
 
   console.log(
-    `DORA docs page: week starting ${summary.periodStart.toISOString()}. Wrote ${OUTPUT_PATH}`,
+    `DORA docs page: week starting ${headline.periodStart.toISOString()}, ${weeks.length} weeks in the trend. Wrote ${OUTPUT_PATH}`,
   );
 }
 
