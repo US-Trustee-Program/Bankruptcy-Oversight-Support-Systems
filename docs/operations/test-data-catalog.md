@@ -166,10 +166,52 @@ Permissions until someone holds Super User, so the first one is written directly
 database: paste `dev-tools/superuser/provision-super-user.compass.js` into the MongoDB Compass shell
 connected to that environment, after setting `USER_ID`, `USER_NAME`, `USER_EMAIL` and `DATABASE` at
 the top. It writes one Super User permission and its CREATED audit entry, and does nothing if the
-user already holds Super User. The script lands with PR #3353, which targets `main`, so it isn't on
-`CAMS-940-full-feature` yet. Grant every later permission from the Permissions screen. There's no
-revoke yet; it's planned as future work on that screen. See
+user already holds Super User. The script comes from PR #3353. Grant every later permission from the
+Permissions screen. See
 [ADR: Provision the first Super User with a Compass script](../architecture/decision-records/ProvisionFirstSuperUserWithCompassScript.md).
+
+**Removing a Super User.** There's no revoke on the Permissions screen yet; it's planned as future
+work. Until then, revoke in the same Compass shell with the update the app itself makes. Set
+`active: false` **and** replace `activeKey`: the unique `{userId, activeKey}` index ignores
+`active`, so a permission left with `activeKey: 'SuperUser|*|*'` would make a later grant for the
+same user fail. Never delete the permission or its audit entries.
+
+```js
+const USER_ID = 'REPLACE_WITH_OKTA_USER_ID';
+const cams = db.getSiblingDB('cams');
+const held = cams.getCollection('user-role-assignments').findOne({
+  documentType: 'USER_ROLE_ASSIGNMENT',
+  userId: USER_ID,
+  activeKey: 'SuperUser|*|*',
+  active: true,
+});
+cams
+  .getCollection('user-role-assignments')
+  .updateOne(
+    { userId: held.userId, id: held.id, active: true },
+    { $set: { active: false, activeKey: 'inactive|' + held.id } },
+  );
+cams.getCollection('role-assignment-audit').insertOne({
+  documentType: 'ROLE_ASSIGNMENT_AUDIT',
+  id: UUID().toHexString(true),
+  assignmentId: held.id,
+  action: 'DEACTIVATED',
+  userId: held.userId,
+  userName: held.userName,
+  role: 'SuperUser',
+  regionId: null,
+  officeCode: null,
+  performedBy: 'SUPERUSER_MANUAL_REVOKE',
+  performedByName: 'Manual Super User revoke',
+  performedAt: new Date().toISOString(),
+  previousState: { role: 'SuperUser', regionId: null, officeCode: null, active: true },
+  newState: { role: 'SuperUser', regionId: null, officeCode: null, active: false },
+  replacedByAssignmentId: null,
+});
+```
+
+Set `USER_ID`, and replace `'cams'` if the environment's database has another name. If `held` is
+`null`, the user holds no active Super User and there's nothing to revoke.
 
 ### Bank and Software Assignments
 

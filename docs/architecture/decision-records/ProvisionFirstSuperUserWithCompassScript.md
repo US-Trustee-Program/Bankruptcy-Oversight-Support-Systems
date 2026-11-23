@@ -73,9 +73,13 @@ Accepted (2026-11-23)
   exercised through a Node stand-in before the first Compass run, not inside Compass itself.
 - The audit trail shows that the provisioning script created the permission, not which person ran
   it. Who ran it has to come from PAW and database access records.
+- Nothing alerts on a run. The script is meant to run once per environment, but an unexpected run
+  (or a hand-written grant) is only visible in the audit collection, not raised to anyone.
 - Nothing checks the user id against the Okta "USTP Cams Users" group, so a mistyped id writes a
   permission nobody can use.
 - The script repeats the role-assignment and audit document shape instead of sharing the
   application's code, so a change to those documents must be made in the script too.
 - Until revoke exists in the Permissions screen, removing a Super User means editing the database
-  directly.
+  directly. The edit must deactivate the permission the way the application does (inactive and with
+  its unique key released) and record the deactivation in the audit trail, never delete it; the
+  test-data catalog gives the exact edit.
