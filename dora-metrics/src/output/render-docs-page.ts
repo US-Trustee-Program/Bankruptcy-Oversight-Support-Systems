@@ -6,6 +6,7 @@ const DAYS_THRESHOLD_HOURS = 48;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const NO_DATA = 'No data';
 const NO_DATA_IN_WEEKS = 'No data in these weeks';
+const GAPS_NOT_PLOTTED = 'Weeks with no data are not plotted; see the table below.';
 // Mermaid's default xychart line is a pale lavender that barely shows on the white docs page.
 const CHART_THEME = '%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%';
 
@@ -63,7 +64,12 @@ function pointsFor(weeks: WeeklySummary[], value: (week: WeeklySummary) => numbe
 }
 
 // Labels are quoted: an unquoted 08-17 lexes as numbers in Mermaid's xychart grammar.
-function renderChart(title: string, points: ChartPoint[], plot: (value: number) => string) {
+function renderChart(
+  title: string,
+  points: ChartPoint[],
+  weekCount: number,
+  plot: (value: number) => string,
+) {
   if (points.length === 0) {
     return [`### ${title}`, '', NO_DATA_IN_WEEKS, ''];
   }
@@ -75,21 +81,26 @@ function renderChart(title: string, points: ChartPoint[], plot: (value: number) 
     CHART_THEME,
     'xychart-beta',
     `  x-axis [${labels.join(', ')}]`,
-    `  line [${points.map(({ value }) => plot(value)).join(', ')}]`,
+    // A one-point Mermaid line has zero length and draws nothing; a bar keeps the week visible.
+    `  ${points.length === 1 ? 'bar' : 'line'} [${points.map(({ value }) => plot(value)).join(', ')}]`,
     '```',
     '',
+    ...(points.length < weekCount ? [GAPS_NOT_PLOTTED, ''] : []),
   ];
 }
 
 // One unit per chart so the points compare: days if any point would show in days on its own.
-function renderDurationChart(title: string, points: ChartPoint[]) {
+function renderDurationChart(title: string, points: ChartPoint[], weekCount: number) {
   if (points.length === 0) {
-    return renderChart(`${title} (median)`, points, String);
+    return renderChart(`${title} (median)`, points, weekCount, String);
   }
   const inDays = points.some(({ value }) => value >= DAYS_THRESHOLD_HOURS);
   const divisor = inDays ? HOURS_PER_DAY : 1;
-  return renderChart(`${title} (median, ${inDays ? 'days' : 'hours'})`, points, (hours) =>
-    (hours / divisor).toFixed(1),
+  return renderChart(
+    `${title} (median, ${inDays ? 'days' : 'hours'})`,
+    points,
+    weekCount,
+    (hours) => (hours / divisor).toFixed(1),
   );
 }
 
@@ -109,20 +120,24 @@ function renderTrend(weeks: WeeklySummary[]): string[] {
     ...renderChart(
       'Deployments per week',
       pointsFor(weeks, (week) => week.deploymentCount),
+      weeks.length,
       String,
     ),
     ...renderDurationChart(
       'Lead time for changes',
       pointsFor(weeks, (week) => week.leadTime?.medianHours ?? null),
+      weeks.length,
     ),
     ...renderChart(
       'Change failure rate (%)',
       pointsFor(weeks, (week) => week.changeFailure.rate),
+      weeks.length,
       formatPercent,
     ),
     ...renderDurationChart(
       'Time to restore service',
       pointsFor(weeks, (week) => week.restoreTime?.medianHours ?? null),
+      weeks.length,
     ),
     '| Week of | Deployments | Lead time (median) | Change failure rate | Time to restore (median) |',
     '| --- | --- | --- | --- | --- |',

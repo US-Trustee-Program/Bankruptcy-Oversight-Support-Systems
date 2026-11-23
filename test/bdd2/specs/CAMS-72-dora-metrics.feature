@@ -123,7 +123,7 @@ Feature: DORA Metrics Capture
     And lead time and time to restore show the median, deployments the count, and change failure rate the percentage
 
   Scenario: Weeks with nothing to measure in the trend
-    Given a week in the trend had no deployed issues, no attributed incidents, or no deployments
+    Given a week in the trend had no deployed issues (lead time), no attributed incidents (time to restore), or no deployments (change failure rate)
     When a team member views the trend
     Then that week is left out of the affected metric's chart, never drawn as 0
     And the table shows "No data" for that metric in that week

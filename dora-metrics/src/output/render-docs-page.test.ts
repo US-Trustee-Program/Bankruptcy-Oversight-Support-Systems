@@ -84,6 +84,8 @@ describe('renderDocsPage', () => {
         '  line [1.0, 3.6]',
         '```',
         '',
+        'Weeks with no data are not plotted; see the table below.',
+        '',
         '### Change failure rate (%)',
         '',
         '```mermaid',
@@ -93,6 +95,8 @@ describe('renderDocsPage', () => {
         '  line [0.0, 8.3]',
         '```',
         '',
+        'Weeks with no data are not plotted; see the table below.',
+        '',
         '### Time to restore service (median, days)',
         '',
         '```mermaid',
@@ -101,6 +105,8 @@ describe('renderDocsPage', () => {
         '  x-axis ["10-19", "11-02"]',
         '  line [0.2, 11.9]',
         '```',
+        '',
+        'Weeks with no data are not plotted; see the table below.',
         '',
         '| Week of | Deployments | Lead time (median) | Change failure rate | Time to restore (median) |',
         '| --- | --- | --- | --- | --- |',
@@ -151,6 +157,25 @@ describe('renderDocsPage', () => {
       );
     },
   );
+
+  test('plots a metric with data in only one week as a bar, since a one-point line draws nothing', () => {
+    const weeks = [THREE_WEEKS[1], summaryWith({ restoreTime: { medianHours: 5, meanHours: 5 } })];
+
+    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).toContain(
+      [
+        '### Time to restore service (median, hours)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["11-02"]',
+        '  bar [5.0]',
+        '```',
+      ].join('\n'),
+    );
+  });
 
   test('shows zero deployments as zero and the change failure rate as no data', () => {
     const page = renderDocsPage(
