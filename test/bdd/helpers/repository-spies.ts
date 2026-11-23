@@ -316,11 +316,6 @@ export async function clearAllRepositorySpies() {
   // Undo the backend feature flag routing made by TestSetup.withFeatureFlag(s)()
   vi.unstubAllEnvs();
 
-  // The user-access use case caches the CAMS user list per process for 15 minutes
-  const { resetCamsUsersCache } =
-    await import('../../../backend/lib/use-cases/user-access/user-access');
-  resetCamsUsersCache();
-
   // Clear singleton instances to ensure fresh instances with new spies
   // IMPORTANT: Access the class's private static instance field to reset it
   try {

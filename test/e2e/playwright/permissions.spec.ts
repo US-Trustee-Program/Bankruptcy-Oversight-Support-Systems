@@ -2,6 +2,7 @@ import { expect, Page } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
+import { CamsRole } from '../../../common/src/cams/roles';
 
 const timeoutOption = { timeout: 60000 };
 
@@ -14,12 +15,15 @@ function isUsersResponse(url: string) {
 
 async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
   await page.goto('/admin');
-  await expect(page.locator('.admin-screen-navigation')).toBeVisible(timeoutOption);
+  await expect(
+    page.locator('.admin-screen-navigation'),
+    'the e2e user should hold Super User from superuser-setup',
+  ).toBeVisible(timeoutOption);
   const permissionsLink = page.getByTestId('permissions-nav-link');
-  test.skip(
-    (await permissionsLink.count()) === 0,
-    'cams-role-assignments is off for the SuperUser account',
-  );
+  await expect(
+    permissionsLink,
+    'cams-role-assignments must be on for the e2e SuperUser',
+  ).toBeVisible(timeoutOption);
 
   const usersResponse = page.waitForResponse(
     (response) => isUsersResponse(response.url()) && response.ok(),
@@ -31,9 +35,13 @@ async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
   return users;
 }
 
-async function chooseFirstRole(page: Page): Promise<string> {
+// Picks Trial Attorney by value, not by position: an unscoped role such as Super User hides the
+// Region and Office picker, which this office-scoped grant needs.
+async function chooseTrialAttorney(page: Page): Promise<string> {
   await page.locator('#add-permission-modal-role-combo-box-input').click();
-  const option = page.getByTestId('add-permission-modal-role-option-item-0');
+  const option = page.locator(
+    `#add-permission-modal-role-item-list li[data-value="${CamsRole.TrialAttorney}"]`,
+  );
   await expect(option).toBeVisible(timeoutOption);
   const label = (await option.textContent())?.trim() ?? '';
   await option.click();
@@ -94,7 +102,7 @@ test.describe('Administration > Permissions', () => {
 
     await page.locator(`#add-permission-${user!.id}`).click();
     await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
-    const roleLabel = await chooseFirstRole(page);
+    const roleLabel = await chooseTrialAttorney(page);
     const { regionId, officeName } = await chooseAnOffice(page);
 
     const grantResponse = page.waitForResponse(

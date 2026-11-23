@@ -1,10 +1,12 @@
 # Fluent API Reference
 
-The `TestSetup` fluent API provides a declarative, chainable interface for setting up BDD full-stack tests. This document describes the current as-built API.
+The `TestSetup` fluent API provides a declarative, chainable interface for setting up BDD full-stack
+tests. This document describes the current as-built API.
 
 ## Overview
 
 The fluent API simplifies test setup by handling all the complexity of:
+
 - User authentication and session management
 - Gateway/repository spy configuration
 - Mock data injection
@@ -13,11 +15,10 @@ The fluent API simplifies test setup by handling all the complexity of:
 ## Basic Usage Pattern
 
 ```typescript
-await TestSetup
-  .forUser(session)           // 1. Always start with user
-  .withCase(testCase)         // 2. Chain data setup methods
-  .withTransfers([])          // 3. Add more data as needed
-  .renderAt('/case-detail/123');  // 4. End with renderAt()
+await TestSetup.forUser(session) // 1. Always start with user
+  .withCase(testCase) // 2. Chain data setup methods
+  .withTransfers([]) // 3. Add more data as needed
+  .renderAt('/case-detail/123'); // 4. End with renderAt()
 ```
 
 ## API Methods
@@ -29,18 +30,19 @@ await TestSetup
 Sets the user session for the test. **This must be called first.**
 
 **Parameters:**
+
 - `session` - User session object from `TestSessions`
 
 **Available Sessions:**
+
 - `TestSessions.caseAssignmentManager()` - Case assignment manager role
 - `TestSessions.trialAttorney()` - Trial attorney role
 - `TestSessions.dataVerifier()` - Data verifier role
 
 **Example:**
+
 ```typescript
-await TestSetup
-  .forUser(TestSessions.caseAssignmentManager())
-  .renderAt('/');
+await TestSetup.forUser(TestSessions.caseAssignmentManager()).renderAt('/');
 ```
 
 ---
@@ -52,22 +54,21 @@ await TestSetup
 Provides a single case detail for the test. Mocks `CasesDxtrGateway.getCaseDetail()`.
 
 **Parameters:**
+
 - `caseDetail` - Complete case detail object
 
 **Example:**
+
 ```typescript
 const testCase = MockData.getCaseDetail({
   override: {
     caseId: '081-23-12345',
     caseTitle: 'Test Corporation',
-    chapter: '11'
-  }
+    chapter: '11',
+  },
 });
 
-await TestSetup
-  .forUser(session)
-  .withCase(testCase)
-  .renderAt(`/case-detail/${testCase.caseId}`);
+await TestSetup.forUser(session).withCase(testCase).renderAt(`/case-detail/${testCase.caseId}`);
 ```
 
 #### `withCases(cases: CaseDetail[]): TestSetup`
@@ -75,19 +76,18 @@ await TestSetup
 Provides multiple case details. Mocks `CasesDxtrGateway.getCaseDetail()` to look up by ID.
 
 **Parameters:**
+
 - `cases` - Array of case detail objects
 
 **Example:**
+
 ```typescript
 const cases = [
   MockData.getCaseDetail({ override: { caseId: '081-23-11111' } }),
   MockData.getCaseDetail({ override: { caseId: '081-23-22222' } }),
 ];
 
-await TestSetup
-  .forUser(session)
-  .withCases(cases)
-  .renderAt('/');
+await TestSetup.forUser(session).withCases(cases).renderAt('/');
 ```
 
 ---
@@ -99,9 +99,11 @@ await TestSetup
 Mocks search results for case search functionality. Mocks `CasesMongoRepository.searchCases()`.
 
 **Parameters:**
+
 - `results` - Array of case summary objects
 
 **Returns Mock:**
+
 ```typescript
 {
   metadata: { total: results.length },
@@ -110,41 +112,39 @@ Mocks search results for case search functionality. Mocks `CasesMongoRepository.
 ```
 
 **Example:**
+
 ```typescript
 const searchResults = Array.from({ length: 5 }, (_, i) =>
   MockData.getCaseSummary({
     override: {
       caseId: `081-23-${10000 + i}`,
       caseTitle: `Case ${i + 1}`,
-      chapter: '15'
-    }
-  })
+      chapter: '15',
+    },
+  }),
 );
 
-await TestSetup
-  .forUser(session)
-  .withSearchResults(searchResults)
-  .renderAt('/');
+await TestSetup.forUser(session).withSearchResults(searchResults).renderAt('/');
 ```
 
 #### `withMyAssignments(assignments: CaseSummary[]): TestSetup`
 
-Mocks "my cases" assignments for the current user. Mocks `CaseAssignmentMongoRepository.findAssignmentsByAssignee()`.
+Mocks "my cases" assignments for the current user. Mocks
+`CaseAssignmentMongoRepository.findAssignmentsByAssignee()`.
 
 **Parameters:**
+
 - `assignments` - Array of case summaries assigned to the user
 
 **Example:**
+
 ```typescript
 const myAssignedCases = [
   MockData.getCaseSummary({ override: { caseId: '081-23-11111' } }),
   MockData.getCaseSummary({ override: { caseId: '081-23-22222' } }),
 ];
 
-await TestSetup
-  .forUser(session)
-  .withMyAssignments(myAssignedCases)
-  .renderAt('/my-cases');
+await TestSetup.forUser(session).withMyAssignments(myAssignedCases).renderAt('/my-cases');
 ```
 
 ---
@@ -156,9 +156,11 @@ await TestSetup
 Provides transfer data for case enrichment. Mocks `CasesMongoRepository.getTransfers()`.
 
 **Parameters:**
+
 - `transfers` - Array of transfer objects (TransferFrom | TransferTo)
 
 **Example:**
+
 ```typescript
 const transfers = [
   {
@@ -166,11 +168,10 @@ const transfers = [
     status: 'approved',
     caseId: '081-23-12345',
     // ... other transfer properties
-  }
+  },
 ];
 
-await TestSetup
-  .forUser(session)
+await TestSetup.forUser(session)
   .withCase(testCase)
   .withTransfers(transfers)
   .renderAt(`/case-detail/${testCase.caseId}`);
@@ -181,20 +182,21 @@ await TestSetup
 Provides consolidation data for case enrichment. Mocks `CasesMongoRepository.getConsolidation()`.
 
 **Parameters:**
+
 - `consolidations` - Array of consolidation objects (ConsolidationFrom | ConsolidationTo)
 
 **Example:**
+
 ```typescript
 const consolidations = [
   {
     consolidationType: 'administrative',
     caseId: '081-23-12345',
     // ... other consolidation properties
-  }
+  },
 ];
 
-await TestSetup
-  .forUser(session)
+await TestSetup.forUser(session)
   .withCase(testCase)
   .withConsolidations(consolidations)
   .renderAt(`/case-detail/${testCase.caseId}`);
@@ -202,13 +204,16 @@ await TestSetup
 
 #### `withCaseAssignments(caseId: string, assignments: CaseAssignment[]): TestSetup`
 
-Provides assignments for a specific case. Mocks `CaseAssignmentMongoRepository.getAssignmentsForCases()`.
+Provides assignments for a specific case. Mocks
+`CaseAssignmentMongoRepository.getAssignmentsForCases()`.
 
 **Parameters:**
+
 - `caseId` - The case ID
 - `assignments` - Array of assignment objects for this case
 
 **Example:**
+
 ```typescript
 const assignments = [
   {
@@ -216,12 +221,11 @@ const assignments = [
     caseId: '081-23-12345',
     userId: 'user-123',
     name: 'John Doe',
-    role: 'TrialAttorney'
-  }
+    role: 'TrialAttorney',
+  },
 ];
 
-await TestSetup
-  .forUser(session)
+await TestSetup.forUser(session)
   .withCase(testCase)
   .withCaseAssignments(testCase.caseId, assignments)
   .renderAt(`/case-detail/${testCase.caseId}`);
@@ -236,21 +240,22 @@ await TestSetup
 Provides docket entries for case detail. Mocks `DxtrCaseDocketGateway.getCaseDocket()`.
 
 **Parameters:**
+
 - `entries` - Array of docket entry objects
 
 **Example:**
+
 ```typescript
 const docketEntries = [
   {
     sequenceNumber: 1,
     documentNumber: 1,
     dateFiled: '2023-01-15',
-    summaryText: 'Voluntary Petition'
-  }
+    summaryText: 'Voluntary Petition',
+  },
 ];
 
-await TestSetup
-  .forUser(session)
+await TestSetup.forUser(session)
   .withCase(testCase)
   .withDocketEntries(docketEntries)
   .renderAt(`/case-detail/${testCase.caseId}`);
@@ -258,12 +263,15 @@ await TestSetup
 
 #### `withCaseNotes(notes: any[]): TestSetup`
 
-Provides case notes for case detail. Mocks `CaseNotesMongoRepository.read()` and `getNotesByCaseId()`.
+Provides case notes for case detail. Mocks `CaseNotesMongoRepository.read()` and
+`getNotesByCaseId()`.
 
 **Parameters:**
+
 - `notes` - Array of case note objects
 
 **Example:**
+
 ```typescript
 const caseNotes = [
   {
@@ -271,12 +279,11 @@ const caseNotes = [
     caseId: '081-23-12345',
     content: 'Important note about this case',
     createdBy: 'user-123',
-    createdAt: '2023-01-15T10:00:00Z'
-  }
+    createdAt: '2023-01-15T10:00:00Z',
+  },
 ];
 
-await TestSetup
-  .forUser(session)
+await TestSetup.forUser(session)
   .withCase(testCase)
   .withCaseNotes(caseNotes)
   .renderAt(`/case-detail/${testCase.caseId}`);
@@ -287,54 +294,21 @@ await TestSetup
 Provides office data. Mocks `OfficesDxtrGateway.getOffices()`.
 
 **Parameters:**
+
 - `offices` - Array of office objects
 
 **Example:**
+
 ```typescript
 const offices = [
   {
     officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
     officeName: 'Manhattan',
-    state: 'NY'
-  }
+    state: 'NY',
+  },
 ];
 
-await TestSetup
-  .forUser(session)
-  .withOffices(offices)
-  .renderAt('/');
-```
-
----
-
-### 5a. Access Management Methods
-
-#### `withCamsUsers(users: CamsUserReference[]): TestSetup`
-
-Provides the members of the "USTP Cams Users" Okta group, which is the list of CAMS users. Mocks
-`OktaUserGroupGateway.getUserGroupWithUsers()` for that group only (any other group name throws).
-The user-access use case's 15-minute member cache is cleared when these spies are set up and
-again in `clearAllRepositorySpies()`.
-
-#### `withRoleAssignments(assignments: UserRoleAssignment[]): TestSetup`
-
-Provides existing permissions (`USER_ROLE_ASSIGNMENT` documents). The role assignment
-repositories are always backed by `TestState`: `create()` appends, `findActiveByUserIds()` returns
-the active assignments for the requested users, and audit records written by
-`RoleAssignmentAuditMongoRepository.create()` are kept for assertions.
-
-**Example:**
-```typescript
-const state = await TestSetup.forUser(TestSessions.superUser())
-  .withFeatureFlag('cams-role-assignments')
-  .withOffices([MANHATTAN])
-  .withCamsUsers([{ id: 'okta-sarah', name: 'Sarah Williams' }])
-  .withRoleAssignments([])
-  .setUpBackend();
-
-// ...grant a permission through the API or UI, then:
-expect(state.getRoleAssignments()).toHaveLength(1);
-expect(state.getRoleAssignmentAudits()[0].action).toBe('CREATED');
+await TestSetup.forUser(session).withOffices(offices).renderAt('/');
 ```
 
 ---
@@ -344,30 +318,22 @@ expect(state.getRoleAssignmentAudits()[0].action).toBe('CREATED');
 #### `renderAt(route: string): Promise<void>`
 
 Renders the application at the specified route. **This is the terminal operation** that:
+
 1. Sets up authentication
 2. Configures all gateway/repository spies
 3. Renders the React app with routing
 
 **Parameters:**
+
 - `route` - Initial route to render (e.g., '/', '/case-detail/123')
 
 **Example:**
+
 ```typescript
-await TestSetup
-  .forUser(session)
-  .withCase(testCase)
-  .renderAt(`/case-detail/${testCase.caseId}`);
+await TestSetup.forUser(session).withCase(testCase).renderAt(`/case-detail/${testCase.caseId}`);
 
 // App is now rendered and ready for assertions
 ```
-
-#### `setUpBackend(): Promise<TestState>`
-
-Does everything `renderAt()` does except render the app: authentication, feature flags, and all
-gateway/repository spies. Use it for API-level scenarios that call `http://localhost:4000/api/...`
-directly with `fetch` and the session's bearer token. Not rendering the app means no background UI
-requests are still in flight when the test server stops (which Vitest reports as unhandled
-rejections). See `features/access-management/user-access-api.spec.tsx`.
 
 **Feature flags:** `withFeatureFlag(s)()` overrides apply to the backend as well as the frontend.
 The backend sees the overrides on top of `testFeatureFlags` (its defaults when LaunchDarkly is not
@@ -384,22 +350,22 @@ These helper functions work with the fluent API to make tests more readable:
 Waits for the app to finish loading by checking that "Loading session" text is no longer present.
 
 **Example:**
-```typescript
-await TestSetup
-  .forUser(session)
-  .withCase(testCase)
-  .renderAt(`/case-detail/${testCase.caseId}`);
 
-await waitForAppLoad();  // Wait for loading to complete
+```typescript
+await TestSetup.forUser(session).withCase(testCase).renderAt(`/case-detail/${testCase.caseId}`);
+
+await waitForAppLoad(); // Wait for loading to complete
 
 // Now safe to make assertions
 ```
 
 ### `expectPageToContain(text: string): Promise<void>`
 
-Asserts that the specified text appears anywhere on the page. Uses `document.body.textContent` to handle text split across elements.
+Asserts that the specified text appears anywhere on the page. Uses `document.body.textContent` to
+handle text split across elements.
 
 **Example:**
+
 ```typescript
 await waitForAppLoad();
 await expectPageToContain('Test Corporation');
@@ -411,6 +377,7 @@ await expectPageToContain('081-23-12345');
 Asserts that the page content matches the specified regex pattern.
 
 **Example:**
+
 ```typescript
 await waitForAppLoad();
 await expectPageToMatch(/Chapter 11/i);
@@ -454,7 +421,12 @@ Here's a complete test using multiple fluent API methods:
 ```typescript
 import { describe, it, beforeAll, afterAll, afterEach } from 'vitest';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
-import { TestSetup, waitForAppLoad, expectPageToContain, expectPageToMatch } from '../../helpers/fluent-test-setup';
+import {
+  TestSetup,
+  waitForAppLoad,
+  expectPageToContain,
+  expectPageToMatch,
+} from '../../helpers/fluent-test-setup';
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -481,42 +453,49 @@ describe('Feature: View Case with Full Details (Full Stack)', () => {
         caseId: '081-23-12345',
         caseTitle: 'Test Corporation',
         chapter: '11',
-        officeName: 'Manhattan'
-      }
+        officeName: 'Manhattan',
+      },
     });
 
-    const transfers = [{
-      orderType: 'transfer',
-      status: 'approved',
-      caseId: testCase.caseId,
-      fromOffice: 'Manhattan',
-      toOffice: 'Brooklyn'
-    }];
+    const transfers = [
+      {
+        orderType: 'transfer',
+        status: 'approved',
+        caseId: testCase.caseId,
+        fromOffice: 'Manhattan',
+        toOffice: 'Brooklyn',
+      },
+    ];
 
-    const consolidations = [{
-      consolidationType: 'administrative',
-      caseId: testCase.caseId,
-      leadCaseId: '081-23-11111'
-    }];
+    const consolidations = [
+      {
+        consolidationType: 'administrative',
+        caseId: testCase.caseId,
+        leadCaseId: '081-23-11111',
+      },
+    ];
 
-    const assignments = [{
-      id: 'assignment-1',
-      caseId: testCase.caseId,
-      userId: 'user-123',
-      name: 'Jane Doe',
-      role: 'TrialAttorney'
-    }];
+    const assignments = [
+      {
+        id: 'assignment-1',
+        caseId: testCase.caseId,
+        userId: 'user-123',
+        name: 'Jane Doe',
+        role: 'TrialAttorney',
+      },
+    ];
 
-    const docketEntries = [{
-      sequenceNumber: 1,
-      documentNumber: 1,
-      dateFiled: '2023-01-15',
-      summaryText: 'Voluntary Petition'
-    }];
+    const docketEntries = [
+      {
+        sequenceNumber: 1,
+        documentNumber: 1,
+        dateFiled: '2023-01-15',
+        summaryText: 'Voluntary Petition',
+      },
+    ];
 
     // WHEN: User navigates to case detail page
-    await TestSetup
-      .forUser(TestSessions.caseAssignmentManager())
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
       .withCase(testCase)
       .withTransfers(transfers)
       .withConsolidations(consolidations)
@@ -554,17 +533,20 @@ The fluent API follows these principles:
 
 ## Stateful Testing (NEW)
 
-The Fluent API now returns a `TestState` object that enables testing interactive workflows with writes and reads.
+The Fluent API now returns a `TestState` object that enables testing interactive workflows with
+writes and reads.
 
 ### When to Use Stateful Testing
 
 **Use stateful tests for:**
+
 - ✅ Interactive workflows (create → view → edit)
 - ✅ Testing write operations (POST/PUT/DELETE)
 - ✅ Verifying state persistence across navigation
 - ✅ Multi-step user journeys
 
 **Use read-only tests for:**
+
 - ✅ Simple display scenarios
 - ✅ Search and filter operations
 - ✅ Static page rendering
@@ -573,8 +555,7 @@ The Fluent API now returns a `TestState` object that enables testing interactive
 
 ```typescript
 // renderAt() now returns TestState
-const state = await TestSetup
-  .forUser(session)
+const state = await TestSetup.forUser(session)
   .withCase(testCase)
   .withCaseNotes(testCase.caseId, [])
   .renderAt('/case-detail/123');
@@ -602,27 +583,29 @@ expect(notes[0].content).toContain('My note content');
 #### Data Access Methods
 
 **Cases:**
+
 - `getCase(caseId: string): CaseDetail | undefined`
 - `getAllCases(): CaseDetail[]`
 
 **Notes:**
+
 - `getNotes(caseId: string): CaseNote[]`
 
 **Transfers:**
+
 - `getTransfers(caseId: string): Transfer[]`
 
 **Consolidations:**
+
 - `getConsolidations(caseId: string): Consolidation[]`
 
 **Assignments:**
+
 - `getAssignments(caseId: string): CaseAssignment[]`
 
 **Docket Entries:**
-- `getDocketEntries(caseId: string): DocketEntry[]`
 
-**Role assignments (permissions):**
-- `getRoleAssignments(): UserRoleAssignment[]`
-- `getRoleAssignmentAudits(): RoleAssignmentAuditEntry[]`
+- `getDocketEntries(caseId: string): DocketEntry[]`
 
 #### Assertion Helpers
 
@@ -644,10 +627,7 @@ expect(notes[0].content).toContain('My note content');
 
 ```typescript
 // Old style - still works, just ignore the returned state
-await TestSetup
-  .forUser(session)
-  .withCase(testCase)
-  .renderAt('/case-detail/123');
+await TestSetup.forUser(session).withCase(testCase).renderAt('/case-detail/123');
 
 await waitForAppLoad();
 await expectPageToContain('Test Case');
@@ -657,10 +637,7 @@ await expectPageToContain('Test Case');
 
 ```typescript
 // New style - capture state
-const state = await TestSetup
-  .forUser(session)
-  .withCase(testCase)
-  .renderAt('/case-detail/123');
+const state = await TestSetup.forUser(session).withCase(testCase).renderAt('/case-detail/123');
 
 // Can assert on state
 state.expectCaseExists('123');
@@ -675,11 +652,10 @@ test('should add a case note and verify it appears', async () => {
 
   // GIVEN: A case with no notes
   const testCase = MockData.getCaseDetail({
-    override: { caseId: '081-23-12345' }
+    override: { caseId: '081-23-12345' },
   });
 
-  const state = await TestSetup
-    .forUser(TestSessions.caseAssignmentManager())
+  const state = await TestSetup.forUser(TestSessions.caseAssignmentManager())
     .withCase(testCase)
     .withCaseNotes(testCase.caseId, [])
     .renderAt(`/case-detail/${testCase.caseId}`);
@@ -719,12 +695,15 @@ test('should add a case note and verify it appears', async () => {
 The stateful testing system works by:
 
 1. **TestState** - A mutable state container that holds test data (cases, notes, transfers, etc.)
-2. **State Population** - When you call `.withCase()`, `.withCaseNotes()`, etc., data is stored in TestState
-3. **Read Spies** - Repository read operations (e.g., `getNotesByCaseId()`) return data from TestState
+2. **State Population** - When you call `.withCase()`, `.withCaseNotes()`, etc., data is stored in
+   TestState
+3. **Read Spies** - Repository read operations (e.g., `getNotesByCaseId()`) return data from
+   TestState
 4. **Write Spies** - Repository write operations (e.g., `create()`) update TestState
 5. **State Persistence** - State persists across component re-renders and navigation
 
-This allows you to test complete workflows where user actions modify state and subsequent reads reflect those changes.
+This allows you to test complete workflows where user actions modify state and subsequent reads
+reflect those changes.
 
 ---
 
@@ -733,6 +712,7 @@ This allows you to test complete workflows where user actions modify state and s
 **Location:** `test/bdd/helpers/fluent-test-setup.ts`
 
 The `TestSetup` class:
+
 - Maintains internal state for all test data
 - Uses the builder pattern for method chaining
 - Calls `spyOnAllGateways()` in `renderAt()` to set up all spies
@@ -744,9 +724,11 @@ The `TestSetup` class:
 
 ### Method Not Available
 
-If you need to mock a gateway method not covered by the fluent API, **extend the API** by adding a new method to `TestSetup` in `helpers/fluent-test-setup.ts`.
+If you need to mock a gateway method not covered by the fluent API, **extend the API** by adding a
+new method to `TestSetup` in `helpers/fluent-test-setup.ts`.
 
 **Why extend instead of using escape hatches?**
+
 - Maintains declarative, readable tests
 - Reusable across all tests
 - Self-documenting through method names
@@ -772,6 +754,7 @@ class TestSetup {
 ```
 
 Then use it declaratively:
+
 ```typescript
 await TestSetup
   .forUser(session)
@@ -790,6 +773,7 @@ import '../../helpers/driver-mocks';
 ### Empty Results Mock Issues
 
 Empty arrays are properly handled. For example, `.withSearchResults([])` will return:
+
 ```typescript
 {
   metadata: { total: 0 },
