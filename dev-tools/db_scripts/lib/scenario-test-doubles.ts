@@ -4,7 +4,7 @@
  */
 
 import { vi } from 'vitest';
-import type { GeneratedCaseId } from '../../runner.js';
+import type { GeneratedCaseId, SeedContext } from '../../runner.js';
 
 /**
  * A stand-in for the `mssql` module, for `vi.mock('mssql', ...)`, so scenarios never open a
@@ -42,5 +42,17 @@ export function sequentialCaseIds(firstSequence = 90100) {
       caseNumber: `26-${number}`,
       csCaseId: `SEED${number}`,
     };
+  };
+}
+
+/**
+ * A SeedContext for a scenario that uses fixed case ids. Its generateCaseId throws, so a test fails
+ * loudly if the scenario ever starts generating ids instead.
+ */
+export function unusedCaseIdContext(scenario: string): SeedContext {
+  return {
+    generateCaseId: () => {
+      throw new Error(`${scenario} should not call generateCaseId`);
+    },
   };
 }

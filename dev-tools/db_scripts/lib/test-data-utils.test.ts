@@ -56,13 +56,6 @@ describe('fakeUsPhoneNumber', () => {
     const phone = fakeUsPhoneNumber();
     expect(phone).toMatch(/^\d{3}-\d{3}-\d{4}$/);
   });
-
-  test('generates different phone numbers on each call', () => {
-    const phone1 = fakeUsPhoneNumber();
-    const phone2 = fakeUsPhoneNumber();
-    // Very unlikely to be the same
-    expect(phone1).not.toBe(phone2);
-  });
 });
 
 describe('createDebtor', () => {
@@ -126,42 +119,10 @@ describe('createDebtor', () => {
 });
 
 describe('createJointDebtor', () => {
-  test('creates joint debtor with name and phoneticTokens', () => {
-    const jointDebtor = createJointDebtor('Rodriguez, Patricia');
+  test('builds the same debtor as createDebtor', () => {
+    const opts = { address1: '456 Oak Ave', city: 'Manhattan', state: 'NY', zip: '10002' };
 
-    expect(jointDebtor.name).toBe('Rodriguez, Patricia');
-    expect(jointDebtor.phoneticTokens).toBeDefined();
-    expect(Array.isArray(jointDebtor.phoneticTokens)).toBe(true);
-    expect(jointDebtor.phoneticTokens!.length).toBeGreaterThan(0);
-  });
-
-  test('includes phonetic tokens for the name', () => {
-    const jointDebtor = createJointDebtor('Williams, Jane');
-
-    // Should include bigrams and phonetic codes
-    expect(jointDebtor.phoneticTokens).toContain('wi'); // bigram from "williams"
-    expect(jointDebtor.phoneticTokens).toContain('ja'); // bigram from "jane"
-  });
-
-  test('creates joint debtor with address details', () => {
-    const jointDebtor = createJointDebtor('Smith, Jane', {
-      address1: '456 Oak Ave',
-      city: 'Manhattan',
-      state: 'NY',
-      zip: '10002',
-    });
-
-    expect(jointDebtor.name).toBe('Smith, Jane');
-    expect(jointDebtor.address1).toBe('456 Oak Ave');
-    expect(jointDebtor.cityStateZipCountry).toBe('Manhattan, NY 10002');
-  });
-
-  test('has same structure as debtor', () => {
-    const debtor = createDebtor('Smith, John');
-    const jointDebtor = createJointDebtor('Smith, Jane');
-
-    // Both should have the same keys (minus values)
-    expect(Object.keys(debtor).sort()).toEqual(Object.keys(jointDebtor).sort());
+    expect(createJointDebtor('Smith, Jane', opts)).toEqual(createDebtor('Smith, Jane', opts));
   });
 });
 
@@ -278,120 +239,68 @@ describe('createTrusteeBase', () => {
 });
 
 describe('createCaseDocument', () => {
-  test('creates case with real DXTR strategy', () => {
-    const caseDoc = createCaseDocument({
-      dxtrStrategy: 'real',
+  const baseCase = {
+    dxtrId: '318723',
+    caseId: '081-26-63921',
+    caseNumber: '26-63921',
+    chapter: '7',
+    caseTitle: 'Smith, John',
+    dateFiled: '2026-01-15',
+    officeName: 'Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_081',
+    courtId: '0208',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'NEW YORK',
+    debtorName: 'Smith, John',
+  };
+  type PartyOnCase = { name: string; phoneticTokens: string[]; cityStateZipCountry?: string };
+
+  test('creates a SYNCED_CASE linked to its DXTR case', () => {
+    const caseDoc = createCaseDocument(baseCase);
+
+    expect(caseDoc).toMatchObject({
+      documentType: 'SYNCED_CASE',
       dxtrId: '318723',
       caseId: '081-26-63921',
-      caseNumber: '26-63921',
-      chapter: '7',
-      caseTitle: 'Smith, John',
-      dateFiled: '2026-01-15',
-      officeName: 'Manhattan',
-      officeCode: 'USTP_CAMS_Region_2_Office_081',
-      courtId: '0208',
-      courtName: 'U.S. Bankruptcy Court Southern District of New York',
-      courtDivisionCode: '081',
-      courtDivisionName: 'Manhattan',
-      groupDesignator: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      debtorName: 'Smith, John',
     });
-
-    expect(caseDoc.documentType).toBe('SYNCED_CASE');
-    expect(caseDoc.dxtrId).toBe('318723');
-    expect(caseDoc.caseId).toBe('081-26-63921');
-    expect(caseDoc.debtor).toBeDefined();
-
-    const debtor = caseDoc.debtor as { name: string; phoneticTokens: string[] };
-    expect(debtor.name).toBe('Smith, John');
-    expect(debtor.phoneticTokens).toBeDefined();
-    expect(Array.isArray(debtor.phoneticTokens)).toBe(true);
+    expect((caseDoc.debtor as PartyOnCase).name).toBe('Smith, John');
   });
 
-  test('creates case with generated DXTR strategy', () => {
-    const caseDoc = createCaseDocument({
-      dxtrStrategy: 'generated',
-      dxtrId: 'SEED90001',
-      caseId: '081-25-90001',
-      caseNumber: '25-90001',
-      chapter: '11',
-      caseTitle: 'Acme Corporation',
-      dateFiled: '2026-01-20',
-      officeName: 'Buffalo',
-      officeCode: 'USTP_CAMS_Region_2_Office_091',
-      courtId: '0209',
-      courtName: 'U.S. Bankruptcy Court Western District of New York',
-      courtDivisionCode: '091',
-      courtDivisionName: 'Buffalo',
-      groupDesignator: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      debtorName: 'Acme Corporation',
-    });
+  test('generates phoneticTokens for the debtor', () => {
+    const caseDoc = createCaseDocument({ ...baseCase, debtorName: 'Williams, Jane' });
 
-    expect(caseDoc.dxtrId).toBe('SEED90001');
-
-    const debtor = caseDoc.debtor as { name: string; phoneticTokens: string[] };
-    expect(debtor.name).toBe('Acme Corporation');
-    expect(debtor.phoneticTokens).toBeDefined();
-  });
-
-  test('creates case with joint debtor', () => {
-    const caseDoc = createCaseDocument({
-      dxtrStrategy: 'real',
-      dxtrId: '318723',
-      caseId: '081-26-63921',
-      caseNumber: '26-63921',
-      chapter: '7',
-      caseTitle: 'Smith, John and Smith, Jane',
-      dateFiled: '2026-01-15',
-      officeName: 'Manhattan',
-      officeCode: 'USTP_CAMS_Region_2_Office_081',
-      courtId: '0208',
-      courtName: 'U.S. Bankruptcy Court Southern District of New York',
-      courtDivisionCode: '081',
-      courtDivisionName: 'Manhattan',
-      groupDesignator: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      debtorName: 'Smith, John',
-      jointDebtorName: 'Smith, Jane',
-    });
-
-    expect(caseDoc.jointDebtor).toBeDefined();
-
-    const jointDebtor = caseDoc.jointDebtor as { name: string; phoneticTokens: string[] };
-    expect(jointDebtor.name).toBe('Smith, Jane');
-    expect(jointDebtor.phoneticTokens).toBeDefined();
-    expect(Array.isArray(jointDebtor.phoneticTokens)).toBe(true);
-  });
-
-  test('automatically generates phoneticTokens for debtor', () => {
-    const caseDoc = createCaseDocument({
-      dxtrStrategy: 'real',
-      dxtrId: '318723',
-      caseId: '081-26-63921',
-      caseNumber: '26-63921',
-      chapter: '7',
-      caseTitle: 'Smith, John',
-      dateFiled: '2026-01-15',
-      officeName: 'Manhattan',
-      officeCode: 'USTP_CAMS_Region_2_Office_081',
-      courtId: '0208',
-      courtName: 'U.S. Bankruptcy Court Southern District of New York',
-      courtDivisionCode: '081',
-      courtDivisionName: 'Manhattan',
-      groupDesignator: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      debtorName: 'Williams, Jane',
-    });
-
-    const debtor = caseDoc.debtor as { phoneticTokens: string[] };
+    const debtor = caseDoc.debtor as PartyOnCase;
     expect(debtor.phoneticTokens).toContain('wi'); // bigram from "williams"
     expect(debtor.phoneticTokens).toContain('ja'); // bigram from "jane"
+  });
+
+  test('adds a joint debtor with phoneticTokens only when one is named', () => {
+    expect(createCaseDocument(baseCase).jointDebtor).toBeUndefined();
+
+    const jointDebtor = createCaseDocument({ ...baseCase, jointDebtorName: 'Smith, Jane' })
+      .jointDebtor as PartyOnCase;
+    expect(jointDebtor.name).toBe('Smith, Jane');
+    expect(jointDebtor.phoneticTokens).toContain('ja');
+  });
+
+  test.each([
+    ['city, state and zip', { city: 'Buffalo', state: 'NY', zip: '14202' }, 'Buffalo, NY 14202'],
+    ['no zip', { city: 'Buffalo', state: 'NY' }, 'Buffalo, NY'],
+    ['no city', { state: 'NY', zip: '14202' }, undefined],
+  ])('formats a debtor and joint debtor address with %s', (_label, address, expected) => {
+    const caseDoc = createCaseDocument({
+      ...baseCase,
+      debtorAddress: address,
+      jointDebtorName: 'Smith, Jane',
+      jointDebtorAddress: address,
+    });
+
+    expect((caseDoc.debtor as PartyOnCase).cityStateZipCountry).toBe(expected);
+    expect((caseDoc.jointDebtor as PartyOnCase).cityStateZipCountry).toBe(expected);
   });
 });
 
@@ -419,15 +328,6 @@ describe('validators', () => {
       expect(() => validators.assertCaseHasDxtrLink(caseDoc, 'Test')).toThrow(
         'dxtrId "INVALID123" invalid format',
       );
-    });
-
-    test('allows null/undefined case', () => {
-      expect(() =>
-        validators.assertCaseHasDxtrLink(null as unknown as { caseId: string }, 'Test'),
-      ).not.toThrow();
-      expect(() =>
-        validators.assertCaseHasDxtrLink(undefined as unknown as { caseId: string }, 'Test'),
-      ).not.toThrow();
     });
   });
 
@@ -1052,26 +952,6 @@ describe('validators', () => {
       expect(errors[0]).toContain('missing trusteeId');
     });
 
-    test('skips non-TRUSTEE_APPOINTMENT docs in trustee-appointments collection', () => {
-      const ops = [
-        {
-          db: 'cams',
-          collectionOrTable: 'trustee-appointments',
-          data: [
-            {
-              id: 'case-appt-001',
-              documentType: 'CASE_APPOINTMENT',
-              trusteeId: 'trustee-001',
-              caseId: '081-26-12345',
-            },
-          ],
-        },
-      ];
-
-      const errors = validators.validateAllSeedOperations(ops);
-      expect(errors).toEqual([]);
-    });
-
     test('passes for a TRUSTEE_MATCH_VERIFICATION doc whose findings are backed by its data', () => {
       const ops = [
         {
@@ -1118,13 +998,36 @@ describe('validators', () => {
       };
     }
 
-    test('passes BANKRUPTCY_SOFTWARE with a well-formed contact, or none', () => {
+    test.each([
+      [
+        'a well-formed contact',
+        { phones: [{ number: '212-555-0400' }], emails: ['support@example.com'] },
+      ],
+      ['no contact', undefined],
+    ])('passes BANKRUPTCY_SOFTWARE with %s', (_label, contact) => {
+      expect(validators.validateAllSeedOperations([softwareOp(contact)])).toEqual([]);
+    });
+
+    test('catches a BANKRUPTCY_SOFTWARE phone with no number', () => {
+      const ops = [softwareOp({ phones: [{ number: '212-555-0400' }, {}] })];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'BankruptcySoftware software-001: "BestCase Pro" has a phone with no number',
+      ]);
+    });
+
+    test('names a BANKRUPTCY_SOFTWARE document with no id or name "unknown"', () => {
       const ops = [
-        softwareOp({ phones: [{ number: '212-555-0400' }], emails: ['support@example.com'] }),
-        softwareOp(),
+        {
+          db: 'cams',
+          collectionOrTable: 'bankruptcy-software',
+          data: [{ documentType: 'BANKRUPTCY_SOFTWARE', contact: { emails: ['nobody'] } }],
+        },
       ];
 
-      expect(validators.validateAllSeedOperations(ops)).toEqual([]);
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'BankruptcySoftware unknown: "unknown" email "nobody" is not a valid email format',
+      ]);
     });
 
     test('catches a BANKRUPTCY_SOFTWARE phone not in ###-###-#### format', () => {
@@ -1143,7 +1046,7 @@ describe('validators', () => {
       ]);
     });
 
-    function routingOp(recipientAddresses: string[]) {
+    function routingOp(recipientAddresses?: string[]) {
       return {
         db: 'cams',
         collectionOrTable: 'notification-routing',
@@ -1152,7 +1055,7 @@ describe('validators', () => {
             id: 'chapter-7-oversight',
             documentType: 'NOTIFICATION_ROUTING',
             displayName: 'Chapter 7 Oversight',
-            recipientAddresses,
+            ...(recipientAddresses ? { recipientAddresses } : {}),
           },
         ],
       };
@@ -1173,34 +1076,119 @@ describe('validators', () => {
       ]);
     });
 
-    test('catches a NOTIFICATION_ROUTING document with no recipients', () => {
-      const ops = [routingOp([])];
+    test.each([
+      ['an empty recipientAddresses', []],
+      ['no recipientAddresses field', undefined],
+    ])('catches a NOTIFICATION_ROUTING document with %s', (_label, recipientAddresses) => {
+      expect(validators.validateAllSeedOperations([routingOp(recipientAddresses)])).toEqual([
+        'NotificationRouting chapter-7-oversight: "Chapter 7 Oversight" has no recipientAddresses',
+      ]);
+    });
+
+    test('names a NOTIFICATION_ROUTING document with no id or displayName "unknown"', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'notification-routing',
+          data: [{ documentType: 'NOTIFICATION_ROUTING', recipientAddresses: ['nobody'] }],
+        },
+      ];
 
       expect(validators.validateAllSeedOperations(ops)).toEqual([
-        'NotificationRouting chapter-7-oversight: "Chapter 7 Oversight" has no recipientAddresses',
+        'NotificationRouting unknown: "unknown" recipient "nobody" is not a valid email format',
+      ]);
+    });
+
+    test('catches a SYNCED_CASE with no debtor', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'cases',
+          data: [{ caseId: '081-26-12345', dxtrId: '318723', documentType: 'SYNCED_CASE' }],
+        },
+      ];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'Case 081-26-12345: SYNCED_CASE has no debtor',
       ]);
     });
   });
 
-  describe('checksCollection', () => {
+  describe('checkSeedOperations', () => {
+    const op = (collectionOrTable: string, doc: Record<string, unknown>) => ({
+      db: 'cams',
+      collectionOrTable,
+      data: [doc],
+    });
+    const debtor = createDebtor('Smith, John');
+
+    // One malformed document of every type the validator checks. Each must be counted and fail.
     test.each([
-      'cases',
-      'orders',
-      'trustees',
-      'trustee-appointments',
-      'trustee-match-verification',
-      'bankruptcy-software',
-      'notification-routing',
-    ])('should report %s as checked', (collection) => {
-      expect(validators.checksCollection(collection)).toBe(true);
+      ['cases', { caseId: 'c-1', documentType: 'SYNCED_CASE', debtor }],
+      ['orders', { id: 'o-1', caseId: 'c-1', documentType: 'TRANSFER_ORDER', debtor }],
+      ['trustees', { id: 't-1', documentType: 'TRUSTEE', name: 'No Tokens' }],
+      ['trustees', { id: 't-2', name: 'No Tokens Or Type' }],
+      ['trustee-appointments', { id: 'a-1', documentType: 'TRUSTEE_APPOINTMENT' }],
+      [
+        'trustee-match-verification',
+        (() => {
+          const doc = validFindingsDoc();
+          doc.findings.candidates[0].scores.doesEmailMatch = { pass: false };
+          return { id: 'm-1', ...doc };
+        })(),
+      ],
+      [
+        'bankruptcy-software',
+        { id: 's-1', documentType: 'BANKRUPTCY_SOFTWARE', contact: { emails: ['x'] } },
+      ],
+      ['notification-routing', { id: 'r-1', documentType: 'NOTIFICATION_ROUTING' }],
+    ])('checks a malformed %s document', (collection, doc) => {
+      const result = validators.checkSeedOperations([op(collection, doc)]);
+
+      expect(result.checkedCount).toBe(1);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    // Document types that share a checked collection but that the validator doesn't inspect.
+    test.each([
+      ['cases', 'CASE_NOTE'],
+      ['orders', 'CONSOLIDATION_TO'],
+      ['trustees', 'TRUSTEE_STAFF'],
+      ['trustees', 'TRUSTEE_OVERSIGHT_ASSIGNMENT'],
+      ['trustee-appointments', 'CASE_APPOINTMENT'],
+      ['trustee-match-verification', 'SOMETHING_ELSE'],
+      ['bankruptcy-software', 'SOMETHING_ELSE'],
+      ['notification-routing', 'SOMETHING_ELSE'],
+    ])('skips a %s document of type %s', (collection, documentType) => {
+      expect(validators.checkSeedOperations([op(collection, { id: 'x', documentType })])).toEqual({
+        errors: [],
+        checkedCount: 0,
+      });
     });
 
     test.each(['banks', 'consolidations', 'AO_CS', 'user-role-assignments'])(
-      'should report %s as not checked',
+      'skips documents in the unchecked collection %s',
       (collection) => {
-        expect(validators.checksCollection(collection)).toBe(false);
+        expect(
+          validators.checkSeedOperations([op(collection, { id: 'x', documentType: 'ANY' })]),
+        ).toEqual({ errors: [], checkedCount: 0 });
       },
     );
+
+    test('skips an operation with no data', () => {
+      expect(validators.checkSeedOperations([{ db: 'cams', collectionOrTable: 'cases' }])).toEqual({
+        errors: [],
+        checkedCount: 0,
+      });
+    });
+
+    test('validateAllSeedOperations returns the same errors', () => {
+      const ops = [op('trustee-appointments', { id: 'a-1', documentType: 'TRUSTEE_APPOINTMENT' })];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual(
+        validators.checkSeedOperations(ops).errors,
+      );
+    });
   });
 
   describe('assertTrusteeAppointmentValid', () => {

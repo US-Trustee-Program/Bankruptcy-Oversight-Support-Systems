@@ -15,13 +15,13 @@
 
 import * as sql from 'mssql';
 import { MongoClient } from 'mongodb';
-import { readdirSync, statSync } from 'fs';
-import { dirname, join, relative, resolve, sep } from 'path';
+import { dirname, resolve, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
 import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
 import { validators } from './db_scripts/lib/test-data-utils.js';
+import { discoverScripts } from './db_scripts/lib/discover-scripts.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -147,83 +147,6 @@ export function parseArgs(): CliArgs {
   }
 
   return args;
-}
-
-/**
- * Discovers seed scripts under baseDir.
- *
- * - Static scripts:    db_scripts/{db}/{entity}/{scenario}.ts  (filtered by --db/--entity/--scenario)
- * - Scenario scripts:  db_scripts/scenarios/{name}.ts          (filtered only by --scenario; ignored by --db/--entity)
- *
- * Exported for testability.
- */
-export function discoverScripts(baseDir: string, args: CliArgs): string[] {
-  const staticScripts: string[] = [];
-  const scenarioScripts: string[] = [];
-
-  function walkStatic(dir: string, depth: number = 0) {
-    if (depth > 3) return; // db/entity/scenario.ts max depth
-
-    const entries = readdirSync(dir);
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const stat = statSync(fullPath);
-
-      if (stat.isDirectory() && entry !== 'lib' && entry !== 'scenarios') {
-        walkStatic(fullPath, depth + 1);
-      } else if (stat.isFile() && entry.endsWith('.ts') && !entry.endsWith('.test.ts')) {
-        staticScripts.push(fullPath);
-      }
-    }
-  }
-
-  function walkScenarios(scenariosDir: string) {
-    let entries: string[];
-    try {
-      entries = readdirSync(scenariosDir);
-    } catch {
-      return; // scenarios/ directory doesn't exist yet — that's fine
-    }
-
-    for (const entry of entries) {
-      const fullPath = join(scenariosDir, entry);
-      const stat = statSync(fullPath);
-      if (stat.isFile() && entry.endsWith('.ts') && !entry.endsWith('.test.ts')) {
-        scenarioScripts.push(fullPath);
-      }
-    }
-  }
-
-  walkStatic(baseDir);
-  walkScenarios(join(baseDir, 'scenarios'));
-
-  // Filter static scripts by --db, --entity, --scenario
-  const filteredStatic = staticScripts.filter((scriptPath) => {
-    const relativePath = relative(baseDir, scriptPath);
-    const parts = relativePath.split(sep);
-
-    if (args.db && parts[0] !== args.db) return false;
-    if (args.entity && parts[1] !== args.entity) return false;
-    if (args.scenario) {
-      const scenarioName = parts[2]?.replace('.ts', '');
-      if (scenarioName !== args.scenario) return false;
-    }
-
-    return true;
-  });
-
-  // Filter scenario scripts only by --scenario (not by --db or --entity)
-  const filteredScenarios = scenarioScripts.filter((scriptPath) => {
-    if (args.scenario) {
-      const filename = scriptPath.split(sep).pop()?.replace('.ts', '');
-      return filename === args.scenario;
-    }
-    return true;
-  });
-
-  // Static scripts first, then scenario scripts
-  return [...filteredStatic, ...filteredScenarios];
 }
 
 /**

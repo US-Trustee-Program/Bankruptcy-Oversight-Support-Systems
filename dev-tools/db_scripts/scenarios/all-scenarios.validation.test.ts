@@ -1,11 +1,11 @@
 /**
  * Data quality validation for every scenario the runner seeds.
  *
- * Scenarios are discovered the way the runner discovers them (every .ts file in this directory
- * that isn't a test), so a new scenario is validated without being registered here.
+ * Scenarios are found with discoverScenarioScripts, the same function the runner uses, so a new
+ * scenario is validated without being registered here.
  *
- * Each scenario's operations go through validators.validateAllSeedOperations, the same check the
- * runner applies before seeding. See that function for the rules; in short:
+ * Each scenario's operations go through validators.checkSeedOperations, the check the runner
+ * applies before seeding. See its DOCUMENT_CHECKS table for the rules; in short:
  * - cases and transfer orders: DXTR linkage (dxtrId), debtor phoneticTokens and phone format,
  *   attorney phone and email format
  * - trustees: phoneticTokens, phone and email format
@@ -14,15 +14,19 @@
  * - bankruptcy software: contact phone and email format
  * - notification routing: at least one recipient, each an email address
  *
- * A scenario must write at least one document the validator checks, so a scenario can't pass
- * here only because nothing it seeds is checked.
+ * A scenario must write at least one document the validator actually checked (not just one in a
+ * checked collection), so a scenario can't pass here only because nothing it seeds is checked.
+ *
+ * The fake DXTR reports every case as already present, so this suite runs only that branch of each
+ * generator. scenarios.test.ts and ensure-dxtr-case.test.ts cover the "not yet in DXTR" branch.
  */
 
-import { readdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { basename, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { describe, test, expect, vi } from 'vitest';
+import { faker } from '@faker-js/faker';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { GeneratorScript, SeedContext } from '../../runner.js';
+import { discoverScenarioScripts } from '../lib/discover-scripts.js';
 import { validators } from '../lib/test-data-utils.js';
 import { sequentialCaseIds } from '../lib/scenario-test-doubles.js';
 
@@ -33,10 +37,7 @@ vi.mock('mssql', async () =>
   (await import('../lib/scenario-test-doubles.js')).fakeMssqlModule([{ nextSeq: 1 }]),
 );
 
-const SCENARIOS_DIR = dirname(fileURLToPath(import.meta.url));
-const SCENARIO_FILES = readdirSync(SCENARIOS_DIR).filter(
-  (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
-);
+const SCENARIO_PATHS = discoverScenarioScripts(dirname(fileURLToPath(import.meta.url)));
 
 function seedContext(): SeedContext {
   return {
@@ -47,29 +48,36 @@ function seedContext(): SeedContext {
   };
 }
 
-async function operationsFor(file: string) {
-  const scenario = (await import(join(SCENARIOS_DIR, file))) as Partial<GeneratorScript>;
-  expect(scenario.generate, `${file} must export generate()`).toBeTypeOf('function');
+async function operationsFor(path: string) {
+  const scenario = (await import(path)) as Partial<GeneratorScript>;
+  expect(scenario.generate, `${basename(path)} must export generate()`).toBeTypeOf('function');
   return scenario.generate!(seedContext());
 }
 
 describe('Data Quality Validation (All Scenarios)', () => {
-  test('finds the scenarios', () => {
-    expect(SCENARIO_FILES).toContain('admin-data.ts');
-    expect(SCENARIO_FILES).toContain('notification-routing.ts');
-    expect(SCENARIO_FILES).not.toContain('scenarios.test.ts');
+  beforeEach(() => {
+    // Generators use faker; a fixed seed keeps a future faker-built field from failing at random.
+    faker.seed(940);
+    // Generators log progress and warnings; keep the test output to the results.
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  test.each(SCENARIO_FILES)('%s meets data quality standards', async (file) => {
-    const ops = await operationsFor(file);
-
-    const checked = ops.filter(
-      (op) => validators.checksCollection(op.collectionOrTable) && op.data.length > 0,
-    );
-    expect(
-      checked,
-      `${file} writes nothing the validator checks; add a check for its collections`,
-    ).not.toHaveLength(0);
-    expect(validators.validateAllSeedOperations(ops)).toEqual([]);
+  test('finds scenarios to validate', () => {
+    // Guards test.each below, which would pass with no cases at all.
+    expect(SCENARIO_PATHS.length).toBeGreaterThan(0);
   });
+
+  test.each(SCENARIO_PATHS.map((path) => [basename(path), path]))(
+    '%s meets data quality standards',
+    async (file, path) => {
+      const { errors, checkedCount } = validators.checkSeedOperations(await operationsFor(path));
+
+      expect(
+        checkedCount,
+        `${file} writes nothing the validator checks; add its documents to DOCUMENT_CHECKS`,
+      ).toBeGreaterThan(0);
+      expect(errors).toEqual([]);
+    },
+  );
 });
