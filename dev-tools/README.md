@@ -17,8 +17,10 @@ Development tools for CAMS, including database seeding utilities and test data g
    need `MSSQL_*` (DXTR), `ACMS_MSSQL_*` (ACMS), or `ATS_MSSQL_*` (TOD) for the databases they
    write.
 
-2. **Allow your IP.** cosmos-mongo-ustp-cams accepts connections only from allowed networks. If
-   seeding fails with `Request blocked by network firewall`, your IP is not allowed.
+2. **For `seed:main`, allow your IP, then remove it.** cosmos-mongo-ustp-cams accepts connections
+   only from the dev app's subnets and the Azure portal, so seeding from your machine fails with
+   `Request blocked by network firewall`. Before seeding, add your IP to the account's firewall
+   (Azure portal, account **Networking** blade). Remove it as soon as seeding finishes.
 
 3. **Seed databases:**
    ```bash

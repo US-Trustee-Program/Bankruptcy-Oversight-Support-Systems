@@ -18,6 +18,13 @@ export type TrusteeDataReportSummary = {
   fieldDifferencesByField: Record<TrusteeProfileField, number>;
 };
 
+/**
+ * A summary as stored on a run. Runs completed before todOnlyStatusMissing existed (2026-11-20)
+ * have no value for it.
+ */
+type StoredTrusteeDataReportSummary = Omit<TrusteeDataReportSummary, 'todOnlyStatusMissing'> &
+  Partial<Pick<TrusteeDataReportSummary, 'todOnlyStatusMissing'>>;
+
 export type TrusteeDataReportRun = {
   runId: string;
   status: TrusteeDataReportRunStatus;
@@ -26,7 +33,7 @@ export type TrusteeDataReportRun = {
   startedAt?: string;
   finishedAt?: string;
   failureMessage?: string;
-  summary?: TrusteeDataReportSummary;
+  summary?: StoredTrusteeDataReportSummary;
 };
 
 type TrusteeDataDifferenceKind = 'tod-only' | 'cams-only' | 'field';

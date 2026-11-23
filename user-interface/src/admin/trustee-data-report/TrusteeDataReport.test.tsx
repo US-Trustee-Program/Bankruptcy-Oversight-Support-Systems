@@ -119,9 +119,7 @@ describe('TrusteeDataReport', () => {
   test('should show a count the latest run did not record as not counted, and still allow a start', async () => {
     // A run stored before a count existed has no value for it.
     const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
-    mockGet({
-      latestCompletedRun: { ...COMPLETED, summary: olderSummary as TrusteeDataReportSummary },
-    });
+    mockGet({ latestCompletedRun: { ...COMPLETED, summary: olderSummary } });
 
     await renderLoaded();
 
