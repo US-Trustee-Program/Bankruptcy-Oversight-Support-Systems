@@ -125,18 +125,26 @@ describe('renderDocsPage', () => {
     );
   });
 
-  test('shows a metric with no data in any week as text instead of a chart', () => {
-    const weeks = THREE_WEEKS.map((week) => ({ ...week, restoreTime: null }));
+  test.each([
+    {
+      metric: 'leadTime',
+      shown: ['### Lead time for changes (median)', '', 'No data in these weeks', ''],
+    },
+    {
+      metric: 'restoreTime',
+      shown: ['### Time to restore service (median)', '', 'No closed incidents in these weeks', ''],
+    },
+  ])(
+    'shows $metric with nothing to plot in any week as text instead of a chart',
+    ({ metric, shown }) => {
+      const weeks = THREE_WEEKS.map((week) => ({ ...week, [metric]: null }));
 
-    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+      const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
 
-    expect(page).toContain(
-      ['### Time to restore service (median)', '', 'No closed incidents in these weeks', ''].join(
-        '\n',
-      ),
-    );
-    expect(page.match(/```mermaid/g)).toHaveLength(3);
-  });
+      expect(page).toContain(shown.join('\n'));
+      expect(page.match(/```mermaid/g)).toHaveLength(3);
+    },
+  );
 
   test.each([
     { medianHours: 47.9, unit: 'hours', plotted: '[5.0, 47.9]', top: '47.9' },
@@ -253,6 +261,37 @@ describe('renderDocsPage', () => {
       expect(page).toContain(`| 24 | 3.6 hours | 8.3% | ${shown} |`);
     },
   );
+
+  test('shows the restore time, not the open count, when some incidents closed and some are still open', () => {
+    const page = renderDocsPage([summaryWith({ openIncidents: 2 })], {
+      generatedAt: GENERATED_AT,
+      run: RUN,
+    });
+
+    expect(page).toContain('| Time to restore service | 11.9 days (mean 11.9 days) |');
+  });
+
+  test('starts the scale at 0 to 1 when every plotted value rounds to 0', () => {
+    const weeks = THREE_WEEKS.map((week) => ({
+      ...week,
+      leadTime: { medianHours: 0.01, meanHours: 0.01 },
+    }));
+
+    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).toContain(
+      [
+        '### Lead time for changes (median, hours)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["10-19", "10-26", "11-02"]',
+        '  y-axis 0 --> 1',
+        '  line [0.0, 0.0, 0.0]',
+      ].join('\n'),
+    );
+  });
 
   test('starts the scale at 0 to 1 when every plotted value is 0', () => {
     const weeks = THREE_WEEKS.map((week) => ({

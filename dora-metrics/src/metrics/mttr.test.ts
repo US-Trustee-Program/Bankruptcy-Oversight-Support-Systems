@@ -200,6 +200,8 @@ describe('computeMttr', () => {
     const bugIssues: SeverityHighBug[] = [
       { number: 1, created_at: '2026-01-02T06:00:00.000Z', closed_at: null },
       { number: 2, created_at: '2026-01-09T06:00:00.000Z', closed_at: '2026-01-09T10:00:00.000Z' },
+      // Open, but opened more than 24h after any deployment, so never attributed and never counted.
+      { number: 3, created_at: '2026-01-12T00:00:00.000Z', closed_at: null },
     ];
 
     const { byPeriod } = computeMttr(bugIssues, runs, { startDate, periodDays: 7, endDate });

@@ -94,7 +94,9 @@ function renderChart(
     return [`### ${title}`, '', notes.empty, ''];
   }
   // Mermaid scales the y-axis to the data's own range by default, which makes small changes look huge.
-  const top = Math.max(...points.map(({ value }) => value));
+  // A top that shows as 0 (all zero, or too small to show) would flatten the axis, so use 1.
+  const top = plot(Math.max(...points.map(({ value }) => value)));
+  const axisTop = top === plot(0) ? '1' : top;
   const labels = points.map(({ week }) => `"${week.periodStart.toISOString().slice(5, 10)}"`);
   return [
     `### ${title}`,
@@ -103,7 +105,7 @@ function renderChart(
     CHART_THEME,
     'xychart-beta',
     `  x-axis [${labels.join(', ')}]`,
-    `  y-axis 0 --> ${top > 0 ? plot(top) : '1'}`,
+    `  y-axis 0 --> ${axisTop}`,
     // A one-point Mermaid line has zero length and draws nothing; a bar keeps the week visible.
     `  ${points.length === 1 ? 'bar' : 'line'} [${points.map(({ value }) => plot(value)).join(', ')}]`,
     '```',
