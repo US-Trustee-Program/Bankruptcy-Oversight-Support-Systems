@@ -62,27 +62,27 @@ function badRequest(message: string) {
 function resolveScope(
   request: RoleAssignmentGrantRequest,
   offices: UstpOfficeDetails[],
-): { scope: PermissionScope } {
+): PermissionScope {
   const everyRegion = request.regionId === ALL_SCOPE;
   const everyOffice = request.officeCode === ALL_SCOPE;
   if (isUnscopedRole(request.role)) {
     if (!everyRegion || !everyOffice) throw badRequest('Super User has no region or office.');
-    return { scope: { regionId: null, officeCode: null } };
+    return { regionId: null, officeCode: null };
   }
   if (everyRegion) {
     if (!everyOffice) throw badRequest('An office needs its region.');
-    return { scope: { regionId: null, officeCode: null } };
+    return { regionId: null, officeCode: null };
   }
   if (everyOffice) {
     if (!offices.some((o) => o.regionId === request.regionId)) {
       throw badRequest('The region does not exist.');
     }
-    return { scope: { regionId: request.regionId, officeCode: null } };
+    return { regionId: request.regionId, officeCode: null };
   }
   const office = offices.find((o) => o.officeCode === request.officeCode);
   if (!office) throw badRequest('The office does not exist.');
   if (office.regionId !== request.regionId) throw badRequest('The office is not in that region.');
-  return { scope: { regionId: office.regionId, officeCode: office.officeCode } };
+  return { regionId: office.regionId, officeCode: office.officeCode };
 }
 
 function stateOf(assignment: UserRoleAssignment) {
@@ -190,7 +190,7 @@ export class UserAccessUseCase {
     }
 
     const offices = await factory.getOfficesGateway(context).getOffices(context);
-    const { scope } = resolveScope(request, offices);
+    const scope = resolveScope(request, offices);
     const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
     const performer = getCamsUserReference(context.session.user);
     const now = new Date().toISOString();
@@ -264,9 +264,7 @@ export class UserAccessUseCase {
       );
     }
 
-    if (created || replaced.length > 0) {
-      await this.invalidateSessions(context, member.id);
-    }
+    await this.invalidateSessions(context, member.id);
 
     return { result: { permission, replaced }, created };
   }

@@ -135,6 +135,21 @@ describe('UserAccessController', () => {
       },
     );
 
+    test('should use the first value and not throw when a filter repeats in the query string', async () => {
+      // CamsDict claims every value is a string, but Express's req.query holds an array for a
+      // repeated key (e.g. `?name=a&name=b`); this simulates that real runtime shape.
+      context.request.query = {
+        name: ['sarah', 'other'],
+      } as unknown as typeof context.request.query;
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'getCamsUsers')
+        .mockResolvedValue({ data: [], totalCount: 0 });
+
+      await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, expect.objectContaining({ name: 'sarah' }));
+    });
+
     test.each([
       { query: { limit: 'abc', offset: 'xyz' } },
       { query: { limit: '0', offset: '-5' } },

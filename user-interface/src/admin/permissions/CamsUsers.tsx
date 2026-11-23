@@ -186,7 +186,14 @@ export function CamsUsers() {
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
     } catch {
-      if (ticket === loadTicketRef.current) setLoadFailed(true);
+      if (ticket === loadTicketRef.current) {
+        // The table, pagination and row buttons all unmount on failure (gated on !loadFailed
+        // below), so whatever had focus - the row's Add Permission button after a grant, or
+        // nothing in particular after a page change - is gone. The heading stays mounted either
+        // way, so it's always a safe place to land focus.
+        setLoadFailed(true);
+        headingRef.current?.focus();
+      }
     } finally {
       if (ticket === loadTicketRef.current) setIsLoading(false);
     }

@@ -288,6 +288,38 @@ describe('CamsUsers', () => {
     await act(async () => reload.resolve(usersResponse([ALEX])));
   });
 
+  test('should move focus to the heading when the reload after a grant fails', async () => {
+    const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX]));
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    spy.mockRejectedValueOnce(new Error('500'));
+    const button = document.querySelector<HTMLElement>(`#add-permission-${ALEX.id}`)!;
+    button.focus();
+
+    await act(async () => modalProps!.onSuccess());
+
+    expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
+    expect(table()).not.toBeInTheDocument();
+    expect(button).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
+  test('should move focus to the heading when a page change fails', async () => {
+    const pageOne = Array.from({ length: 20 }, (_, i) => ({ ...ALEX, id: `p1-${i}` }));
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse(pageOne, 21));
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    vi.spyOn(Api2, 'getCamsUsers').mockRejectedValueOnce(new Error('500'));
+
+    await userEvent.click(screen.getByTestId('pagination-button-next-results'));
+
+    await waitFor(() =>
+      expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument(),
+    );
+    expect(table()).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
   test('should not show pagination when everyone fits on one page', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
 

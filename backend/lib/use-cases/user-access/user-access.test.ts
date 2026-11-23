@@ -401,7 +401,9 @@ describe('UserAccessUseCase', () => {
       expect(outcome).toEqual({ result: { permission: held, replaced: [] }, created: false });
       expect(createSpy).not.toHaveBeenCalled();
       expect(traceSpy).not.toHaveBeenCalled();
-      expect(invalidateSpy).not.toHaveBeenCalled();
+      // Re-granting an already-held permission still invalidates: a prior grant's invalidation may
+      // have failed, and this is the retry (CAMS-940 review, backend/.../user-access.ts:267).
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
     });
 
     test('should treat a permission another grant just wrote as already held', async () => {

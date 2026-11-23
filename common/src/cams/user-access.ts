@@ -114,9 +114,6 @@ export function inactiveKeyFor(assignmentId: string): string {
   return `inactive|${assignmentId}`;
 }
 
-// Every CAMS role can be granted. (CamsRoles already leaves out PrivilegedIdentityUser.)
-export const grantableRoles = [...CamsRoles];
-
 /**
  * Whether a role is granted without a region or office. Such a permission is always unscoped, and
  * gives a session the role but no offices.
@@ -160,7 +157,7 @@ const NOT_BLANK = /\S/;
 
 export const roleAssignmentGrantRequestSpec: ValidationSpec<RoleAssignmentGrantRequest> = {
   userId: [V.matches(NOT_BLANK, 'A user is required')],
-  role: [V.isInSet<CamsRoleType>(grantableRoles, 'A valid role is required')],
+  role: [V.isInSet<CamsRoleType>(CamsRoles, 'A valid role is required')],
   regionId: [V.matches(NOT_BLANK, 'A region is required')],
   officeCode: [V.matches(NOT_BLANK, 'An office is required')],
 };

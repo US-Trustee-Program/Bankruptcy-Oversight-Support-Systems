@@ -9,12 +9,11 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
-import { CamsRoleLabels, CamsRoleType } from '@common/cams/roles';
+import { CamsRoleLabels, CamsRoles, CamsRoleType } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   ALL_SCOPE,
-  grantableRoles,
   isUnscopedRole,
   PermissionScope,
   RoleAssignmentGrantRequest,
@@ -34,9 +33,10 @@ export type AddPermissionModalProps = {
 
 const SAVE_FAILED_MESSAGE = 'Unable to save permission. Please try again';
 
-const ROLE_OPTIONS: ComboOption[] = grantableRoles
-  .map((role) => ({ value: role, label: CamsRoleLabels[role] }))
-  .sort((a, b) => a.label.localeCompare(b.label));
+const ROLE_OPTIONS: ComboOption[] = CamsRoles.map((role) => ({
+  value: role,
+  label: CamsRoleLabels[role],
+})).sort((a, b) => a.label.localeCompare(b.label));
 
 type ScopeOption = ComboOption & { scope: { regionId: string; officeCode: string } };
 

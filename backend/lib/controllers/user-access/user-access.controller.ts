@@ -23,8 +23,13 @@ function parseQueryInt(value: unknown, fallback: number, isValid: (n: number) =>
   return Number.isFinite(parsed) && isValid(parsed) ? parsed : fallback;
 }
 
-function optionalTrimmedString(value: string | undefined): string | undefined {
-  return value?.trim() || undefined;
+// Typed as `unknown` because this actually receives whatever Express's `req.query` holds for the
+// key: usually a string, but an array when the key repeats (e.g. `?name=a&name=b`), which a plain
+// `string | undefined` parameter would accept and then crash on `.trim()`. Azure Functions' query
+// parsing never produces an array, so this only matters for the Express dev server.
+function optionalTrimmedString(value: unknown): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  return typeof first === 'string' ? first.trim() || undefined : undefined;
 }
 
 export class UserAccessController implements CamsController {
