@@ -21,7 +21,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
-import { RoleAssignmentAuditRepository, UserRoleAssignmentRepository } from '../gateways.types';
+import {
+  RoleAssignmentAuditRepository,
+  UserRoleAssignmentRepository,
+  UserSessionCacheRepository,
+} from '../gateways.types';
 
 const MODULE_NAME = 'USER-ACCESS-USE-CASE';
 const MEMBER_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -48,6 +52,7 @@ function byRegionThenOffice(a: UserRoleAssignment, b: UserRoleAssignment): numbe
 }
 
 const DEACTIVATION_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_DEACTIVATION failed';
+const SESSION_INVALIDATION_FAILED_MESSAGE = 'USER_SESSION_CACHE_INVALIDATION failed';
 
 function badRequest(message: string) {
   return new BadRequestError(MODULE_NAME, { message });
@@ -125,10 +130,12 @@ function auditEntry(
 export class UserAccessUseCase {
   private readonly assignmentRepository: UserRoleAssignmentRepository;
   private readonly auditRepository: RoleAssignmentAuditRepository;
+  private readonly sessionCacheRepository: UserSessionCacheRepository;
 
   constructor(context: ApplicationContext) {
     this.assignmentRepository = factory.getUserRoleAssignmentRepository(context);
     this.auditRepository = factory.getRoleAssignmentAuditRepository(context);
+    this.sessionCacheRepository = factory.getUserSessionCacheRepository(context);
   }
 
   async getCamsUsers(
@@ -208,7 +215,6 @@ export class UserAccessUseCase {
         assignedBy: performer.id,
         assignedByName: performer.name,
         assignedAt: now,
-        expiresAt: null,
         active: true,
         activeKey,
       };
@@ -261,7 +267,30 @@ export class UserAccessUseCase {
       );
     }
 
+    if (created || replaced.length > 0) {
+      await this.invalidateSessions(context, member.id);
+    }
+
     return { result: { permission, replaced }, created };
+  }
+
+  /**
+   * Cached sessions hold the roles and offices read at sign-in, so a changed permission would not
+   * apply until the user's token rotated. Dropping them makes the next request rebuild the session.
+   * A failure keeps the grant: the change then applies at the user's next token refresh.
+   */
+  private async invalidateSessions(context: ApplicationContext, userId: string) {
+    try {
+      await this.sessionCacheRepository.deleteByUserId(userId);
+    } catch (error) {
+      context.logger.error(
+        MODULE_NAME,
+        `${SESSION_INVALIDATION_FAILED_MESSAGE}: ${error.message}`,
+        {
+          userId,
+        },
+      );
+    }
   }
 
   /** The writes are sequential, not atomic: a failed audit write keeps the change. */
@@ -316,12 +345,10 @@ export class UserAccessUseCase {
             assignmentId: audit.assignmentId,
             action: audit.action,
             userId: audit.userId,
-            userName: audit.userName,
             role: audit.role,
             regionId: audit.regionId ?? '',
             officeCode: audit.officeCode ?? '',
             performedBy: audit.performedBy,
-            performedByName: audit.performedByName,
             performedAt: audit.performedAt,
             replacedByAssignmentId: audit.replacedByAssignmentId ?? '',
           },

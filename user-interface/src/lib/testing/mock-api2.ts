@@ -3384,7 +3384,6 @@ function mockPermission(
     assignedBy: 'mock-super-user',
     assignedByName: 'Mock Super User',
     assignedAt,
-    expiresAt: null,
     active: true,
     activeKey: activeKeyFor(role, regionId, officeCode),
   };

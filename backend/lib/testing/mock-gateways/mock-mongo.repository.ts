@@ -348,6 +348,10 @@ export class MockMongoRepository
     });
   }
 
+  deleteByUserId(_userId: string): Promise<void> {
+    return Promise.resolve();
+  }
+
   create(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }

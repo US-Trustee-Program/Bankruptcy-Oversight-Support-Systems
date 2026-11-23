@@ -4,7 +4,7 @@ import { CamsSession } from '@common/cams/session';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { CamsJwtClaims } from '@common/cams/jwt';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { Query } from '../../../query/query-builder';
 import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import DateHelper from '@common/date-helper';
@@ -13,6 +13,7 @@ const MODULE_NAME = 'USER-SESSION-CACHE-MONGO-REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';
 
 const doc = QueryBuilder.using<CachedCamsSession>();
+const byUser = QueryBuilder.using<CachedCamsSession & { 'user.id': string }>();
 
 export type CachedCamsSession = CamsSession & {
   id?: string;
@@ -92,6 +93,16 @@ export class UserSessionCacheMongoRepository
       const adapter = this.getAdapter<CachedCamsSession>();
       await adapter.replaceOne(query, cached, true);
       return session;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  /** Removes every cached session for the user, so their next request rebuilds it. */
+  public async deleteByUserId(userId: string): Promise<void> {
+    try {
+      const adapter = this.getAdapter<CachedCamsSession>();
+      await adapter.deleteMany(byUser('user.id').equals(userId) as Query<CachedCamsSession>);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

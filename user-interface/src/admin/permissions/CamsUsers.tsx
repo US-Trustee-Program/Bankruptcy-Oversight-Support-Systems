@@ -58,24 +58,31 @@ function TextFilter({
   value: string;
   onChange: (value: string) => void;
 }>) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="cams-users__filter">
       <div className="cams-users__filter-header">
         <label className="usa-label" htmlFor={id}>
           {label}
         </label>
-        <button
-          id={`${id}-clear`}
-          type="button"
-          className="usa-button usa-button--unstyled cams-users__filter-clear"
-          aria-label={`Clear ${label} filter`}
-          hidden={value.length === 0}
-          onClick={() => onChange('')}
-        >
-          Clear
-        </button>
+        {value.length > 0 && (
+          <button
+            id={`${id}-clear`}
+            type="button"
+            className="usa-button usa-button--unstyled cams-users__filter-clear"
+            aria-label={`Clear ${label} filter`}
+            onClick={() => {
+              onChange('');
+              // The button unmounts once the filter is empty, so keep focus in the filter.
+              inputRef.current?.focus();
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         className="usa-input"

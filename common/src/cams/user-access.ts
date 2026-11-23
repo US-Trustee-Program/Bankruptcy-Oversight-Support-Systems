@@ -23,7 +23,6 @@ export type UserRoleAssignment = {
   assignedBy: string;
   assignedByName: string;
   assignedAt: string;
-  expiresAt: string | null;
   active: boolean;
   activeKey: string;
 };

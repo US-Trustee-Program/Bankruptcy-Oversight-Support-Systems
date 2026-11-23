@@ -122,9 +122,7 @@ test.describe('Administration > Permissions', () => {
     const grant = await grantResponse;
     expect(grant.status()).toBe(201);
     const { permission } = (await grant.json()).data as { permission: UserRoleAssignment };
-    expect(permission).toEqual(
-      expect.objectContaining({ userId: user!.id, active: true, expiresAt: null }),
-    );
+    expect(permission).toEqual(expect.objectContaining({ userId: user!.id, active: true }));
     await reloadResponse;
 
     await expect(page.getByTestId('modal-content-add-permission-modal')).toBeHidden(timeoutOption);

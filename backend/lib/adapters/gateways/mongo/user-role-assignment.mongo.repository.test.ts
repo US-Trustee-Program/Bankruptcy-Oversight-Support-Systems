@@ -26,7 +26,6 @@ describe('UserRoleAssignmentMongoRepository', () => {
     assignedBy: 'super-1',
     assignedByName: 'Super User',
     assignedAt: '2026-11-03T00:00:00.000Z',
-    expiresAt: null,
     active: true,
     activeKey: 'TrialAttorney|02|USTP_CAMS_Region_2_Office_Manhattan',
   };

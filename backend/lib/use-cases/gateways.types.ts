@@ -182,7 +182,9 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
-  extends Reads<T>, Upserts<T, T>, Releasable {}
+  extends Reads<T>, Upserts<T, T>, Releasable {
+  deleteByUserId(userId: string): Promise<void>;
+}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>, Updates<CaseAssignment, string>, Releasable {

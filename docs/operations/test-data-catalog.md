@@ -208,10 +208,13 @@ cams.getCollection('role-assignment-audit').insertOne({
   newState: { role: 'SuperUser', regionId: null, officeCode: null, active: false },
   replacedByAssignmentId: null,
 });
+cams.getCollection('user-session-cache').deleteMany({ 'user.id': USER_ID });
 ```
 
 Set `USER_ID`, and replace `'cams'` if the environment's database has another name. If `held` is
-`null`, the user holds no active Super User and there's nothing to revoke.
+`null`, the user holds no active Super User and there's nothing to revoke. The last line clears the
+user's cached sessions. Without it, a session already signed in keeps Super User until its token
+expires, up to about an hour.
 
 ### Bank and Software Assignments
 

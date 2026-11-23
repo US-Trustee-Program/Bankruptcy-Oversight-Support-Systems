@@ -38,6 +38,11 @@ Alternatives considered, in the order they were tried:
   network path, a cross-repository change through the mirror, and a pipeline that shared a manual
   run with an unrelated secrets step.
 
+The `cams-role-assignments` flag must be global, with no LaunchDarkly targeting rules or percentage
+rollouts. The session reads the anonymous evaluation and the Permissions endpoint reads the per-user
+evaluation, so a targeted flag can make them disagree (see
+[Feature Flags](../../contributing/feature-flags.md#flags-that-must-not-use-targeting)).
+
 ## Decision
 
 We provision the first Super User in each environment with a self-contained script that an operator
@@ -82,4 +87,6 @@ Accepted (2026-11-23)
 - Until revoke exists in the Permissions screen, removing a Super User means editing the database
   directly. The edit must deactivate the permission the way the application does (inactive and with
   its unique key released) and record the deactivation in the audit trail, never delete it; the
-  test-data catalog gives the exact edit.
+  test-data catalog gives the exact edit. The edit must also clear the user's cached sessions, which
+  the Permissions screen does on every grant; otherwise a signed-in session keeps Super User until
+  its token expires.

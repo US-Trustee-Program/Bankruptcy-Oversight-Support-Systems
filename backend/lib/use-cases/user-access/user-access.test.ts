@@ -42,7 +42,6 @@ function assignmentFor(
     assignedBy: 'super-1',
     assignedByName: 'Super User',
     assignedAt: '2026-11-01T00:00:00.000Z',
-    expiresAt: null,
     active: true,
     activeKey: `TrialAttorney|${office.regionId}|${office.officeCode}`,
   };
@@ -295,6 +294,7 @@ describe('UserAccessUseCase', () => {
       spyOnMembers();
       const heldSpy = spyOnHeld();
       const { createSpy, traceSpy } = spyOnWrites();
+      const invalidateSpy = vi.spyOn(MockMongoRepository.prototype, 'deleteByUserId');
       const performer = getCamsUserReference(context.session.user);
 
       const { result, created } = await useCase.grantPermission(context, request);
@@ -311,7 +311,6 @@ describe('UserAccessUseCase', () => {
         assignedBy: performer.id,
         assignedByName: performer.name,
         assignedAt: expect.any(String),
-        expiresAt: null,
         active: true,
         activeKey: `TrialAttorney|${MANHATTAN.regionId}|${MANHATTAN.officeCode}`,
       };
@@ -365,6 +364,29 @@ describe('UserAccessUseCase', () => {
         undefined,
         expect.anything(),
       );
+      const { properties } = traceSpy.mock.calls[0][2];
+      expect(properties).not.toHaveProperty('userName');
+      expect(properties).not.toHaveProperty('performedByName');
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+    });
+
+    test('should keep the grant and log a searchable error when cached sessions cannot be cleared', async () => {
+      spyOnMembers();
+      spyOnHeld();
+      spyOnWrites();
+      vi.spyOn(MockMongoRepository.prototype, 'deleteByUserId').mockRejectedValue(
+        new Error('cache unavailable'),
+      );
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const { created } = await useCase.grantPermission(context, request);
+
+      expect(created).toBe(true);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'USER-ACCESS-USE-CASE',
+        'USER_SESSION_CACHE_INVALIDATION failed: cache unavailable',
+        { userId: 'user-a' },
+      );
     });
 
     test('should change nothing when the user already holds the permission', async () => {
@@ -372,12 +394,14 @@ describe('UserAccessUseCase', () => {
       const held = assignmentFor('user-a', MANHATTAN);
       spyOnHeld([assignmentFor('user-a', BUFFALO), held]);
       const { createSpy, traceSpy } = spyOnWrites();
+      const invalidateSpy = vi.spyOn(MockMongoRepository.prototype, 'deleteByUserId');
 
       const outcome = await useCase.grantPermission(context, request);
 
       expect(outcome).toEqual({ result: { permission: held, replaced: [] }, created: false });
       expect(createSpy).not.toHaveBeenCalled();
       expect(traceSpy).not.toHaveBeenCalled();
+      expect(invalidateSpy).not.toHaveBeenCalled();
     });
 
     test('should treat a permission another grant just wrote as already held', async () => {
@@ -828,6 +852,7 @@ describe('UserAccessUseCase', () => {
         spyOnHeld([regionWide, manhattan]);
         const { createSpy } = spyOnWrites();
         const deactivateSpy = spyOnDeactivate();
+        const invalidateSpy = vi.spyOn(MockMongoRepository.prototype, 'deleteByUserId');
 
         const { result, created } = await useCase.grantPermission(context, {
           ...request,
@@ -839,6 +864,7 @@ describe('UserAccessUseCase', () => {
         expect(result.replaced.map((p) => p.id)).toEqual([manhattan.id]);
         expect(deactivateSpy).toHaveBeenCalledTimes(1);
         expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['DEACTIVATED']);
+        expect(invalidateSpy).toHaveBeenCalledWith('user-a');
       });
 
       test('should keep the grant, log both assignments and fail when a replaced permission cannot be deactivated', async () => {

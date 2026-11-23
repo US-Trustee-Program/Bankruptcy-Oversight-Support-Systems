@@ -4,16 +4,23 @@ export const SUPERUSER_AUTH_FILE = 'playwright/.auth/superuser.json';
 // non-privileged session the chromium project uses. See login/superuser-access.ts.
 export const SUPERUSER_SPECS = ['permissions.spec.ts'];
 
+/** Mirrors the seed script's guard: the Super User grant may only be written to an e2e database. */
+export function isE2eDatabase(dbName: string | undefined): boolean {
+  return (dbName ?? '').toLowerCase().includes('e2e');
+}
+
 /**
  * True when the superuser-setup/superuser-teardown projects can run: Okta login (so a real grant
- * takes effect at the next login) with its credentials set, and a database to write the grant to.
+ * takes effect at the next login) with its credentials set, and an e2e database to write the grant
+ * to.
  */
 export function isSuperUserTestEnabled(): boolean {
   return (
     (process.env.CAMS_LOGIN_PROVIDER ?? '').toLowerCase() === 'okta' &&
     !!process.env.OKTA_USER_NAME &&
     !!process.env.OKTA_PASSWORD &&
-    !!process.env.MONGO_CONNECTION_STRING
+    !!process.env.MONGO_CONNECTION_STRING &&
+    isE2eDatabase(process.env.COSMOS_DATABASE_NAME)
   );
 }
 

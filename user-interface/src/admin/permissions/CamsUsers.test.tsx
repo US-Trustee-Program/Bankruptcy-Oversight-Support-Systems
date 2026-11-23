@@ -37,7 +37,6 @@ function permission(
     assignedBy: 'super',
     assignedByName: 'Super',
     assignedAt: '2026-11-01T00:00:00.000Z',
-    expiresAt: null,
     active: true,
     activeKey: 'key',
   };
@@ -521,23 +520,24 @@ describe('CamsUsers', () => {
         key: 'email',
       },
     ])(
-      'should clear the $filter filter and reload everyone, hiding Clear while it is empty',
+      'should clear the $filter filter and reload everyone, showing Clear only while it has a value',
       async ({ filter, input, clearId, key }) => {
-        const clear = () => document.querySelector<HTMLButtonElement>(clearId)!;
+        const clear = () => document.querySelector<HTMLButtonElement>(clearId);
         const spy = await showUsers();
-        expect(clear()).not.toBeVisible();
+        expect(clear()).not.toBeInTheDocument();
         typeInto(input(), 'sarah');
         await settle();
         expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0, [key]: 'sarah' });
         expect(clear()).toBeVisible();
         expect(clear()).toHaveAccessibleName(`Clear ${filter} filter`);
 
-        fireEvent.click(clear());
+        fireEvent.click(clear()!);
         await settle();
 
         expect(input()).toHaveValue('');
+        expect(input()).toHaveFocus();
         expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0 });
-        expect(clear()).not.toBeVisible();
+        expect(clear()).not.toBeInTheDocument();
       },
     );
 

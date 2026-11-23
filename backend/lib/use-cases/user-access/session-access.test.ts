@@ -40,7 +40,6 @@ function permission(
     assignedBy: 'super-1',
     assignedByName: 'Super User',
     assignedAt: '2026-11-09T00:00:00.000Z',
-    expiresAt: null,
     active: true,
     activeKey: activeKeyFor(role, regionId, officeCode),
   };

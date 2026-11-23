@@ -69,7 +69,6 @@
     assignedBy: performer.id,
     assignedByName: performer.name,
     assignedAt: performedAt,
-    expiresAt: null,
     active: true,
     activeKey: activeKey,
   };

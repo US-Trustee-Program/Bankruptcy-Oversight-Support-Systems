@@ -7,6 +7,7 @@ import {
   UserRoleAssignment,
 } from '../../../../common/src/cams/user-access';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { isE2eDatabase } from '../superuser';
 
 /**
  * Temporarily grants, then revokes, an unscoped Super User permission for the shared e2e Okta
@@ -17,7 +18,8 @@ import { CamsRole } from '../../../../common/src/cams/roles';
  * This runs only in the superuser-setup/superuser-teardown Playwright projects, around the single
  * chromium-superuser project (playwright.config.ts). The regular chromium project's session is
  * already established — and cached by token — before the grant runs, so it never becomes
- * privileged (CAMS-940 Slice 4: a granted permission takes effect at next login, not mid-session).
+ * privileged: this direct write, unlike a grant from the Permissions screen, leaves cached sessions
+ * in place, so it takes effect only at the next login.
  */
 
 const ACTIVE_KEY = activeKeyFor(CamsRole.SuperUser, null, null);
@@ -34,9 +36,13 @@ function requiredEnv(name: string): string {
 async function withAssignments<T>(
   fn: (assignments: Collection<Document>, audits: Collection<Document>) => Promise<T>,
 ): Promise<T> {
+  const dbName = requiredEnv('COSMOS_DATABASE_NAME');
+  if (!isE2eDatabase(dbName)) {
+    throw new Error(`Refusing to grant/revoke Super User outside an e2e database: ${dbName}`);
+  }
   const client = await MongoClient.connect(requiredEnv('MONGO_CONNECTION_STRING'));
   try {
-    const db = client.db(requiredEnv('COSMOS_DATABASE_NAME'));
+    const db = client.db(dbName);
     return await fn(db.collection('user-role-assignments'), db.collection('role-assignment-audit'));
   } finally {
     await client.close();
@@ -67,7 +73,6 @@ export async function grantSuperUser(userId: string, userName: string): Promise<
       assignedBy: PERFORMER.id,
       assignedByName: PERFORMER.name,
       assignedAt: performedAt,
-      expiresAt: null,
       active: true,
       activeKey: ACTIVE_KEY,
     };

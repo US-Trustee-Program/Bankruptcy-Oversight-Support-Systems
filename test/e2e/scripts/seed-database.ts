@@ -323,7 +323,6 @@ function e2eUserPermissions(): UserRoleAssignment[] {
     assignedBy: 'SYSTEM_SEED',
     assignedByName: 'E2E Seeder',
     assignedAt: '2026-01-01T00:00:00.000Z',
-    expiresAt: null,
     active: true,
     activeKey: activeKeyFor(role, E2E_USER_REGION_ID, E2E_USER_OFFICE_CODE),
   }));
