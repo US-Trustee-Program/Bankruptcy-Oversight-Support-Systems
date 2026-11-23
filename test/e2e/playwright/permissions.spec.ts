@@ -14,9 +14,15 @@ function isUsersResponse(url: string) {
 
 async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
   await page.goto('/admin');
-  await expect(page.locator('.admin-screen-navigation')).toBeVisible(timeoutOption);
+  await expect(
+    page.locator('.admin-screen-navigation'),
+    'the e2e user should hold Super User from superuser-setup',
+  ).toBeVisible(timeoutOption);
   const permissionsLink = page.getByTestId('permissions-nav-link');
-  await expect(permissionsLink).toBeVisible(timeoutOption);
+  await expect(
+    permissionsLink,
+    'cams-role-assignments must be on for the e2e SuperUser',
+  ).toBeVisible(timeoutOption);
 
   const usersResponse = page.waitForResponse(
     (response) => isUsersResponse(response.url()) && response.ok(),
