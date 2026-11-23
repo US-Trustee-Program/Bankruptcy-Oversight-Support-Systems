@@ -1,6 +1,7 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
+
 - **Total Workflows**: 38
 - **Main Workflows**: 19
 - **Reusable Workflows**: 19
@@ -10,6 +11,7 @@
 The diagrams use color coding to distinguish different types of workflow components:
 
 **Triggers** - Event triggers that start workflows:
+
 ```mermaid
 flowchart LR
     trigger_example(["trigger (push, schedule, etc.)"])
@@ -18,6 +20,7 @@ flowchart LR
 ```
 
 **Main Workflows** - Primary workflow files that can be triggered directly:
+
 ```mermaid
 flowchart LR
     main_workflow_example["Main Workflow"]
@@ -26,6 +29,7 @@ flowchart LR
 ```
 
 **Reusable Workflows** - Workflow files that are called by other workflows:
+
 ```mermaid
 flowchart LR
     reusable_workflow_example["Reusable Workflow"]
@@ -34,6 +38,7 @@ flowchart LR
 ```
 
 **Jobs** - Individual jobs within workflows showing internal dependencies:
+
 ```mermaid
 flowchart LR
     job_example["job-name"]
@@ -41,12 +46,12 @@ flowchart LR
     class job_example job
 ```
 
-
 ## Workflow Flow Diagrams by Trigger
 
 ### Delete Triggered Workflows
 
 Workflows triggered by `delete`:
+
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 
 ```mermaid
@@ -86,6 +91,7 @@ flowchart LR
 ### Pull_request Triggered Workflows
 
 Workflows triggered by `pull_request`:
+
 - **Pull Request E2E Validation** (`pr-validation.yml`)
 
 ```mermaid
@@ -110,6 +116,7 @@ flowchart LR
 ### Push Triggered Workflows
 
 Workflows triggered by `push`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **LaunchDarkly Code References** (`launchdarkly-code-references.yml`)
@@ -357,7 +364,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -375,8 +383,6 @@ flowchart LR
         Secrets_LD_DEVELOPMENT_CLIENT_ID["LD_DEVELOPMENT_CLIENT_ID"]
         Secrets_MSSQL_PASS["MSSQL_PASS"]
         Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
-        Secrets_OKTA_SUPERUSER_PASSWORD["OKTA_SUPERUSER_PASSWORD"]
-        Secrets_OKTA_SUPERUSER_USER_NAME["OKTA_SUPERUSER_USER_NAME"]
         Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
         Secrets_USTP_ISSUE_COLLECTOR_HASH["USTP_ISSUE_COLLECTOR_HASH"]
         Variables["Variables"]
@@ -405,7 +411,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_SUPERUSER_PASSWORD<br/>OKTA_SUPERUSER_USER_NAME<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -421,8 +427,6 @@ flowchart LR
         Secrets --> Secrets_LD_DEVELOPMENT_CLIENT_ID
         Secrets --> Secrets_MSSQL_PASS
         Secrets --> Secrets_OKTA_PASSWORD
-        Secrets --> Secrets_OKTA_SUPERUSER_PASSWORD
-        Secrets --> Secrets_OKTA_SUPERUSER_USER_NAME
         Secrets --> Secrets_OKTA_USER_NAME
         Secrets --> Secrets_USTP_ISSUE_COLLECTOR_HASH
         Variables --> Variables_CAMS_BASE_PATH
@@ -450,8 +454,6 @@ flowchart LR
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
     Secrets_MSSQL_PASS -.-> deploy_subgraph
     Secrets_OKTA_PASSWORD -.-> deploy_subgraph
-    Secrets_OKTA_SUPERUSER_PASSWORD -.-> deploy_subgraph
-    Secrets_OKTA_SUPERUSER_USER_NAME -.-> deploy_subgraph
     Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
@@ -495,6 +497,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **DORA Metrics** (`dora-metrics.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
@@ -621,7 +624,8 @@ flowchart LR
 
 ### Workflow_dispatch Triggered Workflows
 
-The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown individually below:
+The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown
+individually below:
 
 #### Clean up Flexion Azure Resources
 
@@ -955,7 +959,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -973,8 +978,6 @@ flowchart LR
         Secrets_LD_DEVELOPMENT_CLIENT_ID["LD_DEVELOPMENT_CLIENT_ID"]
         Secrets_MSSQL_PASS["MSSQL_PASS"]
         Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
-        Secrets_OKTA_SUPERUSER_PASSWORD["OKTA_SUPERUSER_PASSWORD"]
-        Secrets_OKTA_SUPERUSER_USER_NAME["OKTA_SUPERUSER_USER_NAME"]
         Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
         Secrets_USTP_ISSUE_COLLECTOR_HASH["USTP_ISSUE_COLLECTOR_HASH"]
         Variables["Variables"]
@@ -1003,7 +1006,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_SUPERUSER_PASSWORD<br/>OKTA_SUPERUSER_USER_NAME<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -1019,8 +1022,6 @@ flowchart LR
         Secrets --> Secrets_LD_DEVELOPMENT_CLIENT_ID
         Secrets --> Secrets_MSSQL_PASS
         Secrets --> Secrets_OKTA_PASSWORD
-        Secrets --> Secrets_OKTA_SUPERUSER_PASSWORD
-        Secrets --> Secrets_OKTA_SUPERUSER_USER_NAME
         Secrets --> Secrets_OKTA_USER_NAME
         Secrets --> Secrets_USTP_ISSUE_COLLECTOR_HASH
         Variables --> Variables_CAMS_BASE_PATH
@@ -1048,8 +1049,6 @@ flowchart LR
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
     Secrets_MSSQL_PASS -.-> deploy_subgraph
     Secrets_OKTA_PASSWORD -.-> deploy_subgraph
-    Secrets_OKTA_SUPERUSER_PASSWORD -.-> deploy_subgraph
-    Secrets_OKTA_SUPERUSER_USER_NAME -.-> deploy_subgraph
     Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
@@ -1403,6 +1402,7 @@ flowchart LR
 ### Workflow_run Triggered Workflows
 
 Workflows triggered by `workflow_run`:
+
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **slack-notification** (`slack-notification.yml`)
 
@@ -1543,6 +1543,7 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
+
 - **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
@@ -1601,6 +1602,7 @@ flowchart LR
   - Jobs: 1
 
 ### Reusable Workflows
+
 - **Reusable DORA metrics report** (`reusable-dora-metrics-report.yml`)
   - Jobs: 1
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)

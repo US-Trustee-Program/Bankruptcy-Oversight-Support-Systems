@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import {
-  isSuperUserLoginConfigured,
+  isSuperUserTestEnabled,
   SUPERUSER_AUTH_FILE,
   SUPERUSER_SPECS,
 } from './playwright/superuser';
@@ -59,12 +59,13 @@ export default defineConfig({
       dependencies: ['setup'],
       testIgnore: SUPERUSER_SPECS,
     },
-    // The SuperUser specs run only when the shared SuperUser account can sign in.
-    ...(isSuperUserLoginConfigured()
+    // The SuperUser specs run only when the e2e account can be granted Super User and sign in.
+    ...(isSuperUserTestEnabled()
       ? [
           {
             name: 'superuser-setup',
             testMatch: 'superuser-auth-setup.ts',
+            teardown: 'superuser-teardown',
             use: { trace: 'off' as const },
           },
           {
@@ -72,6 +73,11 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'], storageState: SUPERUSER_AUTH_FILE },
             dependencies: ['superuser-setup'],
             testMatch: SUPERUSER_SPECS,
+          },
+          {
+            name: 'superuser-teardown',
+            testMatch: 'superuser-teardown.ts',
+            use: { trace: 'off' as const },
           },
         ]
       : []),
