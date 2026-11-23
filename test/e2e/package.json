@@ -42,7 +42,7 @@
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.65.0",
     "@types/node": "26.6.6",
-    "dotenv": "18.0.9",
+    "dotenv": "18.0.10",
     "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-n": "18.5.0",
