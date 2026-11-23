@@ -91,7 +91,12 @@ Feature: DORA Metrics Capture
     When a team member views that week's values
     Then change failure rate shows 0% if deployments happened, and "No data" if none did
     And lead time for changes shows "No data" rather than 0
-    And time to restore shows "No data" rather than 0
+    And time to restore shows "No incidents" rather than 0
+
+  Scenario: A week whose incidents are all still open
+    Given the week shown had attributed incidents and none of them has closed
+    When a team member views that week's values
+    Then time to restore shows how many incidents are still open, rather than 0 or "No incidents"
 
   Scenario: All four reports agree on the same weeks
     Given the weekly DORA Metrics run produced all four reports
@@ -121,13 +126,16 @@ Feature: DORA Metrics Capture
     And a table of every week's values, oldest to newest
     And the weeks shown are those that ended at least a week before the run, ending with the headline week
     And lead time and time to restore show the median, deployments the count, and change failure rate the percentage
+    And every chart's scale starts at 0, so a week's size compares honestly with the others
 
   Scenario: Weeks with nothing to measure in the trend
-    Given a week in the trend had no deployed issues (lead time), no attributed incidents (time to restore), or no deployments (change failure rate)
+    Given a week in the trend had no deployed issues (lead time), no closed incidents (time to restore), or no deployments (change failure rate)
     When a team member views the trend
     Then that week is left out of the affected metric's chart, never drawn as 0
-    And the table shows "No data" for that metric in that week
-    And a metric with no data in any week shows "No data in these weeks" instead of a chart
+    And the chart says why weeks are missing
+    And the table shows "No data" for lead time or change failure rate in that week
+    And the table shows "No incidents", or how many incidents are still open, for time to restore in that week
+    And a metric with nothing to plot in any week says so instead of showing a chart
 
   # SLICE 8: Long-Term Trend (not yet built)
   # Dependencies: Slice 7

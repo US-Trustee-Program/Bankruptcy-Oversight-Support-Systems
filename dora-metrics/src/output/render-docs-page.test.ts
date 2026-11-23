@@ -17,6 +17,7 @@ function summaryWith(overrides: Partial<WeeklySummary> = {}): WeeklySummary {
     leadTime: { medianHours: 3.6, meanHours: 3.2 },
     changeFailure: { failedDeployments: 2, totalDeployments: 24, rate: 0.0833 },
     restoreTime: { medianHours: 284.75, meanHours: 284.75 },
+    openIncidents: 0,
     ...overrides,
   };
 }
@@ -72,6 +73,7 @@ describe('renderDocsPage', () => {
         `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
         'xychart-beta',
         '  x-axis ["10-19", "10-26", "11-02"]',
+        '  y-axis 0 --> 24',
         '  line [10, 0, 24]',
         '```',
         '',
@@ -81,6 +83,7 @@ describe('renderDocsPage', () => {
         `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
         'xychart-beta',
         '  x-axis ["10-19", "11-02"]',
+        '  y-axis 0 --> 3.6',
         '  line [1.0, 3.6]',
         '```',
         '',
@@ -92,6 +95,7 @@ describe('renderDocsPage', () => {
         `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
         'xychart-beta',
         '  x-axis ["10-19", "11-02"]',
+        '  y-axis 0 --> 8.3',
         '  line [0.0, 8.3]',
         '```',
         '',
@@ -103,15 +107,16 @@ describe('renderDocsPage', () => {
         `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
         'xychart-beta',
         '  x-axis ["10-19", "11-02"]',
+        '  y-axis 0 --> 11.9',
         '  line [0.2, 11.9]',
         '```',
         '',
-        'Weeks with no data are not plotted; see the table below.',
+        'Weeks without a closed incident are not plotted; see the table below.',
         '',
         '| Week of | Deployments | Lead time (median) | Change failure rate | Time to restore (median) |',
         '| --- | --- | --- | --- | --- |',
         '| Mon 2026-10-19 | 10 | 1.0 hours | 0.0% | 5.0 hours |',
-        '| Mon 2026-10-26 | 0 | No data | No data | No data |',
+        '| Mon 2026-10-26 | 0 | No data | No data | No incidents |',
         '| Mon 2026-11-02 | 24 | 3.6 hours | 8.3% | 11.9 days |',
         '',
         `Generated 2026-11-16T12:05:00.000Z from [DORA Metrics run 43955771750](${RUN.url})`,
@@ -126,17 +131,19 @@ describe('renderDocsPage', () => {
     const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
 
     expect(page).toContain(
-      ['### Time to restore service (median)', '', 'No data in these weeks', ''].join('\n'),
+      ['### Time to restore service (median)', '', 'No closed incidents in these weeks', ''].join(
+        '\n',
+      ),
     );
     expect(page.match(/```mermaid/g)).toHaveLength(3);
   });
 
   test.each([
-    { medianHours: 47.9, unit: 'hours', plotted: '[5.0, 47.9]' },
-    { medianHours: 48, unit: 'days', plotted: '[0.2, 2.0]' },
+    { medianHours: 47.9, unit: 'hours', plotted: '[5.0, 47.9]', top: '47.9' },
+    { medianHours: 48, unit: 'days', plotted: '[0.2, 2.0]', top: '2.0' },
   ])(
     'plots every restore time in $unit when the longest median is $medianHours hours',
-    ({ medianHours, unit, plotted }) => {
+    ({ medianHours, unit, plotted, top }) => {
       const weeks = [
         THREE_WEEKS[0],
         summaryWith({ restoreTime: { medianHours, meanHours: medianHours } }),
@@ -152,6 +159,7 @@ describe('renderDocsPage', () => {
           `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
           'xychart-beta',
           '  x-axis ["10-19", "11-02"]',
+          `  y-axis 0 --> ${top}`,
           `  line ${plotted}`,
         ].join('\n'),
       );
@@ -171,6 +179,7 @@ describe('renderDocsPage', () => {
         `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
         'xychart-beta',
         '  x-axis ["11-02"]',
+        '  y-axis 0 --> 5.0',
         '  bar [5.0]',
         '```',
       ].join('\n'),
@@ -219,14 +228,41 @@ describe('renderDocsPage', () => {
     expect(page).toContain('| Change failure rate | 0.0% (0 of 1 deployment) |');
   });
 
-  test('shows lead time and time to restore as no data rather than zero', () => {
+  test('shows lead time as no data and time to restore as no incidents rather than zero', () => {
     const page = renderDocsPage([summaryWith({ leadTime: null, restoreTime: null })], {
       generatedAt: GENERATED_AT,
       run: RUN,
     });
 
     expect(page).toContain('| Lead time for changes | No data |');
-    expect(page).toContain('| Time to restore service | No data |');
+    expect(page).toContain('| Time to restore service | No incidents |');
+  });
+
+  test.each([
+    { openIncidents: 1, shown: '1 incident still open' },
+    { openIncidents: 2, shown: '2 incidents still open' },
+  ])(
+    'shows time to restore as "$shown" when no incident has closed',
+    ({ openIncidents, shown }) => {
+      const page = renderDocsPage([summaryWith({ restoreTime: null, openIncidents })], {
+        generatedAt: GENERATED_AT,
+        run: RUN,
+      });
+
+      expect(page).toContain(`| Time to restore service | ${shown} |`);
+      expect(page).toContain(`| 24 | 3.6 hours | 8.3% | ${shown} |`);
+    },
+  );
+
+  test('starts the scale at 0 to 1 when every plotted value is 0', () => {
+    const weeks = THREE_WEEKS.map((week) => ({
+      ...week,
+      changeFailure: { failedDeployments: 0, totalDeployments: 10, rate: 0 },
+    }));
+
+    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).toContain('  y-axis 0 --> 1\n  line [0.0, 0.0, 0.0]');
   });
 
   test('shows durations under 48 hours in hours and 48 hours or more in days', () => {

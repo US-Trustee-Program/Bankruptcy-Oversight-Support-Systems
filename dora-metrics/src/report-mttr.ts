@@ -41,7 +41,14 @@ async function main(): Promise<void> {
       medianRestoreTimeHours: bucket.medianRestoreTimeHours.toFixed(2),
     })),
     BY_PERIOD_OUTPUT_PATH,
-    ['periodStart', 'periodEnd', 'incidentCount', 'meanRestoreTimeHours', 'medianRestoreTimeHours'],
+    [
+      'periodStart',
+      'periodEnd',
+      'incidentCount',
+      'meanRestoreTimeHours',
+      'medianRestoreTimeHours',
+      'openIncidentCount',
+    ],
   );
 
   const meanOverall = mean(perIncident.map((incident) => incident.restoreTimeHours));

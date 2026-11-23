@@ -6,7 +6,15 @@ const DAYS_THRESHOLD_HOURS = 48;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const NO_DATA = 'No data';
 const NO_DATA_IN_WEEKS = 'No data in these weeks';
-const GAPS_NOT_PLOTTED = 'Weeks with no data are not plotted; see the table below.';
+type ChartNotes = { empty: string; gaps: string };
+const DATA_NOTES: ChartNotes = {
+  empty: NO_DATA_IN_WEEKS,
+  gaps: 'Weeks with no data are not plotted; see the table below.',
+};
+const RESTORE_NOTES: ChartNotes = {
+  empty: 'No closed incidents in these weeks',
+  gaps: 'Weeks without a closed incident are not plotted; see the table below.',
+};
 // Mermaid's default xychart line is a pale lavender that barely shows on the white docs page.
 const CHART_THEME = '%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%';
 
@@ -43,6 +51,17 @@ function formatChangeFailure({ changeFailure }: WeeklySummary): string {
   return `${formatPercent(changeFailure.rate)}% (${changeFailure.failedDeployments} of ${deployments(changeFailure.totalDeployments)})`;
 }
 
+// Without a restore time, a week either had no incidents or has incidents still open.
+function formatRestoreTime(week: WeeklySummary, format: (summary: DurationSummary) => string) {
+  if (week.restoreTime) {
+    return format(week.restoreTime);
+  }
+  const open = week.openIncidents;
+  return open === 0
+    ? 'No incidents'
+    : `${open} ${open === 1 ? 'incident' : 'incidents'} still open`;
+}
+
 function formatSource({ generatedAt, run }: DocsPageContext): string {
   const source = run ? `[DORA Metrics run ${run.id}](${run.url})` : 'local run';
   return `Generated ${generatedAt.toISOString()} from ${source}`;
@@ -69,10 +88,13 @@ function renderChart(
   points: ChartPoint[],
   weekCount: number,
   plot: (value: number) => string,
+  notes: ChartNotes = DATA_NOTES,
 ) {
   if (points.length === 0) {
-    return [`### ${title}`, '', NO_DATA_IN_WEEKS, ''];
+    return [`### ${title}`, '', notes.empty, ''];
   }
+  // Mermaid scales the y-axis to the data's own range by default, which makes small changes look huge.
+  const top = Math.max(...points.map(({ value }) => value));
   const labels = points.map(({ week }) => `"${week.periodStart.toISOString().slice(5, 10)}"`);
   return [
     `### ${title}`,
@@ -81,18 +103,24 @@ function renderChart(
     CHART_THEME,
     'xychart-beta',
     `  x-axis [${labels.join(', ')}]`,
+    `  y-axis 0 --> ${top > 0 ? plot(top) : '1'}`,
     // A one-point Mermaid line has zero length and draws nothing; a bar keeps the week visible.
     `  ${points.length === 1 ? 'bar' : 'line'} [${points.map(({ value }) => plot(value)).join(', ')}]`,
     '```',
     '',
-    ...(points.length < weekCount ? [GAPS_NOT_PLOTTED, ''] : []),
+    ...(points.length < weekCount ? [notes.gaps, ''] : []),
   ];
 }
 
 // One unit per chart so the points compare: days if any point would show in days on its own.
-function renderDurationChart(title: string, points: ChartPoint[], weekCount: number) {
+function renderDurationChart(
+  title: string,
+  points: ChartPoint[],
+  weekCount: number,
+  notes: ChartNotes = DATA_NOTES,
+) {
   if (points.length === 0) {
-    return renderChart(`${title} (median)`, points, weekCount, String);
+    return renderChart(`${title} (median)`, points, weekCount, String, notes);
   }
   const inDays = points.some(({ value }) => value >= DAYS_THRESHOLD_HOURS);
   const divisor = inDays ? HOURS_PER_DAY : 1;
@@ -101,6 +129,7 @@ function renderDurationChart(title: string, points: ChartPoint[], weekCount: num
     points,
     weekCount,
     (hours) => (hours / divisor).toFixed(1),
+    notes,
   );
 }
 
@@ -112,7 +141,7 @@ function renderTrend(weeks: WeeklySummary[]): string[] {
   const rows = weeks.map((week) => {
     const rate =
       week.changeFailure.rate === null ? NO_DATA : `${formatPercent(week.changeFailure.rate)}%`;
-    return `| ${formatDate(week.periodStart)} | ${week.deploymentCount} | ${formatMedian(week.leadTime)} | ${rate} | ${formatMedian(week.restoreTime)} |`;
+    return `| ${formatDate(week.periodStart)} | ${week.deploymentCount} | ${formatMedian(week.leadTime)} | ${rate} | ${formatRestoreTime(week, formatMedian)} |`;
   });
   return [
     `## Last ${weeks.length} ${weeks.length === 1 ? 'week' : 'weeks'}`,
@@ -138,6 +167,7 @@ function renderTrend(weeks: WeeklySummary[]): string[] {
       'Time to restore service',
       pointsFor(weeks, (week) => week.restoreTime?.medianHours ?? null),
       weeks.length,
+      RESTORE_NOTES,
     ),
     '| Week of | Deployments | Lead time (median) | Change failure rate | Time to restore (median) |',
     '| --- | --- | --- | --- | --- |',
@@ -163,7 +193,7 @@ export function renderDocsPage(weeks: WeeklySummary[], context: DocsPageContext)
     `| Deployment frequency | ${deployments(summary.deploymentCount)} (${summary.deploymentsPerDay.toFixed(1)} per day) |`,
     `| Lead time for changes | ${formatDurationSummary(summary.leadTime)} |`,
     `| Change failure rate | ${formatChangeFailure(summary)} |`,
-    `| Time to restore service | ${formatDurationSummary(summary.restoreTime)} |`,
+    `| Time to restore service | ${formatRestoreTime(summary, formatDurationSummary)} |`,
     '',
     ...renderTrend(weeks),
     formatSource(context),

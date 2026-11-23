@@ -17,6 +17,8 @@ type MttrBucket = {
   incidentCount: number;
   meanRestoreTimeHours: number;
   medianRestoreTimeHours: number;
+  // Attributed incidents not yet closed: they have no restore time, but the week did have an incident.
+  openIncidentCount: number;
 };
 
 export type ComputeMttrOptions = {
@@ -45,13 +47,17 @@ export function computeMttr(
   const attributedIssueNumbers = new Set(attributions.filter((n): n is number => n !== null));
 
   const perIncident: RestoredIncident[] = [];
+  const openIncidentCreatedAtMs: number[] = [];
   for (const bug of bugIssues) {
     if (!attributedIssueNumbers.has(bug.number)) continue;
-    if (!bug.closed_at) continue;
     const createdAtMs = new Date(bug.created_at).getTime();
     // Every attributed bug's created_at is already > its deployment's timestamp,
     // which is itself >= startDate, so createdAtMs can never be < startDate here.
     if (createdAtMs >= endDate.getTime()) continue;
+    if (!bug.closed_at) {
+      openIncidentCreatedAtMs.push(createdAtMs);
+      continue;
+    }
     const closedAtMs = new Date(bug.closed_at).getTime();
     if (closedAtMs < createdAtMs) continue; // defensive: anomalous data, skip rather than corrupt the aggregate
     perIncident.push({
@@ -76,6 +82,7 @@ export function computeMttr(
       incidentCount: bucketRestoreTimes.length,
       meanRestoreTimeHours: mean(bucketRestoreTimes),
       medianRestoreTimeHours: median(bucketRestoreTimes),
+      openIncidentCount: openIncidentCreatedAtMs.filter((t) => t >= startMs && t < endMs).length,
     };
   });
 
