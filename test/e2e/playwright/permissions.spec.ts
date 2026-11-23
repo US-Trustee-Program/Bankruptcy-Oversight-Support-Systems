@@ -2,6 +2,7 @@ import { expect, Page } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
+import { CamsRole } from '../../../common/src/cams/roles';
 
 const timeoutOption = { timeout: 60000 };
 
@@ -34,9 +35,13 @@ async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
   return users;
 }
 
-async function chooseFirstRole(page: Page): Promise<string> {
+// Picks Trial Attorney by value, not by position: an unscoped role such as Super User hides the
+// Region and Office picker, which this office-scoped grant needs.
+async function chooseTrialAttorney(page: Page): Promise<string> {
   await page.locator('#add-permission-modal-role-combo-box-input').click();
-  const option = page.getByTestId('add-permission-modal-role-option-item-0');
+  const option = page.locator(
+    `#add-permission-modal-role-item-list li[data-value="${CamsRole.TrialAttorney}"]`,
+  );
   await expect(option).toBeVisible(timeoutOption);
   const label = (await option.textContent())?.trim() ?? '';
   await option.click();
@@ -97,7 +102,7 @@ test.describe('Administration > Permissions', () => {
 
     await page.locator(`#add-permission-${user!.id}`).click();
     await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
-    const roleLabel = await chooseFirstRole(page);
+    const roleLabel = await chooseTrialAttorney(page);
     const { regionId, officeName } = await chooseAnOffice(page);
 
     const grantResponse = page.waitForResponse(
