@@ -36,7 +36,7 @@ describe('buildAtsSqlConfig', () => {
       ATS_MSSQL_ENCRYPT: 'true',
       ATS_MSSQL_TRUST_UNSIGNED_CERT: 'TRUE',
       ATS_MSSQL_USER: 'seeder',
-      ATS_MSSQL_PASS: 'secret',
+      ATS_MSSQL_PASS: 'not-a-real-password',
     });
 
     expect(buildAtsSqlConfig()).toEqual(
@@ -46,7 +46,7 @@ describe('buildAtsSqlConfig', () => {
         database: 'ATS_DEV',
         options: { encrypt: true, trustServerCertificate: true },
         user: 'seeder',
-        password: 'secret',
+        password: 'not-a-real-password', // pragma: allowlist secret
       }),
     );
   });
