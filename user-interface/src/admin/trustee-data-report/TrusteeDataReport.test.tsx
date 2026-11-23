@@ -116,6 +116,22 @@ describe('TrusteeDataReport', () => {
     ).toHaveTextContent('In TOD only: Status missing, needs review');
   });
 
+  test('should show a count the latest run did not record as not counted, and still allow a start', async () => {
+    // A run stored before a count existed has no value for it.
+    const { todOnlyStatusMissing: _omitted, ...olderSummary } = SUMMARY;
+    mockGet({
+      latestCompletedRun: { ...COMPLETED, summary: olderSummary as TrusteeDataReportSummary },
+    });
+
+    await renderLoaded();
+
+    expect(
+      screen.getByTestId('trustee-data-report-count-tod-only-status-missing').textContent,
+    ).toBe('Not counted');
+    expect(screen.getByTestId('trustee-data-report-count-tod-only').textContent).toBe('7');
+    expectStartBlocked(false);
+  });
+
   test('should block start while a run is in progress, without announcing what was already true on load', async () => {
     mockGet({ activeRun: RUNNING, latestCompletedRun: COMPLETED });
     const post = vi.spyOn(Api2, 'postTrusteeDataReport');

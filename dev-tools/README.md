@@ -6,19 +6,19 @@ Development tools for CAMS, including database seeding utilities and test data g
 
 ### Quick Start
 
-1. **Copy environment templates:**
-
-   ```bash
-   cd dev-tools
-   cp .env.template .env
-   cp .env-dev-local.template .env-dev-local
-   cp .env-dev-main.template .env-dev-main
-   ```
-
-2. **Fill in connection strings** (get from Azure portal / team vault):
+1. **Create the environment files** in `dev-tools/`. They are not committed, and there are no
+   templates; get the connection strings from the Azure portal or the team vault.
    - `.env` — custom/current working environment
    - `.env-dev-local` — cosmos-mongo-ustp-cams-dev
-   - `.env-dev-main` — cosmos-mongo-ustp-cams
+   - `.env-dev-main` — cosmos-mongo-ustp-cams, the account the deployed dev app reads. Seed here to
+     see the data in the dev app.
+
+   Each file sets `MONGO_CONNECTION_STRING` and `COSMOS_DATABASE_NAME` (`cams`). The SQL seeds also
+   need `MSSQL_*` (DXTR), `ACMS_MSSQL_*` (ACMS), or `ATS_MSSQL_*` (TOD) for the databases they
+   write.
+
+2. **Allow your IP.** cosmos-mongo-ustp-cams accepts connections only from allowed networks. If
+   seeding fails with `Request blocked by network firewall`, your IP is not allowed.
 
 3. **Seed databases:**
    ```bash
