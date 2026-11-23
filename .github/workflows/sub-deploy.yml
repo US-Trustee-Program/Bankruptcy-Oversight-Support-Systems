@@ -54,6 +54,12 @@ on:
         required: true
       OKTA_PASSWORD:
         required: true
+      # The shared SuperUser account, for the Permissions e2e spec. Optional: without it that spec
+      # does not run.
+      OKTA_SUPERUSER_USER_NAME:
+        required: false
+      OKTA_SUPERUSER_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -167,3 +173,5 @@ jobs:
       MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
       OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
       OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
+      OKTA_SUPERUSER_USER_NAME: ${{ secrets.OKTA_SUPERUSER_USER_NAME }} # pragma: allowlist secret
+      OKTA_SUPERUSER_PASSWORD: ${{ secrets.OKTA_SUPERUSER_PASSWORD }} # pragma: allowlist secret

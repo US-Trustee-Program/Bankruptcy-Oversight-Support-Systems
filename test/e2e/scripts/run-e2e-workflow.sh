@@ -432,6 +432,8 @@ podman run --rm \
     -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
     -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
     -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
+    -e OKTA_SUPERUSER_USER_NAME="${OKTA_SUPERUSER_USER_NAME:-}" \
+    -e OKTA_SUPERUSER_PASSWORD="${OKTA_SUPERUSER_PASSWORD:-}" \
     -v "$(pwd)/test-results:/app/test/e2e/test-results" \
     -v "$(pwd)/playwright-report:/app/test/e2e/playwright-report" \
     e2e_playwright:latest npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"

@@ -375,6 +375,8 @@ flowchart LR
         Secrets_LD_DEVELOPMENT_CLIENT_ID["LD_DEVELOPMENT_CLIENT_ID"]
         Secrets_MSSQL_PASS["MSSQL_PASS"]
         Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
+        Secrets_OKTA_SUPERUSER_PASSWORD["OKTA_SUPERUSER_PASSWORD"]
+        Secrets_OKTA_SUPERUSER_USER_NAME["OKTA_SUPERUSER_USER_NAME"]
         Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
         Secrets_USTP_ISSUE_COLLECTOR_HASH["USTP_ISSUE_COLLECTOR_HASH"]
         Variables["Variables"]
@@ -403,7 +405,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_SUPERUSER_PASSWORD<br/>OKTA_SUPERUSER_USER_NAME<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -419,6 +421,8 @@ flowchart LR
         Secrets --> Secrets_LD_DEVELOPMENT_CLIENT_ID
         Secrets --> Secrets_MSSQL_PASS
         Secrets --> Secrets_OKTA_PASSWORD
+        Secrets --> Secrets_OKTA_SUPERUSER_PASSWORD
+        Secrets --> Secrets_OKTA_SUPERUSER_USER_NAME
         Secrets --> Secrets_OKTA_USER_NAME
         Secrets --> Secrets_USTP_ISSUE_COLLECTOR_HASH
         Variables --> Variables_CAMS_BASE_PATH
@@ -446,6 +450,8 @@ flowchart LR
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
     Secrets_MSSQL_PASS -.-> deploy_subgraph
     Secrets_OKTA_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_SUPERUSER_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_SUPERUSER_USER_NAME -.-> deploy_subgraph
     Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
@@ -967,6 +973,8 @@ flowchart LR
         Secrets_LD_DEVELOPMENT_CLIENT_ID["LD_DEVELOPMENT_CLIENT_ID"]
         Secrets_MSSQL_PASS["MSSQL_PASS"]
         Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
+        Secrets_OKTA_SUPERUSER_PASSWORD["OKTA_SUPERUSER_PASSWORD"]
+        Secrets_OKTA_SUPERUSER_USER_NAME["OKTA_SUPERUSER_USER_NAME"]
         Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
         Secrets_USTP_ISSUE_COLLECTOR_HASH["USTP_ISSUE_COLLECTOR_HASH"]
         Variables["Variables"]
@@ -995,7 +1003,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_SUPERUSER_PASSWORD<br/>OKTA_SUPERUSER_USER_NAME<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -1011,6 +1019,8 @@ flowchart LR
         Secrets --> Secrets_LD_DEVELOPMENT_CLIENT_ID
         Secrets --> Secrets_MSSQL_PASS
         Secrets --> Secrets_OKTA_PASSWORD
+        Secrets --> Secrets_OKTA_SUPERUSER_PASSWORD
+        Secrets --> Secrets_OKTA_SUPERUSER_USER_NAME
         Secrets --> Secrets_OKTA_USER_NAME
         Secrets --> Secrets_USTP_ISSUE_COLLECTOR_HASH
         Variables --> Variables_CAMS_BASE_PATH
@@ -1038,6 +1048,8 @@ flowchart LR
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
     Secrets_MSSQL_PASS -.-> deploy_subgraph
     Secrets_OKTA_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_SUPERUSER_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_SUPERUSER_USER_NAME -.-> deploy_subgraph
     Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph

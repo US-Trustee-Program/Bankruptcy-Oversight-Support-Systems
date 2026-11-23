@@ -195,3 +195,5 @@ jobs:
       MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
       OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
       OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
+      OKTA_SUPERUSER_USER_NAME: ${{ secrets.OKTA_SUPERUSER_USER_NAME }} # pragma: allowlist secret
+      OKTA_SUPERUSER_PASSWORD: ${{ secrets.OKTA_SUPERUSER_PASSWORD }} # pragma: allowlist secret

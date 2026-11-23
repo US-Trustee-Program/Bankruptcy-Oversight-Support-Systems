@@ -329,6 +329,31 @@ function e2eUserPermissions(): UserRoleAssignment[] {
   }));
 }
 
+/**
+ * The Permissions e2e spec signs in as this account (playwright/superuser.ts) and needs an active,
+ * unscoped Super User permission to see the Permissions tab at all. Without this seed the account
+ * would sign in with no roles, same as production before the first Compass-script grant.
+ */
+const SUPERUSER_OKTA_USER_ID = '00uxy2nwugG682IKt697';
+
+function superUserPermission(): UserRoleAssignment {
+  return {
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id: 'e2e-role-assignment-superuser',
+    userId: SUPERUSER_OKTA_USER_ID,
+    userName: 'Flexion Team',
+    role: CamsRole.SuperUser,
+    regionId: null,
+    officeCode: null,
+    assignedBy: 'SYSTEM_SEED',
+    assignedByName: 'E2E Seeder',
+    assignedAt: '2026-01-01T00:00:00.000Z',
+    expiresAt: null,
+    active: true,
+    activeKey: activeKeyFor(CamsRole.SuperUser, null, null),
+  };
+}
+
 async function main() {
   const fixturePath = resolve(__dirname, '../fixtures/mongo-fixture.json');
 
@@ -372,7 +397,9 @@ async function main() {
     // Scenario trustees are fictional fixture data, so they skip the PII regeneration.
     const seededDocs = (collName: string): MongoDocument[] => {
       if (collName === 'trustee-match-verification') return scenarios.tasks;
-      if (collName === 'user-role-assignments') return e2eUserPermissions();
+      if (collName === 'user-role-assignments') {
+        return [...e2eUserPermissions(), superUserPermission()];
+      }
       const docs = applyFakerPii(collName, fixture.collections[collName] ?? []);
       if (collName === 'trustees') return [...docs, ...scenarios.trustees];
       if (collName === 'trustee-case-appointments') return [...docs, ...scenarios.surrogates];
