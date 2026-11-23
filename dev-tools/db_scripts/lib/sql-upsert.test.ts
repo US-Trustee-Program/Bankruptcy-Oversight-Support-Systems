@@ -23,9 +23,22 @@ vi.mock('mssql', () => {
 
 import { sqlUpsert } from './sql-upsert.js';
 
+const IDENTITY_LOOKUP = /sys\.identity_columns/;
+
+/** The MERGE statements sent, one per row, leaving out the identity lookup and counter reset. */
+const mergeQueries = (): string[] =>
+  mockQuery.mock.calls.map(([query]) => query as string).filter((query) => query.includes('MERGE'));
+
+/** Answers the identity lookup as a table with this identity column and last assigned value. */
+function withIdentity(identityColumn: string, identCurrent: number | null) {
+  mockQuery.mockImplementation(async (query: string) =>
+    IDENTITY_LOOKUP.test(query) ? { recordset: [{ identityColumn, identCurrent }] } : {},
+  );
+}
+
 describe('sqlUpsert', () => {
   beforeEach(() => {
-    mockQuery = vi.fn().mockResolvedValue({});
+    mockQuery = vi.fn().mockResolvedValue({ recordset: [] });
     mockInput = vi.fn().mockReturnThis();
     mockClose = vi.fn().mockResolvedValue(undefined);
     // Set minimal env vars so buildSqlConfig works
@@ -38,8 +51,8 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'ABC123', TITLE: 'Test Case', STATUS: 'Open' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
 
-    expect(mockQuery).toHaveBeenCalledOnce();
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    expect(mergeQueries()).toHaveLength(1);
+    const queryArg: string = mergeQueries()[0];
 
     expect(queryArg).toContain('ON target.[CASE_ID] = source.[CASE_ID]');
     expect(queryArg).toContain('WHEN MATCHED THEN');
@@ -62,8 +75,8 @@ describe('sqlUpsert', () => {
     const rows = [{ CS_CASEID: 'SEED001', COURT_ID: '081', VALUE: 'foo' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, ['CS_CASEID', 'COURT_ID']);
 
-    expect(mockQuery).toHaveBeenCalledOnce();
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    expect(mergeQueries()).toHaveLength(1);
+    const queryArg: string = mergeQueries()[0];
 
     // ON clause must join on both keys
     expect(queryArg).toContain(
@@ -81,7 +94,7 @@ describe('sqlUpsert', () => {
     const rows = [{ CS_CASEID: 'SEED001', COURT_ID: '081', VALUE: 'foo', OTHER: 'bar' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, ['CS_CASEID', 'COURT_ID']);
 
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    const queryArg: string = mergeQueries()[0];
 
     // SET clause should include non-key columns
     expect(queryArg).toContain('[VALUE] = @VALUE');
@@ -96,7 +109,7 @@ describe('sqlUpsert', () => {
     const rows = [{ CS_CASEID: 'SEED001', COURT_ID: '081', VALUE: 'foo' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, ['CS_CASEID', 'COURT_ID'], true);
 
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    const queryArg: string = mergeQueries()[0];
 
     expect(queryArg).not.toContain('WHEN MATCHED THEN');
     expect(queryArg).not.toContain('UPDATE SET');
@@ -108,7 +121,7 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'ABC123', TITLE: 'Test Case' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID', true);
 
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    const queryArg: string = mergeQueries()[0];
 
     expect(queryArg).not.toContain('WHEN MATCHED THEN');
     expect(queryArg).toContain('WHEN NOT MATCHED THEN');
@@ -152,7 +165,7 @@ describe('sqlUpsert', () => {
     process.env.ACMS_MSSQL_PASS = 'acmsPass';
     const rows = [{ CASE_ID: 'ACMS001', VALUE: 'test' }];
     await expect(sqlUpsert('acms', 'ACMS_TABLE', rows, 'CASE_ID')).resolves.toBeUndefined();
-    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mergeQueries()).toHaveLength(1);
     expect(mockClose).toHaveBeenCalledOnce();
   });
 
@@ -162,7 +175,7 @@ describe('sqlUpsert', () => {
     process.env.ATS_MSSQL_PASS = 'atsPass';
     const rows = [{ ID: 9900010, LAST_NAME: 'Exact' }];
     await expect(sqlUpsert('ats', 'TRUSTEES', rows, 'ID')).resolves.toBeUndefined();
-    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mergeQueries()).toHaveLength(1);
     expect(mockClose).toHaveBeenCalledOnce();
   });
 
@@ -173,8 +186,8 @@ describe('sqlUpsert', () => {
     ];
     await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
 
-    // One query per row
-    expect(mockQuery).toHaveBeenCalledTimes(2);
+    // One MERGE per row
+    expect(mergeQueries()).toHaveLength(2);
     // Pool closed exactly once, not once per row
     expect(mockClose).toHaveBeenCalledOnce();
   });
@@ -184,8 +197,8 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'KEY_ONLY' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
 
-    expect(mockQuery).toHaveBeenCalledOnce();
-    const queryArg: string = mockQuery.mock.calls[0][0];
+    expect(mergeQueries()).toHaveLength(1);
+    const queryArg: string = mergeQueries()[0];
 
     // With no non-key columns the setClause is empty, so MATCHED branch is silently omitted
     expect(queryArg).not.toContain('WHEN MATCHED THEN');
@@ -200,7 +213,7 @@ describe('sqlUpsert', () => {
     delete process.env.MSSQL_PASS;
     const rows = [{ CASE_ID: 'AZ001', VALUE: 'test' }];
     await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).resolves.toBeUndefined();
-    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mergeQueries()).toHaveLength(1);
     expect(mockClose).toHaveBeenCalledOnce();
   });
 
@@ -216,6 +229,103 @@ describe('sqlUpsert', () => {
 
     expect(mockInput).toHaveBeenCalledWith('TITLE', null);
     expect(mockInput).toHaveBeenCalledWith('STATUS', null);
-    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mergeQueries()).toHaveLength(1);
+  });
+
+  describe('a table with an identity column', () => {
+    beforeEach(() => {
+      process.env.ATS_MSSQL_HOST = 'ats-host';
+      process.env.ATS_MSSQL_USER = 'atsUser';
+      process.env.ATS_MSSQL_PASS = 'atsPass';
+    });
+
+    test('should look the identity column up once per table, not once per row', async () => {
+      await sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }, { ID: 9900021 }], 'ID');
+
+      const lookups = mockQuery.mock.calls.filter(([query]) => IDENTITY_LOOKUP.test(query));
+      expect(lookups).toHaveLength(1);
+    });
+
+    test('should write rows that supply the identity column with IDENTITY_INSERT on, in the same batch', async () => {
+      withIdentity('ID', 27989);
+
+      await sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010, LAST_NAME: 'Exact' }], 'ID');
+
+      const [merge] = mergeQueries();
+      expect(merge.indexOf('SET IDENTITY_INSERT [dbo].[TRUSTEES] ON;')).toBe(0);
+      expect(merge.trimEnd()).toMatch(/SET IDENTITY_INSERT \[dbo\]\.\[TRUSTEES\] OFF;$/);
+    });
+
+    test('should put the identity counter back where it was after writing', async () => {
+      withIdentity('ID', 27989);
+
+      await sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }, { ID: 9900021 }], 'ID');
+
+      const queries = mockQuery.mock.calls.map(([query]) => query as string);
+      expect(queries[queries.length - 1]).toBe("DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)");
+      expect(queries.filter((query) => query.startsWith('DBCC'))).toHaveLength(1);
+    });
+
+    test('should still put the identity counter back when a write fails partway', async () => {
+      let merges = 0;
+      mockQuery.mockImplementation(async (query: string) => {
+        if (IDENTITY_LOOKUP.test(query))
+          return { recordset: [{ identityColumn: 'ID', identCurrent: 27989 }] };
+        if (query.includes('MERGE') && ++merges === 2) throw new Error('MERGE failed');
+        return {};
+      });
+
+      await expect(
+        sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }, { ID: 9900021 }], 'ID'),
+      ).rejects.toThrow('MERGE failed');
+
+      const queries = mockQuery.mock.calls.map(([query]) => query as string);
+      expect(queries).toContain("DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)");
+      expect(mockClose).toHaveBeenCalledOnce();
+    });
+
+    test('should report the write error, not the reset error, when both fail', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockQuery.mockImplementation(async (query: string) => {
+        if (IDENTITY_LOOKUP.test(query))
+          return { recordset: [{ identityColumn: 'ID', identCurrent: 27989 }] };
+        if (query.includes('MERGE')) throw new Error('MERGE failed');
+        throw new Error('RESEED failed');
+      });
+
+      await expect(sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }], 'ID')).rejects.toThrow(
+        'MERGE failed',
+      );
+
+      expect(errorSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain(
+        "DBCC CHECKIDENT ('dbo.TRUSTEES', RESEED, 27989)",
+      );
+      errorSpy.mockRestore();
+    });
+
+    test('should leave IDENTITY_INSERT and the counter alone when no row supplies the identity column', async () => {
+      withIdentity('CD_ID', 159);
+
+      await sqlUpsert(
+        'ats',
+        'CHAPTER_DETAILS',
+        [{ TRU_ID: 9900010, CHAPTER: '7', STATUS: 'PA' }],
+        ['TRU_ID', 'CHAPTER'],
+      );
+
+      const queries = mockQuery.mock.calls.map(([query]) => query as string);
+      expect(queries.some((query) => query.includes('IDENTITY_INSERT'))).toBe(false);
+      expect(queries.some((query) => query.startsWith('DBCC'))).toBe(false);
+    });
+
+    test('should not reset the counter when it cannot be read', async () => {
+      withIdentity('ID', null);
+
+      await sqlUpsert('ats', 'TRUSTEES', [{ ID: 9900010 }], 'ID');
+
+      const queries = mockQuery.mock.calls.map(([query]) => query as string);
+      expect(queries.some((query) => query.startsWith('DBCC'))).toBe(false);
+      expect(mergeQueries()[0]).toContain('SET IDENTITY_INSERT [dbo].[TRUSTEES] ON;');
+    });
   });
 });
