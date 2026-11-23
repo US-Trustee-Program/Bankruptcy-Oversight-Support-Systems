@@ -5,7 +5,7 @@
  * Seeds the NOTIFICATION_ROUTING collection used by
  * TrusteeChangeNotificationUseCase to resolve email recipients.
  *
- * 3 fixed recipient records, each with a covers array listing
+ * 6 fixed recipient records, each with a covers array listing
  * which routing keys it handles.
  *
  * Idempotent — re-running against an already-seeded database is a no-op

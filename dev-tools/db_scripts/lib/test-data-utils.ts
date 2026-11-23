@@ -485,6 +485,20 @@ type TrusteeMatchVerificationLike = {
   };
 };
 
+type BankruptcySoftwareLike = {
+  id?: string;
+  documentType?: string;
+  name?: string;
+  contact?: { phones?: { number?: string }[]; emails?: string[] };
+};
+
+type NotificationRoutingLike = {
+  id?: string;
+  documentType?: string;
+  displayName?: string;
+  recipientAddresses?: string[];
+};
+
 type SeedOperationLike = {
   db?: string;
   collectionOrTable?: string;
@@ -492,9 +506,24 @@ type SeedOperationLike = {
     | CaseLike
     | TrusteeAppointmentLike
     | TrusteeMatchVerificationLike
+    | BankruptcySoftwareLike
+    | NotificationRoutingLike
     | { trusteeId?: string; id?: string }
   >;
 };
+
+/** The collections validateAllSeedOperations checks. Documents in any other collection pass unchecked. */
+const CHECKED_COLLECTIONS: ReadonlySet<string> = new Set([
+  'cases',
+  'orders',
+  'trustees',
+  'trustee-appointments',
+  'trustee-match-verification',
+  'bankruptcy-software',
+  'notification-routing',
+]);
+
+const PHONE_FORMAT = /^\d{3}-\d{3}-\d{4}$/;
 
 /**
  * Validation helpers to ensure test data meets quality standards.
@@ -527,7 +556,7 @@ export const validators = {
     }
 
     // Check phone number format (if present)
-    if (debtor.phone && !debtor.phone.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (debtor.phone && !PHONE_FORMAT.test(debtor.phone)) {
       throw new Error(
         `${context}: debtor "${name}" phone "${debtor.phone}" not in ###-###-#### format`,
       );
@@ -546,7 +575,7 @@ export const validators = {
     const name = attorney.name || 'unknown';
 
     // Check phone number format (if present)
-    if (attorney.phone && !attorney.phone.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (attorney.phone && !PHONE_FORMAT.test(attorney.phone)) {
       throw new Error(
         `${context}: attorney "${name}" phone "${attorney.phone}" not in ###-###-#### format`,
       );
@@ -618,7 +647,7 @@ export const validators = {
 
     // Check phone number format (if present)
     const phoneNumber = trustee.public?.phone?.number;
-    if (phoneNumber && !phoneNumber.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (phoneNumber && !PHONE_FORMAT.test(phoneNumber)) {
       throw new Error(
         `${context}: trustee "${name}" phone "${phoneNumber}" not in ###-###-#### format`,
       );
@@ -751,11 +780,67 @@ export const validators = {
    * @param ops - Array of seed operations to validate
    * @returns Array of error messages (empty if all valid)
    */
+  /**
+   * Lists every malformed phone and email on a BANKRUPTCY_SOFTWARE contact. A document with no
+   * contact has nothing to check.
+   */
+  bankruptcySoftwareErrors(doc: BankruptcySoftwareLike, context: string): string[] {
+    const label = `${context}: "${doc.name || 'unknown'}"`;
+    const phoneErrors = (doc.contact?.phones ?? [])
+      .map((phone) => phone.number)
+      .filter((number) => number && !PHONE_FORMAT.test(number))
+      .map((number) => `${label} phone "${number}" not in ###-###-#### format`);
+    const emailErrors = (doc.contact?.emails ?? [])
+      .filter((email) => !email.includes('@'))
+      .map((email) => `${label} email "${email}" is not a valid email format`);
+    return [...phoneErrors, ...emailErrors];
+  },
+
+  /**
+   * Lists the problems with a NOTIFICATION_ROUTING document: no recipients (the notification
+   * would go nowhere), or a recipient that isn't an email address.
+   */
+  notificationRoutingErrors(doc: NotificationRoutingLike, context: string): string[] {
+    const label = `${context}: "${doc.displayName || 'unknown'}"`;
+    const recipients = doc.recipientAddresses ?? [];
+    if (recipients.length === 0) return [`${label} has no recipientAddresses`];
+    return recipients
+      .filter((address) => !address.includes('@'))
+      .map((address) => `${label} recipient "${address}" is not a valid email format`);
+  },
+
+  /** Whether validateAllSeedOperations checks documents in this collection. */
+  checksCollection(collection: string): boolean {
+    return CHECKED_COLLECTIONS.has(collection);
+  },
+
   validateAllSeedOperations(ops: SeedOperationLike[]): string[] {
     const errors: string[] = [];
 
     for (const op of ops) {
       if (!op.data) continue;
+
+      if (op.collectionOrTable === 'bankruptcy-software') {
+        for (const doc of op.data as BankruptcySoftwareLike[]) {
+          errors.push(
+            ...validators.bankruptcySoftwareErrors(
+              doc,
+              `BankruptcySoftware ${doc.id || 'unknown'}`,
+            ),
+          );
+        }
+      }
+
+      if (op.collectionOrTable === 'notification-routing') {
+        for (const doc of op.data as NotificationRoutingLike[]) {
+          errors.push(
+            ...validators.notificationRoutingErrors(
+              doc,
+              `NotificationRouting ${doc.id || 'unknown'}`,
+            ),
+          );
+        }
+      }
 
       // Validate cases collection (SYNCED_CASE documents)
       if (op.collectionOrTable === 'cases') {

@@ -79,12 +79,12 @@ removes any appointment task the app opens for a seeded trustee-match candidate 
 
 ### Administrative Data
 
-| Scenario                  | Source Script                                    | What It Tests                                                                                                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Banks**                 | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                                                                                                                                                                                              |
-| **Bankruptcy Software**   | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                                                                                                                                                                   |
-| **User Groups**           | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                                                                                                                                                          |
-| **Super User Permission** | `access-management.ts`                           | One active, unscoped Super User role assignment plus its CREATED audit record, for reaching Administration > Permissions when `cams-role-assignments` is on. Defaults to the Flexion Team account; see [Super User Permission](#super-user-permission) |
+| Scenario                  | Source Script                                    | What It Tests                                                                                                 |
+| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **Banks**                 | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                                                     |
+| **Bankruptcy Software**   | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                          |
+| **User Groups**           | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                 |
+| **Super User Permission** | Not seeded                                       | Provisioned once per environment with the Compass script; see [Super User Permission](#super-user-permission) |
 
 ## Key Test Records
 
@@ -161,23 +161,15 @@ Each case has 3 docket entries (petition, commencement notice, 341 meeting).
 
 ### Super User Permission
 
-**Script:** `access-management.ts` (CAMS-940). Writes `seed-role-assignment-superuser-001` to
-`user-role-assignments` (role `SuperUser`, `regionId`/`officeCode` null, `activeKey`
-`SuperUser|*|*`, `assignedBy` `SYSTEM_SEED`) and `seed-role-assignment-audit-superuser-001` to
-`role-assignment-audit`.
-
-The seeded user defaults to the shared Flexion Team account (`doj-ustp-cms-team@flexion.us`) in the
-Flexion dev Okta org. To seed a different user, set these before running the scenario:
-
-| Variable               | Default                        | Meaning                                                                                   |
-| ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
-| `SEED_SUPERUSER_ID`    | `00uxy2nwugG682IKt697`         | Okta user id: the access token's `uid` claim, which CAMS also uses as the session user id |
-| `SEED_SUPERUSER_NAME`  | `Flexion Team`                 | Display name                                                                              |
-| `SEED_SUPERUSER_EMAIL` | `doj-ustp-cms-team@flexion.us` | Email                                                                                     |
-
-Ids and timestamps are fixed, so re-running replaces the same two documents. If the user already
-holds an active Super User assignment created another way (for example, through the Permissions
-screen), the unique `{userId, activeKey}` index rejects the seeded insert.
+Super User isn't seeded. With `cams-role-assignments` on, nobody can use Administration >
+Permissions until someone holds Super User, so the first one is written directly to the target
+database: paste `dev-tools/superuser/provision-super-user.compass.js` into the MongoDB Compass shell
+connected to that environment, after setting `USER_ID`, `USER_NAME`, `USER_EMAIL` and `DATABASE` at
+the top. It writes one Super User permission and its CREATED audit entry, and does nothing if the
+user already holds Super User. The script lands with PR #3353, which targets `main`, so it isn't on
+`CAMS-940-full-feature` yet. Grant every later permission from the Permissions screen. There's no
+revoke yet; it's planned as future work on that screen. See
+[ADR: Provision the first Super User with a Compass script](../architecture/decision-records/ProvisionFirstSuperUserWithCompassScript.md).
 
 ### Bank and Software Assignments
 
@@ -202,7 +194,6 @@ npm run seed:local -- --scenario=trustees-comprehensive
 npm run seed:local -- --scenario=oversight-assignments
 npm run seed:local -- --scenario=dxtr-historical-trustees
 npm run seed:local -- --scenario=trustee-case-list
-npm run seed:local -- --scenario=access-management
 ```
 
 For complete usage instructions, see [dev-tools/README.md](../../dev-tools/README.md).

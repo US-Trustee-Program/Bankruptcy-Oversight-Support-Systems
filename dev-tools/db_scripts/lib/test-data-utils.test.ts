@@ -1102,6 +1102,105 @@ describe('validators', () => {
       expect(errors[0]).toContain('Jane Smith');
       expect(errors[0]).toContain('records doesEmailMatch');
     });
+
+    function softwareOp(contact?: Record<string, unknown>) {
+      return {
+        db: 'cams',
+        collectionOrTable: 'bankruptcy-software',
+        data: [
+          {
+            id: 'software-001',
+            documentType: 'BANKRUPTCY_SOFTWARE',
+            name: 'BestCase Pro',
+            ...(contact ? { contact } : {}),
+          },
+        ],
+      };
+    }
+
+    test('passes BANKRUPTCY_SOFTWARE with a well-formed contact, or none', () => {
+      const ops = [
+        softwareOp({ phones: [{ number: '212-555-0400' }], emails: ['support@example.com'] }),
+        softwareOp(),
+      ];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([]);
+    });
+
+    test('catches a BANKRUPTCY_SOFTWARE phone not in ###-###-#### format', () => {
+      const ops = [softwareOp({ phones: [{ number: '212-555-0400' }, { number: '2125550401' }] })];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'BankruptcySoftware software-001: "BestCase Pro" phone "2125550401" not in ###-###-#### format',
+      ]);
+    });
+
+    test('catches a BANKRUPTCY_SOFTWARE email without @', () => {
+      const ops = [softwareOp({ emails: ['support@example.com', 'support.example.com'] })];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'BankruptcySoftware software-001: "BestCase Pro" email "support.example.com" is not a valid email format',
+      ]);
+    });
+
+    function routingOp(recipientAddresses: string[]) {
+      return {
+        db: 'cams',
+        collectionOrTable: 'notification-routing',
+        data: [
+          {
+            id: 'chapter-7-oversight',
+            documentType: 'NOTIFICATION_ROUTING',
+            displayName: 'Chapter 7 Oversight',
+            recipientAddresses,
+          },
+        ],
+      };
+    }
+
+    test('passes NOTIFICATION_ROUTING whose recipients are all email addresses', () => {
+      const ops = [routingOp(['ch7@example.com', 'ch7-backup@example.com'])];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([]);
+    });
+
+    test('catches every NOTIFICATION_ROUTING recipient without @', () => {
+      const ops = [routingOp(['ch7@example.com', 'ch7.example.com', 'nobody'])];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'NotificationRouting chapter-7-oversight: "Chapter 7 Oversight" recipient "ch7.example.com" is not a valid email format',
+        'NotificationRouting chapter-7-oversight: "Chapter 7 Oversight" recipient "nobody" is not a valid email format',
+      ]);
+    });
+
+    test('catches a NOTIFICATION_ROUTING document with no recipients', () => {
+      const ops = [routingOp([])];
+
+      expect(validators.validateAllSeedOperations(ops)).toEqual([
+        'NotificationRouting chapter-7-oversight: "Chapter 7 Oversight" has no recipientAddresses',
+      ]);
+    });
+  });
+
+  describe('checksCollection', () => {
+    test.each([
+      'cases',
+      'orders',
+      'trustees',
+      'trustee-appointments',
+      'trustee-match-verification',
+      'bankruptcy-software',
+      'notification-routing',
+    ])('should report %s as checked', (collection) => {
+      expect(validators.checksCollection(collection)).toBe(true);
+    });
+
+    test.each(['banks', 'consolidations', 'AO_CS', 'user-role-assignments'])(
+      'should report %s as not checked',
+      (collection) => {
+        expect(validators.checksCollection(collection)).toBe(false);
+      },
+    );
   });
 
   describe('assertTrusteeAppointmentValid', () => {

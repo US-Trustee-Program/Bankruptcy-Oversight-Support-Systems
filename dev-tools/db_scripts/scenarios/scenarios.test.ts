@@ -1,29 +1,14 @@
-import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
+import { sequentialCaseIds } from '../lib/scenario-test-doubles.js';
 
 beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-// Prevent ensureDxtrCase from opening a real SQL connection during tests.
-// Returning an empty recordset tells the helper the case doesn't exist,
-// so it always produces the expected AO_CS + AO_PY seed operations.
-vi.mock('mssql', () => ({
-  default: {
-    ConnectionPool: class {
-      async connect() {
-        return {
-          request: () => ({
-            input: vi.fn().mockReturnThis(),
-            query: vi.fn().mockResolvedValue({ recordset: [] }),
-          }),
-          close: vi.fn().mockResolvedValue(undefined),
-        };
-      }
-    },
-    VarChar: 'VarChar',
-  },
-}));
+// No real DXTR connection. An empty recordset tells ensureDxtrCase the case isn't in DXTR,
+// so it always returns the AO_CS + AO_PY seed operations these tests expect.
+vi.mock('mssql', async () => (await import('../lib/scenario-test-doubles.js')).fakeMssqlModule([]));
 
 import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
@@ -31,9 +16,6 @@ import { generate as generateConsolidationScenarios } from './consolidation-scen
 import { generate as generateTrusteeData } from './trustee-data.js';
 import { generate as generateAdminData } from './admin-data.js';
 import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
-import { generate as generateAccessManagement } from './access-management.js';
-import { activeKeyFor } from '@common/cams/user-access.js';
-import { CamsRole } from '@common/cams/roles.js';
 
 // Fixed IDs used across all tests so assertions are deterministic
 const CH7_IDS: GeneratedCaseId = {
@@ -611,31 +593,43 @@ describe('admin-data scenario', () => {
 // ─── trustee-case-list ────────────────────────────────────────────────────────
 
 describe('trustee-case-list scenario', () => {
-  function multiIdContext(): SeedContext {
-    let seq = 90100;
-    return {
-      generateCaseId: vi.fn().mockImplementation(async (divisionCode: string) => {
-        const num = seq++;
-        return {
-          caseId: `${divisionCode}-26-${num}`,
-          caseNumber: `26-${num}`,
-          csCaseId: `SEED${num}`,
-        } satisfies GeneratedCaseId;
-      }),
-    };
-  }
+  // The scenario's cases, by the trustee they're appointed to (see trustee-case-list.ts).
+  const PAGINATED_CASES = 60; // 3 pages of 25/25/10
+  const SINGLE_DIVISION_CASES = 3;
+  const DIVISION_CLOSED_CASES = 2;
+  const ALL_CASES = PAGINATED_CASES + SINGLE_DIVISION_CASES + DIVISION_CLOSED_CASES;
+  const DOCKET_ENTRIES_PER_PAGINATED_CASE = 3;
 
   let seedOps: SeedOperation[];
   beforeAll(async () => {
-    seedOps = await generateTrusteeCaseList(multiIdContext());
+    seedOps = await generateTrusteeCaseList({ generateCaseId: sequentialCaseIds() });
   });
 
-  test('has 190 DXTR operations and 5 Cosmos operations', async () => {
-    const ops = seedOps;
-    expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(190);
-    // trustees + cases + case-trustee-appointments + trustee-case-appointments
-    // (dual-write to both appointment partitions) + TRUSTEE_APPOINTMENT for panel membership
-    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(5);
+  test("seeds AO_CS and AO_PY for every case, and AO_DE for the paginated trustee's cases", () => {
+    const dxtrOps = seedOps.filter((o) => o.db === 'dxtr');
+    const opsFor = (table: string) => dxtrOps.filter((o) => o.collectionOrTable === table);
+
+    expect(opsFor('AO_CS')).toHaveLength(ALL_CASES);
+    expect(opsFor('AO_PY')).toHaveLength(ALL_CASES);
+    expect(opsFor('AO_DE')).toHaveLength(PAGINATED_CASES);
+    expect(dxtrOps).toHaveLength(2 * ALL_CASES + PAGINATED_CASES);
+  });
+
+  test('writes one batch to each Cosmos collection', () => {
+    // case-trustee-appointments and trustee-case-appointments are the dual-written appointment
+    // partitions; trustee-appointments holds panel membership.
+    expect(
+      seedOps
+        .filter((o) => o.db === 'cams')
+        .map((o) => o.collectionOrTable)
+        .sort(),
+    ).toEqual([
+      'case-trustee-appointments',
+      'cases',
+      'trustee-appointments',
+      'trustee-case-appointments',
+      'trustees',
+    ]);
   });
 
   test('all DXTR operations use compound primary keys and insertOnly flag', () => {
@@ -647,12 +641,10 @@ describe('trustee-case-list scenario', () => {
     }
   });
 
-  test('AO_DE operations have 3 docket entries per case with insertOnly flag', () => {
-    const ops = seedOps;
-    const aoDe = ops.filter((o) => o.collectionOrTable === 'AO_DE');
-    expect(aoDe).toHaveLength(60);
+  test('AO_DE operations have the docket entries for each paginated case, with insertOnly flag', () => {
+    const aoDe = seedOps.filter((o) => o.collectionOrTable === 'AO_DE');
     for (const op of aoDe) {
-      expect(op.data).toHaveLength(3);
+      expect(op.data).toHaveLength(DOCKET_ENTRIES_PER_PAGINATED_CASE);
       expect(op.insertOnly).toBe(true);
       expect(Array.isArray(op.primaryKey)).toBe(true);
       for (const entry of op.data) {
@@ -677,12 +669,12 @@ describe('trustee-case-list scenario', () => {
     expect(ids).toContain('cams-814-division-closed');
   });
 
-  test('cases batch contains 65 SYNCED_CASE documents across chapters 7, 11, and 13', () => {
+  test('cases batch contains a SYNCED_CASE for every case, across chapters 7, 11, and 13', () => {
     const ops = seedOps;
     const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
     expect(casesOp).toBeDefined();
     expect(casesOp?.db).toBe('cams');
-    expect(casesOp?.data).toHaveLength(65);
+    expect(casesOp?.data).toHaveLength(ALL_CASES);
     for (const c of casesOp!.data) {
       expect(c.documentType).toBe('SYNCED_CASE');
     }
@@ -692,18 +684,18 @@ describe('trustee-case-list scenario', () => {
     expect(chapters).toContain('13');
   });
 
-  test('appointments batch contains 65 CASE_APPOINTMENT documents, 60 linked to paginated trustee', () => {
+  test('appointments batch contains a CASE_APPOINTMENT for every case, including each paginated case', () => {
     const ops = seedOps;
     const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-case-appointments');
     expect(apptOp).toBeDefined();
     expect(apptOp?.db).toBe('cams');
-    expect(apptOp?.data).toHaveLength(65);
+    expect(apptOp?.data).toHaveLength(ALL_CASES);
     for (const a of apptOp!.data) {
       expect(a.documentType).toBe('CASE_APPOINTMENT');
       expect(a.unassignedOn).toBeUndefined();
     }
     const paginatedAppointments = apptOp!.data.filter((a) => a.trusteeId === 'cams-593-paginated');
-    expect(paginatedAppointments).toHaveLength(60);
+    expect(paginatedAppointments).toHaveLength(PAGINATED_CASES);
   });
 
   test('cases have closedDate set exactly when their appointment reports caseStatus CLOSED', () => {
@@ -734,7 +726,7 @@ describe('trustee-case-list scenario', () => {
     const singleDivisionAppts = apptOp!.data.filter(
       (a) => a.trusteeId === 'cams-814-single-division',
     );
-    expect(singleDivisionAppts).toHaveLength(3);
+    expect(singleDivisionAppts).toHaveLength(SINGLE_DIVISION_CASES);
     for (const a of singleDivisionAppts) {
       expect(a.courtDivisionCode).toBe('081');
     }
@@ -742,7 +734,7 @@ describe('trustee-case-list scenario', () => {
     const divisionClosedAppts = apptOp!.data.filter(
       (a) => a.trusteeId === 'cams-814-division-closed',
     );
-    expect(divisionClosedAppts).toHaveLength(2);
+    expect(divisionClosedAppts).toHaveLength(DIVISION_CLOSED_CASES);
     for (const a of divisionClosedAppts) {
       expect(a.courtDivisionCode).toBe('393');
       expect(a.caseStatus).toBe('CLOSED');
@@ -796,130 +788,5 @@ describe('trustee-case-list scenario', () => {
       expect((a.appointedDate as string).endsWith('-15')).toBe(true);
       expect((dateFiled as string).endsWith('-01')).toBe(true);
     }
-  });
-});
-
-// ─── access-management ───────────────────────────────────────────────────────
-
-describe('access-management scenario', () => {
-  const SEED_ENV_VARS = ['SEED_SUPERUSER_ID', 'SEED_SUPERUSER_NAME', 'SEED_SUPERUSER_EMAIL'];
-  let savedEnv: Record<string, string | undefined>;
-
-  beforeEach(() => {
-    savedEnv = Object.fromEntries(SEED_ENV_VARS.map((key) => [key, process.env[key]]));
-    SEED_ENV_VARS.forEach((key) => delete process.env[key]);
-  });
-
-  afterEach(() => {
-    SEED_ENV_VARS.forEach((key) => {
-      if (savedEnv[key] === undefined) delete process.env[key];
-      else process.env[key] = savedEnv[key];
-    });
-  });
-
-  async function operations() {
-    return generateAccessManagement({
-      generateCaseId: () => {
-        throw new Error('access-management should not call generateCaseId');
-      },
-    } as SeedContext);
-  }
-
-  function documentIn(ops: SeedOperation[], collection: string) {
-    const op = ops.find((o) => o.collectionOrTable === collection);
-    expect(op?.data).toHaveLength(1);
-    return op!.data[0];
-  }
-
-  test('writes one assignment and one audit record to Cosmos', async () => {
-    const ops = await operations();
-
-    expect(ops).toHaveLength(2);
-    expect(ops.every((o) => o.db === 'cams')).toBe(true);
-    expect(ops.map((o) => o.collectionOrTable).sort()).toEqual([
-      'role-assignment-audit',
-      'user-role-assignments',
-    ]);
-  });
-
-  test('assignment is an active, unscoped Super User grant for the Flexion Team account by default', async () => {
-    const assignment = documentIn(await operations(), 'user-role-assignments');
-
-    expect(assignment).toEqual({
-      documentType: 'USER_ROLE_ASSIGNMENT',
-      id: 'seed-role-assignment-superuser-001',
-      userId: '00uxy2nwugG682IKt697',
-      userName: 'Flexion Team',
-      email: 'doj-ustp-cms-team@flexion.us',
-      role: CamsRole.SuperUser,
-      regionId: null,
-      officeCode: null,
-      assignedBy: 'SYSTEM_SEED',
-      assignedByName: 'Test Data Seeder',
-      assignedAt: '2026-01-01T00:00:00.000Z',
-      expiresAt: null,
-      active: true,
-      activeKey: activeKeyFor(CamsRole.SuperUser, null, null),
-    });
-    expect(assignment.activeKey).toBe('SuperUser|*|*');
-  });
-
-  test('audit record is a CREATED entry for the seeded assignment', async () => {
-    const ops = await operations();
-    const assignment = documentIn(ops, 'user-role-assignments');
-    const audit = documentIn(ops, 'role-assignment-audit');
-
-    expect(audit).toEqual({
-      documentType: 'ROLE_ASSIGNMENT_AUDIT',
-      id: 'seed-role-assignment-audit-superuser-001',
-      assignmentId: assignment.id,
-      action: 'CREATED',
-      userId: assignment.userId,
-      userName: assignment.userName,
-      role: CamsRole.SuperUser,
-      regionId: null,
-      officeCode: null,
-      performedBy: 'SYSTEM_SEED',
-      performedByName: 'Test Data Seeder',
-      performedAt: assignment.assignedAt,
-      previousState: null,
-      newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
-      replacedByAssignmentId: null,
-    });
-  });
-
-  test('user identity comes from SEED_SUPERUSER_* environment variables when set', async () => {
-    process.env.SEED_SUPERUSER_ID = 'okta-00u123';
-    process.env.SEED_SUPERUSER_NAME = 'Dev Person';
-    process.env.SEED_SUPERUSER_EMAIL = 'dev.person@example.com';
-
-    const ops = await operations();
-    const assignment = documentIn(ops, 'user-role-assignments');
-    const audit = documentIn(ops, 'role-assignment-audit');
-
-    expect(assignment).toMatchObject({
-      userId: 'okta-00u123',
-      userName: 'Dev Person',
-      email: 'dev.person@example.com',
-    });
-    expect(audit).toMatchObject({ userId: 'okta-00u123', userName: 'Dev Person' });
-  });
-
-  test('blank SEED_SUPERUSER_* environment variables fall back to the Flexion Team account', async () => {
-    process.env.SEED_SUPERUSER_ID = '';
-    process.env.SEED_SUPERUSER_NAME = ' ';
-    process.env.SEED_SUPERUSER_EMAIL = '';
-
-    const assignment = documentIn(await operations(), 'user-role-assignments');
-
-    expect(assignment).toMatchObject({
-      userId: '00uxy2nwugG682IKt697',
-      userName: 'Flexion Team',
-      email: 'doj-ustp-cms-team@flexion.us',
-    });
-  });
-
-  test('generates identical documents on every run so reseeding upserts in place', async () => {
-    expect(await operations()).toEqual(await operations());
   });
 });
