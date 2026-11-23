@@ -56,16 +56,15 @@ export type WeeklySummary = {
 // and time to restore skips incidents not yet closed, so a just-ended week reads too fast.
 const SETTLING_MS = 7 * MS_PER_DAY;
 
-// The report scripts write by-period rows oldest first, so the last eligible row is the latest settled week.
-function latestRowEndingBy(key: ReportKey, rows: CsvRow[], cutoff: Date): CsvRow {
-  const eligible = rows.filter((row) => new Date(row.periodEnd).getTime() <= cutoff.getTime());
-  const latest: CsvRow | undefined = eligible[eligible.length - 1];
-  if (!latest) {
+// The report scripts write by-period rows oldest first, so the settled rows come back oldest first too.
+function rowsEndingBy(key: ReportKey, rows: CsvRow[], cutoff: Date): CsvRow[] {
+  const settled = rows.filter((row) => new Date(row.periodEnd).getTime() <= cutoff.getTime());
+  if (settled.length === 0) {
     throw new Error(
       `${BY_PERIOD_REPORTS[key].file} has no week ending at or before ${cutoff.toISOString()}`,
     );
   }
-  return latest;
+  return settled;
 }
 
 function numberFrom(key: ReportKey, row: CsvRow, column: string): number {
@@ -77,34 +76,32 @@ function numberFrom(key: ReportKey, row: CsvRow, column: string): number {
   return value;
 }
 
-function weekLabel(row: CsvRow): string {
-  return `${row.periodStart}–${row.periodEnd}`;
+function weekLabel(row: CsvRow | undefined): string {
+  return row ? `${row.periodStart}–${row.periodEnd}` : 'no week';
 }
 
-// Summarizes the latest week that ended at least a week before generatedAt. On the Tuesday run that is
-// the week before last.
-export function summarizeSettledWeek(reports: ByPeriodReports, generatedAt: Date): WeeklySummary {
-  const cutoff = new Date(generatedAt.getTime() - SETTLING_MS);
-  const keys = Object.keys(BY_PERIOD_REPORTS) as ReportKey[];
-  const latest = Object.fromEntries(
-    keys.map((key) => [key, latestRowEndingBy(key, reports[key], cutoff)]),
-  ) as Record<ReportKey, CsvRow>;
-
-  const reference = latest.deploymentFrequency;
-  for (const key of keys) {
-    if (weekLabel(latest[key]) !== weekLabel(reference)) {
-      throw new Error(
-        `By-period reports disagree on the week: ${BY_PERIOD_REPORTS.deploymentFrequency.file} has ${weekLabel(reference)} but ${BY_PERIOD_REPORTS[key].file} has ${weekLabel(latest[key])}`,
-      );
+// Every report must list the same settled weeks, so each summary combines rows for one week.
+function assertSameWeeks(settled: Record<ReportKey, CsvRow[]>): void {
+  const reference = settled.deploymentFrequency;
+  for (const key of Object.keys(settled) as ReportKey[]) {
+    const rows = settled[key];
+    for (let i = 0; i < Math.max(reference.length, rows.length); i++) {
+      if (weekLabel(rows[i]) !== weekLabel(reference[i])) {
+        throw new Error(
+          `By-period reports disagree on the week: ${BY_PERIOD_REPORTS.deploymentFrequency.file} has ${weekLabel(reference[i])} but ${BY_PERIOD_REPORTS[key].file} has ${weekLabel(rows[i])}`,
+        );
+      }
     }
   }
+}
 
-  const { deploymentFrequency, leadTime, changeFailureRate, mttr } = latest;
+function summarizeWeek(week: Record<ReportKey, CsvRow>): WeeklySummary {
+  const { deploymentFrequency, leadTime, changeFailureRate, mttr } = week;
   const totalDeployments = numberFrom('changeFailureRate', changeFailureRate, 'totalDeployments');
 
   return {
-    periodStart: new Date(reference.periodStart),
-    periodEnd: new Date(reference.periodEnd),
+    periodStart: new Date(deploymentFrequency.periodStart),
+    periodEnd: new Date(deploymentFrequency.periodEnd),
     deploymentCount: numberFrom('deploymentFrequency', deploymentFrequency, 'deploymentCount'),
     deploymentsPerDay: numberFrom('deploymentFrequency', deploymentFrequency, 'deploymentsPerDay'),
     leadTime:
@@ -130,4 +127,25 @@ export function summarizeSettledWeek(reports: ByPeriodReports, generatedAt: Date
             meanHours: numberFrom('mttr', mttr, 'meanRestoreTimeHours'),
           },
   };
+}
+
+// Summarizes every week that ended at least a week before generatedAt, oldest first. On the Tuesday run
+// the newest is the week before last.
+export function summarizeSettledWeeks(
+  reports: ByPeriodReports,
+  generatedAt: Date,
+): WeeklySummary[] {
+  const cutoff = new Date(generatedAt.getTime() - SETTLING_MS);
+  const keys = Object.keys(BY_PERIOD_REPORTS) as ReportKey[];
+  const settled = Object.fromEntries(
+    keys.map((key) => [key, rowsEndingBy(key, reports[key], cutoff)]),
+  ) as Record<ReportKey, CsvRow[]>;
+
+  assertSameWeeks(settled);
+
+  return settled.deploymentFrequency.map((_, i) =>
+    summarizeWeek(
+      Object.fromEntries(keys.map((key) => [key, settled[key][i]])) as Record<ReportKey, CsvRow>,
+    ),
+  );
 }
