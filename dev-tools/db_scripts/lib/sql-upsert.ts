@@ -1,4 +1,5 @@
 import * as sql from 'mssql';
+import { buildAtsSqlConfig } from './sql-config.js';
 
 /**
  * Upserts rows into a SQL Server table via MERGE statement.
@@ -6,25 +7,31 @@ import * as sql from 'mssql';
  * Reads connection config from environment variables based on dbPrefix:
  * - dxtr: MSSQL_HOST, MSSQL_DATABASE_DXTR, MSSQL_USER, MSSQL_PASS, etc.
  * - acms: ACMS_MSSQL_HOST, ACMS_MSSQL_DATABASE, ACMS_MSSQL_USER, ACMS_MSSQL_PASS, etc.
+ * - ats:  ATS_MSSQL_HOST, ATS_MSSQL_DATABASE, ATS_MSSQL_USER, ATS_MSSQL_PASS, etc. (TOD)
  *
  * Falls back to Azure AD auth (azure-active-directory-default) if user/pass not set.
  * Logs each upserted row and closes the connection pool in a finally block.
  *
- * @param dbPrefix - Database identifier ('dxtr' or 'acms')
+ * Rows may supply a value for the table's identity column, as the TOD seed does with its reserved
+ * TRUSTEES.ID range. Those rows are written with IDENTITY_INSERT on, and afterwards the table's
+ * identity counter is reset to where it was, so the database keeps assigning its own IDs from the
+ * same place instead of from just past the seed's IDs.
+ *
+ * @param dbPrefix - Database identifier ('dxtr', 'acms' or 'ats')
  * @param tableName - SQL table name (e.g., 'AO_CS', 'AO_PY')
  * @param rows - Array of rows to upsert
  * @param primaryKey - Column name(s) to use as primary key(s) for MERGE
  * @param insertOnly - When true, omit WHEN MATCHED UPDATE branch (insert-only semantics)
  */
 export async function sqlUpsert(
-  dbPrefix: 'dxtr' | 'acms',
+  dbPrefix: 'dxtr' | 'acms' | 'ats',
   tableName: string,
   rows: Record<string, unknown>[],
   primaryKey: string | string[],
   insertOnly?: boolean,
 ): Promise<void> {
   const keys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
-  const config = buildSqlConfig(dbPrefix);
+  const config = dbPrefix === 'ats' ? buildAtsSqlConfig() : buildSqlConfig(dbPrefix);
   let pool: sql.ConnectionPool | null = null;
 
   try {
@@ -35,21 +42,78 @@ export async function sqlUpsert(
       (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
     pool = await new Pool(config).connect();
 
-    for (const row of rows) {
-      for (const key of keys) {
-        if (!(key in row)) {
-          throw new Error(
-            `[SEED] Row missing primary key '${key}' in table '${tableName}': ${JSON.stringify(row)}`,
-          );
-        }
-      }
+    const identity = rows.length > 0 ? await findIdentity(pool, tableName) : undefined;
+    const writesIdentity = !!identity && rows.some((row) => identity.column in row);
 
-      await upsertRow(pool, tableName, row, keys, insertOnly);
-      const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
-      console.log(`[SEED] ${tableName} ${keyValues}`);
+    try {
+      for (const row of rows) {
+        for (const key of keys) {
+          if (!(key in row)) {
+            throw new Error(
+              `[SEED] Row missing primary key '${key}' in table '${tableName}': ${JSON.stringify(row)}`,
+            );
+          }
+        }
+
+        await upsertRow(pool, tableName, row, keys, insertOnly, writesIdentity);
+        const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
+        console.log(`[SEED] ${tableName} ${keyValues}`);
+      }
+    } finally {
+      // Reset even when a write fails: rows already written stay committed and have moved the
+      // counter into the reserved range, and a rerun would read that as the baseline.
+      if (writesIdentity && identity.current !== null) {
+        await resetIdentity(pool, tableName, identity.current);
+      }
     }
   } finally {
     await pool?.close();
+  }
+}
+
+type TableIdentity = { column: string; current: number | null };
+
+/** The table's identity column, if it has one, and the last identity value it assigned. */
+async function findIdentity(
+  pool: sql.ConnectionPool,
+  tableName: string,
+): Promise<TableIdentity | undefined> {
+  const { recordset } = await pool
+    .request()
+    .input('table', `dbo.${tableName}`)
+    .query(
+      `SELECT c.name AS identityColumn, CAST(IDENT_CURRENT(@table) AS BIGINT) AS identCurrent
+       FROM sys.identity_columns c WHERE c.object_id = OBJECT_ID(@table)`,
+    );
+  const found = recordset?.[0];
+  if (!found) return undefined;
+  return {
+    column: found.identityColumn,
+    current: found.identCurrent === null ? null : Number(found.identCurrent),
+  };
+}
+
+/**
+ * Puts the table's identity counter back, so the next database-assigned ID follows `current`.
+ * Logs a failure instead of throwing, so it never hides the error from a failed write.
+ */
+async function resetIdentity(
+  pool: sql.ConnectionPool,
+  tableName: string,
+  current: number,
+): Promise<void> {
+  const reseed = `DBCC CHECKIDENT ('dbo.${tableName}', RESEED, ${current})`;
+  try {
+    if (!Number.isSafeInteger(current)) {
+      throw new Error(`Unexpected identity value ${current}`);
+    }
+    await pool.request().query(reseed);
+    console.log(`[SEED] ${tableName} identity counter reset to ${current}`);
+  } catch (error) {
+    console.error(
+      `[SEED] Could not reset the ${tableName} identity counter (${(error as Error).message}). ` +
+        `Run this by hand so TOD does not assign IDs in the reserved range: ${reseed}`,
+    );
   }
 }
 
@@ -116,7 +180,8 @@ async function upsertRow(
   tableName: string,
   row: Record<string, unknown>,
   primaryKeys: string[],
-  insertOnly?: boolean,
+  insertOnly: boolean | undefined,
+  writesIdentity: boolean,
 ): Promise<void> {
   const columns = Object.keys(row);
   const keySet = new Set(primaryKeys);
@@ -137,7 +202,9 @@ async function upsertRow(
   const whenMatchedBranch =
     insertOnly || !setClause ? '' : `WHEN MATCHED THEN\n      UPDATE SET ${setClause}`;
 
-  const mergeQuery = `
+  // IDENTITY_INSERT applies to one connection, and the pool may hand each request a different one,
+  // so it is turned on and off in the same batch as the MERGE.
+  const merge = `
     MERGE INTO [dbo].[${tableName}] AS target
     USING (SELECT ${usingSelect}) AS source
     ON ${onClause}
@@ -146,6 +213,9 @@ async function upsertRow(
       INSERT (${insertColumns})
       VALUES (${insertValues});
   `;
+  const mergeQuery = writesIdentity
+    ? `SET IDENTITY_INSERT [dbo].[${tableName}] ON;${merge}SET IDENTITY_INSERT [dbo].[${tableName}] OFF;`
+    : merge;
 
   const request = pool.request();
   for (const [key, value] of Object.entries(row)) {

@@ -50,7 +50,7 @@ export interface GeneratedCaseId {
 }
 
 export interface SeedOperation {
-  db: 'cams' | 'dxtr' | 'acms';
+  db: 'cams' | 'dxtr' | 'acms' | 'ats';
   collectionOrTable: string;
   data: Record<string, unknown>[];
   primaryKey?: string | string[];
@@ -150,7 +150,7 @@ export function parseArgs(): CliArgs {
 }
 
 /**
- * Executes a generator script's operations: dxtr/acms first, then cams.
+ * Executes a generator script's operations: dxtr/acms/ats first, then cams.
  *
  * Exported for testability (accepts injectable upsert functions for unit tests).
  */
@@ -167,7 +167,16 @@ export async function runGeneratorScript(
     throw { scenarioName, validationErrors };
   }
 
-  // Sort: dxtr/acms operations first, then cams
+  // A scenario that writes to TOD is seeded whole or not at all: its CAMS trustees are linked to
+  // its TOD rows. Most environments do not configure TOD, so skip it there rather than fail.
+  if (operations.some((op) => op.db === 'ats') && !process.env.ATS_MSSQL_HOST) {
+    console.log(
+      `[RUNNER] Skipping scenario ${scenarioName}: it seeds TOD and ATS_MSSQL_HOST is not set`,
+    );
+    return;
+  }
+
+  // Sort: dxtr/acms/ats operations first, then cams
   const sorted = [
     ...operations.filter((op) => op.db !== 'cams'),
     ...operations.filter((op) => op.db === 'cams'),
@@ -241,7 +250,8 @@ export async function runScript(scriptPath: string): Promise<void> {
     }
 
     case 'dxtr':
-    case 'acms': {
+    case 'acms':
+    case 'ats': {
       if (!primaryKey) {
         throw new Error(
           `[${MODULE_NAME}] SQL script ${scriptPath} must export primaryKey for MERGE upsert`,

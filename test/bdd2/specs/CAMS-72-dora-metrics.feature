@@ -111,14 +111,23 @@ Feature: DORA Metrics Capture
     When the DORA Metrics page has been updated
     Then the team's Slack channel receives the week's four headline values and a link to the DORA Metrics page
 
-  # SLICE 7: Recent Trend (not yet built)
+  # SLICE 7: Recent Trend
   # Dependencies: Slice 5
-  # User Value: The team can tell whether each metric is improving or worsening over roughly the last 13 weeks
+  # User Value: The team can tell whether each metric is improving or worsening over roughly the last 12 settled weeks
   Scenario: Team sees each metric's weekly trend within the report window
     Given the weekly DORA Metrics run has produced all four reports covering 13 complete weeks
     When a team member opens the DORA Metrics page
-    Then they see each metric's value for every week in the window, oldest to newest
-    And weeks with no data appear as gaps, never as 0
+    Then they see a chart of each metric's weekly value, oldest to newest
+    And a table of every week's values, oldest to newest
+    And the weeks shown are those that ended at least a week before the run, ending with the headline week
+    And lead time and time to restore show the median, deployments the count, and change failure rate the percentage
+
+  Scenario: Weeks with nothing to measure in the trend
+    Given a week in the trend had no deployed issues (lead time), no attributed incidents (time to restore), or no deployments (change failure rate)
+    When a team member views the trend
+    Then that week is left out of the affected metric's chart, never drawn as 0
+    And the table shows "No data" for that metric in that week
+    And a metric with no data in any week shows "No data in these weeks" instead of a chart
 
   # SLICE 8: Long-Term Trend (not yet built)
   # Dependencies: Slice 7

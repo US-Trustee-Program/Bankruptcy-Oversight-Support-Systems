@@ -21,9 +21,32 @@ function summaryWith(overrides: Partial<WeeklySummary> = {}): WeeklySummary {
   };
 }
 
+// Oldest first. The middle week had no deployments, no deployed issues and no incidents.
+const THREE_WEEKS: WeeklySummary[] = [
+  summaryWith({
+    periodStart: new Date('2026-10-19T00:00:00.000Z'),
+    periodEnd: new Date('2026-10-26T00:00:00.000Z'),
+    deploymentCount: 10,
+    deploymentsPerDay: 1.43,
+    leadTime: { medianHours: 1, meanHours: 1.5 },
+    changeFailure: { failedDeployments: 0, totalDeployments: 10, rate: 0 },
+    restoreTime: { medianHours: 5, meanHours: 5 },
+  }),
+  summaryWith({
+    periodStart: new Date('2026-10-26T00:00:00.000Z'),
+    periodEnd: new Date('2026-11-02T00:00:00.000Z'),
+    deploymentCount: 0,
+    deploymentsPerDay: 0,
+    leadTime: null,
+    changeFailure: { failedDeployments: 0, totalDeployments: 0, rate: null },
+    restoreTime: null,
+  }),
+  summaryWith(),
+];
+
 describe('renderDocsPage', () => {
-  test('renders the full page for a typical week', () => {
-    const page = renderDocsPage(summaryWith(), { generatedAt: GENERATED_AT, run: RUN });
+  test('renders the headline for the newest week, then the trend for every week', () => {
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT, run: RUN });
 
     expect(page).toBe(
       [
@@ -41,19 +64,128 @@ describe('renderDocsPage', () => {
         '| Change failure rate | 8.3% (2 of 24 deployments) |',
         '| Time to restore service | 11.9 days (mean 11.9 days) |',
         '',
+        '## Last 3 weeks',
+        '',
+        '### Deployments per week',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["10-19", "10-26", "11-02"]',
+        '  line [10, 0, 24]',
+        '```',
+        '',
+        '### Lead time for changes (median, hours)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["10-19", "11-02"]',
+        '  line [1.0, 3.6]',
+        '```',
+        '',
+        'Weeks with no data are not plotted; see the table below.',
+        '',
+        '### Change failure rate (%)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["10-19", "11-02"]',
+        '  line [0.0, 8.3]',
+        '```',
+        '',
+        'Weeks with no data are not plotted; see the table below.',
+        '',
+        '### Time to restore service (median, days)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["10-19", "11-02"]',
+        '  line [0.2, 11.9]',
+        '```',
+        '',
+        'Weeks with no data are not plotted; see the table below.',
+        '',
+        '| Week of | Deployments | Lead time (median) | Change failure rate | Time to restore (median) |',
+        '| --- | --- | --- | --- | --- |',
+        '| Mon 2026-10-19 | 10 | 1.0 hours | 0.0% | 5.0 hours |',
+        '| Mon 2026-10-26 | 0 | No data | No data | No data |',
+        '| Mon 2026-11-02 | 24 | 3.6 hours | 8.3% | 11.9 days |',
+        '',
         `Generated 2026-11-16T12:05:00.000Z from [DORA Metrics run 43955771750](${RUN.url})`,
         '',
       ].join('\n'),
     );
   });
 
+  test('shows a metric with no data in any week as text instead of a chart', () => {
+    const weeks = THREE_WEEKS.map((week) => ({ ...week, restoreTime: null }));
+
+    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).toContain(
+      ['### Time to restore service (median)', '', 'No data in these weeks', ''].join('\n'),
+    );
+    expect(page.match(/```mermaid/g)).toHaveLength(3);
+  });
+
+  test.each([
+    { medianHours: 47.9, unit: 'hours', plotted: '[5.0, 47.9]' },
+    { medianHours: 48, unit: 'days', plotted: '[0.2, 2.0]' },
+  ])(
+    'plots every restore time in $unit when the longest median is $medianHours hours',
+    ({ medianHours, unit, plotted }) => {
+      const weeks = [
+        THREE_WEEKS[0],
+        summaryWith({ restoreTime: { medianHours, meanHours: medianHours } }),
+      ];
+
+      const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+      expect(page).toContain(
+        [
+          `### Time to restore service (median, ${unit})`,
+          '',
+          '```mermaid',
+          `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+          'xychart-beta',
+          '  x-axis ["10-19", "11-02"]',
+          `  line ${plotted}`,
+        ].join('\n'),
+      );
+    },
+  );
+
+  test('plots a metric with data in only one week as a bar, since a one-point line draws nothing', () => {
+    const weeks = [THREE_WEEKS[1], summaryWith({ restoreTime: { medianHours: 5, meanHours: 5 } })];
+
+    const page = renderDocsPage(weeks, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).toContain(
+      [
+        '### Time to restore service (median, hours)',
+        '',
+        '```mermaid',
+        `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`,
+        'xychart-beta',
+        '  x-axis ["11-02"]',
+        '  bar [5.0]',
+        '```',
+      ].join('\n'),
+    );
+  });
+
   test('shows zero deployments as zero and the change failure rate as no data', () => {
     const page = renderDocsPage(
-      summaryWith({
-        deploymentCount: 0,
-        deploymentsPerDay: 0,
-        changeFailure: { failedDeployments: 0, totalDeployments: 0, rate: null },
-      }),
+      [
+        summaryWith({
+          deploymentCount: 0,
+          deploymentsPerDay: 0,
+          changeFailure: { failedDeployments: 0, totalDeployments: 0, rate: null },
+        }),
+      ],
       { generatedAt: GENERATED_AT, run: RUN },
     );
 
@@ -63,7 +195,7 @@ describe('renderDocsPage', () => {
 
   test('shows a zero change failure rate with counts when nothing failed', () => {
     const page = renderDocsPage(
-      summaryWith({ changeFailure: { failedDeployments: 0, totalDeployments: 13, rate: 0 } }),
+      [summaryWith({ changeFailure: { failedDeployments: 0, totalDeployments: 13, rate: 0 } })],
       { generatedAt: GENERATED_AT, run: RUN },
     );
 
@@ -72,20 +204,23 @@ describe('renderDocsPage', () => {
 
   test('uses the singular for one deployment', () => {
     const page = renderDocsPage(
-      summaryWith({
-        deploymentCount: 1,
-        deploymentsPerDay: 0.14,
-        changeFailure: { failedDeployments: 0, totalDeployments: 1, rate: 0 },
-      }),
+      [
+        summaryWith({
+          deploymentCount: 1,
+          deploymentsPerDay: 0.14,
+          changeFailure: { failedDeployments: 0, totalDeployments: 1, rate: 0 },
+        }),
+      ],
       { generatedAt: GENERATED_AT, run: RUN },
     );
 
+    expect(page).toContain('## Last 1 week\n');
     expect(page).toContain('| Deployment frequency | 1 deployment (0.1 per day) |');
     expect(page).toContain('| Change failure rate | 0.0% (0 of 1 deployment) |');
   });
 
   test('shows lead time and time to restore as no data rather than zero', () => {
-    const page = renderDocsPage(summaryWith({ leadTime: null, restoreTime: null }), {
+    const page = renderDocsPage([summaryWith({ leadTime: null, restoreTime: null })], {
       generatedAt: GENERATED_AT,
       run: RUN,
     });
@@ -96,7 +231,7 @@ describe('renderDocsPage', () => {
 
   test('shows durations under 48 hours in hours and 48 hours or more in days', () => {
     const page = renderDocsPage(
-      summaryWith({ restoreTime: { medianHours: 47.9, meanHours: 48 } }),
+      [summaryWith({ restoreTime: { medianHours: 47.9, meanHours: 48 } })],
       {
         generatedAt: GENERATED_AT,
         run: RUN,
@@ -113,10 +248,12 @@ describe('renderDocsPage', () => {
     process.env.TZ = 'America/New_York';
     try {
       const page = renderDocsPage(
-        summaryWith({
-          periodStart: new Date('2026-11-02T03:00:00.000Z'),
-          periodEnd: new Date('2026-11-09T03:00:00.000Z'),
-        }),
+        [
+          summaryWith({
+            periodStart: new Date('2026-11-02T03:00:00.000Z'),
+            periodEnd: new Date('2026-11-09T03:00:00.000Z'),
+          }),
+        ],
         { generatedAt: GENERATED_AT, run: RUN },
       );
 
@@ -131,16 +268,17 @@ describe('renderDocsPage', () => {
   });
 
   test('credits a local run without a link when no run is given', () => {
-    const page = renderDocsPage(summaryWith(), { generatedAt: GENERATED_AT });
+    const page = renderDocsPage([summaryWith()], { generatedAt: GENERATED_AT });
 
     expect(page).toContain('Generated 2026-11-16T12:05:00.000Z from local run');
     expect(page).not.toContain('](');
   });
 
-  test('contains no raw HTML and does not call the deployments production', () => {
-    const page = renderDocsPage(summaryWith(), { generatedAt: GENERATED_AT, run: RUN });
+  // The Pages fetch step rejects any page containing '<', and Docsify renders HTML inside markdown.
+  test('contains no angle bracket and does not call the deployments production', () => {
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT, run: RUN });
 
-    expect(page).not.toMatch(/<[a-z/!]/i);
+    expect(page).not.toContain('<');
     expect(page.toLowerCase()).not.toContain('production');
   });
 });

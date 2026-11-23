@@ -65,7 +65,8 @@ export const TOD_STATUS_MAP: Record<
  * getTrusteesPage, getTrusteeCount and getTodOnlyCandidates.
  *
  * Derived programmatically — do not hardcode separately. If TOD_STATUS_MAP changes,
- * this set updates automatically.
+ * this set updates automatically. ats.constants.test.ts pins the resulting set on purpose,
+ * so a change to it is deliberate.
  */
 export const ACTIVE_STATUS_CODES: ReadonlySet<string> = new Set(
   Object.entries(TOD_STATUS_MAP)
@@ -110,7 +111,8 @@ export const CBC_STATUS_MAP: Record<
 
 /**
  * Status codes that are active only on a case-by-case chapter (CBC_STATUS_MAP), beyond those in
- * ACTIVE_STATUS_CODES. For example, '2' is active on 12CBC but on no other chapter.
+ * ACTIVE_STATUS_CODES. For example, '2' is active on 12CBC but on no other chapter. Pinned in
+ * ats.constants.test.ts.
  */
 export const CHAPTER_ACTIVE_STATUS_CODES: Readonly<Record<string, ReadonlySet<string>>> =
   Object.fromEntries(

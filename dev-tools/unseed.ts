@@ -9,6 +9,7 @@
  *
  *   Cosmos:  id starts with "seed-" or matches /^\d{3}-\d{2}-9\d{4}$/  (seed-range caseId)
  *   DXTR:    CS_CASEID starts with "SEED"  (seed-range csCaseId)
+ *   TOD:     TRUSTEES.ID / CHAPTER_DETAILS.TRU_ID in TOD_SEED_ID_MIN..TOD_SEED_ID_MAX
  *
  * Also removes documents the application itself writes as a side effect of interacting with
  * seed data, which get real app-generated ids the id-prefix rule above can't match (see the
@@ -20,7 +21,8 @@
 
 import { MongoClient } from 'mongodb';
 import { createRequire } from 'module';
-import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
+import { buildAtsSqlConfig, buildSqlConfig } from './db_scripts/lib/sql-config.js';
+import { TOD_SEED_ID_MAX, TOD_SEED_ID_MIN } from './db_scripts/lib/tod-seed-ids.js';
 
 // Guards against running the script as a side effect of import (e.g. from unseed.test.ts),
 // which would otherwise attempt real Mongo/SQL connections and call process.exit during tests.
@@ -278,13 +280,43 @@ async function unseedAcms(): Promise<void> {
   }
 }
 
+// ─── TOD (ATS) ───────────────────────────────────────────────────────────────
+
+async function unseedAts(): Promise<void> {
+  if (!process.env.ATS_MSSQL_HOST) {
+    console.log(`[${MODULE_NAME}] ATS_MSSQL_HOST not set — skipping TOD cleanup`);
+    return;
+  }
+
+  const Pool: typeof sql.ConnectionPool =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
+  const pool = await new Pool(buildAtsSqlConfig()).connect();
+
+  try {
+    const range = `BETWEEN ${TOD_SEED_ID_MIN} AND ${TOD_SEED_ID_MAX}`;
+    const chapterResult = await pool
+      .request()
+      .query(`DELETE FROM [CHAPTER_DETAILS] WHERE [TRU_ID] ${range}`);
+    console.log(
+      `[${MODULE_NAME}] Deleted ${chapterResult.rowsAffected[0]} row(s) from CHAPTER_DETAILS`,
+    );
+
+    const trusteeResult = await pool.request().query(`DELETE FROM [TRUSTEES] WHERE [ID] ${range}`);
+    console.log(`[${MODULE_NAME}] Deleted ${trusteeResult.rowsAffected[0]} row(s) from TRUSTEES`);
+  } finally {
+    await pool.close();
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   try {
-    console.log(`[${MODULE_NAME}] Removing seed data from Cosmos, DXTR, and ACMS...\n`);
+    console.log(`[${MODULE_NAME}] Removing seed data from Cosmos, DXTR, ACMS, and TOD...\n`);
     await unseedDxtr();
     await unseedAcms();
+    await unseedAts();
     await unseedCosmos();
     console.log(`\n[${MODULE_NAME}] Done.`);
     process.exit(0);

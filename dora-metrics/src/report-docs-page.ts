@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import {
   BY_PERIOD_REPORTS,
   type ByPeriodReports,
-  summarizeSettledWeek,
+  summarizeSettledWeeks,
 } from './metrics/weekly-summary.js';
 import { readCsv } from './output/read-csv.js';
 import { renderDocsPage } from './output/render-docs-page.js';
@@ -22,14 +22,16 @@ async function main(): Promise<void> {
   );
   const reports = Object.fromEntries(entries) as ByPeriodReports;
 
-  const summary = summarizeSettledWeek(reports, generatedAt);
-  const page = renderDocsPage(summary, { generatedAt, run: resolveRun(process.env) });
+  // Oldest first, so the newest settled week is the headline.
+  const weeks = summarizeSettledWeeks(reports, generatedAt);
+  const headline = weeks[weeks.length - 1];
+  const page = renderDocsPage(weeks, { generatedAt, run: resolveRun(process.env) });
 
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, page, 'utf8');
 
   console.log(
-    `DORA docs page: week starting ${summary.periodStart.toISOString()}. Wrote ${OUTPUT_PATH}`,
+    `DORA docs page: week starting ${headline.periodStart.toISOString()}, ${weeks.length} weeks in the trend. Wrote ${OUTPUT_PATH}`,
   );
 }
 

@@ -396,6 +396,42 @@ describe('runGeneratorScript', () => {
     resetDxtrPool();
   });
 
+  test('should skip a scenario that seeds TOD, including its cams operations, when ATS_MSSQL_HOST is not set', async () => {
+    delete process.env.ATS_MSSQL_HOST;
+    const operations: import('./runner.js').SeedOperation[] = [
+      { db: 'ats', collectionOrTable: 'TRUSTEES', data: [{ ID: 9900010 }], primaryKey: 'ID' },
+      { db: 'cams', collectionOrTable: 'banks', data: [{ id: 'seed-bank-1' }] },
+    ];
+
+    await runGeneratorScript('tod-scenario', operations, mongoUpsertSpy, sqlUpsertSpy);
+
+    expect(sqlUpsertSpy).not.toHaveBeenCalled();
+    expect(mongoUpsertSpy).not.toHaveBeenCalled();
+  });
+
+  test('should seed TOD before cams when ATS_MSSQL_HOST is set', async () => {
+    process.env.ATS_MSSQL_HOST = 'tod-host';
+    const executionOrder: string[] = [];
+    mongoUpsertSpy.mockImplementation(async () => {
+      executionOrder.push('cams');
+    });
+    sqlUpsertSpy.mockImplementation(async (db) => {
+      executionOrder.push(db);
+    });
+    const operations: import('./runner.js').SeedOperation[] = [
+      { db: 'cams', collectionOrTable: 'banks', data: [{ id: 'seed-bank-1' }] },
+      { db: 'ats', collectionOrTable: 'TRUSTEES', data: [{ ID: 9900010 }], primaryKey: 'ID' },
+    ];
+
+    try {
+      await runGeneratorScript('tod-scenario', operations, mongoUpsertSpy, sqlUpsertSpy);
+    } finally {
+      delete process.env.ATS_MSSQL_HOST;
+    }
+
+    expect(executionOrder).toEqual(['ats', 'cams']);
+  });
+
   test('dxtr and acms operations execute before cams operations', async () => {
     const executionOrder: string[] = [];
 

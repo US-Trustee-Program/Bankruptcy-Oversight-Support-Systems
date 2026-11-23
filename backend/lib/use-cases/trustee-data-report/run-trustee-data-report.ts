@@ -36,7 +36,7 @@ function addSummaries(
   return {
     trusteesCompared: a.trusteesCompared + b.trusteesCompared,
     todOnly: a.todOnly + b.todOnly,
-    todOnlyStatusMissing: (a.todOnlyStatusMissing ?? 0) + (b.todOnlyStatusMissing ?? 0),
+    todOnlyStatusMissing: a.todOnlyStatusMissing + b.todOnlyStatusMissing,
     camsOnly: a.camsOnly + b.camsOnly,
     fieldDifferences: a.fieldDifferences + b.fieldDifferences,
     fieldDifferencesByField: byField,
