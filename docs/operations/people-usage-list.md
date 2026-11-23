@@ -18,11 +18,13 @@ to this workbook.
 ## Who can produce the list
 
 The list contains work email addresses. Only team members the product owner has approved get Azure
-read access to the API's Application Insights resource or the analytics workspace behind it.
+read access to the API's Application Insights resource, the analytics workspace behind it, or any
+scope above them (resource group, subscription).
 
-Nothing technical separates the email data from other telemetry. Anyone with read access to that
-Application Insights resource or workspace can open this workbook or query the events directly, so
-grant that access only with the product owner's approval.
+Nothing technical separates the email data from other telemetry. Azure read access is inherited, so
+anyone with read access to that Application Insights resource, its workspace, or their resource
+group or subscription can open this workbook or query the events directly. Grant read access at any
+of those scopes only with the product owner's approval.
 
 People without that access get no data from the workbook, so they see no email.
 
@@ -35,6 +37,9 @@ People without that access get no data from the workbook, so they see no email.
 4. Read the note under the time range. It gives the earliest sign-in data still kept, and says
    whether the chosen range starts before it.
 5. To export, open the table's **...** menu and select **Export to Excel**.
+
+The exported file contains work email addresses. Send it only to the person who requested it, store
+it only in approved locations, and delete local copies once delivered.
 
 Dates are UTC. A sign-in late in the evening Eastern time can show as the next day.
 
