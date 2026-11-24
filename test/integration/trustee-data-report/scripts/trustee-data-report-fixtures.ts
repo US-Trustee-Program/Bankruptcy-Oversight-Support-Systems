@@ -1,6 +1,7 @@
 /**
  * CAMS trustees and expected results for the trustee data report harness. The TOD side of each
- * scenario is in ../seed/01-seed-trustees.sql (rows) and 02-seed-chapter-details.sql (statuses).
+ * scenario is in ../seed/01-seed-trustees.sql (rows) and 02-seed-chapter-details.sql (statuses),
+ * and for the appointment scenarios (S48-S57) in 05-seed-appointments.sql.
  *
  * Expected values are written out, not computed with transformTrusteeRecord, so a change to the
  * migration's cleanup shows up here as a failure instead of moving the expectation with it.
@@ -10,10 +11,43 @@
 export type Field =
   'name' | 'companyName' | 'publicAddress' | 'internalAddress' | 'phone' | 'email';
 
+export type AppointmentField = 'status' | 'appointedDate' | 'effectiveDate';
+
+/** Which appointment a row is about: district, chapter and type. */
+export type AppointmentIdentity = { courtId: string; chapter: string; appointmentType: string };
+
 export type ExpectedDifference =
   | { kind: 'field'; field: Field; camsValue?: string; todValue?: string; todIds: string[] }
   | { kind: 'tod-only'; trusteeName: string; todIds: string[]; todStatusMissing?: true }
-  | { kind: 'cams-only'; todIds: string[] };
+  | { kind: 'cams-only'; todIds: string[] }
+  | {
+      kind: 'appointment-tod-only' | 'appointment-cams-only';
+      appointment: AppointmentIdentity;
+      todIds: string[];
+    }
+  | {
+      kind: 'appointment-field';
+      field: AppointmentField;
+      appointment: AppointmentIdentity;
+      camsValue: string;
+      todValue: string;
+      todIds: string[];
+    }
+  | {
+      kind: 'appointment-divisions-narrowed';
+      appointment: AppointmentIdentity;
+      camsValue: string;
+      todValue: string;
+      todIds: string[];
+    };
+
+export type CamsAppointmentFixture = AppointmentIdentity & {
+  courtName: string;
+  divisionCodes: string[];
+  status: string;
+  appointedDate: string;
+  effectiveDate: string;
+};
 
 type Address = {
   address1: string;
@@ -56,6 +90,10 @@ export type Scenario = {
   knownGapActual?: ExpectedDifference[];
   /** Whether the run counts this CAMS trustee as compared. */
   compared?: boolean;
+  /** The CAMS trustee's appointments. */
+  camsAppointments?: CamsAppointmentFixture[];
+  /** This scenario's TOD appointment rows that the load could not translate. */
+  todAppointmentsNotTranslated?: number;
 };
 
 export const TRUSTEE_ID_PREFIX = 'TDR-';
@@ -89,6 +127,47 @@ function linked(
     legacy: { truIds: todIds },
     ...extra,
   };
+}
+
+const APPOINTED = '2015-03-01';
+
+/** A CAMS appointment in the Southern District of New York (0208: divisions 081 and 087). */
+function sdnyAppointment(
+  chapter: string,
+  appointmentType: string,
+  change: Partial<CamsAppointmentFixture> = {},
+): CamsAppointmentFixture {
+  return {
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    chapter,
+    appointmentType,
+    divisionCodes: ['081', '087'],
+    status: 'active',
+    appointedDate: APPOINTED,
+    effectiveDate: APPOINTED,
+    ...change,
+  };
+}
+
+const ch7Panel = (change: Partial<CamsAppointmentFixture> = {}) =>
+  sdnyAppointment('7', 'panel', change);
+const ch13Standing = (change: Partial<CamsAppointmentFixture> = {}) =>
+  sdnyAppointment('13', 'standing', change);
+const identity = ({ courtId, chapter, appointmentType }: AppointmentIdentity) => ({
+  courtId,
+  chapter,
+  appointmentType,
+});
+
+/** A trustee for an appointment scenario: its CAMS profile matches TOD ID `todId`'s row. */
+function apptTrustee(scenarioId: string, firstName: string, lastName: string, todIds: string[]) {
+  const id = todIds[0];
+  return linked(scenarioId, firstName, lastName, todIds, {
+    address: springfield(`${id}00 Appt St`),
+    phone: { number: `217-555-01${id}` },
+    email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+  });
 }
 
 export const SCENARIOS: Scenario[] = [
@@ -656,6 +735,144 @@ export const SCENARIOS: Scenario[] = [
     expected: [],
   },
 
+  // ── Appointments (Slice 2) ───────────────────────────────────────────────────
+  {
+    id: 'S48',
+    title:
+      'An appointment that matches TOD in district, chapter, type, status and dates reports nothing',
+    cams: apptTrustee('S48', 'Ada', 'Apptexact', ['60']),
+    camsAppointments: [ch7Panel()],
+    compared: true,
+    expected: [],
+  },
+  {
+    id: 'S49',
+    title:
+      'A TOD appointment with no CAMS appointment of the same district, chapter and type is in TOD only',
+    cams: apptTrustee('S49', 'Bram', 'Apptodonly', ['61']),
+    camsAppointments: [ch7Panel()],
+    compared: true,
+    expected: [
+      { kind: 'appointment-tod-only', appointment: identity(ch13Standing()), todIds: ['61'] },
+    ],
+  },
+  {
+    id: 'S50',
+    title:
+      'A CAMS appointment with no TOD appointment of the same district, chapter and type is in CAMS only',
+    cams: apptTrustee('S50', 'Cleo', 'Apptcamsonly', ['62']),
+    camsAppointments: [ch7Panel(), ch13Standing()],
+    compared: true,
+    expected: [
+      { kind: 'appointment-cams-only', appointment: identity(ch13Standing()), todIds: ['62'] },
+    ],
+  },
+  {
+    id: 'S51',
+    title:
+      'A panel appointment that is off panel in CAMS is one appointment in TOD only and one in CAMS only',
+    cams: apptTrustee('S51', 'Dov', 'Appttype', ['63']),
+    camsAppointments: [ch7Panel({ appointmentType: 'off-panel', status: 'resigned' })],
+    compared: true,
+    expected: [
+      { kind: 'appointment-tod-only', appointment: identity(ch7Panel()), todIds: ['63'] },
+      {
+        kind: 'appointment-cams-only',
+        appointment: identity(ch7Panel({ appointmentType: 'off-panel' })),
+        todIds: ['63'],
+      },
+    ],
+  },
+  {
+    id: 'S52',
+    title: 'A different appointment status is reported',
+    cams: apptTrustee('S52', 'Esme', 'Apptstatus', ['64']),
+    camsAppointments: [ch7Panel({ status: 'voluntarily-suspended' })],
+    compared: true,
+    expected: [
+      {
+        kind: 'appointment-field',
+        field: 'status',
+        appointment: identity(ch7Panel()),
+        camsValue: 'voluntarily-suspended',
+        todValue: 'active',
+        todIds: ['64'],
+      },
+    ],
+  },
+  {
+    id: 'S53',
+    title: 'A different appointed date is reported',
+    cams: apptTrustee('S53', 'Finn', 'Apptappointed', ['65']),
+    camsAppointments: [ch7Panel({ appointedDate: '2016-04-02' })],
+    compared: true,
+    expected: [
+      {
+        kind: 'appointment-field',
+        field: 'appointedDate',
+        appointment: identity(ch7Panel()),
+        camsValue: '2016-04-02',
+        todValue: APPOINTED,
+        todIds: ['65'],
+      },
+    ],
+  },
+  {
+    id: 'S54',
+    title: 'A different status effective date is reported',
+    cams: apptTrustee('S54', 'Gia', 'Appteffective', ['66']),
+    camsAppointments: [ch7Panel({ effectiveDate: '2020-01-15' })],
+    compared: true,
+    expected: [
+      {
+        kind: 'appointment-field',
+        field: 'effectiveDate',
+        appointment: identity(ch7Panel()),
+        camsValue: '2020-01-15',
+        todValue: APPOINTED,
+        todIds: ['66'],
+      },
+    ],
+  },
+  {
+    id: 'S55',
+    title:
+      'A CAMS appointment covering only some of its district divisions is noted, not counted as a difference',
+    cams: apptTrustee('S55', 'Hugo', 'Apptnarrowed', ['67']),
+    camsAppointments: [ch7Panel({ divisionCodes: ['081'] })],
+    compared: true,
+    expected: [
+      {
+        kind: 'appointment-divisions-narrowed',
+        appointment: identity(ch7Panel()),
+        camsValue: '081',
+        todValue: '081, 087',
+        todIds: ['67'],
+      },
+    ],
+  },
+  {
+    id: 'S56',
+    title: 'A TOD appointment the load could not translate is counted, not listed as in TOD only',
+    cams: apptTrustee('S56', 'Iris', 'Apptuntranslated', ['68']),
+    camsAppointments: [ch7Panel()],
+    compared: true,
+    todAppointmentsNotTranslated: 1,
+    expected: [],
+  },
+  {
+    id: 'S57',
+    title:
+      'A trustee merged from two TOD records is compared with both, keeping the first appointment per key in truIds order',
+    cams: apptTrustee('S57', 'Jude', 'Apptmerged', ['69', '70']),
+    camsAppointments: [
+      ch7Panel({ appointedDate: '2019-01-01', effectiveDate: '2019-01-01' }),
+      ch13Standing(),
+    ],
+    compared: true,
+    expected: [],
+  },
+
   // ── CAMS only ────────────────────────────────────────────────────────────────
   {
     id: 'S29',
@@ -687,6 +904,12 @@ export const SCENARIOS: Scenario[] = [
 ];
 
 /**
+ * Rows in 02-seed-chapter-details.sql that belong to compared trustees. They have no district, so
+ * the load could not translate them and the report counts them as not translated.
+ */
+const UNTRANSLATED_SLICE_1_ROWS = 36;
+
+/**
  * The run summary the scenarios add up to. With `knownGaps`, the summary the report produces
  * today, using each known gap's `knownGapActual` in place of `expected`.
  */
@@ -702,9 +925,19 @@ export function expectedSummary(knownGaps = false) {
     phone: 0,
     email: 0,
   };
+  const appointmentFieldDifferencesByField: Record<AppointmentField, number> = {
+    status: 0,
+    appointedDate: 0,
+    effectiveDate: 0,
+  };
   for (const difference of all) {
     if (difference.kind === 'field') fieldDifferencesByField[difference.field]++;
+    if (difference.kind === 'appointment-field') {
+      appointmentFieldDifferencesByField[difference.field]++;
+    }
   }
+  const count = (kind: ExpectedDifference['kind']) =>
+    all.filter((difference) => difference.kind === kind).length;
   return {
     trusteesCompared: SCENARIOS.filter((scenario) => scenario.compared).length,
     todOnly: all.filter((difference) => difference.kind === 'tod-only').length,
@@ -714,6 +947,14 @@ export function expectedSummary(knownGaps = false) {
     camsOnly: all.filter((difference) => difference.kind === 'cams-only').length,
     fieldDifferences: all.filter((difference) => difference.kind === 'field').length,
     fieldDifferencesByField,
+    appointmentsTodOnly: count('appointment-tod-only'),
+    appointmentsCamsOnly: count('appointment-cams-only'),
+    appointmentFieldDifferences: count('appointment-field'),
+    appointmentFieldDifferencesByField,
+    appointmentsDivisionsNarrowed: count('appointment-divisions-narrowed'),
+    todAppointmentsNotTranslated:
+      UNTRANSLATED_SLICE_1_ROWS +
+      SCENARIOS.reduce((sum, scenario) => sum + (scenario.todAppointmentsNotTranslated ?? 0), 0),
   };
 }
 

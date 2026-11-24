@@ -6,7 +6,7 @@
 --         designator for Utica, NY, not Utah)
 --
 -- Slice 1 needs only that offices can be read. Slice 2 appointment
--- scenarios add the districts they use.
+-- scenarios use 0208, so it also has division 087 (White Plains).
 --
 -- Run against the DXTR_INT database after seed-schema has been applied.
 
@@ -61,6 +61,11 @@ INSERT INTO dbo.AO_OFFICE (COURT_ID, OFFICE_CODE, OFFICE_NAME, OFFICE_NAME_DISPL
 VALUES ('0206', '6', 'Utica', 'Utica', 'Y');
 GO
 
+-- A second 0208 office, so the district has two divisions and S55 can narrow one away.
+INSERT INTO dbo.AO_OFFICE (COURT_ID, OFFICE_CODE, OFFICE_NAME, OFFICE_NAME_DISPLAY, CAMS)
+VALUES ('0208', '7', 'White Plains', 'White Plains', 'Y');
+GO
+
 -- ── AO_CS_DIV ────────────────────────────────────────────────────────────────
 
 INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, OFFICE_CODE, STATE, CS_DIV_ACMS)
@@ -71,5 +76,9 @@ INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, OFFICE_CODE, STATE, CS_DIV
 VALUES ('066', 'UT', '0206', '6', 'NY', '066');
 GO
 
-PRINT 'DXTR offices seeded: 2 groups (NY, UT)';
+INSERT INTO dbo.AO_CS_DIV (CS_DIV, GRP_DES, COURT_ID, OFFICE_CODE, STATE, CS_DIV_ACMS)
+VALUES ('087', 'NY', '0208', '7', 'NY', '087');
+GO
+
+PRINT 'DXTR offices seeded: 2 groups (NY, UT), 0208 with divisions 081 and 087';
 GO
