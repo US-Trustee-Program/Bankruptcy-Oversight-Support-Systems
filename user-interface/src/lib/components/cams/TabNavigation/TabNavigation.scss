@@ -1,0 +1,38 @@
+@use '@/styles/abstracts/colors' as colors;
+
+.tab-navigation {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid colors.$gray-cool-20;
+
+  .tab-navigation__list {
+    display: flex;
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tab-navigation__link {
+    display: inline-block;
+    padding: 0.5rem 0;
+    border-bottom: 0.25rem solid transparent;
+    color: colors.$primary;
+    text-decoration: none;
+
+    &:hover {
+      color: colors.$primary-dark;
+      text-decoration: underline;
+    }
+
+    &:focus {
+      outline: 0.25rem solid colors.$focus-blue;
+      outline-offset: 0.25rem;
+    }
+  }
+
+  .tab-navigation__link--current {
+    border-bottom-color: colors.$primary;
+    color: colors.$ink;
+    font-weight: bold;
+  }
+}

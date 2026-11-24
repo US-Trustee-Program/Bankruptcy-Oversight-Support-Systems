@@ -1,5 +1,6 @@
 import { CamsHttpError } from '@/lib/models/api';
 import { ResponseBody } from '@common/api/response';
+import { includesIgnoringCase } from '@common/string-helper';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import {
@@ -66,7 +67,18 @@ import {
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeSerializedState } from '@common/cams/trustee-match-pipeline';
 import generatedTrusteeMatchFindings from '@common/cams/test-utilities/trustee-match-findings.generated.json';
-import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import { CamsRole, CamsRoleType, OversightRoleType } from '@common/cams/roles';
+import {
+  activeKeyFor,
+  ALL_SCOPE,
+  inactiveKeyFor,
+  CamsUsersPredicate,
+  PermissionScope,
+  scopesOverlap,
+  CamsUserWithPermissions,
+  RoleAssignmentGrantRequest,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
 import {
   TrusteeDataReportRun,
   TrusteeDataReportStatus,
@@ -3328,6 +3340,154 @@ async function getBankHistory(_bankId: string) {
   return { data: [] };
 }
 
+// Deterministic fake-API CAMS users (MockData would pull faker into the app bundle). 45 users give
+// three pages of 20.
+const MOCK_CAMS_USER_FIRST_NAMES = [
+  'Alex',
+  'Blair',
+  'Casey',
+  'Devon',
+  'Emery',
+  'Finley',
+  'Gray',
+  'Harper',
+  'Indy',
+];
+const MOCK_CAMS_USER_LAST_NAMES = ['Adams', 'Baker', 'Chen', 'Diaz', 'Evans'];
+const MOCK_CAMS_USERS: CamsUserWithPermissions[] = MOCK_CAMS_USER_LAST_NAMES.flatMap((last) =>
+  MOCK_CAMS_USER_FIRST_NAMES.map((first) => ({
+    id: `mock-cams-user-${first}-${last}`.toLowerCase(),
+    name: `${first} ${last}`,
+    email: `${first}.${last}@example.com`.toLowerCase(),
+    permissions: [],
+  })),
+).sort((a, b) => a.name.localeCompare(b.name));
+
+const SEEDED_PERMISSION_DATE = '2026-11-01T00:00:00.000Z';
+
+function mockPermission(
+  userId: string,
+  role: CamsRoleType,
+  regionId: string | null,
+  officeCode: string | null,
+  assignedAt = SEEDED_PERMISSION_DATE,
+): UserRoleAssignment {
+  const user = MOCK_CAMS_USERS.find((u) => u.id === userId);
+  return {
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id: `mock-permission-${userId}-${role}-${regionId ?? 'all'}-${officeCode ?? 'all'}`,
+    userId,
+    userName: user?.name ?? '',
+    email: user?.email,
+    role,
+    regionId,
+    officeCode,
+    assignedBy: 'mock-super-user',
+    assignedByName: 'Mock Super User',
+    assignedAt,
+    active: true,
+    activeKey: activeKeyFor(role, regionId, officeCode),
+  };
+}
+
+// A few fake-API users hold permissions of every scope, so the table, the overlap rule and the
+// screen-reader sentences have something to show.
+const MANHATTAN_CODE = 'USTP_CAMS_Region_2_Office_Manhattan';
+const BUFFALO_CODE = 'USTP_CAMS_Region_2_Office_Buffalo';
+const SEEDED_PERMISSIONS: [string, CamsRoleType, string | null, string | null][] = [
+  ['mock-cams-user-alex-adams', CamsRole.TrialAttorney, '2', MANHATTAN_CODE],
+  ['mock-cams-user-blair-adams', CamsRole.TrialAttorney, '2', MANHATTAN_CODE],
+  ['mock-cams-user-blair-adams', CamsRole.Auditor, '2', BUFFALO_CODE],
+  ['mock-cams-user-casey-adams', CamsRole.TrialAttorney, '2', null],
+  ['mock-cams-user-devon-adams', CamsRole.Paralegal, null, null],
+  ['mock-cams-user-emery-adams', CamsRole.SuperUser, null, null],
+];
+for (const [userId, role, regionId, officeCode] of SEEDED_PERMISSIONS) {
+  MOCK_CAMS_USERS.find((u) => u.id === userId)?.permissions.push(
+    mockPermission(userId, role, regionId, officeCode),
+  );
+}
+
+// The backend's matching (the shared includesIgnoringCase), on name and email, combined with AND.
+async function getCamsUsers(predicate: CamsUsersPredicate) {
+  const matching = MOCK_CAMS_USERS.filter(
+    (user) =>
+      includesIgnoringCase(user.name, predicate.name) &&
+      includesIgnoringCase(user.email, predicate.email),
+  );
+  const data = matching.slice(predicate.offset, predicate.offset + predicate.limit);
+  return {
+    data,
+    pagination: {
+      count: data.length,
+      totalCount: matching.length,
+      currentPage: Math.floor(predicate.offset / predicate.limit) + 1,
+      totalPages: Math.ceil(matching.length / predicate.limit),
+      limit: predicate.limit,
+    },
+  };
+}
+
+// A simplified copy of the server rules (scope checks, idempotent repeats, the overlap rule) for the
+// fake API only. The server, UserAccessUseCase.grantPermission, is the source of truth.
+async function grantPermission(request: RoleAssignmentGrantRequest) {
+  // Dedicated a11y-test trigger: repeating Alex Adams's own seeded Trial Attorney/Manhattan grant
+  // (always the CAMS Users table's first row) always fails, so the accessibility suite can reach
+  // the modal's save-failed state. Narrow and specific on purpose: any other grant to Alex Adams,
+  // including a first-time one while manually exercising the fake API, behaves normally.
+  if (
+    request.userId === 'mock-cams-user-alex-adams' &&
+    request.role === CamsRole.TrialAttorney &&
+    request.regionId === '2' &&
+    request.officeCode === MANHATTAN_CODE
+  ) {
+    throw new Error('Unable to create role assignment.');
+  }
+  const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
+  if (!user) throw new Error('The user is not a CAMS user.');
+  const scope = mockScope(request);
+  const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
+  const sameRole = user.permissions.filter((p) => p.active && p.role === request.role);
+  const permission =
+    sameRole.find((p) => p.activeKey === activeKey) ??
+    mockPermission(
+      user.id,
+      request.role,
+      scope.regionId,
+      scope.officeCode,
+      new Date().toISOString(),
+    );
+  const replaced = sameRole
+    .filter((p) => p.activeKey !== activeKey && scopesOverlap(p, scope))
+    .map((p) => ({ ...p, active: false, activeKey: inactiveKeyFor(p.id) }));
+  const replacedIds = new Set(replaced.map((p) => p.id));
+  user.permissions = [
+    ...user.permissions.filter((p) => !replacedIds.has(p.id) && p.id !== permission.id),
+    permission,
+  ];
+  return { data: { permission, replaced } };
+}
+
+function mockScope(request: RoleAssignmentGrantRequest): PermissionScope {
+  const everyRegion = request.regionId === ALL_SCOPE;
+  const everyOffice = request.officeCode === ALL_SCOPE;
+  if (request.role === CamsRole.SuperUser || everyRegion) {
+    if (!everyRegion || !everyOffice) throw new Error('Invalid scope for this role.');
+    return { regionId: null, officeCode: null };
+  }
+  if (everyOffice) {
+    if (!MOCKED_USTP_OFFICES_ARRAY.some((o) => o.regionId === request.regionId)) {
+      throw new Error('The region does not exist.');
+    }
+    return { regionId: request.regionId, officeCode: null };
+  }
+  const office = MOCKED_USTP_OFFICES_ARRAY.find((o) => o.officeCode === request.officeCode);
+  if (office?.regionId !== request.regionId) {
+    throw new Error('The office is not in that region.');
+  }
+  return { regionId: office.regionId, officeCode: office.officeCode };
+}
+
 async function getBankTrustees(_bankId: string, _limit?: number, _offset?: number) {
   return {
     data: [],
@@ -3690,6 +3850,8 @@ const MockApi2 = {
   updateBank,
   getBankHistory,
   getBankTrustees,
+  getCamsUsers,
+  grantPermission,
   getSoftwareList,
   createSoftware,
   getSoftware,

@@ -100,6 +100,24 @@ describe('User session cache Cosmos repository tests', () => {
 
     await expect(repo.upsert(newSession)).rejects.toThrow();
   });
+  test('deleteByUserId should delete every cached session for the user', async () => {
+    const deleteSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(2);
+    const byUser = QueryBuilder.using<CachedCamsSession & { 'user.id': string }>();
+
+    await repo.deleteByUserId('user-a');
+
+    expect(deleteSpy).toHaveBeenCalledWith(byUser('user.id').equals('user-a'));
+  });
+
+  test('deleteByUserId should throw a CamsError when the delete fails', async () => {
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(
+      new Error('some error'),
+    );
+
+    await expect(repo.deleteByUserId('user-a')).rejects.toEqual(
+      expect.objectContaining({ module: 'USER-SESSION-CACHE-MONGO-REPOSITORY' }),
+    );
+  });
 });
 
 describe('UserSessionCacheMongoRepository singleton handling', () => {

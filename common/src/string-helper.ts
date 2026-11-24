@@ -11,6 +11,17 @@ export function caseInsensitiveCompare(a: string, b: string): number {
 }
 
 /**
+ * Whether `value` contains `search`, ignoring case. A missing or empty search matches everything,
+ * and a missing value matches only that.
+ */
+export function includesIgnoringCase(
+  value: string | undefined,
+  search: string | undefined,
+): boolean {
+  return !search || (value ?? '').toLowerCase().includes(search.toLowerCase());
+}
+
+/**
  * Normalize a yes/no string flag to a canonical lowercase value.
  * Trims whitespace and lowercases. Returns undefined when the input is absent.
  *

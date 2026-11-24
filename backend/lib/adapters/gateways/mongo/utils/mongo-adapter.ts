@@ -26,6 +26,9 @@ import { toMongoProjection, toMongoQuery, toMongoSort } from './mongo-query-rend
 import { randomUUID } from 'crypto';
 import { Document as MongoDocument, MongoServerError } from 'mongodb';
 
+// MongoDB's error code for a collection that does not exist.
+const NAMESPACE_NOT_FOUND = 26;
+
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
   private readonly moduleName: string;
@@ -423,6 +426,24 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       return await this.collectionHumble.bulkWrite(operations);
     } catch (originalError) {
       throw this.handleError(originalError, 'Failed to execute bulk replace operation.');
+    }
+  }
+
+  /**
+   * Whether the collection has a unique index on exactly these fields, in this order. A collection
+   * that does not exist yet has no indexes.
+   */
+  public async hasUniqueIndex(fields: string[]): Promise<boolean> {
+    try {
+      const indexes = await this.collectionHumble.listIndexes().toArray();
+      return indexes.some(
+        (index) => index.unique === true && Object.keys(index.key).join(',') === fields.join(','),
+      );
+    } catch (originalError) {
+      if (originalError instanceof MongoServerError && originalError.code === NAMESPACE_NOT_FOUND) {
+        return false;
+      }
+      throw this.handleError(originalError, 'Failed to list indexes.');
     }
   }
 

@@ -42,6 +42,12 @@ import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi2 from '../testing/mock-api2';
+import {
+  CamsUsersPredicate,
+  CamsUserWithPermissions,
+  RoleAssignmentGrantRequest,
+  RoleAssignmentGrantResult,
+} from '@common/cams/user-access';
 import LocalCache from '../utils/local-cache';
 import DateTimeUtils from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
@@ -643,6 +649,31 @@ async function getBankTrustees(bankId: string, limit?: number, offset?: number) 
   return api().get<TrusteeSummary[]>(`/banks/${bankId}/trustees`, params);
 }
 
+async function getCamsUsers(predicate: CamsUsersPredicate) {
+  const params: Record<string, string> = {
+    limit: String(predicate.limit),
+    offset: String(predicate.offset),
+  };
+  if (predicate.name) params.name = predicate.name;
+  if (predicate.email) params.email = predicate.email;
+  return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
+}
+
+/** Grants a permission. Granting one the user already holds changes nothing. */
+async function grantPermission(request: RoleAssignmentGrantRequest) {
+  const path = [
+    'users',
+    request.userId,
+    'permissions',
+    request.role,
+    request.regionId,
+    request.officeCode,
+  ]
+    .map(encodeURIComponent)
+    .join('/');
+  return api().put<RoleAssignmentGrantResult>(`/user-access/${path}`, {});
+}
+
 async function getSoftwareBankTrustees(
   softwareId: string,
   bankId: string,
@@ -770,6 +801,8 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 }
 
 export const _Api2 = {
+  getCamsUsers,
+  grantPermission,
   getTrustees,
   getTrustee,
   getTrusteeHistory,

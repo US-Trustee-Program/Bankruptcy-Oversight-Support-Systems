@@ -1,127 +1,83 @@
 /**
- * Automatic data quality validation for ALL scenario files.
+ * Data quality validation for every scenario the runner seeds.
  *
- * This test suite validates every scenario file in this directory,
- * ensuring all test data meets quality standards:
- * - Debtors have phoneticTokens
- * - JointDebtors have phoneticTokens
- * - Trustees have phoneticTokens
- * - Phone numbers are in ###-###-#### format
- * - Emails contain @ symbol
+ * Scenarios are found with discoverScenarioScripts, the same function the runner uses, so a new
+ * scenario is validated without being registered here.
  *
- * To add a new scenario to validation, import it below and add to the SCENARIOS array.
+ * Each scenario's operations go through validators.checkSeedOperations, the check the runner
+ * applies before seeding. See its DOCUMENT_CHECKS table for the rules; in short:
+ * - cases and transfer orders: DXTR linkage (dxtrId), debtor phoneticTokens and phone format,
+ *   attorney phone and email format
+ * - trustees: phoneticTokens, phone and email format
+ * - trustee appointments: required fields and division codes
+ * - trustee match verification: every recorded comparison is backed by data
+ * - bankruptcy software: contact phone and email format
+ * - notification routing: at least one recipient, each an email address
+ *
+ * A scenario must write at least one document the validator actually checked (not just one in a
+ * checked collection), so a scenario can't pass here only because nothing it seeds is checked.
+ *
+ * The fake DXTR reports every case as already present, so this suite runs only that branch of each
+ * generator. scenarios.test.ts and ensure-dxtr-case.test.ts cover the "not yet in DXTR" branch.
  */
 
+import { basename, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { faker } from '@faker-js/faker';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { SeedContext } from '../../runner.js';
+import type { GeneratorScript, SeedContext } from '../../runner.js';
+import { discoverScenarioScripts } from '../lib/discover-scripts.js';
 import { validators } from '../lib/test-data-utils.js';
+import { sequentialCaseIds } from '../lib/scenario-test-doubles.js';
 
-// Mock mssql to prevent real database connections during tests
-vi.mock('mssql', () => ({
-  default: {
-    ConnectionPool: class {
-      async connect() {
-        return this;
-      }
-      request() {
-        const mockRequest: { query: ReturnType<typeof vi.fn>; input?: ReturnType<typeof vi.fn> } = {
-          query: vi.fn().mockResolvedValue({
-            recordset: [{ nextSeq: 1 }],
-          }),
-        };
-        // Support chaining
-        mockRequest.input = vi.fn().mockReturnValue(mockRequest);
-        return mockRequest;
-      }
-      async close() {
-        return undefined;
-      }
-    },
-    VarChar: 'VarChar',
-    Int: 'Int',
-  },
-}));
+// No real DXTR connection. A non-empty recordset because dxtr-historical-trustees reads
+// `nextSeq` from it; ensureDxtrCase then treats every case as already in DXTR, which doesn't
+// matter here because the validator doesn't check DXTR rows.
+vi.mock('mssql', async () =>
+  (await import('../lib/scenario-test-doubles.js')).fakeMssqlModule([{ nextSeq: 1 }]),
+);
 
-// Import all scenario generators
-import { generate as generateAdminData } from './admin-data.js';
-import { generate as generateCasesFuzzySearch } from './cases-fuzzy-search.js';
-import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
-import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
-import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
-import { generate as generateDxtrHistoricalTrustees } from './dxtr-historical-trustees.js';
-import { generate as generateOversightAssignments } from './oversight-assignments.js';
-import { generate as generateTrusteeStaff } from './trustee-staff.js';
-import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
-import { generate as generateTrusteeData } from './trustee-data.js';
-import { generate as generateTrusteeFuzzySearch } from './trustee-fuzzy-search.js';
-import { generate as generateTrusteeKeyDates } from './trustee-key-dates.js';
-import { generate as generateTrusteeMatchAllScenarios } from './trustee-match-all-scenarios.js';
-import { generate as generateTrusteesComprehensive } from './trustees-comprehensive.js';
-import { generate as generateTrusteeFilterConjunction } from './trustee-filter-conjunction.js';
-import { generate as generateNotificationRouting } from './notification-routing.js';
-import { generate as generateTrusteeAppointmentTasks } from './trustee-appointment-tasks.js';
-import { generate as generateTrusteeDataReport } from './trustee-data-report.js';
+const SCENARIO_PATHS = discoverScenarioScripts(dirname(fileURLToPath(import.meta.url)));
 
-// Array of all scenarios to validate
-const SCENARIOS = [
-  { name: 'admin-data', generate: generateAdminData },
-  { name: 'cases-fuzzy-search', generate: generateCasesFuzzySearch },
-  { name: 'ch11-with-transfer-orders', generate: generateCh11WithTransferOrders },
-  { name: 'ch7-with-assignment', generate: generateCh7WithAssignment },
-  { name: 'consolidation-scenarios', generate: generateConsolidationScenarios },
-  { name: 'dxtr-historical-trustees', generate: generateDxtrHistoricalTrustees },
-  { name: 'oversight-assignments', generate: generateOversightAssignments },
-  { name: 'trustee-staff', generate: generateTrusteeStaff },
-  { name: 'trustee-case-list', generate: generateTrusteeCaseList },
-  { name: 'trustee-data', generate: generateTrusteeData },
-  { name: 'trustee-fuzzy-search', generate: generateTrusteeFuzzySearch },
-  { name: 'trustee-key-dates', generate: generateTrusteeKeyDates },
-  { name: 'trustee-match-all-scenarios', generate: generateTrusteeMatchAllScenarios },
-  { name: 'trustees-comprehensive', generate: generateTrusteesComprehensive },
-  { name: 'trustee-filter-conjunction', generate: generateTrusteeFilterConjunction },
-  { name: 'notification-routing', generate: generateNotificationRouting },
-  { name: 'trustee-appointment-tasks', generate: generateTrusteeAppointmentTasks },
-  { name: 'trustee-data-report', generate: generateTrusteeDataReport },
-];
-
-// Create mock context for scenario generation
-let mockContext: SeedContext;
-
-beforeEach(() => {
-  mockContext = {
-    generateCaseId: vi.fn().mockResolvedValue({
-      caseId: '081-99-99999',
-      caseNumber: '99-99999',
-      csCaseId: 'SEED99999',
-    }),
+function seedContext(): SeedContext {
+  return {
+    generateCaseId: sequentialCaseIds(),
     mongoClient: {
-      db: vi.fn().mockReturnValue({
-        collection: vi.fn().mockReturnValue({
-          findOne: vi.fn().mockResolvedValue(null),
-        }),
-      }),
+      db: () => ({ collection: () => ({ findOne: async () => null }) }),
     } as never,
   };
-});
+}
+
+async function operationsFor(path: string) {
+  const scenario = (await import(path)) as Partial<GeneratorScript>;
+  expect(scenario.generate, `${basename(path)} must export generate()`).toBeTypeOf('function');
+  return scenario.generate!(seedContext());
+}
 
 describe('Data Quality Validation (All Scenarios)', () => {
-  for (const scenario of SCENARIOS) {
-    test(`${scenario.name} meets data quality standards`, async () => {
-      // Generate the seed operations
-      const ops = await scenario.generate(mockContext);
+  beforeEach(() => {
+    // Generators use faker; a fixed seed keeps a future faker-built field from failing at random.
+    faker.seed(940);
+    // Generators log progress and warnings; keep the test output to the results.
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
 
-      // Validate all operations
-      const errors = validators.validateAllSeedOperations(ops);
+  test('finds scenarios to validate', () => {
+    // Guards test.each below, which would pass with no cases at all.
+    expect(SCENARIO_PATHS.length).toBeGreaterThan(0);
+  });
 
-      // If there are errors, fail the test with detailed messages
-      if (errors.length > 0) {
-        throw new Error(
-          `Data quality issues in ${scenario.name}:\n${errors.map((e) => `  - ${e}`).join('\n')}`,
-        );
-      }
+  test.each(SCENARIO_PATHS.map((path) => [basename(path), path]))(
+    '%s meets data quality standards',
+    async (file, path) => {
+      const { errors, checkedCount } = validators.checkSeedOperations(await operationsFor(path));
 
-      // Explicitly pass if no errors
+      expect(
+        checkedCount,
+        `${file} writes nothing the validator checks; add its documents to DOCUMENT_CHECKS`,
+      ).toBeGreaterThan(0);
       expect(errors).toEqual([]);
-    });
-  }
+    },
+  );
 });

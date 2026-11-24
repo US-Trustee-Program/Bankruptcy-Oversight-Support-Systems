@@ -278,42 +278,26 @@ export function createTrusteeBase(opts: {
 }
 
 /**
- * Creates a SYNCED_CASE document with enforced DXTR strategy
- * Use this helper when creating case documents to ensure DXTR linkage is explicit
+ * Creates a SYNCED_CASE document linked to DXTR, with phoneticTokens for the debtor (and joint
+ * debtor, when named).
  *
- * IMPORTANT: All cases MUST be linked to DXTR (either real or generated IDs).
- * This helper enforces explicit documentation of the DXTR strategy.
+ * IMPORTANT: every case must link to DXTR. dxtrId is either a real DXTR CS_CASEID (numeric) or a
+ * SEED##### id from ensureDxtrCase; validators.assertCaseHasDxtrLink checks the format.
  *
- * Type: SYNCED_CASE document for Cosmos DB
- * - Requires: dxtrStrategy, dxtrId, caseId, debtorName
- * - Automatically: generates phoneticTokens for debtor
- *
- * @param opts - Case document details with explicit DXTR strategy
+ * @param opts - Case document details
  * @returns SYNCED_CASE document ready for seeding
  * @example
- * // Strategy 1: Real DXTR case (from existing data)
+ * const { caseInfo } = await ensureDxtrCase(ctx, {...});
  * createCaseDocument({
- *   dxtrStrategy: 'real',
- *   dxtrId: '318723',  // Actual DXTR CS_CASEID
- *   caseId: '081-26-63921',
+ *   dxtrId: caseInfo.csCaseId,
+ *   caseId: caseInfo.caseId,
  *   caseNumber: '26-63921',
  *   chapter: '7',
  *   debtorName: 'Smith, John',
- *   officeName: 'Manhattan',
- *   // ...
- * })
- *
- * // Strategy 2: Generated via ensureDxtrCase (creates if needed)
- * const { caseInfo } = await ensureDxtrCase(ctx, {...});
- * createCaseDocument({
- *   dxtrStrategy: 'generated',
- *   dxtrId: caseInfo.csCaseId,  // SEED##### format
- *   caseId: caseInfo.caseId,
  *   // ...
  * })
  */
 export function createCaseDocument(opts: {
-  dxtrStrategy: 'real' | 'generated';
   dxtrId: string;
   caseId: string;
   caseNumber: string;
@@ -485,6 +469,20 @@ type TrusteeMatchVerificationLike = {
   };
 };
 
+type BankruptcySoftwareLike = {
+  id?: string;
+  documentType?: string;
+  name?: string;
+  contact?: { phones?: { number?: string }[]; emails?: string[] };
+};
+
+type NotificationRoutingLike = {
+  id?: string;
+  documentType?: string;
+  displayName?: string;
+  recipientAddresses?: string[];
+};
+
 type SeedOperationLike = {
   db?: string;
   collectionOrTable?: string;
@@ -492,9 +490,13 @@ type SeedOperationLike = {
     | CaseLike
     | TrusteeAppointmentLike
     | TrusteeMatchVerificationLike
+    | BankruptcySoftwareLike
+    | NotificationRoutingLike
     | { trusteeId?: string; id?: string }
   >;
 };
+
+const PHONE_FORMAT = /^\d{3}-\d{3}-\d{4}$/;
 
 /**
  * Validation helpers to ensure test data meets quality standards.
@@ -527,7 +529,7 @@ export const validators = {
     }
 
     // Check phone number format (if present)
-    if (debtor.phone && !debtor.phone.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (debtor.phone && !PHONE_FORMAT.test(debtor.phone)) {
       throw new Error(
         `${context}: debtor "${name}" phone "${debtor.phone}" not in ###-###-#### format`,
       );
@@ -546,7 +548,7 @@ export const validators = {
     const name = attorney.name || 'unknown';
 
     // Check phone number format (if present)
-    if (attorney.phone && !attorney.phone.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (attorney.phone && !PHONE_FORMAT.test(attorney.phone)) {
       throw new Error(
         `${context}: attorney "${name}" phone "${attorney.phone}" not in ###-###-#### format`,
       );
@@ -567,8 +569,6 @@ export const validators = {
    * @throws Error if validation fails with specific issue description
    */
   assertCaseHasDxtrLink(caseDoc: CaseLike, context: string): void {
-    if (!caseDoc) return;
-
     const caseId = caseDoc.caseId || caseDoc.id || 'unknown';
 
     // Check dxtrId exists
@@ -618,7 +618,7 @@ export const validators = {
 
     // Check phone number format (if present)
     const phoneNumber = trustee.public?.phone?.number;
-    if (phoneNumber && !phoneNumber.match(/^\d{3}-\d{3}-\d{4}$/)) {
+    if (phoneNumber && !PHONE_FORMAT.test(phoneNumber)) {
       throw new Error(
         `${context}: trustee "${name}" phone "${phoneNumber}" not in ###-###-#### format`,
       );
@@ -747,194 +747,184 @@ export const validators = {
   },
 
   /**
-   * Validates all seed operations for data quality issues
-   * @param ops - Array of seed operations to validate
-   * @returns Array of error messages (empty if all valid)
+   * Validates every document the seed validator knows how to check, and counts the ones it checked.
+   * Documents in other collections, or of other types within a checked collection, are skipped and
+   * not counted, so a checkedCount of 0 means nothing was validated.
    */
-  validateAllSeedOperations(ops: SeedOperationLike[]): string[] {
+  checkSeedOperations(ops: SeedOperationLike[]): { errors: string[]; checkedCount: number } {
     const errors: string[] = [];
-
+    let checkedCount = 0;
     for (const op of ops) {
-      if (!op.data) continue;
-
-      // Validate cases collection (SYNCED_CASE documents)
-      if (op.collectionOrTable === 'cases') {
-        for (const doc of op.data) {
-          const caseDoc = doc as CaseLike;
-          const caseId = caseDoc.caseId || caseDoc.id || 'unknown';
-
-          // Validate DXTR linkage (only for SYNCED_CASE documents)
-          if (caseDoc.documentType === 'SYNCED_CASE') {
-            try {
-              validators.assertCaseHasDxtrLink(caseDoc, `Case ${caseId}`);
-            } catch (e) {
-              errors.push((e as Error).message);
-            }
-
-            // Validate primary debtor
-            try {
-              validators.assertDebtorValid(caseDoc.debtor, `Case ${caseId} debtor`);
-            } catch (e) {
-              errors.push((e as Error).message);
-            }
-
-            // Validate joint debtor (if present)
-            if (caseDoc.jointDebtor) {
-              try {
-                validators.assertDebtorValid(caseDoc.jointDebtor, `Case ${caseId} jointDebtor`);
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-
-            // Validate debtor attorney (if present)
-            if (caseDoc.debtorAttorney) {
-              try {
-                validators.assertAttorneyValid(
-                  caseDoc.debtorAttorney,
-                  `Case ${caseId} debtorAttorney`,
-                );
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-
-            // Validate joint debtor attorney (if present)
-            if (caseDoc.jointDebtorAttorney) {
-              try {
-                validators.assertAttorneyValid(
-                  caseDoc.jointDebtorAttorney,
-                  `Case ${caseId} jointDebtorAttorney`,
-                );
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-          }
-        }
-      }
-
-      // Validate orders collection (TRANSFER_ORDER documents with case data)
-      if (op.collectionOrTable === 'orders') {
-        for (const doc of op.data) {
-          const orderDoc = doc as CaseLike & { documentType?: string };
-
-          // Only validate TRANSFER_ORDER documents (they contain case snapshots)
-          if (orderDoc.documentType === 'TRANSFER_ORDER') {
-            const orderId = orderDoc.id || 'unknown';
-            const caseId = orderDoc.caseId || 'unknown';
-
-            // Validate DXTR linkage
-            try {
-              validators.assertCaseHasDxtrLink(orderDoc, `Order ${orderId} case data`);
-            } catch (e) {
-              errors.push((e as Error).message);
-            }
-
-            // Validate primary debtor in the order's case snapshot
-            try {
-              validators.assertDebtorValid(
-                orderDoc.debtor,
-                `Order ${orderId} case ${caseId} debtor`,
-              );
-            } catch (e) {
-              errors.push((e as Error).message);
-            }
-
-            // Validate joint debtor (if present)
-            if (orderDoc.jointDebtor) {
-              try {
-                validators.assertDebtorValid(
-                  orderDoc.jointDebtor,
-                  `Order ${orderId} case ${caseId} jointDebtor`,
-                );
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-
-            // Validate debtor attorney (if present)
-            if (orderDoc.debtorAttorney) {
-              try {
-                validators.assertAttorneyValid(
-                  orderDoc.debtorAttorney,
-                  `Order ${orderId} case ${caseId} debtorAttorney`,
-                );
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-
-            // Validate joint debtor attorney (if present)
-            if (orderDoc.jointDebtorAttorney) {
-              try {
-                validators.assertAttorneyValid(
-                  orderDoc.jointDebtorAttorney,
-                  `Order ${orderId} case ${caseId} jointDebtorAttorney`,
-                );
-              } catch (e) {
-                errors.push((e as Error).message);
-              }
-            }
-          }
-        }
-      }
-
-      // Validate trustees collection (only TRUSTEE documents, skip TRUSTEE_STAFF)
-      if (op.collectionOrTable === 'trustees') {
-        for (const doc of op.data) {
-          const docWithType = doc as { documentType?: string; trusteeId?: string; id?: string };
-
-          // Skip non-TRUSTEE documents (e.g., TRUSTEE_STAFF, TRUSTEE_OVERSIGHT_ASSIGNMENT)
-          if (docWithType.documentType && docWithType.documentType !== 'TRUSTEE') {
-            continue;
-          }
-
-          const trusteeId = docWithType.trusteeId || docWithType.id || 'unknown';
-          try {
-            validators.assertTrusteeValid(doc as TrusteeLike, `Trustee ${trusteeId}`);
-          } catch (e) {
-            errors.push((e as Error).message);
-          }
-        }
-      }
-
-      // Validate trustee-appointments collection (TRUSTEE_APPOINTMENT documents)
-      if (op.collectionOrTable === 'trustee-appointments') {
-        for (const doc of op.data) {
-          const apptDoc = doc as TrusteeAppointmentLike;
-
-          if (apptDoc.documentType !== 'TRUSTEE_APPOINTMENT') continue;
-
-          const apptId = apptDoc.id || 'unknown';
-          try {
-            validators.assertTrusteeAppointmentValid(apptDoc, `TrusteeAppointment ${apptId}`);
-          } catch (e) {
-            errors.push((e as Error).message);
-          }
-        }
-      }
-
-      // Validate trustee-match-verification collection (findings backed by the fixture's data)
-      if (op.collectionOrTable === 'trustee-match-verification') {
-        for (const doc of op.data) {
-          const verificationDoc = doc as TrusteeMatchVerificationLike;
-
-          if (verificationDoc.documentType !== 'TRUSTEE_MATCH_VERIFICATION') continue;
-
-          const docId = verificationDoc.id || 'unknown';
-          try {
-            validators.assertTrusteeMatchFindingsValid(
-              verificationDoc,
-              `TrusteeMatchVerification ${docId}`,
-            );
-          } catch (e) {
-            errors.push((e as Error).message);
-          }
-        }
+      const check = DOCUMENT_CHECKS.get(op.collectionOrTable ?? '');
+      if (!check || !op.data) continue;
+      for (const doc of op.data) {
+        if (!check.appliesTo(doc)) continue;
+        checkedCount++;
+        errors.push(...check.errors(doc));
       }
     }
+    return { errors, checkedCount };
+  },
 
-    return errors;
+  /** The error messages from checkSeedOperations: empty when every checked document is valid. */
+  validateAllSeedOperations(ops: SeedOperationLike[]): string[] {
+    return validators.checkSeedOperations(ops).errors;
   },
 };
+
+type SeedDocument = NonNullable<SeedOperationLike['data']>[number];
+
+/** Which documents in a collection get checked, and the problems found in one of them. */
+type DocumentCheck = {
+  appliesTo: (doc: SeedDocument) => boolean;
+  errors: (doc: SeedDocument) => string[];
+};
+
+function documentTypeOf(doc: SeedDocument): string | undefined {
+  return (doc as { documentType?: string }).documentType;
+}
+
+function ofType(documentType: string) {
+  return (doc: SeedDocument) => documentTypeOf(doc) === documentType;
+}
+
+/** Runs a validator that throws and returns its message as a list: empty when it passes. */
+function errorsFrom(validate: () => void): string[] {
+  try {
+    validate();
+    return [];
+  } catch (e) {
+    return [(e as Error).message];
+  }
+}
+
+/** The DXTR link, debtors and attorneys on a SYNCED_CASE or on a TRANSFER_ORDER's case snapshot. */
+function caseSnapshotErrors(doc: CaseLike, linkContext: string, partyContext: string): string[] {
+  return [
+    ...errorsFrom(() => validators.assertCaseHasDxtrLink(doc, linkContext)),
+    ...errorsFrom(() => validators.assertDebtorValid(doc.debtor, `${partyContext} debtor`)),
+    ...errorsFrom(() =>
+      validators.assertDebtorValid(doc.jointDebtor, `${partyContext} jointDebtor`),
+    ),
+    ...errorsFrom(() =>
+      validators.assertAttorneyValid(doc.debtorAttorney, `${partyContext} debtorAttorney`),
+    ),
+    ...errorsFrom(() =>
+      validators.assertAttorneyValid(
+        doc.jointDebtorAttorney,
+        `${partyContext} jointDebtorAttorney`,
+      ),
+    ),
+  ];
+}
+
+function syncedCaseErrors(doc: SeedDocument): string[] {
+  const caseDoc = doc as CaseLike;
+  const context = `Case ${caseDoc.caseId || caseDoc.id || 'unknown'}`;
+  const missingDebtor = caseDoc.debtor ? [] : [`${context}: SYNCED_CASE has no debtor`];
+  return [...missingDebtor, ...caseSnapshotErrors(caseDoc, context, context)];
+}
+
+function transferOrderErrors(doc: SeedDocument): string[] {
+  const orderDoc = doc as CaseLike;
+  const orderId = orderDoc.id || 'unknown';
+  return caseSnapshotErrors(
+    orderDoc,
+    `Order ${orderId} case data`,
+    `Order ${orderId} case ${orderDoc.caseId || 'unknown'}`,
+  );
+}
+
+/**
+ * Every malformed phone and email on a BANKRUPTCY_SOFTWARE contact, including a phone entry with
+ * no number. A document with no contact has nothing to check.
+ */
+function bankruptcySoftwareErrors(doc: SeedDocument): string[] {
+  const software = doc as BankruptcySoftwareLike;
+  const label = `BankruptcySoftware ${software.id || 'unknown'}: "${software.name || 'unknown'}"`;
+  const phoneErrors = (software.contact?.phones ?? []).flatMap(({ number }) => {
+    if (!number) return [`${label} has a phone with no number`];
+    return PHONE_FORMAT.test(number)
+      ? []
+      : [`${label} phone "${number}" not in ###-###-#### format`];
+  });
+  const emailErrors = (software.contact?.emails ?? [])
+    .filter((email) => !email.includes('@'))
+    .map((email) => `${label} email "${email}" is not a valid email format`);
+  return [...phoneErrors, ...emailErrors];
+}
+
+/**
+ * The problems with a NOTIFICATION_ROUTING document: no recipients (the notification would go
+ * nowhere), or a recipient that isn't an email address.
+ */
+function notificationRoutingErrors(doc: SeedDocument): string[] {
+  const routing = doc as NotificationRoutingLike;
+  const label = `NotificationRouting ${routing.id || 'unknown'}: "${routing.displayName || 'unknown'}"`;
+  const recipients = routing.recipientAddresses ?? [];
+  if (recipients.length === 0) return [`${label} has no recipientAddresses`];
+  return recipients
+    .filter((address) => !address.includes('@'))
+    .map((address) => `${label} recipient "${address}" is not a valid email format`);
+}
+
+/** The only list of what the seed validator checks: collection, document types, and the check. */
+const DOCUMENT_CHECKS = new Map<string, DocumentCheck>([
+  ['cases', { appliesTo: ofType('SYNCED_CASE'), errors: syncedCaseErrors }],
+  // TRANSFER_ORDER documents carry a case snapshot; consolidation orders don't.
+  ['orders', { appliesTo: ofType('TRANSFER_ORDER'), errors: transferOrderErrors }],
+  [
+    'trustees',
+    {
+      // TRUSTEE documents, or legacy ones with no documentType; not TRUSTEE_STAFF and the like.
+      appliesTo: (doc) => [undefined, 'TRUSTEE'].includes(documentTypeOf(doc)),
+      errors: (doc) => {
+        const trustee = doc as TrusteeLike & { trusteeId?: string };
+        return errorsFrom(() =>
+          validators.assertTrusteeValid(
+            trustee,
+            `Trustee ${trustee.trusteeId || trustee.id || 'unknown'}`,
+          ),
+        );
+      },
+    },
+  ],
+  [
+    'trustee-appointments',
+    {
+      appliesTo: ofType('TRUSTEE_APPOINTMENT'),
+      errors: (doc) => {
+        const appointment = doc as TrusteeAppointmentLike;
+        return errorsFrom(() =>
+          validators.assertTrusteeAppointmentValid(
+            appointment,
+            `TrusteeAppointment ${appointment.id || 'unknown'}`,
+          ),
+        );
+      },
+    },
+  ],
+  [
+    'trustee-match-verification',
+    {
+      appliesTo: ofType('TRUSTEE_MATCH_VERIFICATION'),
+      errors: (doc) => {
+        const verification = doc as TrusteeMatchVerificationLike;
+        return errorsFrom(() =>
+          validators.assertTrusteeMatchFindingsValid(
+            verification,
+            `TrusteeMatchVerification ${verification.id || 'unknown'}`,
+          ),
+        );
+      },
+    },
+  ],
+  [
+    'bankruptcy-software',
+    { appliesTo: ofType('BANKRUPTCY_SOFTWARE'), errors: bankruptcySoftwareErrors },
+  ],
+  [
+    'notification-routing',
+    { appliesTo: ofType('NOTIFICATION_ROUTING'), errors: notificationRoutingErrors },
+  ],
+]);

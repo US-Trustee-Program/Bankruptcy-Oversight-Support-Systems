@@ -16,7 +16,9 @@ import { TrusteeTaskRegions } from './trustee-task-regions/TrusteeTaskRegions';
 import { TrusteeDataReport } from './trustee-data-report/TrusteeDataReport';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { Permissions } from './permissions/Permissions';
 import useFeatureFlags, {
+  CAMS_ROLE_ASSIGNMENTS,
   isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
 } from '../lib/hooks/UseFeatureFlags';
@@ -34,6 +36,9 @@ export function AdminScreen() {
     }
     if (location.pathname.includes('/admin/privileged-identity')) {
       return AdminNavState.PRIVILEGED_IDENTITY;
+    }
+    if (location.pathname.includes('/admin/permissions')) {
+      return AdminNavState.PERMISSIONS;
     }
     if (location.pathname.includes('/admin/trustee-task-regions')) {
       return AdminNavState.TRUSTEE_TASK_REGIONS;
@@ -84,6 +89,9 @@ export function AdminScreen() {
                     <Routes>
                       {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
                         <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      )}
+                      {isFlagEnabled(flags, CAMS_ROLE_ASSIGNMENTS) && (
+                        <Route path="permissions/*" element={<Permissions />} />
                       )}
                       <Route path="trustee-task-regions" element={<TrusteeTaskRegions />} />
                       <Route path="banks" element={<Banks />} />

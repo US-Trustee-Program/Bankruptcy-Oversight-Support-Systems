@@ -99,6 +99,7 @@ detail pages will fail to load.
 All test data is validated before seeding to ensure quality:
 
 - **phoneticTokens**: All debtors, jointDebtors, and trustees must have phoneticTokens arrays
+- **Debtor**: Every SYNCED_CASE must have a debtor
 - **DXTR linkage**: All cases must link to DXTR with numeric IDs (real) or SEED##### format
   (generated)
 - **Phone format**: All phone numbers must be in ###-###-#### format
@@ -144,7 +145,6 @@ const trustee = createTrusteeBase({
 
 // Creates case with DXTR linkage and phoneticTokens
 const caseDoc = createCaseDocument({
-  dxtrStrategy: 'real',
   dxtrId: '318723',
   caseId: '081-26-63921',
   debtorName: 'Smith, John',

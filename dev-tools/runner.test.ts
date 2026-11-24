@@ -54,12 +54,12 @@ import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 // We import them dynamically after mocks are in place.
 import {
   generateCaseId,
-  discoverScripts,
   parseArgs,
   runGeneratorScript,
   runScript,
   resetDxtrPool,
 } from './runner.js';
+import { discoverScripts } from './db_scripts/lib/discover-scripts.js';
 
 describe('generateCaseId', () => {
   const divisionCode = '081';

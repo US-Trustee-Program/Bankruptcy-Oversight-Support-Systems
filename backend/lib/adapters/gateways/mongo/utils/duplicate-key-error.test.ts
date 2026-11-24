@@ -3,14 +3,21 @@ import { isDuplicateKeyError } from './duplicate-key-error';
 
 describe('isDuplicateKeyError', () => {
   test.each([
-    ['an E11000 message', new Error('E11000 collection: cams.trustee-variation'), true],
-    ['a "duplicate key" message', new Error('Duplicate Key error'), true],
-    ['an unrelated message', new Error('Write failed'), false],
-    ['an object with no message', {}, false],
-    ['a string', 'E11000', false],
-    ['null', null, false],
-    ['undefined', undefined, false],
-  ])('%s -> %s', (_label, error, expected) => {
-    expect(isDuplicateKeyError(error)).toBe(expected);
+    { name: 'an E11000 message', error: new Error('E11000 duplicate key error collection: x') },
+    { name: 'a "duplicate key" message in any case', error: new Error('Duplicate Key violation') },
+    { name: 'a plain object with a matching message', error: { message: 'E11000' } },
+  ])('should detect $name', ({ error }) => {
+    expect(isDuplicateKeyError(error)).toBe(true);
+  });
+
+  test.each([
+    { name: 'an unrelated error', error: new Error('connection reset') },
+    { name: 'an object without a message', error: { code: 11000 } },
+    { name: 'a string', error: 'E11000' },
+    { name: 'null', error: null },
+    { name: 'undefined', error: undefined },
+    { name: 'a non-string message', error: { message: 11000 } },
+  ])('should not detect $name', ({ error }) => {
+    expect(isDuplicateKeyError(error)).toBe(false);
   });
 });

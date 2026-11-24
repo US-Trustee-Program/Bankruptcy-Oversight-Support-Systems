@@ -53,8 +53,8 @@ both the backend and frontend since they share the same mapping function.
 condition `roles` "contains" `SuperUser` serving the `on` variation. **Example — target by office.**
 To serve a flag `on` only to users in a given office, add a rule with the condition
 `officeGroupDesignators` "contains" that office's ACMS group designator (a short code such as `NY`).
-Neither example requires a code change, because `roles` and `officeGroupDesignators` are already part
-of the context above.
+Neither example requires a code change, because `roles` and `officeGroupDesignators` are already
+part of the context above.
 
 ### Rollout model
 
@@ -62,11 +62,22 @@ Targeting is the mechanism behind a phased rollout: a feature graduates from a s
 audience to everyone in stages, so each stage can be validated before widening.
 
 1. Detailees — a small, manually-maintained list of pilot users (see below).
-1. Working Group — a broader audience, typically a role- or office-based segment built on the `roles` / `officeGroupDesignators` attributes above.
-1. All users — the flag's default/fallthrough variation is flipped `on` and the targeting rules are retired.
+1. Working Group — a broader audience, typically a role- or office-based segment built on the
+   `roles` / `officeGroupDesignators` attributes above.
+1. All users — the flag's default/fallthrough variation is flipped `on` and the targeting rules are
+   retired.
 
 Segment membership is maintained by hand in the LaunchDarkly dashboard today; a future
 access-management feature will move Detailees/Working-Group membership management into the CAMS UI.
+
+### Flags that must not use targeting
+
+`cams-role-assignments` must be a global on/off flag: no targeting rules, segments or percentage
+rollouts. The backend evaluates it twice per request. Building the session reads the anonymous
+evaluation, because the session's roles don't exist yet, and the Permissions endpoint reads the
+per-user evaluation. If the two disagree, either sessions ignore the permissions granted on the
+Permissions screen, or every Super User gets a 403 from that screen and only the Compass script can
+grant access. Turn the flag on or off for everyone in an environment at once.
 
 ### Detailees pilot: dashboard configuration
 
@@ -79,8 +90,8 @@ set up a list-based segment and a targeting rule in the LaunchDarkly **GovCloud 
    - Type: **List** (a manually-maintained list of context keys, not a rule-based segment)
    - Add each pilot user's context `key` (their Okta `sub` claim — see the User Context table above)
      to the segment's list.
-2. **Add a targeting rule to the pilot flag** (e.g. `chapter-eleven-enabled`) — Flag > Targeting tab >
-   Add rule.
+2. **Add a targeting rule to the pilot flag** (e.g. `chapter-eleven-enabled`) — Flag > Targeting
+   tab > Add rule.
    - Condition: "context is in segment" > `Detailees`
    - Serve: the `true` (or "on") variation
    - **Ordering:** this rule must be placed _above_ the existing default/fallthrough rule, since

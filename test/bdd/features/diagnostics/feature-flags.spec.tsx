@@ -4,6 +4,7 @@ import { TestSessions } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import { screen } from '@testing-library/react';
+import { testFeatureFlags } from '@common/feature-flags';
 
 // ALWAYS import driver mocks
 import '../../helpers/driver-mocks';
@@ -63,8 +64,8 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
     const flagState = await client.allFlagsState({});
     const actualFlags = flagState.allValues();
 
-    // Verify the client returns exactly the custom flags we specified
-    expect(actualFlags).toEqual(customFlags);
+    // Verify the client returns the custom flags on top of the backend defaults
+    expect(actualFlags).toEqual({ ...testFeatureFlags, ...customFlags });
     expect(actualFlags['trustee-case-list']).toBe(true);
     expect(actualFlags['case-consolidation']).toBe(false);
     expect(actualFlags['experimental-feature']).toBe(true);
@@ -209,7 +210,10 @@ describe('Feature: LaunchDarkly Mock Infrastructure', () => {
     expect(flags['legacy-feature']).toBe(false);
     expect(flags['beta-ui']).toBe(false);
     expect(flags['new-api']).toBe(true);
-    expect(Object.keys(flags)).toHaveLength(5);
+    // The overrides sit on top of the backend defaults
+    expect(flags['privileged-identity-management']).toBe(
+      testFeatureFlags['privileged-identity-management'],
+    );
 
     console.log('[TEST] ✓ Multiple mixed flags work correctly');
   });

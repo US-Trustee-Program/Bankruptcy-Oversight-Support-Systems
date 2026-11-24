@@ -271,6 +271,22 @@ export async function spyOnAllGateways(
     explicitMocks.ListsMongoRepository,
   );
 
+  const { UserRoleAssignmentMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user-role-assignment.mongo.repository');
+  spyOnAllGatewayMethods(
+    UserRoleAssignmentMongoRepository,
+    'UserRoleAssignmentMongoRepository',
+    explicitMocks.UserRoleAssignmentMongoRepository,
+  );
+
+  const { RoleAssignmentAuditMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/role-assignment-audit.mongo.repository');
+  spyOnAllGatewayMethods(
+    RoleAssignmentAuditMongoRepository,
+    'RoleAssignmentAuditMongoRepository',
+    explicitMocks.RoleAssignmentAuditMongoRepository,
+  );
+
   const { TrusteeAppointmentVerificationMongoRepository } =
     await import('../../../backend/lib/adapters/gateways/mongo/trustee-appointment-verification.mongo.repository');
   spyOnAllGatewayMethods(
@@ -296,6 +312,9 @@ export async function clearAllRepositorySpies() {
   // This prevents cross-test state leakage
   // Note: BDD tests use restoreMocks: false in config and handle cleanup manually
   vi.restoreAllMocks();
+
+  // Undo the backend feature flag routing made by TestSetup.withFeatureFlag(s)()
+  vi.unstubAllEnvs();
 
   // Clear singleton instances to ensure fresh instances with new spies
   // IMPORTANT: Access the class's private static instance field to reset it

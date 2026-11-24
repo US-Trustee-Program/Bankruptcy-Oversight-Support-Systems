@@ -79,11 +79,12 @@ removes any appointment task the app opens for a seeded trustee-match candidate 
 
 ### Administrative Data
 
-| Scenario                | Source Script                                    | What It Tests                                                                        |
-| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| **Banks**               | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                            |
-| **Bankruptcy Software** | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank |
-| **User Groups**         | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                        |
+| Scenario                  | Source Script                                    | What It Tests                                                                                                 |
+| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **Banks**                 | `admin-data.ts`                                  | Active and inactive banks. Active: "Test Bank of America"                                                     |
+| **Bankruptcy Software**   | `admin-data.ts`                                  | Active and inactive bankruptcy software. Active: "BestCase Pro" with associated bank                          |
+| **User Groups**           | Synced from production via `sync-user-groups.ts` | Trial Attorney, Auditor, Paralegal roles with real Okta users                                                 |
+| **Super User Permission** | Not seeded                                       | Provisioned once per environment with the Compass script; see [Super User Permission](#super-user-permission) |
 
 ## Key Test Records
 
@@ -157,6 +158,64 @@ Appointments have distinct `appointedDate` (15th) vs `dateFiled` (1st) for colum
 Each case has 3 docket entries (petition, commencement notice, 341 meeting).
 
 **Empty trustee:** `cams-593-empty` (Empty Trustee) — no active appointments, renders empty state.
+
+### Super User Permission
+
+Super User isn't seeded. With `cams-role-assignments` on, nobody can use Administration >
+Permissions until someone holds Super User, so the first one is written directly to the target
+database: paste `dev-tools/superuser/provision-super-user.compass.js` into the MongoDB Compass shell
+connected to that environment, after setting `USER_ID`, `USER_NAME`, `USER_EMAIL` and `DATABASE` at
+the top. It writes one Super User permission and its CREATED audit entry, and does nothing if the
+user already holds Super User. It stops without writing if `user-role-assignments` doesn't have its
+unique `{userId, activeKey}` index yet; deploy `cosmos-collections.bicep` to the environment first.
+The script comes from PR #3353. Grant every later permission from the Permissions screen. See
+[ADR: Provision the first Super User with a Compass script](../architecture/decision-records/ProvisionFirstSuperUserWithCompassScript.md).
+
+**Removing a Super User.** There's no revoke on the Permissions screen yet; it's planned as future
+work. Until then, revoke in the same Compass shell with the update the app itself makes. Set
+`active: false` **and** replace `activeKey`: the unique `{userId, activeKey}` index ignores
+`active`, so a permission left with `activeKey: 'SuperUser|*|*'` would make a later grant for the
+same user fail. Never delete the permission or its audit entries.
+
+```js
+const USER_ID = 'REPLACE_WITH_OKTA_USER_ID';
+const cams = db.getSiblingDB('cams');
+const held = cams.getCollection('user-role-assignments').findOne({
+  documentType: 'USER_ROLE_ASSIGNMENT',
+  userId: USER_ID,
+  activeKey: 'SuperUser|*|*',
+  active: true,
+});
+cams
+  .getCollection('user-role-assignments')
+  .updateOne(
+    { userId: held.userId, id: held.id, active: true },
+    { $set: { active: false, activeKey: 'inactive|' + held.id } },
+  );
+cams.getCollection('role-assignment-audit').insertOne({
+  documentType: 'ROLE_ASSIGNMENT_AUDIT',
+  id: UUID().toHexString(true),
+  assignmentId: held.id,
+  action: 'DEACTIVATED',
+  userId: held.userId,
+  userName: held.userName,
+  role: 'SuperUser',
+  regionId: null,
+  officeCode: null,
+  performedBy: 'SUPERUSER_MANUAL_REVOKE',
+  performedByName: 'Manual Super User revoke',
+  performedAt: new Date().toISOString(),
+  previousState: { role: 'SuperUser', regionId: null, officeCode: null, active: true },
+  newState: { role: 'SuperUser', regionId: null, officeCode: null, active: false },
+  replacedByAssignmentId: null,
+});
+cams.getCollection('user-session-cache').deleteMany({ 'user.id': USER_ID });
+```
+
+Set `USER_ID`, and replace `'cams'` if the environment's database has another name. If `held` is
+`null`, the user holds no active Super User and there's nothing to revoke. The last line clears the
+user's cached sessions. Without it, a session already signed in keeps Super User until its token
+expires, up to about an hour.
 
 ### Bank and Software Assignments
 

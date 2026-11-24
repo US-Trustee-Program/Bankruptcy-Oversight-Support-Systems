@@ -49,9 +49,13 @@ async function getPrivilegedIdentityUser(
       const rolesSet = new Set<CamsRoleType>([...combined.roles, ...roles]);
 
       const offices = await getOfficesFromGroupNames(context, pimUser.claims.groups);
-      const officeSet = new Set<UstpOfficeDetails>([...combined.offices, ...offices]);
+      // Merge by officeCode: the session and the elevation can hold different copies of an office.
+      const officesByCode = new Map<string, UstpOfficeDetails>();
+      for (const office of [...combined.offices, ...offices]) {
+        if (!officesByCode.has(office.officeCode)) officesByCode.set(office.officeCode, office);
+      }
       combined.roles = Array.from(rolesSet);
-      combined.offices = Array.from(officeSet);
+      combined.offices = Array.from(officesByCode.values());
     }
   } catch (error) {
     // Whether there is no document or we encountered an error, we just return the IDP user.

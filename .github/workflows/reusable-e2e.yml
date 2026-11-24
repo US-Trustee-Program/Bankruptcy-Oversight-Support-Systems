@@ -209,6 +209,14 @@ jobs:
             -o tsv)"
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
 
+          # Masked and persisted to GITHUB_ENV (not `needs.*.outputs`, which doesn't carry a mask
+          # across jobs — see the note on this job above) so the Permissions spec's SuperUser
+          # grant/revoke (test/e2e/playwright/login/superuser-access.ts), run from inside the
+          # "Run E2E Tests" step's container below, can reach the same database.
+          echo "::add-mask::${MONGO_CONNECTION_STRING}"
+          echo "MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}" >> "$GITHUB_ENV"
+          echo "COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}" >> "$GITHUB_ENV"
+
           echo "Seeding E2E MongoDB..."
           (cd ./test/e2e && npm run seed)
 
@@ -236,6 +244,14 @@ jobs:
           WEBAPP_NAME: ${{ inputs.webappName }}
           OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
           OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
+          # Set (and masked) by "Seed e2e database" above, for the Permissions spec's SuperUser
+          # grant/revoke — see test/e2e/playwright/login/superuser-access.ts.
+          MONGO_CONNECTION_STRING: ${{ env.MONGO_CONNECTION_STRING }} # pragma: allowlist secret
+          COSMOS_DATABASE_NAME: ${{ env.COSMOS_DATABASE_NAME }}
+          # This job only ever deploys Flexion's own dev or Main-Gov environments (never real USTP
+          # staging/production), where cams-role-assignments is on - see
+          # test/e2e/playwright/superuser.ts's isSuperUserTestEnabled for why this gate exists.
+          CAMS_ROLE_ASSIGNMENTS_ENABLED: 'true'
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
@@ -274,6 +290,9 @@ jobs:
             -e CAMS_LOGIN_PROVIDER="${{ env.CAMS_LOGIN_PROVIDER }}" \
             -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
             -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
+            -e MONGO_CONNECTION_STRING="${MONGO_CONNECTION_STRING}" \
+            -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
+            -e CAMS_ROLE_ASSIGNMENTS_ENABLED="${CAMS_ROLE_ASSIGNMENTS_ENABLED}" \
             -e CI=true \
             "${{ env.PLAYWRIGHT_IMAGE }}" \
             npx playwright test --reporter=list,html

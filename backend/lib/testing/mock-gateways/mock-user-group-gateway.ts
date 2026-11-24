@@ -40,6 +40,14 @@ MOCKED_USTP_OFFICES_ARRAY.forEach((office) => {
   camsUserGroups.set(office.idpGroupName, group);
 });
 
+// Add the group that lists every CAMS user.
+const camsUsersGroupName = LocalStorageGateway.getCamsUsersGroupName();
+camsUserGroups.set(camsUsersGroupName, {
+  id: randomUUID(),
+  name: camsUsersGroupName,
+  users: MockUsers.map((user) => getCamsUserReference(user.user)),
+});
+
 class MockUserGroupGateway implements UserGroupGateway {
   init(_config: UserGroupGatewayConfig): Promise<void> {
     return;

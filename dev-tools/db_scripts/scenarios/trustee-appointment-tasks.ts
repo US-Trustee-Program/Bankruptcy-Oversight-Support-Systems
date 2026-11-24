@@ -161,7 +161,6 @@ function seedCaseSet(
   const docs = Array.from({ length: count }, (_, index) => {
     const number = start + index;
     return createCaseDocument({
-      dxtrStrategy: 'generated',
       dxtrId: `SEED${number}`,
       caseId: `${court.divisionCode}-26-${number}`,
       caseNumber: `26-${number}`,

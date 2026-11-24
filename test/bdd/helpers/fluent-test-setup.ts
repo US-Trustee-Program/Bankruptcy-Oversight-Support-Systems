@@ -30,6 +30,7 @@
 
 import { vi } from 'vitest';
 import type { CamsSession } from '@common/cams/session';
+import { testFeatureFlags } from '@common/feature-flags';
 import type { CaseDetail, CaseSummary, CaseNote, SyncedCase } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
 import type {
@@ -44,6 +45,8 @@ import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
 import { TestState } from './test-state';
+
+const BDD_FEATURE_FLAG_SDK_KEY = 'bdd-mock-launchdarkly-key';
 
 type Transfer = TransferFrom | TransferTo;
 type Consolidation = ConsolidationFrom | ConsolidationTo;
@@ -891,8 +894,10 @@ export class TestSetup {
     const backendLD = await import('@launchdarkly/node-server-sdk');
     const mockClient = {
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
+      // The backend sees the test's overrides on top of the defaults it uses when LaunchDarkly is
+      // not configured, so setting one flag does not silently turn the others off.
       allFlagsState: vi.fn().mockResolvedValue({
-        allValues: () => this.featureFlags,
+        allValues: () => ({ ...testFeatureFlags, ...this.featureFlags }),
       }),
       flush: vi.fn().mockResolvedValue(undefined),
       close: vi.fn(),
@@ -902,6 +907,11 @@ export class TestSetup {
     if (backendLD.default) {
       vi.spyOn(backendLD.default, 'init').mockReturnValue(mockClient as never);
     }
+
+    // The backend only consults LaunchDarkly when an SDK key is configured; otherwise it falls back
+    // to testFeatureFlags and ignores these overrides. A placeholder key routes it to the mock
+    // client above. clearAllRepositorySpies() restores the original key.
+    vi.stubEnv('FEATURE_FLAG_SDK_KEY', BDD_FEATURE_FLAG_SDK_KEY);
 
     console.log('[FEATURE FLAGS] Feature flag spies set up successfully');
   }

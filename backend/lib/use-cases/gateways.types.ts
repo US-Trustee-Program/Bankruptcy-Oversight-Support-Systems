@@ -1,3 +1,5 @@
+import { RoleAssignmentAuditEntry, UserRoleAssignment } from '@common/cams/user-access';
+import { CamsRoleType } from '@common/cams/roles';
 import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
@@ -180,7 +182,9 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
-  extends Reads<T>, Upserts<T, T>, Releasable {}
+  extends Reads<T>, Upserts<T, T>, Releasable {
+  deleteByUserId(userId: string): Promise<void>;
+}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>, Updates<CaseAssignment, string>, Releasable {
@@ -1212,6 +1216,26 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
 export interface TrusteeVariationRepository extends Releasable {
   findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
   createVariation(doc: Creatable<TrusteeVariation>): Promise<TrusteeVariation>;
+}
+
+export interface UserRoleAssignmentRepository extends Releasable {
+  /** Returns null when the user already holds that exact active permission. */
+  create(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
+  findActiveByUserAndRole(userId: string, role: CamsRoleType): Promise<UserRoleAssignment[]>;
+  /**
+   * Marks the assignment inactive and frees its activeKey, only if it is still active (a
+   * compare-and-set, like TrusteeMatchVerificationRepository.updateIfPending); returns it as
+   * stored. Returns null when it was already inactive, e.g. another grant replaced it first.
+   */
+  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
+  findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
+}
+
+/**
+ * Role assignment audit records are append-only: there are no update or delete methods.
+ */
+export interface RoleAssignmentAuditRepository extends Releasable {
+  create(entry: RoleAssignmentAuditEntry): Promise<void>;
 }
 
 export type ObjectStorageGateway = {

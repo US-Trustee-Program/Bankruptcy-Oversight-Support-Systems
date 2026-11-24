@@ -1,0 +1,142 @@
+// Gives one user an unscoped Super User permission (CAMS-940). Paste this whole file into the
+// MONGOSH terminal of MongoDB Compass connected to the target Cosmos account. It uses only
+// db.getSiblingDB, getCollectionNames, getCollection, getIndexes and UUID, which Compass's shell
+// provides, and no require or load.
+//
+// Before pasting: set USER_ID (Okta user id), USER_NAME and USER_EMAIL below, and DATABASE if the
+// environment's database is not 'cams'. Nothing checks the Okta 'USTP Cams Users' group, so a
+// mistyped id writes a permission nobody can use.
+//
+// It writes the same two documents the Permissions screen writes: a USER_ROLE_ASSIGNMENT and a
+// CREATED ROLE_ASSIGNMENT_AUDIT entry. It stops without writing unless user-role-assignments
+// already has the unique {userId, activeKey} index from the Bicep deploy. If the user already
+// holds an active Super User permission and its CREATED audit entry exists, it writes nothing and
+// prints already-held; if the audit entry is missing, it throws.
+(() => {
+  const USER_ID = 'REPLACE_WITH_OKTA_USER_ID';
+  const USER_NAME = 'REPLACE_WITH_DISPLAY_NAME';
+  const USER_EMAIL = '';
+  const DATABASE = 'cams';
+
+  if (USER_ID.startsWith('REPLACE') || USER_NAME.startsWith('REPLACE') || USER_NAME.trim() === '') {
+    throw new Error('Set USER_ID and a non-blank USER_NAME first.');
+  }
+  if (!/^00u[A-Za-z0-9]{17}$/.test(USER_ID)) {
+    throw new Error('USER_ID is not an Okta user id (00u + 17 characters).');
+  }
+
+  const database = db.getSiblingDB(DATABASE);
+  const assignments = database.getCollection('user-role-assignments');
+  const audits = database.getCollection('role-assignment-audit');
+  const activeKey = 'SuperUser|*|*';
+
+  // Cosmos adds a unique index only to an empty collection, so the unique {userId, activeKey}
+  // index from cosmos-collections.bicep must exist before anything is written. Writing first would
+  // create the collection without it, and duplicate grants would then be stored silently.
+  const hasUniqueIndex =
+    database.getCollectionNames().includes('user-role-assignments') &&
+    assignments
+      .getIndexes()
+      .some(
+        (index) => index.unique === true && Object.keys(index.key).join(',') === 'userId,activeKey',
+      );
+  if (!hasUniqueIndex) {
+    throw new Error(
+      'STOPPED: nothing was written. ' +
+        DATABASE +
+        '.user-role-assignments has no unique {userId, activeKey} index. Deploy ' +
+        'ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections.bicep to this environment, then rerun.',
+    );
+  }
+
+  const held = assignments.findOne({
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    userId: USER_ID,
+    activeKey: activeKey,
+    active: true,
+  });
+  if (held) {
+    const heldAudit = audits.findOne({
+      documentType: 'ROLE_ASSIGNMENT_AUDIT',
+      assignmentId: held.id,
+      action: 'CREATED',
+    });
+    if (!heldAudit) {
+      throw new Error(
+        'INTERVENTION REQUIRED: ' +
+          USER_ID +
+          ' already holds Super User assignment ' +
+          held.id +
+          ' in ' +
+          DATABASE +
+          ' but it has no CREATED audit entry. Add the audit entry manually.',
+      );
+    }
+    print('already-held: ' + USER_ID + ' in ' + DATABASE + ' (' + held.id + ')');
+    return;
+  }
+
+  const performer = { id: 'SUPERUSER_COMPASS_SCRIPT', name: 'Super User Compass script' };
+  const performedAt = new Date().toISOString();
+  const assignmentId = UUID().toHexString(true);
+  const assignment = {
+    documentType: 'USER_ROLE_ASSIGNMENT',
+    id: assignmentId,
+    userId: USER_ID,
+    userName: USER_NAME,
+    role: 'SuperUser',
+    regionId: null,
+    officeCode: null,
+    assignedBy: performer.id,
+    assignedByName: performer.name,
+    assignedAt: performedAt,
+    active: true,
+    activeKey: activeKey,
+  };
+  if (USER_EMAIL) assignment.email = USER_EMAIL;
+
+  try {
+    assignments.insertOne(assignment);
+  } catch (e) {
+    throw new Error(
+      'FAILED: no Super User assignment was written for ' +
+        USER_ID +
+        ' in ' +
+        DATABASE +
+        ': ' +
+        e.message,
+    );
+  }
+  try {
+    audits.insertOne({
+      documentType: 'ROLE_ASSIGNMENT_AUDIT',
+      id: UUID().toHexString(true),
+      assignmentId: assignmentId,
+      action: 'CREATED',
+      userId: USER_ID,
+      userName: USER_NAME,
+      role: 'SuperUser',
+      regionId: null,
+      officeCode: null,
+      performedBy: performer.id,
+      performedByName: performer.name,
+      performedAt: performedAt,
+      previousState: null,
+      newState: { role: 'SuperUser', regionId: null, officeCode: null, active: true },
+      replacedByAssignmentId: null,
+    });
+  } catch (e) {
+    throw new Error(
+      'INTERVENTION REQUIRED: assignment ' +
+        assignmentId +
+        ' for ' +
+        USER_ID +
+        ' in ' +
+        DATABASE +
+        ' WAS written but its CREATED audit entry was NOT: ' +
+        e.message +
+        '. Add the audit entry manually, or delete the assignment and rerun.',
+    );
+  }
+  print('granted: ' + USER_ID + ' in ' + DATABASE + ' (' + assignmentId + ')');
+})();

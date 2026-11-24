@@ -35,6 +35,7 @@ describe('StaffUseCase', () => {
       ),
       get: vi.fn(),
       getPrivilegedIdentityUserRoleGroupName: vi.fn(),
+      getCamsUsersGroupName: vi.fn(),
     };
 
     // Mock factory functions using spyOn

@@ -718,6 +718,38 @@ describe('_Api2 functions', async () => {
     expect(getSpy).toHaveBeenCalledWith('/banks/bank-1/trustees', {});
   });
 
+  test('should call api.get with the paging predicate when calling getCamsUsers', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getCamsUsers({ limit: 20, offset: 40 });
+    expect(getSpy).toHaveBeenCalledWith('/user-access/users', { limit: '20', offset: '40' });
+  });
+
+  test('should send the name and email filters when calling getCamsUsers with them', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getCamsUsers({ limit: 20, offset: 0, name: 'sarah', email: 'example' });
+    expect(getSpy).toHaveBeenCalledWith('/user-access/users', {
+      limit: '20',
+      offset: '0',
+      name: 'sarah',
+      email: 'example',
+    });
+  });
+
+  test('should PUT the grant to the encoded permission path when calling grantPermission', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: {} });
+    api2.default.grantPermission({
+      userId: '==MOCKUSER=user@fake.com==',
+      role: CamsRole.TrialAttorney,
+      regionId: '2',
+      officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+    });
+    expect(putSpy).toHaveBeenCalledWith(
+      '/user-access/users/%3D%3DMOCKUSER%3Duser%40fake.com%3D%3D/permissions/TrialAttorney/2/USTP_CAMS_Region_2_Office_Manhattan',
+      {},
+      {},
+    );
+  });
+
   test('should call api.get with limit and offset when both provided to getSoftwareBankTrustees', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
     api2.default.getSoftwareBankTrustees('sw-1', 'bank-1', 10, 20);
