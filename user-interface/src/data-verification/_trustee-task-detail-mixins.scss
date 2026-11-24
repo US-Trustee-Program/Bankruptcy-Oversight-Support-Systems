@@ -1,0 +1,59 @@
+@use 'uswds-core' as *;
+
+// Shared between TrusteeMatchVerificationAccordion.scss and TrusteeAppointmentVerificationRow.scss
+// -- both expanded task-detail views show a comparison-style table. (The "differs" marker these
+// tables also share, DifferenceIcon, is colocated with that component instead - see
+// TrusteeComparisonTable.scss - since its classes are unique enough app-wide to go unscoped and
+// let the cascade share them for real, rather than via a mixin re-emitted per file.)
+
+// Each case number is spaced from its neighbors and from the "N cases:" text before it.
+@mixin affected-cases-list {
+  .affected-cases-list {
+    margin-left: 0.25rem;
+
+    .affected-case-item:not(:last-child) {
+      margin-right: 0.25rem;
+    }
+  }
+}
+
+// Wide tables scroll horizontally rather than squeezing every column.
+@mixin table-scroll-container {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+// Multi-line cells (e.g. a two-line address) shouldn't push single-line values to the middle of
+// the row - every value starts on the row's first line.
+@mixin table-cells-top-aligned {
+  th,
+  td {
+    vertical-align: top;
+  }
+}
+
+// Stacks each row's cells, labelled by data-label, below tablet width. usa-table--stacked only
+// stacks below mobile-lg, which leaves these columns unreadably narrow in between. USWDS blocks
+// the cells but leaves the row a table-row, so a fixed column layout is dropped too.
+@mixin table-stacked-below-tablet($hide-colgroup: false) {
+  @include at-media-max('tablet') {
+    table-layout: auto;
+    @include table-stacked-styles;
+
+    @if $hide-colgroup {
+      colgroup {
+        display: none;
+      }
+    }
+
+    tbody,
+    tr {
+      display: block;
+    }
+
+    th,
+    td {
+      padding-left: 0;
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import './TrusteeComparisonTable.scss';
 import { useMemo, useState } from 'react';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';

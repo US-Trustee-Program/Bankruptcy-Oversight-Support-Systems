@@ -11,6 +11,7 @@ import {
 } from '@common/cams/trustee-appointment-verification';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 import { formatDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
@@ -256,6 +257,7 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
               </>
             )}
             <ReasonStatement detail={detail} />
+            <AppointmentsTable appointments={detail.appointments} />
             {order.status === 'pending' && (
               <>
                 <p className="refresh-guidance" data-testid="refresh-guidance">
@@ -263,10 +265,12 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
                   trustee&apos;s profile. Then{' '}
                   <Button
                     id={`refresh-trustee-appointments-${order.id}`}
+                    className="refresh-trustee-appointments-button"
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     onClick={refresh}
                     aria-disabled={isRefreshing}
                   >
+                    <Icon name="autorenew" />
                     Refresh Trustee Appointments
                   </Button>{' '}
                   to check again.
@@ -296,7 +300,6 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
                 />
               </>
             )}
-            <AppointmentsTable appointments={detail.appointments} />
           </>
         )}
       </>

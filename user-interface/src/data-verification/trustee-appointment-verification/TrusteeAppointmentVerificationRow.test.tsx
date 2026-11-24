@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
@@ -442,13 +442,27 @@ describe('TrusteeAppointmentVerificationRow', () => {
       return screen.getByTestId(`alert-message-refresh-alert-${task.id}`);
     }
 
-    test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link', async () => {
+    test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link with a leading icon', async () => {
       await expandAndLoad();
 
       expect(screen.getByTestId('refresh-guidance')).toHaveTextContent(
         "To fix this, a Trustee Admin must add or reactivate the appointment on the trustee's profile. Then Refresh Trustee Appointments to check again.",
       );
       expect(refreshButton()).toHaveClass('usa-button--unstyled');
+      expect(within(refreshButton()).getByTestId('icon')).toBeInTheDocument();
+    });
+
+    test('shows the Appointments table above the refresh guidance', async () => {
+      detailSpy.mockResolvedValue({
+        data: { ...detail, appointments: [newAppointment] },
+      } as never);
+      await expandAndLoad();
+
+      const table = screen.getByRole('table', { name: 'Appointments' });
+      const guidance = screen.getByTestId('refresh-guidance');
+      expect(
+        table.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     test('offers no Resolve or reject action', async () => {

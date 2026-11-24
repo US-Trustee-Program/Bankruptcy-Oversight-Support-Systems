@@ -1,0 +1,28 @@
+@use '@/styles/abstracts/colors';
+
+// The single "differs" marker (see DifferenceIcon below). Unscoped and colocated with the
+// component on purpose: wherever DifferenceIcon (or the bare warning Icon with these classes)
+// renders - TrusteeComparisonTable, AppointmentsTable, TrusteeMatchVerificationAccordion's legend
+// sentence - this stylesheet comes along with the import, so the rule is defined exactly once.
+.difference-icon {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5em; // fallback for browsers without lh support
+  height: 1lh;
+}
+
+.difference-icon-symbol {
+  width: 1.1rem;
+  height: 1.1rem;
+  vertical-align: middle;
+  fill: colors.$gold;
+}
+
+// vertical-align: middle centers the icon on the text's x-height, which still reads as slightly
+// low next to full-height words like "icon marks" - nudge it up to compensate. (Icons inside
+// .difference-icon, a table's hover/row markers, are flex-centered instead and unaffected by
+// this.)
+.subtext-icon {
+  position: relative;
+  top: -0.15em;
+}
