@@ -444,6 +444,14 @@ export interface AtsGateway {
     context: ApplicationContext,
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
+  /**
+   * Read-only: getTrusteeAppointments for many TOD trustees, read in batched queries. Every
+   * requested ID has an entry, empty when it has no appointments.
+   */
+  getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>>;
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   /** Read-only: the TOD trustee records that exist among the given IDs. */
   getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;

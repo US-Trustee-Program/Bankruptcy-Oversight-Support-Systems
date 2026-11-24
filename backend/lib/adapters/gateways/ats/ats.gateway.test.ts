@@ -66,6 +66,14 @@ describe('ATS Gateway', () => {
       expect(result.stats.clean).toBe(2);
     });
 
+    test('should return each requested trustee appointments by ID', async () => {
+      const result = await gateway.getTrusteeAppointmentsByIds(context, [1, 6]);
+
+      expect([...result.keys()]).toEqual([1, 6]);
+      expect(result.get(1)?.stats.total).toBe(2); // trustee 1 has 2 fixture appointments
+      expect(result.get(6)?.stats.total).toBe(1); // trustee 6 has 1 inactive appointment
+    });
+
     test('should return correct trustee count', async () => {
       // Returns 5 — active trustees only (inactive trustee 6 is excluded)
       const count = await gateway.getTrusteeCount(context);
@@ -331,6 +339,148 @@ describe('ATS Gateway', () => {
 
       await expect(gateway.getTrusteesPage(context, null, 50)).rejects.toThrow();
       expect(loggerErrorSpy).toHaveBeenCalled();
+    });
+
+    describe('getTrusteeAppointmentsByIds', () => {
+      const middleLouisiana = (truId: number, chapter: string, appointed: string) => ({
+        TRU_ID: truId,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: chapter,
+        STATUS: 'PA',
+        DATE_APPOINTED: new Date(appointed),
+        EFFECTIVE_DATE: new Date(appointed),
+      });
+
+      test('should read the given trustees from CHAPTER_DETAILS in one query, one parameter per ID, newest appointment first', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+        await gateway.getTrusteeAppointmentsByIds(context, [3, 4]);
+
+        expect(mockExecuteQuery).toHaveBeenCalledTimes(1);
+        const [, query, input] = mockExecuteQuery.mock.calls[0];
+        expect(query).toContain('FROM CHAPTER_DETAILS');
+        expect(query).toContain('TRU_ID IN (@id0, @id1)');
+        expect(query).toContain('ORDER BY APPOINTED_DATE DESC');
+        expect(query).toContain('ARCHIVE_DATE');
+        expect(input).toEqual([
+          expect.objectContaining({ name: 'id0', value: 3 }),
+          expect.objectContaining({ name: 'id1', value: 4 }),
+        ]);
+      });
+
+      test('should cleanse each trustee appointments exactly as getTrusteeAppointments does, keeping the order SQL returned', async () => {
+        const newer123 = middleLouisiana(123, '7', '2023-01-15');
+        const only124 = middleLouisiana(124, '12', '2021-02-01');
+        const older123 = middleLouisiana(123, '13', '2020-05-01');
+        mockExecuteQuery
+          .mockResolvedValueOnce({ results: { recordset: [newer123, only124, older123] } })
+          .mockResolvedValueOnce({ results: { recordset: [newer123, older123] } })
+          .mockResolvedValueOnce({ results: { recordset: [only124] } });
+
+        const batched = await gateway.getTrusteeAppointmentsByIds(context, [123, 124]);
+
+        expect(batched.get(123)).toEqual(await gateway.getTrusteeAppointments(context, 123));
+        expect(batched.get(124)).toEqual(await gateway.getTrusteeAppointments(context, 124));
+        expect(batched.get(123)?.cleanAppointments.map((a) => a.appointedDate)).toEqual([
+          '2023-01-15',
+          '2020-05-01',
+        ]);
+      });
+
+      test('should count skipped and failed rows per trustee', async () => {
+        const pipelineModule = await import('./cleansing/ats-cleansing-pipeline');
+        vi.spyOn(pipelineModule, 'cleanseAndMapAppointment').mockImplementation(
+          (_context, trusteeId) =>
+            trusteeId === '1'
+              ? {
+                  classification: CleansingClassification.SKIP,
+                  courtIds: [],
+                  mapType: 'OVERRIDE',
+                  notes: [],
+                  skip: true,
+                }
+              : {
+                  classification: CleansingClassification.PROBLEMATIC,
+                  courtIds: [],
+                  mapType: 'UNMAPPED',
+                  notes: [],
+                  skip: false,
+                },
+        );
+        mockExecuteQuery.mockResolvedValue({
+          results: { recordset: [{ TRU_ID: 1 }, { TRU_ID: 2 }, { TRU_ID: 2 }] },
+        });
+
+        const result = await gateway.getTrusteeAppointmentsByIds(context, [1, 2]);
+
+        expect(result.get(1)?.stats).toEqual(expect.objectContaining({ total: 1, skipped: 1 }));
+        expect(result.get(2)?.stats).toEqual(expect.objectContaining({ total: 2, problematic: 2 }));
+        expect(result.get(2)?.failedAppointments).toHaveLength(2);
+      });
+
+      test('should return an empty result for a requested trustee with no appointments', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+        const result = await gateway.getTrusteeAppointmentsByIds(context, [9]);
+
+        expect(result.get(9)).toEqual({
+          cleanAppointments: [],
+          failedAppointments: [],
+          stats: {
+            total: 0,
+            clean: 0,
+            autoRecoverable: 0,
+            problematic: 0,
+            uncleansable: 0,
+            skipped: 0,
+          },
+        });
+      });
+
+      test('should query in batches of 500 IDs and combine them', async () => {
+        mockExecuteQuery
+          .mockResolvedValueOnce({
+            results: { recordset: [middleLouisiana(1, '7', '2023-01-15')] },
+          })
+          .mockResolvedValueOnce({ results: { recordset: [] } })
+          .mockResolvedValueOnce({
+            results: { recordset: [middleLouisiana(1001, '7', '2023-01-15')] },
+          });
+        const ids = Array.from({ length: 1200 }, (_, i) => i + 1);
+
+        const result = await gateway.getTrusteeAppointmentsByIds(context, ids);
+
+        expect(mockExecuteQuery.mock.calls.map(([, , input]) => input.length)).toEqual([
+          500, 500, 200,
+        ]);
+        expect(result.size).toBe(1200);
+        expect(result.get(1)?.cleanAppointments).toHaveLength(1);
+        expect(result.get(1001)?.cleanAppointments).toHaveLength(1);
+      });
+
+      test('should fail rather than drop appointments for a trustee that was not requested', async () => {
+        mockExecuteQuery.mockResolvedValue({
+          results: { recordset: [middleLouisiana(99, '7', '2023-01-15')] },
+        });
+
+        await expect(gateway.getTrusteeAppointmentsByIds(context, [1])).rejects.toBeInstanceOf(
+          CamsError,
+        );
+      });
+
+      test('should not query when the list is empty', async () => {
+        expect((await gateway.getTrusteeAppointmentsByIds(context, [])).size).toBe(0);
+        expect(mockExecuteQuery).not.toHaveBeenCalled();
+      });
+
+      test('should wrap query errors as CamsError', async () => {
+        mockExecuteQuery.mockRejectedValue(new Error('boom'));
+
+        await expect(gateway.getTrusteeAppointmentsByIds(context, [1])).rejects.toBeInstanceOf(
+          CamsError,
+        );
+      });
     });
 
     test('should query appointments for a specific trustee and return clean CAMS types', async () => {

@@ -380,6 +380,17 @@ export class MockAtsGateway implements AtsGateway {
     };
   }
 
+  async getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>> {
+    const results = new Map<number, TrusteeAppointmentsResult>();
+    for (const id of trusteeIds) {
+      results.set(id, await this.getTrusteeAppointments(context, id));
+    }
+    return results;
+  }
+
   async getTrusteesByIds(_context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]> {
     return ids.filter((id) => MOCK_TRUSTEE_IDS.includes(id)).map(mockAtsTrusteeRecord);
   }

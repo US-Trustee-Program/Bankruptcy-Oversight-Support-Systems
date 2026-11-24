@@ -43,6 +43,16 @@ const TRUSTEE_COLUMNS = `
         T.TELEPHONE,
         T.EMAIL_ADDRESS`;
 
+const APPOINTMENT_COLUMNS = `
+        TRU_ID,
+        DISTRICT,
+        SERVING_STATE AS STATE,
+        CHAPTER,
+        APPOINTED_DATE AS DATE_APPOINTED,
+        STATUS,
+        STATUS_EFF_DATE AS EFFECTIVE_DATE,
+        ARCHIVE_DATE`;
+
 // Keeps each ID-list query well under SQL Server's 2,100-parameter limit.
 const ID_BATCH_SIZE = 500;
 
@@ -76,6 +86,108 @@ const ACTIVE_STATUS_CONDITION = [
 const EMPTY_STATUS_CONDITION = "(CD.STATUS IS NULL OR LTRIM(RTRIM(CD.STATUS)) = '')";
 
 type StatusFlagsRow = { TRU_ID: number; HAS_ACTIVE: number; HAS_EMPTY: number };
+
+/**
+ * Cleanses one TOD trustee's raw appointment rows the way the trustee migration does: SKIP rows
+ * are dropped and counted, PROBLEMATIC and UNCLEANSABLE rows are returned as failed, and the rest
+ * become CAMS appointments, one per court ID when a row maps to several.
+ */
+function cleanseAppointments(
+  context: ApplicationContext,
+  trusteeId: number,
+  atsAppointments: AtsAppointmentRecord[],
+  overridesCache: Map<string, TrusteeOverride[]>,
+): TrusteeAppointmentsResult {
+  const cleanAppointments: TrusteeAppointmentInput[] = [];
+  const failedAppointments: FailedAppointment[] = [];
+  const stats = {
+    total: atsAppointments.length,
+    clean: 0,
+    autoRecoverable: 0,
+    problematic: 0,
+    uncleansable: 0,
+    skipped: 0,
+  };
+
+  for (const atsAppointment of atsAppointments) {
+    const cleansingResult = cleanseAndMapAppointment(
+      context,
+      String(trusteeId),
+      atsAppointment,
+      overridesCache,
+    );
+
+    // Handle SKIP classification
+    if (cleansingResult.classification === CleansingClassification.SKIP) {
+      context.logger.debug(MODULE_NAME, `Skipping appointment per override directive`, {
+        trusteeId,
+        notes: cleansingResult.notes,
+      });
+      stats.skipped++;
+      continue;
+    }
+
+    // Handle UNCLEANSABLE or PROBLEMATIC - ADD TO FAILED LIST
+    if (
+      cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
+      cleansingResult.classification === CleansingClassification.PROBLEMATIC
+    ) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Appointment is ${cleansingResult.classification} for trustee ${trusteeId}`,
+        {
+          notes: cleansingResult.notes,
+        },
+      );
+
+      // Add to failed appointments list for DLQ
+      failedAppointments.push({
+        atsAppointment,
+        classification: cleansingResult.classification as 'PROBLEMATIC' | 'UNCLEANSABLE',
+        notes: cleansingResult.notes,
+        mapType: cleansingResult.mapType,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (cleansingResult.classification === CleansingClassification.PROBLEMATIC) {
+        stats.problematic++;
+      } else {
+        stats.uncleansable++;
+      }
+
+      continue;
+    }
+
+    // Track CLEAN vs AUTO_RECOVERABLE
+    if (cleansingResult.classification === CleansingClassification.CLEAN) {
+      stats.clean++;
+    } else if (cleansingResult.classification === CleansingClassification.AUTO_RECOVERABLE) {
+      stats.autoRecoverable++;
+    }
+
+    // Handle multi-expansion (1:N mapping from cleansing - e.g., regional patterns)
+    if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Multi-expansion: creating ${cleansingResult.courtIds.length} appointments`,
+        {
+          trusteeId,
+          courtIds: cleansingResult.courtIds,
+        },
+      );
+
+      for (const courtId of cleansingResult.courtIds) {
+        const appointmentInput = transformAppointmentRecord(atsAppointment, courtId);
+        cleanAppointments.push(appointmentInput);
+      }
+    } else if (cleansingResult.appointment) {
+      // Single appointment - use as-is
+      cleanAppointments.push(cleansingResult.appointment);
+    }
+  }
+
+  return { cleanAppointments, failedAppointments, stats };
+}
 
 /**
  * Gateway for accessing the ATS (Attorney Trustee System) database.
@@ -244,6 +356,44 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
   }
 
+  async getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>> {
+    const rowsById = new Map<number, AtsAppointmentRecord[]>(trusteeIds.map((id) => [id, []]));
+    try {
+      for (const batch of batches(trusteeIds, ID_BATCH_SIZE)) {
+        const { placeholders, input } = idParameters(batch);
+        const query = `
+          SELECT ${APPOINTMENT_COLUMNS}
+          FROM CHAPTER_DETAILS
+          WHERE TRU_ID IN (${placeholders})
+          ORDER BY APPOINTED_DATE DESC`;
+        const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
+        for (const row of (results as mssql.IResult<AtsAppointmentRecord>).recordset) {
+          const rows = rowsById.get(row.TRU_ID);
+          if (!rows)
+            throw new Error(`ATS returned appointments for unrequested TRU_ID ${row.TRU_ID}`);
+          rows.push(row);
+        }
+      }
+    } catch (originalError) {
+      throw getCamsError(
+        originalError as Error,
+        MODULE_NAME,
+        'Failed to retrieve trustee appointments by ID from ATS',
+      );
+    }
+
+    const overridesCache = await this.getOverridesCache(context);
+    return new Map(
+      [...rowsById].map(([id, rows]) => [
+        id,
+        cleanseAppointments(context, id, rows, overridesCache),
+      ]),
+    );
+  }
+
   /**
    * Get cleansed appointments for a trustee.
    * Returns both clean appointments (for storage) and failed appointments (for DLQ).
@@ -273,15 +423,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     });
 
     const query = `
-      SELECT
-        TRU_ID,
-        DISTRICT,
-        SERVING_STATE AS STATE,
-        CHAPTER,
-        APPOINTED_DATE AS DATE_APPOINTED,
-        STATUS,
-        STATUS_EFF_DATE AS EFFECTIVE_DATE,
-        ARCHIVE_DATE
+      SELECT ${APPOINTMENT_COLUMNS}
       FROM CHAPTER_DETAILS
       WHERE TRU_ID = @trusteeId
       ORDER BY APPOINTED_DATE DESC`;
@@ -300,93 +442,12 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
       // 2. Cleanse and transform each appointment
       const overridesCache = await this.getOverridesCache(context);
-      const cleanAppointments: TrusteeAppointmentInput[] = [];
-      const failedAppointments: FailedAppointment[] = [];
-      const stats = {
-        total: atsAppointments.length,
-        clean: 0,
-        autoRecoverable: 0,
-        problematic: 0,
-        uncleansable: 0,
-        skipped: 0,
-      };
-
-      for (const atsAppointment of atsAppointments) {
-        const cleansingResult = cleanseAndMapAppointment(
-          context,
-          String(trusteeId),
-          atsAppointment,
-          overridesCache,
-        );
-
-        // Handle SKIP classification
-        if (cleansingResult.classification === CleansingClassification.SKIP) {
-          context.logger.debug(MODULE_NAME, `Skipping appointment per override directive`, {
-            trusteeId,
-            notes: cleansingResult.notes,
-          });
-          stats.skipped++;
-          continue;
-        }
-
-        // Handle UNCLEANSABLE or PROBLEMATIC - ADD TO FAILED LIST
-        if (
-          cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
-          cleansingResult.classification === CleansingClassification.PROBLEMATIC
-        ) {
-          context.logger.warn(
-            MODULE_NAME,
-            `Appointment is ${cleansingResult.classification} for trustee ${trusteeId}`,
-            {
-              notes: cleansingResult.notes,
-            },
-          );
-
-          // Add to failed appointments list for DLQ
-          failedAppointments.push({
-            atsAppointment,
-            classification: cleansingResult.classification as 'PROBLEMATIC' | 'UNCLEANSABLE',
-            notes: cleansingResult.notes,
-            mapType: cleansingResult.mapType,
-            timestamp: new Date().toISOString(),
-          });
-
-          if (cleansingResult.classification === CleansingClassification.PROBLEMATIC) {
-            stats.problematic++;
-          } else {
-            stats.uncleansable++;
-          }
-
-          continue;
-        }
-
-        // Track CLEAN vs AUTO_RECOVERABLE
-        if (cleansingResult.classification === CleansingClassification.CLEAN) {
-          stats.clean++;
-        } else if (cleansingResult.classification === CleansingClassification.AUTO_RECOVERABLE) {
-          stats.autoRecoverable++;
-        }
-
-        // Handle multi-expansion (1:N mapping from cleansing - e.g., regional patterns)
-        if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
-          context.logger.debug(
-            MODULE_NAME,
-            `Multi-expansion: creating ${cleansingResult.courtIds.length} appointments`,
-            {
-              trusteeId,
-              courtIds: cleansingResult.courtIds,
-            },
-          );
-
-          for (const courtId of cleansingResult.courtIds) {
-            const appointmentInput = transformAppointmentRecord(atsAppointment, courtId);
-            cleanAppointments.push(appointmentInput);
-          }
-        } else if (cleansingResult.appointment) {
-          // Single appointment - use as-is
-          cleanAppointments.push(cleansingResult.appointment);
-        }
-      }
+      const { cleanAppointments, failedAppointments, stats } = cleanseAppointments(
+        context,
+        trusteeId,
+        atsAppointments,
+        overridesCache,
+      );
 
       context.logger.info(
         MODULE_NAME,
