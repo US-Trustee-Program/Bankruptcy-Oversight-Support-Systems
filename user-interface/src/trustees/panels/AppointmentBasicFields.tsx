@@ -27,11 +27,10 @@ export default function AppointmentBasicFields(props: Readonly<AppointmentBasicF
         <Button
           id={`edit-trustee-appointment-${appointment.id}`}
           uswdsStyle={UswdsButtonStyle.Unstyled}
-          aria-label="Edit trustee appointment"
-          title="Edit trustee appointment"
+          title="Edit Appointment"
           onClick={openEditTrustee}
         >
-          <IconLabel icon="edit" label="Edit" />
+          <IconLabel icon="edit" label="Edit Appointment" />
         </Button>
       )}
     </div>

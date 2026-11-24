@@ -165,4 +165,12 @@ describe('AppointmentAccordion', () => {
     // If they drift, this test fails to catch WCAG 2.5.3 Label in Name violations
     expect(accessibleName).toContain(visibleHeaderText);
   });
+
+  test('does not render a stray comma between the heading text and the status tag', () => {
+    renderAccordion();
+
+    const headerSpan = getHeader().getByText(/Chapter 11 - Case by Case/i);
+
+    expect(headerSpan.textContent).not.toContain(',');
+  });
 });

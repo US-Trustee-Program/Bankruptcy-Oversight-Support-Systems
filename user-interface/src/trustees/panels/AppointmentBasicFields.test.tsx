@@ -73,6 +73,16 @@ describe('AppointmentBasicFields', () => {
     ).toBeInTheDocument();
   });
 
+  test('Edit button visible label is "Edit Appointment" and matches its accessible name', () => {
+    renderBody();
+
+    const button = screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`);
+
+    expect(button).toHaveTextContent('Edit Appointment');
+    expect(button).not.toHaveAttribute('aria-label');
+    expect(screen.getByRole('button', { name: 'Edit Appointment' })).toBe(button);
+  });
+
   test('calls openEditTrustee when Edit is clicked', async () => {
     const user = userEvent.setup();
     renderBody();
