@@ -207,8 +207,8 @@ describe('AppointmentAccordion', () => {
   test('does not render a stray comma between the heading text and the status tag', () => {
     renderAccordion();
 
-    const headerSpan = getHeader().getByText(/Chapter 11 - Case by Case/i);
+    const header = screen.getByTestId(`appointment-accordion-header-${mockAppointment.id}`);
 
-    expect(headerSpan.textContent).not.toContain(',');
+    expect(header.textContent).not.toContain(',');
   });
 });
