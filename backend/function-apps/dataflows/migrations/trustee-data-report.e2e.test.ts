@@ -90,6 +90,11 @@ describe('trustee-data-report dataflow with dbMock', () => {
           camsOnly: 2,
           fieldDifferences: 1,
           fieldDifferencesByField: expect.objectContaining({ phone: 1 }),
+          // The mock TOD appointment rows cannot be translated (they have no serving state), so
+          // all 8 rows of the 3 compared trustees are counted and none is compared.
+          todAppointmentsNotTranslated: 8,
+          appointmentsTodOnly: 0,
+          appointmentsCamsOnly: 0,
         }),
       }),
     );

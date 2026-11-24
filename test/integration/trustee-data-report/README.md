@@ -13,12 +13,12 @@ Manual dev tooling, not run in CI.
 
 ## 1. Containers
 
-| Container                            | Image                                            | Port        | Purpose                                                                |
-| ------------------------------------ | ------------------------------------------------ | ----------- | ---------------------------------------------------------------------- |
-| `cams-mongodb-trustee-data-report`   | `mongo:7.0`                                      | 27017       | Cosmos stand-in: `trustees`, `trustee-data-report`, `runtime-state`    |
-| `cams-sqledge-trustee-data-report`   | `mcr.microsoft.com/azure-sql-edge:latest`        | 1433        | TOD (`ATS_INT`: `TRUSTEES`, `CHAPTER_DETAILS`)                         |
-| `cams-azurite-trustee-data-report`   | `mcr.microsoft.com/azure-storage/azurite:3.21.0` | 10000–10002 | `trustee-data-report-start`, `-page` and `-dlq` queues                 |
-| `cams-dataflows-trustee-data-report` | built from `Dockerfile.dataflows`                | 7072        | The dataflows function app running the real `handleStart`/`handlePage` |
+| Container                            | Image                                            | Port        | Purpose                                                                      |
+| ------------------------------------ | ------------------------------------------------ | ----------- | ---------------------------------------------------------------------------- |
+| `cams-mongodb-trustee-data-report`   | `mongo:7.0`                                      | 27017       | Cosmos stand-in: `trustees`, `trustee-data-report`, `runtime-state`          |
+| `cams-sqledge-trustee-data-report`   | `mcr.microsoft.com/azure-sql-edge:latest`        | 1433        | TOD (`ATS_INT`: `TRUSTEES`, `CHAPTER_DETAILS`) and DXTR offices (`DXTR_INT`) |
+| `cams-azurite-trustee-data-report`   | `mcr.microsoft.com/azure-storage/azurite:3.21.0` | 10000–10002 | `trustee-data-report-start`, `-page` and `-dlq` queues                       |
+| `cams-dataflows-trustee-data-report` | built from `Dockerfile.dataflows`                | 7072        | The dataflows function app running the real `handleStart`/`handlePage`       |
 
 All four run in the Podman pod `cams-trustee-data-report-pod`.
 
@@ -41,7 +41,7 @@ cd test/integration/trustee-data-report
 cp local.settings.integration.json.template local.settings.integration.json
 cp scripts/.env.template scripts/.env
 # The template password is the same in both files. To change it, change MSSQL_PASS in
-# scripts/.env and ATS_MSSQL_PASS in local.settings.integration.json together.
+# scripts/.env and both ATS_MSSQL_PASS and MSSQL_PASS in local.settings.integration.json together.
 
 cd scripts && ./start-services.sh        # builds the dataflows image, starts the pod
 

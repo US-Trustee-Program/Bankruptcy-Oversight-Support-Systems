@@ -15,6 +15,9 @@ import {
   summarize,
 } from './compare-trustee-profiles';
 import TrusteeDataReportLock from './trustee-data-report-lock';
+import { compareTrusteeAppointments } from './compare-trustee-appointments';
+import { buildDistrictToDivisionsMap } from '../dataflows/migrate-trustees';
+import { Trustee } from '@common/cams/trustees';
 
 export const RUN_TRUSTEE_DATA_REPORT_MODULE_NAME = 'RUN-TRUSTEE-DATA-REPORT';
 const MODULE_NAME = RUN_TRUSTEE_DATA_REPORT_MODULE_NAME;
@@ -88,11 +91,17 @@ async function recordPage(
   pageKey: string,
   differences: TrusteeDataDifference[],
   trusteesCompared: number,
+  todAppointmentsNotTranslated: number,
 ): Promise<void> {
   await requireLock(context, runId);
   await factory
     .getTrusteeDataReportRepository(context)
-    .replacePageResults(runId, pageKey, differences, summarize(differences, trusteesCompared, 0));
+    .replacePageResults(
+      runId,
+      pageKey,
+      differences,
+      summarize(differences, trusteesCompared, todAppointmentsNotTranslated),
+    );
 }
 
 const FINALIZE_PAGE_KEY = 'finalize';
@@ -121,6 +130,52 @@ async function startRun(
   }
   await reportRepo.upsertRun({ ...run, status: 'running', startedAt: new Date().toISOString() });
   return 'started';
+}
+
+type ComparedTrustee = { trustee: Trustee; truIds: string[] };
+
+/**
+ * Compares the appointments of the trustees compared on a page with the appointments the original
+ * load would have created from their linked TOD records. One read each of TOD appointments, CAMS
+ * appointments and offices.
+ */
+async function compareAppointments(
+  context: ApplicationContext,
+  compared: ComparedTrustee[],
+): Promise<{ differences: TrusteeDataDifference[]; notTranslated: number }> {
+  if (compared.length === 0) return { differences: [], notTranslated: 0 };
+
+  const todIds = [...new Set(compared.flatMap(({ truIds }) => truIds))];
+  const todResults = await factory
+    .getAtsGateway(context)
+    .getTrusteeAppointmentsByIds(context, todIds.map(Number).filter(Number.isInteger));
+  const camsAppointments = await factory
+    .getTrusteeAppointmentsRepository(context)
+    .getAppointmentsByTrusteeIds(compared.map(({ trustee }) => trustee.trusteeId));
+  const districtToDivisions = buildDistrictToDivisionsMap(
+    await factory.getOfficesGateway(context).getOffices(context),
+  );
+
+  const differences = compared.flatMap(({ trustee, truIds }) => {
+    // In truIds order: the order the load read them, so its first-wins choice is repeated.
+    const todAppointmentsById = new Map(
+      truIds.flatMap((id) => {
+        const result = todResults.get(Number(id));
+        return result ? [[id, result.cleanAppointments] as const] : [];
+      }),
+    );
+    return compareTrusteeAppointments(
+      trustee,
+      camsAppointments.filter((appointment) => appointment.trusteeId === trustee.trusteeId),
+      todAppointmentsById,
+      districtToDivisions,
+    );
+  });
+  const notTranslated = [...todResults.values()].reduce(
+    (sum, { stats }) => sum + stats.skipped + stats.problematic + stats.uncleansable,
+    0,
+  );
+  return { differences, notTranslated };
 }
 
 /**
@@ -159,18 +214,22 @@ async function processPage(
   );
 
   const differences: TrusteeDataDifference[] = [];
-  let trusteesCompared = 0;
+  const compared: ComparedTrustee[] = [];
   for (const trustee of linkedTrustees) {
-    const linkedRecords = (trustee.legacy?.truIds ?? [])
+    const truIds = trustee.legacy?.truIds ?? [];
+    const linkedRecords = truIds
       .map((id) => recordsById.get(id))
       .filter((record): record is AtsTrusteeRecord => !!record);
     // Pages run in ascending ID order, so comparing only on the page that holds the trustee's
     // lowest linked TOD ID compares each trustee exactly once.
     const lowestId = Math.min(...linkedRecords.map((record) => record.ID));
     if (!pageIds.has(String(lowestId))) continue;
-    trusteesCompared++;
+    compared.push({ trustee, truIds });
     differences.push(...compareTrusteeProfile(trustee, linkedRecords));
   }
+  const appointments = await compareAppointments(context, compared);
+  differences.push(...appointments.differences);
+  const trusteesCompared = compared.length;
 
   const unlinked = page.filter((record) => !linkedIds.has(String(record.ID)));
   if (unlinked.length > 0) {
@@ -194,7 +253,14 @@ async function processPage(
     );
   }
 
-  await recordPage(context, runId, pageKeyFor(cursor), differences, trusteesCompared);
+  await recordPage(
+    context,
+    runId,
+    pageKeyFor(cursor),
+    differences,
+    trusteesCompared,
+    appointments.notTranslated,
+  );
   context.logger.info(
     MODULE_NAME,
     `Run ${runId}: page after ${cursor ?? 'start'} read ${page.length} TOD trustees, compared ${trusteesCompared}, found ${differences.length} differences.`,
@@ -219,7 +285,7 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
     ),
   );
   const camsOnly = findCamsOnly(trustees, existingTodIds);
-  await recordPage(context, runId, FINALIZE_PAGE_KEY, camsOnly, 0);
+  await recordPage(context, runId, FINALIZE_PAGE_KEY, camsOnly, 0, 0);
 
   const summary = (await reportRepo.readPageSummaries(runId)).reduce(
     addSummaries,

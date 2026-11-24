@@ -58,7 +58,11 @@ import {
   TrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
 import { MOCK_TRUSTEES_LINKED_TO_MOCK_TOD } from './mock-trustee-data-report.fixtures';
-import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  TrusteeCaseListItem,
+} from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -674,8 +678,9 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getAppointmentsByTrusteeIds(_ignore: any): Promise<any[]> {
-    throw new Error('Method not implemented.');
+  /** The trustee data report's mock CAMS trustees (MOCK_TRUSTEES_LINKED_TO_MOCK_TOD) have none. */
+  async getAppointmentsByTrusteeIds(_trusteeIds: string[]): Promise<TrusteeAppointment[]> {
+    return [];
   }
 
   getTrusteeIdsByStatuses(_statuses: AppointmentStatus[]): Promise<string[]> {

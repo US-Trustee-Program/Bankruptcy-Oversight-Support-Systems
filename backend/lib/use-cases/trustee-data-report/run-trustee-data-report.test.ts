@@ -13,6 +13,10 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { MockAtsGateway, mockAtsTrusteeRecord } from '../../adapters/gateways/ats/ats.mock.gateway';
 import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAppointmentsResult } from '../../adapters/types/ats.types';
+import { OfficesGateway } from '../offices/offices.types';
 import {
   RuntimeStateRepository,
   TrusteeDataReportRepository,
@@ -117,6 +121,53 @@ function migrated(todId: number, override: Partial<Trustee> = {}): Trustee {
 
 const RUN_ID = 'run-new';
 
+/** A clean TOD appointment in the Southern District of New York (mock divisions 081, 084, 087). */
+function todAppointment(override: Partial<TrusteeAppointmentInput> = {}): TrusteeAppointmentInput {
+  return {
+    chapter: '7',
+    appointmentType: 'panel',
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    appointedDate: '2015-03-01',
+    status: 'active',
+    effectiveDate: '2015-03-01',
+    ...override,
+  };
+}
+
+/** A CAMS appointment as the migration created it: every division of its district. */
+function camsAppointment(
+  trustee: Trustee,
+  from: TrusteeAppointmentInput,
+  override: Partial<TrusteeAppointment> = {},
+): TrusteeAppointment {
+  return MockData.getTrusteeAppointment({
+    ...from,
+    trusteeId: trustee.trusteeId,
+    divisionCodes: ['081', '084', '087'],
+    ...override,
+  });
+}
+
+function todResult(
+  cleanAppointments: TrusteeAppointmentInput[],
+  untranslated: Partial<TrusteeAppointmentsResult['stats']> = {},
+): TrusteeAppointmentsResult {
+  return {
+    cleanAppointments,
+    failedAppointments: [],
+    stats: {
+      total: cleanAppointments.length,
+      clean: cleanAppointments.length,
+      autoRecoverable: 0,
+      problematic: 0,
+      uncleansable: 0,
+      skipped: 0,
+      ...untranslated,
+    },
+  };
+}
+
 function queuedRun(runId = RUN_ID): TrusteeDataReportRun {
   return {
     runId,
@@ -133,6 +184,9 @@ describe('RunTrusteeDataReport', () => {
   let trusteesRepo: MockMongoRepository;
   let ats: MockAtsGateway;
   let camsTrustees: Trustee[];
+  let camsAppointments: TrusteeAppointment[];
+  let todAppointments: Map<number, TrusteeAppointmentsResult>;
+  let officesGateway: OfficesGateway;
 
   const unchanged = migrated(1);
   const changedPhone = migrated(2);
@@ -172,6 +226,8 @@ describe('RunTrusteeDataReport', () => {
     trusteesRepo = new MockMongoRepository();
     ats = MockAtsGateway.getInstance();
     camsTrustees = [unchanged, changedPhone, formattingOnly, noTruIds, missingInTod];
+    camsAppointments = [];
+    todAppointments = new Map();
 
     vi.spyOn(factory, 'getTrusteeDataReportRepository').mockReturnValue(reportRepo);
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
@@ -183,6 +239,18 @@ describe('RunTrusteeDataReport', () => {
       linkedTo(ids),
     );
     vi.spyOn(trusteesRepo, 'listTrustees').mockImplementation(async () => camsTrustees);
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(trusteesRepo);
+    vi.spyOn(trusteesRepo, 'getAppointmentsByTrusteeIds').mockImplementation(async (ids) =>
+      camsAppointments.filter((appointment) => ids.includes(appointment.trusteeId)),
+    );
+    vi.spyOn(ats, 'getTrusteeAppointmentsByIds').mockImplementation(
+      async (_context, ids) =>
+        new Map(ids.map((id) => [id, todAppointments.get(id) ?? todResult([])])),
+    );
+    officesGateway = {
+      getOffices: async () => MOCKED_USTP_OFFICES_ARRAY,
+    } as unknown as OfficesGateway;
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(officesGateway);
 
     await reportRepo.upsertRun(queuedRun());
     await lockRepo.upsert({
@@ -221,6 +289,139 @@ describe('RunTrusteeDataReport', () => {
       expect(await reportRepo.readRun(RUN_ID)).toEqual(
         expect.objectContaining({ status: 'failed', failureMessage: expect.any(String) }),
       );
+    });
+  });
+
+  describe('appointments', () => {
+    const panel = todAppointment();
+    const standing = todAppointment({ chapter: '13', appointmentType: 'standing' });
+    const caseByCase = todAppointment({ chapter: '11', appointmentType: 'case-by-case' });
+
+    test('should report appointment differences and narrowed divisions for each compared trustee', async () => {
+      todAppointments.set(1, todResult([panel, standing]));
+      camsAppointments = [
+        camsAppointment(unchanged, panel, {
+          status: 'voluntarily-suspended',
+          divisionCodes: ['081'],
+        }),
+        camsAppointment(unchanged, caseByCase),
+      ];
+
+      await runToCompletion(2);
+
+      const rows = reportRepo
+        .rowsFor(RUN_ID)
+        .filter((row) => row.kind.startsWith('appointment-'))
+        .map((row) => [row.kind, row.camsTrusteeId, row.appointment?.chapter, row.field]);
+      expect(rows).toEqual([
+        ['appointment-tod-only', unchanged.trusteeId, '13', undefined],
+        ['appointment-field', unchanged.trusteeId, '7', 'status'],
+        ['appointment-divisions-narrowed', unchanged.trusteeId, '7', undefined],
+        ['appointment-cams-only', unchanged.trusteeId, '11', undefined],
+      ]);
+      // Slice 1 counts are the same as with no appointments: appointment rows count only as such.
+      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
+        expect.objectContaining({
+          trusteesCompared: 3,
+          todOnly: 2,
+          camsOnly: 2,
+          fieldDifferences: 1,
+          appointmentsTodOnly: 1,
+          appointmentsCamsOnly: 1,
+          appointmentFieldDifferences: 1,
+          appointmentFieldDifferencesByField: { status: 1, appointedDate: 0, effectiveDate: 0 },
+          appointmentsDivisionsNarrowed: 1,
+        }),
+      );
+    });
+
+    test('should list a CAMS appointment as in CAMS only when TOD has no appointments for the trustee', async () => {
+      camsAppointments = [camsAppointment(changedPhone, panel)];
+
+      await runToCompletion(2);
+
+      expect(
+        reportRepo
+          .rowsFor(RUN_ID)
+          .filter((row) => row.kind.startsWith('appointment-'))
+          .map((row) => [row.kind, row.camsTrusteeId]),
+      ).toEqual([['appointment-cams-only', changedPhone.trusteeId]]);
+    });
+
+    test('should count the TOD appointments not translated for the compared trustees', async () => {
+      // autoRecoverable rows were translated, so they are not counted.
+      todAppointments.set(1, todResult([], { skipped: 2, problematic: 1, autoRecoverable: 5 }));
+      todAppointments.set(3, todResult([], { uncleansable: 1 }));
+
+      await runToCompletion(2);
+
+      expect((await reportRepo.readRun(RUN_ID))?.summary?.todAppointmentsNotTranslated).toBe(4);
+    });
+
+    test('should read TOD appointments, CAMS appointments and offices once for a page', async () => {
+      const todRead = vi.spyOn(ats, 'getTrusteeAppointmentsByIds');
+      const camsRead = vi.spyOn(trusteesRepo, 'getAppointmentsByTrusteeIds');
+      const officesRead = vi.spyOn(officesGateway, 'getOffices');
+
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+
+      expect(todRead.mock.calls).toEqual([[context, [1, 2]]]);
+      expect(camsRead.mock.calls).toEqual([[[unchanged.trusteeId, changedPhone.trusteeId]]]);
+      expect(officesRead).toHaveBeenCalledTimes(1);
+    });
+
+    test('should not count a retried page twice', async () => {
+      todAppointments.set(1, todResult([panel, standing]));
+
+      // The first page is processed, then processed again as a redelivered message would.
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+      await runToCompletion(2);
+
+      expect((await reportRepo.readRun(RUN_ID))?.summary?.appointmentsTodOnly).toBe(2);
+      expect(
+        reportRepo.rowsFor(RUN_ID).filter((row) => row.kind === 'appointment-tod-only'),
+      ).toHaveLength(2);
+    });
+
+    test('should compare a merged trustee split across pages once, with the appointments of every linked TOD record in truIds order', async () => {
+      // Linked to TOD 5 (page 3) and 2 (page 1); compared on page 1, which holds its lowest ID.
+      const merged = migrated(2, { legacy: { truIds: ['5', '2'] } });
+      camsTrustees = [merged];
+      todAppointments.set(5, todResult([panel]));
+      todAppointments.set(2, todResult([{ ...panel, status: 'resigned' }, standing]));
+      camsAppointments = [camsAppointment(merged, panel)];
+      const todRead = vi.spyOn(ats, 'getTrusteeAppointmentsByIds');
+      const appointmentRows = () =>
+        reportRepo.rowsFor(RUN_ID).filter((row) => row.kind.startsWith('appointment-'));
+
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+      let { nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, null, 2);
+      expect(appointmentRows()).toHaveLength(1);
+      while (nextCursor !== null) {
+        ({ nextCursor } = await RunTrusteeDataReport.processPage(context, RUN_ID, nextCursor, 2));
+      }
+
+      // Pages without a compared trustee read no appointments.
+      expect(todRead).toHaveBeenCalledTimes(1);
+      // TOD 5 is read first, so its active panel appointment wins over TOD 2's resigned one.
+      expect(
+        reportRepo
+          .rowsFor(RUN_ID)
+          .filter((row) => row.kind.startsWith('appointment-'))
+          .map((row) => [row.kind, row.appointment?.chapter, row.todIds]),
+      ).toEqual([['appointment-tod-only', '13', ['5', '2']]]);
+    });
+
+    test('should fail the page when the TOD appointment read fails', async () => {
+      vi.spyOn(ats, 'getTrusteeAppointmentsByIds').mockRejectedValue(new Error('TOD down'));
+      await RunTrusteeDataReport.startRun(context, RUN_ID);
+
+      await expect(RunTrusteeDataReport.processPage(context, RUN_ID, null, 2)).rejects.toThrow(
+        'TOD down',
+      );
+      expect(reportRepo.rowsFor(RUN_ID)).toEqual([]);
     });
   });
 
@@ -370,17 +571,17 @@ describe('RunTrusteeDataReport', () => {
         'setPhoneticTokens',
         'setZoomInfo',
         'deleteAll',
+        'createAppointment',
+        'updateAppointment',
+        'delete',
       ] as const;
       const writeSpies = writes.map((method) => vi.spyOn(trusteesRepo, method));
-      const appointmentRepos = [
-        vi.spyOn(factory, 'getTrusteeAppointmentsRepository'),
-        vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository'),
-      ];
+      const caseAppointmentsRepo = vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository');
       const sql = vi.spyOn(ats, 'executeQuery');
 
       await runToCompletion(2);
 
-      [...writeSpies, ...appointmentRepos, sql].forEach((spy) =>
+      [...writeSpies, caseAppointmentsRepo, sql].forEach((spy) =>
         expect(spy).not.toHaveBeenCalled(),
       );
     });

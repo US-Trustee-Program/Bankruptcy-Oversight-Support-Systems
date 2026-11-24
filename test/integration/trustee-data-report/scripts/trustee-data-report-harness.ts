@@ -17,7 +17,7 @@
  *
  * Commands:
  *   check-env    Verify the environment the harness and the start use case need
- *   seed-schema  Create ATS_INT and the TRUSTEES/CHAPTER_DETAILS tables
+ *   seed-schema  Create ATS_INT (TRUSTEES, CHAPTER_DETAILS) and DXTR_INT (offices tables)
  *   seed-sql     Replace all TOD rows with the fixtures
  *   seed-cosmos  Replace the fixture CAMS trustees and create the bicep-declared indexes
  *   run          clean, seed, then run every scenario and lifecycle check
@@ -48,6 +48,7 @@ const AZURITE_CONNECTION_STRING =
   'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1'; // pragma: allowlist secret
 
 const ATS_DATABASE = 'ATS_INT';
+const DXTR_DATABASE = 'DXTR_INT';
 
 function loadEnv() {
   dotenv.config({ path: path.join(REPO_ROOT, 'backend/.env') });
@@ -72,6 +73,11 @@ function loadEnv() {
     ATS_MSSQL_PASS: process.env.MSSQL_PASS,
     ATS_MSSQL_ENCRYPT: 'false',
     ATS_MSSQL_TRUST_UNSIGNED_CERT: 'true',
+    MSSQL_HOST: 'localhost',
+    MSSQL_DATABASE_DXTR: DXTR_DATABASE,
+    MSSQL_USER: 'sa',
+    MSSQL_ENCRYPT: 'false',
+    MSSQL_TRUST_UNSIGNED_CERT: 'true',
     AzureWebJobsStorage: AZURITE_CONNECTION_STRING,
     AzureWebJobsDataflowsStorage: AZURITE_CONNECTION_STRING,
   });
@@ -272,11 +278,13 @@ async function readLock(db: Db) {
 async function seedSchema() {
   const master = await getSqlPool('master');
   try {
-    await master
-      .request()
-      .query(
-        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '${ATS_DATABASE}') CREATE DATABASE [${ATS_DATABASE}]`,
-      );
+    for (const database of [ATS_DATABASE, DXTR_DATABASE]) {
+      await master
+        .request()
+        .query(
+          `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '${database}') CREATE DATABASE [${database}]`,
+        );
+    }
   } finally {
     await master.close();
   }
@@ -285,6 +293,12 @@ async function seedSchema() {
     await executeSqlFile(pool, '00-seed-ats-schema.sql');
   } finally {
     await pool.close();
+  }
+  const dxtr = await getSqlPool(DXTR_DATABASE);
+  try {
+    await executeSqlFile(dxtr, '00-seed-dxtr-offices-schema.sql');
+  } finally {
+    await dxtr.close();
   }
 }
 
@@ -300,6 +314,12 @@ async function seedSql() {
     }
   } finally {
     await pool.close();
+  }
+  const dxtr = await getSqlPool(DXTR_DATABASE);
+  try {
+    await executeSqlFile(dxtr, '04-seed-dxtr-offices.sql');
+  } finally {
+    await dxtr.close();
   }
 }
 

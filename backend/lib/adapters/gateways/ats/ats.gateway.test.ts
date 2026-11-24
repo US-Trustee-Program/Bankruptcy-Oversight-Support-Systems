@@ -66,12 +66,18 @@ describe('ATS Gateway', () => {
       expect(result.stats.clean).toBe(2);
     });
 
-    test('should return each requested trustee appointments by ID', async () => {
+    test('should return each requested trustee appointments by ID, cleansed like the real gateway', async () => {
       const result = await gateway.getTrusteeAppointmentsByIds(context, [1, 6]);
 
       expect([...result.keys()]).toEqual([1, 6]);
-      expect(result.get(1)?.stats.total).toBe(2); // trustee 1 has 2 fixture appointments
-      expect(result.get(6)?.stats.total).toBe(1); // trustee 6 has 1 inactive appointment
+      // The fixture rows have no serving state, so the real cleansing cannot map their district.
+      expect(result.get(1)).toEqual(
+        expect.objectContaining({
+          cleanAppointments: [],
+          stats: expect.objectContaining({ total: 2, problematic: 2 }),
+        }),
+      );
+      expect(result.get(6)?.stats).toEqual(expect.objectContaining({ total: 1, problematic: 1 }));
     });
 
     test('should return correct trustee count', async () => {
