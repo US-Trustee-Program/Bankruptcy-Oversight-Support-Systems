@@ -49,23 +49,40 @@ describe('renderSlackHeadline', () => {
   });
 
   test.each([
-    ['one incident still open', '• Time to restore service: 1 incident still open'],
-    ['incidents still open', '• Time to restore service: 3 incidents still open'],
-    ['a restore time', '• Time to restore service: 2.5 hours (mean 4.0 hours)'],
-    ['a lead time over 48 hours', '• Lead time for changes: 2.5 days (mean 3.0 days)'],
-    ['no deployments', '• Change failure rate: No data (no deployments)'],
-  ])('shows %s', (name, expected) => {
-    const label = expected.slice(2, expected.indexOf(':'));
-    expect(lineFor(renderSlackHeadline(FIXTURES[name]), label)).toBe(expected);
+    {
+      fixture: 'one incident still open',
+      label: 'Time to restore service',
+      value: '1 incident still open',
+    },
+    {
+      fixture: 'incidents still open',
+      label: 'Time to restore service',
+      value: '3 incidents still open',
+    },
+    {
+      fixture: 'a restore time',
+      label: 'Time to restore service',
+      value: '2.5 hours (mean 4.0 hours)',
+    },
+    {
+      fixture: 'a lead time over 48 hours',
+      label: 'Lead time for changes',
+      value: '2.5 days (mean 3.0 days)',
+    },
+  ])('shows $label for a week with $fixture', ({ fixture, label, value }) => {
+    expect(lineFor(renderSlackHeadline(FIXTURES[fixture]), label)).toBe(`• ${label}: ${value}`);
   });
 
-  test('shows no deployments as zero, and lead time as no data', () => {
-    const headline = renderSlackHeadline(FIXTURES['no deployments']);
-
-    expect(lineFor(headline, 'Deployment frequency')).toBe(
-      '• Deployment frequency: 0 deployments (0.0 per day)',
+  test('shows a week with no deployments', () => {
+    expect(renderSlackHeadline(FIXTURES['no deployments'])).toBe(
+      [
+        'DORA metrics for the week of Mon 2026-11-09 – Sun 2026-11-15 (UTC)',
+        '• Deployment frequency: 0 deployments (0.0 per day)',
+        '• Lead time for changes: No data',
+        '• Change failure rate: No data (no deployments)',
+        '• Time to restore service: No incidents',
+      ].join('\n'),
     );
-    expect(lineFor(headline, 'Lead time for changes')).toBe('• Lead time for changes: No data');
   });
 
   test.each(Object.keys(FIXTURES))(
