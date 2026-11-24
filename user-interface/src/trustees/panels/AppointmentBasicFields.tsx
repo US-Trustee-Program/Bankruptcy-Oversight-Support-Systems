@@ -27,7 +27,6 @@ export default function AppointmentBasicFields(props: Readonly<AppointmentBasicF
         <Button
           id={`edit-trustee-appointment-${appointment.id}`}
           uswdsStyle={UswdsButtonStyle.Unstyled}
-          title="Edit Appointment"
           onClick={openEditTrustee}
         >
           <IconLabel icon="edit" label="Edit Appointment" />
