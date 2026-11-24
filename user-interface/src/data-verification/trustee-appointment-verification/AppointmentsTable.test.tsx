@@ -63,6 +63,13 @@ function cell(column: Column): HTMLElement {
   return screen.getAllByRole('cell')[COLUMNS.indexOf(column)];
 }
 
+/** Matches only when a cell's full text equals exactly this value - toHaveTextContent's default
+ * substring match would still pass if the real value merely contained this text, e.g. '1' would
+ * wrongly match a cell that actually rendered '11'. */
+function exact(value: string): RegExp {
+  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+}
+
 describe('AppointmentsTable', () => {
   beforeEach(() => {
     mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
@@ -96,17 +103,17 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('District')).toHaveTextContent('Southern District of New York');
-    expect(cell('Division')).toHaveTextContent('1');
-    expect(cell('Chapter')).toHaveTextContent('Chapter 7');
-    expect(cell('Type')).toHaveTextContent('Panel');
-    expect(cell('Status')).toHaveTextContent('Active');
+    expect(cell('District')).toHaveTextContent(exact('Southern District of New York'));
+    expect(cell('Division')).toHaveTextContent(exact('1'));
+    expect(cell('Chapter')).toHaveTextContent(exact('Chapter 7'));
+    expect(cell('Type')).toHaveTextContent(exact('Panel'));
+    expect(cell('Status')).toHaveTextContent(exact('Active'));
   });
 
   test('formats a subchapter V chapter slug for display', () => {
     render(<AppointmentsTable appointments={[makeAppointment({ chapter: '11-subchapter-v' })]} />);
 
-    expect(cell('Chapter')).toHaveTextContent('Chapter 11 Subchapter V');
+    expect(cell('Chapter')).toHaveTextContent(exact('Chapter 11 Subchapter V'));
   });
 
   test('falls back to the court id in the District column when the court name is unknown', () => {
@@ -116,7 +123,7 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('District')).toHaveTextContent('081');
+    expect(cell('District')).toHaveTextContent(exact('081'));
   });
 
   test('shows the resolved division name in the Division column when the backend provides one', () => {
@@ -124,7 +131,7 @@ describe('AppointmentsTable', () => {
       <AppointmentsTable appointments={[makeAppointment({ courtDivisionName: 'Foley Square' })]} />,
     );
 
-    expect(cell('Division')).toHaveTextContent('Foley Square');
+    expect(cell('Division')).toHaveTextContent(exact('Foley Square'));
   });
 
   test('looks up the division name from the courts list when the backend gives only a code', () => {
@@ -138,7 +145,7 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('Division')).toHaveTextContent('Foley Square');
+    expect(cell('Division')).toHaveTextContent(exact('Foley Square'));
   });
 
   test('falls back to the raw division code when it is in none of the loaded courts', () => {
@@ -156,7 +163,7 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('Division')).toHaveTextContent('1');
+    expect(cell('Division')).toHaveTextContent(exact('1'));
   });
 
   test('still renders when courts fail to load', () => {
