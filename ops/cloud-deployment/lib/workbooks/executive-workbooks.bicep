@@ -9,10 +9,14 @@ param appInsightsResourceId string
 @description('Resource ID of the Application Insights instance for dataflows.')
 param dataflowsAppInsightsResourceId string
 
+@description('Resource ID of the Application Insights instance for node-api.')
+param nodeApiAppInsightsResourceId string
+
 param tags object = {}
 
-// Extract App Insights name from resource ID for use in KQL app() function
+// Extract App Insights names from resource IDs for use in KQL app() function
 var dataflowsAppInsightsName = last(split(dataflowsAppInsightsResourceId, '/'))
+var nodeApiAppInsightsName = last(split(nodeApiAppInsightsResourceId, '/'))
 
 resource executiveOverviewWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
   name: guid('executive-overview-workbook', resourceGroup().id, stackName)
@@ -25,9 +29,13 @@ resource executiveOverviewWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     category: 'workbook'
     sourceId: appInsightsResourceId
     serializedData: replace(
-      loadTextContent('executive-overview.json'),
-      '{DataflowsAppInsights:name}',
-      dataflowsAppInsightsName
+      replace(
+        loadTextContent('executive-overview.json'),
+        '{DataflowsAppInsights:name}',
+        dataflowsAppInsightsName
+      ),
+      '{NodeApiAppInsights:name}',
+      nodeApiAppInsightsName
     )
   }
 }
