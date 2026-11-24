@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# CAMS Executive Usage Overview\n\nConsolidated stakeholder view of growth, engagement, feature adoption, and reliability. Built entirely from existing Application Insights telemetry (pageViews, customEvents) plus the `CAMS Sign-In` event the API records each time someone signs in.\n\n**Known approximations:** Growth Summary and DAU / WAU / MAU count distinct people (by work email) from the date person-based counting started; the other engagement and feature-adoption visuals still count browsers (anonymous `user_Id`), so one person on two computers counts twice there; Case Notes usage is a tab-visit proxy, not confirmed note creation; Data Verification cannot be broken out by order type (Transfer/Consolidation/Trustee Mismatch) since all three share one URL."
+        "json": "# CAMS Executive Usage Overview\n\nConsolidated stakeholder view of growth, engagement, feature adoption, and reliability. Built entirely from existing Application Insights telemetry (pageViews, customEvents) plus the `CAMS Sign-In` event the API records each time someone signs in.\n\n**Known approximations:** the Growth & Engagement visuals count distinct people (by work email) from the date person-based counting started; the feature-adoption visuals still count browsers (anonymous `user_Id`), so one person on two computers counts twice there; Case Notes usage is a tab-visit proxy, not confirmed note creation; Data Verification cannot be broken out by order type (Transfer/Consolidation/Trustee Mismatch) since all three share one URL."
       },
       "name": "header"
     },
@@ -55,6 +55,32 @@
             },
             "queryType": 0,
             "resourceType": "microsoft.insights/components"
+          },
+          {
+            "id": "people-range-note",
+            "version": "KqlParameterItem/1.0",
+            "name": "PeopleRangeNote",
+            "type": 1,
+            "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nprint Show = iff(isnotnull(CountedFrom) and {TimeRange:start} < CountedFrom + 30d,\n    \"yes\", \"no\")\n",
+            "isHiddenWhenLocked": true,
+            "timeContext": {
+              "durationMs": 63072000000
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.insights/components"
+          },
+          {
+            "id": "people-cohort-note",
+            "version": "KqlParameterItem/1.0",
+            "name": "PeopleCohortNote",
+            "type": 1,
+            "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet ids = activity | where isnotempty(who);\nlet cohorts = ids\n    | summarize CohortWeek = startofweek(min(timestamp)) by who\n    | where CohortWeek > now() - 70d;\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nlet EarliestCohort = toscalar(cohorts | summarize min(CohortWeek));\nprint Show = iff(isnotnull(EarliestCohort) and EarliestCohort < CountedFrom + 30d,\n    \"yes\", \"no\")\n",
+            "isHiddenWhenLocked": true,
+            "timeContext": {
+              "durationMs": 63072000000
+            },
+            "queryType": 0,
+            "resourceType": "microsoft.insights/components"
           }
         ],
         "style": "pills",
@@ -66,7 +92,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Growth & Engagement\n\n**{PeopleCountedFrom}** Growth Summary and DAU / WAU / MAU count distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC.\n\nEngaged vs. Occasional, New vs. Returning and Weekly Cohort Retention still count browsers (App Insights' anonymous `user_Id`)."
+        "json": "## Growth & Engagement\n\n**{PeopleCountedFrom}** Every chart in this section counts distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC."
       },
       "name": "growth-header"
     },
@@ -149,64 +175,99 @@
     {
       "type": 1,
       "content": {
-        "json": "**Engaged vs. Occasional Users** splits browsers by how many distinct days they were active in the period: 8+ days is \"Engaged,\" fewer is \"Occasional\" (that 8-day line is provisional — see the open ticket item to tune it against real traffic). **New vs. Returning Users** splits browsers by whether their very first-ever visit falls inside the selected period (\"New\") or happened earlier (\"Returning\")."
+        "json": "**Engaged vs. Occasional People** splits the people who signed in during the selected range by how many distinct days they signed in: 8 or more days is \"Engaged\", 1 to 7 is \"Occasional\" (the 8-day line is provisional). **New vs. Returning People** splits the same people by whether their first recorded sign-in falls inside the range (\"New\") or earlier (\"Returning\")."
       },
       "name": "engagement-pies-header"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "**These two charts read high for now.** Person-based counting started less than 30 days before the start of the selected range. People who used CAMS before counting started show as New the first time they sign in after it, and only their days since then count toward Engaged, so New reads high and Engaged reads low. This note goes away once the range starts 30 or more days after counting started.",
+        "style": "warning"
+      },
+      "name": "people-engagement-note",
+      "conditionalVisibility": {
+        "parameterName": "PeopleRangeNote",
+        "comparison": "isEqualTo",
+        "value": "yes"
+      }
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "union pageViews, customEvents\n| where timestamp {TimeRange}\n| summarize ActiveDays = dcount(startofday(timestamp)) by user_Id\n| extend Segment = iif(ActiveDays >= 8, \"Engaged (8+ active days)\", \"Occasional (1-7 active days)\")\n| summarize Users = count() by Segment",
+        "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet RangeStart = {TimeRange:start};\nlet RangeEnd = {TimeRange:end};\nactivity\n| where isnotempty(who)\n| where timestamp >= RangeStart and timestamp < RangeEnd\n| distinct who, Day = startofday(timestamp)\n| summarize ActiveDays = count() by who\n| extend Segment = iff(ActiveDays >= 8, \"Engaged (8+ active days)\", \"Occasional (1-7 active days)\")\n| summarize People = count() by Segment\n| order by Segment asc\n",
         "size": 0,
-        "title": "Engaged vs. Occasional Users",
-        "timeContextFromParameter": "TimeRange",
+        "title": "Engaged vs. Occasional People",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "piechart"
+        "visualization": "piechart",
+        "noDataMessage": "No sign-ins in the selected time range.",
+        "timeContext": {
+          "durationMs": 63072000000
+        }
       },
-      "name": "engaged-occasional-pie",
+      "name": "people-engaged-occasional-pie",
       "customWidth": "50"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let FirstSeen = union pageViews, customEvents | where timestamp > ago(400d) | summarize FirstSeen = min(timestamp) by user_Id;\nunion pageViews, customEvents\n| where timestamp {TimeRange}\n| summarize by user_Id\n| join kind=inner FirstSeen on user_Id\n| extend Status = iif(FirstSeen >= {TimeRange:start} and FirstSeen <= {TimeRange:end}, \"New\", \"Returning\")\n| summarize Users = count() by Status",
+        "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet RangeStart = {TimeRange:start};\nlet RangeEnd = {TimeRange:end};\nlet ids = activity | where isnotempty(who);\nlet firstSeen = ids | summarize FirstSeen = min(timestamp) by who;\nids\n| where timestamp >= RangeStart and timestamp < RangeEnd\n| distinct who\n| join kind=inner firstSeen on who\n| extend Status = iff(FirstSeen >= RangeStart, \"New\", \"Returning\")\n| summarize People = count() by Status\n| order by Status asc\n",
         "size": 0,
-        "title": "New vs. Returning Users",
-        "timeContextFromParameter": "TimeRange",
+        "title": "New vs. Returning People",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "piechart"
+        "visualization": "piechart",
+        "timeContext": {
+          "durationMs": 63072000000
+        },
+        "noDataMessage": "No sign-ins in the selected time range."
       },
-      "name": "new-returning-pie",
+      "name": "people-new-returning-pie",
       "customWidth": "50"
     },
     {
       "type": 1,
       "content": {
-        "json": "**Weekly Cohort Retention** groups users by the week they first showed up (their \"cohort\"), then tracks what percentage of that same group is still active in each week afterward. Each line is one starting week; a line that drops fast means those users didn't stick around, a line that stays high means they kept coming back. Because it takes a few weeks to build up a retention curve, only cohorts old enough to have that history are shown."
+        "json": "**Weekly Cohort Retention** groups people by the week of their first recorded sign-in (their \"cohort\"), then shows what percentage of each cohort signed in again in each later week, up to week 8. Week 0 is always 100%. Each line is one starting week; a line that drops fast means those people didn't keep using CAMS. Cohorts from the last 70 days are shown, whatever time range is selected. Weeks start on Sunday (UTC)."
       },
       "name": "retention-cohort-header"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "**This chart reads high for now.** The earliest cohort shown starts less than 30 days after person-based counting started. People who used CAMS before then join a cohort in the week they first sign in after that date, so early cohorts include long-time users and retain better than genuinely new people. This note goes away once the earliest cohort shown starts 30 or more days after counting started, about 100 days after it started.",
+        "style": "warning"
+      },
+      "name": "people-cohort-note",
+      "conditionalVisibility": {
+        "parameterName": "PeopleCohortNote",
+        "comparison": "isEqualTo",
+        "value": "yes"
+      }
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let raw = union pageViews, customEvents | where timestamp > ago(120d) | project timestamp, user_Id;\nlet cohorts = raw | summarize CohortWeek = startofweek(min(timestamp)) by user_Id;\nlet cohortSizes = cohorts | summarize CohortSize = count() by CohortWeek;\nraw\n| extend ActiveWeek = startofweek(timestamp)\n| join kind=inner cohorts on user_Id\n| extend WeekNumber = datetime_diff('week', ActiveWeek, CohortWeek)\n| where WeekNumber >= 0 and WeekNumber <= 8\n| where CohortWeek > ago(70d)\n| summarize ActiveUsers = dcount(user_Id) by CohortWeek, WeekNumber\n| join kind=inner cohortSizes on CohortWeek\n| extend RetentionPercent = round(100.0 * ActiveUsers / CohortSize, 1)\n| project CohortWeek = format_datetime(CohortWeek, 'yyyy-MM-dd'), WeekNumber, RetentionPercent\n| order by CohortWeek asc, WeekNumber asc",
+        "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet ids = activity | where isnotempty(who);\nlet cohorts = ids\n    | summarize CohortWeek = startofweek(min(timestamp)) by who\n    | where CohortWeek > now() - 70d;\nlet cohortSizes = cohorts | summarize CohortSize = count() by CohortWeek;\nids\n| where timestamp > now() - 77d\n| distinct who, ActiveWeek = startofweek(timestamp)\n| join kind=inner cohorts on who\n| extend WeekNumber = datetime_diff('week', ActiveWeek, CohortWeek)\n| where WeekNumber between (0 .. 8)\n| summarize Active = count() by CohortWeek, WeekNumber\n| join kind=inner cohortSizes on CohortWeek\n| project CohortWeek = format_datetime(CohortWeek, \"yyyy-MM-dd\"), WeekNumber,\n    RetentionPercent = round(100.0 * Active / CohortSize, 1)\n| order by CohortWeek asc, WeekNumber asc\n",
         "size": 0,
-        "title": "Weekly Cohort Retention (% of cohort still active by week N)",
-        "timeContextFromParameter": "TimeRange",
+        "title": "Weekly Cohort Retention (% of cohort still signing in by week N) — people",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
         "visualization": "linechart",
         "chartSettings": {
           "xAxis": "WeekNumber",
           "showDataPoints": true
-        }
+        },
+        "timeContext": {
+          "durationMs": 63072000000
+        },
+        "noDataMessage": "No sign-ins in the last 70 days."
       },
-      "name": "retention-cohort-trend"
+      "name": "people-retention-cohort-trend"
     },
     {
       "type": 12,
@@ -297,6 +358,72 @@
               }
             },
             "name": "dau-wau-mau-trend"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "**Engaged vs. Occasional Users** splits browsers by how many distinct days they were active in the period: 8+ days is \"Engaged,\" fewer is \"Occasional\" (that 8-day line is provisional — see the open ticket item to tune it against real traffic). **New vs. Returning Users** splits browsers by whether their very first-ever visit falls inside the selected period (\"New\") or happened earlier (\"Returning\"). New Users is overstated for ranges starting within 30 days of the oldest telemetry still kept."
+            },
+            "name": "browser-engagement-pies-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "union pageViews, customEvents\n| where timestamp {TimeRange}\n| summarize ActiveDays = dcount(startofday(timestamp)) by user_Id\n| extend Segment = iif(ActiveDays >= 8, \"Engaged (8+ active days)\", \"Occasional (1-7 active days)\")\n| summarize Users = count() by Segment",
+              "size": 0,
+              "title": "Engaged vs. Occasional Users (browsers)",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "piechart"
+            },
+            "name": "engaged-occasional-pie",
+            "customWidth": "50"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let activity = union pageViews, customEvents\n    | project timestamp, who = user_Id;\nlet RangeStart = {TimeRange:start};\nlet RangeEnd = {TimeRange:end};\nlet ids = activity | where isnotempty(who);\nlet firstSeen = ids | summarize FirstSeen = min(timestamp) by who;\nids\n| where timestamp >= RangeStart and timestamp < RangeEnd\n| distinct who\n| join kind=inner firstSeen on who\n| extend Status = iff(FirstSeen >= RangeStart, \"New\", \"Returning\")\n| summarize Users = count() by Status\n| order by Status asc\n",
+              "size": 0,
+              "title": "New vs. Returning Users (browsers)",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "piechart",
+              "timeContext": {
+                "durationMs": 63072000000
+              }
+            },
+            "name": "new-returning-pie",
+            "customWidth": "50"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "**Weekly Cohort Retention** groups users by the week they first showed up (their \"cohort\"), then tracks what percentage of that same group is still active in each week afterward. Each line is one starting week; a line that drops fast means those users didn't stick around, a line that stays high means they kept coming back. Because it takes a few weeks to build up a retention curve, only cohorts old enough to have that history are shown. Cohorts starting within 30 days of the oldest telemetry still kept include returning browsers, so they read high."
+            },
+            "name": "browser-retention-cohort-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let activity = union pageViews, customEvents\n    | project timestamp, who = user_Id;\nlet ids = activity | where isnotempty(who);\nlet cohorts = ids\n    | summarize CohortWeek = startofweek(min(timestamp)) by who\n    | where CohortWeek > now() - 70d;\nlet cohortSizes = cohorts | summarize CohortSize = count() by CohortWeek;\nids\n| where timestamp > now() - 77d\n| distinct who, ActiveWeek = startofweek(timestamp)\n| join kind=inner cohorts on who\n| extend WeekNumber = datetime_diff('week', ActiveWeek, CohortWeek)\n| where WeekNumber between (0 .. 8)\n| summarize Active = count() by CohortWeek, WeekNumber\n| join kind=inner cohortSizes on CohortWeek\n| project CohortWeek = format_datetime(CohortWeek, \"yyyy-MM-dd\"), WeekNumber,\n    RetentionPercent = round(100.0 * Active / CohortSize, 1)\n| order by CohortWeek asc, WeekNumber asc\n",
+              "size": 0,
+              "title": "Weekly Cohort Retention (% of cohort still active by week N) — browsers",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "linechart",
+              "chartSettings": {
+                "xAxis": "WeekNumber",
+                "showDataPoints": true
+              },
+              "timeContext": {
+                "durationMs": 63072000000
+              }
+            },
+            "name": "retention-cohort-trend"
           }
         ]
       },
