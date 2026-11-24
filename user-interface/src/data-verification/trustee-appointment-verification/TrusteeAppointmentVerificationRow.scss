@@ -1,5 +1,5 @@
 @use 'uswds-core' as *;
-@use '@/styles/abstracts/colors';
+@use '@/data-verification/trustee-task-detail-mixins' as shared;
 
 .usa-accordion__content:has(.trustee-appointment-content) {
   padding-top: 0;
@@ -29,6 +29,24 @@
     cursor: progress;
   }
 
+  // USWDS's base .usa-button sets font-size: 1.06rem, line-height: .9 and padding: .75rem 1.25rem
+  // on every button, including the --unstyled variant (it only resets color/text-decoration) -
+  // so this button's own text was never actually the same size as the sentence around it. Reset
+  // it back to plain inline text, then align the icon against that (now normal) text - no
+  // magic-number nudge needed once the button isn't a differently-sized box anymore.
+  .refresh-trustee-appointments-button {
+    display: inline;
+    font: inherit;
+    padding: 0;
+
+    svg {
+      width: 1.1rem;
+      height: 1.1rem;
+      vertical-align: middle;
+      margin-right: 0.25rem;
+    }
+  }
+
   .refresh-status,
   .detail-load-status {
     display: flex;
@@ -43,63 +61,45 @@
     border: 0;
   }
 
-  .affected-cases-list {
-    .affected-case-item:not(:last-child) {
-      margin-right: 0.25rem;
+  // Alert's inline-alert styling centers it (margin: 0 auto) for toast-style usage elsewhere;
+  // this one should instead stay flush left with the rest of the task's content, at the fixed
+  // width the mockup specifies rather than stretching to fill the row.
+  .refresh-alert.inline-alert {
+    margin-left: 0;
+    margin-right: 0;
+
+    .usa-alert {
+      margin-left: 0;
+      margin-right: 0;
+      width: 40.0625rem;
+      max-width: 100%;
     }
   }
 
-  // The single "differs" marker (see DifferenceIcon in TrusteeComparisonTable.tsx). The icon
-  // carries its own accessible name, so meaning never rests on color alone.
-  .difference-icon {
-    display: inline-flex;
-    align-items: center;
-    height: 1.5em; // fallback for browsers without lh support
-    height: 1lh;
-  }
-
-  .difference-icon-symbol {
-    width: 1.1rem;
-    height: 1.1rem;
-    vertical-align: middle;
-    fill: colors.$gold;
-  }
+  @include shared.affected-cases-list;
 
   .appointments-table-container {
-    overflow-x: auto;
-    margin-bottom: 1rem;
+    @include shared.table-scroll-container;
   }
 
   .appointments-table-key {
     margin: 1rem 0 0.5rem;
   }
 
+  // Deliberately keeps USWDS's default 1rem left cell padding (unlike TrusteeComparisonTable,
+  // which zeroes it out to align with the prose above it) - the design mock shows a visible
+  // left gutter before the first column's text here.
   .appointments-table {
-    th,
-    td {
-      vertical-align: top;
-    }
+    @include shared.table-cells-top-aligned;
 
-    th:first-child,
-    td:first-child {
-      padding-left: 0;
+    .appointment-cell-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
     }
 
     // Stack each row's cells, labelled by data-label, below tablet width -- same pattern as
     // TrusteeComparisonTable.
-    @include at-media-max('tablet') {
-      table-layout: auto;
-      @include table-stacked-styles;
-
-      tbody,
-      tr {
-        display: block;
-      }
-
-      th,
-      td {
-        padding-left: 0;
-      }
-    }
+    @include shared.table-stacked-below-tablet;
   }
 }

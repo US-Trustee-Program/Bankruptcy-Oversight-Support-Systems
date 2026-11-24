@@ -1,8 +1,25 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { TrusteeAppointmentWithAgreement } from '@common/cams/trustee-appointment-verification';
 import { AppointmentAgreement } from '@common/cams/trustee-appointments';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import * as UseCourts from '@/lib/hooks/UseCourts';
 import { AppointmentsTable } from './AppointmentsTable';
+
+function makeCourt(overrides: Partial<CourtDivisionDetails> = {}): CourtDivisionDetails {
+  return {
+    officeName: '',
+    officeCode: '',
+    courtId: '081',
+    courtName: 'Southern District of New York',
+    courtDivisionCode: '1',
+    courtDivisionName: 'Foley Square',
+    groupDesignator: '',
+    regionId: '',
+    regionName: '',
+    ...overrides,
+  };
+}
 
 function makeAppointment(
   overrides: Partial<TrusteeAppointmentWithAgreement> = {},
@@ -41,10 +58,22 @@ function cell(column: Column): HTMLElement {
   return screen.getAllByRole('cell')[COLUMNS.indexOf(column)];
 }
 
+/** Matches only when a cell's full text equals exactly this value - toHaveTextContent's default
+ * substring match would still pass if the real value merely contained this text, e.g. '1' would
+ * wrongly match a cell that actually rendered '11'. */
+function exact(value: string): RegExp {
+  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+}
+
 describe('AppointmentsTable', () => {
-  test('replaces the table with a message when the trustee has no appointments', () => {
+  beforeEach(() => {
+    vi.spyOn(UseCourts, 'default').mockReturnValue({ courts: [], loading: false, error: null });
+  });
+
+  test('replaces the table with a message when the trustee has no appointments, but keeps the Appointments heading', () => {
     render(<AppointmentsTable appointments={[]} />);
 
+    expect(screen.getByRole('heading', { name: 'Appointments', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('This trustee has no appointments in CAMS.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -69,17 +98,17 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('District')).toHaveTextContent('Southern District of New York');
-    expect(cell('Division')).toHaveTextContent('1');
-    expect(cell('Chapter')).toHaveTextContent('7');
-    expect(cell('Type')).toHaveTextContent('Panel');
-    expect(cell('Status')).toHaveTextContent('Active');
+    expect(cell('District')).toHaveTextContent(exact('Southern District of New York'));
+    expect(cell('Division')).toHaveTextContent(exact('1'));
+    expect(cell('Chapter')).toHaveTextContent(exact('Chapter 7'));
+    expect(cell('Type')).toHaveTextContent(exact('Panel'));
+    expect(cell('Status')).toHaveTextContent(exact('Active'));
   });
 
   test('formats a subchapter V chapter slug for display', () => {
     render(<AppointmentsTable appointments={[makeAppointment({ chapter: '11-subchapter-v' })]} />);
 
-    expect(cell('Chapter')).toHaveTextContent('11 Subchapter V');
+    expect(cell('Chapter')).toHaveTextContent(exact('Chapter 11 Subchapter V'));
   });
 
   test('falls back to the court id in the District column when the court name is unknown', () => {
@@ -89,7 +118,7 @@ describe('AppointmentsTable', () => {
       />,
     );
 
-    expect(cell('District')).toHaveTextContent('081');
+    expect(cell('District')).toHaveTextContent(exact('081'));
   });
 
   test('shows the resolved division name in the Division column when the backend provides one', () => {
@@ -97,7 +126,57 @@ describe('AppointmentsTable', () => {
       <AppointmentsTable appointments={[makeAppointment({ courtDivisionName: 'Foley Square' })]} />,
     );
 
-    expect(cell('Division')).toHaveTextContent('Foley Square');
+    expect(cell('Division')).toHaveTextContent(exact('Foley Square'));
+  });
+
+  test('looks up the division name from the courts list when the backend gives only a code', () => {
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
+      courts: [makeCourt()],
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <AppointmentsTable
+        appointments={[
+          makeAppointment({ courtId: '081', divisionCode: '1', courtDivisionName: undefined }),
+        ]}
+      />,
+    );
+
+    expect(cell('Division')).toHaveTextContent(exact('Foley Square'));
+  });
+
+  test('falls back to the raw division code when it is in none of the loaded courts', () => {
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
+      courts: [makeCourt({ courtDivisionCode: 'unrelated-division' })],
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <AppointmentsTable
+        appointments={[
+          makeAppointment({ courtId: '081', divisionCode: '1', courtDivisionName: undefined }),
+        ]}
+      />,
+    );
+
+    expect(cell('Division')).toHaveTextContent(exact('1'));
+  });
+
+  test('still renders when courts fail to load', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
+      courts: [],
+      loading: false,
+      error: new Error('courts unavailable'),
+    });
+
+    render(<AppointmentsTable appointments={[makeAppointment()]} />);
+
+    expect(screen.getByRole('table', { name: 'Appointments' })).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
   test('renders appointments in the order given, without re-sorting', () => {
@@ -147,23 +226,31 @@ describe('AppointmentsTable', () => {
       within(targetCell).getByRole('img', { name: `${column} differs from these cases` }),
     ).toBeInTheDocument();
 
-    expect(screen.getAllByRole('img')).toHaveLength(1);
+    // Scoped to the table: the legend above it always shows its own (unrelated) warning icon.
+    expect(within(screen.getByRole('table')).getAllByRole('img')).toHaveLength(1);
   });
 
   test('shows no warning icon when every field matches the tuple', () => {
     render(<AppointmentsTable appointments={[makeAppointment()]} />);
 
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('table')).queryByRole('img')).not.toBeInTheDocument();
   });
 
-  test('shows the key line explaining the warning icon', () => {
+  test('shows a visible Appointments heading', () => {
     render(<AppointmentsTable appointments={[makeAppointment()]} />);
 
-    expect(
-      screen.getByText(
-        'A warning icon marks information that differs from the court, division, chapter or status of these cases.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Appointments', level: 3 })).toBeInTheDocument();
+  });
+
+  test('shows the key line explaining the warning icon, with the icon named so screen readers do not announce "warning icon icon"', () => {
+    render(<AppointmentsTable appointments={[makeAppointment()]} />);
+
+    const legend = document.querySelector('.appointments-table-key') as HTMLElement;
+    expect(legend).not.toBeNull();
+    expect(within(legend).getByRole('img', { name: 'warning' })).toBeInTheDocument();
+    expect(legend).toHaveTextContent(
+      /icon marks information that differs from the court, division, chapter or status of these cases/,
+    );
   });
 
   test('paginates when there are more than 5 appointments', () => {
