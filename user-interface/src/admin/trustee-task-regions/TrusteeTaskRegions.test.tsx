@@ -42,6 +42,13 @@ describe('TrusteeTaskRegions component', () => {
     });
   });
 
+  test('table carries the id the Region/Source column-width styling targets', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(document.getElementById('trustee-task-regions-table')).toBeInTheDocument();
+    });
+  });
+
   test('should render "Region" and "Source" column headers', async () => {
     renderComponent();
     await waitFor(() => {

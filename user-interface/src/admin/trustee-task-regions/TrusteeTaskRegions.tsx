@@ -92,7 +92,11 @@ export function TrusteeTaskRegions() {
       )}
       {isLoaded && !loadError && (
         <div className="trustee-task-regions-table-container">
-          <CamsTable aria-label="Trustee Task Regions" data-testid="trustee-task-regions-table">
+          <CamsTable
+            id="trustee-task-regions-table"
+            aria-label="Trustee Task Regions"
+            data-testid="trustee-task-regions-table"
+          >
             <CamsTableHeader>
               <CamsTableHeaderCell>Region</CamsTableHeaderCell>
               <CamsTableHeaderCell>Source</CamsTableHeaderCell>

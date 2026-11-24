@@ -1,6 +1,28 @@
 .trustee-task-regions-panel {
   .trustee-task-regions-table-container {
-    max-width: 38rem;
+    // fit-content (not a fixed max-width) so the row borders end at the actual content - the
+    // Region column no longer takes half the row, and a fixed-width box would leave the border
+    // trailing off into empty space past the button, same bug as the equal-width columns had.
+    width: fit-content;
+    max-width: 100%;
     margin-top: 1.25rem;
+  }
+
+  // Region only ever holds 1-2 digits; without this, CamsTable's default equal-width columns
+  // (flex: 1 1 0 on every cell) stretch it as wide as Source, leaving a large gap before the
+  // button instead of the narrow first column the design shows.
+  #trustee-task-regions-table {
+    // CamsTable's base (mobile-first) rule sets width: 100% unconditionally; with flex-basis:
+    // auto, that width is used as this item's main size instead of its content, so it must be
+    // reset here too, or this "shrink to content" column fills the row anyway.
+    .cams-table__cell:nth-child(1) {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 3rem;
+    }
+
+    .cams-table__cell:nth-child(2) {
+      flex: 1 1 0;
+    }
   }
 }
