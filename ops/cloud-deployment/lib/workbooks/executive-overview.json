@@ -48,20 +48,7 @@
             "version": "KqlParameterItem/1.0",
             "name": "PeopleCountedFrom",
             "type": 1,
-            "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nactivity\n| summarize firstSignIn = min(timestamp)\n| project CountedFrom = iff(isnull(firstSignIn), \"no sign-ins recorded yet\", format_datetime(firstSignIn, \"yyyy-MM-dd\"))\n",
-            "isHiddenWhenLocked": true,
-            "timeContext": {
-              "durationMs": 63072000000
-            },
-            "queryType": 0,
-            "resourceType": "microsoft.insights/components"
-          },
-          {
-            "id": "no-email-sign-ins",
-            "version": "KqlParameterItem/1.0",
-            "name": "NoEmailSignIns",
-            "type": 1,
-            "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet RangeStart = todatetime(\"{TimeRange:start}\");\nlet RangeEnd = todatetime(\"{TimeRange:end}\");\nactivity\n| where timestamp >= RangeStart and timestamp < RangeEnd\n| where isempty(who)\n| count\n",
+            "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nactivity\n| summarize firstSignIn = min(timestamp)\n| project CountedFrom = iff(isnull(firstSignIn),\n    \"No sign-ins have been recorded yet, so person-based counts are empty.\",\n    strcat(\"People counted from \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \".\"))\n",
             "isHiddenWhenLocked": true,
             "timeContext": {
               "durationMs": 63072000000
@@ -79,26 +66,14 @@
     {
       "type": 1,
       "content": {
-        "json": "## Growth & Engagement\n\n**People counted from {PeopleCountedFrom}.** Growth Summary and DAU / WAU / MAU count distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC.\n\nEngaged vs. Occasional, New vs. Returning and Weekly Cohort Retention still count browsers (App Insights' anonymous `user_Id`)."
+        "json": "## Growth & Engagement\n\n**{PeopleCountedFrom}** Growth Summary and DAU / WAU / MAU count distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC.\n\nEngaged vs. Occasional, New vs. Returning and Weekly Cohort Retention still count browsers (App Insights' anonymous `user_Id`)."
       },
       "name": "growth-header"
     },
     {
       "type": 1,
       "content": {
-        "json": "⚠️ {NoEmailSignIns} sign-in(s) in this time range had no work email and are not counted as people."
-      },
-      "name": "people-no-email-sign-ins",
-      "conditionalVisibility": {
-        "parameterName": "NoEmailSignIns",
-        "comparison": "isNotEqualTo",
-        "value": "0"
-      }
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "**Growth Summary** gives three top-line numbers for the selected time range: how many distinct people signed in, how many signed in for the first time, and the change in active people compared with the immediately preceding period of the same length (e.g. if you're viewing the last 7 days, this compares against the 7 days before that). Growth % is shown only when person-based counting covers the whole prior period. New People is overstated for ranges starting within 30 days of the date counting started, because people who used CAMS before that date look new."
+        "json": "**Growth Summary** gives three top-line numbers for the selected time range: how many distinct people signed in, how many signed in for the first time, and the change in active people compared with the immediately preceding period of the same length (e.g. if you're viewing the last 7 days, this compares against the 7 days before that). Growth % is shown only when person-based counting covers the whole prior period. New People is overstated for ranges starting within 30 days of the date counting started, because people who used CAMS before that date look new. Sign-ins with no work email are not counted; when there are any in the range, the Active People tile says how many."
       },
       "name": "growth-summary-header"
     },
@@ -106,7 +81,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet RangeStart = todatetime(\"{TimeRange:start}\");\nlet RangeEnd = todatetime(\"{TimeRange:end}\");\nlet RangeDuration = RangeEnd - RangeStart;\nlet PriorStart = RangeStart - RangeDuration;\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nlet ids = activity | where isnotempty(who);\nlet Active = toscalar(ids | where timestamp >= RangeStart and timestamp < RangeEnd | distinct who | count);\nlet Prior = toscalar(ids | where timestamp >= PriorStart and timestamp < RangeStart | distinct who | count);\nlet New = toscalar(\n    ids\n    | summarize firstSeen = min(timestamp) by who\n    | where firstSeen >= RangeStart and firstSeen < RangeEnd\n    | count\n);\nlet PriorCovered = isnotnull(CountedFrom) and PriorStart >= CountedFrom;\nlet NewOverstated = isnotnull(CountedFrom) and RangeStart < CountedFrom + 30d;\nlet GrowthPercent = iff(PriorCovered and Prior > 0, round(100.0 * (Active - Prior) / Prior, 1), real(null));\nunion\n    (print Order = 1, Metric = \"Active People (selected period)\", Value = toreal(Active), Note = \"\"),\n    (print Order = 2, Metric = \"New People (selected period)\", Value = toreal(New),\n        Note = iff(NewOverstated, strcat(\"Overstated: anyone active before \", format_datetime(CountedFrom, \"yyyy-MM-dd\"), \" counts as new\"), \"\")),\n    (print Order = 3, Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent,\n        Note = case(\n            not(PriorCovered), \"Not available: the prior period starts before people were counted\",\n            Prior == 0, \"Not available: no one was active in the prior period\",\n            \"\"))\n| order by Order asc\n| project Metric, Value, Note\n",
+        "query": "let activity = app('{NodeApiAppInsights:name}').customEvents\n    | where name == \"CAMS Sign-In\"\n    | project timestamp, who = tostring(customDimensions.email);\nlet RangeStart = todatetime(\"{TimeRange:start}\");\nlet RangeEnd = todatetime(\"{TimeRange:end}\");\nlet Missing = toscalar(activity | where timestamp >= RangeStart and timestamp < RangeEnd | where isempty(who) | count);\nlet ActiveNote = case(\n    Missing == 1, \"1 sign-in had no work email and is not counted\",\n    Missing > 1, strcat(Missing, \" sign-ins had no work email and are not counted\"),\n    \"\");\nlet RangeDuration = RangeEnd - RangeStart;\nlet PriorStart = RangeStart - RangeDuration;\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nlet ids = activity | where isnotempty(who);\nlet Active = toscalar(ids | where timestamp >= RangeStart and timestamp < RangeEnd | distinct who | count);\nlet Prior = toscalar(ids | where timestamp >= PriorStart and timestamp < RangeStart | distinct who | count);\nlet New = toscalar(\n    ids\n    | summarize firstSeen = min(timestamp) by who\n    | where firstSeen >= RangeStart and firstSeen < RangeEnd\n    | count\n);\nlet PriorCovered = isnotnull(CountedFrom) and PriorStart >= CountedFrom;\nlet NewOverstated = isnotnull(CountedFrom) and RangeStart < CountedFrom + 30d;\nlet GrowthPercent = iff(PriorCovered and Prior > 0, round(100.0 * (Active - Prior) / Prior, 1), real(null));\nunion\n    (print Order = 1, Metric = \"Active People (selected period)\", Value = toreal(Active), Note = ActiveNote),\n    (print Order = 2, Metric = \"New People (selected period)\", Value = toreal(New),\n        Note = iff(NewOverstated, strcat(\"Overstated: anyone active before \", format_datetime(CountedFrom, \"yyyy-MM-dd\"), \" counts as new\"), \"\")),\n    (print Order = 3, Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent,\n        Note = case(\n            not(PriorCovered), \"Not available: the prior period starts before people were counted\",\n            Prior == 0, \"Not available: no one was active in the prior period\",\n            \"\"))\n| order by Order asc\n| project Metric, Value, Note\n",
         "size": 3,
         "title": "Growth Summary (people)",
         "queryType": 0,
@@ -146,7 +121,7 @@
     {
       "type": 1,
       "content": {
-        "json": "**DAU / WAU / MAU** count distinct people who signed in per day, over a rolling 7-day window, and over a rolling 30-day window, for each day of the selected range from the date counting started. **Stickiness** (DAU÷MAU) is a standard engagement measure — the higher it is, the more the monthly total is made up of people who show up daily rather than just once a month. For the first 30 days after counting started, WAU and MAU only include days since that date, so MAU reads low and Stickiness reads high."
+        "json": "**DAU / WAU / MAU** count distinct people who signed in per day, over a rolling 7-day window, and over a rolling 30-day window, for each day of the selected range from the date counting started. **Stickiness** (DAU÷MAU) is a standard engagement measure — the higher it is, the more the monthly total is made up of people who show up daily rather than just once a month. For the first 30 days after counting started, WAU and MAU only include days since that date, so MAU reads low and Stickiness reads high. The last day shown is usually today, still in progress, so its DAU and Stickiness read low."
       },
       "name": "dau-wau-mau-header"
     },
@@ -260,7 +235,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "let activity = union pageViews, customEvents\n    | project timestamp, who = user_Id;\nlet RangeStart = todatetime(\"{TimeRange:start}\");\nlet RangeEnd = todatetime(\"{TimeRange:end}\");\nlet RangeDuration = RangeEnd - RangeStart;\nlet PriorStart = RangeStart - RangeDuration;\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nlet ids = activity | where isnotempty(who);\nlet Active = toscalar(ids | where timestamp >= RangeStart and timestamp < RangeEnd | distinct who | count);\nlet Prior = toscalar(ids | where timestamp >= PriorStart and timestamp < RangeStart | distinct who | count);\nlet New = toscalar(\n    ids\n    | summarize firstSeen = min(timestamp) by who\n    | where firstSeen >= RangeStart and firstSeen < RangeEnd\n    | count\n);\nlet PriorCovered = isnotnull(CountedFrom) and PriorStart >= CountedFrom;\nlet NewOverstated = isnotnull(CountedFrom) and RangeStart < CountedFrom + 30d;\nlet GrowthPercent = iff(PriorCovered and Prior > 0, round(100.0 * (Active - Prior) / Prior, 1), real(null));\nunion\n    (print Order = 1, Metric = \"Active Users (selected period)\", Value = toreal(Active), Note = \"\"),\n    (print Order = 2, Metric = \"New Users (selected period)\", Value = toreal(New),\n        Note = iff(NewOverstated, strcat(\"Overstated: any browser active before \", format_datetime(CountedFrom, \"yyyy-MM-dd\"), \" counts as new\"), \"\")),\n    (print Order = 3, Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent,\n        Note = case(\n            not(PriorCovered), \"Not available: the prior period starts before the oldest telemetry still kept\",\n            Prior == 0, \"Not available: no one was active in the prior period\",\n            \"\"))\n| order by Order asc\n| project Metric, Value, Note\n",
+              "query": "let activity = union pageViews, customEvents\n    | project timestamp, who = user_Id;\nlet RangeStart = todatetime(\"{TimeRange:start}\");\nlet RangeEnd = todatetime(\"{TimeRange:end}\");\nlet ActiveNote = \"\";\nlet RangeDuration = RangeEnd - RangeStart;\nlet PriorStart = RangeStart - RangeDuration;\nlet CountedFrom = toscalar(activity | summarize min(timestamp));\nlet ids = activity | where isnotempty(who);\nlet Active = toscalar(ids | where timestamp >= RangeStart and timestamp < RangeEnd | distinct who | count);\nlet Prior = toscalar(ids | where timestamp >= PriorStart and timestamp < RangeStart | distinct who | count);\nlet New = toscalar(\n    ids\n    | summarize firstSeen = min(timestamp) by who\n    | where firstSeen >= RangeStart and firstSeen < RangeEnd\n    | count\n);\nlet PriorCovered = isnotnull(CountedFrom) and PriorStart >= CountedFrom;\nlet NewOverstated = isnotnull(CountedFrom) and RangeStart < CountedFrom + 30d;\nlet GrowthPercent = iff(PriorCovered and Prior > 0, round(100.0 * (Active - Prior) / Prior, 1), real(null));\nunion\n    (print Order = 1, Metric = \"Active Users (selected period)\", Value = toreal(Active), Note = ActiveNote),\n    (print Order = 2, Metric = \"New Users (selected period)\", Value = toreal(New),\n        Note = iff(NewOverstated, strcat(\"Overstated: any browser active before \", format_datetime(CountedFrom, \"yyyy-MM-dd\"), \" counts as new\"), \"\")),\n    (print Order = 3, Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent,\n        Note = case(\n            not(PriorCovered), \"Not available: the prior period starts before the oldest telemetry still kept\",\n            Prior == 0, \"Not available: no one was active in the prior period\",\n            \"\"))\n| order by Order asc\n| project Metric, Value, Note\n",
               "size": 3,
               "title": "Growth Summary (browsers)",
               "queryType": 0,
@@ -299,7 +274,7 @@
           {
             "type": 1,
             "content": {
-              "json": "**DAU / WAU / MAU** count distinct active browsers per day, over a rolling 7-day window, and over a rolling 30-day window. **Stickiness** (DAU÷MAU) is a standard engagement measure — the higher it is, the more the monthly total is made up of people who show up daily rather than just once a month. Days within 30 days of the oldest telemetry still kept have partial WAU and MAU windows, so MAU reads low."
+              "json": "**DAU / WAU / MAU** count distinct active browsers per day, over a rolling 7-day window, and over a rolling 30-day window. **Stickiness** (DAU÷MAU) is a standard engagement measure — the higher it is, the more the monthly total is made up of people who show up daily rather than just once a month. Days within 30 days of the oldest telemetry still kept have partial WAU and MAU windows, so MAU reads low. The last day shown is usually today, still in progress, so its DAU and Stickiness read low."
             },
             "name": "browser-dau-wau-mau-header"
           },
