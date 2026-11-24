@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
-import { flagsWithoutLaunchDarkly } from '../../lib/adapters/utils/feature-flag';
+import { testFeatureFlags } from '@common/feature-flags';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 import { mockObservability } from '../../lib/testing/testing-utilities';
@@ -33,7 +33,7 @@ describe('Application Context Creator', () => {
       // Flags on the finished context reflect the authenticated user, not an
       // anonymous evaluation.
       expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
-      expect(context.featureFlags).toEqual(flagsWithoutLaunchDarkly);
+      expect(context.featureFlags).toEqual(testFeatureFlags);
     });
 
     test('should resolve the session with feature flags available to it', async () => {
@@ -61,7 +61,7 @@ describe('Application Context Creator', () => {
         request,
       });
 
-      expect(flagsSeenDuringLookup).toEqual(flagsWithoutLaunchDarkly);
+      expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
     });
 
     test('should throw an error when attempting to create context with no request', async () => {
@@ -105,7 +105,7 @@ describe('Application Context Creator', () => {
         request,
       });
 
-      expect(context.featureFlags).toEqual(flagsWithoutLaunchDarkly);
+      expect(context.featureFlags).toEqual(testFeatureFlags);
     });
 
     test('should reuse an explicitly injected logger instead of building one', async () => {

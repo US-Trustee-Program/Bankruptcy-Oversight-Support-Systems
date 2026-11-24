@@ -432,7 +432,7 @@ podman run --rm \
     -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
     -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
     -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
-    -e MONGO_CONNECTION_STRING="${MONGO_CONNECTION_STRING}" \
+    -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
     -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
     -v "$(pwd)/test-results:/app/test/e2e/test-results" \
     -v "$(pwd)/playwright-report:/app/test/e2e/playwright-report" \

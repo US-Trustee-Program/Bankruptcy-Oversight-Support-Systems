@@ -8,21 +8,11 @@ import {
 import { CamsUser } from '@common/cams/users';
 import { FeatureFlagSet } from '../types/basic';
 
-/**
- * The flags used when no LaunchDarkly key is configured. cams-role-assignments stays off: with it
- * on, sessions take roles only from role assignments, and an environment without LaunchDarkly
- * usually has none, so every user would sign in with no roles or offices.
- */
-export const flagsWithoutLaunchDarkly: FeatureFlagSet = {
-  ...testFeatureFlags,
-  'cams-role-assignments': false,
-};
-
 export async function getFeatureFlags(
   config: ApplicationConfiguration,
   user?: CamsUser,
 ): Promise<FeatureFlagSet> {
-  if (!config.featureFlagKey) return flagsWithoutLaunchDarkly;
+  if (!config.featureFlagKey) return testFeatureFlags;
 
   const client = ld.init(config.featureFlagKey, {
     baseUri: 'https://clientsdk.launchdarkly.us',

@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { flagsWithoutLaunchDarkly } from './feature-flag';
+import { testFeatureFlags } from '@common/feature-flags';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
@@ -64,7 +64,7 @@ describe('application-context helpers', () => {
       // PIM role elevation, so the flags present on the incoming context must
       // still be visible when the session is resolved — never an empty set.
       const context = await createMockApplicationContext();
-      context.featureFlags = { ...flagsWithoutLaunchDarkly };
+      context.featureFlags = { ...testFeatureFlags };
 
       let flagsSeenDuringLookup: ApplicationContext['featureFlags'] | undefined;
       const useCase = factory.getUserSessionUseCase(context);
@@ -76,7 +76,7 @@ describe('application-context helpers', () => {
 
       await finalizeApplicationContext(context, MODULE_NAME);
 
-      expect(flagsSeenDuringLookup).toEqual(flagsWithoutLaunchDarkly);
+      expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
     });
 
     test('should reconcile feature flags to the authenticated user and return the context', async () => {
@@ -87,7 +87,7 @@ describe('application-context helpers', () => {
 
       expect(result.session).toBeDefined();
       expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, result.session.user);
-      expect(result.featureFlags).toEqual(flagsWithoutLaunchDarkly);
+      expect(result.featureFlags).toEqual(testFeatureFlags);
     });
   });
 });
