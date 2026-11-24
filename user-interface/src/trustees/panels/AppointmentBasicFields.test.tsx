@@ -62,15 +62,17 @@ describe('AppointmentBasicFields', () => {
       effectiveDate: '1970-01-01T00:00:00.000Z',
     });
 
-    expect(screen.getAllByText('Not Specified')).toHaveLength(2);
+    const appointedField = within(screen.getByTestId('appointment-body-appointed-date'));
+    expect(appointedField.getByText('Not Specified')).toBeInTheDocument();
+
+    const effectiveField = within(screen.getByTestId('appointment-body-status-effective-date'));
+    expect(effectiveField.getByText('Not Specified')).toBeInTheDocument();
   });
 
   test('renders an Edit button when the hook reports canManage', () => {
     renderBody();
 
-    expect(
-      screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Appointment' })).toBeInTheDocument();
   });
 
   test('Edit button visible label is "Edit Appointment" and matches its accessible name', () => {
@@ -87,7 +89,7 @@ describe('AppointmentBasicFields', () => {
     const user = userEvent.setup();
     renderBody();
 
-    await user.click(screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`));
+    await user.click(screen.getByRole('button', { name: 'Edit Appointment' }));
 
     expect(mockOpenEditTrustee).toHaveBeenCalled();
   });
@@ -100,8 +102,6 @@ describe('AppointmentBasicFields', () => {
 
     renderBody();
 
-    expect(
-      screen.queryByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Appointment' })).not.toBeInTheDocument();
   });
 });
