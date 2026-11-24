@@ -52,21 +52,48 @@ if [[ -z "${agentIp}" ]]; then
     exit 1
 fi
 
-existingIps=$(az cosmosdb show -n "${cosmos_account}" -g "${db_rg}" --query "ipRules[].ipAddressOrRange" -o tsv 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+# Cosmos DB serializes account-level control-plane writes (e.g. ip-range-filter
+# updates), so concurrent pipeline runs against the same account routinely collide
+# with "PreconditionFailed: ... exclusive lock on this service". Re-read the
+# current rule list on every attempt (not just the first) so a retry builds its
+# new list from what's actually on the account now, rather than clobbering a
+# sibling run's concurrent change with a stale snapshot.
+maxAttempts=5
+retryDelaySeconds=20
+
+attempt=1
+while true; do
+    existingIps=$(az cosmosdb show -n "${cosmos_account}" -g "${db_rg}" --query "ipRules[].ipAddressOrRange" -o tsv 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+
+    if [[ -n "${delete}" ]]; then
+        echo "Removing GHA runner IP (${agentIp}) from Cosmos DB firewall... (attempt ${attempt}/${maxAttempts})"
+        newIps=$(echo "${existingIps}" | tr ',' '\n' | grep -v "^${agentIp}$" | tr '\n' ',' | sed 's/,$//' || true)
+    else
+        echo "Adding GHA runner IP (${agentIp}) to Cosmos DB firewall... (attempt ${attempt}/${maxAttempts})"
+        if [[ -n "${existingIps}" ]]; then
+            newIps="${existingIps},${agentIp}"
+        else
+            newIps="${agentIp}"
+        fi
+    fi
+
+    if updateOutput=$(az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}" 2>&1 1>/dev/null); then
+        break
+    fi
+
+    if [[ "${updateOutput}" != *"PreconditionFailed"* ]] || [[ "${attempt}" -ge "${maxAttempts}" ]]; then
+        echo "${updateOutput}" >&2
+        exit 1
+    fi
+
+    echo "Cosmos DB account is locked by a concurrent operation. Retrying in ${retryDelaySeconds}s..."
+    sleep "${retryDelaySeconds}"
+    attempt=$((attempt + 1))
+done
 
 if [[ -n "${delete}" ]]; then
-    echo "Removing GHA runner IP (${agentIp}) from Cosmos DB firewall..."
-    newIps=$(echo "${existingIps}" | tr ',' '\n' | grep -v "^${agentIp}$" | tr '\n' ',' | sed 's/,$//' || true)
-    az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}" 1>/dev/null
     echo "IP removed..."
 else
-    echo "Adding GHA runner IP (${agentIp}) to Cosmos DB firewall..."
-    if [[ -n "${existingIps}" ]]; then
-        newIps="${existingIps},${agentIp}"
-    else
-        newIps="${agentIp}"
-    fi
-    az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}" 1>/dev/null
     echo "IP added. Waiting for firewall rule to propagate..."
     sleep 60
 fi
