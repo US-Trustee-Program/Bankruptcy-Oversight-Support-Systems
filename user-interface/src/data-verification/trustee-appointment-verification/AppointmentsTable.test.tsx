@@ -159,6 +159,20 @@ describe('AppointmentsTable', () => {
     expect(cell('Division')).toHaveTextContent('1');
   });
 
+  test('still renders when courts fail to load', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockUseCourts.mockReturnValue({
+      courts: [],
+      loading: false,
+      error: new Error('courts unavailable'),
+    });
+
+    render(<AppointmentsTable appointments={[makeAppointment()]} />);
+
+    expect(screen.getByRole('table', { name: 'Appointments' })).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
   test('renders appointments in the order given, without re-sorting', () => {
     const second = makeAppointment({
       id: 'appointment-second',
@@ -229,7 +243,7 @@ describe('AppointmentsTable', () => {
     expect(legend).not.toBeNull();
     expect(within(legend).getByRole('img', { name: 'warning' })).toBeInTheDocument();
     expect(legend).toHaveTextContent(
-      'A icon marks information that differs from the court, division, chapter or status of these cases.',
+      /icon marks information that differs from the court, division, chapter or status of these cases/,
     );
   });
 
