@@ -3542,6 +3542,12 @@ const MOCK_TRUSTEE_DATA_REPORT_SUMMARY: TrusteeDataReportSummary = {
     phone: 4,
     email: 1,
   },
+  appointmentsTodOnly: 8,
+  appointmentsCamsOnly: 5,
+  appointmentFieldDifferences: 12,
+  appointmentFieldDifferencesByField: { status: 7, appointedDate: 2, effectiveDate: 3 },
+  appointmentsDivisionsNarrowed: 9,
+  todAppointmentsNotTranslated: 4,
 };
 
 let mockTrusteeDataReport: TrusteeDataReportStatus = {

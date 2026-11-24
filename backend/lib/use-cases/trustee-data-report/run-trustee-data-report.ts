@@ -25,21 +25,35 @@ const PAGE_SIZE = 100;
 // This use case only reads trustees, appointments and TOD. Its only writes are to the
 // trustee-data-report collection and the run lock.
 
+function addCounts<K extends string>(a: Record<K, number>, b: Record<K, number>) {
+  const sum = { ...a };
+  for (const [key, count] of Object.entries(b) as [K, number][]) {
+    sum[key] += count;
+  }
+  return sum;
+}
+
 function addSummaries(
   a: TrusteeDataReportSummary,
   b: TrusteeDataReportSummary,
 ): TrusteeDataReportSummary {
-  const byField = { ...a.fieldDifferencesByField };
-  for (const [field, count] of Object.entries(b.fieldDifferencesByField)) {
-    byField[field as keyof typeof byField] += count;
-  }
   return {
     trusteesCompared: a.trusteesCompared + b.trusteesCompared,
     todOnly: a.todOnly + b.todOnly,
     todOnlyStatusMissing: a.todOnlyStatusMissing + b.todOnlyStatusMissing,
     camsOnly: a.camsOnly + b.camsOnly,
     fieldDifferences: a.fieldDifferences + b.fieldDifferences,
-    fieldDifferencesByField: byField,
+    fieldDifferencesByField: addCounts(a.fieldDifferencesByField, b.fieldDifferencesByField),
+    appointmentsTodOnly: a.appointmentsTodOnly + b.appointmentsTodOnly,
+    appointmentsCamsOnly: a.appointmentsCamsOnly + b.appointmentsCamsOnly,
+    appointmentFieldDifferences: a.appointmentFieldDifferences + b.appointmentFieldDifferences,
+    appointmentFieldDifferencesByField: addCounts(
+      a.appointmentFieldDifferencesByField,
+      b.appointmentFieldDifferencesByField,
+    ),
+    appointmentsDivisionsNarrowed:
+      a.appointmentsDivisionsNarrowed + b.appointmentsDivisionsNarrowed,
+    todAppointmentsNotTranslated: a.todAppointmentsNotTranslated + b.todAppointmentsNotTranslated,
   };
 }
 
@@ -78,7 +92,7 @@ async function recordPage(
   await requireLock(context, runId);
   await factory
     .getTrusteeDataReportRepository(context)
-    .replacePageResults(runId, pageKey, differences, summarize(differences, trusteesCompared));
+    .replacePageResults(runId, pageKey, differences, summarize(differences, trusteesCompared, 0));
 }
 
 const FINALIZE_PAGE_KEY = 'finalize';
@@ -209,7 +223,7 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
 
   const summary = (await reportRepo.readPageSummaries(runId)).reduce(
     addSummaries,
-    summarize([], 0),
+    summarize([], 0, 0),
   );
   const run = await requireRun(context, runId);
   await requireLock(context, runId);

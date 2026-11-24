@@ -48,7 +48,7 @@ const healSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(reso
 /**
  * Division information extracted from DXTR offices data
  */
-type DivisionInfo = {
+export type DivisionInfo = {
   divisionCode: string;
   courtId: string;
   courtName: string;
@@ -94,7 +94,7 @@ export function buildDistrictToDivisionsMap(
  * Create a unique key for an appointment to prevent duplicates.
  * Key format: trusteeId-courtId-chapter-appointmentType (one appointment per district)
  */
-function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
+export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
   return `${trusteeId}-${appointment.courtId}-${appointment.chapter}-${appointment.appointmentType}`;
 }
 

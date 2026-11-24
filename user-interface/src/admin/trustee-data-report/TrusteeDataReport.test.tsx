@@ -25,6 +25,12 @@ const SUMMARY: TrusteeDataReportSummary = {
     phone: 6,
     email: 8,
   },
+  appointmentsTodOnly: 9,
+  appointmentsCamsOnly: 4,
+  appointmentFieldDifferences: 11,
+  appointmentFieldDifferencesByField: { status: 6, appointedDate: 2, effectiveDate: 3 },
+  appointmentsDivisionsNarrowed: 13,
+  todAppointmentsNotTranslated: 10,
 };
 
 function run(override: Partial<TrusteeDataReportRun>): TrusteeDataReportRun {
