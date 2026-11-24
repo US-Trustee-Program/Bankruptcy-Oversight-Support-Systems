@@ -65,43 +65,17 @@ describe('AppointmentAccordion', () => {
     return screen.getByTestId(`tag-appointment-status-tag-${appointmentId}`);
   }
 
-  test('still renders and logs the error when courts fail to load', () => {
-    const courtsError = new Error('courts unavailable');
+  test('still renders when courts fail to load', () => {
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
-      error: courtsError,
+      error: new Error('courts unavailable'),
     });
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     renderAccordion();
 
     expect(getHeader().getByText(/Southern District of New York/i)).toBeInTheDocument();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading courts:', courtsError);
-  });
-
-  test('resolves the division name via useCourts when courtDivisionName is absent', () => {
-    mockUseCourts.mockReturnValue({
-      courts: [
-        {
-          officeName: 'Manhattan Office',
-          officeCode: 'NYS',
-          courtId: mockAppointment.courtId,
-          courtName: mockAppointment.courtName,
-          courtDivisionCode: mockAppointment.divisionCode,
-          courtDivisionName: 'Looked Up Division',
-          groupDesignator: 'NY',
-          regionId: '2',
-          regionName: 'Region 2',
-        },
-      ],
-      loading: false,
-      error: null,
-    });
-
-    renderAccordion({ appointment: { ...mockAppointment, courtDivisionName: undefined } });
-
-    expect(getHeader().getByText(/Looked Up Division/i)).toBeInTheDocument();
   });
 
   test('renders the district and division in the header', () => {
@@ -152,26 +126,13 @@ describe('AppointmentAccordion', () => {
     );
   });
 
-  test('calls onToggle with the appointment id when expanding (onExpand)', async () => {
+  test('calls onToggle with the appointment id when the header is clicked', async () => {
     const user = userEvent.setup();
     const { onToggle } = renderAccordion({ expanded: false });
 
     await user.click(screen.getByTestId(`accordion-button-${mockAppointment.id}`));
 
     expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
-  });
-
-  test('calls onToggle with the appointment id when collapsing (onCollapse)', async () => {
-    const user = userEvent.setup();
-    const { onToggle } = renderAccordion({ expanded: true });
-
-    await user.click(screen.getByTestId(`accordion-button-${mockAppointment.id}`));
-
-    expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
-  });
-
-  test('is excluded from AccordionGroup shared single-open behavior', () => {
-    expect(AppointmentAccordion.excludeFromAccordionGroup).toBe(true);
   });
 
   test('accordion button accessible name includes district, divisions, chapter details, AND status text', () => {

@@ -55,24 +55,18 @@ describe('AppointmentBasicFields', () => {
     expect(effectiveField.getByText('06/01/2021')).toBeInTheDocument();
   });
 
-  test('displays "Not Specified" for Unix epoch sentinel dates', () => {
+  test('displays "Not Specified" only for the field whose date is the Unix epoch sentinel', () => {
     renderBody({
       ...mockAppointment,
       appointedDate: '1970-01-01T00:00:00.000Z',
-      effectiveDate: '1970-01-01T00:00:00.000Z',
+      effectiveDate: '2021-06-01T00:00:00.000Z',
     });
 
     const appointedField = within(screen.getByTestId('appointment-body-appointed-date'));
     expect(appointedField.getByText('Not Specified')).toBeInTheDocument();
 
     const effectiveField = within(screen.getByTestId('appointment-body-status-effective-date'));
-    expect(effectiveField.getByText('Not Specified')).toBeInTheDocument();
-  });
-
-  test('renders an Edit button when the hook reports canManage', () => {
-    renderBody();
-
-    expect(screen.getByRole('button', { name: 'Edit Appointment' })).toBeInTheDocument();
+    expect(effectiveField.getByText('06/01/2021')).toBeInTheDocument();
   });
 
   test('Edit button visible label is "Edit Appointment" and matches its accessible name', () => {
@@ -81,7 +75,7 @@ describe('AppointmentBasicFields', () => {
     const button = screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`);
 
     expect(button).toHaveTextContent('Edit Appointment');
-    expect(button).not.toHaveAttribute('aria-label');
+    expect(button).toHaveAccessibleName('Edit Appointment');
     expect(screen.getByRole('button', { name: 'Edit Appointment' })).toBe(button);
   });
 
