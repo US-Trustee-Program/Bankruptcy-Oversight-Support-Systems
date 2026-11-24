@@ -7,8 +7,10 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatDateTime } from '@/lib/utils/datetime';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import {
+  TrusteeAppointmentField,
   TrusteeDataReportRun,
   TrusteeDataReportStatus,
+  TrusteeDataReportSummary,
   TrusteeProfileField,
 } from '@common/cams/trustee-data-report';
 
@@ -24,12 +26,75 @@ const FIELD_LABELS: Record<TrusteeProfileField, string> = {
   email: 'Email',
 };
 
+const APPOINTMENT_FIELD_LABELS: Record<TrusteeAppointmentField, string> = {
+  status: 'Status',
+  appointedDate: 'Appointed date',
+  effectiveDate: 'Status effective date',
+};
+
 // A stored run can predate a count added later, so a missing count must not break the tab, which
 // would also hide the button that starts the run that replaces it.
 const count = (value: number | undefined) =>
   value === undefined ? 'Not recorded' : value.toLocaleString('en-US');
 
 const TOD_ONLY_LABEL = 'In TOD only';
+const FIELD_DIFFERENCES_LABEL = 'Field differences';
+const APPOINTMENT_FIELD_DIFFERENCES_LABEL = 'Appointment field differences';
+
+type CountRow = { key: string; label: string; value: number | undefined; parent?: string };
+
+/** The summary's counts in table order. A row with a parent breaks that count down. */
+function countRows(summary: Partial<TrusteeDataReportSummary>): CountRow[] {
+  return [
+    { key: 'trustees-compared', label: 'Trustees compared', value: summary.trusteesCompared },
+    { key: 'tod-only', label: TOD_ONLY_LABEL, value: summary.todOnly },
+    {
+      key: 'tod-only-status-missing',
+      label: 'Status missing, needs review',
+      value: summary.todOnlyStatusMissing,
+      parent: TOD_ONLY_LABEL,
+    },
+    { key: 'cams-only', label: 'In CAMS only', value: summary.camsOnly },
+    { key: 'field-differences', label: FIELD_DIFFERENCES_LABEL, value: summary.fieldDifferences },
+    ...(Object.keys(FIELD_LABELS) as TrusteeProfileField[]).map((field) => ({
+      key: `field-${field}`,
+      label: FIELD_LABELS[field],
+      value: summary.fieldDifferencesByField?.[field],
+      parent: FIELD_DIFFERENCES_LABEL,
+    })),
+    {
+      key: 'appointments-tod-only',
+      label: 'Appointments in TOD only',
+      value: summary.appointmentsTodOnly,
+    },
+    {
+      key: 'appointments-cams-only',
+      label: 'Appointments in CAMS only',
+      value: summary.appointmentsCamsOnly,
+    },
+    {
+      key: 'appointment-field-differences',
+      label: APPOINTMENT_FIELD_DIFFERENCES_LABEL,
+      value: summary.appointmentFieldDifferences,
+    },
+    ...(Object.keys(APPOINTMENT_FIELD_LABELS) as TrusteeAppointmentField[]).map((field) => ({
+      key: `appointment-field-${field}`,
+      label: APPOINTMENT_FIELD_LABELS[field],
+      value: summary.appointmentFieldDifferencesByField?.[field],
+      parent: APPOINTMENT_FIELD_DIFFERENCES_LABEL,
+    })),
+    {
+      key: 'appointments-divisions-narrowed',
+      label: 'Divisions narrowed in CAMS',
+      value: summary.appointmentsDivisionsNarrowed,
+    },
+    {
+      key: 'tod-appointments-not-translated',
+      label: 'TOD appointments not translated',
+      value: summary.todAppointmentsNotTranslated,
+    },
+  ];
+}
 
 function liveStatusMessage(status: TrusteeDataReportStatus | null, isStarting: boolean): string {
   if (isStarting) return 'Starting the report.';
@@ -55,43 +120,14 @@ function CompletedRunSummary({ run }: Readonly<{ run: TrusteeDataReportRun }>) {
         <table className="usa-table usa-table--borderless">
           <caption className="usa-sr-only">Trustee data report counts</caption>
           <tbody>
-            {[
-              {
-                key: 'trustees-compared',
-                label: 'Trustees compared',
-                value: summary.trusteesCompared,
-              },
-              { key: 'tod-only', label: TOD_ONLY_LABEL, value: summary.todOnly },
-              {
-                key: 'tod-only-status-missing',
-                label: 'Status missing, needs review',
-                value: summary.todOnlyStatusMissing,
-                parent: TOD_ONLY_LABEL,
-              },
-              { key: 'cams-only', label: 'In CAMS only', value: summary.camsOnly },
-              {
-                key: 'field-differences',
-                label: 'Field differences',
-                value: summary.fieldDifferences,
-              },
-            ].map(({ key, label, value, parent }) => (
+            {countRows(summary).map(({ key, label, value, parent }) => (
               <tr key={key}>
                 <th scope="row" className={parent ? 'padding-left-4' : undefined}>
-                  {parent && <span className="usa-sr-only">{parent}: </span>}
+                  {parent && <span className="usa-sr-only">{parent}:</span>}
+                  {parent && ' '}
                   {label}
                 </th>
                 <td data-testid={`trustee-data-report-count-${key}`}>{count(value)}</td>
-              </tr>
-            ))}
-            {(Object.keys(FIELD_LABELS) as TrusteeProfileField[]).map((field) => (
-              <tr key={field}>
-                <th scope="row" className="padding-left-4">
-                  <span className="usa-sr-only">Field differences: </span>
-                  {FIELD_LABELS[field]}
-                </th>
-                <td data-testid={`trustee-data-report-count-field-${field}`}>
-                  {count(summary.fieldDifferencesByField[field])}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -205,8 +241,9 @@ export function TrusteeDataReport() {
     <div className="trustee-data-report-admin-panel" data-testid="trustee-data-report-panel">
       <h2>Trustee Data Report</h2>
       <p>
-        Compares trustee profiles in CAMS with TOD. It counts trustees found in only one system and
-        profile fields that differ. A report takes a few minutes.
+        Compares trustee profiles and appointments in CAMS with TOD. It counts trustees and
+        appointments found in only one system, and profile and appointment fields that differ. A
+        report takes a few minutes.
       </p>
 
       <p className="usa-sr-only" role="status" data-testid="trustee-data-report-live-status">
