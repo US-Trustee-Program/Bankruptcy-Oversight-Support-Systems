@@ -2,8 +2,9 @@
 
 // The single "differs" marker (see DifferenceIcon below). Unscoped and colocated with the
 // component on purpose: wherever DifferenceIcon (or the bare warning Icon with these classes)
-// renders - TrusteeComparisonTable, AppointmentsTable, TrusteeMatchVerificationAccordion's legend
-// sentence - this stylesheet comes along with the import, so the rule is defined exactly once.
+// renders - TrusteeComparisonTable, AppointmentsTable, TrusteeMatchConfirmationModal,
+// TrusteeMatchVerificationAccordion's legend sentence - this stylesheet comes along with the
+// import, so the rule is defined exactly once.
 .difference-icon {
   display: inline-flex;
   align-items: center;

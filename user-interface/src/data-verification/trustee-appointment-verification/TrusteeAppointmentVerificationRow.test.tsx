@@ -468,7 +468,12 @@ describe('TrusteeAppointmentVerificationRow', () => {
         "To fix this, a Trustee Admin must add or reactivate the appointment on the trustee's profile. Then Refresh Trustee Appointments to check again.",
       );
       expect(refreshButton()).toHaveClass('usa-button--unstyled');
-      expect(within(refreshButton()).getByTestId('icon')).toBeInTheDocument();
+      const icon = within(refreshButton()).getByTestId('icon');
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(icon.querySelector('use')).toHaveAttribute(
+        'xlink:href',
+        '/assets/styles/img/sprite.svg#autorenew',
+      );
     });
 
     test('shows the Appointments table above the refresh guidance', async () => {

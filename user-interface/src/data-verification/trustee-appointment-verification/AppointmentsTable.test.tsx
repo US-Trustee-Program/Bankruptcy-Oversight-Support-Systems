@@ -3,13 +3,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { TrusteeAppointmentWithAgreement } from '@common/cams/trustee-appointment-verification';
 import { AppointmentAgreement } from '@common/cams/trustee-appointments';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import * as UseCourts from '@/lib/hooks/UseCourts';
 import { AppointmentsTable } from './AppointmentsTable';
-
-const mockUseCourts = vi.hoisted(() => vi.fn());
-
-vi.mock('@/lib/hooks/UseCourts', () => ({
-  default: mockUseCourts,
-}));
 
 function makeCourt(overrides: Partial<CourtDivisionDetails> = {}): CourtDivisionDetails {
   return {
@@ -72,7 +67,7 @@ function exact(value: string): RegExp {
 
 describe('AppointmentsTable', () => {
   beforeEach(() => {
-    mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
+    vi.spyOn(UseCourts, 'default').mockReturnValue({ courts: [], loading: false, error: null });
   });
 
   test('replaces the table with a message when the trustee has no appointments, but keeps the Appointments heading', () => {
@@ -135,7 +130,11 @@ describe('AppointmentsTable', () => {
   });
 
   test('looks up the division name from the courts list when the backend gives only a code', () => {
-    mockUseCourts.mockReturnValue({ courts: [makeCourt()], loading: false, error: null });
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
+      courts: [makeCourt()],
+      loading: false,
+      error: null,
+    });
 
     render(
       <AppointmentsTable
@@ -149,7 +148,7 @@ describe('AppointmentsTable', () => {
   });
 
   test('falls back to the raw division code when it is in none of the loaded courts', () => {
-    mockUseCourts.mockReturnValue({
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
       courts: [makeCourt({ courtDivisionCode: 'unrelated-division' })],
       loading: false,
       error: null,
@@ -168,7 +167,7 @@ describe('AppointmentsTable', () => {
 
   test('still renders when courts fail to load', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockUseCourts.mockReturnValue({
+    vi.spyOn(UseCourts, 'default').mockReturnValue({
       courts: [],
       loading: false,
       error: new Error('courts unavailable'),

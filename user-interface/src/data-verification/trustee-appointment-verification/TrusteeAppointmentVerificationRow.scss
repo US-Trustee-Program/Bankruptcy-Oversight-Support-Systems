@@ -86,6 +86,9 @@
     margin: 1rem 0 0.5rem;
   }
 
+  // Deliberately keeps USWDS's default 1rem left cell padding (unlike TrusteeComparisonTable,
+  // which zeroes it out to align with the prose above it) - the design mock shows a visible
+  // left gutter before the first column's text here.
   .appointments-table {
     @include shared.table-cells-top-aligned;
 
