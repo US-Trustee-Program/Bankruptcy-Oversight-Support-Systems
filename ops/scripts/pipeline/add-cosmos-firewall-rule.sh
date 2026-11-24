@@ -8,6 +8,11 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
+source "$SCRIPT_DIR/_az-deploy-retry.sh"
+
 db_rg=
 cosmos_account=
 delete=
@@ -54,22 +59,36 @@ fi
 
 # Cosmos DB serializes account-level control-plane writes (e.g. ip-range-filter
 # updates), so concurrent pipeline runs against the same account routinely collide
-# with "PreconditionFailed: ... exclusive lock on this service". Re-read the
-# current rule list on every attempt (not just the first) so a retry builds its
-# new list from what's actually on the account now, rather than clobbering a
-# sibling run's concurrent change with a stale snapshot.
-maxAttempts=5
-retryDelaySeconds=20
+# with "PreconditionFailed: ... exclusive lock on this service". _az-deploy-retry.sh
+# already exists for this exact class of transient Azure control-plane lock
+# contention (see az-cosmos-deploy.sh's Cosmos-throttling use of it), so reuse it
+# here instead of a second hand-rolled retry loop. The whole read-build-write
+# sequence below is re-run on each retry (not just the write), so a retry builds
+# its new list from what's on the account at retry time rather than a stale first
+# read. This narrows, but does not close, the race: a write based on a read taken
+# just before a sibling run's own write completes can still silently drop that
+# sibling's IP, since Azure only rejects writes that literally overlap in time,
+# not ones built from stale data. Closing that fully needs real mutual exclusion
+# across pipeline runs, which is out of scope here.
+cosmos_firewall_update_attempt_func() {
+    local rawIps rc existingIps newIps
 
-attempt=1
-while true; do
-    existingIps=$(az cosmosdb show -n "${cosmos_account}" -g "${db_rg}" --query "ipRules[].ipAddressOrRange" -o tsv 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+    set +e
+    rawIps=$(az cosmosdb show -n "${cosmos_account}" -g "${db_rg}" --query "ipRules[].ipAddressOrRange" -o tsv 2>&1)
+    rc=$?
+    set -e
+    if [[ ${rc} -ne 0 ]]; then
+        echo "Error: failed to read current Cosmos DB firewall rules:" >&2
+        echo "${rawIps}" >&2
+        return "${rc}"
+    fi
+    existingIps=$(echo "${rawIps}" | tr '\n' ',' | sed 's/,$//')
 
     if [[ -n "${delete}" ]]; then
-        echo "Removing GHA runner IP (${agentIp}) from Cosmos DB firewall... (attempt ${attempt}/${maxAttempts})"
+        echo "Removing GHA runner IP (${agentIp}) from Cosmos DB firewall..."
         newIps=$(echo "${existingIps}" | tr ',' '\n' | grep -v "^${agentIp}$" | tr '\n' ',' | sed 's/,$//' || true)
     else
-        echo "Adding GHA runner IP (${agentIp}) to Cosmos DB firewall... (attempt ${attempt}/${maxAttempts})"
+        echo "Adding GHA runner IP (${agentIp}) to Cosmos DB firewall..."
         if [[ -n "${existingIps}" ]]; then
             newIps="${existingIps},${agentIp}"
         else
@@ -77,19 +96,13 @@ while true; do
         fi
     fi
 
-    if updateOutput=$(az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}" 2>&1 1>/dev/null); then
-        break
-    fi
+    az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}"
+}
 
-    if [[ "${updateOutput}" != *"PreconditionFailed"* ]] || [[ "${attempt}" -ge "${maxAttempts}" ]]; then
-        echo "${updateOutput}" >&2
-        exit 1
-    fi
-
-    echo "Cosmos DB account is locked by a concurrent operation. Retrying in ${retryDelaySeconds}s..."
-    sleep "${retryDelaySeconds}"
-    attempt=$((attempt + 1))
-done
+export AZ_DEPLOY_RETRY_PATTERN='PreconditionFailed|TooManyRequests|high rate of metadata requests'
+export AZ_DEPLOY_RETRY_MAX_ATTEMPTS=5
+export AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS=20
+az_deploy_with_retry_func cosmos_firewall_update_attempt_func
 
 if [[ -n "${delete}" ]]; then
     echo "IP removed..."
