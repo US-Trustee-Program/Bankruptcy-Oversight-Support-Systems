@@ -53,7 +53,7 @@
             "version": "KqlParameterItem/1.0",
             "name": "CoverageNote",
             "type": 1,
-            "query": "let firstSignIn = toscalar(customEvents | where name == \"CAMS Sign-In\" | summarize min(timestamp));\nlet rangeStart = todatetime(\"{TimeRange:start}\");\nprint Note = case(\n    isnull(firstSignIn), \"No sign-in data has been recorded yet, so the list is empty.\",\n    rangeStart < startofday(firstSignIn), strcat(\"The chosen range starts before the earliest sign-in data still kept (\", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \"). The list covers \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \" onward.\"),\n    strcat(\"Earliest sign-in data still kept: \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \". The chosen range is fully covered.\")\n)\n",
+            "query": "let firstSignIn = toscalar(customEvents | where name == \"CAMS Sign-In\" | summarize min(timestamp));\nlet rangeStart = {TimeRange:start};\nprint Note = case(\n    isnull(firstSignIn), \"No sign-in data has been recorded yet, so the list is empty.\",\n    rangeStart < startofday(firstSignIn), strcat(\"The chosen range starts before the earliest sign-in data still kept (\", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \"). The list covers \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \" onward.\"),\n    strcat(\"Earliest sign-in data still kept: \", format_datetime(firstSignIn, \"yyyy-MM-dd\"), \". The chosen range is fully covered.\")\n)\n",
             "isHiddenWhenLocked": true,
             "timeContext": {
               "durationMs": 63072000000
