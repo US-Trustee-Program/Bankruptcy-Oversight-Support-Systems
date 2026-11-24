@@ -12,7 +12,7 @@
     "start": "func start --javascript"
   },
   "dependencies": {
-    "@azure/functions": "4.17.0",
+    "@azure/functions": "4.17.1",
     "@azure/storage-blob": "12.34.0",
     "@azure/storage-queue": "12.32.0",
     "mongodb": "7.9.0",
