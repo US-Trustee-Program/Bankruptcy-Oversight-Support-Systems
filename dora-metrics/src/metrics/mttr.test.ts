@@ -190,6 +190,28 @@ describe('computeMttr', () => {
     expect(byPeriod[1].incidentCount).toBe(1);
   });
 
+  test('counts an attributed incident still open in its week, apart from restored incidents', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-02T00:00:00.000Z' }, // period 0
+      { id: 2, conclusion: 'success', created_at: '2026-01-09T00:00:00.000Z' }, // period 1
+    ];
+    const bugIssues: SeverityHighBug[] = [
+      { number: 1, created_at: '2026-01-02T06:00:00.000Z', closed_at: null },
+      { number: 2, created_at: '2026-01-09T06:00:00.000Z', closed_at: '2026-01-09T10:00:00.000Z' },
+      // Open, but opened more than 24h after any deployment, so never attributed and never counted.
+      { number: 3, created_at: '2026-01-12T00:00:00.000Z', closed_at: null },
+    ];
+
+    const { byPeriod } = computeMttr(bugIssues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(byPeriod.map((bucket) => [bucket.incidentCount, bucket.openIncidentCount])).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
+  });
+
   test('meanRestoreTimeHours and medianRestoreTimeHours are 0 for an empty bucket', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-08T00:00:00.000Z');

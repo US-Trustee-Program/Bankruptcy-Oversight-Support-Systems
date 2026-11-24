@@ -30,12 +30,19 @@ function cfrRow(week: Week, total: number, failed: number, rate: string) {
   };
 }
 
-function mttrRow(week: Week, incidentCount: number, mean: string, median: string) {
+function mttrRow(
+  week: Week,
+  incidentCount: number,
+  mean: string,
+  median: string,
+  openIncidentCount = 0,
+) {
   return {
     ...week,
     incidentCount: String(incidentCount),
     meanRestoreTimeHours: mean,
     medianRestoreTimeHours: median,
+    openIncidentCount: String(openIncidentCount),
   };
 }
 
@@ -92,6 +99,7 @@ describe('summarizeSettledWeeks', () => {
         leadTime: { medianHours: 1, meanHours: 1 },
         changeFailure: { failedDeployments: 0, totalDeployments: 10, rate: 0 },
         restoreTime: { medianHours: 8, meanHours: 10 },
+        openIncidents: 0,
       },
       {
         periodStart: new Date(WEEK_2.periodStart),
@@ -101,6 +109,7 @@ describe('summarizeSettledWeeks', () => {
         leadTime: { medianHours: 3.6, meanHours: 3.2 },
         changeFailure: { failedDeployments: 2, totalDeployments: 24, rate: 0.0833 },
         restoreTime: { medianHours: 284.75, meanHours: 300.25 },
+        openIncidents: 0,
       },
       {
         periodStart: new Date(WEEK_3.periodStart),
@@ -110,6 +119,7 @@ describe('summarizeSettledWeeks', () => {
         leadTime: { medianHours: 6, meanHours: 6.5 },
         changeFailure: { failedDeployments: 1, totalDeployments: 14, rate: 0.0714 },
         restoreTime: { medianHours: 4, meanHours: 4 },
+        openIncidents: 0,
       },
     ]);
   });
@@ -210,6 +220,14 @@ describe('summarizeSettledWeeks', () => {
     const [summary] = summarizeSettledWeeks(reports, GENERATED_AT);
 
     expect(summary.restoreTime).toBeNull();
+  });
+
+  test('reports how many incidents are still open in a week with no restore time', () => {
+    const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_2, 0, '0.00', '0.00', 2)] });
+
+    const [summary] = summarizeSettledWeeks(reports, GENERATED_AT);
+
+    expect([summary.restoreTime, summary.openIncidents]).toEqual([null, 2]);
   });
 
   test('throws naming the report when it has no week ending a week or more before the generation time', () => {

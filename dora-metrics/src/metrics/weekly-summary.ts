@@ -30,6 +30,7 @@ export const BY_PERIOD_REPORTS = {
       'incidentCount',
       'meanRestoreTimeHours',
       'medianRestoreTimeHours',
+      'openIncidentCount',
     ],
   },
 } as const;
@@ -50,6 +51,8 @@ export type WeeklySummary = {
   // rate is null when there were no deployments; 0 when deployments happened and none failed.
   changeFailure: { failedDeployments: number; totalDeployments: number; rate: number | null };
   restoreTime: DurationSummary;
+  // Incidents that week not yet closed; with a null restoreTime, tells "still open" from "no incidents".
+  openIncidents: number;
 };
 
 // A week is shown only once it ended at least this long ago. Lead time skips issues not yet deployed,
@@ -126,6 +129,7 @@ function summarizeWeek(week: Record<ReportKey, CsvRow>): WeeklySummary {
             medianHours: numberFrom('mttr', mttr, 'medianRestoreTimeHours'),
             meanHours: numberFrom('mttr', mttr, 'meanRestoreTimeHours'),
           },
+    openIncidents: numberFrom('mttr', mttr, 'openIncidentCount'),
   };
 }
 
