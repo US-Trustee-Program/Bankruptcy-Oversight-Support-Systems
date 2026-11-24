@@ -266,7 +266,7 @@ export class UserAccessUseCase {
 
     await this.invalidateSessions(context, member.id);
 
-    return { result: { permission, replaced }, created };
+    return { result: { permission, replaced: replaced.sort(byRegionThenOffice) }, created };
   }
 
   /**
