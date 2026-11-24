@@ -8,6 +8,15 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import factory from '../lib/factory';
 import ContextCreator from './application-context-creator';
 
+// Without a LaunchDarkly key both evaluations return the same testFeatureFlags object, so the
+// tests tell the anonymous evaluation (no user) from the per-user one with distinct flag sets.
+const anonymousFlags = { ...testFeatureFlags, 'evaluated-for': 'anonymous' };
+const userFlags = { ...testFeatureFlags, 'evaluated-for': 'user' };
+const spyOnFeatureFlags = () =>
+  vi
+    .spyOn(FeatureFlags, 'getFeatureFlags')
+    .mockImplementation(async (_config, user) => (user ? userFlags : anonymousFlags));
+
 type MockExpressRequestOverrides = {
   method?: string;
   secure?: boolean;
@@ -38,7 +47,7 @@ describe('Express Application Context Creator', () => {
   });
 
   test('should resolve the session and reconcile feature flags to the authenticated user', async () => {
-    const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
+    const featureFlagsSpy = spyOnFeatureFlags();
     const request = createMockExpressRequest();
 
     const context = await ContextCreator.applicationContextCreator(request);
@@ -47,13 +56,14 @@ describe('Express Application Context Creator', () => {
     // Flags on the finished context reflect the authenticated user, not an
     // anonymous evaluation.
     expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
-    expect(context.featureFlags).toEqual(testFeatureFlags);
+    expect(context.featureFlags).toEqual(userFlags);
   });
 
   test('should resolve the session with feature flags available to it', async () => {
     // Regression guard (CAMS-810): PIM role elevation during session resolution
     // is gated on a feature flag, so the session must be resolved with flags
     // populated rather than an empty set.
+    spyOnFeatureFlags();
     const request = createMockExpressRequest();
 
     let flagsSeenDuringLookup: ApplicationContext['featureFlags'] | undefined;
@@ -70,16 +80,17 @@ describe('Express Application Context Creator', () => {
 
     await ContextCreator.applicationContextCreator(request);
 
-    expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
+    expect(flagsSeenDuringLookup).toEqual(anonymousFlags);
   });
 
   test('should populate feature flags when getApplicationContext is called directly', async () => {
+    spyOnFeatureFlags();
     const request = createMockExpressRequest();
     const logger = ContextCreator.getLogger('test-request-id');
 
     const context = await ContextCreator.getApplicationContext(request, logger, 'test-request-id');
 
-    expect(context.featureFlags).toEqual(testFeatureFlags);
+    expect(context.featureFlags).toEqual(anonymousFlags);
   });
 
   describe('expressToCamsHttpRequest', () => {

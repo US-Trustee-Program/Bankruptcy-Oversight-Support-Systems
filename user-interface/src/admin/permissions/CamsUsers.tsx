@@ -124,14 +124,14 @@ function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
 
 // Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
 function EmailText({ email }: Readonly<{ email?: string }>) {
-  const at = email?.indexOf('@') ?? -1;
-  if (!email || at < 0) return <>{email}</>;
+  if (!email?.includes('@')) return <span className="cams-users__email">{email}</span>;
+  const at = email.indexOf('@');
   return (
-    <>
+    <span className="cams-users__email">
       {email.slice(0, at + 1)}
       <wbr />
       {email.slice(at + 1)}
-    </>
+    </span>
   );
 }
 

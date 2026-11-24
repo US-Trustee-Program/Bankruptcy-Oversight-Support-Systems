@@ -702,10 +702,14 @@ describe('UserAccessUseCase', () => {
 
         expect(created).toBe(true);
         expect(deactivateSpy.mock.calls.map(([p]) => p.id)).toEqual([manhattan.id, buffalo.id]);
-        expect(result.replaced).toEqual([
-          { ...buffalo, active: false, activeKey: `inactive|${buffalo.id}` },
-          { ...manhattan, active: false, activeKey: `inactive|${manhattan.id}` },
-        ]);
+        // Order is covered by 'should list replaced permissions ordered by region, then office'.
+        expect(result.replaced).toHaveLength(2);
+        expect(result.replaced).toEqual(
+          expect.arrayContaining([
+            { ...manhattan, active: false, activeKey: `inactive|${manhattan.id}` },
+            { ...buffalo, active: false, activeKey: `inactive|${buffalo.id}` },
+          ]),
+        );
         const deactivations = auditWrites(createSpy).filter((a) => a.action === 'DEACTIVATED');
         expect(deactivations).toEqual(
           [manhattan, buffalo].map((replaced) => ({
@@ -739,7 +743,7 @@ describe('UserAccessUseCase', () => {
         expect(traceSpy).toHaveBeenCalledTimes(3); // one CREATED, two DEACTIVATED
       });
 
-      test('should list replaced permissions by region, then office, as the users table does', async () => {
+      test('should list replaced permissions ordered by region, then office', async () => {
         spyOnMembers();
         const manhattan = assignmentFor('user-a', MANHATTAN);
         const buffalo = assignmentFor('user-a', BUFFALO);

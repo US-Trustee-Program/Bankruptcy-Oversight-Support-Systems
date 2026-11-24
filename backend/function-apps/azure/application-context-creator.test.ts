@@ -11,6 +11,15 @@ import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from '
 import { azureToCamsHttpRequest } from './functions';
 import { BadRequestError } from '../../lib/common-errors/bad-request';
 
+// Without a LaunchDarkly key both evaluations return the same testFeatureFlags object, so the
+// tests tell the anonymous evaluation (no user) from the per-user one with distinct flag sets.
+const anonymousFlags = { ...testFeatureFlags, 'evaluated-for': 'anonymous' };
+const userFlags = { ...testFeatureFlags, 'evaluated-for': 'user' };
+const spyOnFeatureFlags = () =>
+  vi
+    .spyOn(FeatureFlags, 'getFeatureFlags')
+    .mockImplementation(async (_config, user) => (user ? userFlags : anonymousFlags));
+
 describe('Application Context Creator', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -19,7 +28,7 @@ describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
     test('should create an application context, resolving the session and reconciling feature flags to the authenticated user', async () => {
       const invocationContext = createMockAzureFunctionContext();
-      const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
+      const featureFlagsSpy = spyOnFeatureFlags();
       const request = createMockAzureFunctionRequest();
       const context = await ContextCreator.applicationContextCreator({
         invocationContext,
@@ -33,13 +42,14 @@ describe('Application Context Creator', () => {
       // Flags on the finished context reflect the authenticated user, not an
       // anonymous evaluation.
       expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
-      expect(context.featureFlags).toEqual(testFeatureFlags);
+      expect(context.featureFlags).toEqual(userFlags);
     });
 
     test('should resolve the session with feature flags available to it', async () => {
       // Regression guard (CAMS-810): PIM role elevation during session resolution
       // is gated on a feature flag, so the session must be resolved with flags
       // populated rather than an empty set.
+      spyOnFeatureFlags();
       const invocationContext = createMockAzureFunctionContext();
       const request = createMockAzureFunctionRequest();
 
@@ -61,7 +71,7 @@ describe('Application Context Creator', () => {
         request,
       });
 
-      expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
+      expect(flagsSeenDuringLookup).toEqual(anonymousFlags);
     });
 
     test('should throw an error when attempting to create context with no request', async () => {
@@ -96,6 +106,7 @@ describe('Application Context Creator', () => {
     });
 
     test('should populate feature flags when getApplicationContext is called directly', async () => {
+      spyOnFeatureFlags();
       const invocationContext = createMockAzureFunctionContext();
       const request = createMockAzureFunctionRequest();
 
@@ -105,7 +116,7 @@ describe('Application Context Creator', () => {
         request,
       });
 
-      expect(context.featureFlags).toEqual(testFeatureFlags);
+      expect(context.featureFlags).toEqual(anonymousFlags);
     });
 
     test('should reuse an explicitly injected logger instead of building one', async () => {
