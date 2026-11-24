@@ -153,16 +153,23 @@ describe('AppointmentAccordion', () => {
     renderAccordion();
 
     const button = screen.getByTestId(`accordion-button-${mockAppointment.id}`);
-    const headerSpan = screen
-      .getByTestId(`appointment-accordion-header-${mockAppointment.id}`)
-      .querySelector('.appointment-accordion-heading-text');
+    const headerSpan = screen.getByTestId(
+      `appointment-accordion-heading-text-${mockAppointment.id}`,
+    );
 
-    expect(headerSpan).toBeInTheDocument();
-    const visibleHeaderText = headerSpan?.textContent || '';
+    const visibleHeaderText = headerSpan.textContent || '';
     const accessibleName = button.getAttribute('aria-label') || '';
 
     // The accessible name must contain the visible header text exactly
     // If they drift, this test fails to catch WCAG 2.5.3 Label in Name violations
     expect(accessibleName).toContain(visibleHeaderText);
+  });
+
+  test('does not render a stray comma between the heading text and the status tag', () => {
+    renderAccordion();
+
+    const header = screen.getByTestId(`appointment-accordion-header-${mockAppointment.id}`);
+
+    expect(header.textContent).not.toContain(',');
   });
 });
