@@ -116,6 +116,16 @@ jobs:
           # unexpired page, so a page must outlive any gap between successful weekly runs.
           retention-days: 90
 
+      # Deploy GitHub Pages posts this to Slack after it publishes this run's page. Same naming
+      # rule as dora-docs-page. Only the triggering run's headline is posted, so a short life is enough.
+      - name: Upload Slack headline artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dora-slack-headline
+          path: dora-metrics/data/dora-slack-headline.txt
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: Publish reports to storage
     needs: [deployment-frequency, lead-time, change-failure-rate, mttr]

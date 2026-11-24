@@ -178,24 +178,46 @@ function renderTrend(weeks: WeeklySummary[]): string[] {
   ];
 }
 
+export type WeekHeadline = {
+  // e.g. "Mon 2026-11-09 – Sun 2026-11-15 (UTC)"
+  week: string;
+  metrics: { label: string; value: string }[];
+};
+
+// The one place the headline values are formatted; the docs page and the Slack headline both use it.
+export function weekHeadline(summary: WeeklySummary): WeekHeadline {
+  const lastDay = new Date(summary.periodEnd.getTime() - MS_PER_DAY);
+  return {
+    week: `${formatDate(summary.periodStart)} – ${formatDate(lastDay)} (UTC)`,
+    metrics: [
+      {
+        label: 'Deployment frequency',
+        value: `${deployments(summary.deploymentCount)} (${summary.deploymentsPerDay.toFixed(1)} per day)`,
+      },
+      { label: 'Lead time for changes', value: formatDurationSummary(summary.leadTime) },
+      { label: 'Change failure rate', value: formatChangeFailure(summary) },
+      {
+        label: 'Time to restore service',
+        value: formatRestoreTime(summary, formatDurationSummary),
+      },
+    ],
+  };
+}
+
 // weeks are the settled weeks, oldest first; the newest is the headline.
 export function renderDocsPage(weeks: WeeklySummary[], context: DocsPageContext): string {
-  const summary = weeks[weeks.length - 1];
-  const lastDay = new Date(summary.periodEnd.getTime() - MS_PER_DAY);
+  const headline = weekHeadline(weeks[weeks.length - 1]);
   return [
     '# DORA Metrics',
     '',
     'These numbers update weekly, after the Tuesday DORA Metrics run. They cover the week before last,',
     'so changes closed late in the week have time to deploy and incidents have time to close.',
     '',
-    `## Week of ${formatDate(summary.periodStart)} – ${formatDate(lastDay)} (UTC)`,
+    `## Week of ${headline.week}`,
     '',
     '| Metric | Value |',
     '| --- | --- |',
-    `| Deployment frequency | ${deployments(summary.deploymentCount)} (${summary.deploymentsPerDay.toFixed(1)} per day) |`,
-    `| Lead time for changes | ${formatDurationSummary(summary.leadTime)} |`,
-    `| Change failure rate | ${formatChangeFailure(summary)} |`,
-    `| Time to restore service | ${formatRestoreTime(summary, formatDurationSummary)} |`,
+    ...headline.metrics.map(({ label, value }) => `| ${label} | ${value} |`),
     '',
     ...renderTrend(weeks),
     formatSource(context),
