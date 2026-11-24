@@ -1,4 +1,4 @@
-@use 'styles/abstracts/device-screens' as device-screens;
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
 
 .cams-users {
   .cams-users__permission-lines {
@@ -8,38 +8,71 @@
   }
 }
 
-// Column proportions once CamsTable switches to its flex-row layout (CamsTable.scss's own
-// breakpoint, unchanged here): Email is the longest field by far and Name can run long too;
-// Region only ever holds a one- or two-digit number or "All", and Actions is a single icon
-// button, so neither needs an equal share of the row.
+// The Admin page gives this table only about two thirds of the window, so its cells are tighter
+// than CamsTable's default (0.5rem side padding and gaps instead of 1rem). Each column's flex basis
+// is the narrowest it can be without breaking a word at that padding, measured in the browser
+// (2026-11-24) with the Email cell able to wrap after the @. The columns switch on once the table
+// fits all six bases plus the five gaps, so a cell never shrinks below its basis.
+$cell-side-padding: 0.5rem;
+$column-gap: 0.5rem;
+$col-name-basis: 5.75rem;
+$col-email-basis: 8rem;
+$col-role-basis: 4.125rem;
+$col-region-basis: 4.125rem;
+$col-office-basis: 4.625rem;
+$col-actions-basis: 7.5rem;
+$cams-users-columns-min-width: 37rem;
+
+// CamsTable switches to columns based on the viewport width, but on the Admin page the side menu
+// leaves this table much narrower than the viewport. So this table queries its own width instead:
+// stacked cards by default, columns once the table is wide enough.
 .cams-users-table.cams-table--responsive {
-  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+  container: cams-users-table / inline-size;
+
+  @include cams-table.cams-table-stacked;
+
+  @container cams-users-table (min-width: #{$cams-users-columns-min-width}) {
+    @include cams-table.cams-table-flex-row;
+
+    // Keep CamsTable's own row alignment (the mixin uses baseline), with the tighter gap.
+    .cams-table__header-row,
+    .cams-table__row {
+      align-items: center;
+      gap: $column-gap;
+    }
+
+    .cams-table__cell {
+      padding-left: $cell-side-padding;
+      padding-right: $cell-side-padding;
+    }
+
+    // Extra width goes mostly to Email and Name, the fields that run longest. Region only ever
+    // holds a one- or two-digit number or "All", and Actions holds one button, so neither grows.
     .col-name {
-      flex: 1.5 1 0;
+      flex: 1.5 1 $col-name-basis;
     }
 
     .col-email {
-      flex: 2.5 1 0;
+      flex: 2.5 1 $col-email-basis;
     }
 
     .col-role {
-      flex: 1.5 1 0;
+      flex: 1.5 1 $col-role-basis;
     }
 
     .col-region {
-      flex: 0.7 1 0;
-      max-width: 100px;
+      flex: 0 0 $col-region-basis;
       white-space: nowrap;
     }
 
     .col-office {
-      flex: 1.2 1 0;
+      flex: 1.2 1 $col-office-basis;
     }
 
-    // A fixed pixel basis, not auto: a flex item with display: block and flex-basis: auto sizes
-    // to fill the row instead of shrinking to its content (the button is ~132px wide).
+    // A fixed basis, not auto: a flex item with display: block and flex-basis: auto sizes to fill
+    // the row instead of shrinking to its content.
     .col-actions {
-      flex: 0 0 190px;
+      flex: 0 0 $col-actions-basis;
     }
   }
 }

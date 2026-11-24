@@ -180,6 +180,34 @@ describe('CamsUsers', () => {
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
   });
 
+  test('should let an email wrap only after the @, keeping its text unchanged', async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    const emailCell = row(SARAH).querySelector('[data-cell="Email"]')!;
+    const breakPoints = emailCell.querySelectorAll('wbr');
+    expect(breakPoints).toHaveLength(1);
+    expect(breakPoints[0].previousSibling?.textContent).toBe('sarah.williams@');
+    expect(breakPoints[0].nextSibling?.textContent).toBe('example.com');
+  });
+
+  test.each([
+    { case: 'no @', email: 'not-an-email' },
+    { case: 'no email', email: undefined },
+  ])('should show an email with $case as it is, without a break point', async ({ email }) => {
+    const user = { ...ALEX, email };
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([user]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    const emailCell = row(user).querySelector('[data-cell="Email"]')!;
+    expect(emailCell.querySelector('wbr')).toBeNull();
+    expect(emailCell.textContent).toBe(`Email: ${email ?? ''}`);
+  });
+
   test('should read each permission to screen readers as one sentence, in the Role cell', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
 
