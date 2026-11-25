@@ -6,14 +6,12 @@ import {
   AtsTrusteeRecord,
   AtsAppointmentRecord,
   TrusteeAppointmentsResult,
-  FailedAppointment,
 } from '../../types/ats.types';
 import { DbTableFieldSpec } from '../../types/database';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { cleanseAndMapAppointment } from './cleansing/ats-cleansing-pipeline';
-import { CleansingClassification, TrusteeOverride } from './cleansing/ats-cleansing-types';
-import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform';
+import { CamsError } from '../../../common-errors/cams-error';
+import { cleanseAppointments } from './cleansing/ats-cleansing-appointments';
+import { TrusteeOverride } from './cleansing/ats-cleansing-types';
 import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
 import { ACTIVE_STATUS_CODES, CHAPTER_ACTIVE_STATUS_CODES } from './ats.constants';
 
@@ -42,6 +40,22 @@ const TRUSTEE_COLUMNS = `
         T.ZIP_PLUS_A2,
         T.TELEPHONE,
         T.EMAIL_ADDRESS`;
+
+const APPOINTMENT_COLUMNS = `
+        TRU_ID,
+        DISTRICT,
+        SERVING_STATE AS STATE,
+        CHAPTER,
+        APPOINTED_DATE AS DATE_APPOINTED,
+        STATUS,
+        STATUS_EFF_DATE AS EFFECTIVE_DATE,
+        ARCHIVE_DATE`;
+
+// The load keeps the first appointment per district, chapter and type, so ties on APPOINTED_DATE
+// must sort the same way in every read. CHAPTER_DETAILS has no key column, so the tiebreakers are
+// every column read: rows that tie on all of them clean to the same appointment.
+const APPOINTMENT_ORDER = `APPOINTED_DATE DESC, STATUS_EFF_DATE DESC, DISTRICT, SERVING_STATE, CHAPTER,
+          STATUS, ARCHIVE_DATE`;
 
 // Keeps each ID-list query well under SQL Server's 2,100-parameter limit.
 const ID_BATCH_SIZE = 500;
@@ -83,6 +97,8 @@ type StatusFlagsRow = { TRU_ID: number; HAS_ACTIVE: number; HAS_EMPTY: number };
  */
 export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
   private overridesCache?: Map<string, TrusteeOverride[]>;
+  // Why the overrides could not be loaded. The load proceeds without them; the report does not.
+  private overridesUnavailable?: string;
 
   constructor(context: ApplicationContext) {
     // Use ATS-specific database configuration
@@ -106,6 +122,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
             error: result.error.message,
           },
         );
+        this.overridesUnavailable = result.error.message;
         this.overridesCache = new Map();
       } else if (result.data !== undefined) {
         this.overridesCache = result.data;
@@ -114,6 +131,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
           MODULE_NAME,
           'loadTrusteeOverrides returned no data and no error — proceeding without overrides',
         );
+        this.overridesUnavailable = 'loadTrusteeOverrides returned no data and no error';
         this.overridesCache = new Map();
       }
     }
@@ -244,6 +262,50 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
   }
 
+  async getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>> {
+    const rowsById = new Map<number, AtsAppointmentRecord[]>(trusteeIds.map((id) => [id, []]));
+    try {
+      for (const batch of batches(trusteeIds, ID_BATCH_SIZE)) {
+        const { placeholders, input } = idParameters(batch);
+        const query = `
+          SELECT ${APPOINTMENT_COLUMNS}
+          FROM CHAPTER_DETAILS
+          WHERE TRU_ID IN (${placeholders})
+          ORDER BY ${APPOINTMENT_ORDER}`;
+        const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
+        for (const row of (results as mssql.IResult<AtsAppointmentRecord>).recordset) {
+          const rows = rowsById.get(row.TRU_ID);
+          if (!rows)
+            throw new Error(`ATS returned appointments for unrequested TRU_ID ${row.TRU_ID}`);
+          rows.push(row);
+        }
+      }
+    } catch (originalError) {
+      throw getCamsError(
+        originalError as Error,
+        MODULE_NAME,
+        'Failed to retrieve trustee appointments by ID from ATS',
+      );
+    }
+
+    // Without the overrides, rows the load skipped or remapped would read as differences.
+    const overridesCache = await this.getOverridesCache(context);
+    if (this.overridesUnavailable) {
+      throw new CamsError(MODULE_NAME, {
+        message: `TOD overrides could not be loaded: ${this.overridesUnavailable}`,
+      });
+    }
+    return new Map(
+      [...rowsById].map(([id, rows]) => [
+        id,
+        cleanseAppointments(context, MODULE_NAME, id, rows, overridesCache),
+      ]),
+    );
+  }
+
   /**
    * Get cleansed appointments for a trustee.
    * Returns both clean appointments (for storage) and failed appointments (for DLQ).
@@ -273,18 +335,10 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     });
 
     const query = `
-      SELECT
-        TRU_ID,
-        DISTRICT,
-        SERVING_STATE AS STATE,
-        CHAPTER,
-        APPOINTED_DATE AS DATE_APPOINTED,
-        STATUS,
-        STATUS_EFF_DATE AS EFFECTIVE_DATE,
-        ARCHIVE_DATE
+      SELECT ${APPOINTMENT_COLUMNS}
       FROM CHAPTER_DETAILS
       WHERE TRU_ID = @trusteeId
-      ORDER BY APPOINTED_DATE DESC`;
+      ORDER BY ${APPOINTMENT_ORDER}`;
 
     context.logger.debug(MODULE_NAME, `Querying appointments for trustee ID: ${trusteeId}`);
 
@@ -300,93 +354,13 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
       // 2. Cleanse and transform each appointment
       const overridesCache = await this.getOverridesCache(context);
-      const cleanAppointments: TrusteeAppointmentInput[] = [];
-      const failedAppointments: FailedAppointment[] = [];
-      const stats = {
-        total: atsAppointments.length,
-        clean: 0,
-        autoRecoverable: 0,
-        problematic: 0,
-        uncleansable: 0,
-        skipped: 0,
-      };
-
-      for (const atsAppointment of atsAppointments) {
-        const cleansingResult = cleanseAndMapAppointment(
-          context,
-          String(trusteeId),
-          atsAppointment,
-          overridesCache,
-        );
-
-        // Handle SKIP classification
-        if (cleansingResult.classification === CleansingClassification.SKIP) {
-          context.logger.debug(MODULE_NAME, `Skipping appointment per override directive`, {
-            trusteeId,
-            notes: cleansingResult.notes,
-          });
-          stats.skipped++;
-          continue;
-        }
-
-        // Handle UNCLEANSABLE or PROBLEMATIC - ADD TO FAILED LIST
-        if (
-          cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
-          cleansingResult.classification === CleansingClassification.PROBLEMATIC
-        ) {
-          context.logger.warn(
-            MODULE_NAME,
-            `Appointment is ${cleansingResult.classification} for trustee ${trusteeId}`,
-            {
-              notes: cleansingResult.notes,
-            },
-          );
-
-          // Add to failed appointments list for DLQ
-          failedAppointments.push({
-            atsAppointment,
-            classification: cleansingResult.classification as 'PROBLEMATIC' | 'UNCLEANSABLE',
-            notes: cleansingResult.notes,
-            mapType: cleansingResult.mapType,
-            timestamp: new Date().toISOString(),
-          });
-
-          if (cleansingResult.classification === CleansingClassification.PROBLEMATIC) {
-            stats.problematic++;
-          } else {
-            stats.uncleansable++;
-          }
-
-          continue;
-        }
-
-        // Track CLEAN vs AUTO_RECOVERABLE
-        if (cleansingResult.classification === CleansingClassification.CLEAN) {
-          stats.clean++;
-        } else if (cleansingResult.classification === CleansingClassification.AUTO_RECOVERABLE) {
-          stats.autoRecoverable++;
-        }
-
-        // Handle multi-expansion (1:N mapping from cleansing - e.g., regional patterns)
-        if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
-          context.logger.debug(
-            MODULE_NAME,
-            `Multi-expansion: creating ${cleansingResult.courtIds.length} appointments`,
-            {
-              trusteeId,
-              courtIds: cleansingResult.courtIds,
-            },
-          );
-
-          for (const courtId of cleansingResult.courtIds) {
-            const appointmentInput = transformAppointmentRecord(atsAppointment, courtId);
-            cleanAppointments.push(appointmentInput);
-          }
-        } else if (cleansingResult.appointment) {
-          // Single appointment - use as-is
-          cleanAppointments.push(cleansingResult.appointment);
-        }
-      }
+      const { cleanAppointments, failedAppointments, stats } = cleanseAppointments(
+        context,
+        MODULE_NAME,
+        trusteeId,
+        atsAppointments,
+        overridesCache,
+      );
 
       context.logger.info(
         MODULE_NAME,

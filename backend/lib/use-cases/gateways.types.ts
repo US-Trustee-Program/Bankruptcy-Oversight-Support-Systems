@@ -4,6 +4,7 @@ import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
   TrusteeDataReportSummary,
+  StoredTrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
@@ -444,6 +445,14 @@ export interface AtsGateway {
     context: ApplicationContext,
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
+  /**
+   * Read-only: getTrusteeAppointments for many TOD trustees, read in batched queries. Every
+   * requested ID has an entry, empty when it has no appointments.
+   */
+  getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>>;
   getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   /** Read-only: the TOD trustee records that exist among the given IDs. */
   getTrusteesByIds(context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]>;
@@ -587,7 +596,7 @@ export interface TrusteeDataReportRepository extends Releasable {
     differences: TrusteeDataDifference[],
     summary: TrusteeDataReportSummary,
   ): Promise<void>;
-  readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]>;
+  readPageSummaries(runId: string): Promise<StoredTrusteeDataReportSummary[]>;
   /** Deletes the run's difference rows and page counts, keeping the run document. */
   deleteRunResults(runId: string): Promise<void>;
   /** Deletes the run document and all of its results. */

@@ -95,11 +95,24 @@ Feature: Administrators can see where CAMS and TOD trustee data disagree
   # Dependencies: Slice 1
   # User Value: The administrator also sees appointments that are missing from one system
   #             or whose details disagree.
-  Scenario: An appointment that exists in only one system
+  Scenario: An appointment that exists only in TOD
     Given a CAMS trustee linked to a TOD trustee
-    And TOD has an appointment for that trustee in a district, division and chapter that CAMS does not
+    And TOD has an appointment for that trustee in a district, chapter and appointment type that CAMS does not
     When the trustee data report runs
     Then that appointment is listed as "in TOD only"
+
+  Scenario: An appointment that exists only in CAMS
+    Given a CAMS trustee linked to a TOD trustee
+    And CAMS has an appointment for that trustee in a district, chapter and appointment type that TOD does not
+    When the trustee data report runs
+    Then that appointment is listed as "in CAMS only"
+
+  Scenario: A changed appointment type is reported as two appointments
+    Given a trustee appointment that is a chapter 7 panel appointment in TOD
+    And CAMS has the same district and chapter as an off-panel appointment instead
+    When the trustee data report runs
+    Then the TOD panel appointment is listed as "in TOD only"
+    And the CAMS off-panel appointment is listed as "in CAMS only"
 
   Scenario Outline: An appointment field that differs is reported
     Given a trustee appointment that exists in both CAMS and TOD
@@ -117,6 +130,19 @@ Feature: Administrators can see where CAMS and TOD trustee data disagree
     Given a CAMS trustee linked to several TOD trustee IDs
     When the trustee data report runs
     Then appointments from every linked TOD record are compared with the CAMS trustee's appointments
+
+  Scenario: Divisions narrowed in CAMS are noted but not counted as differences
+    Given a trustee appointment that exists in both CAMS and TOD
+    And the CAMS appointment covers only some of its district's divisions
+    When the trustee data report runs
+    Then no difference is listed for that appointment's divisions
+    And the appointment is noted as "divisions narrowed in CAMS"
+
+  Scenario: TOD appointments the original load did not translate are counted, not listed
+    Given a TOD appointment that the original load skipped or could not map to a district
+    When the trustee data report runs
+    Then that appointment is not listed as "in TOD only"
+    And the report counts it as a TOD appointment not translated
 
   # SLICE 3: Why each difference exists
   # Dependencies: Slice 2

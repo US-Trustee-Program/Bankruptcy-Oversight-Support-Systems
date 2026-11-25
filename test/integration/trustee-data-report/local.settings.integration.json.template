@@ -16,7 +16,13 @@
     "ATS_MSSQL_USER": "sa",
     "ATS_MSSQL_PASS": "YourStrong!Passw0rd",
     "ATS_MSSQL_ENCRYPT": "false",
-    "ATS_MSSQL_TRUST_UNSIGNED_CERT": "true"
+    "ATS_MSSQL_TRUST_UNSIGNED_CERT": "true",
+    "MSSQL_HOST": "localhost",
+    "MSSQL_DATABASE_DXTR": "DXTR_INT",
+    "MSSQL_USER": "sa",
+    "MSSQL_PASS": "YourStrong!Passw0rd",
+    "MSSQL_ENCRYPT": "false",
+    "MSSQL_TRUST_UNSIGNED_CERT": "true"
   },
   "ConnectionStrings": {},
   "Host": {

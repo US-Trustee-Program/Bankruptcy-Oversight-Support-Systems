@@ -17,7 +17,7 @@
  *
  * Commands:
  *   check-env    Verify the environment the harness and the start use case need
- *   seed-schema  Create ATS_INT and the TRUSTEES/CHAPTER_DETAILS tables
+ *   seed-schema  Create ATS_INT (TRUSTEES, CHAPTER_DETAILS) and DXTR_INT (offices tables)
  *   seed-sql     Replace all TOD rows with the fixtures
  *   seed-cosmos  Replace the fixture CAMS trustees and create the bicep-declared indexes
  *   run          clean, seed, then run every scenario and lifecycle check
@@ -37,6 +37,7 @@ import {
   SCENARIOS,
   Scenario,
   TRUSTEE_ID_PREFIX,
+  comparedTodIds,
   expectedSummary,
 } from './trustee-data-report-fixtures';
 
@@ -48,6 +49,7 @@ const AZURITE_CONNECTION_STRING =
   'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1'; // pragma: allowlist secret
 
 const ATS_DATABASE = 'ATS_INT';
+const DXTR_DATABASE = 'DXTR_INT';
 
 function loadEnv() {
   dotenv.config({ path: path.join(REPO_ROOT, 'backend/.env') });
@@ -72,6 +74,11 @@ function loadEnv() {
     ATS_MSSQL_PASS: process.env.MSSQL_PASS,
     ATS_MSSQL_ENCRYPT: 'false',
     ATS_MSSQL_TRUST_UNSIGNED_CERT: 'true',
+    MSSQL_HOST: 'localhost',
+    MSSQL_DATABASE_DXTR: DXTR_DATABASE,
+    MSSQL_USER: 'sa',
+    MSSQL_ENCRYPT: 'false',
+    MSSQL_TRUST_UNSIGNED_CERT: 'true',
     AzureWebJobsStorage: AZURITE_CONNECTION_STRING,
     AzureWebJobsDataflowsStorage: AZURITE_CONNECTION_STRING,
   });
@@ -85,6 +92,7 @@ const PAGE_QUEUE = 'trustee-data-report-page';
 const DLQ_QUEUE = 'trustee-data-report-dlq';
 
 const REPORT_COLLECTION = 'trustee-data-report';
+const APPOINTMENTS_COLLECTION = 'trustee-appointments';
 const LOCK_DOCUMENT_TYPE = 'TRUSTEE_DATA_REPORT_RUN';
 const RUN_TIMEOUT_MS = 3 * 60 * 1000;
 
@@ -272,11 +280,13 @@ async function readLock(db: Db) {
 async function seedSchema() {
   const master = await getSqlPool('master');
   try {
-    await master
-      .request()
-      .query(
-        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '${ATS_DATABASE}') CREATE DATABASE [${ATS_DATABASE}]`,
-      );
+    for (const database of [ATS_DATABASE, DXTR_DATABASE]) {
+      await master
+        .request()
+        .query(
+          `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '${database}') CREATE DATABASE [${database}]`,
+        );
+    }
   } finally {
     await master.close();
   }
@@ -285,6 +295,12 @@ async function seedSchema() {
     await executeSqlFile(pool, '00-seed-ats-schema.sql');
   } finally {
     await pool.close();
+  }
+  const dxtr = await getSqlPool(DXTR_DATABASE);
+  try {
+    await executeSqlFile(dxtr, '00-seed-dxtr-offices-schema.sql');
+  } finally {
+    await dxtr.close();
   }
 }
 
@@ -295,11 +311,18 @@ async function seedSql() {
       '01-seed-trustees.sql',
       '02-seed-chapter-details.sql',
       '03-seed-filler.sql',
+      '05-seed-appointments.sql',
     ]) {
       await executeSqlFile(pool, file);
     }
   } finally {
     await pool.close();
+  }
+  const dxtr = await getSqlPool(DXTR_DATABASE);
+  try {
+    await executeSqlFile(dxtr, '04-seed-dxtr-offices.sql');
+  } finally {
+    await dxtr.close();
   }
 }
 
@@ -332,6 +355,24 @@ async function seedCosmos() {
     );
     await db.collection('trustees').insertMany(trustees);
     info(`Seeded ${trustees.length} CAMS trustees`);
+
+    await db
+      .collection(APPOINTMENTS_COLLECTION)
+      .deleteMany({ trusteeId: { $regex: `^${TRUSTEE_ID_PREFIX}` } });
+    const appointments = SCENARIOS.flatMap(({ cams, camsAppointments }) =>
+      cams && camsAppointments
+        ? camsAppointments.map((appointment) => ({
+            ...appointment,
+            id: `${cams.trusteeId}-${appointment.chapter}-${appointment.appointmentType}`,
+            documentType: 'TRUSTEE_APPOINTMENT',
+            trusteeId: cams.trusteeId,
+            updatedOn: now,
+            updatedBy: { id: 'integration-harness', name: 'Integration Harness' },
+          }))
+        : [],
+    );
+    await db.collection(APPOINTMENTS_COLLECTION).insertMany(appointments);
+    info(`Seeded ${appointments.length} CAMS trustee appointments`);
     await createIndexes(db);
   } finally {
     await client.close();
@@ -345,11 +386,14 @@ async function clean() {
     const trustees = await db
       .collection('trustees')
       .deleteMany({ trusteeId: { $regex: `^${TRUSTEE_ID_PREFIX}` } });
+    const appointments = await db
+      .collection(APPOINTMENTS_COLLECTION)
+      .deleteMany({ trusteeId: { $regex: `^${TRUSTEE_ID_PREFIX}` } });
     const lock = await db
       .collection('runtime-state')
       .deleteMany({ documentType: LOCK_DOCUMENT_TYPE });
     info(
-      `Deleted ${report.deletedCount} report, ${trustees.deletedCount} trustee and ${lock.deletedCount} lock document(s)`,
+      `Deleted ${report.deletedCount} report, ${trustees.deletedCount} trustee, ${appointments.deletedCount} appointment and ${lock.deletedCount} lock document(s)`,
     );
   } finally {
     await client.close();
@@ -397,6 +441,20 @@ function comparable(difference: DifferenceDocument | ExpectedDifference) {
       };
     case 'cams-only':
       return { kind: d.kind, todIds: d.todIds };
+    case 'appointment-tod-only':
+    case 'appointment-cams-only':
+    case 'appointment-field':
+    case 'appointment-divisions-narrowed': {
+      const { courtId, chapter, appointmentType } = d.appointment;
+      return {
+        kind: d.kind,
+        appointment: { courtId, chapter, appointmentType },
+        field: d.field,
+        camsValue: d.camsValue,
+        todValue: d.todValue,
+        todIds: d.todIds,
+      };
+    }
   }
 }
 
@@ -445,7 +503,23 @@ function assertScenarios(differences: DifferenceDocument[]) {
  * Split in two so the known gaps, which only change difference counts, cannot hide a change in
  * which trustees are compared: most scenarios expect no rows and pass whether compared or not.
  */
-function assertSummary(summary: RunDocument['summary']) {
+async function countRowsWithoutDistrict(): Promise<number> {
+  const pool = await getSqlPool(ATS_DATABASE);
+  try {
+    const ids = comparedTodIds().map(Number).filter(Number.isInteger);
+    const { recordset } = await pool
+      .request()
+      .query<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM CHAPTER_DETAILS WHERE DISTRICT IS NULL AND TRU_ID IN (${ids.join(', ')})`,
+      );
+    return recordset[0].n;
+  } finally {
+    await pool.close();
+  }
+}
+
+async function assertSummary(summary: RunDocument['summary']) {
+  const rowsWithoutDistrict = await countRowsWithoutDistrict();
   const counted = (s: RunDocument['summary']) => ({
     trusteesCompared: s?.trusteesCompared,
     camsOnly: s?.camsOnly,
@@ -462,7 +536,7 @@ function assertSummary(summary: RunDocument['summary']) {
     pick: (s: RunDocument['summary']) => object,
     matchesKnownGap = false,
   ) => {
-    const expected = JSON.stringify(pick(expectedSummary()));
+    const expected = JSON.stringify(pick(expectedSummary(rowsWithoutDistrict)));
     const actual = JSON.stringify(pick(summary));
     record(
       id,
@@ -479,10 +553,23 @@ function assertSummary(summary: RunDocument['summary']) {
     counted,
   );
   compare(
+    'S58',
+    'The run counts appointment differences, narrowed divisions and untranslated TOD appointments as the scenarios add up to',
+    (s) => ({
+      appointmentsTodOnly: s?.appointmentsTodOnly,
+      appointmentsCamsOnly: s?.appointmentsCamsOnly,
+      appointmentFieldDifferences: s?.appointmentFieldDifferences,
+      appointmentFieldDifferencesByField: s?.appointmentFieldDifferencesByField,
+      appointmentsDivisionsNarrowed: s?.appointmentsDivisionsNarrowed,
+      todAppointmentsNotTranslated: s?.todAppointmentsNotTranslated,
+    }),
+  );
+  compare(
     'S45',
     'The run counts TOD-only trustees and field differences as the scenarios add up to',
     differences,
-    JSON.stringify(differences(summary)) === JSON.stringify(differences(expectedSummary(true))),
+    JSON.stringify(differences(summary)) ===
+      JSON.stringify(differences(expectedSummary(rowsWithoutDistrict, true))),
   );
 }
 
@@ -518,7 +605,7 @@ async function run() {
     console.log('\nScenarios (run 1)\n');
     const firstDifferences = await readDifferences(db, firstRunId);
     assertScenarios(firstDifferences);
-    assertSummary(first.summary);
+    await assertSummary(first.summary);
     record(
       'L2',
       'The lock is released when a run completes',
