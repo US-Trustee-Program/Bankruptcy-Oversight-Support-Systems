@@ -7,10 +7,12 @@ import {
 } from './metrics/weekly-summary.js';
 import { readCsv } from './output/read-csv.js';
 import { renderDocsPage } from './output/render-docs-page.js';
+import { renderSlackHeadline } from './output/render-slack-headline.js';
 import { resolveRun } from './output/resolve-run.js';
 
 const DATA_DIR = 'data';
 const OUTPUT_PATH = 'data/dora-metrics.md';
+const HEADLINE_PATH = 'data/dora-slack-headline.txt';
 
 async function main(): Promise<void> {
   const generatedAt = new Date();
@@ -29,9 +31,10 @@ async function main(): Promise<void> {
 
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, page, 'utf8');
+  await writeFile(HEADLINE_PATH, renderSlackHeadline(headline), 'utf8');
 
   console.log(
-    `DORA docs page: week starting ${headline.periodStart.toISOString()}, ${weeks.length} weeks in the trend. Wrote ${OUTPUT_PATH}`,
+    `DORA docs page: week starting ${headline.periodStart.toISOString()}, ${weeks.length} weeks in the trend. Wrote ${OUTPUT_PATH} and ${HEADLINE_PATH}`,
   );
 }
 
