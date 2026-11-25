@@ -48,6 +48,7 @@ export interface CasesInterface {
     applicationContext: ApplicationContext,
     casesStart: string,
     transactionsStart: string,
+    end?: string,
   ): Promise<UpdatedCaseIds>;
 
   getCasesWithTerminalTransactionBlindSpot(

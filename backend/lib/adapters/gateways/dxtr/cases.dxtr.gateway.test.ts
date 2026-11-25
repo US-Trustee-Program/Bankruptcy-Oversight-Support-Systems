@@ -1507,6 +1507,36 @@ describe('Test DXTR Gateway', () => {
         'TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID',
       );
     });
+
+    test('should bound both queries by the end date when one is given', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+      const end = '2024-02-01T00:00:00.000Z';
+
+      await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+        end,
+      );
+
+      const [, casesQuery, casesParams] = querySpy.mock.calls[0];
+      const [, transactionsQuery, transactionsParams] = querySpy.mock.calls[1];
+      expect(casesQuery).toContain('C.LAST_UPDATE_DATE <= @casesEnd');
+      expect(casesParams).toContainEqual(expect.objectContaining({ name: 'casesEnd', value: end }));
+      expect(transactionsQuery).toContain('TX.TX_DATE <= @transactionsEnd');
+      expect(transactionsParams).toContainEqual(
+        expect.objectContaining({ name: 'transactionsEnd', value: end }),
+      );
+    });
+
+    test('should leave both queries unbounded above when no end date is given', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01', '2024-01-01');
+
+      expect(querySpy.mock.calls[0][1]).not.toContain('@casesEnd');
+      expect(querySpy.mock.calls[1][1]).not.toContain('@transactionsEnd');
+    });
   });
 
   describe('getCasesWithTerminalTransactionBlindSpot', () => {

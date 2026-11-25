@@ -202,7 +202,7 @@ describe('resync-cases-by-date handleStart', () => {
       );
       const queues = stubQueues();
 
-      await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+      await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext);
 
       const [page] = queues.get(PAGE_QUEUE).sent;
       expect(JSON.parse(page.text)).toEqual({ events });
@@ -240,7 +240,7 @@ describe('resync-cases-by-date handleStart', () => {
       await createMockApplicationContext(),
     );
 
-    await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+    await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext);
 
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
@@ -264,7 +264,7 @@ describe('resync-cases-by-date handleStart', () => {
         .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
 
       await expect(
-        handleStart({ fromDate: '2024-01-01' }, invocationContext),
+        handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext),
       ).resolves.toBeUndefined();
 
       expect(fromConnectionStringSpy).toHaveBeenCalledWith(
@@ -275,6 +275,7 @@ describe('resync-cases-by-date handleStart', () => {
       const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
       expect(JSON.parse(body)).toEqual({
         fromDate: '2024-01-01',
+        toDate: '2024-01-15',
         retryCount: 1,
         firstAttemptAt: expect.any(String),
       });
@@ -325,6 +326,161 @@ describe('resync-cases-by-date handleStart', () => {
     await expect(handleStart({ fromDate: '2024-01-01' }, invocationContext)).rejects.toThrow(
       'Database connection failed',
     );
+    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
+});
+
+describe('resync-cases-by-date handleStart windowing', () => {
+  const START_QUEUE = 'resync-cases-by-date-start';
+  const caseEvent = (n: number): CaseSyncEvent => ({
+    type: 'CASE_CHANGED',
+    caseId: `001-25-${String(n).padStart(5, '0')}`,
+  });
+
+  async function setupWindow(events: CaseSyncEvent[]) {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+      events,
+      lastCasesSyncDate: '2024-01-01',
+      lastTransactionsSyncDate: '2024-01-01',
+    });
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const queues = stubQueues();
+    const invocationContext = makeInvocationContext();
+    return { handleStart, getCaseIdsSpy, queues, invocationContext, mockContext };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    setLaneCount(undefined);
+  });
+
+  test('loads only the first month of a longer range, queues its pages, and continues from where it stopped', async () => {
+    const { handleStart, getCaseIdsSpy, queues, invocationContext } = await setupWindow([
+      caseEvent(1),
+      caseEvent(2),
+    ]);
+
+    await handleStart({ fromDate: '2024-01-01', toDate: '2024-03-15' }, invocationContext);
+
+    expect(getCaseIdsSpy).toHaveBeenCalledTimes(1);
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2024-01-01',
+      '2024-02-01T00:00:00.000Z',
+    );
+    expect(JSON.parse(queues.get(PAGE_QUEUE).sent[0].text).events).toHaveLength(2);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 2 },
+    ]);
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toBeUndefined();
+  });
+
+  test('continues through a window that holds no cases', async () => {
+    const { handleStart, queues, invocationContext } = await setupWindow([]);
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-03-15', eventsQueued: 7 },
+      invocationContext,
+    );
+
+    expect(queues.get(PAGE_QUEUE).sent).toHaveLength(0);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 7 },
+    ]);
+  });
+
+  test('bounds the last window at toDate, queues no continuation, and starts the lanes', async () => {
+    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([caseEvent(1)]);
+    setLaneCount('2');
+
+    await handleStart(
+      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 5 },
+      invocationContext,
+    );
+
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2024-03-01T00:00:00.000Z',
+      '2024-03-15',
+    );
+    expect(outputFor(invocationContext, START_QUEUE)).toBeUndefined();
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toEqual([
+      { runId: 'test-id', laneId: 0 },
+      { runId: 'test-id', laneId: 1 },
+    ]);
+  });
+
+  test('starts the lanes when only an earlier window held cases', async () => {
+    const { handleStart, invocationContext } = await setupWindow([]);
+
+    await handleStart(
+      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 5 },
+      invocationContext,
+    );
+
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(40);
+  });
+
+  test('starts no lanes when no window of the whole range held cases', async () => {
+    const { handleStart, invocationContext } = await setupWindow([]);
+
+    await handleStart(
+      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15' },
+      invocationContext,
+    );
+
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toBeUndefined();
+    expect(outputFor(invocationContext, START_QUEUE)).toBeUndefined();
+  });
+
+  test('fixes the end of the range at the current time when the start message gives none', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2024-06-10T12:00:00.000Z'));
+    const { handleStart, invocationContext } = await setupWindow([]);
+
+    await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-06-10T12:00:00.000Z', eventsQueued: 0 },
+    ]);
+  });
+
+  test('reports the window it completed and the running total to telemetry', async () => {
+    const { handleStart, invocationContext, mockContext } = await setupWindow([caseEvent(1)]);
+    const completeSpy = vi.spyOn(mockContext.observability, 'completeTrace');
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-03-15', eventsQueued: 4 },
+      invocationContext,
+    );
+
+    expect(completeSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      'DataflowHandlerComplete',
+      expect.objectContaining({
+        success: true,
+        properties: expect.objectContaining({
+          windowFrom: '2024-01-01',
+          windowEnd: '2024-02-01T00:00:00.000Z',
+          toDate: '2024-03-15',
+          windowEvents: '1',
+          totalEventsQueued: '5',
+          continued: 'true',
+        }),
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('does nothing when fromDate is not a date', async () => {
+    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([]);
+
+    await handleStart({ fromDate: 'not-a-date' }, invocationContext);
+
+    expect(getCaseIdsSpy).not.toHaveBeenCalled();
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 });
@@ -1203,7 +1359,7 @@ describe('resync-cases-by-date handleStart page splitting', () => {
     );
     const queues = stubQueues();
 
-    await handleStart({ fromDate: '2024-01-01' }, makeInvocationContext());
+    await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, makeInvocationContext());
 
     const pages = queues.get(PAGE_QUEUE).sent;
     expect(pages.map((page) => JSON.parse(page.text).events.length)).toEqual([100, 100, 50]);

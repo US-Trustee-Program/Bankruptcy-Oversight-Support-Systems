@@ -74,6 +74,25 @@ describe('getCaseIds tests', () => {
     expect(actual).toEqual(expected);
   });
 
+  test('should pass the end date to the gateway so the query is bounded above', async () => {
+    const getUpdatedSpy = vi
+      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
+      .mockResolvedValue({
+        caseIds: [],
+        latestCasesSyncDate: '2025-02-01',
+        latestTransactionsSyncDate: '2025-02-01',
+      });
+
+    await SyncCases.getCaseIds(context, '2025-01-01', '2025-02-01T00:00:00.000Z');
+
+    expect(getUpdatedSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2025-01-01',
+      '2025-01-01',
+      '2025-02-01T00:00:00.000Z',
+    );
+  });
+
   test('should use provided lastSyncDate if provided and return gateway latestSyncDate', async () => {
     const lastSyncDate = '2025-02-01T23:59:59.000Z';
     const latestCasesSyncDate = '2025-02-11T14:00:00.456Z';

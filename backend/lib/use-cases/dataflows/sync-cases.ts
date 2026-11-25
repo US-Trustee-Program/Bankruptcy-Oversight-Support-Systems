@@ -14,7 +14,7 @@ function isLegacySyncState(
   return 'lastSyncDate' in state && !('lastCasesSyncDate' in state);
 }
 
-async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
+async function getCaseIds(context: ApplicationContext, lastSyncDate?: string, endDate?: string) {
   try {
     let syncState: CasesSyncState;
     if (lastSyncDate) {
@@ -47,6 +47,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
         context,
         syncState.lastCasesSyncDate,
         syncState.lastTransactionsSyncDate,
+        ...(endDate ? [endDate] : []),
       );
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {

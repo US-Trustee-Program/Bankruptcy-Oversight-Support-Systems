@@ -96,6 +96,8 @@ type LaneRun = {
 
 type ResyncCasesByDateStartMessage = {
   fromDate: string;
+  toDate?: string;
+  eventsQueued?: number;
   retryCount?: number;
   firstAttemptAt?: string;
 };
@@ -158,6 +160,11 @@ function readPositiveSetting(name: string, fallback: number, mustBeInteger = fal
 }
 
 /**
+ * A start message names a range: cases changed after fromDate up to toDate, which defaults to the
+ * time the first message is handled. Each invocation loads one month of the range onto the PAGE
+ * queue and queues a start message for the remainder; the lanes start with the last window, once
+ * every page is queued.
+ *
  * Operators start one resync-cases-by-date run at a time. A second START issued while a run is
  * still in progress adds another K lane writers to the same PAGE queue; there is no run lock.
  */
@@ -175,26 +182,42 @@ export async function handleStart(
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const { fromDate } = message;
-  if (!fromDate) {
-    logger.error(MODULE_NAME, 'fromDate is required in the start message.');
+  if (!fromDate || Number.isNaN(Date.parse(fromDate))) {
+    logger.error(MODULE_NAME, 'fromDate is required in the start message and must be a date.');
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      details: { reason: 'missing fromDate' },
+      details: { reason: 'missing or invalid fromDate' },
     });
     return;
   }
 
-  logger.info(MODULE_NAME, `Starting resync of cases by date with fromDate: ${fromDate}`);
+  const toDate = message.toDate ?? new Date().toISOString();
+  if (Number.isNaN(Date.parse(toDate))) {
+    logger.error(MODULE_NAME, `toDate in the start message is not a date: ${toDate}`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      details: { reason: 'invalid toDate' },
+    });
+    return;
+  }
+
+  const { windowEnd, isLastWindow } = nextWindow(fromDate, toDate);
+  logger.info(
+    MODULE_NAME,
+    `Resyncing cases changed after ${fromDate} up to ${windowEnd}; the range ends ${toDate}.`,
+  );
 
   let events: CaseSyncEvent[];
   try {
-    ({ events } = await SyncCases.getCaseIds(context, fromDate));
+    ({ events } = await SyncCases.getCaseIds(context, fromDate, windowEnd));
   } catch (originalError) {
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error: originalError,
-      message,
+      message: { ...message, toDate },
       checkQueueName: START.queueName,
       dlqOutput: DLQ,
       context,
@@ -226,17 +249,6 @@ export async function handleStart(
     throw originalError;
   }
 
-  if (!events.length) {
-    logger.info(MODULE_NAME, `No cases found since ${fromDate}. Nothing to resync.`);
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-      details: { reason: 'no cases found' },
-    });
-    return;
-  }
-
   const pages: ResyncCasesByDatePageMessage[] = [];
   let start = 0;
   let end = 0;
@@ -246,35 +258,75 @@ export async function handleStart(
     pages.push({ events: events.slice(start, end) });
   }
 
-  const pageQueue = StorageQueueHumbleObject.fromConnectionString(connectionString, PAGE.queueName);
-  for (let i = 0; i < pages.length; i += PAGE_SEND_CONCURRENCY) {
-    await Promise.all(
-      pages
-        .slice(i, i + PAGE_SEND_CONCURRENCY)
-        .map((page) => pageQueue.sendMessage(JSON.stringify(page), undefined, NEVER_EXPIRES)),
+  if (pages.length) {
+    const pageQueue = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      PAGE.queueName,
     );
+    for (let i = 0; i < pages.length; i += PAGE_SEND_CONCURRENCY) {
+      await Promise.all(
+        pages
+          .slice(i, i + PAGE_SEND_CONCURRENCY)
+          .map((page) => pageQueue.sendMessage(JSON.stringify(page), undefined, NEVER_EXPIRES)),
+      );
+    }
   }
 
-  const laneCount = readPositiveSetting(LANE_COUNT_ENV, DEFAULT_LANE_COUNT, true);
-  const lanes: ResyncCasesByDateWriterMessage[] = Array.from(
-    { length: laneCount },
-    (_, laneId) => ({
-      runId: invocationContext.invocationId,
-      laneId,
-    }),
-  );
-  invocationContext.extraOutputs.set(WRITER, lanes);
+  const totalEventsQueued = (message.eventsQueued ?? 0) + events.length;
+  const details: Record<string, string> = {
+    windowFrom: fromDate,
+    windowEnd,
+    toDate,
+    windowEvents: String(events.length),
+    pagesQueued: String(pages.length),
+    totalEventsQueued: String(totalEventsQueued),
+    continued: String(!isLastWindow),
+  };
+
+  if (!isLastWindow) {
+    const continuation: ResyncCasesByDateStartMessage = {
+      fromDate: windowEnd,
+      toDate,
+      eventsQueued: totalEventsQueued,
+    };
+    invocationContext.extraOutputs.set(START, [continuation]);
+  } else if (totalEventsQueued > 0) {
+    const laneCount = readPositiveSetting(LANE_COUNT_ENV, DEFAULT_LANE_COUNT, true);
+    const lanes: ResyncCasesByDateWriterMessage[] = Array.from(
+      { length: laneCount },
+      (_, laneId) => ({
+        runId: invocationContext.invocationId,
+        laneId,
+      }),
+    );
+    invocationContext.extraOutputs.set(WRITER, lanes);
+    details.lanesStarted = String(lanes.length);
+  } else {
+    logger.info(MODULE_NAME, `No cases found since the original start date. Nothing to resync.`);
+  }
 
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
     documentsWritten: 0,
     documentsFailed: 0,
     success: true,
-    details: {
-      pagesQueued: String(pages.length),
-      totalEvents: String(events.length),
-      lanesStarted: String(lanes.length),
-    },
+    details,
   });
+}
+
+/**
+ * Splits the front off a date range for one invocation to load. The window covers one calendar
+ * month after fromDate; the last window is cut off at toDate and ends the run.
+ */
+function nextWindow(
+  fromDate: string,
+  toDate: string,
+): { windowEnd: string; isLastWindow: boolean } {
+  const monthLater = new Date(fromDate);
+  monthLater.setUTCMonth(monthLater.getUTCMonth() + 1);
+  if (monthLater.getTime() >= new Date(toDate).getTime()) {
+    return { windowEnd: toDate, isLastWindow: true };
+  }
+  return { windowEnd: monthLater.toISOString(), isLastWindow: false };
 }
 
 function readCasesPerSecPerLane(): number {
@@ -741,7 +793,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [WRITER, DLQ],
+    extraOutputs: [WRITER, DLQ, START],
   });
 
   app.storageQueue(HANDLE_WRITER, {
