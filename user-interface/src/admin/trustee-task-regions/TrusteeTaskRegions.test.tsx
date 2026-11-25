@@ -26,7 +26,6 @@ function renderComponent() {
 describe('TrusteeTaskRegions component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getCaseAppointmentSources').mockResolvedValue({ data: mockSources });
   });
 
@@ -42,7 +41,10 @@ describe('TrusteeTaskRegions component', () => {
     });
   });
 
-  test('table carries the id the Region/Source column-width styling targets', async () => {
+  // Wiring check, not a visual one: jsdom doesn't apply CSS, so this only guards against the id
+  // drifting out of sync between here and TrusteeTaskRegions.scss's #trustee-task-regions-table
+  // column-width rule, not against the column widths themselves regressing.
+  test('table keeps the id its column-width SCSS rule is scoped to', async () => {
     renderComponent();
     await waitFor(() => {
       expect(document.getElementById('trustee-task-regions-table')).toBeInTheDocument();
