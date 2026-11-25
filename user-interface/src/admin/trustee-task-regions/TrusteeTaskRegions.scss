@@ -12,6 +12,7 @@
   // the row's 1rem gap). CamsTable's default (flex: 1 1 0 on every cell) instead stretches each
   // column to half of whatever width the container happens to be - combined with the
   // container's own default full-width stretch, that made the table far wider than the mock.
+  // Selector must match the TABLE_ID constant exported from TrusteeTaskRegions.tsx.
   #trustee-task-regions-table {
     .cams-table__cell {
       flex: 0 0 11.686rem;
