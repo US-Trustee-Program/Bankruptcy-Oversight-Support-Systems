@@ -7,6 +7,7 @@ import {
 } from '../../types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import { cleanseAppointments } from './cleansing/ats-cleansing-appointments';
 
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';
 
@@ -46,9 +47,311 @@ export function mockAtsTrusteeRecord(id: number): AtsTrusteeRecord {
 }
 
 /**
+ * TOD appointment rows that translate (Southern District of New York, 0208), read only by the
+ * trustee data report. With the CAMS appointments in mock-trustee-data-report.fixtures.ts they
+ * give one difference of each appointment kind. The other mock rows have no serving state, so the
+ * report counts them as not translated.
+ */
+const MOCK_REPORT_APPOINTMENT_ROWS: AtsAppointmentRecord[] = [
+  // TOD 1, chapter 7 panel: CAMS covers only division 081, so divisions narrowed.
+  {
+    TRU_ID: 1,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2015-03-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2015-03-01'),
+  },
+  // TOD 2, chapter 7 panel: CAMS has a different appointed date.
+  {
+    TRU_ID: 2,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2016-04-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2016-04-01'),
+  },
+  // TOD 3, chapter 7 panel: no CAMS appointment, so in TOD only.
+  {
+    TRU_ID: 3,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2017-05-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2017-05-01'),
+  },
+];
+
+/**
  * Mock implementation of ATS gateway for testing.
  * Returns sample trustee and appointment data.
  */
+/** Raw TOD appointment rows for a mock trustee, varied to exercise different mappings. */
+function mockAppointmentRows(trusteeId: number): AtsAppointmentRecord[] {
+  const mockAppointments: AtsAppointmentRecord[] = [];
+
+  // Trustee 1: Standard letter codes + 12CBC
+  if (trusteeId === 1) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: 'PA', // panel, active
+        EFFECTIVE_DATE: new Date('2023-01-15'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-03-01'),
+        STATUS: '1', // CBC: case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-03-01'),
+      },
+    );
+  }
+
+  // Trustee 2: New letter codes (NP, VR, V, PI, O, E)
+  if (trusteeId === 2) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-02-01'),
+        STATUS: 'NP', // off-panel, resigned
+        EFFECTIVE_DATE: new Date('2023-02-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-03-01'),
+        STATUS: 'PI', // panel, voluntarily-suspended
+        EFFECTIVE_DATE: new Date('2023-03-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-04-01'),
+        STATUS: 'O', // converted-case, active
+        EFFECTIVE_DATE: new Date('2023-04-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-05-01'),
+        STATUS: 'E', // elected, active
+        EFFECTIVE_DATE: new Date('2023-05-01'),
+      },
+    );
+  }
+
+  // Trustee 3: Chapter 11 subchapter-v (V and VR)
+  if (trusteeId === 3) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: 'V', // pool, active (11-subchapter-v)
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-07-01'),
+        STATUS: 'VR', // out-of-pool, resigned (11-subchapter-v)
+        EFFECTIVE_DATE: new Date('2023-07-01'),
+      },
+    );
+  }
+
+  // Trustee 4: Numeric codes (1, 3, 5, 6, 7, 8, 9, 10, 12)
+  if (trusteeId === 4) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-01-01'),
+        STATUS: '1', // case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-01-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12',
+        DATE_APPOINTED: new Date('2023-02-01'),
+        STATUS: '3', // standing, resigned
+        EFFECTIVE_DATE: new Date('2023-02-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '13',
+        DATE_APPOINTED: new Date('2023-03-01'),
+        STATUS: '5', // standing, terminated
+        EFFECTIVE_DATE: new Date('2023-03-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '13',
+        DATE_APPOINTED: new Date('2023-04-01'),
+        STATUS: '6', // standing, terminated
+        EFFECTIVE_DATE: new Date('2023-04-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12',
+        DATE_APPOINTED: new Date('2023-05-01'),
+        STATUS: '7', // standing, deceased
+        EFFECTIVE_DATE: new Date('2023-05-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: '8', // case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-07-01'),
+        STATUS: '9', // case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-07-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-08-01'),
+        STATUS: '10', // case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-08-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-09-01'),
+        STATUS: '12', // case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-09-01'),
+      },
+    );
+  }
+
+  // Trustee 5: CBC chapter variants (12CBC and 13CBC)
+  if (trusteeId === 5) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-01-01'),
+        STATUS: '1', // CBC: case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-01-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-02-01'),
+        STATUS: '2', // CBC: case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-02-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-03-01'),
+        STATUS: '3', // CBC: case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-03-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-04-01'),
+        STATUS: '5', // CBC: case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-04-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '12CBC',
+        DATE_APPOINTED: new Date('2023-05-01'),
+        STATUS: '7', // CBC: case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-05-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '13CBC',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: '1', // CBC: case-by-case, active
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '13CBC',
+        DATE_APPOINTED: new Date('2023-07-01'),
+        STATUS: '3', // CBC: case-by-case, inactive
+        EFFECTIVE_DATE: new Date('2023-07-01'),
+      },
+    );
+  }
+
+  // Trustee 6: Only inactive appointments — excluded from active filter
+  if (trusteeId === 6) {
+    mockAppointments.push({
+      TRU_ID: trusteeId,
+      DISTRICT: '02',
+      CHAPTER: '7',
+      DATE_APPOINTED: new Date('2020-01-01'),
+      STATUS: 'NP', // off-panel, resigned — not in ACTIVE_STATUS_CODES
+      EFFECTIVE_DATE: new Date('2020-01-01'),
+    });
+  }
+
+  // Default: Return basic appointments for any other trustee ID
+  if (mockAppointments.length === 0) {
+    mockAppointments.push(
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: 'PA', // panel, active
+        EFFECTIVE_DATE: new Date('2023-01-15'),
+      },
+      {
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '13',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: 'S', // standing, active
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      },
+    );
+  }
+
+  return mockAppointments;
+}
+
 export class MockAtsGateway implements AtsGateway {
   private static instance: MockAtsGateway;
 
@@ -103,265 +406,7 @@ export class MockAtsGateway implements AtsGateway {
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult> {
     context.logger.debug(MODULE_NAME, `Mock: Getting appointments for trustee ${trusteeId}`);
-
-    // Return varied mock appointments for testing different mappings
-    const mockAppointments: AtsAppointmentRecord[] = [];
-
-    // Trustee 1: Standard letter codes + 12CBC
-    if (trusteeId === 1) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          STATUS: 'PA', // panel, active
-          EFFECTIVE_DATE: new Date('2023-01-15'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-03-01'),
-          STATUS: '1', // CBC: case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-03-01'),
-        },
-      );
-    }
-
-    // Trustee 2: New letter codes (NP, VR, V, PI, O, E)
-    if (trusteeId === 2) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-02-01'),
-          STATUS: 'NP', // off-panel, resigned
-          EFFECTIVE_DATE: new Date('2023-02-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-03-01'),
-          STATUS: 'PI', // panel, voluntarily-suspended
-          EFFECTIVE_DATE: new Date('2023-03-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-04-01'),
-          STATUS: 'O', // converted-case, active
-          EFFECTIVE_DATE: new Date('2023-04-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-05-01'),
-          STATUS: 'E', // elected, active
-          EFFECTIVE_DATE: new Date('2023-05-01'),
-        },
-      );
-    }
-
-    // Trustee 3: Chapter 11 subchapter-v (V and VR)
-    if (trusteeId === 3) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-06-01'),
-          STATUS: 'V', // pool, active (11-subchapter-v)
-          EFFECTIVE_DATE: new Date('2023-06-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-07-01'),
-          STATUS: 'VR', // out-of-pool, resigned (11-subchapter-v)
-          EFFECTIVE_DATE: new Date('2023-07-01'),
-        },
-      );
-    }
-
-    // Trustee 4: Numeric codes (1, 3, 5, 6, 7, 8, 9, 10, 12)
-    if (trusteeId === 4) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-01-01'),
-          STATUS: '1', // case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-01-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12',
-          DATE_APPOINTED: new Date('2023-02-01'),
-          STATUS: '3', // standing, resigned
-          EFFECTIVE_DATE: new Date('2023-02-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '13',
-          DATE_APPOINTED: new Date('2023-03-01'),
-          STATUS: '5', // standing, terminated
-          EFFECTIVE_DATE: new Date('2023-03-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '13',
-          DATE_APPOINTED: new Date('2023-04-01'),
-          STATUS: '6', // standing, terminated
-          EFFECTIVE_DATE: new Date('2023-04-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12',
-          DATE_APPOINTED: new Date('2023-05-01'),
-          STATUS: '7', // standing, deceased
-          EFFECTIVE_DATE: new Date('2023-05-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-06-01'),
-          STATUS: '8', // case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-06-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-07-01'),
-          STATUS: '9', // case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-07-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-08-01'),
-          STATUS: '10', // case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-08-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '11',
-          DATE_APPOINTED: new Date('2023-09-01'),
-          STATUS: '12', // case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-09-01'),
-        },
-      );
-    }
-
-    // Trustee 5: CBC chapter variants (12CBC and 13CBC)
-    if (trusteeId === 5) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-01-01'),
-          STATUS: '1', // CBC: case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-01-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-02-01'),
-          STATUS: '2', // CBC: case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-02-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-03-01'),
-          STATUS: '3', // CBC: case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-03-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-04-01'),
-          STATUS: '5', // CBC: case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-04-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '12CBC',
-          DATE_APPOINTED: new Date('2023-05-01'),
-          STATUS: '7', // CBC: case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-05-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '13CBC',
-          DATE_APPOINTED: new Date('2023-06-01'),
-          STATUS: '1', // CBC: case-by-case, active
-          EFFECTIVE_DATE: new Date('2023-06-01'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '13CBC',
-          DATE_APPOINTED: new Date('2023-07-01'),
-          STATUS: '3', // CBC: case-by-case, inactive
-          EFFECTIVE_DATE: new Date('2023-07-01'),
-        },
-      );
-    }
-
-    // Trustee 6: Only inactive appointments — excluded from active filter
-    if (trusteeId === 6) {
-      mockAppointments.push({
-        TRU_ID: trusteeId,
-        DISTRICT: '02',
-        CHAPTER: '7',
-        DATE_APPOINTED: new Date('2020-01-01'),
-        STATUS: 'NP', // off-panel, resigned — not in ACTIVE_STATUS_CODES
-        EFFECTIVE_DATE: new Date('2020-01-01'),
-      });
-    }
-
-    // Default: Return basic appointments for any other trustee ID
-    if (mockAppointments.length === 0) {
-      mockAppointments.push(
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '7',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          STATUS: 'PA', // panel, active
-          EFFECTIVE_DATE: new Date('2023-01-15'),
-        },
-        {
-          TRU_ID: trusteeId,
-          DISTRICT: '02',
-          CHAPTER: '13',
-          DATE_APPOINTED: new Date('2023-06-01'),
-          STATUS: 'S', // standing, active
-          EFFECTIVE_DATE: new Date('2023-06-01'),
-        },
-      );
-    }
+    const mockAppointments = mockAppointmentRows(trusteeId);
 
     // Mock gateway returns raw ATS appointments as cleanAppointments
     // In reality, these would be cleansed TrusteeAppointmentInput[], but for mock purposes
@@ -378,6 +423,29 @@ export class MockAtsGateway implements AtsGateway {
         skipped: 0,
       },
     };
+  }
+
+  async getTrusteeAppointmentsByIds(
+    context: ApplicationContext,
+    trusteeIds: number[],
+  ): Promise<Map<number, TrusteeAppointmentsResult>> {
+    // Unlike getTrusteeAppointments, cleansed the way the real gateway cleanses them, so a local
+    // trustee data report compares real CAMS appointment values.
+    return new Map(
+      trusteeIds.map((id) => [
+        id,
+        cleanseAppointments(
+          context,
+          MODULE_NAME,
+          id,
+          [
+            ...MOCK_REPORT_APPOINTMENT_ROWS.filter((row) => row.TRU_ID === id),
+            ...mockAppointmentRows(id),
+          ],
+          new Map(),
+        ),
+      ]),
+    );
   }
 
   async getTrusteesByIds(_context: ApplicationContext, ids: number[]): Promise<AtsTrusteeRecord[]> {

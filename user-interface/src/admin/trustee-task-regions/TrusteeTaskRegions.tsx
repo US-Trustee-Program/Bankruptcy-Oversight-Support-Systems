@@ -18,6 +18,9 @@ import { ChangeToDxtrConfirmModal, ChangeToDxtrConfirmModalRef } from './ChangeT
 
 const CONFIRM_MODAL_ID = 'change-to-dxtr-confirm-modal';
 
+/** Must match the selector scope in TrusteeTaskRegions.scss. */
+export const TABLE_ID = 'trustee-task-regions-table';
+
 /** Displays a zero-padded region id ("02") as a plain number ("2"), matching the admin page design. */
 function formatRegionId(regionId: string): string {
   return regionId.replace(/^0+(?=\d)/, '');
@@ -92,7 +95,7 @@ export function TrusteeTaskRegions() {
       )}
       {isLoaded && !loadError && (
         <div className="trustee-task-regions-table-container">
-          <CamsTable aria-label="Trustee Task Regions" data-testid="trustee-task-regions-table">
+          <CamsTable id={TABLE_ID} aria-label="Trustee Task Regions" data-testid={TABLE_ID}>
             <CamsTableHeader>
               <CamsTableHeaderCell>Region</CamsTableHeaderCell>
               <CamsTableHeaderCell>Source</CamsTableHeaderCell>

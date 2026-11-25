@@ -331,7 +331,7 @@ describe('summarize', () => {
       },
     ];
 
-    expect(summarize(differences, 10)).toEqual({
+    expect(summarize(differences, 10, 0)).toEqual({
       trusteesCompared: 10,
       todOnly: 2,
       todOnlyStatusMissing: 1,
@@ -345,6 +345,48 @@ describe('summarize', () => {
         phone: 1,
         email: 2,
       },
+      appointmentsTodOnly: 0,
+      appointmentsCamsOnly: 0,
+      appointmentFieldDifferences: 0,
+      appointmentFieldDifferencesByField: { status: 0, appointedDate: 0, effectiveDate: 0 },
+      appointmentsDivisionsNarrowed: 0,
+      todAppointmentsNotTranslated: 0,
     });
+  });
+
+  test('should count appointment differences by kind and field, narrowed divisions apart from differences, and TOD appointments not translated', () => {
+    const appointment = {
+      courtId: '0752',
+      chapter: '7',
+      appointmentType: 'panel',
+    } as const;
+    const row = { camsTrusteeId: 't1', todIds: ['1'], trusteeName: 'A', appointment };
+    const differences: TrusteeDataDifference[] = [
+      { kind: 'appointment-tod-only', ...row },
+      { kind: 'appointment-tod-only', ...row },
+      { kind: 'appointment-cams-only', ...row },
+      { kind: 'appointment-field', ...row, field: 'status', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-field', ...row, field: 'effectiveDate', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-field', ...row, field: 'status', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-field', ...row, field: 'appointedDate', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-field', ...row, field: 'effectiveDate', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-field', ...row, field: 'effectiveDate', camsValue: 'a', todValue: 'b' },
+      { kind: 'appointment-divisions-narrowed', ...row, camsValue: '081', todValue: '081, 082' },
+    ];
+
+    expect(summarize(differences, 1, 4)).toEqual(
+      expect.objectContaining({
+        trusteesCompared: 1,
+        todOnly: 0,
+        camsOnly: 0,
+        fieldDifferences: 0,
+        appointmentsTodOnly: 2,
+        appointmentsCamsOnly: 1,
+        appointmentFieldDifferences: 6,
+        appointmentFieldDifferencesByField: { status: 2, appointedDate: 1, effectiveDate: 3 },
+        appointmentsDivisionsNarrowed: 1,
+        todAppointmentsNotTranslated: 4,
+      }),
+    );
   });
 });

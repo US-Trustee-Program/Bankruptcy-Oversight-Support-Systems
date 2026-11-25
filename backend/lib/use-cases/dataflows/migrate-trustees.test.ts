@@ -7,12 +7,12 @@ import {
   getTotalTrusteeCount,
   deleteAllTrusteesAndAppointments,
   mergeTrusteeRecords,
-  buildDistrictToDivisionsMap,
   readAllTrusteeProfessionalRecords,
   backfillProfessionalIdsPage,
   selectPrimaryAddress,
   deduplicateTrusteesInPage,
 } from './migrate-trustees';
+import { buildDistrictToDivisionsMap } from './trustee-load-rules';
 import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
   getOrCreateMigrationState,

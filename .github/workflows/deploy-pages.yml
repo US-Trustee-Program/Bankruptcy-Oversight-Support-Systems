@@ -34,6 +34,9 @@ jobs:
     permissions:
       contents: read
       actions: read
+    outputs:
+      # The DORA Metrics run whose page was published; empty when the placeholder was served.
+      dora_run_id: ${{ steps.fetch.outputs.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,6 +49,7 @@ jobs:
       # in the last 10 runs, a failed download or copy, a page containing HTML) fails the build,
       # so the published site, and its current page, stay as they are.
       - name: Fetch rendered DORA Metrics page
+        id: fetch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -112,6 +116,7 @@ jobs:
               exit 1
             fi
             echo "Using the DORA Metrics page from run ${run_id}."
+            echo "run_id=${run_id}" >> "${GITHUB_OUTPUT}"
             exit 0
           done
 
@@ -127,6 +132,8 @@ jobs:
           path: ./docs
 
   deploy:
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -139,3 +146,85 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # Posts the weekly DORA headline once the page it describes is live. Only for a build triggered by a
+  # DORA Metrics run that published its own page: docs pushes and manual Pages runs never post, and a
+  # build that fell back to an older run's page would post a stale week.
+  post-headline:
+    name: Post DORA headline to Slack
+    needs: [build, deploy]
+    if: >-
+      github.event_name == 'workflow_run' && needs.build.outputs.dora_run_id == format('{0}',
+      github.event.workflow_run.id)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Post headline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ needs.build.outputs.dora_run_id }}
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          set -uo pipefail
+
+          retry() {
+            local attempt out
+            for attempt in 1 2 3; do
+              if out=$("$@"); then
+                printf '%s' "${out}"
+                return 0
+              fi
+              [ "${attempt}" -lt 3 ] && sleep $((attempt * 5))
+            done
+            return 1
+          }
+
+          if [[ ! "${RUN_ID}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Unexpected DORA Metrics run ID: ${RUN_ID}"
+            exit 1
+          fi
+          if [[ ! "${PAGE_URL}" =~ ^https://[^[:space:]\<\>\|]+/$ ]]; then
+            echo "::error::Unexpected Pages URL: ${PAGE_URL}"
+            exit 1
+          fi
+
+          if ! headlines=$(retry gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts?name=dora-slack-headline" \
+              --jq '[.artifacts[] | select(.expired | not)] | length'); then
+            echo "::error::Could not list artifacts for DORA Metrics run ${RUN_ID}."
+            exit 1
+          fi
+          # Runs from before the headline existed have no artifact; nothing to post.
+          if [ "${headlines}" = "0" ]; then
+            echo "::notice::DORA Metrics run ${RUN_ID} has no dora-slack-headline artifact; not posting."
+            exit 0
+          fi
+
+          headline_dir=$(mktemp -d)
+          if ! retry gh run download "${RUN_ID}" --repo "${GITHUB_REPOSITORY}" \
+              --name dora-slack-headline --dir "${headline_dir}"; then
+            echo "::error::Could not download the headline from DORA Metrics run ${RUN_ID}."
+            exit 1
+          fi
+          headline_file="${headline_dir}/dora-slack-headline.txt"
+          if [ ! -s "${headline_file}" ]; then
+            echo "::error::The headline from DORA Metrics run ${RUN_ID} is missing or empty."
+            exit 1
+          fi
+          # The renderer emits only numbers, dates and fixed text. These characters would be Slack
+          # links, mentions or escapes, so their presence means the file is not the renderer's.
+          if grep -q '[<>&@]' "${headline_file}"; then
+            echo "::error::The headline from DORA Metrics run ${RUN_ID} contains Slack markup; not posting."
+            exit 1
+          fi
+
+          payload=$(jq -n --rawfile headline "${headline_file}" \
+            --arg link "<${PAGE_URL}#/operations/dora-metrics|DORA Metrics page>" \
+            '{text: (($headline | rtrimstr("\n")) + "\n" + $link)}')
+          # Bounded so a stalled Slack call can't hold the pages concurrency group. --retry covers only
+          # timeouts, 408, 429 and 5xx, so a post Slack accepted is not sent again.
+          curl --fail-with-body -sS --connect-timeout 10 --max-time 30 --retry 3 \
+            -X POST -H 'Content-type: application/json' \
+            --data "${payload}" "${SLACK_WEBHOOK_URL}"

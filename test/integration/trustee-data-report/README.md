@@ -13,12 +13,12 @@ Manual dev tooling, not run in CI.
 
 ## 1. Containers
 
-| Container                            | Image                                            | Port        | Purpose                                                                |
-| ------------------------------------ | ------------------------------------------------ | ----------- | ---------------------------------------------------------------------- |
-| `cams-mongodb-trustee-data-report`   | `mongo:7.0`                                      | 27017       | Cosmos stand-in: `trustees`, `trustee-data-report`, `runtime-state`    |
-| `cams-sqledge-trustee-data-report`   | `mcr.microsoft.com/azure-sql-edge:latest`        | 1433        | TOD (`ATS_INT`: `TRUSTEES`, `CHAPTER_DETAILS`)                         |
-| `cams-azurite-trustee-data-report`   | `mcr.microsoft.com/azure-storage/azurite:3.21.0` | 10000–10002 | `trustee-data-report-start`, `-page` and `-dlq` queues                 |
-| `cams-dataflows-trustee-data-report` | built from `Dockerfile.dataflows`                | 7072        | The dataflows function app running the real `handleStart`/`handlePage` |
+| Container                            | Image                                            | Port        | Purpose                                                                      |
+| ------------------------------------ | ------------------------------------------------ | ----------- | ---------------------------------------------------------------------------- |
+| `cams-mongodb-trustee-data-report`   | `mongo:7.0`                                      | 27017       | Cosmos stand-in: `trustees`, `trustee-data-report`, `runtime-state`          |
+| `cams-sqledge-trustee-data-report`   | `mcr.microsoft.com/azure-sql-edge:latest`        | 1433        | TOD (`ATS_INT`: `TRUSTEES`, `CHAPTER_DETAILS`) and DXTR offices (`DXTR_INT`) |
+| `cams-azurite-trustee-data-report`   | `mcr.microsoft.com/azure-storage/azurite:3.21.0` | 10000–10002 | `trustee-data-report-start`, `-page` and `-dlq` queues                       |
+| `cams-dataflows-trustee-data-report` | built from `Dockerfile.dataflows`                | 7072        | The dataflows function app running the real `handleStart`/`handlePage`       |
 
 All four run in the Podman pod `cams-trustee-data-report-pod`.
 
@@ -41,7 +41,7 @@ cd test/integration/trustee-data-report
 cp local.settings.integration.json.template local.settings.integration.json
 cp scripts/.env.template scripts/.env
 # The template password is the same in both files. To change it, change MSSQL_PASS in
-# scripts/.env and ATS_MSSQL_PASS in local.settings.integration.json together.
+# scripts/.env and both ATS_MSSQL_PASS and MSSQL_PASS in local.settings.integration.json together.
 
 cd scripts && ./start-services.sh        # builds the dataflows image, starts the pod
 
@@ -67,10 +67,13 @@ clean        Remove report results, fixture trustees and the run lock; clear the
 
 ## 5. Scenarios
 
-TOD rows are in `seed/01-seed-trustees.sql` and `seed/02-seed-chapter-details.sql`; CAMS trustees
-and expected results in `scripts/trustee-data-report-fixtures.ts`. The report reads TOD 100 trustees
-per page; 100 filler rows (`seed/03-seed-filler.sql`) push TOD IDs 500–505 onto page 2 so S26, S27
-and S42 are merged across pages, and S46 and S47 write their results from page 2.
+TOD rows are in `seed/01-seed-trustees.sql` and `seed/02-seed-chapter-details.sql`, and for the
+appointment scenarios (S48–S57) in `seed/05-seed-appointments.sql`; CAMS trustees, their
+appointments and expected results in `scripts/trustee-data-report-fixtures.ts`. Appointment
+scenarios are in the Southern District of New York (0208), which `DXTR_INT` gives divisions 081
+and 087. The report reads TOD 100 trustees per page; 100 filler rows (`seed/03-seed-filler.sql`)
+push TOD IDs 500–505 onto page 2 so S26, S27 and S42 are merged across pages, and S46 and S47 write
+their results from page 2.
 
 Each scenario asserts the exact set of difference rows the run records for it: none, or the listed
 ones with their values.
@@ -124,6 +127,17 @@ ones with their values.
 | S32 | Filler TOD trustees, and anything outside the scenarios                           | Nothing reported                                                            | Pass            |
 | S33 | The whole run                                                                     | Compared and CAMS-only counts add up to the scenarios                       | Pass            |
 | S45 | The whole run                                                                     | TOD-only and field-difference counts add up to the scenarios                | Known gap (S10) |
+| S48 | Appointment matches TOD in district, chapter, type, status and dates              | Nothing reported                                                            | Pass            |
+| S49 | TOD has chapter 13 standing; CAMS does not                                        | Appointment in TOD only                                                     | Pass            |
+| S50 | CAMS has chapter 13 standing; TOD does not                                        | Appointment in CAMS only                                                    | Pass            |
+| S51 | Chapter 7 panel in TOD is off panel in CAMS                                       | One appointment in TOD only and one in CAMS only                            | Pass            |
+| S52 | Appointment status differs                                                        | One `status` difference with both values                                    | Pass            |
+| S53 | Appointed date differs                                                            | One `appointedDate` difference                                              | Pass            |
+| S54 | Status effective date differs                                                     | One `effectiveDate` difference                                              | Pass            |
+| S55 | CAMS appointment covers only division 081 of 081 and 087                          | Noted as divisions narrowed; not a difference                               | Pass            |
+| S56 | One TOD row has a district the load cannot map                                    | Not listed; counted as not translated                                       | Pass            |
+| S57 | Merged from two TOD records; both have chapter 7 panel                            | The first record's (in `truIds` order) is compared; nothing reported        | Pass            |
+| S58 | The whole run                                                                     | Appointment, narrowed-division and not-translated counts add up             | Pass            |
 | L1  | A run started through the start use case                                          | Completes on real infrastructure                                            | Pass            |
 | L2  | A run completes                                                                   | The lock is released                                                        | Pass            |
 | L3  | A second start while a run is active                                              | Refused with 409                                                            | Pass            |
@@ -153,6 +167,23 @@ ones with their values.
 - **S07 and S29 (product decisions, passing).** Confirmed by the product owner (2026-11-18): a
   linked TOD record with no name (3 in ATS_SUB) is compared as "Unknown" and flagged with a `name`
   difference, and a CAMS-native trustee with no TOD IDs is reported as CAMS only.
+- **Appointments are rebuilt with today's rules (caveat).** The report rebuilds the appointments the
+  load would create today: today's cleansing rules, the overrides file and DXTR's current divisions.
+  If any of these changed after a trustee was loaded, the report shows differences no CAMS edit
+  caused. For example, CAMS-772 made rows with an `ARCHIVE_DATE` inactive, and a district that gains
+  a division makes every loaded appointment there read as narrowed. The load does not record which
+  rules it used, so the report cannot tell these apart.
+- **Tied appointed dates (caveat).** The load keeps the first TOD row for each district, chapter and
+  type, newest `APPOINTED_DATE` first. Both reads now break ties on every column they read, so the
+  order is the same in each. Trustees loaded before that tiebreaker kept whatever order SQL Server
+  returned, so tied rows can still show a status or effective-date difference.
+- **Several CAMS appointments with one key.** CAMS merges an appointment into an existing one only
+  when both are active, so an ended appointment and a later one can share a district, chapter and
+  type. The report compares the active one with TOD (or else the most recently appointed) and lists
+  the others as in CAMS only.
+- **Overrides are required.** The load carries on without the TOD overrides file if it cannot be
+  read. The report fails the page instead, because without the overrides the rows the load skipped
+  or remapped would show as differences.
 
 The first run also caught a bug, since fixed: L5 showed "See the dataflows app's logs" instead of
 "Could not read from TOD", because TOD's SQL client raises errors under the module
@@ -178,6 +209,10 @@ scenario for any pattern the fixtures do not cover. Both were checked against th
 - Indexes are created in `seed-cosmos` to match `trusteeDataReportCollection` and the trustees
   single-field `legacy.truIds` index in
   `ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections.bicep`. Change both together.
-- The TOD DDL holds only the columns the report reads (`TRUSTEE_COLUMNS` in `ats.gateway.ts`).
+- The TOD DDL holds only the columns the report reads (`TRUSTEE_COLUMNS` and `APPOINTMENT_COLUMNS`
+  in `ats.gateway.ts`).
+- The Slice 1 `CHAPTER_DETAILS` rows have no district, so each one of a compared trustee counts as
+  not translated. `UNTRANSLATED_SLICE_1_ROWS` in the fixtures holds that count; change it when those
+  rows change.
 - Fixtures are synthetic: invented names, `555-01xx` phones, `example.com`/`.org` emails. Do not add
   rows copied from TOD or CAMS.

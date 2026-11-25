@@ -199,6 +199,12 @@ describe('TrusteeDataReportMongoRepository', () => {
         phone: 2,
         email: 0,
       },
+      appointmentsTodOnly: 0,
+      appointmentsCamsOnly: 0,
+      appointmentFieldDifferences: 0,
+      appointmentFieldDifferencesByField: { status: 0, appointedDate: 0, effectiveDate: 0 },
+      appointmentsDivisionsNarrowed: 0,
+      todAppointmentsNotTranslated: 0,
     };
 
     test('should delete the page before writing its rows in batches of 100 and its counts', async () => {

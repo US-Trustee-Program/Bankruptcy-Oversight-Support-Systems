@@ -1,13 +1,15 @@
 import { Address } from '@common/cams/contact';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import {
+  TRUSTEE_APPOINTMENT_FIELDS,
+  TrusteeAppointmentField,
   TrusteeDataDifference,
   TrusteeDataReportSummary,
   TrusteeProfileField,
 } from '@common/cams/trustee-data-report';
 import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
 import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
-import { selectPrimaryRecord } from '../dataflows/migrate-trustees';
+import { selectPrimaryRecord } from '../dataflows/trustee-load-rules';
 
 const PROFILE_FIELDS: TrusteeProfileField[] = [
   'name',
@@ -119,9 +121,14 @@ export function findCamsOnly(
     }));
 }
 
+/**
+ * @param todAppointmentsNotTranslated - TOD appointments the load skipped or could not translate.
+ * They are not compared, so they have no difference rows.
+ */
 export function summarize(
   differences: TrusteeDataDifference[],
   trusteesCompared: number,
+  todAppointmentsNotTranslated: number,
 ): TrusteeDataReportSummary {
   const fieldDifferencesByField = Object.fromEntries(
     PROFILE_FIELDS.map((field) => [field, 0]),
@@ -133,6 +140,14 @@ export function summarize(
     camsOnly: 0,
     fieldDifferences: 0,
     fieldDifferencesByField,
+    appointmentsTodOnly: 0,
+    appointmentsCamsOnly: 0,
+    appointmentFieldDifferences: 0,
+    appointmentFieldDifferencesByField: Object.fromEntries(
+      TRUSTEE_APPOINTMENT_FIELDS.map((field) => [field, 0]),
+    ) as Record<TrusteeAppointmentField, number>,
+    appointmentsDivisionsNarrowed: 0,
+    todAppointmentsNotTranslated,
   };
 
   for (const difference of differences) {
@@ -143,7 +158,16 @@ export function summarize(
     if (difference.kind === 'cams-only') summary.camsOnly++;
     if (difference.kind === 'field' && difference.field) {
       summary.fieldDifferences++;
-      fieldDifferencesByField[difference.field]++;
+      fieldDifferencesByField[difference.field as TrusteeProfileField]++;
+    }
+    if (difference.kind === 'appointment-tod-only') summary.appointmentsTodOnly++;
+    if (difference.kind === 'appointment-cams-only') summary.appointmentsCamsOnly++;
+    if (difference.kind === 'appointment-field' && difference.field) {
+      summary.appointmentFieldDifferences++;
+      summary.appointmentFieldDifferencesByField[difference.field as TrusteeAppointmentField]++;
+    }
+    if (difference.kind === 'appointment-divisions-narrowed') {
+      summary.appointmentsDivisionsNarrowed++;
     }
   }
 

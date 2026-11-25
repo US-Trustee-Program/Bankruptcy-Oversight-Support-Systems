@@ -25,6 +25,12 @@ const SUMMARY: TrusteeDataReportSummary = {
     phone: 6,
     email: 8,
   },
+  appointmentsTodOnly: 9,
+  appointmentsCamsOnly: 12,
+  appointmentFieldDifferences: 47,
+  appointmentFieldDifferencesByField: { status: 14, appointedDate: 16, effectiveDate: 17 },
+  appointmentsDivisionsNarrowed: 13,
+  todAppointmentsNotTranslated: 10,
 };
 
 function run(override: Partial<TrusteeDataReportRun>): TrusteeDataReportRun {
@@ -103,10 +109,24 @@ describe('TrusteeDataReport', () => {
       'field-internalAddress': '5',
       'field-phone': '6',
       'field-email': '8',
+      'appointments-tod-only': '9',
+      'appointments-cams-only': '12',
+      'appointment-field-differences': '47',
+      'appointment-field-status': '14',
+      'appointment-field-appointedDate': '16',
+      'appointment-field-effectiveDate': '17',
+      'appointments-divisions-narrowed': '13',
+      'tod-appointments-not-translated': '10',
     };
     Object.entries(counts).forEach(([key, value]) =>
       expect(screen.getByTestId(`trustee-data-report-count-${key}`).textContent).toBe(value),
     );
+    // In table order: a breakdown row sits right under the count it breaks down.
+    expect(
+      screen
+        .getAllByTestId(/^trustee-data-report-count-/)
+        .map((cell) => cell.dataset.testid?.replace('trustee-data-report-count-', '')),
+    ).toEqual(Object.keys(counts));
     // Per-field rows say which count they break down, not just "Phone".
     expect(
       screen.getByTestId('trustee-data-report-count-field-phone').closest('tr'),
@@ -114,6 +134,66 @@ describe('TrusteeDataReport', () => {
     expect(
       screen.getByTestId('trustee-data-report-count-tod-only-status-missing').closest('tr'),
     ).toHaveTextContent('In TOD only: Status missing, needs review');
+  });
+
+  test('should label each appointment count, saying which count an indented row breaks down', async () => {
+    mockGet({ latestCompletedRun: COMPLETED });
+
+    await renderLoaded();
+
+    const rowHeader = (key: string) =>
+      screen.getByTestId(`trustee-data-report-count-${key}`).closest('tr')?.querySelector('th');
+    const labels = {
+      'appointments-tod-only': 'Appointments in TOD only',
+      'appointments-cams-only': 'Appointments in CAMS only',
+      'appointment-field-differences': 'Appointment field differences',
+      'appointment-field-status': 'Appointment field differences: Status',
+      'appointment-field-appointedDate': 'Appointment field differences: Appointed date',
+      'appointment-field-effectiveDate': 'Appointment field differences: Status effective date',
+      'appointments-divisions-narrowed': 'Divisions narrowed in CAMS',
+      'tod-appointments-not-translated': 'TOD appointments not translated',
+    };
+    Object.entries(labels).forEach(([key, label]) =>
+      expect(rowHeader(key)?.textContent).toBe(label),
+    );
+    // The parent is for screen readers only; sighted users see the indent.
+    const status = rowHeader('appointment-field-status');
+    expect(status?.querySelector('.usa-sr-only')?.textContent).toBe(
+      'Appointment field differences:',
+    );
+    expect(status).toHaveClass('padding-left-4');
+  });
+
+  test('should show "Not recorded" for every appointment count of a run from before appointments were compared', async () => {
+    const {
+      appointmentsTodOnly: _a,
+      appointmentsCamsOnly: _b,
+      appointmentFieldDifferences: _c,
+      appointmentFieldDifferencesByField: _d,
+      appointmentsDivisionsNarrowed: _e,
+      todAppointmentsNotTranslated: _f,
+      ...profileOnlySummary
+    } = SUMMARY;
+    mockGet({ latestCompletedRun: { ...COMPLETED, summary: profileOnlySummary } });
+
+    await renderLoaded();
+
+    [
+      'appointments-tod-only',
+      'appointments-cams-only',
+      'appointment-field-differences',
+      'appointment-field-status',
+      'appointment-field-appointedDate',
+      'appointment-field-effectiveDate',
+      'appointments-divisions-narrowed',
+      'tod-appointments-not-translated',
+    ].forEach((key) =>
+      expect(screen.getByTestId(`trustee-data-report-count-${key}`).textContent).toBe(
+        'Not recorded',
+      ),
+    );
+    expect(screen.getByTestId('trustee-data-report-count-field-phone').textContent).toBe('6');
+    expectStartBlocked(false);
   });
 
   test('should show "Not recorded" for a count the latest run lacks, and still allow a start', async () => {

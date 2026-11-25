@@ -288,6 +288,12 @@ site is rebuilt after each weekly run on `main` (Tuesday 01:00 UTC) and shows th
 newest scheduled or manually dispatched run that rendered one, so a failed publish job does not hold
 it back.
 
+Once the page from a run is live, the Pages build posts that week's four headline values and a link
+to the page to the team Slack channel (`SLACK_WEBHOOK_URL`, the channel workflow failure alerts go
+to). Docs pushes and manual Pages runs don't post, nor does a build that fell back to an older run's
+page. A failed Pages build, including a failed post, alerts that channel and tags the DORA Metrics
+owner.
+
 ### One-time setup
 
 In this order:

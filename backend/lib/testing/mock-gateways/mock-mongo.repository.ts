@@ -56,9 +56,17 @@ import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
   TrusteeDataReportSummary,
+  StoredTrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
-import { MOCK_TRUSTEES_LINKED_TO_MOCK_TOD } from './mock-trustee-data-report.fixtures';
-import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
+import {
+  MOCK_CAMS_APPOINTMENTS_FOR_MOCK_TOD,
+  MOCK_TRUSTEES_LINKED_TO_MOCK_TOD,
+} from './mock-trustee-data-report.fixtures';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  TrusteeCaseListItem,
+} from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -674,8 +682,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getAppointmentsByTrusteeIds(_ignore: any): Promise<any[]> {
-    throw new Error('Method not implemented.');
+  /** The appointments of the trustee data report's mock CAMS trustees. */
+  async getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]> {
+    return MOCK_CAMS_APPOINTMENTS_FOR_MOCK_TOD.filter((appointment) =>
+      trusteeIds.includes(appointment.trusteeId),
+    );
   }
 
   getTrusteeIdsByStatuses(_statuses: AppointmentStatus[]): Promise<string[]> {
@@ -1059,7 +1070,7 @@ export class MockMongoRepository
     ];
   }
 
-  async readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]> {
+  async readPageSummaries(runId: string): Promise<StoredTrusteeDataReportSummary[]> {
     return MockMongoRepository.trusteeDataReportPages
       .filter((page) => page.runId === runId)
       .map((page) => page.summary);

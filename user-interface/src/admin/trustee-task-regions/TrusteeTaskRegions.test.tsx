@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import { TrusteeTaskRegions } from './TrusteeTaskRegions';
+import { TrusteeTaskRegions, TABLE_ID } from './TrusteeTaskRegions';
 import Api2 from '@/lib/models/api2';
 import { RegionCaseAppointmentSource } from '@common/cams/trustee-appointments';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -26,7 +26,6 @@ function renderComponent() {
 describe('TrusteeTaskRegions component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getCaseAppointmentSources').mockResolvedValue({ data: mockSources });
   });
 
@@ -38,7 +37,17 @@ describe('TrusteeTaskRegions component', () => {
   test('should render the regions table after loading', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-task-regions-table')).toBeInTheDocument();
+      expect(screen.getByTestId(TABLE_ID)).toBeInTheDocument();
+    });
+  });
+
+  // Wiring check, not a visual one: jsdom doesn't apply CSS, so this only guards against the id
+  // drifting out of sync between here and TrusteeTaskRegions.scss's #trustee-task-regions-table
+  // column-width rule, not against the column widths themselves regressing.
+  test('table keeps the id its column-width SCSS rule is scoped to', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(document.getElementById(TABLE_ID)).toBeInTheDocument();
     });
   });
 
@@ -88,7 +97,7 @@ describe('TrusteeTaskRegions component', () => {
         'Failed to load region sources. network error',
       );
     });
-    expect(screen.queryByTestId('trustee-task-regions-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TABLE_ID)).not.toBeInTheDocument();
   });
 
   describe('switching a region to DXTR', () => {

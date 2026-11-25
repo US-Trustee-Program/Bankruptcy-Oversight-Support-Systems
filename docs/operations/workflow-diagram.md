@@ -123,6 +123,7 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
+    deploy_pages_yml_post_headline["Post DORA headline to Slack"]
     launchdarkly_code_references_yml["LaunchDarkly Code References"]
     launchdarkly_code_references_yml_find_code_references["find-code-references"]
     continuous_deployment_yml["Continuous Deployment"]
@@ -198,6 +199,7 @@ flowchart LR
     trigger_push --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
+    deploy_pages_yml --> deploy_pages_yml_post_headline
     trigger_push --> launchdarkly_code_references_yml
     launchdarkly_code_references_yml --> launchdarkly_code_references_yml_find_code_references
     trigger_push --> continuous_deployment_yml
@@ -284,6 +286,7 @@ flowchart LR
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
+    class deploy_pages_yml_post_headline job
     class launchdarkly_code_references_yml mainWorkflow
     class launchdarkly_code_references_yml_find_code_references job
     class continuous_deployment_yml mainWorkflow
@@ -1149,10 +1152,12 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
+    deploy_pages_yml_post_headline["Post DORA headline to Slack"]
 
     trigger_workflow_dispatch --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
+    deploy_pages_yml --> deploy_pages_yml_post_headline
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1163,6 +1168,7 @@ flowchart LR
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
+    class deploy_pages_yml_post_headline job
 ```
 
 #### Deploy Security Scan Storage
@@ -1400,12 +1406,14 @@ flowchart LR
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
+    deploy_pages_yml_post_headline["Post DORA headline to Slack"]
     slack_notification_yml["slack-notification"]
     slack_notification_yml_notify["notify"]
 
     trigger_workflow_run --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
+    deploy_pages_yml --> deploy_pages_yml_post_headline
     trigger_workflow_run --> slack_notification_yml
     slack_notification_yml --> slack_notification_yml_notify
 
@@ -1418,6 +1426,7 @@ flowchart LR
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
+    class deploy_pages_yml_post_headline job
     class slack_notification_yml mainWorkflow
     class slack_notification_yml_notify job
 ```
@@ -1550,7 +1559,7 @@ flowchart LR
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
   - Triggers: push, workflow_run, workflow_dispatch
-  - Jobs: 2
+  - Jobs: 3
 - **Stand Alone E2E Test Runs** (`e2e-test.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 2

@@ -108,7 +108,7 @@ Feature: DORA Metrics Capture
     When a team member opens the DORA Metrics page
     Then they see the values from the most recent run that rendered the page, with its generation date
 
-  # SLICE 6: Weekly Slack Headline (not yet built)
+  # SLICE 6: Weekly Slack Headline
   # Dependencies: Slice 5
   # User Value: The team is told each week's numbers without having to go look
   Scenario: Team receives the weekly headline in Slack
