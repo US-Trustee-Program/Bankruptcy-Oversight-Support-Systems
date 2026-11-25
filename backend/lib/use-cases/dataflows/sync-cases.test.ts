@@ -70,11 +70,36 @@ describe('getCaseIds tests', () => {
       lastTransactionsSyncDate: latestTransactionsSyncDate,
     };
 
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, lastSyncDate);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, lastSyncDate, undefined);
     expect(actual).toEqual(expected);
   });
 
-  test('should pass the end date to the gateway so the query is bounded above', async () => {
+  test('should forward the end date alongside the sync dates read from runtime state', async () => {
+    const syncState: CasesSyncState = {
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: '2025-01-01',
+      lastTransactionsSyncDate: '2025-01-02',
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
+    const getUpdatedSpy = vi
+      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
+      .mockResolvedValue({
+        caseIds: [],
+        latestCasesSyncDate: '2025-01-01',
+        latestTransactionsSyncDate: '2025-01-02',
+      });
+
+    await SyncCases.getCaseIds(context, undefined, '2025-02-01T00:00:00.000Z');
+
+    expect(getUpdatedSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2025-01-01',
+      '2025-01-02',
+      '2025-02-01T00:00:00.000Z',
+    );
+  });
+
+  test('should forward the end date to the gateway', async () => {
     const getUpdatedSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
       .mockResolvedValue({
@@ -146,6 +171,7 @@ describe('getCaseIds tests', () => {
       expect.anything(),
       legacyLastSyncDate,
       legacyLastSyncDate,
+      undefined,
     );
 
     const expected = {

@@ -47,7 +47,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string, en
         context,
         syncState.lastCasesSyncDate,
         syncState.lastTransactionsSyncDate,
-        ...(endDate ? [endDate] : []),
+        endDate,
       );
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {

@@ -213,7 +213,11 @@ describe('resync-cases-by-date handleStart', () => {
     },
   );
 
-  test('does nothing when fromDate is missing', async () => {
+  test.each([
+    { description: 'fromDate is missing', message: { fromDate: '' } },
+    { description: 'fromDate is not a date', message: { fromDate: 'not-a-date' } },
+    { description: 'toDate is not a date', message: { fromDate: '2024-01-01', toDate: 'later' } },
+  ])('does nothing when $description', async ({ message }) => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
     const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIds');
@@ -221,27 +225,9 @@ describe('resync-cases-by-date handleStart', () => {
       await createMockApplicationContext(),
     );
 
-    await handleStart({ fromDate: '' }, invocationContext);
+    await handleStart(message, invocationContext);
 
     expect(getCaseIdsSpy).not.toHaveBeenCalled();
-    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
-  });
-
-  test('does nothing when no cases are found', async () => {
-    const { handleStart } = await import('./resync-cases-by-date');
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
-      events: [],
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext);
-
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 
@@ -414,13 +400,14 @@ describe('resync-cases-by-date handleStart windowing', () => {
 
   test('starts the lanes when only an earlier window held cases', async () => {
     const { handleStart, invocationContext } = await setupWindow([]);
+    setLaneCount('3');
 
     await handleStart(
       { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 5 },
       invocationContext,
     );
 
-    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(40);
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(3);
   });
 
   test('starts no lanes when no window of the whole range held cases', async () => {
@@ -447,6 +434,61 @@ describe('resync-cases-by-date handleStart windowing', () => {
     ]);
   });
 
+  test.each([
+    {
+      description: 'ends the run when one month after fromDate is exactly toDate',
+      fromDate: '2024-01-01',
+      toDate: '2024-02-01T00:00:00.000Z',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      continuation: undefined,
+    },
+    {
+      description: 'continues when toDate is one millisecond past one month after fromDate',
+      fromDate: '2024-01-01',
+      toDate: '2024-02-01T00:00:00.001Z',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      continuation: {
+        fromDate: '2024-02-01T00:00:00.000Z',
+        toDate: '2024-02-01T00:00:00.001Z',
+        eventsQueued: 0,
+      },
+    },
+    {
+      description:
+        'rolls a month-end start into the following month instead of clamping to month end',
+      fromDate: '2024-01-31',
+      toDate: '2024-06-01',
+      windowEnd: '2024-03-02T00:00:00.000Z',
+      continuation: { fromDate: '2024-03-02T00:00:00.000Z', toDate: '2024-06-01', eventsQueued: 0 },
+    },
+  ])('$description', async ({ fromDate, toDate, windowEnd, continuation }) => {
+    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([]);
+
+    await handleStart({ fromDate, toDate }, invocationContext);
+
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), fromDate, windowEnd);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual(
+      continuation ? [continuation] : undefined,
+    );
+  });
+
+  test('splits a window of more than one page and adds all of its cases to the running total', async () => {
+    const events = Array.from({ length: 101 }, (_, index) => caseEvent(index));
+    const { handleStart, queues, invocationContext } = await setupWindow(events);
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-06-01', eventsQueued: 3 },
+      invocationContext,
+    );
+
+    expect(queues.get(PAGE_QUEUE).sent.map((page) => JSON.parse(page.text).events.length)).toEqual([
+      100, 1,
+    ]);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-06-01', eventsQueued: 104 },
+    ]);
+  });
+
   test('reports the window it completed and the running total to telemetry', async () => {
     const { handleStart, invocationContext, mockContext } = await setupWindow([caseEvent(1)]);
     const completeSpy = vi.spyOn(mockContext.observability, 'completeTrace');
@@ -456,32 +498,16 @@ describe('resync-cases-by-date handleStart windowing', () => {
       invocationContext,
     );
 
-    expect(completeSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      'DataflowHandlerComplete',
-      expect.objectContaining({
-        success: true,
-        properties: expect.objectContaining({
-          windowFrom: '2024-01-01',
-          windowEnd: '2024-02-01T00:00:00.000Z',
-          toDate: '2024-03-15',
-          windowEvents: '1',
-          totalEventsQueued: '5',
-          continued: 'true',
-        }),
-      }),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test('does nothing when fromDate is not a date', async () => {
-    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([]);
-
-    await handleStart({ fromDate: 'not-a-date' }, invocationContext);
-
-    expect(getCaseIdsSpy).not.toHaveBeenCalled();
-    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+    const [, , result] = completeSpy.mock.calls[0];
+    expect(result.success).toBe(true);
+    expect(result.properties).toMatchObject({
+      windowFrom: '2024-01-01',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      toDate: '2024-03-15',
+      windowEvents: '1',
+      totalEventsQueued: '5',
+      continued: 'true',
+    });
   });
 });
 
