@@ -3,11 +3,19 @@ import { readFile } from 'node:fs/promises';
 export type CsvRow = Record<string, string>;
 
 // For the by-period CSVs written by writeCsv: dates and numbers only, so no quoted fields.
-export function parseCsv(text: string, columns: readonly string[], source: string): CsvRow[] {
+// olderColumns is the header a file written before the current columns would have; its rows are keyed
+// by those older columns.
+export function parseCsv(
+  text: string,
+  currentColumns: readonly string[],
+  source: string,
+  olderColumns?: readonly string[],
+): CsvRow[] {
   const lines = text.split(/\r?\n/).filter((line) => line !== '');
   const header = lines[0] ?? '';
-  const expectedHeader = columns.join(',');
-  if (header !== expectedHeader) {
+  const expectedHeader = currentColumns.join(',');
+  const columns = olderColumns && header === olderColumns.join(',') ? olderColumns : currentColumns;
+  if (header !== columns.join(',')) {
     throw new Error(`${source}: expected header "${expectedHeader}" but found "${header}"`);
   }
 
@@ -22,7 +30,11 @@ export function parseCsv(text: string, columns: readonly string[], source: strin
   });
 }
 
-export async function readCsv(filePath: string, columns: readonly string[]): Promise<CsvRow[]> {
+export async function readCsv(
+  filePath: string,
+  columns: readonly string[],
+  olderColumns?: readonly string[],
+): Promise<CsvRow[]> {
   let text: string;
   try {
     text = await readFile(filePath, 'utf8');
@@ -32,5 +44,5 @@ export async function readCsv(filePath: string, columns: readonly string[]): Pro
     }
     throw error;
   }
-  return parseCsv(text, columns, filePath);
+  return parseCsv(text, columns, filePath, olderColumns);
 }

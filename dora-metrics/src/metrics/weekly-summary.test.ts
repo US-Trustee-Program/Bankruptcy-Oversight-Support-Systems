@@ -230,6 +230,15 @@ describe('summarizeSettledWeeks', () => {
     expect([summary.restoreTime, summary.openIncidents]).toEqual([null, 2]);
   });
 
+  test('reports the open incident count as unknown for an mttr row stored before it had that column', () => {
+    const { openIncidentCount: _, ...olderRow } = mttrRow(WEEK_2, 0, '0.00', '0.00');
+    const reports = reportsFor(WEEK_2, { mttr: [olderRow] });
+
+    const [summary] = summarizeSettledWeeks(reports, GENERATED_AT);
+
+    expect([summary.restoreTime, summary.openIncidents]).toEqual([null, null]);
+  });
+
   test('throws naming the report when it has no week ending a week or more before the generation time', () => {
     const reports = reportsFor(WEEK_2, { mttr: [mttrRow(WEEK_3, 0, '0.00', '0.00')] });
 

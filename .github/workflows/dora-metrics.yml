@@ -72,10 +72,82 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  # Downloads every stored run's four by-period CSVs for the docs page's long-term trend. Reads with
+  # the publish job's identity, so it shares that job's environment and federated credential. The
+  # environment allows main only, so off main the job is skipped and the page has no long-term trend.
+  history:
+    name: Download stored runs
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dora-metrics
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch storage account name from Key Vault
+        run: |
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_DORA_METRICS_STORAGE_NAME kv-ustp-cams AZ-DORA-METRICS-STORAGE-NAME
+
+      # Only the by-period CSVs: the detail CSVs hold issue text, and the docs page is public.
+      - name: Download by-period CSVs
+        run: |
+          set -euo pipefail
+          # Created up front so an empty container fails at the upload's if-no-files-found check.
+          mkdir -p history/runs
+          # Same files as BY_PERIOD_REPORTS in dora-metrics/src/metrics/weekly-summary.ts.
+          by_period=(deployment-frequency.csv lead-time-by-period.csv
+            change-failure-rate-by-period.csv mttr-by-period.csv)
+          not_by_period=()
+          for file in "${by_period[@]}"; do
+            az storage blob download-batch \
+              --account-name "${AZ_DORA_METRICS_STORAGE_NAME}" \
+              --auth-mode login \
+              --source dora-metrics \
+              --destination history \
+              --pattern "runs/*/${file}" \
+              --only-show-errors \
+              --output none
+            not_by_period+=(! -name "${file}")
+          done
+
+          unexpected=$(find history -type f "${not_by_period[@]}")
+          if [[ -n "${unexpected}" ]]; then
+            echo "::error::Downloaded files other than the by-period CSVs: ${unexpected}"
+            exit 1
+          fi
+          echo "Downloaded $(find history/runs -mindepth 1 -maxdepth 1 -type d | wc -l) stored runs." \
+            >> "${GITHUB_STEP_SUMMARY}"
+
+      # Must not match dora-metrics-*, or the publish job would upload these back to storage.
+      - name: Upload stored runs artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dora-history
+          path: history/runs/
+          if-no-files-found: error
+          retention-days: 1
+
   docs-page:
     name: Render docs page
-    # Independent of publish: either can fail without blocking the other.
-    needs: [deployment-frequency, lead-time, change-failure-rate, mttr]
+    # Independent of publish: either can fail without blocking the other. On main, a failed history
+    # job fails the run with no page, so Deploy GitHub Pages keeps serving the previous run's page.
+    needs: [deployment-frequency, lead-time, change-failure-rate, mttr, history]
+    if: >-
+      !cancelled() && needs.deployment-frequency.result == 'success' && needs.lead-time.result ==
+      'success' && needs.change-failure-rate.result == 'success' && needs.mttr.result == 'success'
+      && (needs.history.result == 'success' || github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -101,7 +173,22 @@ jobs:
           path: dora-metrics/data
           merge-multiple: true
 
-      - name: Render page
+      # Restores the <run date>-<run id>/ folders the publish job wrote to storage.
+      - name: Download stored runs artifact
+        if: needs.history.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dora-history
+          path: dora-metrics/history
+
+      - name: Render page with long-term trend
+        if: needs.history.result == 'success'
+        run: npm run report:docs-page --workspace=dora-metrics
+        env:
+          DORA_HISTORY_DIR: history
+
+      - name: Render page without long-term trend
+        if: needs.history.result != 'success'
         run: npm run report:docs-page --workspace=dora-metrics
 
       # Deploy GitHub Pages fetches this artifact by name. It must not match dora-metrics-*,

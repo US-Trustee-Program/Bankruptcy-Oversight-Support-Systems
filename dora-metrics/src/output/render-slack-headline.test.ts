@@ -21,6 +21,7 @@ const FIXTURES: Record<string, WeeklySummary> = {
   'no incidents': summaryWith(),
   'one incident still open': summaryWith({ openIncidents: 1 }),
   'incidents still open': summaryWith({ openIncidents: 3 }),
+  'an unknown open incident count': summaryWith({ openIncidents: null }),
   'a restore time': summaryWith({ restoreTime: { medianHours: 2.5, meanHours: 4 } }),
   'a lead time over 48 hours': summaryWith({ leadTime: { medianHours: 60, meanHours: 72 } }),
   'no deployments': summaryWith({
@@ -58,6 +59,11 @@ describe('renderSlackHeadline', () => {
       fixture: 'incidents still open',
       label: 'Time to restore service',
       value: '3 incidents still open',
+    },
+    {
+      fixture: 'an unknown open incident count',
+      label: 'Time to restore service',
+      value: 'No data',
     },
     {
       fixture: 'a restore time',

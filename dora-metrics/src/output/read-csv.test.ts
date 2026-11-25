@@ -49,6 +49,24 @@ describe('parseCsv', () => {
     );
   });
 
+  test('accepts an older header, keying rows by the older columns', () => {
+    const text = 'periodStart,periodEnd\n2026-11-02T00:00:00.000Z,2026-11-09T00:00:00.000Z\n';
+
+    const rows = parseCsv(text, COLUMNS, 'deployment-frequency.csv', ['periodStart', 'periodEnd']);
+
+    expect(rows).toEqual([
+      { periodStart: '2026-11-02T00:00:00.000Z', periodEnd: '2026-11-09T00:00:00.000Z' },
+    ]);
+  });
+
+  test('names the current header, not the older one, when neither matches', () => {
+    expect(() =>
+      parseCsv('periodStart,count\n', COLUMNS, 'deployment-frequency.csv', ['periodStart']),
+    ).toThrow(
+      'expected header "periodStart,periodEnd,deploymentCount" but found "periodStart,count"',
+    );
+  });
+
   test('throws naming the source when the file is empty', () => {
     expect(() => parseCsv('', COLUMNS, 'deployment-frequency.csv')).toThrow(
       'deployment-frequency.csv: expected header "periodStart,periodEnd,deploymentCount" but found ""',
@@ -102,6 +120,15 @@ describe('readCsv', () => {
         deploymentCount: '24',
       },
     ]);
+  });
+
+  test('passes the older columns through to the parser', async () => {
+    const filePath = join(workDir, 'deployment-frequency.csv');
+    await writeFile(filePath, 'periodStart\n2026-11-02T00:00:00.000Z\n', 'utf8');
+
+    const rows = await readCsv(filePath, COLUMNS, ['periodStart']);
+
+    expect(rows).toEqual([{ periodStart: '2026-11-02T00:00:00.000Z' }]);
   });
 
   test('names the file path when the file cannot be parsed', async () => {
