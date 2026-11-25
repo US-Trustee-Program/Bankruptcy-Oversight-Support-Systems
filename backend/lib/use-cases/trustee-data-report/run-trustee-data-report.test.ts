@@ -4,6 +4,7 @@ import { Trustee } from '@common/cams/trustees';
 import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
+  StoredTrusteeDataReportSummary,
   TrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
 import factory from '../../factory';
@@ -27,7 +28,7 @@ import RunTrusteeDataReport from './run-trustee-data-report';
 class InMemoryReportRepository implements TrusteeDataReportRepository {
   runs = new Map<string, TrusteeDataReportRun>();
   rows: (TrusteeDataDifference & { runId: string; pageKey: string })[] = [];
-  pages: { runId: string; pageKey: string; summary: TrusteeDataReportSummary }[] = [];
+  pages: { runId: string; pageKey: string; summary: StoredTrusteeDataReportSummary }[] = [];
 
   async upsertRun(run: TrusteeDataReportRun) {
     this.runs.set(run.runId, structuredClone(run));
@@ -711,6 +712,43 @@ describe('RunTrusteeDataReport', () => {
             camsOnly: 0,
             fieldDifferences: 0,
           }),
+        }),
+      );
+    });
+
+    test('should complete a run when a page recorded by an earlier release lacks the appointment counts', async () => {
+      vi.spyOn(ats, 'getTrusteesPage').mockResolvedValue([]);
+      camsTrustees = [];
+      reportRepo.pages.push({
+        runId: RUN_ID,
+        pageKey: 'before-deploy',
+        summary: {
+          trusteesCompared: 4,
+          todOnly: 1,
+          camsOnly: 0,
+          fieldDifferences: 2,
+          fieldDifferencesByField: {
+            name: 0,
+            companyName: 0,
+            publicAddress: 0,
+            internalAddress: 0,
+            phone: 2,
+            email: 0,
+          },
+        },
+      });
+
+      await runToCompletion(100);
+
+      expect((await reportRepo.readRun(RUN_ID))?.summary).toEqual(
+        expect.objectContaining({
+          trusteesCompared: 4,
+          todOnly: 1,
+          fieldDifferences: 2,
+          appointmentsTodOnly: 0,
+          appointmentFieldDifferences: 0,
+          appointmentFieldDifferencesByField: { status: 0, appointedDate: 0, effectiveDate: 0 },
+          todAppointmentsNotTranslated: 0,
         }),
       );
     });

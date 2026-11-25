@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { DivisionInfo } from '../dataflows/migrate-trustees';
+import { DivisionInfo } from '../dataflows/trustee-load-rules';
 import { compareTrusteeAppointments } from './compare-trustee-appointments';
 
 const COURT_ID = '0752';
@@ -286,5 +286,58 @@ describe('compareTrusteeAppointments', () => {
     const [row] = compareTrusteeAppointments(merged, [], linked, DIVISIONS);
 
     expect(row.todIds).toEqual(['202', '101']);
+  });
+  describe('when CAMS holds more than one appointment for one district, chapter and type', () => {
+    // CAMS merges a new appointment into an existing one only when both are active, so a resigned
+    // appointment and a later active one can share a key.
+    const appointment = todAppointment();
+
+    test('should compare the active one with TOD and list each other one as in CAMS only', () => {
+      const resigned = camsAppointment(appointment, {
+        status: 'resigned',
+        appointedDate: '2010-01-01',
+      });
+      const active = camsAppointment(appointment);
+
+      const rows = compareTrusteeAppointments(
+        trustee,
+        [active, resigned],
+        tod([appointment]),
+        DIVISIONS,
+      );
+
+      expect(rows).toEqual([
+        {
+          kind: 'appointment-cams-only',
+          camsTrusteeId: trustee.trusteeId,
+          todIds: ['101'],
+          trusteeName: 'Pat Example',
+          appointment: identity(resigned),
+        },
+      ]);
+    });
+
+    test('should compare the most recently appointed one with TOD when none is active', () => {
+      const tod2018 = todAppointment({ status: 'resigned', appointedDate: '2018-06-01' });
+      const older = camsAppointment(tod2018, { appointedDate: '2012-02-01' });
+      const newer = camsAppointment(tod2018);
+
+      const rows = compareTrusteeAppointments(trustee, [newer, older], tod([tod2018]), DIVISIONS);
+
+      expect(rows.map((row) => [row.kind, row.field])).toEqual([
+        ['appointment-cams-only', undefined],
+      ]);
+    });
+
+    test('should list every one as in CAMS only when TOD has no appointment with that key', () => {
+      const first = camsAppointment(appointment, { status: 'resigned' });
+      const second = camsAppointment(appointment);
+
+      const kinds = compareTrusteeAppointments(trustee, [first, second], tod([]), DIVISIONS).map(
+        (row) => row.kind,
+      );
+
+      expect(kinds).toEqual(['appointment-cams-only', 'appointment-cams-only']);
+    });
   });
 });

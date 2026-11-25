@@ -47,6 +47,45 @@ export function mockAtsTrusteeRecord(id: number): AtsTrusteeRecord {
 }
 
 /**
+ * TOD appointment rows that translate (Southern District of New York, 0208), read only by the
+ * trustee data report. With the CAMS appointments in mock-trustee-data-report.fixtures.ts they
+ * give one difference of each appointment kind. The other mock rows have no serving state, so the
+ * report counts them as not translated.
+ */
+const MOCK_REPORT_APPOINTMENT_ROWS: AtsAppointmentRecord[] = [
+  // TOD 1, chapter 7 panel: CAMS covers only division 081, so divisions narrowed.
+  {
+    TRU_ID: 1,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2015-03-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2015-03-01'),
+  },
+  // TOD 2, chapter 7 panel: CAMS has a different appointed date.
+  {
+    TRU_ID: 2,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2016-04-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2016-04-01'),
+  },
+  // TOD 3, chapter 7 panel: no CAMS appointment, so in TOD only.
+  {
+    TRU_ID: 3,
+    DISTRICT: 'Southern',
+    STATE: 'New York',
+    CHAPTER: '7',
+    DATE_APPOINTED: new Date('2017-05-01'),
+    STATUS: 'PA',
+    EFFECTIVE_DATE: new Date('2017-05-01'),
+  },
+];
+
+/**
  * Mock implementation of ATS gateway for testing.
  * Returns sample trustee and appointment data.
  */
@@ -395,7 +434,16 @@ export class MockAtsGateway implements AtsGateway {
     return new Map(
       trusteeIds.map((id) => [
         id,
-        cleanseAppointments(context, MODULE_NAME, id, mockAppointmentRows(id), new Map()),
+        cleanseAppointments(
+          context,
+          MODULE_NAME,
+          id,
+          [
+            ...MOCK_REPORT_APPOINTMENT_ROWS.filter((row) => row.TRU_ID === id),
+            ...mockAppointmentRows(id),
+          ],
+          new Map(),
+        ),
       ]),
     );
   }

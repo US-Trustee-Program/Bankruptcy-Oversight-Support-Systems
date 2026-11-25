@@ -1,6 +1,7 @@
 import { Address } from '@common/cams/contact';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import {
+  TRUSTEE_APPOINTMENT_FIELDS,
   TrusteeAppointmentField,
   TrusteeDataDifference,
   TrusteeDataReportSummary,
@@ -8,7 +9,7 @@ import {
 } from '@common/cams/trustee-data-report';
 import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
 import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
-import { selectPrimaryRecord } from '../dataflows/migrate-trustees';
+import { selectPrimaryRecord } from '../dataflows/trustee-load-rules';
 
 const PROFILE_FIELDS: TrusteeProfileField[] = [
   'name',
@@ -142,7 +143,9 @@ export function summarize(
     appointmentsTodOnly: 0,
     appointmentsCamsOnly: 0,
     appointmentFieldDifferences: 0,
-    appointmentFieldDifferencesByField: { status: 0, appointedDate: 0, effectiveDate: 0 },
+    appointmentFieldDifferencesByField: Object.fromEntries(
+      TRUSTEE_APPOINTMENT_FIELDS.map((field) => [field, 0]),
+    ) as Record<TrusteeAppointmentField, number>,
     appointmentsDivisionsNarrowed: 0,
     todAppointmentsNotTranslated,
   };

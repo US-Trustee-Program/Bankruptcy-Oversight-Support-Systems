@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatDateTime } from '@/lib/utils/datetime';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import {
+  TRUSTEE_APPOINTMENT_FIELDS,
   TrusteeAppointmentField,
   TrusteeDataReportRun,
   TrusteeDataReportStatus,
@@ -77,7 +78,7 @@ function countRows(summary: Partial<TrusteeDataReportSummary>): CountRow[] {
       label: APPOINTMENT_FIELD_DIFFERENCES_LABEL,
       value: summary.appointmentFieldDifferences,
     },
-    ...(Object.keys(APPOINTMENT_FIELD_LABELS) as TrusteeAppointmentField[]).map((field) => ({
+    ...TRUSTEE_APPOINTMENT_FIELDS.map((field) => ({
       key: `appointment-field-${field}`,
       label: APPOINTMENT_FIELD_LABELS[field],
       value: summary.appointmentFieldDifferencesByField?.[field],

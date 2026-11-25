@@ -9,6 +9,7 @@ import {
 } from '../../types/ats.types';
 import { DbTableFieldSpec } from '../../types/database';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { CamsError } from '../../../common-errors/cams-error';
 import { cleanseAppointments } from './cleansing/ats-cleansing-appointments';
 import { TrusteeOverride } from './cleansing/ats-cleansing-types';
 import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
@@ -50,6 +51,12 @@ const APPOINTMENT_COLUMNS = `
         STATUS_EFF_DATE AS EFFECTIVE_DATE,
         ARCHIVE_DATE`;
 
+// The load keeps the first appointment per district, chapter and type, so ties on APPOINTED_DATE
+// must sort the same way in every read. CHAPTER_DETAILS has no key column, so the tiebreakers are
+// every column read: rows that tie on all of them clean to the same appointment.
+const APPOINTMENT_ORDER = `APPOINTED_DATE DESC, STATUS_EFF_DATE DESC, DISTRICT, SERVING_STATE, CHAPTER,
+          STATUS, ARCHIVE_DATE`;
+
 // Keeps each ID-list query well under SQL Server's 2,100-parameter limit.
 const ID_BATCH_SIZE = 500;
 
@@ -90,6 +97,8 @@ type StatusFlagsRow = { TRU_ID: number; HAS_ACTIVE: number; HAS_EMPTY: number };
  */
 export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
   private overridesCache?: Map<string, TrusteeOverride[]>;
+  // Why the overrides could not be loaded. The load proceeds without them; the report does not.
+  private overridesUnavailable?: string;
 
   constructor(context: ApplicationContext) {
     // Use ATS-specific database configuration
@@ -113,6 +122,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
             error: result.error.message,
           },
         );
+        this.overridesUnavailable = result.error.message;
         this.overridesCache = new Map();
       } else if (result.data !== undefined) {
         this.overridesCache = result.data;
@@ -121,6 +131,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
           MODULE_NAME,
           'loadTrusteeOverrides returned no data and no error — proceeding without overrides',
         );
+        this.overridesUnavailable = 'loadTrusteeOverrides returned no data and no error';
         this.overridesCache = new Map();
       }
     }
@@ -263,7 +274,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
           SELECT ${APPOINTMENT_COLUMNS}
           FROM CHAPTER_DETAILS
           WHERE TRU_ID IN (${placeholders})
-          ORDER BY APPOINTED_DATE DESC`;
+          ORDER BY ${APPOINTMENT_ORDER}`;
         const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
         for (const row of (results as mssql.IResult<AtsAppointmentRecord>).recordset) {
           const rows = rowsById.get(row.TRU_ID);
@@ -280,7 +291,13 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       );
     }
 
+    // Without the overrides, rows the load skipped or remapped would read as differences.
     const overridesCache = await this.getOverridesCache(context);
+    if (this.overridesUnavailable) {
+      throw new CamsError(MODULE_NAME, {
+        message: `TOD overrides could not be loaded: ${this.overridesUnavailable}`,
+      });
+    }
     return new Map(
       [...rowsById].map(([id, rows]) => [
         id,
@@ -321,7 +338,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       SELECT ${APPOINTMENT_COLUMNS}
       FROM CHAPTER_DETAILS
       WHERE TRU_ID = @trusteeId
-      ORDER BY APPOINTED_DATE DESC`;
+      ORDER BY ${APPOINTMENT_ORDER}`;
 
     context.logger.debug(MODULE_NAME, `Querying appointments for trustee ID: ${trusteeId}`);
 

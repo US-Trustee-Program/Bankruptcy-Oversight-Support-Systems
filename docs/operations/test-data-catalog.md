@@ -84,21 +84,23 @@ CAMS (`trustees`, `trustee-appointments`). Run the report from Admin → Trustee
 TOD and CAMS trustees in the environment add to the counts. All appointments are in the Southern
 District of New York (0208); TOD rows use district `Southern`, serving state `New York`.
 
-| CAMS trustee (TOD ID)               | Profile result                                               | Appointment result                                                                                       |
-| ----------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| **Avery Exact** (9900010)           | No difference                                                | Ch 7 panel matches; Ch 13 standing covers only division 081 in CAMS: "Divisions narrowed in CAMS"        |
-| **Robert Brown** (9900021)          | Name differs                                                 | Ch 7 matches; Ch 13 standing is in TOD only                                                              |
-| **Jamie Firm** (9900022)            | Company name differs                                         | Ch 13 standing is in CAMS only; the TOD row's district can't be mapped: 1 TOD appointment not translated |
-| **Kai Mover** (9900023)             | Public address differs                                       | Ch 7 panel in TOD is off-panel in CAMS: one appointment in TOD only and one in CAMS only                 |
-| **Lane Backoffice** (9900024)       | Internal address differs                                     | Ch 7 status differs (active in TOD, voluntarily suspended in CAMS)                                       |
-| **Morgan Caller** (9900025)         | Phone differs                                                | Ch 7 appointed date differs                                                                              |
-| **Noel Mailer** (9900026)           | Email differs                                                | Ch 7 status effective date differs                                                                       |
-| TOD only: 9900030, 9900051, 9900054 | In TOD only (9900051 flagged "Status missing, needs review") | Not compared                                                                                             |
-| **Xen Native** (TOD ID 9900099)     | In CAMS only                                                 | Not compared                                                                                             |
+| CAMS trustee (TOD ID)                  | Profile result                                               | Appointment result                                                                                                              |
+| -------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Avery Exact** (9900010)              | No difference                                                | Ch 7 panel matches; Ch 13 standing covers only division 081 in CAMS: "Divisions narrowed in CAMS"                               |
+| **Robert Brown** (9900021)             | Name differs                                                 | Ch 7 matches; Ch 13 standing is in TOD only                                                                                     |
+| **Jamie Firm** (9900022)               | Company name differs                                         | Ch 13 standing is in CAMS only; the TOD row's district can't be mapped: 1 TOD appointment not translated                        |
+| **Kai Mover** (9900023)                | Public address differs                                       | Ch 7 panel in TOD is off-panel in CAMS: one appointment in TOD only and one in CAMS only                                        |
+| **Lane Backoffice** (9900024)          | Internal address differs                                     | Ch 7 status differs (active in TOD, voluntarily suspended in CAMS)                                                              |
+| **Morgan Caller** (9900025)            | Phone differs                                                | Ch 7 appointed date differs                                                                                                     |
+| **Noel Mailer** (9900026)              | Email differs                                                | Ch 7 status effective date differs                                                                                              |
+| **Jude Apptmerged** (9900069, 9900070) | No difference (merged from two TOD records)                  | No difference: Ch 7 panel matches 9900069's, the first in truIds, not 9900070's resigned one; Ch 13 standing comes from 9900070 |
+| TOD only: 9900030, 9900051, 9900054    | In TOD only (9900051 flagged "Status missing, needs review") | Not compared                                                                                                                    |
+| **Xen Native** (TOD ID 9900099)        | In CAMS only                                                 | Not compared                                                                                                                    |
 
-Totals from these trustees: 7 compared, 3 in TOD only, 1 in CAMS only, 6 field differences; 2
+Totals from these trustees: 8 compared, 3 in TOD only, 1 in CAMS only, 6 field differences; 2
 appointments in TOD only, 2 in CAMS only, 3 appointment field differences, 1 divisions narrowed, 1
-TOD appointment not translated.
+TOD appointment not translated. SDNY's divisions come from DXTR; if dev lists other than 081, 084
+and 087 for 0208, the seeded full-district appointments are also noted as narrowed.
 
 ### Administrative Data
 

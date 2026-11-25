@@ -42,7 +42,7 @@ describe('trustee-data-report dataflow with dbMock', () => {
     );
   });
 
-  test('should run a seeded queued run to completion and report all three kinds of difference', async () => {
+  test('should run a seeded queued run to completion and report every kind of difference', async () => {
     const context = await createMockApplicationContext();
     expect(context.config.get('dbMock')).toBe(true);
     const runId = `e2e-${Date.now()}`;
@@ -90,11 +90,13 @@ describe('trustee-data-report dataflow with dbMock', () => {
           camsOnly: 2,
           fieldDifferences: 1,
           fieldDifferencesByField: expect.objectContaining({ phone: 1 }),
-          // The mock TOD appointment rows cannot be translated (they have no serving state), so
-          // all 8 rows of the 3 compared trustees are counted and none is compared.
+          appointmentsTodOnly: 1,
+          appointmentsCamsOnly: 1,
+          appointmentFieldDifferences: 1,
+          appointmentFieldDifferencesByField: { status: 0, appointedDate: 1, effectiveDate: 0 },
+          appointmentsDivisionsNarrowed: 1,
+          // The other mock rows of the 3 compared trustees have no serving state.
           todAppointmentsNotTranslated: 8,
-          appointmentsTodOnly: 0,
-          appointmentsCamsOnly: 0,
         }),
       }),
     );

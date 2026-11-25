@@ -16,7 +16,7 @@ import {
 } from './compare-trustee-profiles';
 import TrusteeDataReportLock from './trustee-data-report-lock';
 import { compareTrusteeAppointments } from './compare-trustee-appointments';
-import { buildDistrictToDivisionsMap } from '../dataflows/migrate-trustees';
+import { buildDistrictToDivisionsMap } from '../dataflows/trustee-load-rules';
 import { Trustee } from '@common/cams/trustees';
 
 export const RUN_TRUSTEE_DATA_REPORT_MODULE_NAME = 'RUN-TRUSTEE-DATA-REPORT';
@@ -287,10 +287,10 @@ async function finalizeRun(context: ApplicationContext, runId: string): Promise<
   const camsOnly = findCamsOnly(trustees, existingTodIds);
   await recordPage(context, runId, FINALIZE_PAGE_KEY, camsOnly, 0, 0);
 
-  const summary = (await reportRepo.readPageSummaries(runId)).reduce(
-    addSummaries,
-    summarize([], 0, 0),
-  );
+  // A page recorded by an earlier release lacks the counts added since; it counts them as 0.
+  const summary = (await reportRepo.readPageSummaries(runId))
+    .map((page): TrusteeDataReportSummary => ({ ...summarize([], 0, 0), ...page }))
+    .reduce(addSummaries, summarize([], 0, 0));
   const run = await requireRun(context, runId);
   await requireLock(context, runId);
   await reportRepo.upsertRun({

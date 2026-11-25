@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import type { SeedOperation } from '../../runner.js';
-import { generate, MISSING_TOD_ID, todId } from './trustee-data-report.js';
+import { generate, MISSING_TOD_ID } from './trustee-data-report.js';
 import { TOD_SEED_ID_MAX, TOD_SEED_ID_MIN } from '../lib/tod-seed-ids.js';
 
 type Row = Record<string, unknown>;
@@ -45,56 +45,104 @@ describe('trustee-data-report scenario', () => {
     expect(new Set(rows.map((row) => `${row.TRU_ID}-${row.CHAPTER}`)).size).toBe(rows.length);
   });
 
-  test('should give each linked trustee the appointments for one Slice 2 case', async () => {
-    const ops = await generate();
-    const appointments = rowsOf(ops, 'trustee-appointments') as CamsAppointment[];
-    const byTrustee = (slug: string) =>
-      appointments
-        .filter((a) => a.trusteeId === `seed-trustee-data-report-${slug}`)
-        .map(({ chapter, appointmentType, status, appointedDate, effectiveDate, divisionCodes }) =>
-          [chapter, appointmentType, status, appointedDate, effectiveDate, divisionCodes].join(' '),
-        );
-    const todRows = (harnessId: number) =>
-      rowsOf(ops, 'CHAPTER_DETAILS')
-        .filter((row) => row.TRU_ID === todId(harnessId))
-        .map((row) => [row.CHAPTER, row.STATUS, row.DISTRICT, row.SERVING_STATE].join(' '));
-    const full = '081,084,087';
+  describe('appointment cases', () => {
+    // How the load translates the seed's TOD rows: Southern New York maps to 0208, whose
+    // divisions are 081, 084 and 087; any other district cannot be translated.
+    const LOAD: Record<string, { appointmentType: string; status: string }> = {
+      '7 PA': { appointmentType: 'panel', status: 'active' },
+      '7 PR': { appointmentType: 'panel', status: 'resigned' },
+      '13 S': { appointmentType: 'standing', status: 'active' },
+    };
+    const SDNY_DIVISION_COUNT = 3;
 
-    expect(todRows(10)).toEqual(['7 PA Southern New York', '13 S Southern New York']);
-    expect(byTrustee('exact-match')).toEqual([
-      `7 panel active 2015-03-01 2015-03-01 ${full}`,
-      '13 standing active 2015-03-01 2015-03-01 081',
-    ]);
-    expect(todRows(21)).toEqual(['7 PA Southern New York', '13 S Southern New York']);
-    expect(byTrustee('name')).toEqual([`7 panel active 2015-03-01 2015-03-01 ${full}`]);
-    expect(todRows(22)).toEqual(['7 PA Nowhere Atlantis']);
-    expect(byTrustee('company')).toEqual([`13 standing active 2015-03-01 2015-03-01 ${full}`]);
-    expect(byTrustee('public-address')).toEqual([
-      `7 off-panel resigned 2015-03-01 2015-03-01 ${full}`,
-    ]);
-    expect(byTrustee('internal-address')).toEqual([
-      `7 panel voluntarily-suspended 2015-03-01 2015-03-01 ${full}`,
-    ]);
-    expect(byTrustee('phone')).toEqual([`7 panel active 2016-04-02 2015-03-01 ${full}`]);
-    expect(byTrustee('email')).toEqual([`7 panel active 2015-03-01 2020-01-15 ${full}`]);
-    [23, 24, 25, 26].forEach((id) => expect(todRows(id)).toEqual(['7 PA Southern New York']));
-  });
+    /** What the report finds for a seeded trustee, its linked TOD records read in the given order. */
+    async function findings(slug: string, todOrder = (ids: string[]) => ids): Promise<string[]> {
+      const ops = await generate();
+      const trustee = (rowsOf(ops, 'trustees') as CamsTrustee[]).find(
+        (t) => t.trusteeId === `seed-trustee-data-report-${slug}`,
+      )!;
+      const todRows = todOrder(trustee.legacy.truIds).flatMap((id) =>
+        rowsOf(ops, 'CHAPTER_DETAILS').filter((row) => String(row.TRU_ID) === id),
+      );
+      const result: string[] = [];
+      const expected = new Map<
+        string,
+        { status: string; appointed: unknown; effective: unknown }
+      >();
+      for (const row of todRows) {
+        if (row.DISTRICT !== 'Southern' || row.SERVING_STATE !== 'New York') {
+          result.push('not translated');
+          continue;
+        }
+        const { appointmentType, status } = LOAD[`${row.CHAPTER} ${row.STATUS}`];
+        const key = `${row.CHAPTER} ${appointmentType}`;
+        if (!expected.has(key)) {
+          expected.set(key, {
+            status,
+            appointed: row.APPOINTED_DATE,
+            effective: row.STATUS_EFF_DATE,
+          });
+        }
+      }
+      const cams = (rowsOf(ops, 'trustee-appointments') as CamsAppointment[]).filter(
+        (a) => a.trusteeId === trustee.trusteeId,
+      );
+      const camsKeys = new Set(cams.map((a) => `${a.chapter} ${a.appointmentType}`));
+      expected.forEach((_, key) => {
+        if (!camsKeys.has(key)) result.push(`tod-only ${key}`);
+      });
+      for (const appointment of cams) {
+        const key = `${appointment.chapter} ${appointment.appointmentType}`;
+        const tod = expected.get(key);
+        if (!tod) {
+          result.push(`cams-only ${key}`);
+          continue;
+        }
+        if (appointment.status !== tod.status) result.push('status');
+        if (appointment.appointedDate !== tod.appointed) result.push('appointedDate');
+        if (appointment.effectiveDate !== tod.effective) result.push('effectiveDate');
+        if (appointment.divisionCodes.length < SDNY_DIVISION_COUNT) result.push(`narrowed ${key}`);
+      }
+      return result;
+    }
 
-  test('should use seed- ids for CAMS appointments, in Southern New York, on seeded trustees only', async () => {
-    const ops = await generate();
-    const trusteeIds = new Set((rowsOf(ops, 'trustees') as CamsTrustee[]).map((t) => t.trusteeId));
-    const appointments = rowsOf(ops, 'trustee-appointments') as CamsAppointment[];
-
-    expect(appointments.length).toBeGreaterThan(0);
-    appointments.forEach((appointment) => {
-      expect(appointment.id).toMatch(/^seed-/);
-      expect(trusteeIds.has(appointment.trusteeId)).toBe(true);
-      expect(appointment.courtId).toBe('0208');
+    test.each([
+      ['exact-match', ['narrowed 13 standing']],
+      ['name', ['tod-only 13 standing']],
+      ['company', ['not translated', 'cams-only 13 standing']],
+      ['public-address', ['tod-only 7 panel', 'cams-only 7 off-panel']],
+      ['internal-address', ['status']],
+      ['phone', ['appointedDate']],
+      ['email', ['effectiveDate']],
+      ['merged', []],
+    ])('should give the %s trustee exactly the findings %j', async (slug, expected) => {
+      expect(await findings(slug)).toEqual(expected);
     });
-    expect(new Set(appointments.map((a) => a.id)).size).toBe(appointments.length);
+
+    test('should seed a merged trustee whose second TOD record would differ, so it shows that the first wins', async () => {
+      expect(await findings('merged', (ids) => [...ids].reverse())).toEqual([
+        'status',
+        'appointedDate',
+        'effectiveDate',
+      ]);
+    });
+
+    test('should put CAMS appointments in Southern New York, on seeded trustees only', async () => {
+      const ops = await generate();
+      const trusteeIds = new Set(
+        (rowsOf(ops, 'trustees') as CamsTrustee[]).map((t) => t.trusteeId),
+      );
+      const appointments = rowsOf(ops, 'trustee-appointments') as CamsAppointment[];
+
+      expect(appointments.length).toBeGreaterThan(0);
+      appointments.forEach((appointment) => {
+        expect(trusteeIds.has(appointment.trusteeId)).toBe(true);
+        expect(appointment.courtId).toBe('0208');
+      });
+    });
   });
 
-  test('should link 7 CAMS trustees to TOD, leave 3 TOD trustees unlinked, and add 1 CAMS-only trustee', async () => {
+  test('should link 8 CAMS trustees to TOD, leave 3 TOD trustees unlinked, and add 1 CAMS-only trustee', async () => {
     const ops = await generate();
     const todIds = new Set(rowsOf(ops, 'TRUSTEES').map((row) => String(row.ID)));
     const cams = rowsOf(ops, 'trustees') as CamsTrustee[];
@@ -102,7 +150,7 @@ describe('trustee-data-report scenario', () => {
     const camsOnly = cams.filter((trustee) => !linked.includes(trustee));
     const linkedTodIds = new Set(linked.flatMap((trustee) => trustee.legacy.truIds));
 
-    expect(linked).toHaveLength(7);
+    expect(linked).toHaveLength(8);
     expect([...todIds].filter((id) => !linkedTodIds.has(id))).toHaveLength(3);
     expect(camsOnly.map((trustee) => trustee.legacy.truIds)).toEqual([[String(MISSING_TOD_ID)]]);
   });
@@ -122,15 +170,16 @@ describe('trustee-data-report scenario', () => {
     ]);
   });
 
-  test('should use seed- ids for CAMS trustees, so unseed removes them', async () => {
-    const ops = await generate();
-    const cams = rowsOf(ops, 'trustees') as CamsTrustee[];
+  test.each(['trustees', 'trustee-appointments'])(
+    'should give every %s document a unique seed- id, so unseed removes it',
+    async (collection) => {
+      const docs = rowsOf(await generate(), collection) as { id: string }[];
 
-    cams.forEach((trustee) => {
-      expect(trustee.id).toMatch(/^seed-/);
-      expect(trustee.trusteeId).toBe(trustee.id);
-    });
-  });
+      expect(docs.length).toBeGreaterThan(0);
+      docs.forEach((doc) => expect(doc.id).toMatch(/^seed-/));
+      expect(new Set(docs.map((doc) => doc.id)).size).toBe(docs.length);
+    },
+  );
 
   test('should seed TOD before CAMS, with keys for the SQL upserts', async () => {
     const ops = await generate();

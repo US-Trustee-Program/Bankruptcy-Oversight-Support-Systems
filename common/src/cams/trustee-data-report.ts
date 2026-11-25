@@ -6,7 +6,8 @@ type TrusteeDataReportRunStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type TrusteeProfileField =
   'name' | 'companyName' | 'publicAddress' | 'internalAddress' | 'phone' | 'email';
 
-export type TrusteeAppointmentField = 'status' | 'appointedDate' | 'effectiveDate';
+export const TRUSTEE_APPOINTMENT_FIELDS = ['status', 'appointedDate', 'effectiveDate'] as const;
+export type TrusteeAppointmentField = (typeof TRUSTEE_APPOINTMENT_FIELDS)[number];
 
 /**
  * Counts only. Must never carry trustee names or contact details.
@@ -40,7 +41,7 @@ type CountsAddedLater =
   | 'todAppointmentsNotTranslated';
 
 /** A summary as stored on a run, which may predate some counts. */
-type StoredTrusteeDataReportSummary = Omit<TrusteeDataReportSummary, CountsAddedLater> &
+export type StoredTrusteeDataReportSummary = Omit<TrusteeDataReportSummary, CountsAddedLater> &
   Partial<Pick<TrusteeDataReportSummary, CountsAddedLater>>;
 
 export type TrusteeDataReportRun = {

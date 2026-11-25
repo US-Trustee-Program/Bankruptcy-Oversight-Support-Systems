@@ -4,10 +4,12 @@ import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
-import { TrusteeAppointmentField, TrusteeDataDifference } from '@common/cams/trustee-data-report';
-import { DivisionInfo, getAppointmentKey } from '../dataflows/migrate-trustees';
-
-const APPOINTMENT_FIELDS: TrusteeAppointmentField[] = ['status', 'appointedDate', 'effectiveDate'];
+import {
+  TRUSTEE_APPOINTMENT_FIELDS,
+  TrusteeAppointmentField,
+  TrusteeDataDifference,
+} from '@common/cams/trustee-data-report';
+import { DivisionInfo, getAppointmentKey } from '../dataflows/trustee-load-rules';
 
 function fieldValue(appointment: TrusteeAppointmentInput, field: TrusteeAppointmentField): string {
   const value = appointment[field];
@@ -41,6 +43,34 @@ function expectedAppointments(
   return expected;
 }
 
+/** The trustee's CAMS appointments by key, each key's in repository order. */
+function groupByKey(
+  trusteeId: string,
+  appointments: TrusteeAppointment[],
+): Map<string, TrusteeAppointment[]> {
+  const groups = new Map<string, TrusteeAppointment[]>();
+  for (const appointment of appointments) {
+    const key = getAppointmentKey(trusteeId, appointment);
+    groups.set(key, [...(groups.get(key) ?? []), appointment]);
+  }
+  return groups;
+}
+
+/**
+ * The one of several CAMS appointments with a key that is compared with TOD: the active one, or
+ * else the most recently appointed. CAMS merges appointments with a key only when both are active,
+ * so an ended appointment and a later one can share a key.
+ */
+function toCompare(group: TrusteeAppointment[]): TrusteeAppointment {
+  const active = group.find((appointment) => appointment.status === 'active');
+  if (active) return active;
+  return group.reduce((newest, appointment) =>
+    fieldValue(appointment, 'appointedDate') > fieldValue(newest, 'appointedDate')
+      ? appointment
+      : newest,
+  );
+}
+
 /** The district's division codes when the CAMS appointment covers only some of them. */
 function narrowedFrom(
   appointment: TrusteeAppointment,
@@ -60,7 +90,8 @@ function narrowedFrom(
 /**
  * Compares one linked CAMS trustee's appointments with those the original load would have created
  * from its TOD records. Appointments match on district, chapter and appointment type, the load's
- * key, so a changed type is one appointment in TOD only and one in CAMS only.
+ * key, so a changed type is one appointment in TOD only and one in CAMS only. When CAMS holds
+ * several appointments with one key, one is compared and the others are listed as in CAMS only.
  *
  * @param todAppointmentsById - clean TOD appointments for each linked TOD ID, in truIds order,
  * each ID's appointments in the order the load read them. Every linked ID has an entry.
@@ -73,9 +104,7 @@ export function compareTrusteeAppointments(
 ): TrusteeDataDifference[] {
   const { trusteeId } = camsTrustee;
   const expected = expectedAppointments(trusteeId, todAppointmentsById);
-  const camsByKey = new Map(
-    camsAppointments.map((appointment) => [getAppointmentKey(trusteeId, appointment), appointment]),
-  );
+  const camsByKey = groupByKey(trusteeId, camsAppointments);
   const row = (appointment: TrusteeAppointmentInput) => ({
     camsTrusteeId: trusteeId,
     todIds: [...todAppointmentsById.keys()],
@@ -87,11 +116,18 @@ export function compareTrusteeAppointments(
     .filter(([key]) => !camsByKey.has(key))
     .map(([, appointment]) => ({ kind: 'appointment-tod-only', ...row(appointment) }));
 
-  const camsRows: TrusteeDataDifference[] = [...camsByKey].flatMap(([key, cams]) => {
+  const camsRows: TrusteeDataDifference[] = [...camsByKey].flatMap(([key, group]) => {
+    const camsOnly = (appointment: TrusteeAppointment): TrusteeDataDifference => ({
+      kind: 'appointment-cams-only',
+      ...row(appointment),
+    });
     const todAppointment = expected.get(key);
-    if (!todAppointment) return [{ kind: 'appointment-cams-only', ...row(cams) }];
+    if (!todAppointment) return group.map(camsOnly);
 
-    const fieldRows: TrusteeDataDifference[] = APPOINTMENT_FIELDS.filter(
+    const cams = toCompare(group);
+    const others = group.filter((appointment) => appointment !== cams).map(camsOnly);
+
+    const fieldRows: TrusteeDataDifference[] = TRUSTEE_APPOINTMENT_FIELDS.filter(
       (field) => fieldValue(cams, field) !== fieldValue(todAppointment, field),
     ).map((field) => ({
       kind: 'appointment-field',
@@ -113,7 +149,7 @@ export function compareTrusteeAppointments(
         ]
       : [];
 
-    return [...fieldRows, ...narrowedRows];
+    return [...others, ...fieldRows, ...narrowedRows];
   });
 
   return [...todOnly, ...camsRows];

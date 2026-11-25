@@ -167,6 +167,23 @@ ones with their values.
 - **S07 and S29 (product decisions, passing).** Confirmed by the product owner (2026-11-18): a
   linked TOD record with no name (3 in ATS_SUB) is compared as "Unknown" and flagged with a `name`
   difference, and a CAMS-native trustee with no TOD IDs is reported as CAMS only.
+- **Appointments are rebuilt with today's rules (caveat).** The report rebuilds the appointments the
+  load would create today: today's cleansing rules, the overrides file and DXTR's current divisions.
+  If any of these changed after a trustee was loaded, the report shows differences no CAMS edit
+  caused. For example, CAMS-772 made rows with an `ARCHIVE_DATE` inactive, and a district that gains
+  a division makes every loaded appointment there read as narrowed. The load does not record which
+  rules it used, so the report cannot tell these apart.
+- **Tied appointed dates (caveat).** The load keeps the first TOD row for each district, chapter and
+  type, newest `APPOINTED_DATE` first. Both reads now break ties on every column they read, so the
+  order is the same in each. Trustees loaded before that tiebreaker kept whatever order SQL Server
+  returned, so tied rows can still show a status or effective-date difference.
+- **Several CAMS appointments with one key.** CAMS merges an appointment into an existing one only
+  when both are active, so an ended appointment and a later one can share a district, chapter and
+  type. The report compares the active one with TOD (or else the most recently appointed) and lists
+  the others as in CAMS only.
+- **Overrides are required.** The load carries on without the TOD overrides file if it cannot be
+  read. The report fails the page instead, because without the overrides the rows the load skipped
+  or remapped would show as differences.
 
 The first run also caught a bug, since fixed: L5 showed "See the dataflows app's logs" instead of
 "Could not read from TOD", because TOD's SQL client raises errors under the module

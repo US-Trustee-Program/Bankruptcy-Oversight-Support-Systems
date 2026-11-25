@@ -8,6 +8,7 @@ import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
   TrusteeDataReportSummary,
+  StoredTrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
 
 const MODULE_NAME = 'TRUSTEE-DATA-REPORT-MONGO-REPOSITORY';
@@ -30,7 +31,7 @@ type PageDocument = {
   runId: string;
   pageKey: string;
   documentType: 'TRUSTEE_DATA_REPORT_PAGE';
-  summary: TrusteeDataReportSummary;
+  summary: StoredTrusteeDataReportSummary;
 };
 type ReportDocument = RunDocument | DifferenceDocument | PageDocument;
 
@@ -194,7 +195,7 @@ export class TrusteeDataReportMongoRepository
     }
   }
 
-  public async readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]> {
+  public async readPageSummaries(runId: string): Promise<StoredTrusteeDataReportSummary[]> {
     try {
       const page = using<PageDocument>();
       const pages = await this.getAdapter<PageDocument>().find(

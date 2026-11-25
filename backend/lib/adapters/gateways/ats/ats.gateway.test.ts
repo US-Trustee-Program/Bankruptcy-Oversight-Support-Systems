@@ -70,11 +70,14 @@ describe('ATS Gateway', () => {
       const result = await gateway.getTrusteeAppointmentsByIds(context, [1, 6]);
 
       expect([...result.keys()]).toEqual([1, 6]);
-      // The fixture rows have no serving state, so the real cleansing cannot map their district.
+      // The report's Southern New York row translates; the other fixture rows have no serving
+      // state, so the real cleansing cannot map their district.
       expect(result.get(1)).toEqual(
         expect.objectContaining({
-          cleanAppointments: [],
-          stats: expect.objectContaining({ total: 2, problematic: 2 }),
+          cleanAppointments: [
+            expect.objectContaining({ courtId: '0208', chapter: '7', appointmentType: 'panel' }),
+          ],
+          stats: expect.objectContaining({ total: 3, clean: 1, problematic: 2 }),
         }),
       );
       expect(result.get(6)?.stats).toEqual(expect.objectContaining({ total: 1, problematic: 1 }));
@@ -375,6 +378,21 @@ describe('ATS Gateway', () => {
         ]);
       });
 
+      test('should sort appointments exactly as getTrusteeAppointments does, breaking ties on appointed date by every column read', async () => {
+        mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+        await gateway.getTrusteeAppointmentsByIds(context, [3]);
+        await gateway.getTrusteeAppointments(context, 3);
+
+        const orderBy = (call: unknown[]) =>
+          String(call[1]).replace(/\s+/g, ' ').split('ORDER BY ')[1].trim();
+        const [batched, single] = mockExecuteQuery.mock.calls.map(orderBy);
+        expect(batched).toBe(single);
+        expect(batched).toBe(
+          'APPOINTED_DATE DESC, STATUS_EFF_DATE DESC, DISTRICT, SERVING_STATE, CHAPTER, STATUS, ARCHIVE_DATE',
+        );
+      });
+
       test('should cleanse each trustee appointments exactly as getTrusteeAppointments does, keeping the order SQL returned', async () => {
         const newer123 = middleLouisiana(123, '7', '2023-01-15');
         const only124 = middleLouisiana(124, '12', '2021-02-01');
@@ -392,6 +410,53 @@ describe('ATS Gateway', () => {
           '2023-01-15',
           '2020-05-01',
         ]);
+      });
+
+      test('should apply the TOD overrides, as the load did', async () => {
+        const overridesModule = await import('./cleansing/ats-cleansing-overrides');
+        vi.spyOn(overridesModule, 'loadTrusteeOverrides').mockResolvedValue({
+          data: new Map([
+            [
+              '123',
+              [
+                {
+                  trusteeId: '123',
+                  status: 'PA',
+                  district: 'Middle',
+                  state: 'Louisiana',
+                  chapter: '7',
+                  action: 'SKIP',
+                },
+              ],
+            ],
+          ]),
+        });
+        mockExecuteQuery.mockResolvedValue({
+          results: { recordset: [middleLouisiana(123, '7', '2023-01-15')] },
+        });
+
+        const result = await gateway.getTrusteeAppointmentsByIds(context, [123]);
+
+        expect(result.get(123)?.stats).toEqual(expect.objectContaining({ total: 1, skipped: 1 }));
+        expect(result.get(123)?.cleanAppointments).toEqual([]);
+      });
+
+      test.each([
+        [
+          'fail to load',
+          { error: new CamsError('ATS-GATEWAY', { message: 'Failed to read override file' }) },
+        ],
+        ['load nothing', {}],
+      ])('should fail rather than compare without overrides when they %s', async (_, loaded) => {
+        const overridesModule = await import('./cleansing/ats-cleansing-overrides');
+        vi.spyOn(overridesModule, 'loadTrusteeOverrides').mockResolvedValue(loaded);
+        mockExecuteQuery.mockResolvedValue({
+          results: { recordset: [middleLouisiana(123, '7', '2023-01-15')] },
+        });
+
+        await expect(gateway.getTrusteeAppointmentsByIds(context, [123])).rejects.toBeInstanceOf(
+          CamsError,
+        );
       });
 
       test('should count skipped and failed rows per trustee', async () => {

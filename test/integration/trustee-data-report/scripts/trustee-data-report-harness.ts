@@ -37,6 +37,7 @@ import {
   SCENARIOS,
   Scenario,
   TRUSTEE_ID_PREFIX,
+  comparedTodIds,
   expectedSummary,
 } from './trustee-data-report-fixtures';
 
@@ -502,7 +503,23 @@ function assertScenarios(differences: DifferenceDocument[]) {
  * Split in two so the known gaps, which only change difference counts, cannot hide a change in
  * which trustees are compared: most scenarios expect no rows and pass whether compared or not.
  */
-function assertSummary(summary: RunDocument['summary']) {
+async function countRowsWithoutDistrict(): Promise<number> {
+  const pool = await getSqlPool(ATS_DATABASE);
+  try {
+    const ids = comparedTodIds().map(Number).filter(Number.isInteger);
+    const { recordset } = await pool
+      .request()
+      .query<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM CHAPTER_DETAILS WHERE DISTRICT IS NULL AND TRU_ID IN (${ids.join(', ')})`,
+      );
+    return recordset[0].n;
+  } finally {
+    await pool.close();
+  }
+}
+
+async function assertSummary(summary: RunDocument['summary']) {
+  const rowsWithoutDistrict = await countRowsWithoutDistrict();
   const counted = (s: RunDocument['summary']) => ({
     trusteesCompared: s?.trusteesCompared,
     camsOnly: s?.camsOnly,
@@ -519,7 +536,7 @@ function assertSummary(summary: RunDocument['summary']) {
     pick: (s: RunDocument['summary']) => object,
     matchesKnownGap = false,
   ) => {
-    const expected = JSON.stringify(pick(expectedSummary()));
+    const expected = JSON.stringify(pick(expectedSummary(rowsWithoutDistrict)));
     const actual = JSON.stringify(pick(summary));
     record(
       id,
@@ -551,7 +568,8 @@ function assertSummary(summary: RunDocument['summary']) {
     'S45',
     'The run counts TOD-only trustees and field differences as the scenarios add up to',
     differences,
-    JSON.stringify(differences(summary)) === JSON.stringify(differences(expectedSummary(true))),
+    JSON.stringify(differences(summary)) ===
+      JSON.stringify(differences(expectedSummary(rowsWithoutDistrict, true))),
   );
 }
 
@@ -587,7 +605,7 @@ async function run() {
     console.log('\nScenarios (run 1)\n');
     const firstDifferences = await readDifferences(db, firstRunId);
     assertScenarios(firstDifferences);
-    assertSummary(first.summary);
+    await assertSummary(first.summary);
     record(
       'L2',
       'The lock is released when a run completes',

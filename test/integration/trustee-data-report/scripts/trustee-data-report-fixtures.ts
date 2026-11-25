@@ -903,17 +903,22 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
-/**
- * Rows in 02-seed-chapter-details.sql that belong to compared trustees. They have no district, so
- * the load could not translate them and the report counts them as not translated.
- */
-const UNTRANSLATED_SLICE_1_ROWS = 36;
+/** The TOD IDs of the trustees the report compares. */
+export function comparedTodIds(): string[] {
+  return SCENARIOS.filter((scenario) => scenario.compared).flatMap(
+    (scenario) => scenario.cams?.legacy?.truIds ?? [],
+  );
+}
 
 /**
  * The run summary the scenarios add up to. With `knownGaps`, the summary the report produces
  * today, using each known gap's `knownGapActual` in place of `expected`.
+ *
+ * @param rowsWithoutDistrict - compared trustees' CHAPTER_DETAILS rows with no district, counted
+ * in ATS_INT. The Slice 1 rows (02-seed-chapter-details.sql) have none, so the load could not
+ * translate them. Other untranslated rows are declared by their scenario.
  */
-export function expectedSummary(knownGaps = false) {
+export function expectedSummary(rowsWithoutDistrict: number, knownGaps = false) {
   const all = SCENARIOS.flatMap((scenario) =>
     knownGaps ? (scenario.knownGapActual ?? scenario.expected) : scenario.expected,
   );
@@ -953,7 +958,7 @@ export function expectedSummary(knownGaps = false) {
     appointmentFieldDifferencesByField,
     appointmentsDivisionsNarrowed: count('appointment-divisions-narrowed'),
     todAppointmentsNotTranslated:
-      UNTRANSLATED_SLICE_1_ROWS +
+      rowsWithoutDistrict +
       SCENARIOS.reduce((sum, scenario) => sum + (scenario.todAppointmentsNotTranslated ?? 0), 0),
   };
 }

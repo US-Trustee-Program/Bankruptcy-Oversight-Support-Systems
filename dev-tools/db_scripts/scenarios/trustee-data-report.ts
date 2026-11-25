@@ -9,8 +9,9 @@
  *
  * Expected results from these trustees alone (other TOD and CAMS trustees in the environment add
  * to the counts):
- *   - 7 trustees compared: 1 exact match [S01] and 6 that each differ in one field: name [S12],
- *     company name [S13], public address [S14], internal address [S15], phone [S16], email [S17]
+ *   - 8 trustees compared: 1 exact match [S01], 1 merged from two TOD records with no difference
+ *     [S57], and 6 that each differ in one field: name [S12], company name [S13], public address
+ *     [S14], internal address [S15], phone [S16], email [S17]
  *   - 3 in TOD only: active [S20], active only through 12CBC status 2 [S44], and an empty status,
  *     flagged "Status missing, needs review" [S41]
  *   - 1 in CAMS only: a CAMS trustee whose TOD ID does not exist in TOD
@@ -26,6 +27,9 @@
  *     and one in CAMS only
  *   - internal-address, phone, email: chapter 7 panel differs in status, appointed date and
  *     status effective date respectively
+ *   - merged [S57]: linked to two TOD records that both have chapter 7 panel. CAMS holds the
+ *     first's (in truIds order), as the load kept it, so nothing is reported; comparing with the
+ *     second's would report status and both dates. Chapter 13 standing comes from the second.
  * Totals: 2 appointments in TOD only, 2 in CAMS only, 3 field differences, 1 divisions narrowed,
  * 1 TOD appointment not translated. If dev's DXTR lists other divisions for 0208, the seeded
  * full-district appointments are also noted as narrowed.
@@ -142,10 +146,14 @@ const linkedTod = (
   ...contact,
 });
 
-/** The TOD record and the CAMS trustee linked to it, with the CAMS profile as stored. */
+/**
+ * The TOD record and the CAMS trustee linked to it, with the CAMS profile as stored. A merged
+ * trustee is also linked to a second TOD record, after the first in truIds.
+ */
 const LINKED: {
   slug: string;
   tod: TodTrustee;
+  alsoLinkedTo?: TodTrustee;
   cams: CamsProfile;
   camsAppointments: CamsAppointment[];
 }[] = [
@@ -294,6 +302,40 @@ const LINKED: {
     },
     camsAppointments: [camsCh7Panel({ effectiveDate: '2020-01-15' })],
   },
+  {
+    slug: 'merged',
+    tod: linkedTod(69, 'Jude', 'Apptmerged', {
+      street: '6900 Appt St',
+      phone: '217-555-0169',
+      email: 'jude.apptmerged@example.com',
+      appointments: [
+        { ...sdny('7', 'PA'), appointedDate: '2019-01-01', effectiveDate: '2019-01-01' },
+      ],
+    }),
+    alsoLinkedTo: linkedTod(70, 'Jude', 'Apptmerged', {
+      street: '6900 Appt St',
+      phone: '217-555-0169',
+      email: 'jude.apptmerged@example.com',
+      appointments: [
+        { ...sdny('7', 'PR'), appointedDate: '2010-01-01', effectiveDate: '2010-01-01' },
+        CH13_STANDING_ACTIVE,
+      ],
+    }),
+    cams: {
+      name: 'Jude Apptmerged',
+      firstName: 'Jude',
+      lastName: 'Apptmerged',
+      public: {
+        address: springfield('6900 Appt St'),
+        phone: { number: '217-555-0169' },
+        email: 'jude.apptmerged@example.com',
+      },
+    },
+    camsAppointments: [
+      camsCh7Panel({ appointedDate: '2019-01-01', effectiveDate: '2019-01-01' }),
+      camsCh13Standing(),
+    ],
+  },
 ];
 
 /** TOD trustees no CAMS trustee links to. */
@@ -392,7 +434,10 @@ function camsTrustee(slug: string, profile: CamsProfile, truIds: string[]) {
 }
 
 export async function generate(): Promise<SeedOperation[]> {
-  const todTrustees = [...LINKED.map(({ tod }) => tod), ...TOD_ONLY];
+  const todTrustees = [
+    ...LINKED.flatMap(({ tod, alsoLinkedTo }) => (alsoLinkedTo ? [tod, alsoLinkedTo] : [tod])),
+    ...TOD_ONLY,
+  ];
 
   return [
     {
@@ -421,8 +466,14 @@ export async function generate(): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        ...LINKED.map(({ slug, tod, cams }) =>
-          camsTrustee(slug, cams, [String(todId(tod.harnessId))]),
+        ...LINKED.map(({ slug, tod, alsoLinkedTo, cams }) =>
+          camsTrustee(
+            slug,
+            cams,
+            [tod, alsoLinkedTo].flatMap((linked) =>
+              linked ? [String(todId(linked.harnessId))] : [],
+            ),
+          ),
         ),
         camsTrustee(CAMS_ONLY.slug, CAMS_ONLY.cams, CAMS_ONLY.truIds),
       ],

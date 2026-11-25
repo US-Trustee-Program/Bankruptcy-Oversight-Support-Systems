@@ -4,6 +4,7 @@ import {
   TrusteeDataDifference,
   TrusteeDataReportRun,
   TrusteeDataReportSummary,
+  StoredTrusteeDataReportSummary,
 } from '@common/cams/trustee-data-report';
 import { ApplicationContext } from '../adapters/types/basic';
 import { LoggerImpl } from '../adapters/services/logger.service';
@@ -595,7 +596,7 @@ export interface TrusteeDataReportRepository extends Releasable {
     differences: TrusteeDataDifference[],
     summary: TrusteeDataReportSummary,
   ): Promise<void>;
-  readPageSummaries(runId: string): Promise<TrusteeDataReportSummary[]>;
+  readPageSummaries(runId: string): Promise<StoredTrusteeDataReportSummary[]>;
   /** Deletes the run's difference rows and page counts, keeping the run document. */
   deleteRunResults(runId: string): Promise<void>;
   /** Deletes the run document and all of its results. */
