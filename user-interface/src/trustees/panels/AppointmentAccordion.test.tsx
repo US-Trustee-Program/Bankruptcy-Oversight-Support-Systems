@@ -65,17 +65,43 @@ describe('AppointmentAccordion', () => {
     return screen.getByTestId(`tag-appointment-status-tag-${appointmentId}`);
   }
 
-  test('still renders when courts fail to load', () => {
+  test('still renders and logs the error when courts fail to load', () => {
+    const courtsError = new Error('courts unavailable');
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
-      error: new Error('courts unavailable'),
+      error: courtsError,
     });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     renderAccordion();
 
     expect(getHeader().getByText(/Southern District of New York/i)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading courts:', courtsError);
+  });
+
+  test('resolves the division name via useCourts when courtDivisionName is absent', () => {
+    mockUseCourts.mockReturnValue({
+      courts: [
+        {
+          officeName: 'Manhattan Office',
+          officeCode: 'NYS',
+          courtId: mockAppointment.courtId,
+          courtName: mockAppointment.courtName,
+          courtDivisionCode: mockAppointment.divisionCode,
+          courtDivisionName: 'Looked Up Division',
+          groupDesignator: 'NY',
+          regionId: '2',
+          regionName: 'Region 2',
+        },
+      ],
+      loading: false,
+      error: null,
+    });
+
+    renderAccordion({ appointment: { ...mockAppointment, courtDivisionName: undefined } });
+
+    expect(getHeader().getByText(/Looked Up Division/i)).toBeInTheDocument();
   });
 
   test('renders the district and division in the header', () => {
@@ -126,13 +152,31 @@ describe('AppointmentAccordion', () => {
     );
   });
 
-  test('calls onToggle with the appointment id when the header is clicked', async () => {
+  test('calls onToggle with the appointment id when expanding (onExpand)', async () => {
     const user = userEvent.setup();
     const { onToggle } = renderAccordion({ expanded: false });
 
     await user.click(screen.getByTestId(`accordion-button-${mockAppointment.id}`));
 
     expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
+  });
+
+  test('calls onToggle with the appointment id when collapsing (onCollapse)', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderAccordion({ expanded: true });
+
+    await user.click(screen.getByTestId(`accordion-button-${mockAppointment.id}`));
+
+    expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
+  });
+
+  // AppointmentAccordion wires expandedId/onExpand/onCollapse to its own `expanded`/`onToggle`
+  // props internally, rather than reading them from its own props (it has no such props) --
+  // so AccordionGroup cloning them onto it would be silently ignored either way, and no
+  // render-observable test can distinguish the flag being true vs. false. This direct
+  // assertion is the only thing that actually guards the contract.
+  test('is excluded from AccordionGroup shared single-open behavior', () => {
+    expect(AppointmentAccordion.excludeFromAccordionGroup).toBe(true);
   });
 
   test('accordion button accessible name includes district, divisions, chapter details, AND status text', () => {
@@ -153,16 +197,23 @@ describe('AppointmentAccordion', () => {
     renderAccordion();
 
     const button = screen.getByTestId(`accordion-button-${mockAppointment.id}`);
-    const headerSpan = screen
-      .getByTestId(`appointment-accordion-header-${mockAppointment.id}`)
-      .querySelector('.appointment-accordion-heading-text');
+    const headerSpan = screen.getByTestId(
+      `appointment-accordion-heading-text-${mockAppointment.id}`,
+    );
 
-    expect(headerSpan).toBeInTheDocument();
-    const visibleHeaderText = headerSpan?.textContent || '';
+    const visibleHeaderText = headerSpan.textContent || '';
     const accessibleName = button.getAttribute('aria-label') || '';
 
     // The accessible name must contain the visible header text exactly
     // If they drift, this test fails to catch WCAG 2.5.3 Label in Name violations
     expect(accessibleName).toContain(visibleHeaderText);
+  });
+
+  test('does not render a stray comma between the heading text and the status tag', () => {
+    renderAccordion();
+
+    const header = screen.getByTestId(`appointment-accordion-header-${mockAppointment.id}`);
+
+    expect(header.textContent).not.toContain(',');
   });
 });

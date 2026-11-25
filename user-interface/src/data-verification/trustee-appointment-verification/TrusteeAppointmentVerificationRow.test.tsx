@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
@@ -186,7 +186,10 @@ describe('TrusteeAppointmentVerificationRow', () => {
     fireEvent.click(expandButton());
 
     await waitFor(() => expect(region).toHaveTextContent('Loading task details...'));
-    expect(region.querySelector('.loading-spinner')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByTestId(`detail-load-progress-${task.id}`)).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
     finishLoad({ data: detail });
     await waitFor(() => expect(region).toBeEmptyDOMElement());
   });
@@ -242,6 +245,22 @@ describe('TrusteeAppointmentVerificationRow', () => {
     fireEvent.click(expandButton()); // expand again
 
     await waitFor(() => expect(detailSpy).toHaveBeenCalledTimes(2));
+  });
+
+  test('a second expand while the detail is still loading starts no second fetch', async () => {
+    let finishLoad: (value: unknown) => void = () => {};
+    const detailSpy = vi
+      .spyOn(Api2, 'getTrusteeAppointmentVerificationDetail')
+      .mockReturnValue(new Promise((resolve) => (finishLoad = resolve)) as never);
+    renderRow();
+
+    fireEvent.click(expandButton()); // expand: starts the fetch
+    fireEvent.click(expandButton()); // collapse
+    fireEvent.click(expandButton()); // expand again, while the first fetch is still pending
+
+    expect(detailSpy).toHaveBeenCalledTimes(1);
+    finishLoad({ data: detail });
+    await screen.findByTestId('problem-statement');
   });
 
   test('retries after a failed load: re-expanding fetches again and can clear the error', async () => {
@@ -320,7 +339,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
     expect(screen.queryByTestId('affected-cases')).not.toBeInTheDocument();
   });
 
-  test('shows the Appointments table once details load', async () => {
+  test('passes the loaded appointments through to the Appointments table once details load', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointmentVerificationDetail').mockResolvedValue({
       data: { ...detail, appointments: [] },
     } as never);
@@ -329,7 +348,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
     fireEvent.click(expandButton());
 
     expect(
-      await screen.findByText('This trustee has no appointments in CAMS.'),
+      await screen.findByRole('heading', { name: 'Appointments', level: 3 }),
     ).toBeInTheDocument();
   });
 
@@ -442,13 +461,32 @@ describe('TrusteeAppointmentVerificationRow', () => {
       return screen.getByTestId(`alert-message-refresh-alert-${task.id}`);
     }
 
-    test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link', async () => {
+    test('guidance tells the verifier how to fix it, with the refresh as a button styled as a link with a leading icon', async () => {
       await expandAndLoad();
 
       expect(screen.getByTestId('refresh-guidance')).toHaveTextContent(
         "To fix this, a Trustee Admin must add or reactivate the appointment on the trustee's profile. Then Refresh Trustee Appointments to check again.",
       );
       expect(refreshButton()).toHaveClass('usa-button--unstyled');
+      const icon = within(refreshButton()).getByTestId('icon');
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(icon.querySelector('use')).toHaveAttribute(
+        'xlink:href',
+        '/assets/styles/img/sprite.svg#autorenew',
+      );
+    });
+
+    test('shows the Appointments table above the refresh guidance', async () => {
+      detailSpy.mockResolvedValue({
+        data: { ...detail, appointments: [newAppointment] },
+      } as never);
+      await expandAndLoad();
+
+      const table = screen.getByRole('table', { name: 'Appointments' });
+      const guidance = screen.getByTestId('refresh-guidance');
+      expect(
+        table.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     test('offers no Resolve or reject action', async () => {
@@ -477,7 +515,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
       await waitFor(() =>
         expect(statusRegion()).toHaveTextContent('Refreshing trustee appointments...'),
       );
-      expect(statusRegion().querySelector('.loading-spinner')).toHaveAttribute(
+      expect(screen.getByTestId(`refresh-progress-${task.id}`)).toHaveAttribute(
         'aria-hidden',
         'true',
       );

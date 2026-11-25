@@ -39,7 +39,7 @@
   "dependencies": {
     "@azure/communication-email": "1.1.0",
     "@azure/cosmos": "4.10.2",
-    "@azure/functions": "4.17.0",
+    "@azure/functions": "4.17.1",
     "@azure/identity": "4.14.1",
     "@azure/keyvault-secrets": "4.12.0",
     "@azure/monitor-query-logs": "1.0.0",
@@ -52,7 +52,7 @@
     "dotenv": "18.0.10",
     "express": "5.3.0",
     "jsonwebtoken": "9.0.3",
-    "mongodb": "7.9.0",
+    "mongodb": "7.9.1",
     "mssql": "12.7.14",
     "name-match": "1.0.4",
     "natural": "8.2.6"
@@ -71,7 +71,7 @@
     "eslint-plugin-n": "18.5.0",
     "eslint-plugin-prettier": "5.5.7",
     "eslint-plugin-promise": "7.3.0",
-    "prettier": "3.9.10",
+    "prettier": "3.10.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",

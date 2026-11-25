@@ -6,6 +6,14 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 let courtsCache: CourtDivisionDetails[] | null = null;
 let courtsPromise: Promise<CourtDivisionDetails[]> | null = null;
 
+/** One immediate retry before giving up - a single transient failure (e.g. a dropped request)
+ * shouldn't leave every consumer stuck showing raw codes for the rest of the session. */
+function fetchCourtsWithRetry(): Promise<CourtDivisionDetails[]> {
+  return Api2.getCourts()
+    .then((response) => response.data)
+    .catch(() => Api2.getCourts().then((response) => response.data));
+}
+
 /**
  * Shared hook for fetching courts data with caching.
  *
@@ -44,13 +52,13 @@ export default function useCourts() {
 
     // Start a new fetch
     setLoading(true);
-    courtsPromise = Api2.getCourts()
-      .then((response) => {
-        courtsCache = response.data;
-        return response.data;
+    courtsPromise = fetchCourtsWithRetry()
+      .then((data) => {
+        courtsCache = data;
+        return data;
       })
       .catch((err) => {
-        courtsPromise = null; // Reset on error so retry is possible
+        courtsPromise = null; // Reset on error so a later mount can retry
         throw err;
       });
 
