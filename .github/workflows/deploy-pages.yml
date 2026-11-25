@@ -223,5 +223,8 @@ jobs:
           payload=$(jq -n --rawfile headline "${headline_file}" \
             --arg link "<${PAGE_URL}#/operations/dora-metrics|DORA Metrics page>" \
             '{text: (($headline | rtrimstr("\n")) + "\n" + $link)}')
-          curl --fail-with-body -sS -X POST -H 'Content-type: application/json' \
+          # Bounded so a stalled Slack call can't hold the pages concurrency group. --retry covers only
+          # timeouts, 408, 429 and 5xx, so a post Slack accepted is not sent again.
+          curl --fail-with-body -sS --connect-timeout 10 --max-time 30 --retry 3 \
+            -X POST -H 'Content-type: application/json' \
             --data "${payload}" "${SLACK_WEBHOOK_URL}"
