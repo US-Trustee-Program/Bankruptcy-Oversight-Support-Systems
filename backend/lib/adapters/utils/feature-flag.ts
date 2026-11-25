@@ -12,7 +12,9 @@ export async function getFeatureFlags(
   config: ApplicationConfiguration,
   user?: CamsUser,
 ): Promise<FeatureFlagSet> {
-  if (!config.featureFlagKey) return testFeatureFlags;
+  // With no LaunchDarkly key (local/Podman), use testFeatureFlags. cams-role-assignments is on, so
+  // sessions take roles only from role assignments.
+  if (!config.featureFlagKey) return { ...testFeatureFlags };
 
   const client = ld.init(config.featureFlagKey, {
     baseUri: 'https://clientsdk.launchdarkly.us',

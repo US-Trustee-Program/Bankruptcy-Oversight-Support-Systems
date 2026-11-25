@@ -2,6 +2,8 @@ export const SUPERUSER_AUTH_FILE = 'playwright/.auth/superuser.json';
 
 // Specs that run against a temporary Super User grant on the regular e2e account, instead of the
 // non-privileged session the chromium project uses. See login/superuser-access.ts.
+// These specs assume cams-role-assignments is on wherever e2e runs: LaunchDarkly Develop and
+// Main-Gov in CI, and testFeatureFlags locally (no LaunchDarkly key).
 export const SUPERUSER_SPECS = ['permissions.spec.ts'];
 
 /** Mirrors the seed script's guard: the Super User grant may only be written to an e2e database. */

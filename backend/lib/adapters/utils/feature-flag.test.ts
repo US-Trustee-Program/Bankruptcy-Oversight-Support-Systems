@@ -75,6 +75,17 @@ describe('Tests for feature flags', () => {
     const flags = await getFeatureFlags(context.config);
 
     expect(flags).toEqual(testFeatureFlags);
+    expect(flags['cams-role-assignments']).toBe(true);
     expect(ld.init).not.toHaveBeenCalled();
+  });
+
+  test('returns a copy of testFeatureFlags so a caller changing a flag leaves the shared set alone', async () => {
+    const context = await createMockApplicationContext({
+      env: { FEATURE_FLAG_SDK_KEY: '' },
+    });
+
+    const flags = await getFeatureFlags(context.config);
+
+    expect(flags).not.toBe(testFeatureFlags);
   });
 });

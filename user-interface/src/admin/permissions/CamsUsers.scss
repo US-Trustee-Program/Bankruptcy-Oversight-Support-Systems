@@ -21,7 +21,10 @@ $col-role-basis: 4.125rem;
 $col-region-basis: 4.125rem;
 $col-office-basis: 4.625rem;
 $col-actions-basis: 7.5rem;
-$cams-users-columns-min-width: 37rem;
+// A little room past the exact total, keeping the switch point at the 37rem checked in the browser.
+$columns-headroom: 0.375rem;
+$cams-users-columns-min-width: $col-name-basis + $col-email-basis + $col-role-basis +
+  $col-region-basis + $col-office-basis + $col-actions-basis + 5 * $column-gap + $columns-headroom;
 
 // CamsTable switches to columns based on the viewport width, but on the Admin page the side menu
 // leaves this table much narrower than the viewport. So this table queries its own width instead:
