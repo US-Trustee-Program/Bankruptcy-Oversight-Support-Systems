@@ -96,7 +96,7 @@ cosmos_firewall_update_attempt_func() {
         fi
     fi
 
-    az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}"
+    az cosmosdb update -n "${cosmos_account}" -g "${db_rg}" --ip-range-filter "${newIps}" 1>/dev/null
 }
 
 export AZ_DEPLOY_RETRY_PATTERN='PreconditionFailed|TooManyRequests|high rate of metadata requests'
