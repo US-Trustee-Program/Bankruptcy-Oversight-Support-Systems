@@ -137,7 +137,7 @@ Feature: DORA Metrics Capture
     And the table shows "No incidents", or how many incidents are still open, for time to restore in that week
     And a metric with nothing to plot in any week says so instead of showing a chart
 
-  # SLICE 8: Long-Term Trend (not yet built)
+  # SLICE 8: Long-Term Trend
   # Dependencies: Slice 7
   # User Value: The team can see trends older than a single report's 13-week window
   Scenario: Team sees weeks older than the current report window

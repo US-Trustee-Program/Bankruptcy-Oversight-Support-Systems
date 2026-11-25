@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import type { HistoryWeek } from '../metrics/history.js';
 import type { WeeklySummary } from '../metrics/weekly-summary.js';
 import { renderDocsPage } from './render-docs-page.js';
 
@@ -262,6 +263,16 @@ describe('renderDocsPage', () => {
     },
   );
 
+  test('shows time to restore as no data when no incident closed and the open count is unknown', () => {
+    const page = renderDocsPage([summaryWith({ restoreTime: null, openIncidents: null })], {
+      generatedAt: GENERATED_AT,
+      run: RUN,
+    });
+
+    expect(page).toContain('| Time to restore service | No data |');
+    expect(page).toContain('| 24 | 3.6 hours | 8.3% | No data |');
+  });
+
   test('shows the restore time, not the open count, when some incidents closed and some are still open', () => {
     const page = renderDocsPage([summaryWith({ openIncidents: 2 })], {
       generatedAt: GENERATED_AT,
@@ -352,6 +363,134 @@ describe('renderDocsPage', () => {
   // The Pages fetch step rejects any page containing '<', and Docsify renders HTML inside markdown.
   test('contains no angle bracket and does not call the deployments production', () => {
     const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT, run: RUN });
+
+    expect(page).not.toContain('<');
+    expect(page.toLowerCase()).not.toContain('production');
+  });
+});
+
+const THEME = `%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#005ea2"}}}}%%`;
+
+// Oldest first: a stored week, a week no run supplied, then the three current-run weeks.
+const HISTORY: HistoryWeek[] = [
+  {
+    periodStart: new Date('2026-10-05T00:00:00.000Z'),
+    summary: summaryWith({
+      periodStart: new Date('2026-10-05T00:00:00.000Z'),
+      periodEnd: new Date('2026-10-12T00:00:00.000Z'),
+      deploymentCount: 5,
+      deploymentsPerDay: 0.71,
+      leadTime: { medianHours: 2, meanHours: 2 },
+      changeFailure: { failedDeployments: 0, totalDeployments: 5, rate: 0 },
+      restoreTime: null,
+    }),
+  },
+  { periodStart: new Date('2026-10-12T00:00:00.000Z'), summary: null },
+  ...THREE_WEEKS.map((week) => ({ periodStart: week.periodStart, summary: week })),
+];
+
+describe('renderDocsPage long-term section', () => {
+  test('charts every stored week after the recent trend, naming the weeks each chart leaves out', () => {
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT, run: RUN }, HISTORY);
+
+    expect(page).toContain(
+      [
+        '| Mon 2026-11-02 | 24 | 3.6 hours | 8.3% | 11.9 days |',
+        '',
+        '## Since Mon 2026-10-05',
+        '',
+        'Every week since the first stored DORA Metrics run. Where runs disagree about a week, the newest run is shown.',
+        '',
+        '### Deployments per week',
+        '',
+        '```mermaid',
+        THEME,
+        'xychart-beta',
+        '  x-axis ["10-05", "10-19", "10-26", "11-02"]',
+        '  y-axis 0 --> 24',
+        '  line [5, 10, 0, 24]',
+        '```',
+        '',
+        'No data for the weeks of 10-12.',
+        '',
+        '### Lead time for changes (median, hours)',
+        '',
+        '```mermaid',
+        THEME,
+        'xychart-beta',
+        '  x-axis ["10-05", "10-19", "11-02"]',
+        '  y-axis 0 --> 3.6',
+        '  line [2.0, 1.0, 3.6]',
+        '```',
+        '',
+        'No data for the weeks of 10-12, 10-26.',
+        '',
+        '### Change failure rate (%)',
+        '',
+        '```mermaid',
+        THEME,
+        'xychart-beta',
+        '  x-axis ["10-05", "10-19", "11-02"]',
+        '  y-axis 0 --> 8.3',
+        '  line [0.0, 0.0, 8.3]',
+        '```',
+        '',
+        'No data for the weeks of 10-12, 10-26.',
+        '',
+        '### Time to restore service (median, days)',
+        '',
+        '```mermaid',
+        THEME,
+        'xychart-beta',
+        '  x-axis ["10-19", "11-02"]',
+        '  y-axis 0 --> 11.9',
+        '  line [0.2, 11.9]',
+        '```',
+        '',
+        'No closed incident, or no data, for the weeks of 10-05, 10-12, 10-26.',
+        '',
+        `Generated 2026-11-16T12:05:00.000Z from [DORA Metrics run 43955771750](${RUN.url})`,
+        '',
+      ].join('\n'),
+    );
+  });
+
+  test('adds no caption to a chart that has every week', () => {
+    const history = THREE_WEEKS.map((week) => ({ periodStart: week.periodStart, summary: week }));
+
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT }, history);
+    const section = page.slice(page.indexOf('## Since'));
+
+    expect(section).toContain('  line [10, 0, 24]\n```\n\n### Lead time');
+  });
+
+  test('shows a metric with nothing to plot in any stored week as text instead of a chart', () => {
+    const history: HistoryWeek[] = [
+      { periodStart: THREE_WEEKS[1].periodStart, summary: THREE_WEEKS[1] },
+      { periodStart: new Date('2026-11-02T00:00:00.000Z'), summary: null },
+    ];
+
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT }, history);
+    const section = page.slice(page.indexOf('## Since'));
+
+    expect(section).toContain(
+      ['### Lead time for changes (median)', '', 'No data in these weeks', ''].join('\n'),
+    );
+    expect(section).toContain(
+      ['### Time to restore service (median)', '', 'No closed incidents in these weeks', ''].join(
+        '\n',
+      ),
+    );
+  });
+
+  test('renders no long-term section without history', () => {
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT });
+
+    expect(page).not.toContain('## Since');
+  });
+
+  test('contains no angle bracket and does not call the deployments production', () => {
+    const page = renderDocsPage(THREE_WEEKS, { generatedAt: GENERATED_AT, run: RUN }, HISTORY);
 
     expect(page).not.toContain('<');
     expect(page.toLowerCase()).not.toContain('production');

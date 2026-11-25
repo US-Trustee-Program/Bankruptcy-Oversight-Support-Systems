@@ -288,6 +288,15 @@ site is rebuilt after each weekly run on `main` (Tuesday 01:00 UTC) and shows th
 newest scheduled or manually dispatched run that rendered one, so a failed publish job does not hold
 it back.
 
+Below the 12-week trend, the page charts every week since the first stored calendar-week run (Mon
+2026-08-17), read back from storage. The workflow's history job downloads each stored run's four
+by-period CSVs (never the detail CSVs, which hold issue text) with the publish job's identity, so no
+other role is needed. Where several runs cover a week, the newest run's numbers are used, and a week
+counts only once it had settled at that run (ended at least 7 days before). Runs from before the
+calendar-week change are left out. On `main`, a failed read fails the run without a page, so the
+site keeps the previous page; runs off `main` skip the history job and render the page without the
+long-term section.
+
 Once the page from a run is live, the Pages build posts that week's four headline values and a link
 to the page to the team Slack channel (`SLACK_WEBHOOK_URL`, the channel workflow failure alerts go
 to). Docs pushes and manual Pages runs don't post, nor does a build that fell back to an older run's

@@ -1,9 +1,18 @@
 import type { CsvRow } from '../output/read-csv.js';
 import { MS_PER_DAY } from './period-window.js';
 
+export type ReportKey = 'deploymentFrequency' | 'leadTime' | 'changeFailureRate' | 'mttr';
+
+type ByPeriodReport = {
+  file: string;
+  columns: readonly string[];
+  // The header of files stored before the newest column was added; they are still read from storage.
+  olderColumns?: readonly string[];
+};
+
 // The four by-period CSVs the weekly summary is built from. Detail CSVs are deliberately
 // excluded: they hold issue text, and the summary is rendered onto a public page.
-export const BY_PERIOD_REPORTS = {
+export const BY_PERIOD_REPORTS: Record<ReportKey, ByPeriodReport> = {
   deploymentFrequency: {
     file: 'deployment-frequency.csv',
     columns: ['periodStart', 'periodEnd', 'deploymentCount', 'deploymentsPerDay'],
@@ -32,10 +41,16 @@ export const BY_PERIOD_REPORTS = {
       'medianRestoreTimeHours',
       'openIncidentCount',
     ],
+    // openIncidentCount was added by PR #3362 (merged 2026-11-23).
+    olderColumns: [
+      'periodStart',
+      'periodEnd',
+      'incidentCount',
+      'meanRestoreTimeHours',
+      'medianRestoreTimeHours',
+    ],
   },
-} as const;
-
-type ReportKey = keyof typeof BY_PERIOD_REPORTS;
+};
 
 export type ByPeriodReports = Record<ReportKey, CsvRow[]>;
 
@@ -52,12 +67,13 @@ export type WeeklySummary = {
   changeFailure: { failedDeployments: number; totalDeployments: number; rate: number | null };
   restoreTime: DurationSummary;
   // Incidents that week not yet closed; with a null restoreTime, tells "still open" from "no incidents".
-  openIncidents: number;
+  // null when unknown: the week comes from an mttr file stored before the count was recorded.
+  openIncidents: number | null;
 };
 
 // A week is shown only once it ended at least this long ago. Lead time skips issues not yet deployed,
 // and time to restore skips incidents not yet closed, so a just-ended week reads too fast.
-const SETTLING_MS = 7 * MS_PER_DAY;
+export const SETTLING_MS = 7 * MS_PER_DAY;
 
 // The report scripts write by-period rows oldest first, so the settled rows come back oldest first too.
 function rowsEndingBy(key: ReportKey, rows: CsvRow[], cutoff: Date): CsvRow[] {
@@ -98,7 +114,7 @@ function assertSameWeeks(settled: Record<ReportKey, CsvRow[]>): void {
   }
 }
 
-function summarizeWeek(week: Record<ReportKey, CsvRow>): WeeklySummary {
+export function summarizeWeek(week: Record<ReportKey, CsvRow>): WeeklySummary {
   const { deploymentFrequency, leadTime, changeFailureRate, mttr } = week;
   const totalDeployments = numberFrom('changeFailureRate', changeFailureRate, 'totalDeployments');
 
@@ -129,7 +145,8 @@ function summarizeWeek(week: Record<ReportKey, CsvRow>): WeeklySummary {
             medianHours: numberFrom('mttr', mttr, 'medianRestoreTimeHours'),
             meanHours: numberFrom('mttr', mttr, 'meanRestoreTimeHours'),
           },
-    openIncidents: numberFrom('mttr', mttr, 'openIncidentCount'),
+    openIncidents:
+      mttr.openIncidentCount === undefined ? null : numberFrom('mttr', mttr, 'openIncidentCount'),
   };
 }
 
