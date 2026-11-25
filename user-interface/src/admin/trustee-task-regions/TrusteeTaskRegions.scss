@@ -1,25 +1,37 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .trustee-task-regions-panel {
   .trustee-task-regions-table-container {
-    // fit-content, not a fixed width: with both columns below set to a fixed flex-basis, this
-    // naturally sizes to their total instead of stretching the row (and its border) out to
-    // whatever width the container would otherwise default to.
-    width: fit-content;
-    max-width: 100%;
     margin-top: 1.25rem;
   }
 
-  // Matches the design mock's measured column width (~11.686rem each, ~23rem total including
-  // the row's 1rem gap). CamsTable's default (flex: 1 1 0 on every cell) instead stretches each
-  // column to half of whatever width the container happens to be - combined with the
-  // container's own default full-width stretch, that made the table far wider than the mock.
-  // Selector must match the TABLE_ID constant exported from TrusteeTaskRegions.tsx.
-  #trustee-task-regions-table {
-    .cams-table__cell {
-      flex: 0 0 11.686rem;
-      // CamsTable's default 1rem horizontal padding leaves "Change to DXTR" only ~2.5px short
-      // of wrapping to a second line at this column width - half it to give the button room.
-      padding-left: 0.5rem;
-      padding-right: 0.5rem;
+  // Both this block and the one below are scoped to the same tablet+ breakpoint CamsTable's own
+  // base styles use (CamsTable.scss), since below it CamsTable renders cells as stacked,
+  // full-width cards - these column-width and fit-content overrides only make sense once the
+  // table is back in its flex-row layout, and leaving them unscoped bled into the mobile layout
+  // (indenting the stacked cards, and shrinking the row borders to the longest line of content).
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+    .trustee-task-regions-table-container {
+      // fit-content, not a fixed width: with both columns below set to a fixed flex-basis, this
+      // naturally sizes to their total instead of stretching the row (and its border) out to
+      // whatever width the container would otherwise default to.
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    // Matches the design mock's measured column width (~11.686rem each, ~23rem total including
+    // the row's 1rem gap). CamsTable's default (flex: 1 1 0 on every cell) instead stretches each
+    // column to half of whatever width the container happens to be - combined with the
+    // container's own default full-width stretch, that made the table far wider than the mock.
+    // Selector must match the TABLE_ID constant exported from TrusteeTaskRegions.tsx.
+    #trustee-task-regions-table {
+      .cams-table__cell {
+        flex: 0 0 11.686rem;
+        // CamsTable's default 1rem horizontal padding leaves "Change to DXTR" only ~2.5px short
+        // of wrapping to a second line at this column width - half it to give the button room.
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+      }
     }
   }
 }
