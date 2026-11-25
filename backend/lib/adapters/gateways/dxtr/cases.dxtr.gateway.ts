@@ -655,12 +655,15 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
    * @param {ApplicationContext} context
    * @param {string} casesStart The date and time to begin checking for LAST_UPDATE_DATE values in AO_CS.
    * @param {string} transactionsStart The date and time to begin checking for TX_DATE values in AO_TX.
+   * @param {string} [end] Inclusive upper bound applied to both LAST_UPDATE_DATE and TX_DATE. Leave
+   * unset to read everything after the start dates.
    * @returns {{ caseIds: string[], latestCasesSyncDate: string, latestTransactionsSyncDate: string }} Case ids and latest sync dates.
    */
   async getUpdatedCaseIds(
     context: ApplicationContext,
     casesStart: string,
     transactionsStart: string,
+    end?: string,
   ): Promise<UpdatedCaseIds> {
     // Query 1: Get cases updated in AO_CS
     const casesParams: DbTableFieldSpec[] = [
@@ -670,6 +673,9 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         value: casesStart,
       },
     ];
+    if (end) {
+      casesParams.push({ name: 'casesEnd', type: mssql.DateTime, value: end });
+    }
 
     const casesQuery = `
       SELECT
@@ -677,7 +683,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         CONVERT(VARCHAR(23), C.LAST_UPDATE_DATE, 126) + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE > @casesStart
+      WHERE C.LAST_UPDATE_DATE > @casesStart${end ? ' AND C.LAST_UPDATE_DATE <= @casesEnd' : ''}
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
@@ -689,6 +695,9 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         value: transactionsStart,
       },
     ];
+    if (end) {
+      transactionsParams.push({ name: 'transactionsEnd', type: mssql.DateTime, value: end });
+    }
 
     const transactionsQuery = `
       SELECT
@@ -699,7 +708,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE > @transactionsStart
+        AND TX.TX_DATE > @transactionsStart${end ? ' AND TX.TX_DATE <= @transactionsEnd' : ''}
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 

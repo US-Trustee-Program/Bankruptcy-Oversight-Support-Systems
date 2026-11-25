@@ -192,17 +192,15 @@ describe('resync-cases-by-date handleStart', () => {
       const invocationContext = makeInvocationContext();
       setLaneCount(laneCount);
 
-      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+      vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockResolvedValue({
         events,
-        lastCasesSyncDate: '2024-01-01',
-        lastTransactionsSyncDate: '2024-01-01',
       });
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
         await createMockApplicationContext(),
       );
       const queues = stubQueues();
 
-      await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+      await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext);
 
       const [page] = queues.get(PAGE_QUEUE).sent;
       expect(JSON.parse(page.text)).toEqual({ events });
@@ -213,35 +211,29 @@ describe('resync-cases-by-date handleStart', () => {
     },
   );
 
-  test('does nothing when fromDate is missing', async () => {
+  test.each([
+    { description: 'fromDate is missing', message: { fromDate: '' } },
+    { description: 'fromDate is not a date', message: { fromDate: 'not-a-date' } },
+    { description: 'toDate is not a date', message: { fromDate: '2024-01-01', toDate: 'later' } },
+    {
+      description: 'toDate is before fromDate',
+      message: { fromDate: '2024-06-01', toDate: '2024-01-01' },
+    },
+    {
+      description: 'toDate is the same moment as fromDate',
+      message: { fromDate: '2024-06-01', toDate: '2024-06-01T00:00:00.000Z' },
+    },
+  ])('does nothing when $description', async ({ message }) => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
-    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIds');
+    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
 
-    await handleStart({ fromDate: '' }, invocationContext);
+    await handleStart(message, invocationContext);
 
     expect(getCaseIdsSpy).not.toHaveBeenCalled();
-    expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
-  });
-
-  test('does nothing when no cases are found', async () => {
-    const { handleStart } = await import('./resync-cases-by-date');
-    const invocationContext = makeInvocationContext();
-
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
-      events: [],
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handleStart({ fromDate: '2024-01-01' }, invocationContext);
-
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
   });
 
@@ -249,12 +241,12 @@ describe('resync-cases-by-date handleStart', () => {
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
   ])(
-    'requeues the start message with backoff instead of throwing when getCaseIds fails with a $label',
+    'requeues the start message with backoff instead of throwing when getCaseIdsInWindow fails with a $label',
     async ({ build }) => {
       const { handleStart } = await import('./resync-cases-by-date');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(build());
+      vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(build());
       const mockContext = await createMockApplicationContext();
       mockContext.extraOutputs = invocationContext.extraOutputs;
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -264,7 +256,7 @@ describe('resync-cases-by-date handleStart', () => {
         .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
 
       await expect(
-        handleStart({ fromDate: '2024-01-01' }, invocationContext),
+        handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, invocationContext),
       ).resolves.toBeUndefined();
 
       expect(fromConnectionStringSpy).toHaveBeenCalledWith(
@@ -275,6 +267,7 @@ describe('resync-cases-by-date handleStart', () => {
       const [body, visibilityTimeout] = mockSendMessage.mock.calls[0];
       expect(JSON.parse(body)).toEqual({
         fromDate: '2024-01-01',
+        toDate: '2024-01-15',
         retryCount: 1,
         firstAttemptAt: expect.any(String),
       });
@@ -286,7 +279,7 @@ describe('resync-cases-by-date handleStart', () => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
       new TooManyRequestsError('TEST'),
     );
     const mockContext = await createMockApplicationContext();
@@ -311,21 +304,251 @@ describe('resync-cases-by-date handleStart', () => {
     ]);
   });
 
-  test('rethrows a non-transient getCaseIds failure without routing it to DLQ', async () => {
+  test('logs the range to resume from at error level when the transient-error retry limit is exhausted', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const errorSpy = vi.spyOn(mockContext.logger, 'error');
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-06-01', retryCount: RATE_LIMIT_RETRY_LIMIT },
+      invocationContext,
+    );
+
+    const resumeLog = errorSpy.mock.calls.find(([, message]) =>
+      String(message).includes('2024-01-01'),
+    );
+    expect(resumeLog?.[1]).toContain('2024-06-01');
+  });
+
+  test('rethrows a non-transient getCaseIdsInWindow failure without routing it to DLQ', async () => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
       new Error('Database connection failed'),
     );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
 
-    await expect(handleStart({ fromDate: '2024-01-01' }, invocationContext)).rejects.toThrow(
-      'Database connection failed',
-    );
+    await expect(
+      handleStart({ fromDate: '2024-01-01', toDate: '2024-06-01' }, invocationContext),
+    ).rejects.toThrow('Database connection failed');
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
+
+  test('logs the window that failed at error level before rethrowing a non-transient failure', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const errorSpy = vi.spyOn(mockContext.logger, 'error');
+
+    await expect(
+      handleStart({ fromDate: '2024-01-01', toDate: '2024-06-01' }, invocationContext),
+    ).rejects.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('2024-01-01'),
+      expect.anything(),
+    );
+    const [, message] = errorSpy.mock.calls[0];
+    expect(message).toContain('2024-02-01T00:00:00.000Z');
+    expect(message).toContain('2024-06-01');
+  });
+});
+
+describe('resync-cases-by-date handleStart windowing', () => {
+  const START_QUEUE = 'resync-cases-by-date-start';
+  const caseEvent = (n: number): CaseSyncEvent => ({
+    type: 'CASE_CHANGED',
+    caseId: `001-25-${String(n).padStart(5, '0')}`,
+  });
+
+  async function setupWindow(events: CaseSyncEvent[]) {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const getCaseIdsSpy = vi
+      .spyOn(SyncCasesModule.default, 'getCaseIdsInWindow')
+      .mockResolvedValue({
+        events,
+      });
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const queues = stubQueues();
+    const invocationContext = makeInvocationContext();
+    return { handleStart, getCaseIdsSpy, queues, invocationContext, mockContext };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    setLaneCount(undefined);
+  });
+
+  test('loads only the first month of a longer range, queues its pages, and continues from where it stopped', async () => {
+    const { handleStart, getCaseIdsSpy, queues, invocationContext } = await setupWindow([
+      caseEvent(1),
+      caseEvent(2),
+    ]);
+
+    await handleStart({ fromDate: '2024-01-01', toDate: '2024-03-15' }, invocationContext);
+
+    expect(getCaseIdsSpy).toHaveBeenCalledTimes(1);
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2024-01-01',
+      '2024-02-01T00:00:00.000Z',
+    );
+    expect(JSON.parse(queues.get(PAGE_QUEUE).sent[0].text).events).toHaveLength(2);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 2 },
+    ]);
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toBeUndefined();
+  });
+
+  test('continues through a window that holds no cases', async () => {
+    const { handleStart, queues, invocationContext } = await setupWindow([]);
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-03-15', eventsQueued: 7 },
+      invocationContext,
+    );
+
+    expect(queues.get(PAGE_QUEUE).sent).toHaveLength(0);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 7 },
+    ]);
+  });
+
+  test('bounds the last window at toDate, queues no continuation, and starts the lanes', async () => {
+    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([caseEvent(1)]);
+    setLaneCount('2');
+
+    await handleStart(
+      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 5 },
+      invocationContext,
+    );
+
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2024-03-01T00:00:00.000Z',
+      '2024-03-15',
+    );
+    expect(outputFor(invocationContext, START_QUEUE)).toBeUndefined();
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toEqual([
+      { runId: 'test-id', laneId: 0 },
+      { runId: 'test-id', laneId: 1 },
+    ]);
+  });
+
+  test('starts the lanes on the last window even when no window held cases, so pages left by an earlier run are drained', async () => {
+    const { handleStart, invocationContext } = await setupWindow([]);
+    setLaneCount('3');
+
+    await handleStart(
+      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15' },
+      invocationContext,
+    );
+
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(3);
+    expect(outputFor(invocationContext, START_QUEUE)).toBeUndefined();
+  });
+
+  test('fixes the end of the range at the current time when the start message gives none', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2024-06-10T12:00:00.000Z'));
+    const { handleStart, invocationContext } = await setupWindow([]);
+
+    await handleStart({ fromDate: '2024-01-01' }, invocationContext);
+
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-06-10T12:00:00.000Z', eventsQueued: 0 },
+    ]);
+  });
+
+  test.each([
+    {
+      description: 'ends the run when one month after fromDate is exactly toDate',
+      fromDate: '2024-01-01',
+      toDate: '2024-02-01T00:00:00.000Z',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      continuation: undefined,
+    },
+    {
+      description: 'continues when toDate is one millisecond past one month after fromDate',
+      fromDate: '2024-01-01',
+      toDate: '2024-02-01T00:00:00.001Z',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      continuation: {
+        fromDate: '2024-02-01T00:00:00.000Z',
+        toDate: '2024-02-01T00:00:00.001Z',
+        eventsQueued: 0,
+      },
+    },
+    {
+      description:
+        'rolls a month-end start into the following month instead of clamping to month end',
+      fromDate: '2024-01-31',
+      toDate: '2024-06-01',
+      windowEnd: '2024-03-02T00:00:00.000Z',
+      continuation: { fromDate: '2024-03-02T00:00:00.000Z', toDate: '2024-06-01', eventsQueued: 0 },
+    },
+  ])('$description', async ({ fromDate, toDate, windowEnd, continuation }) => {
+    const { handleStart, getCaseIdsSpy, invocationContext } = await setupWindow([]);
+
+    await handleStart({ fromDate, toDate }, invocationContext);
+
+    expect(getCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), fromDate, windowEnd);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual(
+      continuation ? [continuation] : undefined,
+    );
+  });
+
+  test('splits a window of more than one page and adds all of its cases to the running total', async () => {
+    const events = Array.from({ length: 101 }, (_, index) => caseEvent(index));
+    const { handleStart, queues, invocationContext } = await setupWindow(events);
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-06-01', eventsQueued: 3 },
+      invocationContext,
+    );
+
+    expect(queues.get(PAGE_QUEUE).sent.map((page) => JSON.parse(page.text).events.length)).toEqual([
+      100, 1,
+    ]);
+    expect(outputFor(invocationContext, START_QUEUE)).toEqual([
+      { fromDate: '2024-02-01T00:00:00.000Z', toDate: '2024-06-01', eventsQueued: 104 },
+    ]);
+  });
+
+  test('reports the window it completed and the running total to telemetry', async () => {
+    const { handleStart, invocationContext, mockContext } = await setupWindow([caseEvent(1)]);
+    const completeSpy = vi.spyOn(mockContext.observability, 'completeTrace');
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-03-15', eventsQueued: 4 },
+      invocationContext,
+    );
+
+    const [, , result] = completeSpy.mock.calls[0];
+    expect(result.success).toBe(true);
+    expect(result.properties).toMatchObject({
+      windowFrom: '2024-01-01',
+      windowEnd: '2024-02-01T00:00:00.000Z',
+      toDate: '2024-03-15',
+      windowEvents: '1',
+      totalEventsQueued: '5',
+      continued: 'true',
+    });
   });
 });
 
@@ -1193,17 +1416,15 @@ describe('resync-cases-by-date handleStart page splitting', () => {
       type: 'CASE_CHANGED',
       caseId: `001-25-${String(index).padStart(5, '0')}`,
     }));
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockResolvedValue({
       events,
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
     const queues = stubQueues();
 
-    await handleStart({ fromDate: '2024-01-01' }, makeInvocationContext());
+    await handleStart({ fromDate: '2024-01-01', toDate: '2024-01-15' }, makeInvocationContext());
 
     const pages = queues.get(PAGE_QUEUE).sent;
     expect(pages.map((page) => JSON.parse(page.text).events.length)).toEqual([100, 100, 50]);

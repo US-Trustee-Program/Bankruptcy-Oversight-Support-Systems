@@ -131,6 +131,7 @@ export class CasesLocalGateway implements CasesInterface {
     _applicationContext: ApplicationContext,
     casesStart: string,
     transactionsStart: string,
+    _end?: string,
   ): Promise<UpdatedCaseIds> {
     return {
       caseIds: [],

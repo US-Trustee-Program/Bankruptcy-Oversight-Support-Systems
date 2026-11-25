@@ -1507,6 +1507,82 @@ describe('Test DXTR Gateway', () => {
         'TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID',
       );
     });
+
+    describe('end date bound', () => {
+      const end = '2024-02-01T00:00:00.000Z';
+      const queries = [
+        { name: 'AO_CS', fromClause: 'FROM AO_CS C', endParam: 'casesEnd' },
+        { name: 'AO_TX', fromClause: 'FROM AO_TX', endParam: 'transactionsEnd' },
+      ];
+
+      function findQueryCall(fromClause: string) {
+        const call = querySpy.mock.calls.find(([, sql]) => sql.includes(fromClause));
+        if (!call) throw new Error(`No query was run ${fromClause}`);
+        const [, sql, params] = call;
+        return { sql, params: params ?? [] };
+      }
+
+      test.each(queries)(
+        'should bound the $name query by the end date when one is given',
+        async ({ fromClause, endParam }) => {
+          querySpy.mockResolvedValue(makeQueryResults([]));
+
+          await testCasesDxtrGateway.getUpdatedCaseIds(
+            applicationContext,
+            '2024-01-01',
+            '2024-01-01',
+            end,
+          );
+
+          const { sql, params } = findQueryCall(fromClause);
+          expect(params).toContainEqual(expect.objectContaining({ name: endParam, value: end }));
+          expect(sql).toContain(`@${endParam}`);
+        },
+      );
+
+      test.each(queries)(
+        'should leave the $name query unbounded above when no end date is given',
+        async ({ fromClause, endParam }) => {
+          querySpy.mockResolvedValue(makeQueryResults([]));
+
+          await testCasesDxtrGateway.getUpdatedCaseIds(
+            applicationContext,
+            '2024-01-01',
+            '2024-01-01',
+          );
+
+          const { sql, params } = findQueryCall(fromClause);
+          expect(params.map((param) => param.name)).not.toContain(endParam);
+          expect(sql).not.toContain(`@${endParam}`);
+        },
+      );
+
+      test('should return deduplicated case ids and the latest sync dates when an end date is given', async () => {
+        querySpy.mockResolvedValueOnce(
+          makeQueryResults([
+            { caseId: '081-20-10508', latestSyncDate: '2024-01-20T10:00:00.000Z' },
+            { caseId: '081-21-12345', latestSyncDate: '2024-01-10T09:00:00.000Z' },
+          ]),
+        );
+        querySpy.mockResolvedValueOnce(
+          makeQueryResults([
+            { caseId: '081-20-10508', latestSyncDate: '2024-01-25T14:00:00.000Z' },
+            { caseId: '081-22-00001', latestSyncDate: '2024-01-05T08:00:00.000Z' },
+          ]),
+        );
+
+        const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
+          applicationContext,
+          '2024-01-01',
+          '2024-01-01',
+          end,
+        );
+
+        expect(actual.caseIds.sort()).toEqual(['081-20-10508', '081-21-12345', '081-22-00001']);
+        expect(actual.latestCasesSyncDate).toEqual('2024-01-20T10:00:00.000Z');
+        expect(actual.latestTransactionsSyncDate).toEqual('2024-01-25T14:00:00.000Z');
+      });
+    });
   });
 
   describe('getCasesWithTerminalTransactionBlindSpot', () => {
