@@ -70,52 +70,8 @@ describe('getCaseIds tests', () => {
       lastTransactionsSyncDate: latestTransactionsSyncDate,
     };
 
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, lastSyncDate, undefined);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate, lastSyncDate);
     expect(actual).toEqual(expected);
-  });
-
-  test('should forward the end date alongside the sync dates read from runtime state', async () => {
-    const syncState: CasesSyncState = {
-      documentType: 'CASES_SYNC_STATE',
-      lastCasesSyncDate: '2025-01-01',
-      lastTransactionsSyncDate: '2025-01-02',
-    };
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
-    const getUpdatedSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({
-        caseIds: [],
-        latestCasesSyncDate: '2025-01-01',
-        latestTransactionsSyncDate: '2025-01-02',
-      });
-
-    await SyncCases.getCaseIds(context, undefined, '2025-02-01T00:00:00.000Z');
-
-    expect(getUpdatedSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      '2025-01-01',
-      '2025-01-02',
-      '2025-02-01T00:00:00.000Z',
-    );
-  });
-
-  test('should forward the end date to the gateway', async () => {
-    const getUpdatedSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({
-        caseIds: [],
-        latestCasesSyncDate: '2025-02-01',
-        latestTransactionsSyncDate: '2025-02-01',
-      });
-
-    await SyncCases.getCaseIds(context, '2025-01-01', '2025-02-01T00:00:00.000Z');
-
-    expect(getUpdatedSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      '2025-01-01',
-      '2025-01-01',
-      '2025-02-01T00:00:00.000Z',
-    );
   });
 
   test('should use provided lastSyncDate if provided and return gateway latestSyncDate', async () => {
@@ -171,7 +127,6 @@ describe('getCaseIds tests', () => {
       expect.anything(),
       legacyLastSyncDate,
       legacyLastSyncDate,
-      undefined,
     );
 
     const expected = {
@@ -206,5 +161,65 @@ describe('getCaseIds tests', () => {
       { caseId: '081-20-10001', type: 'CASE_CHANGED' },
       { caseId: '081-20-10002', type: 'CASE_CHANGED' },
     ]);
+  });
+});
+
+describe('getCaseIdsInWindow tests', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+  });
+
+  test('should read the window from the start date through the end date and return a case changed event per case', async () => {
+    const caseIds = MockData.buildArray(MockData.randomCaseId, 3);
+    const getUpdatedSpy = vi
+      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
+      .mockResolvedValue({
+        caseIds,
+        latestCasesSyncDate: '2025-02-01',
+        latestTransactionsSyncDate: '2025-02-01',
+      });
+
+    const actual = await SyncCases.getCaseIdsInWindow(
+      context,
+      '2025-01-01',
+      '2025-02-01T00:00:00.000Z',
+    );
+
+    expect(getUpdatedSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      '2025-01-01',
+      '2025-01-01',
+      '2025-02-01T00:00:00.000Z',
+    );
+    expect(actual).toEqual({
+      events: caseIds.map((caseId) => ({ caseId, type: 'CASE_CHANGED' })),
+    });
+  });
+
+  test('should not read or depend on the stored sync state', async () => {
+    const readSpy = vi.spyOn(MockMongoRepository.prototype, 'read');
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds: [],
+      latestCasesSyncDate: '2025-01-01',
+      latestTransactionsSyncDate: '2025-01-01',
+    });
+
+    await SyncCases.getCaseIdsInWindow(context, '2025-01-01', '2025-02-01T00:00:00.000Z');
+
+    expect(readSpy).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    { description: 'a non-transient error', error: new Error('Login failed for user') },
+    { description: 'a gateway timeout', error: new GatewayTimeoutError('SYNC-CASES') },
+    { description: 'a 429', error: new TooManyRequestsError('SYNC-CASES') },
+  ])('should rethrow $description instead of reporting the window as empty', async ({ error }) => {
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockRejectedValue(error);
+
+    await expect(
+      SyncCases.getCaseIdsInWindow(context, '2025-01-01', '2025-02-01T00:00:00.000Z'),
+    ).rejects.toBe(error);
   });
 });

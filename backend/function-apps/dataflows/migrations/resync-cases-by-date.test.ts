@@ -192,10 +192,8 @@ describe('resync-cases-by-date handleStart', () => {
       const invocationContext = makeInvocationContext();
       setLaneCount(laneCount);
 
-      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+      vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockResolvedValue({
         events,
-        lastCasesSyncDate: '2024-01-01',
-        lastTransactionsSyncDate: '2024-01-01',
       });
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
         await createMockApplicationContext(),
@@ -217,10 +215,18 @@ describe('resync-cases-by-date handleStart', () => {
     { description: 'fromDate is missing', message: { fromDate: '' } },
     { description: 'fromDate is not a date', message: { fromDate: 'not-a-date' } },
     { description: 'toDate is not a date', message: { fromDate: '2024-01-01', toDate: 'later' } },
+    {
+      description: 'toDate is before fromDate',
+      message: { fromDate: '2024-06-01', toDate: '2024-01-01' },
+    },
+    {
+      description: 'toDate is the same moment as fromDate',
+      message: { fromDate: '2024-06-01', toDate: '2024-06-01T00:00:00.000Z' },
+    },
   ])('does nothing when $description', async ({ message }) => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
-    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIds');
+    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -235,12 +241,12 @@ describe('resync-cases-by-date handleStart', () => {
     { label: 'TooManyRequestsError', build: () => new TooManyRequestsError('TEST') },
     { label: 'GatewayTimeoutError', build: () => new GatewayTimeoutError('TEST') },
   ])(
-    'requeues the start message with backoff instead of throwing when getCaseIds fails with a $label',
+    'requeues the start message with backoff instead of throwing when getCaseIdsInWindow fails with a $label',
     async ({ build }) => {
       const { handleStart } = await import('./resync-cases-by-date');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(build());
+      vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(build());
       const mockContext = await createMockApplicationContext();
       mockContext.extraOutputs = invocationContext.extraOutputs;
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -273,7 +279,7 @@ describe('resync-cases-by-date handleStart', () => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
       new TooManyRequestsError('TEST'),
     );
     const mockContext = await createMockApplicationContext();
@@ -298,21 +304,67 @@ describe('resync-cases-by-date handleStart', () => {
     ]);
   });
 
-  test('rethrows a non-transient getCaseIds failure without routing it to DLQ', async () => {
+  test('logs the range to resume from at error level when the transient-error retry limit is exhausted', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
+      new TooManyRequestsError('TEST'),
+    );
+    const mockContext = await createMockApplicationContext();
+    mockContext.extraOutputs = invocationContext.extraOutputs;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const errorSpy = vi.spyOn(mockContext.logger, 'error');
+
+    await handleStart(
+      { fromDate: '2024-01-01', toDate: '2024-06-01', retryCount: RATE_LIMIT_RETRY_LIMIT },
+      invocationContext,
+    );
+
+    const resumeLog = errorSpy.mock.calls.find(([, message]) =>
+      String(message).includes('2024-01-01'),
+    );
+    expect(resumeLog?.[1]).toContain('2024-06-01');
+  });
+
+  test('rethrows a non-transient getCaseIdsInWindow failure without routing it to DLQ', async () => {
     const { handleStart } = await import('./resync-cases-by-date');
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockRejectedValue(
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
       new Error('Database connection failed'),
     );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
 
-    await expect(handleStart({ fromDate: '2024-01-01' }, invocationContext)).rejects.toThrow(
-      'Database connection failed',
-    );
+    await expect(
+      handleStart({ fromDate: '2024-01-01', toDate: '2024-06-01' }, invocationContext),
+    ).rejects.toThrow('Database connection failed');
     expect((invocationContext.extraOutputs as unknown as Map<unknown, unknown>).size).toBe(0);
+  });
+
+  test('logs the window that failed at error level before rethrowing a non-transient failure', async () => {
+    const { handleStart } = await import('./resync-cases-by-date');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+    const mockContext = await createMockApplicationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const errorSpy = vi.spyOn(mockContext.logger, 'error');
+
+    await expect(
+      handleStart({ fromDate: '2024-01-01', toDate: '2024-06-01' }, invocationContext),
+    ).rejects.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('2024-01-01'),
+      expect.anything(),
+    );
+    const [, message] = errorSpy.mock.calls[0];
+    expect(message).toContain('2024-02-01T00:00:00.000Z');
+    expect(message).toContain('2024-06-01');
   });
 });
 
@@ -325,11 +377,11 @@ describe('resync-cases-by-date handleStart windowing', () => {
 
   async function setupWindow(events: CaseSyncEvent[]) {
     const { handleStart } = await import('./resync-cases-by-date');
-    const getCaseIdsSpy = vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
-      events,
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
-    });
+    const getCaseIdsSpy = vi
+      .spyOn(SyncCasesModule.default, 'getCaseIdsInWindow')
+      .mockResolvedValue({
+        events,
+      });
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
     const queues = stubQueues();
@@ -398,27 +450,16 @@ describe('resync-cases-by-date handleStart windowing', () => {
     ]);
   });
 
-  test('starts the lanes when only an earlier window held cases', async () => {
+  test('starts the lanes on the last window even when no window held cases, so pages left by an earlier run are drained', async () => {
     const { handleStart, invocationContext } = await setupWindow([]);
     setLaneCount('3');
-
-    await handleStart(
-      { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15', eventsQueued: 5 },
-      invocationContext,
-    );
-
-    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(3);
-  });
-
-  test('starts no lanes when no window of the whole range held cases', async () => {
-    const { handleStart, invocationContext } = await setupWindow([]);
 
     await handleStart(
       { fromDate: '2024-03-01T00:00:00.000Z', toDate: '2024-03-15' },
       invocationContext,
     );
 
-    expect(outputFor(invocationContext, WRITER_QUEUE)).toBeUndefined();
+    expect(outputFor(invocationContext, WRITER_QUEUE)).toHaveLength(3);
     expect(outputFor(invocationContext, START_QUEUE)).toBeUndefined();
   });
 
@@ -1375,10 +1416,8 @@ describe('resync-cases-by-date handleStart page splitting', () => {
       type: 'CASE_CHANGED',
       caseId: `001-25-${String(index).padStart(5, '0')}`,
     }));
-    vi.spyOn(SyncCasesModule.default, 'getCaseIds').mockResolvedValue({
+    vi.spyOn(SyncCasesModule.default, 'getCaseIdsInWindow').mockResolvedValue({
       events,
-      lastCasesSyncDate: '2024-01-01',
-      lastTransactionsSyncDate: '2024-01-01',
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),

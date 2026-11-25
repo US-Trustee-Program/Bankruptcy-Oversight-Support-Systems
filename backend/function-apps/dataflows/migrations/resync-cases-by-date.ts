@@ -163,7 +163,12 @@ function readPositiveSetting(name: string, fallback: number, mustBeInteger = fal
  * A start message names a range: cases changed after fromDate up to toDate, which defaults to the
  * time the first message is handled. Each invocation loads one month of the range onto the PAGE
  * queue and queues a start message for the remainder; the lanes start with the last window, once
- * every page is queued.
+ * every page is queued, whether or not that window held cases.
+ *
+ * If the chain stops partway (retries exhausted, a non-transient error, or a poisoned message),
+ * the pages from earlier windows stay on the PAGE queue with no lanes. The error log names the
+ * window that failed; resume by starting a run from that window's fromDate to the original toDate.
+ * The lanes started by that run's last window also drain the pages left behind.
  *
  * Operators start one resync-cases-by-date run at a time. A second START issued while a run is
  * still in progress adds another K lane writers to the same PAGE queue; there is no run lock.
@@ -205,6 +210,20 @@ export async function handleStart(
     return;
   }
 
+  if (Date.parse(toDate) <= Date.parse(fromDate)) {
+    logger.error(
+      MODULE_NAME,
+      `The range is empty: toDate ${toDate} is not after fromDate ${fromDate}.`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      details: { reason: 'toDate must be after fromDate' },
+    });
+    return;
+  }
+
   const { windowEnd, isLastWindow } = nextWindow(fromDate, toDate);
   logger.info(
     MODULE_NAME,
@@ -213,7 +232,7 @@ export async function handleStart(
 
   let events: CaseSyncEvent[];
   try {
-    ({ events } = await SyncCases.getCaseIds(context, fromDate, windowEnd));
+    ({ events } = await SyncCases.getCaseIdsInWindow(context, fromDate, windowEnd));
   } catch (originalError) {
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error: originalError,
@@ -237,6 +256,10 @@ export async function handleStart(
     }
 
     if (rateLimitRetryStatus === 'exhausted') {
+      logger.error(
+        MODULE_NAME,
+        `Gave up on the window after ${fromDate} up to ${windowEnd}. Resume by starting a run from ${fromDate} to ${toDate}.`,
+      );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 1,
@@ -246,6 +269,11 @@ export async function handleStart(
       return;
     }
 
+    logger.error(
+      MODULE_NAME,
+      `Failed to read the window after ${fromDate} up to ${windowEnd}. Resume by starting a run from ${fromDate} to ${toDate}.`,
+      originalError,
+    );
     throw originalError;
   }
 
@@ -290,7 +318,7 @@ export async function handleStart(
       eventsQueued: totalEventsQueued,
     };
     invocationContext.extraOutputs.set(START, [continuation]);
-  } else if (totalEventsQueued > 0) {
+  } else {
     const laneCount = readPositiveSetting(LANE_COUNT_ENV, DEFAULT_LANE_COUNT, true);
     const lanes: ResyncCasesByDateWriterMessage[] = Array.from(
       { length: laneCount },
@@ -301,8 +329,6 @@ export async function handleStart(
     );
     invocationContext.extraOutputs.set(WRITER, lanes);
     details.lanesStarted = String(lanes.length);
-  } else {
-    logger.info(MODULE_NAME, `No cases found since the original start date. Nothing to resync.`);
   }
 
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {

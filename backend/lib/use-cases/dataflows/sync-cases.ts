@@ -14,7 +14,7 @@ function isLegacySyncState(
   return 'lastSyncDate' in state && !('lastCasesSyncDate' in state);
 }
 
-async function getCaseIds(context: ApplicationContext, lastSyncDate?: string, endDate?: string) {
+async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
   try {
     let syncState: CasesSyncState;
     if (lastSyncDate) {
@@ -47,7 +47,6 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string, en
         context,
         syncState.lastCasesSyncDate,
         syncState.lastTransactionsSyncDate,
-        endDate,
       );
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
@@ -69,8 +68,31 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string, en
   }
 }
 
+/**
+ * Reads the cases changed after fromDate, up to and including endDate.
+ *
+ * Unlike getCaseIds, every failure propagates. A caller that walks a range of windows has to stop
+ * on an error; an empty result would be taken for a window with no changes and that window's
+ * cases would never be synced.
+ */
+async function getCaseIdsInWindow(
+  context: ApplicationContext,
+  fromDate: string,
+  endDate: string,
+): Promise<{ events: CaseSyncEvent[] }> {
+  const casesGateway = factory.getCasesGateway(context);
+  const { caseIds } = await casesGateway.getUpdatedCaseIds(context, fromDate, fromDate, endDate);
+
+  return {
+    events: caseIds.map((caseId) => {
+      return { type: 'CASE_CHANGED', caseId };
+    }),
+  };
+}
+
 const SyncCases = {
   getCaseIds,
+  getCaseIdsInWindow,
 };
 
 export default SyncCases;
