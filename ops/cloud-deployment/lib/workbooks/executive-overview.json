@@ -92,7 +92,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Growth & Engagement\n\n**{PeopleCountedFrom}** Every chart in this section counts distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC."
+        "json": "## Growth & Engagement\n\n**{PeopleCountedFrom}** Every chart above *Browser-based history* counts distinct people, identified by the work email recorded when they sign in, so one person on two computers counts once. Person-based numbers start on that date and are not back-filled; earlier periods are only in *Browser-based history* at the end of this section. Dates are UTC."
       },
       "name": "growth-header"
     },
@@ -175,14 +175,14 @@
     {
       "type": 1,
       "content": {
-        "json": "**Engaged vs. Occasional People** splits the people who signed in during the selected range by how many distinct days they signed in: 8 or more days is \"Engaged\", 1 to 7 is \"Occasional\" (the 8-day line is provisional). **New vs. Returning People** splits the same people by whether their first recorded sign-in falls inside the range (\"New\") or earlier (\"Returning\")."
+        "json": "**Engaged vs. Occasional People** splits the people who signed in during the selected range by how many distinct days they signed in: 8 or more days is \"Engaged\", 1 to 7 is \"Occasional\" (the 8-day line is provisional). **New vs. Returning People** splits the same people by whether their first recorded sign-in falls inside the range (\"New\") or earlier (\"Returning\"). With a 7-day range nobody can reach 8 active days, so everyone shows as Occasional."
       },
       "name": "engagement-pies-header"
     },
     {
       "type": 1,
       "content": {
-        "json": "**These two charts read high for now.** Person-based counting started less than 30 days before the start of the selected range. People who used CAMS before counting started show as New the first time they sign in after it, and only their days since then count toward Engaged, so New reads high and Engaged reads low. This note goes away once the range starts 30 or more days after counting started.",
+        "json": "**These two charts are skewed for now.** The selected range starts before, or less than 30 days after, person-based counting started. People who used CAMS before counting started show as New the first time they sign in after it, so New reads high. If the range starts before counting started, Engaged also reads low, because days before then aren't counted. This note goes away once the range starts 30 or more days after counting started.",
         "style": "warning"
       },
       "name": "people-engagement-note",
@@ -362,7 +362,7 @@
           {
             "type": 1,
             "content": {
-              "json": "**Engaged vs. Occasional Users** splits browsers by how many distinct days they were active in the period: 8+ days is \"Engaged,\" fewer is \"Occasional\" (that 8-day line is provisional — see the open ticket item to tune it against real traffic). **New vs. Returning Users** splits browsers by whether their very first-ever visit falls inside the selected period (\"New\") or happened earlier (\"Returning\"). New Users is overstated for ranges starting within 30 days of the oldest telemetry still kept."
+              "json": "**Engaged vs. Occasional Users** splits browsers by how many distinct days they were active in the period: 8+ days is \"Engaged,\" fewer is \"Occasional\" (that 8-day line is provisional — see the open ticket item to tune it against real traffic). With a 7-day range no browser can reach 8 days, so all show as Occasional. **New vs. Returning Users** splits browsers by whether their very first-ever visit falls inside the selected period (\"New\") or happened earlier (\"Returning\"). New Users is overstated for ranges starting within 30 days of the oldest telemetry still kept."
             },
             "name": "browser-engagement-pies-header"
           },
