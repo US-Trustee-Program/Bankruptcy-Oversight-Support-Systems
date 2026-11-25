@@ -61,6 +61,8 @@ while IFS='=' read -r key value || [[ -n "$key" ]]; do
 done < .env
 
 POD_NAME="cams-e2e-pod"
+# The pod's Mongo, for the backend inside the pod and the Playwright container on the host network.
+LOCAL_MONGO_URL="mongodb://localhost:27017/cams-e2e?retrywrites=false"
 TESTS_PASSED=false
 CLEANUP_NEEDED=false
 
@@ -303,7 +305,7 @@ start_pod_and_wait_for_backend() {
         -e NODE_ENV=development \
         -e DOTENV_CONFIG_SILENT=true \
         -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
-        -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
+        -e MONGO_CONNECTION_STRING="${LOCAL_MONGO_URL}" \
         -e DATABASE_MOCK="${DATABASE_MOCK}" \
         -e MSSQL_HOST=localhost \
         -e MSSQL_DATABASE="${MSSQL_DATABASE:-}" \
@@ -432,7 +434,7 @@ podman run --rm \
     -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
     -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
     -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
-    -e MONGO_CONNECTION_STRING="${MONGO_CONNECTION_STRING}" \
+    -e MONGO_CONNECTION_STRING="${LOCAL_MONGO_URL}" \
     -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
     -v "$(pwd)/test-results:/app/test/e2e/test-results" \
     -v "$(pwd)/playwright-report:/app/test/e2e/playwright-report" \

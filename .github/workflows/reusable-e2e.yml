@@ -248,10 +248,6 @@ jobs:
           # grant/revoke — see test/e2e/playwright/login/superuser-access.ts.
           MONGO_CONNECTION_STRING: ${{ env.MONGO_CONNECTION_STRING }} # pragma: allowlist secret
           COSMOS_DATABASE_NAME: ${{ env.COSMOS_DATABASE_NAME }}
-          # This job only ever deploys Flexion's own dev or Main-Gov environments (never real USTP
-          # staging/production), where cams-role-assignments is on - see
-          # test/e2e/playwright/superuser.ts's isSuperUserTestEnabled for why this gate exists.
-          CAMS_ROLE_ASSIGNMENTS_ENABLED: 'true'
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
@@ -292,7 +288,6 @@ jobs:
             -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
             -e MONGO_CONNECTION_STRING="${MONGO_CONNECTION_STRING}" \
             -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
-            -e CAMS_ROLE_ASSIGNMENTS_ENABLED="${CAMS_ROLE_ASSIGNMENTS_ENABLED}" \
             -e CI=true \
             "${{ env.PLAYWRIGHT_IMAGE }}" \
             npx playwright test --reporter=list,html

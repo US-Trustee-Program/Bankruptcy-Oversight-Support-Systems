@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle } from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
@@ -178,6 +178,61 @@ describe('CamsUsers', () => {
     expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
     expect(lines(SARAH, 'Region')).toEqual(['2', '2', 'All']);
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
+  });
+
+  const emailText = (user: CamsUserWithPermissions) =>
+    within(row(user)).getByTestId('cams-user-email');
+  // The text on each side of a break point, however EmailText nests it.
+  const textAround = (container: HTMLElement, breakPoint: Element) => {
+    const before = document.createRange();
+    before.setStart(container, 0);
+    before.setEndBefore(breakPoint);
+    const after = document.createRange();
+    after.setStartAfter(breakPoint);
+    after.setEnd(container, container.childNodes.length);
+    return [before.toString(), after.toString()];
+  };
+
+  test.each([
+    {
+      case: 'an email',
+      email: 'sarah.williams@example.com',
+      parts: ['sarah.williams@', 'example.com'],
+    },
+    {
+      case: 'an email with more than one @',
+      email: 'a@b@example.com',
+      parts: ['a@', 'b@example.com'],
+    },
+  ])(
+    'should let $case wrap only after its first @, keeping its text unchanged',
+    async ({ email, parts }) => {
+      const user = { ...SARAH, email };
+      vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([user]));
+
+      render(<CamsUsers />);
+
+      await waitFor(() => expect(table()).toBeInTheDocument());
+      const breakPoints = emailText(user).querySelectorAll('wbr');
+      expect(breakPoints).toHaveLength(1);
+      expect(textAround(emailText(user), breakPoints[0])).toEqual(parts);
+      expect(emailText(user).textContent).toBe(email);
+    },
+  );
+
+  test.each([
+    { case: 'an email without an @', email: 'not-an-email' },
+    { case: 'an empty email', email: '' },
+    { case: 'a missing email', email: undefined },
+  ])('should show $case as it is, without a break point', async ({ email }) => {
+    const user = { ...ALEX, email };
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([user]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    expect(emailText(user).querySelector('wbr')).toBeNull();
+    expect(emailText(user).textContent).toBe(email ?? '');
   });
 
   test('should read each permission to screen readers as one sentence, in the Role cell', async () => {

@@ -122,6 +122,19 @@ function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
   );
 }
 
+// Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
+function EmailText({ email }: Readonly<{ email?: string }>) {
+  if (!email?.includes('@')) return <span data-testid="cams-user-email">{email}</span>;
+  const at = email.indexOf('@');
+  return (
+    <span data-testid="cams-user-email">
+      {email.slice(0, at + 1)}
+      <wbr />
+      {email.slice(at + 1)}
+    </span>
+  );
+}
+
 // Region and Office are read as part of each Role sentence. This gives their labels text to read.
 function ScopeCellText({ hasPermissions }: Readonly<{ hasPermissions: boolean }>) {
   return <span className="usa-sr-only">{hasPermissions ? 'See Role' : 'None'}</span>;
@@ -316,7 +329,7 @@ export function CamsUsers() {
                     {user.name}
                   </CamsTableCell>
                   <CamsTableCell className="col-email" data-cell="Email">
-                    {user.email}
+                    <EmailText email={user.email} />
                   </CamsTableCell>
                   <CamsTableCell className="col-role" data-cell="Role">
                     <PermissionSentences permissions={user.permissions} officeName={officeName} />

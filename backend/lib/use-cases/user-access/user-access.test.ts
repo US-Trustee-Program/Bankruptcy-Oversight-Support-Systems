@@ -703,8 +703,8 @@ describe('UserAccessUseCase', () => {
         expect(created).toBe(true);
         expect(deactivateSpy.mock.calls.map(([p]) => p.id)).toEqual([manhattan.id, buffalo.id]);
         expect(result.replaced).toEqual([
-          { ...manhattan, active: false, activeKey: `inactive|${manhattan.id}` },
           { ...buffalo, active: false, activeKey: `inactive|${buffalo.id}` },
+          { ...manhattan, active: false, activeKey: `inactive|${manhattan.id}` },
         ]);
         const deactivations = auditWrites(createSpy).filter((a) => a.action === 'DEACTIVATED');
         expect(deactivations).toEqual(
@@ -737,6 +737,26 @@ describe('UserAccessUseCase', () => {
           })),
         );
         expect(traceSpy).toHaveBeenCalledTimes(3); // one CREATED, two DEACTIVATED
+      });
+
+      test('should list replaced permissions ordered by region, then office', async () => {
+        spyOnMembers();
+        spyOnHeld([
+          assignmentFor('user-a', SEATTLE),
+          assignmentFor('user-a', MANHATTAN),
+          assignmentFor('user-a', BUFFALO),
+        ]);
+        spyOnWrites();
+        spyOnDeactivate();
+
+        const { result } = await useCase.grantPermission(context, { ...request, ...NATIONAL });
+
+        // Region 2 before Region 18 (numeric, not string, order); within Region 2, by office.
+        expect(result.replaced.map((p) => p.officeCode)).toEqual([
+          BUFFALO.officeCode,
+          MANHATTAN.officeCode,
+          SEATTLE.officeCode,
+        ]);
       });
 
       test.each([

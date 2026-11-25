@@ -67,14 +67,25 @@ describe('Tests for feature flags', () => {
     });
   });
 
-  test('returns testFeatureFlags with cams-role-assignments off, without contacting LaunchDarkly, when no feature flag key is configured', async () => {
+  test('returns testFeatureFlags without contacting LaunchDarkly when no feature flag key is configured', async () => {
     const context = await createMockApplicationContext({
       env: { FEATURE_FLAG_SDK_KEY: '' },
     });
 
     const flags = await getFeatureFlags(context.config);
 
-    expect(flags).toEqual({ ...testFeatureFlags, 'cams-role-assignments': false });
+    expect(flags).toEqual(testFeatureFlags);
+    expect(flags['cams-role-assignments']).toBe(true);
     expect(ld.init).not.toHaveBeenCalled();
+  });
+
+  test('returns a copy of testFeatureFlags so a caller changing a flag leaves the shared set alone', async () => {
+    const context = await createMockApplicationContext({
+      env: { FEATURE_FLAG_SDK_KEY: '' },
+    });
+
+    const flags = await getFeatureFlags(context.config);
+
+    expect(flags).not.toBe(testFeatureFlags);
   });
 });
