@@ -2,14 +2,12 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
+import { using } from '../../../query/query-builder';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { RoleAssignmentAuditMongoRepository } from './role-assignment-audit.mongo.repository';
 import { RoleAssignmentAuditEntry } from '@common/cams/user-access';
 import { CamsRole } from '@common/cams/roles';
-
-const { and } = QueryBuilder;
 
 describe('RoleAssignmentAuditMongoRepository', () => {
   let context: ApplicationContext;
@@ -121,18 +119,28 @@ describe('RoleAssignmentAuditMongoRepository', () => {
       await repo.search({ offset: 0, limit: 20, userIds: ['user-1', 'user-2'] });
 
       const doc = using<RoleAssignmentAuditEntry>();
-      const matchStage = (paginate.mock.calls[0][0] as { stages: Array<{ stage: string }> })
-        .stages[0] as unknown as Conjunction<RoleAssignmentAuditEntry>;
-      expect(matchStage.values).toEqual(
-        and(
-          doc('documentType').equals('ROLE_ASSIGNMENT_AUDIT'),
-          doc('userId').contains(['user-1', 'user-2']),
-        ).values,
+      expect(paginate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stages: [
+            expect.objectContaining({
+              stage: 'MATCH',
+              conjunction: 'AND',
+              values: [
+                doc('documentType').equals('ROLE_ASSIGNMENT_AUDIT'),
+                doc('userId').contains(['user-1', 'user-2']),
+              ],
+            }),
+            expect.anything(),
+            expect.anything(),
+          ],
+        }),
       );
     });
 
     test('should return an empty page without querying when userIds is empty', async () => {
-      const paginate = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate');
+      const paginate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockRejectedValue(new Error('should not be called'));
 
       const result = await repo.search({ offset: 0, limit: 20, userIds: [] });
 
@@ -152,6 +160,42 @@ describe('RoleAssignmentAuditMongoRepository', () => {
           module: 'ROLE-ASSIGNMENT-AUDIT-MONGO-REPOSITORY',
         }),
       );
+    });
+  });
+
+  describe('singleton and release logic', () => {
+    test('singleton getInstance and dropInstance logic', async () => {
+      while (RoleAssignmentAuditMongoRepository['referenceCount'] > 0) {
+        RoleAssignmentAuditMongoRepository.dropInstance();
+      }
+
+      const context1 = await createMockApplicationContext();
+      const repo1 = RoleAssignmentAuditMongoRepository.getInstance(context1);
+      expect(repo1).toBeDefined();
+      expect(RoleAssignmentAuditMongoRepository['referenceCount']).toBe(1);
+
+      const context2 = await createMockApplicationContext();
+      const repo2 = RoleAssignmentAuditMongoRepository.getInstance(context2);
+      expect(repo2).toBe(repo1);
+      expect(RoleAssignmentAuditMongoRepository['referenceCount']).toBe(2);
+
+      const closeSpy = vi.spyOn(repo1['client'], 'close').mockResolvedValue();
+      RoleAssignmentAuditMongoRepository.dropInstance();
+      expect(RoleAssignmentAuditMongoRepository['referenceCount']).toBe(1);
+      expect(closeSpy).not.toHaveBeenCalled();
+
+      RoleAssignmentAuditMongoRepository.dropInstance();
+      expect(RoleAssignmentAuditMongoRepository['referenceCount']).toBe(0);
+      await Promise.resolve();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(RoleAssignmentAuditMongoRepository['instance']).toBeNull();
+    });
+
+    test('release calls dropInstance', () => {
+      const dropSpy = vi.spyOn(RoleAssignmentAuditMongoRepository, 'dropInstance');
+      repo.release();
+      expect(dropSpy).toHaveBeenCalled();
+      dropSpy.mockRestore();
     });
   });
 });

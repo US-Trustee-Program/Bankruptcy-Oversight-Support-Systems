@@ -76,6 +76,20 @@ describe('UserRoleAssignmentMongoRepository', () => {
       expect(insertOne).not.toHaveBeenCalled();
     });
 
+    test('should re-check the index after a failed check, not cache the failure as confirmed', async () => {
+      const hasUniqueIndex = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex')
+        .mockRejectedValueOnce(new Error('listIndexes failed'))
+        .mockResolvedValueOnce(true);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(assignment.id);
+
+      await expect(repo.create(assignment)).rejects.toThrow();
+      const result = await repo.create(assignment);
+
+      expect(result).toEqual(assignment);
+      expect(hasUniqueIndex).toHaveBeenCalledTimes(2);
+    });
+
     test('should insert the assignment with its own id and return it', async () => {
       const insertOne = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
@@ -90,6 +104,14 @@ describe('UserRoleAssignmentMongoRepository', () => {
     test('should return null, not throw, when the user already has that active permission', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
         new Error('Failed to insert item. E11000 duplicate key error collection'),
+      );
+
+      await expect(repo.create(assignment)).resolves.toBeNull();
+    });
+
+    test('should return null, not throw, when the duplicate-key message omits E11000', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+        new Error('WriteError: duplicate key error for index user-role-assignments'),
       );
 
       await expect(repo.create(assignment)).resolves.toBeNull();
