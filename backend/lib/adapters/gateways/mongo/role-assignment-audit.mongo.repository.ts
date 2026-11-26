@@ -83,6 +83,8 @@ export class RoleAssignmentAuditMongoRepository
       }
       const spec = pipeline(
         match(and(...conditions)),
+        // action descending puts DEACTIVATED before CREATED only because "D" sorts after "C"; a new
+        // or renamed action changes this tie-break.
         sort(descending(performedAt), descending(action), descending(id)),
         paginate(predicate.offset, predicate.limit),
       );

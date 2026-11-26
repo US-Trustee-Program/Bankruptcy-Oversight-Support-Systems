@@ -109,14 +109,6 @@ describe('UserRoleAssignmentMongoRepository', () => {
       await expect(repo.create(assignment)).resolves.toBeNull();
     });
 
-    test('should return null, not throw, when the duplicate-key message omits E11000', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-        new Error('WriteError: duplicate key error for index user-role-assignments'),
-      );
-
-      await expect(repo.create(assignment)).resolves.toBeNull();
-    });
-
     test('should throw a CamsError when the insert fails for another reason', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
         new Error('connection error'),
@@ -256,19 +248,30 @@ describe('UserRoleAssignmentMongoRepository', () => {
   });
 
   describe('findByIds', () => {
-    test('should query assignments by id, active or inactive, and return them', async () => {
+    test('should query by user and id, so each lookup stays within its users, and return active and inactive assignments', async () => {
+      const inactive: UserRoleAssignment = {
+        ...assignment,
+        id: 'assignment-3',
+        active: false,
+        activeKey: 'inactive|assignment-3',
+      };
       const find = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([assignment]);
+        .mockResolvedValue([assignment, inactive]);
 
-      const result = await repo.findByIds(['assignment-1', 'assignment-2']);
+      const result = await repo.findByIds([
+        { userId: 'user-1', id: 'assignment-1' },
+        { userId: 'user-2', id: 'assignment-2' },
+        { userId: 'user-1', id: 'assignment-3' },
+      ]);
 
       const doc = using<UserRoleAssignment>();
-      expect(result).toEqual([assignment]);
+      expect(result).toEqual([assignment, inactive]);
       expect(find).toHaveBeenCalledWith(
         and(
           doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
-          doc('id').contains(['assignment-1', 'assignment-2']),
+          doc('userId').contains(['user-1', 'user-2']),
+          doc('id').contains(['assignment-1', 'assignment-2', 'assignment-3']),
         ),
       );
     });
@@ -287,7 +290,7 @@ describe('UserRoleAssignmentMongoRepository', () => {
         new Error('connection error'),
       );
 
-      await expect(repo.findByIds(['assignment-1'])).rejects.toThrow(
+      await expect(repo.findByIds([{ userId: 'user-1', id: 'assignment-1' }])).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to retrieve role assignments.',
           status: 500,

@@ -383,11 +383,12 @@ export class MockMongoRepository
     );
   }
 
-  findByIds(ids: string[]): Promise<UserRoleAssignment[]> {
-    if (ids.length === 0) {
-      return Promise.resolve([]);
-    }
-    return Promise.resolve(MockMongoRepository.roleAssignments.filter((a) => ids.includes(a.id)));
+  findByIds(refs: Pick<UserRoleAssignment, 'userId' | 'id'>[]): Promise<UserRoleAssignment[]> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter((a) =>
+        refs.some((ref) => ref.userId === a.userId && ref.id === a.id),
+      ),
+    );
   }
 
   findActiveByUserAndRole(userId: string, role: string): Promise<UserRoleAssignment[]> {

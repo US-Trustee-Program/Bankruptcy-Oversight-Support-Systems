@@ -138,11 +138,19 @@ export class UserRoleAssignmentMongoRepository
     }
   }
 
-  async findByIds(ids: string[]): Promise<UserRoleAssignment[]> {
-    if (ids.length === 0) {
+  async findByIds(
+    refs: Pick<UserRoleAssignment, 'userId' | 'id'>[],
+  ): Promise<UserRoleAssignment[]> {
+    if (refs.length === 0) {
       return [];
     }
-    const query = and(doc('documentType').equals('USER_ROLE_ASSIGNMENT'), doc('id').contains(ids));
+    // userId is the shard key: filtering on it keeps the read to those users' partitions. Ids are
+    // unique, so matching each list separately can't pair one user's id with another user.
+    const query = and(
+      doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+      doc('userId').contains([...new Set(refs.map((ref) => ref.userId))]),
+      doc('id').contains(refs.map((ref) => ref.id)),
+    );
     try {
       return await this.getAdapter<UserRoleAssignment>().find(query);
     } catch (originalError) {

@@ -1241,8 +1241,12 @@ export interface UserRoleAssignmentRepository extends Releasable {
     assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
   ): Promise<UserRoleAssignment | null>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
-  /** Permissions by id, active or inactive. An empty input returns [] without querying. */
-  findByIds(ids: string[]): Promise<UserRoleAssignment[]>;
+  /**
+   * Permissions by id, active or inactive. Each id comes with its userId, the collection's shard
+   * key, so the read stays within those users' partitions. An empty input returns [] without
+   * querying.
+   */
+  findByIds(refs: Pick<UserRoleAssignment, 'userId' | 'id'>[]): Promise<UserRoleAssignment[]>;
 }
 
 /**

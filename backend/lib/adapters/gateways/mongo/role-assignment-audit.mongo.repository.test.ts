@@ -77,12 +77,12 @@ describe('RoleAssignmentAuditMongoRepository', () => {
       data: [entry],
     };
 
-    test('should page every record, newest first, when userIds is absent', async () => {
+    test('should page every record when userIds is absent: newest first, DEACTIVATED before CREATED at the same instant, then id descending', async () => {
       const paginate = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue(expectedPage);
 
-      const result = await repo.search({ offset: 0, limit: 20 });
+      const result = await repo.search({ offset: 40, limit: 15 });
 
       const doc = using<RoleAssignmentAuditEntry>();
       const expectedQuery = {
@@ -102,8 +102,8 @@ describe('RoleAssignmentAuditMongoRepository', () => {
           }),
           expect.objectContaining({
             stage: 'PAGINATE',
-            skip: 0,
-            limit: 20,
+            skip: 40,
+            limit: 15,
           }),
         ],
       };
