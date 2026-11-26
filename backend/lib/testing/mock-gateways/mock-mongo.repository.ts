@@ -177,6 +177,12 @@ export class MockMongoRepository
     return;
   }
 
+  /** Tests only: empties the role assignments and audit records kept for the life of the process. */
+  static clearRoleAssignments() {
+    MockMongoRepository.roleAssignments = [];
+    MockMongoRepository.roleAssignmentAudits = [];
+  }
+
   static getInstance(_context: ApplicationContext) {
     return new MockMongoRepository();
   }

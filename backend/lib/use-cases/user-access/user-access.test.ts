@@ -1179,7 +1179,219 @@ describe('UserAccessUseCase', () => {
   });
 
   // Last in the file: the DATABASE_MOCK repository keeps grants for the rest of the run.
+  describe('getPermissionChanges', () => {
+    const performer = { performedBy: 'super-1', performedByName: 'Maria Garcia' };
+    const manhattan = {
+      role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
+      officeCode: MANHATTAN.officeCode,
+    };
+    const allOfRegion2 = { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null };
+
+    function audit(
+      id: string,
+      action: 'CREATED' | 'DEACTIVATED',
+      performedAt: string,
+      states: Pick<
+        RoleAssignmentAuditEntry,
+        'previousState' | 'newState' | 'replacedByAssignmentId'
+      >,
+    ): RoleAssignmentAuditEntry {
+      const scope = (states.newState ?? states.previousState)!;
+      return {
+        documentType: 'ROLE_ASSIGNMENT_AUDIT',
+        id,
+        assignmentId: `assignment-${id}`,
+        action,
+        userId: 'user-a',
+        userName: 'Sarah Williams',
+        role: scope.role,
+        regionId: scope.regionId,
+        officeCode: scope.officeCode,
+        ...performer,
+        performedAt,
+        ...states,
+      };
+    }
+
+    const granted = audit('a1', 'CREATED', '2026-11-02T10:00:00.000Z', {
+      previousState: null,
+      newState: { ...manhattan, active: true },
+      replacedByAssignmentId: null,
+    });
+    const replaced = audit('a2', 'DEACTIVATED', '2026-11-20T10:00:00.000Z', {
+      previousState: { ...manhattan, active: true },
+      newState: { ...manhattan, active: false },
+      replacedByAssignmentId: 'replacing-1',
+    });
+    const removed = audit('a3', 'DEACTIVATED', '2026-11-25T10:00:00.000Z', {
+      previousState: { ...allOfRegion2, active: true },
+      newState: { ...allOfRegion2, active: false },
+      replacedByAssignmentId: null,
+    });
+    const replacing: UserRoleAssignment = {
+      ...assignmentFor('user-a', MANHATTAN),
+      id: 'replacing-1',
+      ...allOfRegion2,
+    };
+
+    function spyOnAudits(data: RoleAssignmentAuditEntry[], total = data.length) {
+      return vi
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockResolvedValue({ metadata: { total }, data });
+    }
+
+    test('should return the page of changes as the audit search orders it, with the total', async () => {
+      const searchSpy = spyOnAudits([removed, granted], 41);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      const result = await useCase.getPermissionChanges(context, { limit: 20, offset: 20 });
+
+      expect(searchSpy).toHaveBeenCalledWith({ limit: 20, offset: 20 });
+      expect(result).toEqual({
+        totalCount: 41,
+        data: [
+          {
+            auditId: 'a3',
+            assignmentId: 'assignment-a3',
+            userId: 'user-a',
+            userName: 'Sarah Williams',
+            ...performer,
+            performedAt: '2026-11-25T10:00:00.000Z',
+            kind: 'removed',
+            previous: allOfRegion2,
+            next: null,
+          },
+          {
+            auditId: 'a1',
+            assignmentId: 'assignment-a1',
+            userId: 'user-a',
+            userName: 'Sarah Williams',
+            ...performer,
+            performedAt: '2026-11-02T10:00:00.000Z',
+            kind: 'granted',
+            previous: null,
+            next: manhattan,
+          },
+        ],
+      });
+    });
+
+    test('should show what replaced a permission, reading the replacing permissions once, by user and id', async () => {
+      spyOnAudits([replaced]);
+      const findByIdsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([replacing]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(findByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findByIdsSpy).toHaveBeenCalledWith([{ userId: 'user-a', id: 'replacing-1' }]);
+      expect(data).toEqual([
+        expect.objectContaining({ kind: 'replaced', previous: manhattan, next: allOfRegion2 }),
+      ]);
+    });
+
+    test('should leave New empty for a replacement whose replacing permission cannot be read', async () => {
+      spyOnAudits([replaced]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(data).toEqual([
+        expect.objectContaining({ kind: 'replaced', previous: manhattan, next: null }),
+      ]);
+    });
+
+    test.each([
+      { name: 'a negative offset', paging: { limit: 20, offset: -1 } },
+      { name: 'a zero limit', paging: { limit: 0, offset: 0 } },
+      { name: 'a fractional limit', paging: { limit: 1.5, offset: 0 } },
+    ])('should reject $name without reading the history', async ({ paging }) => {
+      const searchSpy = spyOnAudits([]);
+
+      const error = await getTheThrownError(() => useCase.getPermissionChanges(context, paging));
+
+      expect(error).toEqual(expect.objectContaining({ status: 400 }));
+      expect(searchSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('with the DATABASE_MOCK repository and no spies on it', () => {
+    beforeEach(() => {
+      MockMongoRepository.clearRoleAssignments();
+    });
+
+    test('should list every grant, replacement and removal newest first, showing what replaced a permission', async () => {
+      spyOnMembers();
+      vi.useFakeTimers({ toFake: ['Date'] });
+      const grant = (regionId: string, officeCode: string) =>
+        useCase.grantPermission(context, {
+          userId: 'user-b',
+          role: CamsRole.TrialAttorney,
+          regionId,
+          officeCode,
+        });
+
+      vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'));
+      await grant(MANHATTAN.regionId, MANHATTAN.officeCode);
+      vi.setSystemTime(new Date('2026-11-20T10:00:00.000Z'));
+      const { result } = await grant(MANHATTAN.regionId, 'all');
+      vi.setSystemTime(new Date('2026-11-25T10:00:00.000Z'));
+      await useCase.removePermission(context, {
+        userId: 'user-b',
+        permissionId: result.permission.id,
+      });
+
+      const firstPage = await useCase.getPermissionChanges(context, { limit: 3, offset: 0 });
+      const secondPage = await useCase.getPermissionChanges(context, { limit: 3, offset: 3 });
+
+      const manhattan = {
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: MANHATTAN.officeCode,
+      };
+      const allOffices = {
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: null,
+      };
+      expect(firstPage.totalCount).toEqual(4);
+      expect(
+        [...firstPage.data, ...secondPage.data].map(({ kind, previous, next, performedAt }) => ({
+          kind,
+          previous,
+          next,
+          performedAt,
+        })),
+      ).toEqual([
+        {
+          kind: 'removed',
+          previous: allOffices,
+          next: null,
+          performedAt: '2026-11-25T10:00:00.000Z',
+        },
+        {
+          kind: 'replaced',
+          previous: manhattan,
+          next: allOffices,
+          performedAt: '2026-11-20T10:00:00.000Z',
+        },
+        {
+          kind: 'granted',
+          previous: null,
+          next: allOffices,
+          performedAt: '2026-11-20T10:00:00.000Z',
+        },
+        {
+          kind: 'granted',
+          previous: null,
+          next: manhattan,
+          performedAt: '2026-11-02T10:00:00.000Z',
+        },
+      ]);
+    });
+
     test('should grant a permission, list it, and treat a repeat grant as already held', async () => {
       spyOnMembers();
       const request: RoleAssignmentGrantRequest = {

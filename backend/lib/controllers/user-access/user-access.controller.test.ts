@@ -4,7 +4,11 @@ import { createMockApplicationContext, getTheThrownError } from '../../testing/t
 import { UserAccessController } from './user-access.controller';
 import { UserAccessUseCase } from '../../use-cases/user-access/user-access';
 import { CamsRole } from '@common/cams/roles';
-import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
+import {
+  CamsUserWithPermissions,
+  PermissionChange,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
 import { BadRequestError } from '../../common-errors/bad-request';
 import * as FinalizeDeferrableModule from '../../deferrable/finalize-deferrable';
 
@@ -61,9 +65,11 @@ describe('UserAccessController', () => {
       const getSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
       const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
       const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
+      const changesSpy = vi.spyOn(UserAccessUseCase.prototype, 'getPermissionChanges');
 
       for (const [method, params] of [
         ['GET', { resource: 'users' }],
+        ['GET', { resource: 'changes' }],
         ['PUT', GRANT_PARAMS],
         ['DELETE', REMOVE_PARAMS],
       ] as const) {
@@ -75,6 +81,7 @@ describe('UserAccessController', () => {
       expect(getSpy).not.toHaveBeenCalled();
       expect(grantSpy).not.toHaveBeenCalled();
       expect(removeSpy).not.toHaveBeenCalled();
+      expect(changesSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -167,6 +174,53 @@ describe('UserAccessController', () => {
       await handle();
 
       expect(spy).toHaveBeenCalledWith(context, expect.objectContaining({ limit: 20, offset: 0 }));
+    });
+  });
+
+  describe('GET changes', () => {
+    const change: PermissionChange = {
+      auditId: 'audit-1',
+      assignmentId: 'assignment-1',
+      userId: 'user-a',
+      userName: 'Sarah Williams',
+      performedBy: 'super-1',
+      performedByName: 'Maria Garcia',
+      performedAt: '2026-11-25T10:00:00.000Z',
+      kind: 'removed',
+      previous: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null },
+      next: null,
+    };
+
+    beforeEach(() => {
+      context.request.params = { resource: 'changes' };
+      context.request.url = 'http://localhost/api/user-access/changes';
+    });
+
+    test('should default to the newest 20 changes and return pagination', async () => {
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
+        .mockResolvedValue({ data: [change], totalCount: 41 });
+
+      const response = await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, { limit: 20, offset: 0 });
+      expect(response.statusCode).toEqual(200);
+      expect(response.body).toEqual({
+        meta: { self: 'http://localhost/api/user-access/changes' },
+        pagination: { count: 1, totalCount: 41, currentPage: 1, totalPages: 3, limit: 20 },
+        data: [change],
+      });
+    });
+
+    test('should pass the paging query parameters through', async () => {
+      context.request.query = { limit: '10', offset: '30' };
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
+        .mockResolvedValue({ data: [change], totalCount: 41 });
+
+      await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, { limit: 10, offset: 30 });
     });
   });
 
