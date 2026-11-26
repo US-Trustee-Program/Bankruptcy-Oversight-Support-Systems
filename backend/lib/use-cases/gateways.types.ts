@@ -1236,7 +1236,9 @@ export interface UserRoleAssignmentRepository extends Releasable {
    * compare-and-set, like TrusteeMatchVerificationRepository.updateIfPending); returns it as
    * stored. Returns null when it was already inactive, e.g. another grant replaced it first.
    */
-  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
+  deactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
+  ): Promise<UserRoleAssignment | null>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
 }
 

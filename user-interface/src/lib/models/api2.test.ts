@@ -750,6 +750,18 @@ describe('_Api2 functions', async () => {
     );
   });
 
+  test('should DELETE the encoded permission id path when calling removePermission', async () => {
+    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue(undefined);
+    await api2.default.removePermission({
+      userId: '==MOCKUSER=user@fake.com==',
+      permissionId: 'permission/1',
+    });
+    expect(deleteSpy).toHaveBeenCalledWith(
+      '/user-access/users/%3D%3DMOCKUSER%3Duser%40fake.com%3D%3D/permissions/permission%2F1',
+      {},
+    );
+  });
+
   test('should call api.get with limit and offset when both provided to getSoftwareBankTrustees', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
     api2.default.getSoftwareBankTrustees('sw-1', 'bank-1', 10, 20);

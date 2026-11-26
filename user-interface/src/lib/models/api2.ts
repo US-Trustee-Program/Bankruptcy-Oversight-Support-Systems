@@ -45,6 +45,7 @@ import MockApi2 from '../testing/mock-api2';
 import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
@@ -659,8 +660,8 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
 }
 
-/** Grants a permission. Granting one the user already holds changes nothing. */
-async function grantPermission(request: RoleAssignmentGrantRequest) {
+/** users/:userId/permissions/:role/:regionId/:officeCode, each segment encoded. */
+function permissionPath(request: RoleAssignmentGrantRequest) {
   const path = [
     'users',
     request.userId,
@@ -671,7 +672,20 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   ]
     .map(encodeURIComponent)
     .join('/');
-  return api().put<RoleAssignmentGrantResult>(`/user-access/${path}`, {});
+  return `/user-access/${path}`;
+}
+
+/** Grants a permission. Granting one the user already holds changes nothing. */
+async function grantPermission(request: RoleAssignmentGrantRequest) {
+  return api().put<RoleAssignmentGrantResult>(permissionPath(request), {});
+}
+
+/** Removes a permission by its id. Removing one that is no longer active changes nothing. */
+async function removePermission(request: PermissionRemovalRequest) {
+  const path = ['users', request.userId, 'permissions', request.permissionId]
+    .map(encodeURIComponent)
+    .join('/');
+  await api().delete(`/user-access/${path}`);
 }
 
 async function getSoftwareBankTrustees(
@@ -803,6 +817,7 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 export const _Api2 = {
   getCamsUsers,
   grantPermission,
+  removePermission,
   getTrustees,
   getTrustee,
   getTrusteeHistory,

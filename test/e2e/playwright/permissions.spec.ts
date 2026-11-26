@@ -1,4 +1,4 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
@@ -9,8 +9,13 @@ const timeoutOption = { timeout: 60000 };
 // Runs as the shared SuperUser account (playwright.config.ts, chromium-superuser). The CAMS users
 // come from the real "USTP Cams Users" Okta group; the seed clears user-role-assignments each run.
 
-function isUsersResponse(url: string) {
-  return url.includes('api/user-access/users');
+// The users list, not a grant or removal: their paths also start with api/user-access/users.
+function isUsersListResponse(response: Response) {
+  return (
+    response.request().method() === 'GET' &&
+    response.url().includes('api/user-access/users') &&
+    response.ok()
+  );
 }
 
 async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
@@ -25,10 +30,7 @@ async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
     'cams-role-assignments must be on for the e2e SuperUser',
   ).toBeVisible(timeoutOption);
 
-  const usersResponse = page.waitForResponse(
-    (response) => isUsersResponse(response.url()) && response.ok(),
-    timeoutOption,
-  );
+  const usersResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
   await permissionsLink.click();
   const users = (await (await usersResponse).json()).data as CamsUserWithPermissions[];
   await expect(page.locator('#cams-users-table')).toBeVisible(timeoutOption);
@@ -71,10 +73,48 @@ async function chooseAnOffice(page: Page): Promise<{ regionId: string; officeNam
   return { regionId, officeName };
 }
 
-function visibleLines(page: Page, userId: string, column: string) {
+// A user without permissions, so a retry grants to someone else instead of hitting a duplicate.
+// The seed clears every assignment, so finding none means the seed did not run.
+function userWithoutPermissions(users: CamsUserWithPermissions[]): CamsUserWithPermissions {
+  const user = users.find((candidate) => candidate.permissions.length === 0);
+  expect(user, 'the seed should leave CAMS users without permissions').toBeDefined();
+  return user!;
+}
+
+/** Grants Trial Attorney in one office from the Add Permission modal and waits for the reload. */
+async function grantTrialAttorneyInAnOffice(page: Page, user: CamsUserWithPermissions) {
+  await page.locator(`#add-permission-${user.id}`).click();
+  await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
+  const roleLabel = await chooseTrialAttorney(page);
+  const { regionId, officeName } = await chooseAnOffice(page);
+
+  const grantResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/user-access\/users\/.+\/permissions\/.+/.test(response.url()) &&
+      response.request().method() === 'PUT',
+    timeoutOption,
+  );
+  const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
+  const save = page.getByTestId('button-add-permission-modal-submit-button');
+  await expect(save).toBeEnabled();
+  await save.click();
+
+  const grant = await grantResponse;
+  expect(grant.status()).toBe(201);
+  const { permission } = (await grant.json()).data as { permission: UserRoleAssignment };
+  expect(permission).toEqual(expect.objectContaining({ userId: user.id, active: true }));
+  await reloadResponse;
+  await expect(page.getByTestId('modal-content-add-permission-modal')).toBeHidden(timeoutOption);
+
+  return { permission, roleLabel, regionId, officeName };
+}
+
+// One row per permission (a user with none has one row); this column's cell in each of the user's
+// rows. Compare with useInnerText, which leaves out the labels the stacked layout shows.
+function permissionCells(page: Page, userId: string, column: 'role' | 'region' | 'office') {
   return page
-    .getByTestId(`cams-user-row-${userId}`)
-    .locator(`[data-cell="${column}"] .cams-users__permission-lines li`);
+    .locator(`[data-testid="cams-user-row-${userId}"], [data-testid^="cams-user-row-${userId}-"]`)
+    .locator(`.col-${column}`);
 }
 
 test.describe('Administration > Permissions', () => {
@@ -95,42 +135,49 @@ test.describe('Administration > Permissions', () => {
   });
 
   test("grants a role in an office and shows it in the user's row", async ({ page }) => {
-    // A user without permissions, so a retry grants to someone else instead of hitting a duplicate.
-    // The seed clears every assignment, so finding none means the seed did not run.
-    const user = users.find((candidate) => candidate.permissions.length === 0);
-    expect(user, 'the seed should leave CAMS users without permissions').toBeDefined();
+    const user = userWithoutPermissions(users);
+    const { roleLabel, regionId, officeName } = await grantTrialAttorneyInAnOffice(page, user);
 
-    await page.locator(`#add-permission-${user!.id}`).click();
-    await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
-    const roleLabel = await chooseTrialAttorney(page);
-    const { regionId, officeName } = await chooseAnOffice(page);
+    await expect(page.getByText(`New permission successfully added to ${user.name}.`)).toBeVisible(
+      timeoutOption,
+    );
+    const innerText = { useInnerText: true };
+    await expect(permissionCells(page, user.id, 'role')).toHaveText([roleLabel], innerText);
+    await expect(permissionCells(page, user.id, 'region')).toHaveText([regionId], innerText);
+    await expect(permissionCells(page, user.id, 'office')).toHaveText([officeName], innerText);
+  });
 
-    const grantResponse = page.waitForResponse(
+  // CAMS-941 Slice 1.
+  test("removes a permission and the user's row no longer shows it", async ({ page }) => {
+    const user = userWithoutPermissions(users);
+    const { permission } = await grantTrialAttorneyInAnOffice(page, user);
+
+    await page.locator(`#remove-permission-${permission.id}`).click();
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
+      timeoutOption,
+    );
+    await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
+      `This will remove ${user.name}'s`,
+    );
+
+    const removeResponse = page.waitForResponse(
       (response) =>
-        /\/api\/user-access\/users\/.+\/permissions\/.+/.test(response.url()) &&
-        response.request().method() === 'PUT',
+        response.url().endsWith(`/permissions/${encodeURIComponent(permission.id)}`) &&
+        response.request().method() === 'DELETE',
       timeoutOption,
     );
-    const reloadResponse = page.waitForResponse(
-      (response) => isUsersResponse(response.url()) && response.ok(),
-      timeoutOption,
-    );
-    const save = page.getByTestId('button-add-permission-modal-submit-button');
-    await expect(save).toBeEnabled();
-    await save.click();
-
-    const grant = await grantResponse;
-    expect(grant.status()).toBe(201);
-    const { permission } = (await grant.json()).data as { permission: UserRoleAssignment };
-    expect(permission).toEqual(expect.objectContaining({ userId: user!.id, active: true }));
+    const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
+    await page.getByTestId('button-remove-permission-modal-submit-button').click();
+    expect((await removeResponse).status()).toBe(204);
     await reloadResponse;
 
-    await expect(page.getByTestId('modal-content-add-permission-modal')).toBeHidden(timeoutOption);
-    await expect(page.getByText(`New permission successfully added to ${user!.name}.`)).toBeVisible(
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(
       timeoutOption,
     );
-    await expect(visibleLines(page, user!.id, 'Role')).toHaveText([roleLabel]);
-    await expect(visibleLines(page, user!.id, 'Region')).toHaveText([regionId]);
-    await expect(visibleLines(page, user!.id, 'Office')).toHaveText([officeName]);
+    await expect(page.getByText(`Permission successfully removed from ${user.name}.`)).toBeVisible(
+      timeoutOption,
+    );
+    await expect(permissionCells(page, user.id, 'role')).toHaveText([''], { useInnerText: true });
+    await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
   });
 });

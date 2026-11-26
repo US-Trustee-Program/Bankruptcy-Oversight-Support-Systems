@@ -15,6 +15,8 @@ const GRANT_PARAMS = {
   officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
 };
 
+const REMOVE_PARAMS = { userId: 'user-a', permissionId: 'assignment-1' };
+
 describe('UserAccessController', () => {
   let context: ApplicationContext;
 
@@ -58,10 +60,12 @@ describe('UserAccessController', () => {
       setup();
       const getSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
       const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
+      const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
 
       for (const [method, params] of [
         ['GET', { resource: 'users' }],
         ['PUT', GRANT_PARAMS],
+        ['DELETE', REMOVE_PARAMS],
       ] as const) {
         context.request.method = method;
         context.request.params = { ...params };
@@ -70,6 +74,7 @@ describe('UserAccessController', () => {
       }
       expect(getSpy).not.toHaveBeenCalled();
       expect(grantSpy).not.toHaveBeenCalled();
+      expect(removeSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -214,6 +219,37 @@ describe('UserAccessController', () => {
     });
   });
 
+  describe('DELETE a permission', () => {
+    beforeEach(() => {
+      context.request.method = 'DELETE';
+      context.request.params = { ...REMOVE_PARAMS };
+    });
+
+    test('should remove the permission whose id is in the path and respond 204 with no body', async () => {
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'removePermission')
+        .mockResolvedValue(undefined);
+
+      const response = await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, REMOVE_PARAMS);
+      expect(response.statusCode).toEqual(204);
+      expect(response.body).toBeUndefined();
+    });
+
+    test('should pass through a 400 from the use case', async () => {
+      vi.spyOn(UserAccessUseCase.prototype, 'removePermission').mockRejectedValue(
+        new BadRequestError('USER-ACCESS-USE-CASE', { message: 'A permission is required.' }),
+      );
+
+      const error = await getTheThrownError(handle);
+
+      expect(error).toEqual(
+        expect.objectContaining({ status: 400, message: 'A permission is required.' }),
+      );
+    });
+  });
+
   test('should report an unexpected use-case failure as a 500 from this controller', async () => {
     vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers').mockRejectedValue(new Error('boom'));
 
@@ -229,6 +265,9 @@ describe('UserAccessController', () => {
     { method: 'POST', params: { resource: 'users' } },
     { method: 'PUT', params: { resource: 'users' } },
     { method: 'GET', params: GRANT_PARAMS },
+    { method: 'GET', params: REMOVE_PARAMS },
+    { method: 'PUT', params: REMOVE_PARAMS },
+    { method: 'DELETE', params: GRANT_PARAMS },
     { method: 'DELETE', params: { resource: 'users' } },
     { method: 'GET', params: { resource: 'other' } },
   ])('should return 400 for $method $params', async ({ method, params }) => {
@@ -236,6 +275,7 @@ describe('UserAccessController', () => {
     context.request.params = { ...params };
     const listSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
     const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
+    const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
 
     const error = await getTheThrownError(handle);
 
@@ -244,6 +284,7 @@ describe('UserAccessController', () => {
     );
     expect(listSpy).not.toHaveBeenCalled();
     expect(grantSpy).not.toHaveBeenCalled();
+    expect(removeSpy).not.toHaveBeenCalled();
   });
 
   test('should finalize deferred resources whether or not the request succeeds', async () => {

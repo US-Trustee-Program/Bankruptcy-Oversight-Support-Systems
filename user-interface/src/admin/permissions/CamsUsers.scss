@@ -1,30 +1,103 @@
 @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use '@/styles/abstracts/colors';
+
+// Figma "Full Permissions List": each row's Remove Permission, a divider, then Add Permission (a
+// user's first row only), 20px either side of the divider (Remove Permission ends at x 1178, the
+// divider is at 1198.5, Add Permission starts at 1219). Widths measured in the browser 2026-11-26
+// (CAMS-941) at 16px: Remove Permission 9.965rem, Add Permission 8.237rem.
+$divider-space: 1.25rem;
+$remove-slot: 10rem;
+$add-slot: 8.25rem + $divider-space + 0.0625rem; // the link, the space before it, the 1px divider
+// The same links with their labels wrapped after the first word ("Remove" over "Permission"): the
+// 1.5rem icon, its 0.25rem gap and "Permission" (4.908rem).
+$remove-slot-wrapped: 6.6875rem;
+// Wrapped labels sit closer to the divider (12px; Figma's 20px is for the one-line links), so the
+// table keeps its columns a little longer (Kelly Diabagate, 2026-11-26).
+$divider-space-wrapped: 0.75rem;
+$add-slot-wrapped: $remove-slot-wrapped + $divider-space-wrapped + 0.0625rem;
 
 .cams-users {
-  .cams-users__permission-lines {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  // A wrapper, not the cell: CamsTable's column layout sets the cells' display.
+  .cams-users__actions {
+    display: flex;
+    align-items: flex-start;
+    gap: $divider-space;
+  }
+
+  .cams-users__remove-permission,
+  .cams-users__add-permission {
+    white-space: nowrap;
+  }
+
+  .cams-users__remove-permission {
+    color: colors.$secondary-dark;
+  }
+
+  // Stacked layout: a divider only between the two links, none beside a lone link.
+  .cams-users__remove-permission + .cams-users__add-permission {
+    padding-left: $divider-space;
+    border-left: 1px solid colors.$disabledInputText;
+  }
+}
+
+// Stacked layout: a user's later rows drop their empty Email cell and hide their Name cell, which
+// holds the user's name for screen readers only, so each permission reads as its Role, Region,
+// Office and Remove Permission under the user's name (Trustees list).
+.cams-users-table.cams-table--responsive .cams-users__row--continued {
+  .cams-table__cell.col-email {
+    display: none;
+  }
+
+  .cams-table__cell.col-name {
+    position: absolute;
+    left: -999em;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+}
+
+// Stacked layout: a user with no permissions shows no empty Role, Region and Office labels.
+.cams-users-table.cams-table--responsive .cams-users__row--no-permissions {
+  .cams-table__cell.col-role,
+  .cams-table__cell.col-region,
+  .cams-table__cell.col-office {
+    display: none;
   }
 }
 
 // The Admin page gives this table only about two thirds of the window, so its cells are tighter
-// than CamsTable's default (0.5rem side padding and gaps instead of 1rem). Each column's flex basis
-// is the narrowest it can be without breaking a word at that padding, measured in the browser
-// (2026-11-24) with the Email cell able to wrap after the @. The columns switch on once the table
-// fits all six bases plus the five gaps, so a cell never shrinks below its basis.
+// than CamsTable's default (0.5rem side padding and gaps instead of 1rem). Measured in the browser
+// 2026-11-26 (CAMS-941) at 16px, plus 1rem cell padding. Each column starts at its one-line width
+// and gives way in a set order as the table narrows (Kelly Diabagate, 2026-11-26): Email first,
+// then Name, and only then Role, Office and Actions. Each stops at its floor, the narrowest it can be
+// without breaking a word: Name "Manhattan," 4.747rem; Email after the @; Role "Assignment" 4.912rem
+// (one line: "Case Assignment Manager" 10.917rem); Office "Albuquerque" 5.424rem (one line: "Woodland
+// Hills" 6.313rem); Actions with Add Permission under Remove Permission. Region never changes. The
+// table switches to the stacked layout only below the sum of the floors (about 44.25rem).
 $cell-side-padding: 0.5rem;
 $column-gap: 0.5rem;
-$col-name-basis: 5.75rem;
-$col-email-basis: 8rem;
-$col-role-basis: 4.125rem;
-$col-region-basis: 4.125rem;
-$col-office-basis: 4.625rem;
-$col-actions-basis: 7.5rem;
-// A little room past the exact total, keeping the switch point at the 37rem checked in the browser.
+$actions-one-line: $remove-slot + $divider-space + $add-slot;
+// One-line widths and floors, each including the 1rem cell padding.
+$col-name-width: 10rem;
+$col-name-floor: 5.75rem;
+$col-email-width: 16rem;
+$col-email-floor: 8rem;
+$col-role-width: 12rem;
+$col-role-floor: 6rem;
+$col-region-width: 4.125rem;
+$col-office-width: 7.375rem;
+$col-office-floor: 6.5rem;
+$col-actions-width: $actions-one-line + 2 * $cell-side-padding;
+$col-actions-floor: $remove-slot-wrapped + $divider-space-wrapped + $add-slot-wrapped + 2 *
+  $cell-side-padding;
 $columns-headroom: 0.375rem;
-$cams-users-columns-min-width: $col-name-basis + $col-email-basis + $col-role-basis +
-  $col-region-basis + $col-office-basis + $col-actions-basis + 5 * $column-gap + $columns-headroom;
+// Below this table width the action labels wrap: Email and Name are at their floors, and Role,
+// Office and Actions at their one-line widths.
+$cams-users-actions-wrap-below: $col-name-floor + $col-email-floor + $col-role-width +
+  $col-region-width + $col-office-width + $col-actions-width + 5 * $column-gap + $columns-headroom;
+$cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-floor +
+  $col-region-width + $col-office-floor + $col-actions-floor + 5 * $column-gap + $columns-headroom;
 
 // CamsTable switches to columns based on the viewport width, but on the Admin page the side menu
 // leaves this table much narrower than the viewport. So this table queries its own width instead:
@@ -34,14 +107,35 @@ $cams-users-columns-min-width: $col-name-basis + $col-email-basis + $col-role-ba
 
   @include cams-table.cams-table-stacked;
 
+  // One row per permission, grouped by user as on the Trustees list: a user's rows share one
+  // border, below their last row, and sit closer together than rows of different users. Inside this
+  // block and after the mixin, so these outrank the mixin's row padding and margin.
+  .cams-table__body .cams-table__row.cams-users__row--continues {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .cams-table__body .cams-table__row.cams-users__row--continued {
+    padding-top: 0;
+  }
+
   @container cams-users-table (min-width: #{$cams-users-columns-min-width}) {
     @include cams-table.cams-table-flex-row;
 
-    // Keep CamsTable's own row alignment (the mixin uses baseline), with the tighter gap.
     .cams-table__header-row,
     .cams-table__row {
-      align-items: center;
       gap: $column-gap;
+    }
+
+    .cams-table__header-row {
+      align-items: center;
+    }
+
+    // Top-aligned, as in Figma ("Full Permissions List"): the name and email sit level with the
+    // first permission, and a wrapped Role or Office doesn't push the rest of its row down.
+    .cams-table__row {
+      align-items: flex-start;
     }
 
     .cams-table__cell {
@@ -49,33 +143,122 @@ $cams-users-columns-min-width: $col-name-basis + $col-email-basis + $col-role-ba
       padding-right: $cell-side-padding;
     }
 
-    // Extra width goes mostly to Email and Name, the fields that run longest. Region only ever
-    // holds a one- or two-digit number or "All", and Actions holds one button, so neither grows.
+    // Two fixed slots, Remove Permission then Add Permission, so each link sits in the same place
+    // on every row whether or not the other is there. Add Permission always has its divider, as in
+    // Figma's row for a user with no permissions.
+    .cams-users__actions {
+      display: grid;
+      grid-template-columns: $remove-slot $add-slot;
+      column-gap: $divider-space;
+      justify-content: end;
+    }
+
+    .cams-users__remove-permission {
+      grid-column: 1;
+    }
+
+    .cams-users__add-permission {
+      grid-column: 2;
+      justify-self: start;
+      padding-left: $divider-space;
+      border-left: 1px solid colors.$disabledInputText;
+    }
+
+    // In columns the empty cells stay (a user's later rows' Name and Email; Role, Region and Office
+    // for a user with no permissions), so every value stays in its column.
+    .cams-users__row--continued .cams-table__cell.col-name,
+    .cams-users__row--continued .cams-table__cell.col-email,
+    .cams-users__row--no-permissions .cams-table__cell.col-role,
+    .cams-users__row--no-permissions .cams-table__cell.col-region,
+    .cams-users__row--no-permissions .cams-table__cell.col-office {
+      display: block;
+    }
+
+    // The stacked layout moves a later row's Name cell off screen; in columns it keeps its place.
+    .cams-users__row--continued .cams-table__cell.col-name {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+    }
+
+    // flex: grow, shrink, one-line width. Extra width goes to Email and Name. When the table
+    // narrows, the shrink factors make Email give way first, then Name, and only then Role, Office
+    // and Actions; min-width stops each at its floor.
     .col-name {
-      flex: 1.5 1 $col-name-basis;
+      flex: 1 10 $col-name-width;
+      min-width: $col-name-floor;
     }
 
     .col-email {
-      flex: 2.5 1 $col-email-basis;
+      flex: 1 1000 $col-email-width;
+      min-width: $col-email-floor;
     }
 
     .col-role {
-      flex: 1.5 1 $col-role-basis;
+      flex: 0 1 $col-role-width;
+      min-width: $col-role-floor;
     }
 
     .col-region {
-      flex: 0 0 $col-region-basis;
+      flex: 0 0 $col-region-width;
       white-space: nowrap;
     }
 
     .col-office {
-      flex: 1.2 1 $col-office-basis;
+      flex: 0 1 $col-office-width;
+      min-width: $col-office-floor;
     }
 
-    // A fixed basis, not auto: a flex item with display: block and flex-basis: auto sizes to fill
-    // the row instead of shrinking to its content.
+    // Actions keeps its one-line width (no gradual shrinking, which would wrap its labels at every
+    // width) until Email and Name are at their floors; then it switches to wrapped labels (below).
     .col-actions {
-      flex: 0 0 $col-actions-basis;
+      flex: 0 0 $col-actions-width;
+    }
+
+    // A user's rows read as one group: no padding between them, so their permissions sit one line
+    // apart, as a single cell's lines would.
+    .cams-users__row--continues .cams-table__cell {
+      padding-bottom: 0;
+    }
+
+    .cams-users__row--continued .cams-table__cell {
+      padding-top: 0;
+    }
+
+    // CamsTable spaces an unlabelled cell from the card above it in the stacked layout
+    // (.cams-table__body .cams-table__cell[data-cell='']); in columns that margin would put the
+    // Remove buttons below their permissions. Matches that selector's specificity plus this table's.
+    .cams-table__body .cams-table__cell.col-actions {
+      margin-top: 0;
+    }
+  }
+
+  // Columns, but too narrow for both action links on one line: each link's label wraps after its
+  // first word ("Remove" over "Permission"), keeping the two links side by side with the divider
+  // between them (Kelly Diabagate, 2026-11-26).
+  @container cams-users-table (min-width: #{$cams-users-columns-min-width}) and (width < #{$cams-users-actions-wrap-below}) {
+    .col-actions {
+      flex: 0 0 $col-actions-floor;
+    }
+
+    .cams-users__actions {
+      grid-template-columns: $remove-slot-wrapped $add-slot-wrapped;
+      column-gap: $divider-space-wrapped;
+    }
+
+    .cams-users__add-permission {
+      padding-left: $divider-space-wrapped;
+    }
+
+    .cams-users__remove-permission,
+    .cams-users__add-permission {
+      white-space: normal;
+      text-align: left;
+
+      .cams-icon-label {
+        align-items: flex-start;
+      }
     }
   }
 }

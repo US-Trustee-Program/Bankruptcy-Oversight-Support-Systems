@@ -139,6 +139,16 @@ export type RoleAssignmentGrantRequest = {
   officeCode: string;
 };
 
+/**
+ * A removal, as sent to DELETE /user-access/users/:userId/permissions/:permissionId. It names the
+ * permission record itself, so a stale table can't remove a permission granted again since, and a
+ * permission for an office that no longer exists can still be removed.
+ */
+export type PermissionRemovalRequest = {
+  userId: string;
+  permissionId: string;
+};
+
 /** The outcome of a grant: the permission the user now holds, and any it replaced. */
 export type RoleAssignmentGrantResult = {
   permission: UserRoleAssignment;
@@ -227,4 +237,9 @@ export const roleAssignmentGrantRequestSpec: ValidationSpec<RoleAssignmentGrantR
   role: [V.isInSet<CamsRoleType>(CamsRoles, 'A valid role is required')],
   regionId: [V.matches(NOT_BLANK, 'A region is required')],
   officeCode: [V.matches(NOT_BLANK, 'An office is required')],
+};
+
+export const permissionRemovalRequestSpec: ValidationSpec<PermissionRemovalRequest> = {
+  userId: [V.matches(NOT_BLANK, 'A user is required')],
+  permissionId: [V.matches(NOT_BLANK, 'A permission is required')],
 };

@@ -114,6 +114,13 @@ Feature: Super User removes a permission and reviews permission change history
     Then the permission stays inactive
     And an error is logged with the same searchable message grants use, containing the audit details
 
+  Scenario: The API rejects a removal that names no user or no permission
+    # A removal names the permission by its id (PR #3388 review, Kelly Diabagate, 2026-11-26), so
+    # it has no role, region or office to get wrong.
+    When a removal request has a blank user or a blank permission id
+    Then the API rejects it with 400 and an explanation
+    And nothing is written
+
   # ---------------------------------------------------------------------------
   # SLICE 2: Removal rules
   # Dependencies: Slice 1
@@ -137,11 +144,6 @@ Feature: Super User removes a permission and reviews permission change history
     Given "John Davis" is signed in without the Super User role
     When John sends a removal request for one of Sarah's permissions
     Then the API rejects it with 403
-    And nothing is written
-
-  Scenario: The API rejects a malformed removal
-    When a removal request names an unknown role, an unknown region or office, an office outside the given region, or a Super User permission with a region or office
-    Then the API rejects it with an explanation
     And nothing is written
 
   # ---------------------------------------------------------------------------
