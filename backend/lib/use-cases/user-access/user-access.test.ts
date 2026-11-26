@@ -1305,12 +1305,17 @@ describe('UserAccessUseCase', () => {
         officeCode: null,
       };
       spyOnAudits([replaced, replacedForB]);
-      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([
-        replacingForB,
-        replacing,
-      ]);
+      const findByIdsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([replacingForB, replacing]);
 
       const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(findByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findByIdsSpy).toHaveBeenCalledWith([
+        { userId: 'user-a', id: 'replacing-1' },
+        { userId: 'user-b', id: 'replacing-1' },
+      ]);
 
       expect(data.map(({ userId, next }) => ({ userId, next }))).toEqual([
         { userId: 'user-a', next: allOfRegion2 },
@@ -1332,11 +1337,22 @@ describe('UserAccessUseCase', () => {
       ]);
     });
 
+    test('should accept a limit of 100', async () => {
+      const searchSpy = spyOnAudits([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      await useCase.getPermissionChanges(context, { limit: 100, offset: 0 });
+
+      expect(searchSpy).toHaveBeenCalledWith({ limit: 100, offset: 0 });
+    });
+
     test.each([
       { name: 'a negative offset', paging: { limit: 20, offset: -1 } },
       { name: 'a zero limit', paging: { limit: 0, offset: 0 } },
       { name: 'a fractional limit', paging: { limit: 1.5, offset: 0 } },
       { name: 'a fractional offset', paging: { limit: 20, offset: 1.5 } },
+      { name: 'a limit over 100', paging: { limit: 101, offset: 0 } },
+      { name: 'a limit that is not a number', paging: { limit: NaN, offset: 0 } },
     ])('should reject $name without reading the history', async ({ paging }) => {
       const searchSpy = spyOnAudits([]);
 

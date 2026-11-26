@@ -37,6 +37,7 @@ import {
 const MODULE_NAME = 'USER-ACCESS-USE-CASE';
 const MEMBER_CACHE_TTL_MS = 15 * 60 * 1000;
 
+const MAX_CHANGES_PAGE_LIMIT = 100;
 const AUDIT_WRITE_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_AUDIT write failed';
 
 // The "USTP Cams Users" member list, cached per process. Assignments are never cached.
@@ -288,9 +289,15 @@ export class UserAccessUseCase {
     paging: RoleAssignmentAuditSearchPredicate,
   ): Promise<{ data: PermissionChange[]; totalCount: number }> {
     const { limit, offset } = paging;
-    if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) {
+    if (
+      !Number.isInteger(offset) ||
+      offset < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_CHANGES_PAGE_LIMIT
+    ) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Offset must be a whole number of 0 or more, and limit 1 or more.',
+        message: `Offset must be a whole number of 0 or more, and limit a whole number from 1 to ${MAX_CHANGES_PAGE_LIMIT}.`,
       });
     }
     const page = await this.auditRepository.search({ limit, offset });

@@ -41,6 +41,16 @@ function pagingFrom(context: ApplicationContext) {
   };
 }
 
+// Change History rejects bad paging rather than defaulting it: an absent value takes the default,
+// and anything else goes to the use case unaltered (NaN when not a number) for it to validate.
+function strictPagingFrom(context: ApplicationContext) {
+  const { limit, offset } = context.request.query;
+  return {
+    limit: limit === undefined ? DEFAULT_PAGE_LIMIT : Number(limit),
+    offset: offset === undefined ? DEFAULT_PAGE_OFFSET : Number(offset),
+  };
+}
+
 /** The permission named by users/:userId/permissions/:role/:regionId/:officeCode. */
 function permissionFromPath(context: ApplicationContext): RoleAssignmentGrantRequest {
   const { userId, role, regionId, officeCode } = context.request.params;
@@ -109,7 +119,7 @@ export class UserAccessController implements CamsController {
 
   /** GET changes: Change History, newest first. */
   private async getPermissionChanges(context: ApplicationContext) {
-    const { limit, offset } = pagingFrom(context);
+    const { limit, offset } = strictPagingFrom(context);
     const { data, totalCount } = await this.useCase.getPermissionChanges(context, {
       limit,
       offset,

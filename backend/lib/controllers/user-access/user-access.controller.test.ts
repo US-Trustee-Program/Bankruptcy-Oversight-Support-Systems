@@ -225,6 +225,21 @@ describe('UserAccessController', () => {
         expect.objectContaining({ currentPage: 4, totalPages: 5, limit: 10 }),
       );
     });
+
+    test.each([
+      { query: { limit: '2.5' } },
+      { query: { limit: '0' } },
+      { query: { limit: 'abc' } },
+      { query: { limit: '101' } },
+      { query: { offset: '-1' } },
+      { query: { offset: '1.5' } },
+    ])('should return 400 for invalid paging $query', async ({ query }) => {
+      context.request.query = query;
+
+      const error = await getTheThrownError(handle);
+
+      expect(error).toEqual(expect.objectContaining({ status: 400 }));
+    });
   });
 
   describe('PUT a permission', () => {
