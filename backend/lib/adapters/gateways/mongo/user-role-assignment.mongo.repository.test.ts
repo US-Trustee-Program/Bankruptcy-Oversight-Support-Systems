@@ -76,6 +76,20 @@ describe('UserRoleAssignmentMongoRepository', () => {
       expect(insertOne).not.toHaveBeenCalled();
     });
 
+    test('should re-check the index after a failed check, not cache the failure as confirmed', async () => {
+      const hasUniqueIndex = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'hasUniqueIndex')
+        .mockRejectedValueOnce(new Error('listIndexes failed'))
+        .mockResolvedValueOnce(true);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(assignment.id);
+
+      await expect(repo.create(assignment)).rejects.toThrow();
+      const result = await repo.create(assignment);
+
+      expect(result).toEqual(assignment);
+      expect(hasUniqueIndex).toHaveBeenCalledTimes(2);
+    });
+
     test('should insert the assignment with its own id and return it', async () => {
       const insertOne = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
@@ -224,6 +238,59 @@ describe('UserRoleAssignmentMongoRepository', () => {
       );
 
       await expect(repo.findActiveByUserIds(['user-1'])).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve role assignments.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('findByIds', () => {
+    test('should query by user and id, so each lookup stays within its users, and return active and inactive assignments', async () => {
+      const inactive: UserRoleAssignment = {
+        ...assignment,
+        id: 'assignment-3',
+        active: false,
+        activeKey: 'inactive|assignment-3',
+      };
+      const find = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([assignment, inactive]);
+
+      const result = await repo.findByIds([
+        { userId: 'user-1', id: 'assignment-1' },
+        { userId: 'user-2', id: 'assignment-2' },
+        { userId: 'user-1', id: 'assignment-3' },
+      ]);
+
+      const doc = using<UserRoleAssignment>();
+      expect(result).toEqual([assignment, inactive]);
+      expect(find).toHaveBeenCalledWith(
+        and(
+          doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+          doc('userId').contains(['user-1', 'user-2']),
+          doc('id').contains(['assignment-1', 'assignment-2', 'assignment-3']),
+        ),
+      );
+    });
+
+    test('should return no assignments without querying when given no ids', async () => {
+      const find = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      const result = await repo.findByIds([]);
+
+      expect(result).toEqual([]);
+      expect(find).not.toHaveBeenCalled();
+    });
+
+    test('should throw a CamsError when the query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.findByIds([{ userId: 'user-1', id: 'assignment-1' }])).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to retrieve role assignments.',
           status: 500,
