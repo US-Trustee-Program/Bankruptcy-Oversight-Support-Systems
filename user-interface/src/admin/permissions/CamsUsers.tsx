@@ -118,7 +118,7 @@ function countLabel(totalCount: number) {
 }
 
 export function CamsUsers() {
-  // Super Users cannot remove their own permissions, so CAMS is never left without one.
+  // Super Users cannot remove their own permissions; the API refuses it too.
   const signedInUserId = LocalStorage.getSession()?.user.id;
   const [page, setPage] = useState<UsersPage | null>(null);
   const [offset, setOffset] = useState(0);

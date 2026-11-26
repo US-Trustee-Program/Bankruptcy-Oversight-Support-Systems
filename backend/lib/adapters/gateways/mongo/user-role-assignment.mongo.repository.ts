@@ -1,4 +1,4 @@
-import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
+import { activeKeyFor, inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
 import { CamsRoleType } from '@common/cams/roles';
 import { CamsError } from '../../../common-errors/cams-error';
 import { getCamsError } from '../../../common-errors/error-utilities';
@@ -105,6 +105,42 @@ export class UserRoleAssignmentMongoRepository
       );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to deactivate role assignment.');
+    }
+  }
+
+  async reactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
+  ): Promise<UserRoleAssignment | null> {
+    const changes = {
+      active: true,
+      activeKey: activeKeyFor(assignment.role, assignment.regionId, assignment.officeCode),
+    };
+    try {
+      return await this.getAdapter<UserRoleAssignment>().findOneAndUpdate(
+        and(
+          doc('userId').equals(assignment.userId),
+          doc('id').equals(assignment.id),
+          doc('active').equals(false),
+        ),
+        { $set: changes },
+        { returnDocument: 'after' },
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to reactivate role assignment.');
+    }
+  }
+
+  /** Reads across every user's partition; the result is small (one count). */
+  async countActiveByRole(role: CamsRoleType): Promise<number> {
+    const query = and(
+      doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+      doc('role').equals(role),
+      doc('active').equals(true),
+    );
+    try {
+      return await this.getAdapter<UserRoleAssignment>().countDocuments(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve role assignments.');
     }
   }
 

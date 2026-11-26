@@ -1070,6 +1070,67 @@ describe('UserAccessUseCase', () => {
       expect(deactivateSpy).not.toHaveBeenCalled();
     });
 
+    describe('a Super User permission', () => {
+      const superUser: UserRoleAssignment = {
+        ...held,
+        id: 'super-user-a',
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        activeKey: 'SuperUser',
+      };
+      const removedSuperUser: UserRoleAssignment = {
+        ...superUser,
+        active: false,
+        activeKey: `inactive|${superUser.id}`,
+      };
+      const superUserRequest = { userId: 'user-a', permissionId: superUser.id };
+
+      function spyOnSuperUsersLeft(count: number) {
+        return {
+          countSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'countActiveByRole')
+            .mockResolvedValue(count),
+          reactivateSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'reactivate')
+            .mockResolvedValue(superUser),
+        };
+      }
+
+      test('should remove it while another Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(1);
+
+        await useCase.removePermission(context, superUserRequest);
+
+        expect(countSpy).toHaveBeenCalledWith(CamsRole.SuperUser);
+        expect(reactivateSpy).not.toHaveBeenCalled();
+        expect(createSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'DEACTIVATED', assignmentId: superUser.id }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+      });
+
+      test('should restore it and refuse the removal when no other Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+    });
+
     test('should remove a permission from a user who is no longer a CAMS user', async () => {
       spyOnMembers([]);
       const { deactivateSpy } = spyOnRemoval();
