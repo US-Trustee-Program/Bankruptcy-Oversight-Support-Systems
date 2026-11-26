@@ -192,3 +192,20 @@ describe('RemovePermissionModal', () => {
     expect(removeSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('RemovePermissionModal without office names', () => {
+  test('should name the office by its code when the office names could not be loaded', async () => {
+    const modalRef = React.createRef<RemovePermissionModalRef>();
+    render(
+      <RemovePermissionModal ref={modalRef} modalId={MODAL_ID} offices={[]} onSuccess={vi.fn()} />,
+    );
+
+    act(() => modalRef.current?.show(SARAH, permission()));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveTextContent(
+        `This will remove Sarah Williams's Trial Attorney permissions for Region 2 - ${MANHATTAN.officeCode}.`,
+      ),
+    );
+  });
+});
