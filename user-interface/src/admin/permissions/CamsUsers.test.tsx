@@ -8,6 +8,7 @@ import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-a
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { CamsUsers, permissionSentence } from './CamsUsers';
 import type { AddPermissionModalProps } from './AddPermissionModal';
+import type { RemovePermissionModalProps } from './RemovePermissionModal';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
@@ -19,6 +20,20 @@ vi.mock('./AddPermissionModal', () => ({
     modalProps = props;
     useImperativeHandle(ref, () => ({ show: modalShow }));
     return <div data-testid="mocked-add-permission-modal" />;
+  }),
+}));
+
+const removeModalShow = vi.fn();
+let removeModalProps: RemovePermissionModalProps | undefined;
+
+vi.mock('./RemovePermissionModal', () => ({
+  RemovePermissionModal: forwardRef(function MockRemoveModal(
+    props: RemovePermissionModalProps,
+    ref,
+  ) {
+    removeModalProps = props;
+    useImperativeHandle(ref, () => ({ show: removeModalShow }));
+    return <div data-testid="mocked-remove-permission-modal" />;
   }),
 }));
 
@@ -84,16 +99,26 @@ const nameFilter = () => document.querySelector<HTMLInputElement>('#cams-users-n
 const emailFilter = () => document.querySelector<HTMLInputElement>('#cams-users-email-filter')!;
 const emptyState = () => document.querySelector('#cams-users-empty');
 
+// A user's first row holds their name, email and Add Permission; each further permission has its own
+// row (the Trustees list pattern).
 const row = (user: CamsUserWithPermissions) => screen.getByTestId(`cams-user-row-${user.id}`);
-const visibleLines = (user: CamsUserWithPermissions, column: string) =>
-  row(user).querySelector(`[data-cell="${column}"] .cams-users__permission-lines`);
-const lines = (user: CamsUserWithPermissions, column: string) =>
-  Array.from(visibleLines(user, column)?.querySelectorAll('li') ?? [], (li) => li.textContent);
-const sentences = (user: CamsUserWithPermissions) =>
+const userRows = (user: CamsUserWithPermissions) =>
   Array.from(
-    row(user).querySelectorAll('[data-cell="Role"] .usa-sr-only li'),
-    (li) => li.textContent,
+    document.querySelectorAll<HTMLElement>(
+      `[data-testid="cams-user-row-${user.id}"], [data-testid^="cams-user-row-${user.id}-"]`,
+    ),
   );
+// A cell's value, without the label CamsTable shows in the stacked layout.
+const cellValue = (cell: Element | null) => {
+  const copy = cell?.cloneNode(true) as Element | undefined;
+  copy?.querySelector('.cams-table__cell-label')?.remove();
+  return copy?.textContent ?? '';
+};
+// One value per permission row, in row order.
+const lines = (user: CamsUserWithPermissions, column: 'Role' | 'Region' | 'Office') =>
+  userRows(user)
+    .map((r) => cellValue(r.querySelector(`.col-${column.toLowerCase()}`)))
+    .filter((value) => value !== '');
 const table = () => document.querySelector('#cams-users-table');
 const heading = () => document.querySelector('#cams-users-count');
 const spinner = () => screen.queryByTestId('cams-users-loading');
@@ -103,6 +128,8 @@ describe('CamsUsers', () => {
     vi.restoreAllMocks();
     modalShow.mockReset();
     modalProps = undefined;
+    removeModalShow.mockReset();
+    removeModalProps = undefined;
     vi.spyOn(Api2, 'getOffices').mockResolvedValue({ data: [MANHATTAN, BUFFALO] });
   });
 
@@ -160,7 +187,7 @@ describe('CamsUsers', () => {
     expect(screen.getByTestId('cams-users-status')).toHaveTextContent(label);
   });
 
-  test('should show each user with their permissions stacked by role, region and office', async () => {
+  test('should show one row per permission, with the name and email on the first row only', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
 
     render(<CamsUsers />);
@@ -174,10 +201,28 @@ describe('CamsUsers', () => {
       'Office',
       'Actions',
     ]);
-    expect(row(SARAH).querySelector('[data-cell="Email"]')).toHaveTextContent(SARAH.email!);
+    const rows = userRows(SARAH);
+    expect(rows).toHaveLength(3);
+    expect(cellValue(rows[0].querySelector('.col-name'))).toEqual(SARAH.name);
+    expect(cellValue(rows[0].querySelector('.col-email'))).toEqual(SARAH.email);
     expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
     expect(lines(SARAH, 'Region')).toEqual(['2', '2', 'All']);
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
+  });
+
+  test("should leave the name and email cells of a user's later rows empty and hidden from screen readers", async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    for (const later of userRows(SARAH).slice(1)) {
+      for (const column of ['.col-name', '.col-email']) {
+        const cell = later.querySelector(column)!;
+        expect(cell.textContent).toEqual('');
+        expect(cell.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+      }
+    }
   });
 
   const emailText = (user: CamsUserWithPermissions) =>
@@ -235,48 +280,16 @@ describe('CamsUsers', () => {
     expect(emailText(user).textContent).toBe(email ?? '');
   });
 
-  test('should read each permission to screen readers as one sentence, in the Role cell', async () => {
-    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
-
-    render(<CamsUsers />);
-
-    await waitFor(() => expect(table()).toBeInTheDocument());
-    expect(sentences(SARAH)).toEqual([
-      'Auditor, Region 2, Buffalo',
-      'Trial Attorney, Region 2, Manhattan',
-      'Super User, all regions',
-    ]);
-    for (const column of ['Role', 'Region', 'Office']) {
-      expect(visibleLines(SARAH, column)).toHaveAttribute('aria-hidden', 'true');
-    }
-  });
-
-  test('should give screen readers text after the Region and Office labels', async () => {
-    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
-
-    render(<CamsUsers />);
-
-    await waitFor(() => expect(table()).toBeInTheDocument());
-    for (const column of ['Region', 'Office']) {
-      const srText = (user: CamsUserWithPermissions) =>
-        row(user).querySelector(`[data-cell="${column}"] .usa-sr-only`);
-      expect(srText(SARAH)).toHaveTextContent('See Role');
-      expect(srText(ALEX)).toHaveTextContent('None');
-    }
-  });
-
-  test('should show a user with no permissions as having none', async () => {
+  test('should show a user with no permissions as one row with empty Role, Region and Office', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX]));
 
     render(<CamsUsers />);
 
     await waitFor(() => expect(table()).toBeInTheDocument());
+    expect(userRows(ALEX)).toHaveLength(1);
     expect(lines(ALEX, 'Role')).toEqual([]);
     expect(lines(ALEX, 'Region')).toEqual([]);
     expect(lines(ALEX, 'Office')).toEqual([]);
-    expect(row(ALEX).querySelector('[data-cell="Role"] .usa-sr-only')).toHaveTextContent(
-      'No permissions',
-    );
   });
 
   test('should give every row an Add Permission action that opens the modal for that user', async () => {
@@ -292,6 +305,63 @@ describe('CamsUsers', () => {
     await userEvent.click(sarahButton);
     expect(modalShow).toHaveBeenCalledWith({ id: SARAH.id, name: SARAH.name });
     expect(modalProps!.offices).toEqual([MANHATTAN, BUFFALO]);
+  });
+
+  test('should give each permission a Remove Permission action that opens the remove modal for it', async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    const removeButtons = userRows(SARAH).map((permissionRow) =>
+      permissionRow.querySelector('.cams-users__remove-permission')!,
+    );
+    expect(removeButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Remove Auditor, Region 2, Buffalo from Sarah Williams',
+      'Remove Trial Attorney, Region 2, Manhattan from Sarah Williams',
+      'Remove Super User, all regions from Sarah Williams',
+    ]);
+    removeButtons.forEach((button) => expect(button).toHaveTextContent('Remove Permission'));
+    expect(row(ALEX).querySelectorAll('.cams-users__remove-permission')).toHaveLength(0);
+    expect(
+      userRows(SARAH).map((r) => r.querySelectorAll('.cams-users__add-permission').length),
+    ).toEqual([1, 0, 0]);
+
+    await userEvent.click(document.querySelector(`#remove-permission-${SARAH.permissions[1].id}`)!);
+    expect(removeModalShow).toHaveBeenCalledWith(
+      { id: SARAH.id, name: SARAH.name },
+      SARAH.permissions[1],
+    );
+    expect(removeModalProps!.offices).toEqual([MANHATTAN, BUFFALO]);
+  });
+
+  test("should reload the current page and move focus to the user's Add Permission after a removal", async () => {
+    const pageOne = Array.from({ length: 20 }, (_, i) => ({
+      ...ALEX,
+      id: `p1-${i}`,
+      name: `A ${i}`,
+    }));
+    const pageTwoSarah = { ...SARAH, id: 'p2-sarah' };
+    const spy = vi
+      .spyOn(Api2, 'getCamsUsers')
+      .mockImplementation(async ({ offset }) =>
+        offset === 0 ? usersResponse(pageOne, 21) : usersResponse([pageTwoSarah], 21, 20),
+      );
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('pagination-button-next-results'));
+    await waitFor(() => expect(row(pageTwoSarah)).toBeInTheDocument());
+
+    const withoutManhattan = {
+      ...pageTwoSarah,
+      permissions: [SARAH.permissions[0], SARAH.permissions[2]],
+    };
+    spy.mockResolvedValueOnce(usersResponse([withoutManhattan], 21, 20));
+    await act(async () => removeModalProps!.onSuccess(pageTwoSarah.id));
+
+    expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
+    expect(lines(pageTwoSarah, 'Office')).toEqual(['Buffalo', 'All']);
+    expect(document.querySelector(`#add-permission-${pageTwoSarah.id}`)).toHaveFocus();
   });
 
   test('should page 20 at a time, focus the heading, and reload the current page after a grant', async () => {

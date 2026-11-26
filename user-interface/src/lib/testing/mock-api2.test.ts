@@ -28,3 +28,35 @@ describe('MockApi2.grantPermission', () => {
     expect(data.permission.assignedAt >= before).toBe(true);
   });
 });
+
+describe('MockApi2.removePermission', () => {
+  const permission = {
+    userId: 'mock-cams-user-gray-baker',
+    role: CamsRole.TrialAttorney,
+    regionId: '2',
+    officeCode: 'all',
+  };
+
+  async function grayBakersPermissions() {
+    const { data } = await MockApi2.getCamsUsers({ name: 'Gray Baker', limit: 20, offset: 0 });
+    return data[0].permissions;
+  }
+
+  test("should remove the permission from the user's active permissions", async () => {
+    await MockApi2.grantPermission(permission);
+
+    await MockApi2.removePermission(permission);
+
+    expect(await grayBakersPermissions()).not.toContainEqual(
+      expect.objectContaining({ role: CamsRole.TrialAttorney, regionId: '2', officeCode: null }),
+    );
+  });
+
+  test('should change nothing when the user does not hold the permission', async () => {
+    const before = await grayBakersPermissions();
+
+    await MockApi2.removePermission({ ...permission, role: CamsRole.Auditor });
+
+    expect(await grayBakersPermissions()).toEqual(before);
+  });
+});

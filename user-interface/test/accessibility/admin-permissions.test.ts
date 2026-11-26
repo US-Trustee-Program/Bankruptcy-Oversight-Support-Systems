@@ -75,4 +75,12 @@ test.describe('Administration > Permissions', () => {
 
     await expectNoViolations(page);
   });
+
+  // CAMS-941 Slice 1.
+  test('Remove Permission modal should not have accessibility issues', async ({ page }) => {
+    await page.locator('#cams-users-table [id^="remove-permission-"]').first().click();
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible();
+
+    await expectNoViolations(page);
+  });
 });

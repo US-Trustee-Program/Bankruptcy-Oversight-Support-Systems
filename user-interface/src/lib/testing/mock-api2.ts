@@ -3468,6 +3468,16 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   return { data: { permission, replaced } };
 }
 
+// Like the server's UserAccessUseCase.removePermission: a permission the user doesn't hold is a
+// no-op. The fake API drops it from the list; the server keeps it, inactive.
+async function removePermission(request: RoleAssignmentGrantRequest) {
+  const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
+  if (!user) return;
+  const scope = mockScope(request);
+  const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
+  user.permissions = user.permissions.filter((p) => p.activeKey !== activeKey);
+}
+
 function mockScope(request: RoleAssignmentGrantRequest): PermissionScope {
   const everyRegion = request.regionId === ALL_SCOPE;
   const everyOffice = request.officeCode === ALL_SCOPE;
@@ -3858,6 +3868,7 @@ const MockApi2 = {
   getBankTrustees,
   getCamsUsers,
   grantPermission,
+  removePermission,
   getSoftwareList,
   createSoftware,
   getSoftware,

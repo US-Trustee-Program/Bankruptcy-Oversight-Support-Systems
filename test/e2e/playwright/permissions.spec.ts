@@ -110,35 +110,12 @@ async function grantTrialAttorneyInAnOffice(page: Page, user: CamsUserWithPermis
   return { permission, roleLabel, regionId, officeName };
 }
 
-/**
- * Sends DELETE for a permission with the same API host and Authorization header the page uses, read
- * from a fresh users request.
- */
-async function removeThroughApi(page: Page, permission: UserRoleAssignment) {
-  const usersRequest = page.waitForRequest((request) => isUsersResponse(request.url()));
-  await page.reload();
-  const request = await usersRequest;
-  const apiRoot = request.url().slice(0, request.url().indexOf('/user-access/'));
-  const path = [
-    'users',
-    permission.userId,
-    'permissions',
-    permission.role,
-    permission.regionId ?? 'all',
-    permission.officeCode ?? 'all',
-  ]
-    .map(encodeURIComponent)
-    .join('/');
-  const response = await page.request.delete(`${apiRoot}/user-access/${path}`, {
-    headers: { authorization: (await request.allHeaders())['authorization'] ?? '' },
-  });
-  return { status: response.status() };
-}
-
-function visibleLines(page: Page, userId: string, column: string) {
+// One row per permission (a user with none has one row); this column's cell in each of the user's
+// rows. Compare with useInnerText, which leaves out the labels the stacked layout shows.
+function permissionCells(page: Page, userId: string, column: 'role' | 'region' | 'office') {
   return page
-    .getByTestId(`cams-user-row-${userId}`)
-    .locator(`[data-cell="${column}"] .cams-users__permission-lines li`);
+    .locator(`[data-testid="cams-user-row-${userId}"], [data-testid^="cams-user-row-${userId}-"]`)
+    .locator(`.col-${column}`);
 }
 
 test.describe('Administration > Permissions', () => {
@@ -165,22 +142,46 @@ test.describe('Administration > Permissions', () => {
     await expect(page.getByText(`New permission successfully added to ${user.name}.`)).toBeVisible(
       timeoutOption,
     );
-    await expect(visibleLines(page, user.id, 'Role')).toHaveText([roleLabel]);
-    await expect(visibleLines(page, user.id, 'Region')).toHaveText([regionId]);
-    await expect(visibleLines(page, user.id, 'Office')).toHaveText([officeName]);
+    const innerText = { useInnerText: true };
+    await expect(permissionCells(page, user.id, 'role')).toHaveText([roleLabel], innerText);
+    await expect(permissionCells(page, user.id, 'region')).toHaveText([regionId], innerText);
+    await expect(permissionCells(page, user.id, 'office')).toHaveText([officeName], innerText);
   });
 
-  // CAMS-941 Slice 1. Removes through the API until the Remove Permission button exists (S1.2).
+  // CAMS-941 Slice 1.
   test("removes a permission and the user's row no longer shows it", async ({ page }) => {
     const user = userWithoutPermissions(users);
     const { permission } = await grantTrialAttorneyInAnOffice(page, user);
 
-    const { status } = await removeThroughApi(page, permission);
-    expect(status).toBe(204);
+    await page.locator(`#remove-permission-${permission.id}`).click();
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
+      timeoutOption,
+    );
+    await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
+      `This will remove ${user.name}'s`,
+    );
 
-    const reloaded = await openPermissions(page);
-    const row = reloaded.find((candidate) => candidate.id === user.id);
-    expect(row?.permissions).toEqual([]);
-    await expect(visibleLines(page, user.id, 'Role')).toHaveCount(0);
+    const removeResponse = page.waitForResponse(
+      (response) =>
+        /\/api\/user-access\/users\/.+\/permissions\/.+/.test(response.url()) &&
+        response.request().method() === 'DELETE',
+      timeoutOption,
+    );
+    const reloadResponse = page.waitForResponse(
+      (response) => isUsersResponse(response.url()) && response.ok(),
+      timeoutOption,
+    );
+    await page.getByTestId('button-remove-permission-modal-submit-button').click();
+    expect((await removeResponse).status()).toBe(204);
+    await reloadResponse;
+
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(
+      timeoutOption,
+    );
+    await expect(page.getByText(`Permission successfully removed from ${user.name}.`)).toBeVisible(
+      timeoutOption,
+    );
+    await expect(permissionCells(page, user.id, 'role')).toHaveText([''], { useInnerText: true });
+    await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
   });
 });

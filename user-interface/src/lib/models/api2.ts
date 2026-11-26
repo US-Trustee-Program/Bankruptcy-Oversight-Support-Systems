@@ -659,8 +659,8 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
 }
 
-/** Grants a permission. Granting one the user already holds changes nothing. */
-async function grantPermission(request: RoleAssignmentGrantRequest) {
+/** users/:userId/permissions/:role/:regionId/:officeCode, each segment encoded. */
+function permissionPath(request: RoleAssignmentGrantRequest) {
   const path = [
     'users',
     request.userId,
@@ -671,7 +671,17 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   ]
     .map(encodeURIComponent)
     .join('/');
-  return api().put<RoleAssignmentGrantResult>(`/user-access/${path}`, {});
+  return `/user-access/${path}`;
+}
+
+/** Grants a permission. Granting one the user already holds changes nothing. */
+async function grantPermission(request: RoleAssignmentGrantRequest) {
+  return api().put<RoleAssignmentGrantResult>(permissionPath(request), {});
+}
+
+/** Removes a permission. Removing one the user no longer holds changes nothing. */
+async function removePermission(request: RoleAssignmentGrantRequest) {
+  await api().delete(permissionPath(request), {});
 }
 
 async function getSoftwareBankTrustees(
@@ -803,6 +813,7 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 export const _Api2 = {
   getCamsUsers,
   grantPermission,
+  removePermission,
   getTrustees,
   getTrustee,
   getTrusteeHistory,

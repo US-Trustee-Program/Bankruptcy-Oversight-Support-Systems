@@ -23,6 +23,7 @@ import {
   CamsUserWithPermissions,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { RemovePermissionModal, RemovePermissionModalRef } from './RemovePermissionModal';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
 
 const PAGE_SIZE = 20;
@@ -110,18 +111,6 @@ export function permissionSentence(
   return `${role}, Region ${permission.regionId}, ${office}`;
 }
 
-function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null;
-  return (
-    // Hidden from assistive technology: the Role cell reads each permission as a sentence instead.
-    <ul className="cams-users__permission-lines" aria-hidden="true">
-      {lines.map((line, index) => (
-        <li key={index}>{line}</li>
-      ))}
-    </ul>
-  );
-}
-
 // Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
 function EmailText({ email }: Readonly<{ email?: string }>) {
   if (!email?.includes('@')) return <span data-testid="cams-user-email">{email}</span>;
@@ -132,27 +121,6 @@ function EmailText({ email }: Readonly<{ email?: string }>) {
       <wbr />
       {email.slice(at + 1)}
     </span>
-  );
-}
-
-// Region and Office are read as part of each Role sentence. This gives their labels text to read.
-function ScopeCellText({ hasPermissions }: Readonly<{ hasPermissions: boolean }>) {
-  return <span className="usa-sr-only">{hasPermissions ? 'See Role' : 'None'}</span>;
-}
-
-function PermissionSentences({
-  permissions,
-  officeName,
-}: Readonly<{ permissions: UserRoleAssignment[]; officeName: (officeCode: string) => string }>) {
-  if (permissions.length === 0) return <span className="usa-sr-only">No permissions</span>;
-  return (
-    // role="list" keeps list semantics in Safari/VoiceOver, which drop them when list-style is none.
-    // eslint-disable-next-line jsx-a11y/no-redundant-roles
-    <ul className="usa-sr-only" role="list">
-      {permissions.map((permission) => (
-        <li key={permission.id}>{permissionSentence(permission, officeName)}</li>
-      ))}
-    </ul>
   );
 }
 
@@ -173,6 +141,7 @@ export function CamsUsers() {
   const [emailText, setEmailText] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
   const modalRef = useRef<AddPermissionModalRef>(null);
+  const removeModalRef = useRef<RemovePermissionModalRef>(null);
   // The filters the current rows were loaded with; paging and reloads reuse them.
   const filtersRef = useRef<Filters>({});
   // Each load takes a ticket; only the latest load may update the table.
@@ -323,39 +292,92 @@ export function CamsUsers() {
               </CamsTableHeaderCell>
             </CamsTableHeader>
             <CamsTableBody>
-              {page.data.map((user) => (
-                <CamsTableRow key={user.id} data-testid={`cams-user-row-${user.id}`}>
-                  <CamsTableCell className="col-name" data-cell="Name">
-                    {user.name}
-                  </CamsTableCell>
-                  <CamsTableCell className="col-email" data-cell="Email">
-                    <EmailText email={user.email} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-role" data-cell="Role">
-                    <PermissionSentences permissions={user.permissions} officeName={officeName} />
-                    <PermissionLines lines={user.permissions.map((p) => CamsRoleLabels[p.role])} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-region" data-cell="Region">
-                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
-                    <PermissionLines lines={user.permissions.map((p) => p.regionId ?? ALL)} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-office" data-cell="Office">
-                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
-                    <PermissionLines lines={user.permissions.map(officeLabel)} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-actions" data-cell="">
-                    <Button
-                      id={`add-permission-${user.id}`}
-                      uswdsStyle={UswdsButtonStyle.Unstyled}
-                      aria-label={`Add Permission to ${user.name}`}
-                      disabled={officesFailed}
-                      onClick={() => modalRef.current?.show({ id: user.id, name: user.name })}
+              {page.data.flatMap((user) => {
+                // One row per permission, as on the Trustees list; a user with none still gets one.
+                const rows: (UserRoleAssignment | null)[] =
+                  user.permissions.length > 0 ? user.permissions : [null];
+                return rows.map((permission, index) => {
+                  const first = index === 0;
+                  return (
+                    <CamsTableRow
+                      key={permission?.id ?? user.id}
+                      data-testid={
+                        first ? `cams-user-row-${user.id}` : `cams-user-row-${user.id}-${index}`
+                      }
+                      className={[
+                        first ? '' : 'cams-users__row--continued',
+                        permission ? '' : 'cams-users__row--no-permissions',
+                        index < rows.length - 1 ? 'cams-users__row--continues' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                     >
-                      <IconLabel icon="add_circle" label="Add Permission" />
-                    </Button>
-                  </CamsTableCell>
-                </CamsTableRow>
-              ))}
+                      {first ? (
+                        <>
+                          <CamsTableCell className="col-name" data-cell="Name">
+                            {user.name}
+                          </CamsTableCell>
+                          <CamsTableCell className="col-email" data-cell="Email">
+                            <EmailText email={user.email} />
+                          </CamsTableCell>
+                        </>
+                      ) : (
+                        <>
+                          <CamsTableCell className="col-name">
+                            <span aria-hidden="true"></span>
+                          </CamsTableCell>
+                          <CamsTableCell className="col-email">
+                            <span aria-hidden="true"></span>
+                          </CamsTableCell>
+                        </>
+                      )}
+                      <CamsTableCell className="col-role" data-cell="Role">
+                        {permission ? CamsRoleLabels[permission.role] : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-region" data-cell="Region">
+                        {permission ? (permission.regionId ?? ALL) : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-office" data-cell="Office">
+                        {permission ? officeLabel(permission) : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-actions" data-cell="">
+                        <div className="cams-users__actions">
+                          {permission && (
+                            <Button
+                              id={`remove-permission-${permission.id}`}
+                              uswdsStyle={UswdsButtonStyle.Unstyled}
+                              className="cams-users__remove-permission"
+                              aria-label={`Remove ${permissionSentence(permission, officeName)} from ${user.name}`}
+                              onClick={() =>
+                                removeModalRef.current?.show(
+                                  { id: user.id, name: user.name },
+                                  permission,
+                                )
+                              }
+                            >
+                              <IconLabel icon="close" label="Remove Permission" />
+                            </Button>
+                          )}
+                          {first && (
+                            <Button
+                              id={`add-permission-${user.id}`}
+                              uswdsStyle={UswdsButtonStyle.Unstyled}
+                              className="cams-users__add-permission"
+                              aria-label={`Add Permission to ${user.name}`}
+                              disabled={officesFailed}
+                              onClick={() =>
+                                modalRef.current?.show({ id: user.id, name: user.name })
+                              }
+                            >
+                              <IconLabel icon="add_circle" label="Add Permission" />
+                            </Button>
+                          )}
+                        </div>
+                      </CamsTableCell>
+                    </CamsTableRow>
+                  );
+                });
+              })}
             </CamsTableBody>
           </CamsTable>
           {(page.pagination.totalPages ?? 1) > 1 && (
@@ -367,6 +389,16 @@ export function CamsUsers() {
           )}
         </>
       )}
+      <RemovePermissionModal
+        ref={removeModalRef}
+        modalId="remove-permission-modal"
+        offices={offices}
+        onSuccess={async (userId) => {
+          await loadPage(offset);
+          // The Remove button that opened the modal is gone; the row's Add Permission stays.
+          document.getElementById(`add-permission-${userId}`)?.focus();
+        }}
+      />
       <AddPermissionModal
         ref={modalRef}
         modalId="add-permission-modal"
