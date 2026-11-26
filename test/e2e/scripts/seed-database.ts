@@ -298,6 +298,15 @@ async function ensureUserRoleAssignmentIndex(db: ReturnType<MongoClient['db']>) 
 }
 
 /**
+ * Mirrors the (performedAt, action, id) index from cosmos-collections.bicep
+ * (roleAssignmentAuditCollection), which backs RoleAssignmentAuditRepository.search's newest-first
+ * sort (cams-x52wz.1.2).
+ */
+async function ensureRoleAssignmentAuditIndex(db: ReturnType<MongoClient['db']>) {
+  await db.collection('role-assignment-audit').createIndex({ performedAt: 1, action: 1, id: 1 });
+}
+
+/**
  * With `cams-role-assignments` on, a session's roles and offices come only from the user's active
  * permissions, not from Okta groups. These give the e2e Okta user (OKTA_USER_NAME) what the specs
  * need: Data Verifier with an office for Data Verification, Trustee Admin for Trustees. Manhattan
@@ -364,6 +373,7 @@ async function main() {
 
     await ensureTrusteeMatchVerificationIndex(db);
     await ensureUserRoleAssignmentIndex(db);
+    await ensureRoleAssignmentAuditIndex(db);
 
     const scenarios = resolveFindingsScenarios(
       fixture.collections['trustee-match-verification'] ?? [],

@@ -26,6 +26,7 @@ import {
   OfficeAssigneePredicate,
   OfficeUserRolesPredicate,
   OrdersSearchPredicate,
+  RoleAssignmentAuditSearchPredicate,
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import {
@@ -1240,6 +1241,8 @@ export interface UserRoleAssignmentRepository extends Releasable {
     assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
   ): Promise<UserRoleAssignment | null>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
+  /** Permissions by id, active or inactive. An empty input returns [] without querying. */
+  findByIds(ids: string[]): Promise<UserRoleAssignment[]>;
 }
 
 /**
@@ -1247,6 +1250,15 @@ export interface UserRoleAssignmentRepository extends Releasable {
  */
 export interface RoleAssignmentAuditRepository extends Releasable {
   create(entry: RoleAssignmentAuditEntry): Promise<void>;
+  /**
+   * Newest first: performedAt descending, then DEACTIVATED before CREATED (so a grant's
+   * replacement rows appear above its own CREATED row), then id descending for a stable order.
+   * predicate.userIds absent returns every record; present but empty returns an empty page
+   * without querying.
+   */
+  search(
+    predicate: RoleAssignmentAuditSearchPredicate,
+  ): Promise<CamsPaginationResponse<RoleAssignmentAuditEntry>>;
 }
 
 export type ObjectStorageGateway = {

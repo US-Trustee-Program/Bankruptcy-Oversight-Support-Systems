@@ -1,4 +1,9 @@
-import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
+import {
+  inactiveKeyFor,
+  RoleAssignmentAuditEntry,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
+import { RoleAssignmentAuditSearchPredicate } from '@common/api/search';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SyncedCase } from '@common/cams/cases';
 import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@common/cams/events';
@@ -135,6 +140,8 @@ export class MockMongoRepository
   private static trusteeDataReportLock: TrusteeDataReportRunState | null = null;
   // Role assignments granted while DATABASE_MOCK=true, kept for the life of the process.
   private static roleAssignments: UserRoleAssignment[] = [];
+  // Role assignment audit records written while DATABASE_MOCK=true, kept for the life of the process.
+  private static roleAssignmentAudits: RoleAssignmentAuditEntry[] = [];
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -326,8 +333,36 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  search(..._ignore): Promise<any[]> {
+  search(...args): Promise<any> {
+    const predicate = args[0];
+    if (typeof predicate?.offset === 'number' && typeof predicate?.limit === 'number') {
+      return this.searchRoleAssignmentAudits(predicate as RoleAssignmentAuditSearchPredicate);
+    }
     throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Mirrors RoleAssignmentAuditMongoRepository.search's sort: performedAt descending, then
+   * DEACTIVATED before CREATED, then id descending.
+   */
+  private searchRoleAssignmentAudits(
+    predicate: RoleAssignmentAuditSearchPredicate,
+  ): Promise<CamsPaginationResponse<RoleAssignmentAuditEntry>> {
+    if (predicate.userIds && predicate.userIds.length === 0) {
+      return Promise.resolve({ metadata: { total: 0 }, data: [] });
+    }
+    const filtered = predicate.userIds
+      ? MockMongoRepository.roleAssignmentAudits.filter((entry) =>
+          predicate.userIds!.includes(entry.userId),
+        )
+      : MockMongoRepository.roleAssignmentAudits;
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.performedAt !== b.performedAt) return a.performedAt > b.performedAt ? -1 : 1;
+      if (a.action !== b.action) return a.action > b.action ? -1 : 1;
+      return a.id > b.id ? -1 : 1;
+    });
+    const data = sorted.slice(predicate.offset, predicate.offset + predicate.limit);
+    return Promise.resolve({ metadata: { total: sorted.length }, data });
   }
 
   searchPaginated(..._ignore): Promise<CamsPaginationResponse<any>> {
@@ -346,6 +381,13 @@ export class MockMongoRepository
     return Promise.resolve(
       MockMongoRepository.roleAssignments.filter((a) => a.active && userIds.includes(a.userId)),
     );
+  }
+
+  findByIds(ids: string[]): Promise<UserRoleAssignment[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return Promise.resolve(MockMongoRepository.roleAssignments.filter((a) => ids.includes(a.id)));
   }
 
   findActiveByUserAndRole(userId: string, role: string): Promise<UserRoleAssignment[]> {
@@ -388,6 +430,7 @@ export class MockMongoRepository
       return Promise.resolve(assignment);
     }
     if (item?.documentType === 'ROLE_ASSIGNMENT_AUDIT') {
+      MockMongoRepository.roleAssignmentAudits.push(item as RoleAssignmentAuditEntry);
       return Promise.resolve();
     }
     throw new Error('Method not implemented.');

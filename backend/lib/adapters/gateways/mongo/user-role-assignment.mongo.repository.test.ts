@@ -232,4 +232,46 @@ describe('UserRoleAssignmentMongoRepository', () => {
       );
     });
   });
+
+  describe('findByIds', () => {
+    test('should query assignments by id, active or inactive, and return them', async () => {
+      const find = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([assignment]);
+
+      const result = await repo.findByIds(['assignment-1', 'assignment-2']);
+
+      const doc = using<UserRoleAssignment>();
+      expect(result).toEqual([assignment]);
+      expect(find).toHaveBeenCalledWith(
+        and(
+          doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+          doc('id').contains(['assignment-1', 'assignment-2']),
+        ),
+      );
+    });
+
+    test('should return no assignments without querying when given no ids', async () => {
+      const find = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      const result = await repo.findByIds([]);
+
+      expect(result).toEqual([]);
+      expect(find).not.toHaveBeenCalled();
+    });
+
+    test('should throw a CamsError when the query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.findByIds(['assignment-1'])).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve role assignments.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
 });

@@ -137,4 +137,16 @@ export class UserRoleAssignmentMongoRepository
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve role assignments.');
     }
   }
+
+  async findByIds(ids: string[]): Promise<UserRoleAssignment[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const query = and(doc('documentType').equals('USER_ROLE_ASSIGNMENT'), doc('id').contains(ids));
+    try {
+      return await this.getAdapter<UserRoleAssignment>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve role assignments.');
+    }
+  }
 }

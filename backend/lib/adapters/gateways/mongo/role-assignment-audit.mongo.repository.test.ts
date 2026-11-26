@@ -2,10 +2,14 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
+import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { RoleAssignmentAuditMongoRepository } from './role-assignment-audit.mongo.repository';
 import { RoleAssignmentAuditEntry } from '@common/cams/user-access';
 import { CamsRole } from '@common/cams/roles';
+
+const { and } = QueryBuilder;
 
 describe('RoleAssignmentAuditMongoRepository', () => {
   let context: ApplicationContext;
@@ -67,5 +71,87 @@ describe('RoleAssignmentAuditMongoRepository', () => {
         module: 'ROLE-ASSIGNMENT-AUDIT-MONGO-REPOSITORY',
       }),
     );
+  });
+
+  describe('search', () => {
+    const expectedPage: CamsPaginationResponse<RoleAssignmentAuditEntry> = {
+      metadata: { total: 1 },
+      data: [entry],
+    };
+
+    test('should page every record, newest first, when userIds is absent', async () => {
+      const paginate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue(expectedPage);
+
+      const result = await repo.search({ offset: 0, limit: 20 });
+
+      const doc = using<RoleAssignmentAuditEntry>();
+      const expectedQuery = {
+        stages: [
+          expect.objectContaining({
+            stage: 'MATCH',
+            conjunction: 'AND',
+            values: [doc('documentType').equals('ROLE_ASSIGNMENT_AUDIT')],
+          }),
+          expect.objectContaining({
+            stage: 'SORT',
+            fields: [
+              { field: { name: 'performedAt' }, direction: 'DESCENDING' },
+              { field: { name: 'action' }, direction: 'DESCENDING' },
+              { field: { name: 'id' }, direction: 'DESCENDING' },
+            ],
+          }),
+          expect.objectContaining({
+            stage: 'PAGINATE',
+            skip: 0,
+            limit: 20,
+          }),
+        ],
+      };
+      expect(paginate).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
+      expect(result).toEqual(expectedPage);
+    });
+
+    test('should filter by userIds when present', async () => {
+      const paginate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue(expectedPage);
+
+      await repo.search({ offset: 0, limit: 20, userIds: ['user-1', 'user-2'] });
+
+      const doc = using<RoleAssignmentAuditEntry>();
+      const matchStage = (paginate.mock.calls[0][0] as { stages: Array<{ stage: string }> })
+        .stages[0] as unknown as Conjunction<RoleAssignmentAuditEntry>;
+      expect(matchStage.values).toEqual(
+        and(
+          doc('documentType').equals('ROLE_ASSIGNMENT_AUDIT'),
+          doc('userId').contains(['user-1', 'user-2']),
+        ).values,
+      );
+    });
+
+    test('should return an empty page without querying when userIds is empty', async () => {
+      const paginate = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate');
+
+      const result = await repo.search({ offset: 0, limit: 20, userIds: [] });
+
+      expect(result).toEqual({ metadata: { total: 0 }, data: [] });
+      expect(paginate).not.toHaveBeenCalled();
+    });
+
+    test('should throw a CamsError when the query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.search({ offset: 0, limit: 20 })).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to search role assignment audit records.',
+          status: 500,
+          module: 'ROLE-ASSIGNMENT-AUDIT-MONGO-REPOSITORY',
+        }),
+      );
+    });
   });
 });
