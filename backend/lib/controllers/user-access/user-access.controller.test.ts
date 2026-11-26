@@ -196,7 +196,7 @@ describe('UserAccessController', () => {
       context.request.url = 'http://localhost/api/user-access/changes';
     });
 
-    test('should default to the newest 20 changes and return pagination', async () => {
+    test('should default to the first 20 changes and return pagination', async () => {
       const spy = vi
         .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
         .mockResolvedValue({ data: [change], totalCount: 41 });
@@ -218,9 +218,12 @@ describe('UserAccessController', () => {
         .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
         .mockResolvedValue({ data: [change], totalCount: 41 });
 
-      await handle();
+      const response = await handle();
 
       expect(spy).toHaveBeenCalledWith(context, { limit: 10, offset: 30 });
+      expect(response.body.pagination).toEqual(
+        expect.objectContaining({ currentPage: 4, totalPages: 5, limit: 10 }),
+      );
     });
   });
 
@@ -324,18 +327,23 @@ describe('UserAccessController', () => {
     { method: 'DELETE', params: GRANT_PARAMS },
     { method: 'DELETE', params: { resource: 'users' } },
     { method: 'GET', params: { resource: 'other' } },
+    { method: 'POST', params: { resource: 'changes' } },
+    { method: 'PUT', params: { resource: 'changes' } },
+    { method: 'DELETE', params: { resource: 'changes' } },
   ])('should return 400 for $method $params', async ({ method, params }) => {
     context.request.method = method as 'GET';
     context.request.params = { ...params };
     const listSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
     const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
     const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
+    const changesSpy = vi.spyOn(UserAccessUseCase.prototype, 'getPermissionChanges');
 
     const error = await getTheThrownError(handle);
 
     expect(error).toEqual(
       expect.objectContaining({ status: 400, message: 'Unsupported HTTP Method' }),
     );
+    expect(changesSpy).not.toHaveBeenCalled();
     expect(listSpy).not.toHaveBeenCalled();
     expect(grantSpy).not.toHaveBeenCalled();
     expect(removeSpy).not.toHaveBeenCalled();

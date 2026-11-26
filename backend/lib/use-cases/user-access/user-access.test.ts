@@ -1178,7 +1178,6 @@ describe('UserAccessUseCase', () => {
     });
   });
 
-  // Last in the file: the DATABASE_MOCK repository keeps grants for the rest of the run.
   describe('getPermissionChanges', () => {
     const performer = { performedBy: 'super-1', performedByName: 'Maria Garcia' };
     const manhattan = {
@@ -1292,6 +1291,36 @@ describe('UserAccessUseCase', () => {
       ]);
     });
 
+    test("should match each replacement to its own user's replacing permission, even when ids repeat", async () => {
+      const replacedForB: RoleAssignmentAuditEntry = {
+        ...replaced,
+        id: 'b2',
+        userId: 'user-b',
+        userName: 'Bob Brown',
+      };
+      const replacingForB: UserRoleAssignment = {
+        ...replacing,
+        userId: 'user-b',
+        regionId: null,
+        officeCode: null,
+      };
+      spyOnAudits([replaced, replacedForB]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([
+        replacingForB,
+        replacing,
+      ]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(data.map(({ userId, next }) => ({ userId, next }))).toEqual([
+        { userId: 'user-a', next: allOfRegion2 },
+        {
+          userId: 'user-b',
+          next: { role: CamsRole.TrialAttorney, regionId: null, officeCode: null },
+        },
+      ]);
+    });
+
     test('should leave New empty for a replacement whose replacing permission cannot be read', async () => {
       spyOnAudits([replaced]);
       vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
@@ -1307,6 +1336,7 @@ describe('UserAccessUseCase', () => {
       { name: 'a negative offset', paging: { limit: 20, offset: -1 } },
       { name: 'a zero limit', paging: { limit: 0, offset: 0 } },
       { name: 'a fractional limit', paging: { limit: 1.5, offset: 0 } },
+      { name: 'a fractional offset', paging: { limit: 20, offset: 1.5 } },
     ])('should reject $name without reading the history', async ({ paging }) => {
       const searchSpy = spyOnAudits([]);
 
@@ -1320,6 +1350,26 @@ describe('UserAccessUseCase', () => {
   describe('with the DATABASE_MOCK repository and no spies on it', () => {
     beforeEach(() => {
       MockMongoRepository.clearRoleAssignments();
+    });
+
+    test('should order changes made at the same moment by id, highest first', async () => {
+      spyOnMembers();
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'));
+      for (const officeCode of [MANHATTAN.officeCode, BUFFALO.officeCode]) {
+        await useCase.grantPermission(context, {
+          userId: 'user-b',
+          role: CamsRole.TrialAttorney,
+          regionId: MANHATTAN.regionId,
+          officeCode,
+        });
+      }
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      const ids = data.map((change) => change.auditId);
+      expect(ids).toHaveLength(2);
+      expect(ids).toEqual([...ids].sort().reverse());
     });
 
     test('should list every grant, replacement and removal newest first, showing what replaced a permission', async () => {
