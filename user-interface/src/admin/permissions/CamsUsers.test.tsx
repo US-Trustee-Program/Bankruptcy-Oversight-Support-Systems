@@ -210,18 +210,19 @@ describe('CamsUsers', () => {
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
   });
 
-  test("should leave the name and email cells of a user's later rows empty and hidden from screen readers", async () => {
+  test("should show a user's name and email on their first row only, naming them on later rows for screen readers alone", async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
 
     render(<CamsUsers />);
 
     await waitFor(() => expect(table()).toBeInTheDocument());
     for (const later of userRows(SARAH).slice(1)) {
-      for (const column of ['.col-name', '.col-email']) {
-        const cell = later.querySelector(column)!;
-        expect(cell.textContent).toEqual('');
-        expect(cell.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
-      }
+      const nameCell = later.querySelector('.col-name')!;
+      expect(nameCell.querySelector('.usa-sr-only')).toHaveTextContent(SARAH.name);
+      expect(nameCell.textContent).toEqual(SARAH.name);
+      const emailCell = later.querySelector('.col-email')!;
+      expect(emailCell.textContent).toEqual('');
+      expect(emailCell.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
     }
   });
 
@@ -319,11 +320,11 @@ describe('CamsUsers', () => {
       permissionRow.querySelector('.cams-users__remove-permission')!,
     );
     expect(removeButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      // Includes the visible text, as Add Permission's does (WCAG 2.5.3 Label in Name); each sits in
-      // its permission's row, which gives the role, region and office.
-      'Remove Permission from Sarah Williams',
-      'Remove Permission from Sarah Williams',
-      'Remove Permission from Sarah Williams',
+      // Starts with the visible text, as Add Permission's does (WCAG 2.5.3 Label in Name), and names
+      // the permission, so a list of a user's buttons tells them apart.
+      'Remove Permission from Sarah Williams: Auditor, Region 2 - Buffalo',
+      'Remove Permission from Sarah Williams: Trial Attorney, Region 2 - Manhattan',
+      'Remove Permission from Sarah Williams: Super User',
     ]);
     removeButtons.forEach((button) => expect(button).toHaveTextContent('Remove Permission'));
     expect(row(ALEX).querySelectorAll('.cams-users__remove-permission')).toHaveLength(0);
@@ -370,6 +371,39 @@ describe('CamsUsers', () => {
     expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
     expect(lines(pageTwoSarah, 'Office')).toEqual(['Buffalo', 'All']);
     expect(document.querySelector(`#add-permission-${pageTwoSarah.id}`)).toHaveFocus();
+  });
+
+  test.each([
+    {
+      case: 'the first of their permissions',
+      remaining: [SARAH.permissions[1], SARAH.permissions[2]],
+    },
+    { case: 'their only permission', remaining: [] },
+  ])(
+    "should move focus to the user's Add Permission after removing $case",
+    async ({ remaining }) => {
+      const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+      render(<CamsUsers />);
+      await waitFor(() => expect(table()).toBeInTheDocument());
+
+      spy.mockResolvedValueOnce(usersResponse([ALEX, { ...SARAH, permissions: remaining }]));
+      await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+      expect(document.querySelector(`#add-permission-${SARAH.id}`)).toHaveFocus();
+    },
+  );
+
+  test('should move focus to the heading after a removal when adding permissions is unavailable', async () => {
+    vi.spyOn(Api2, 'getOffices').mockRejectedValue(new Error('500'));
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+    render(<CamsUsers />);
+    await waitFor(() =>
+      expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeDisabled(),
+    );
+
+    await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+    expect(heading()).toHaveFocus();
   });
 
   test('should page 20 at a time, focus the heading, and reload the current page after a grant', async () => {

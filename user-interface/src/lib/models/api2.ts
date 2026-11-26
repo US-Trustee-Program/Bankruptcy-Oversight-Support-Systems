@@ -45,6 +45,7 @@ import MockApi2 from '../testing/mock-api2';
 import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
@@ -679,9 +680,12 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
   return api().put<RoleAssignmentGrantResult>(permissionPath(request), {});
 }
 
-/** Removes a permission. Removing one the user no longer holds changes nothing. */
-async function removePermission(request: RoleAssignmentGrantRequest) {
-  await api().delete(permissionPath(request), {});
+/** Removes a permission by its id. Removing one that is no longer active changes nothing. */
+async function removePermission(request: PermissionRemovalRequest) {
+  const path = ['users', request.userId, 'permissions', request.permissionId]
+    .map(encodeURIComponent)
+    .join('/');
+  await api().delete(`/user-access/${path}`);
 }
 
 async function getSoftwareBankTrustees(

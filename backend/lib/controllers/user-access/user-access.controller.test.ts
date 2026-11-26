@@ -15,6 +15,8 @@ const GRANT_PARAMS = {
   officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
 };
 
+const REMOVE_PARAMS = { userId: 'user-a', permissionId: 'assignment-1' };
+
 describe('UserAccessController', () => {
   let context: ApplicationContext;
 
@@ -63,7 +65,7 @@ describe('UserAccessController', () => {
       for (const [method, params] of [
         ['GET', { resource: 'users' }],
         ['PUT', GRANT_PARAMS],
-        ['DELETE', GRANT_PARAMS],
+        ['DELETE', REMOVE_PARAMS],
       ] as const) {
         context.request.method = method;
         context.request.params = { ...params };
@@ -220,19 +222,31 @@ describe('UserAccessController', () => {
   describe('DELETE a permission', () => {
     beforeEach(() => {
       context.request.method = 'DELETE';
-      context.request.params = { ...GRANT_PARAMS };
+      context.request.params = { ...REMOVE_PARAMS };
     });
 
-    test('should remove the permission named by the path and respond 204 with no body', async () => {
+    test('should remove the permission whose id is in the path and respond 204 with no body', async () => {
       const spy = vi
         .spyOn(UserAccessUseCase.prototype, 'removePermission')
         .mockResolvedValue(undefined);
 
       const response = await handle();
 
-      expect(spy).toHaveBeenCalledWith(context, GRANT_PARAMS);
+      expect(spy).toHaveBeenCalledWith(context, REMOVE_PARAMS);
       expect(response.statusCode).toEqual(204);
       expect(response.body).toBeUndefined();
+    });
+
+    test('should pass through a 400 from the use case', async () => {
+      vi.spyOn(UserAccessUseCase.prototype, 'removePermission').mockRejectedValue(
+        new BadRequestError('USER-ACCESS-USE-CASE', { message: 'A permission is required.' }),
+      );
+
+      const error = await getTheThrownError(handle);
+
+      expect(error).toEqual(
+        expect.objectContaining({ status: 400, message: 'A permission is required.' }),
+      );
     });
   });
 
@@ -251,6 +265,9 @@ describe('UserAccessController', () => {
     { method: 'POST', params: { resource: 'users' } },
     { method: 'PUT', params: { resource: 'users' } },
     { method: 'GET', params: GRANT_PARAMS },
+    { method: 'GET', params: REMOVE_PARAMS },
+    { method: 'PUT', params: REMOVE_PARAMS },
+    { method: 'DELETE', params: GRANT_PARAMS },
     { method: 'DELETE', params: { resource: 'users' } },
     { method: 'GET', params: { resource: 'other' } },
   ])('should return 400 for $method $params', async ({ method, params }) => {

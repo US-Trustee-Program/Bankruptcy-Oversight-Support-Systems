@@ -7,12 +7,7 @@ import Api2 from '@/lib/models/api2';
 import { CamsRoleLabels } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import {
-  ALL_SCOPE,
-  isUnscopedRole,
-  scopeLabel,
-  UserRoleAssignment,
-} from '@common/cams/user-access';
+import { isUnscopedRole, scopeLabel, UserRoleAssignment } from '@common/cams/user-access';
 
 export type RemovePermissionModalRef = {
   show: (user: CamsUserReference, permission: UserRoleAssignment) => void;
@@ -48,7 +43,10 @@ export const RemovePermissionModal = forwardRef<
   const globalAlert = useGlobalAlert();
   const [user, setUser] = useState<CamsUserReference | null>(null);
   const [permission, setPermission] = useState<UserRoleAssignment | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
+  // The id of the permission being removed. A removal can finish after the modal was closed and
+  // reopened for another permission; it must not close that one, or enable or disable its button.
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const shownId = useRef<string | null>(null);
 
   const officeNames = useMemo(
     () => new Map(offices.map((office) => [office.officeCode, office.officeName])),
@@ -57,6 +55,7 @@ export const RemovePermissionModal = forwardRef<
 
   useImperativeHandle(ref, () => ({
     show(userToChange: CamsUserReference, toRemove: UserRoleAssignment) {
+      shownId.current = toRemove.id;
       setUser(userToChange);
       setPermission(toRemove);
       modalRef.current?.show({});
@@ -64,22 +63,20 @@ export const RemovePermissionModal = forwardRef<
   }));
 
   async function handleRemove(owner: CamsUserReference, toRemove: UserRoleAssignment) {
-    setIsRemoving(true);
+    setRemovingId(toRemove.id);
+    const hideIfStillShown = () => {
+      if (shownId.current === toRemove.id) modalRef.current?.hide();
+    };
     try {
-      await Api2.removePermission({
-        userId: owner.id,
-        role: toRemove.role,
-        regionId: toRemove.regionId ?? ALL_SCOPE,
-        officeCode: toRemove.officeCode ?? ALL_SCOPE,
-      });
-      modalRef.current?.hide();
+      await Api2.removePermission({ userId: owner.id, permissionId: toRemove.id });
+      hideIfStillShown();
       globalAlert?.success(`Permission successfully removed from ${owner.name}.`);
       onSuccess(owner.id);
     } catch {
-      modalRef.current?.hide();
+      hideIfStillShown();
       globalAlert?.error(`Unable to remove permission from ${owner.name}.`);
     } finally {
-      setIsRemoving(false);
+      setRemovingId((current) => (current === toRemove.id ? null : current));
     }
   }
 
@@ -99,7 +96,7 @@ export const RemovePermissionModal = forwardRef<
           uswdsStyle: UswdsButtonStyle.Secondary,
           onClick: user && permission ? () => handleRemove(user, permission) : undefined,
           closeOnClick: false,
-          disabled: isRemoving,
+          disabled: removingId === permission?.id,
         },
         cancelButton: { label: 'Cancel' },
       }}

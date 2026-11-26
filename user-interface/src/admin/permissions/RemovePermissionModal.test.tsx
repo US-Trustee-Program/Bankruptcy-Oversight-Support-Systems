@@ -92,35 +92,25 @@ describe('RemovePermissionModal', () => {
   });
 
   test.each([
+    { name: 'an office', overrides: {} },
     {
-      name: 'an office',
-      overrides: {},
-      regionId: MANHATTAN.regionId,
-      officeCode: MANHATTAN.officeCode,
+      name: 'Super User, which has no scope',
+      overrides: {
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        id: 'permission-super',
+      },
     },
-    { name: 'a whole region', overrides: { officeCode: null }, regionId: '2', officeCode: 'all' },
-    {
-      name: 'every region',
-      overrides: { regionId: null, officeCode: null },
-      regionId: 'all',
-      officeCode: 'all',
-    },
-  ])(
-    'should send the removal for $name, with "all" for an unscoped region or office',
-    async ({ overrides, regionId, officeCode }) => {
-      const removeSpy = vi.spyOn(Api2, 'removePermission').mockResolvedValue(undefined);
-      await openFor(permission(overrides));
+  ])('should send the removal of that permission, by its id, for $name', async ({ overrides }) => {
+    const removeSpy = vi.spyOn(Api2, 'removePermission').mockResolvedValue(undefined);
+    const toRemove = permission(overrides);
+    await openFor(toRemove);
 
-      await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
-      expect(removeSpy).toHaveBeenCalledWith({
-        userId: SARAH.id,
-        role: CamsRole.TrialAttorney,
-        regionId,
-        officeCode,
-      });
-    },
-  );
+    expect(removeSpy).toHaveBeenCalledWith({ userId: SARAH.id, permissionId: toRemove.id });
+  });
 
   test('should close, confirm the removal and report success when it succeeds', async () => {
     vi.spyOn(Api2, 'removePermission').mockResolvedValue(undefined);
@@ -160,8 +150,29 @@ describe('RemovePermissionModal', () => {
 
     await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     expect(screen.getByTestId(SUBMIT_BTN)).toBeDisabled();
     await act(async () => finish());
+    expect(screen.getByTestId(SUBMIT_BTN)).toBeEnabled();
+  });
+
+  test('should leave the modal open for another permission when an earlier removal finishes', async () => {
+    let finish: () => void = () => {};
+    vi.spyOn(Api2, 'removePermission').mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    await openFor(permission());
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.click(screen.getByTestId(CANCEL_BTN));
+    const regionWide = permission({ id: 'permission-2', officeCode: null });
+    await openFor(regionWide);
+
+    await act(async () => finish());
+
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveTextContent('Region 2 - All Offices');
     expect(screen.getByTestId(SUBMIT_BTN)).toBeEnabled();
   });
 

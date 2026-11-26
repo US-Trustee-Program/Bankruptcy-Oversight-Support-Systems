@@ -356,14 +356,17 @@ export class MockMongoRepository
     );
   }
 
-  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
-    const deactivated = {
-      ...assignment,
-      active: false,
-      activeKey: inactiveKeyFor(assignment.id),
-    };
+  // Like the Mongo repository: a compare-and-set on active, addressed by userId and id.
+  deactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
+  ): Promise<UserRoleAssignment | null> {
+    const held = MockMongoRepository.roleAssignments.find(
+      (a) => a.active && a.userId === assignment.userId && a.id === assignment.id,
+    );
+    if (!held) return Promise.resolve(null);
+    const deactivated = { ...held, active: false, activeKey: inactiveKeyFor(held.id) };
     MockMongoRepository.roleAssignments = MockMongoRepository.roleAssignments.map((a) =>
-      a.id === assignment.id ? deactivated : a,
+      a === held ? deactivated : a,
     );
     return Promise.resolve(deactivated);
   }

@@ -38,26 +38,22 @@ $add-slot-wrapped: $remove-slot-wrapped + $divider-space-wrapped + 0.0625rem;
     padding-left: $divider-space;
     border-left: 1px solid colors.$disabledInputText;
   }
-
-  // One row per permission, grouped by user as on the Trustees list: a user's rows share one
-  // border, below their last row, and sit closer together than rows of different users.
-  .cams-table__body .cams-table__row.cams-users__row--continues {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-
-  .cams-table__body .cams-table__row.cams-users__row--continued {
-    padding-top: 0;
-  }
 }
 
-// Stacked layout: a user's later rows drop their empty Name and Email cells, so each permission
-// reads as its Role, Region, Office and Remove Permission under the user's name (Trustees list).
+// Stacked layout: a user's later rows drop their empty Email cell and hide their Name cell, which
+// holds the user's name for screen readers only, so each permission reads as its Role, Region,
+// Office and Remove Permission under the user's name (Trustees list).
 .cams-users-table.cams-table--responsive .cams-users__row--continued {
-  .cams-table__cell.col-name,
   .cams-table__cell.col-email {
     display: none;
+  }
+
+  .cams-table__cell.col-name {
+    position: absolute;
+    left: -999em;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
   }
 }
 
@@ -111,6 +107,19 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
 
   @include cams-table.cams-table-stacked;
 
+  // One row per permission, grouped by user as on the Trustees list: a user's rows share one
+  // border, below their last row, and sit closer together than rows of different users. Inside this
+  // block and after the mixin, so these outrank the mixin's row padding and margin.
+  .cams-table__body .cams-table__row.cams-users__row--continues {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .cams-table__body .cams-table__row.cams-users__row--continued {
+    padding-top: 0;
+  }
+
   @container cams-users-table (min-width: #{$cams-users-columns-min-width}) {
     @include cams-table.cams-table-flex-row;
 
@@ -163,6 +172,14 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
     .cams-users__row--no-permissions .cams-table__cell.col-region,
     .cams-users__row--no-permissions .cams-table__cell.col-office {
       display: block;
+    }
+
+    // The stacked layout moves a later row's Name cell off screen; in columns it keeps its place.
+    .cams-users__row--continued .cams-table__cell.col-name {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
     }
 
     // flex: grow, shrink, one-line width. Extra width goes to Email and Name. When the table

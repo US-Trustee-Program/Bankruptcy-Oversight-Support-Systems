@@ -58,7 +58,7 @@ export class UserAccessController implements CamsController {
         return await this.getUsers(context);
       } else if (method === 'PUT' && params.role) {
         return await this.grantPermission(context);
-      } else if (method === 'DELETE' && params.role) {
+      } else if (method === 'DELETE' && params.permissionId) {
         return await this.removePermission(context);
       } else {
         throw new BadRequestError(MODULE_NAME, { message: 'Unsupported HTTP Method' });
@@ -86,10 +86,11 @@ export class UserAccessController implements CamsController {
     return httpSuccess({ statusCode: created ? 201 : 200, body: { data: result } });
   }
 
-  /** DELETE users/:userId/permissions/:role/:regionId/:officeCode. */
+  /** DELETE users/:userId/permissions/:permissionId. */
   private async removePermission(context: ApplicationContext) {
-    const request = permissionFromPath(context);
-    await this.useCase.removePermission(context, request);
+    const { userId, permissionId } = context.request.params;
+    // The use case validates the request before using it.
+    await this.useCase.removePermission(context, { userId, permissionId });
     return httpSuccess({ statusCode: 204 });
   }
 

@@ -17,10 +17,13 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { CamsRoleLabels } from '@common/cams/roles';
+import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  isUnscopedRole,
+  scopeLabel,
   UserRoleAssignment,
 } from '@common/cams/user-access';
 import { RemovePermissionModal, RemovePermissionModalRef } from './RemovePermissionModal';
@@ -203,6 +206,26 @@ export function CamsUsers() {
     return permission.officeCode === null ? ALL : officeName(permission.officeCode);
   }
 
+  // Starts with the visible text (WCAG 2.5.3 Label in Name) and names the permission, so a user's
+  // Remove buttons can be told apart out of context: "...: Trial Attorney, Region 2 - Manhattan".
+  function removeLabel(user: CamsUserReference, permission: UserRoleAssignment) {
+    const role = CamsRoleLabels[permission.role];
+    const name = `Remove Permission from ${user.name}: ${role}`;
+    if (isUnscopedRole(permission.role)) return name;
+    const office = permission.officeCode ? officeNames.get(permission.officeCode) : undefined;
+    return `${name}, ${scopeLabel(permission, office)}`;
+  }
+
+  async function afterRemoval(userId: string) {
+    // The Remove button that opened the modal is gone; focus the row's Add Permission, or the
+    // heading when adding is unavailable. If the reload fails, loadPage has already moved focus to
+    // the heading.
+    if (!(await loadPage(offset))) return;
+    const add = document.getElementById(`add-permission-${userId}`) as HTMLButtonElement | null;
+    if (add && !add.disabled) add.focus();
+    else headingRef.current?.focus();
+  }
+
   const isReady = officesLoaded && page !== null;
   const heading = isReady ? countLabel(page.pagination.totalCount ?? 0) : 'CAMS Users';
   const isWorking = isLoading || !officesLoaded;
@@ -288,7 +311,9 @@ export function CamsUsers() {
                   const first = index === 0;
                   return (
                     <CamsTableRow
-                      key={permission?.id ?? user.id}
+                      // The first row keeps the user's key, so its Add Permission button survives
+                      // a reload that removes the user's first permission, and can keep focus.
+                      key={first ? user.id : permission!.id}
                       data-testid={
                         first ? `cams-user-row-${user.id}` : `cams-user-row-${user.id}-${index}`
                       }
@@ -312,7 +337,8 @@ export function CamsUsers() {
                       ) : (
                         <>
                           <CamsTableCell className="col-name">
-                            <span aria-hidden="true"></span>
+                            {/* Says whose permission this row is when moving through the table. */}
+                            <span className="usa-sr-only">{user.name}</span>
                           </CamsTableCell>
                           <CamsTableCell className="col-email">
                             <span aria-hidden="true"></span>
@@ -335,7 +361,7 @@ export function CamsUsers() {
                               id={`remove-permission-${permission.id}`}
                               uswdsStyle={UswdsButtonStyle.Unstyled}
                               className="cams-users__remove-permission"
-                              aria-label={`Remove Permission from ${user.name}`}
+                              aria-label={removeLabel(user, permission)}
                               onClick={() =>
                                 removeModalRef.current?.show(
                                   { id: user.id, name: user.name },
@@ -381,13 +407,7 @@ export function CamsUsers() {
         ref={removeModalRef}
         modalId="remove-permission-modal"
         offices={offices}
-        onSuccess={async (userId) => {
-          // The Remove button that opened the modal is gone; the row's Add Permission stays. If the
-          // reload fails, loadPage has already moved focus to the heading.
-          if (await loadPage(offset)) {
-            document.getElementById(`add-permission-${userId}`)?.focus();
-          }
-        }}
+        onSuccess={afterRemoval}
       />
       <AddPermissionModal
         ref={modalRef}

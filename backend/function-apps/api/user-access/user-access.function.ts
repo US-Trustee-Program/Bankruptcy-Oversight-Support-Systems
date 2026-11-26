@@ -34,8 +34,15 @@ app.http('user-access', {
 });
 
 app.http('user-access-permissions', {
-  methods: ['PUT', 'DELETE'],
+  methods: ['PUT'],
   authLevel: 'anonymous',
   handler,
   route: 'user-access/users/{userId}/permissions/{role}/{regionId}/{officeCode}',
+});
+
+app.http('user-access-permission', {
+  methods: ['DELETE'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'user-access/users/{userId}/permissions/{permissionId}',
 });

@@ -594,10 +594,7 @@ export function createApp(): Application {
     '/api/user-access/users/:userId/permissions/:role/:regionId/:officeCode',
     handleUserAccess,
   );
-  app.delete(
-    '/api/user-access/users/:userId/permissions/:role/:regionId/:officeCode',
-    handleUserAccess,
-  );
+  app.delete('/api/user-access/users/:userId/permissions/:permissionId', handleUserAccess);
 
   const handleNotificationRouting = async (req: Request, res: Response, next: NextFunction) => {
     try {

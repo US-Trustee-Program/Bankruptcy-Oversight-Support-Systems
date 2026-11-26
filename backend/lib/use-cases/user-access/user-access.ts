@@ -9,6 +9,8 @@ import {
   CamsUserWithPermissions,
   isUnscopedRole,
   RoleAssignmentAuditEntry,
+  PermissionRemovalRequest,
+  permissionRemovalRequestSpec,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
   UserRoleAssignment,
@@ -17,7 +19,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { includesIgnoringCase } from '@common/string-helper';
-import { flatten, validateObject } from '@common/cams/validation';
+import { flatten, validateObject, ValidationSpec } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
@@ -55,9 +57,8 @@ function badRequest(message: string) {
   return new BadRequestError(MODULE_NAME, { message });
 }
 
-/** Grants and removals share the path, so they share its validation. */
-function validateRequest(request: RoleAssignmentGrantRequest) {
-  const validation = validateObject(roleAssignmentGrantRequestSpec, request);
+function validateRequest<T extends object>(spec: ValidationSpec<T>, request: T) {
+  const validation = validateObject(spec, request);
   if (!validation.valid) {
     const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
     throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
@@ -187,7 +188,7 @@ export class UserAccessUseCase {
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
   ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
-    validateRequest(request);
+    validateRequest(roleAssignmentGrantRequestSpec, request);
 
     const member = (await this.getMembers(context)).find((m) => m.id === request.userId);
     if (!member) {
@@ -275,25 +276,18 @@ export class UserAccessUseCase {
   }
 
   /**
-   * Removes a permission: deactivates it (never deletes it), audits it as DEACTIVATED with no
-   * replacing permission, and clears the user's cached sessions. Addressed like a grant, by role and
-   * scope. Removing a permission the user no longer holds, or one another Super User removed or
-   * replaced first, changes nothing. The user need not still be a CAMS user: removal only reduces
-   * access.
+   * Removes a permission: deactivates that record (never deletes it), audits it as DEACTIVATED with
+   * no replacing permission, and clears the user's cached sessions. Addressed by the record's id, so
+   * it removes exactly the permission the Super User saw, even one for an office that no longer
+   * exists. Removing a permission that is no longer active, or that isn't that user's, changes
+   * nothing. The user need not still be a CAMS user: removal only reduces access.
    */
-  async removePermission(context: ApplicationContext, request: RoleAssignmentGrantRequest) {
-    validateRequest(request);
-    const offices = await factory.getOfficesGateway(context).getOffices(context);
-    const scope = resolveScope(request, offices);
-    const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
-
-    const held = await this.assignmentRepository.findActiveByUserAndRole(
-      request.userId,
-      request.role,
-    );
-    const permission = held.find((p) => p.activeKey === activeKey);
-    if (!permission) return;
-    const deactivated = await this.assignmentRepository.deactivate(permission);
+  async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
+    validateRequest(permissionRemovalRequestSpec, request);
+    const deactivated = await this.assignmentRepository.deactivate({
+      userId: request.userId,
+      id: request.permissionId,
+    });
     if (!deactivated) return;
 
     const performer = getCamsUserReference(context.session.user);
@@ -302,8 +296,8 @@ export class UserAccessUseCase {
       context,
       auditEntry(
         'DEACTIVATED',
-        permission,
-        stateOf(permission),
+        deactivated,
+        { ...stateOf(deactivated), active: true },
         stateOf(deactivated),
         performer,
         now,

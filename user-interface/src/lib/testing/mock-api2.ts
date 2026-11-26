@@ -76,6 +76,7 @@ import {
   PermissionScope,
   scopesOverlap,
   CamsUserWithPermissions,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
 } from '@common/cams/user-access';
@@ -3470,12 +3471,10 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
 
 // Like the server's UserAccessUseCase.removePermission: a permission the user doesn't hold is a
 // no-op. The fake API drops it from the list; the server keeps it, inactive.
-async function removePermission(request: RoleAssignmentGrantRequest) {
+async function removePermission(request: PermissionRemovalRequest) {
   const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
   if (!user) return;
-  const scope = mockScope(request);
-  const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
-  user.permissions = user.permissions.filter((p) => p.activeKey !== activeKey);
+  user.permissions = user.permissions.filter((p) => p.id !== request.permissionId);
 }
 
 function mockScope(request: RoleAssignmentGrantRequest): PermissionScope {

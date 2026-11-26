@@ -8,6 +8,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import {
   RoleAssignmentAuditEntry,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
 } from '@common/cams/user-access';
@@ -926,30 +927,22 @@ describe('UserAccessUseCase', () => {
   });
 
   describe('removePermission', () => {
-    const request: RoleAssignmentGrantRequest = {
-      userId: 'user-a',
-      role: CamsRole.TrialAttorney,
-      regionId: MANHATTAN.regionId,
-      officeCode: MANHATTAN.officeCode,
-    };
     const held: UserRoleAssignment = {
       ...assignmentFor('user-a', MANHATTAN),
       userName: 'Alice Adams',
     };
+    const request: PermissionRemovalRequest = { userId: 'user-a', permissionId: held.id };
     const deactivated: UserRoleAssignment = {
       ...held,
       active: false,
       activeKey: `inactive|${held.id}`,
     };
 
-    function spyOnRemoval(heldPermissions: UserRoleAssignment[] = [held]) {
+    function spyOnRemoval(removed: UserRoleAssignment | null = deactivated) {
       return {
-        heldSpy: vi
-          .spyOn(MockMongoRepository.prototype, 'findActiveByUserAndRole')
-          .mockResolvedValue(heldPermissions),
         deactivateSpy: vi
           .spyOn(MockMongoRepository.prototype, 'deactivate')
-          .mockResolvedValue(deactivated),
+          .mockResolvedValue(removed),
         createSpy: vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined),
         invalidateSpy: vi
           .spyOn(MockMongoRepository.prototype, 'deleteByUserId')
@@ -957,8 +950,8 @@ describe('UserAccessUseCase', () => {
       };
     }
 
-    test('should deactivate the matching permission and audit it as removed by the Super User', async () => {
-      const { heldSpy, deactivateSpy, createSpy } = spyOnRemoval();
+    test('should deactivate the permission with that id and audit it as removed by the Super User', async () => {
+      const { deactivateSpy, createSpy } = spyOnRemoval();
       const performer = getCamsUserReference(context.session.user);
 
       await useCase.removePermission(context, request);
@@ -990,8 +983,7 @@ describe('UserAccessUseCase', () => {
         },
         replacedByAssignmentId: null,
       };
-      expect(heldSpy).toHaveBeenCalledWith('user-a', CamsRole.TrialAttorney);
-      expect(deactivateSpy).toHaveBeenCalledWith(held);
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: 'user-a', id: held.id });
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(createSpy).toHaveBeenCalledWith(expectedAudit);
     });
@@ -1004,20 +996,24 @@ describe('UserAccessUseCase', () => {
       expect(invalidateSpy).toHaveBeenCalledWith('user-a');
     });
 
-    test('should change nothing when the user no longer holds the permission', async () => {
-      const otherOffice = assignmentFor('user-a', BUFFALO);
-      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval([otherOffice]);
-
-      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
-
-      expect(deactivateSpy).not.toHaveBeenCalled();
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(invalidateSpy).not.toHaveBeenCalled();
-    });
-
-    test('should change nothing when another Super User removed or replaced it first', async () => {
+    test('should keep the removal and log the failure when clearing cached sessions fails', async () => {
       const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval();
-      deactivateSpy.mockResolvedValue(null);
+      invalidateSpy.mockRejectedValue(new Error('session cache down'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(deactivateSpy).toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('session cache down'),
+        { userId: 'user-a' },
+      );
+    });
+
+    test('should change nothing when the permission is no longer active, or is not that user’s', async () => {
+      const { createSpy, invalidateSpy } = spyOnRemoval(null);
 
       await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
 
@@ -1025,65 +1021,38 @@ describe('UserAccessUseCase', () => {
       expect(invalidateSpy).not.toHaveBeenCalled();
     });
 
-    test.each([
-      {
-        name: 'a whole region',
-        role: CamsRole.TrialAttorney,
-        regionId: MANHATTAN.regionId,
-        held: MANHATTAN.regionId,
-      },
-      { name: 'every region', role: CamsRole.TrialAttorney, regionId: 'all', held: null },
-      { name: 'Super User', role: CamsRole.SuperUser, regionId: 'all', held: null },
-    ])(
-      'should remove a $name permission, addressed with "all"',
-      async ({ role, regionId, held }) => {
-        const regionWide = scopedAssignmentFor('user-a', held, role);
-        const { deactivateSpy } = spyOnRemoval([regionWide]);
-        deactivateSpy.mockResolvedValue({ ...regionWide, active: false });
-
-        await useCase.removePermission(context, { ...request, role, regionId, officeCode: 'all' });
-
-        expect(deactivateSpy).toHaveBeenCalledWith(regionWide);
-      },
-    );
-
-    test.each([
-      { name: 'an unknown role', change: { role: 'NotARole' } },
-      { name: 'a blank user', change: { userId: ' ' } },
-    ])('should reject a removal with $name and read nothing', async ({ change }) => {
+    test('should remove a permission for an office that no longer exists, without reading the office list', async () => {
       const officesSpy = vi.spyOn(MockOfficesGateway.prototype, 'getOffices');
-      const { heldSpy, deactivateSpy } = spyOnRemoval();
+      const retired = { ...deactivated, regionId: '99', officeCode: 'RETIRED_OFFICE' };
+      const { createSpy } = spyOnRemoval(retired);
+
+      await useCase.removePermission(context, request);
+
+      expect(officesSpy).not.toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'DEACTIVATED',
+          regionId: '99',
+          officeCode: 'RETIRED_OFFICE',
+          previousState: expect.objectContaining({ officeCode: 'RETIRED_OFFICE', active: true }),
+        }),
+      );
+    });
+
+    test.each([
+      { name: 'a blank user', change: { userId: ' ' } },
+      { name: 'a blank permission', change: { permissionId: '' } },
+      { name: 'a missing permission', change: { permissionId: undefined } },
+    ])('should reject a removal with $name and change nothing', async ({ change }) => {
+      const { deactivateSpy } = spyOnRemoval();
 
       const error = await getTheThrownError(() =>
-        useCase.removePermission(context, { ...request, ...change } as RoleAssignmentGrantRequest),
+        useCase.removePermission(context, { ...request, ...change } as PermissionRemovalRequest),
       );
 
       expect(error).toEqual(expect.objectContaining({ status: 400 }));
-      expect(officesSpy).not.toHaveBeenCalled();
-      expect(heldSpy).not.toHaveBeenCalled();
       expect(deactivateSpy).not.toHaveBeenCalled();
     });
-
-    test.each([
-      { name: 'an office outside its region', change: { regionId: SEATTLE.regionId } },
-      { name: 'a Super User with an office', change: { role: CamsRole.SuperUser } },
-    ])(
-      "should reject a removal with $name before reading the user's permissions",
-      async ({ change }) => {
-        const { heldSpy, deactivateSpy } = spyOnRemoval();
-
-        const error = await getTheThrownError(() =>
-          useCase.removePermission(context, {
-            ...request,
-            ...change,
-          } as RoleAssignmentGrantRequest),
-        );
-
-        expect(error).toEqual(expect.objectContaining({ status: 400 }));
-        expect(heldSpy).not.toHaveBeenCalled();
-        expect(deactivateSpy).not.toHaveBeenCalled();
-      },
-    );
 
     test('should remove a permission from a user who is no longer a CAMS user', async () => {
       spyOnMembers([]);
@@ -1091,7 +1060,7 @@ describe('UserAccessUseCase', () => {
 
       await useCase.removePermission(context, request);
 
-      expect(deactivateSpy).toHaveBeenCalledWith(held);
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: 'user-a', id: held.id });
     });
 
     test('should send the removal to Log Analytics', async () => {
@@ -1153,6 +1122,30 @@ describe('UserAccessUseCase', () => {
         created: false,
       });
       expect(data[0].permissions).toEqual([first.result.permission]);
+    });
+
+    test('should remove a granted permission by its id, and change nothing when removing it again', async () => {
+      spyOnMembers();
+      const { result } = await useCase.grantPermission(context, {
+        userId: 'user-b',
+        role: CamsRole.Auditor,
+        regionId: 'all',
+        officeCode: 'all',
+      });
+      const removal = { userId: 'user-b', permissionId: result.permission.id };
+      const auditSpy = vi.spyOn(MockMongoRepository.prototype, 'create');
+
+      await useCase.removePermission(context, removal);
+      await useCase.removePermission(context, removal);
+      const { data } = await useCase.getCamsUsers(context, { name: 'Bob', limit: 20, offset: 0 });
+
+      expect(data[0].permissions).not.toContainEqual(
+        expect.objectContaining({ id: result.permission.id }),
+      );
+      expect(auditSpy).toHaveBeenCalledTimes(1);
+      expect(auditSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'DEACTIVATED', role: CamsRole.Auditor }),
+      );
     });
   });
 });

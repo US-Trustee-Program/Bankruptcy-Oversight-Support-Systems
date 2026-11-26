@@ -1,4 +1,4 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
@@ -9,8 +9,13 @@ const timeoutOption = { timeout: 60000 };
 // Runs as the shared SuperUser account (playwright.config.ts, chromium-superuser). The CAMS users
 // come from the real "USTP Cams Users" Okta group; the seed clears user-role-assignments each run.
 
-function isUsersResponse(url: string) {
-  return url.includes('api/user-access/users');
+// The users list, not a grant or removal: their paths also start with api/user-access/users.
+function isUsersListResponse(response: Response) {
+  return (
+    response.request().method() === 'GET' &&
+    response.url().includes('api/user-access/users') &&
+    response.ok()
+  );
 }
 
 async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
@@ -25,10 +30,7 @@ async function openPermissions(page: Page): Promise<CamsUserWithPermissions[]> {
     'cams-role-assignments must be on for the e2e SuperUser',
   ).toBeVisible(timeoutOption);
 
-  const usersResponse = page.waitForResponse(
-    (response) => isUsersResponse(response.url()) && response.ok(),
-    timeoutOption,
-  );
+  const usersResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
   await permissionsLink.click();
   const users = (await (await usersResponse).json()).data as CamsUserWithPermissions[];
   await expect(page.locator('#cams-users-table')).toBeVisible(timeoutOption);
@@ -92,10 +94,7 @@ async function grantTrialAttorneyInAnOffice(page: Page, user: CamsUserWithPermis
       response.request().method() === 'PUT',
     timeoutOption,
   );
-  const reloadResponse = page.waitForResponse(
-    (response) => isUsersResponse(response.url()) && response.ok(),
-    timeoutOption,
-  );
+  const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
   const save = page.getByTestId('button-add-permission-modal-submit-button');
   await expect(save).toBeEnabled();
   await save.click();
@@ -163,14 +162,11 @@ test.describe('Administration > Permissions', () => {
 
     const removeResponse = page.waitForResponse(
       (response) =>
-        /\/api\/user-access\/users\/.+\/permissions\/.+/.test(response.url()) &&
+        response.url().endsWith(`/permissions/${encodeURIComponent(permission.id)}`) &&
         response.request().method() === 'DELETE',
       timeoutOption,
     );
-    const reloadResponse = page.waitForResponse(
-      (response) => isUsersResponse(response.url()) && response.ok(),
-      timeoutOption,
-    );
+    const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
     await page.getByTestId('button-remove-permission-modal-submit-button').click();
     expect((await removeResponse).status()).toBe(204);
     await reloadResponse;
