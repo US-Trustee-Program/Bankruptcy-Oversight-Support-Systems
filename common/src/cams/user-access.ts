@@ -60,8 +60,12 @@ export type RoleAssignmentAuditEntry = {
   replacedByAssignmentId: string | null;
 };
 
-/** A role and where it applies: one side of a PermissionChange. */
-export type PermissionChangeSide = PermissionScope & { role: CamsRoleType };
+/**
+ * A permission as it was at the moment of a change: its role and where it applies (e.g. Trial
+ * Attorney, Region 2 - Manhattan). A PermissionChange has one before the change (previous) and one
+ * after (next). Who holds it, whether it is active and its id are on the row, not here.
+ */
+export type PermissionSnapshot = PermissionScope & { role: CamsRoleType };
 
 /**
  * One Change History row. Each ROLE_ASSIGNMENT_AUDIT record is one row (decided 2026-11-26), so a
@@ -80,11 +84,11 @@ export type PermissionChange = {
   performedByName: string;
   performedAt: string;
   kind: 'granted' | 'replaced' | 'removed';
-  previous: PermissionChangeSide | null;
-  next: PermissionChangeSide | null;
+  previous: PermissionSnapshot | null;
+  next: PermissionSnapshot | null;
 };
 
-function sideOf(permission: PermissionChangeSide): PermissionChangeSide {
+function snapshotOf(permission: PermissionSnapshot): PermissionSnapshot {
   return {
     role: permission.role,
     regionId: permission.regionId,
@@ -110,11 +114,11 @@ export function toPermissionChange(
     performedAt: entry.performedAt,
   };
   if (entry.action === 'CREATED') {
-    return { ...row, kind: 'granted', previous: null, next: sideOf(entry.newState) };
+    return { ...row, kind: 'granted', previous: null, next: snapshotOf(entry.newState) };
   }
-  const previous = sideOf(entry.previousState!);
+  const previous = snapshotOf(entry.previousState!);
   if (entry.replacedByAssignmentId) {
-    const next = replacingPermission ? sideOf(replacingPermission) : null;
+    const next = replacingPermission ? snapshotOf(replacingPermission) : null;
     return { ...row, kind: 'replaced', previous, next };
   }
   return { ...row, kind: 'removed', previous, next: null };

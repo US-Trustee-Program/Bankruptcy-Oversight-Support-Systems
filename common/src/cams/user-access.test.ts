@@ -17,8 +17,8 @@ import {
 const MANHATTAN = 'USTP_CAMS_Region_2_Office_Manhattan';
 const BUFFALO = 'USTP_CAMS_Region_2_Office_Buffalo';
 
-// Each source of a scope gets a different one (top-level Manhattan, previousState Region 2 - All
-// Offices, newState Buffalo), so a test fails if a row side is read from the wrong place.
+// Each source of a scope gets a different one, so a test fails if a row reads the wrong one:
+// auditEntry's top-level fields are Manhattan and its newState is Buffalo.
 function auditEntry(overrides: Partial<RoleAssignmentAuditEntry> = {}): RoleAssignmentAuditEntry {
   return {
     documentType: 'ROLE_ASSIGNMENT_AUDIT',
@@ -40,7 +40,10 @@ function auditEntry(overrides: Partial<RoleAssignmentAuditEntry> = {}): RoleAssi
   };
 }
 
-/** A DEACTIVATED record by a different Super User than auditEntry's grant. */
+/**
+ * A DEACTIVATED record by a different Super User than auditEntry's grant. Its previousState is
+ * Region 2 - All Offices, distinct from the top-level and newState scopes.
+ */
 function deactivation(overrides: Partial<RoleAssignmentAuditEntry> = {}): RoleAssignmentAuditEntry {
   return auditEntry({
     id: 'audit-2',
