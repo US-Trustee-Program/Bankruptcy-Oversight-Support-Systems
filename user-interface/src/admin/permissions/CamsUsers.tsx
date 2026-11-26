@@ -1,6 +1,7 @@
 import './CamsUsers.scss';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Api2 from '@/lib/models/api2';
+import LocalStorage from '@/lib/utils/local-storage';
 import {
   CamsTable,
   CamsTableBody,
@@ -117,6 +118,8 @@ function countLabel(totalCount: number) {
 }
 
 export function CamsUsers() {
+  // Super Users cannot remove their own permissions, so CAMS is never left without one.
+  const signedInUserId = LocalStorage.getSession()?.user.id;
   const [page, setPage] = useState<UsersPage | null>(null);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -356,7 +359,7 @@ export function CamsUsers() {
                       </CamsTableCell>
                       <CamsTableCell className="col-actions" data-cell="">
                         <div className="cams-users__actions">
-                          {permission && (
+                          {permission && user.id !== signedInUserId && (
                             <Button
                               id={`remove-permission-${permission.id}`}
                               uswdsStyle={UswdsButtonStyle.Unstyled}

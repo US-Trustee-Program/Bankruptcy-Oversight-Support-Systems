@@ -284,6 +284,12 @@ export class UserAccessUseCase {
    */
   async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
     validateRequest(permissionRemovalRequestSpec, request);
+    // Keeps CAMS from being left without a Super User.
+    if (request.userId === context.session.user.id) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'You cannot remove your own permissions.',
+      });
+    }
     const deactivated = await this.assignmentRepository.deactivate({
       userId: request.userId,
       id: request.permissionId,

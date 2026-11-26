@@ -1054,6 +1054,24 @@ describe('UserAccessUseCase', () => {
       expect(deactivateSpy).not.toHaveBeenCalled();
     });
 
+    test('should refuse a Super User’s removal of their own permission and change nothing', async () => {
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval();
+
+      const error = await getTheThrownError(() =>
+        useCase.removePermission(context, { ...request, userId: context.session.user.id }),
+      );
+
+      expect(error).toEqual(
+        expect.objectContaining({
+          status: 400,
+          message: 'You cannot remove your own permissions.',
+        }),
+      );
+      expect(deactivateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+
     test('should remove a permission from a user who is no longer a CAMS user', async () => {
       spyOnMembers([]);
       const { deactivateSpy } = spyOnRemoval();

@@ -3,6 +3,7 @@ import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
 import { CamsRole } from '../../../common/src/cams/roles';
+import { SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME } from './superuser';
 
 const timeoutOption = { timeout: 60000 };
 
@@ -179,5 +180,42 @@ test.describe('Administration > Permissions', () => {
     );
     await expect(permissionCells(page, user.id, 'role')).toHaveText([''], { useInnerText: true });
     await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
+  });
+
+  // CAMS-941 Slice 2.
+  test('does not offer removal of your own permissions, and the API refuses it', async ({
+    page,
+  }) => {
+    // Filter to the signed-in account, which may not be on the first page.
+    const filtered = page.waitForResponse(isUsersListResponse, timeoutOption);
+    await page.locator('#cams-users-name-filter').fill(SUPERUSER_OKTA_USER_NAME);
+    const filteredResponse = await filtered;
+    const listed = ((await filteredResponse.json()).data as CamsUserWithPermissions[]).find(
+      (candidate) => candidate.id === SUPERUSER_OKTA_USER_ID,
+    );
+    expect(listed, 'the e2e account should be a CAMS user holding Super User').toBeDefined();
+    expect(listed!.permissions.map((p) => p.role)).toContain(CamsRole.SuperUser);
+
+    const ownRows = page.locator(
+      `[data-testid="cams-user-row-${listed!.id}"], [data-testid^="cams-user-row-${listed!.id}-"]`,
+    );
+    await expect(ownRows.first()).toBeVisible(timeoutOption);
+    await expect(ownRows.locator('.cams-users__remove-permission')).toHaveCount(0);
+    await expect(page.locator(`#add-permission-${listed!.id}`)).toBeVisible();
+
+    // Send the removal straight to the API with the page's own credentials.
+    const superUserPermission = listed!.permissions.find((p) => p.role === CamsRole.SuperUser)!;
+    const usersUrl = new URL(filteredResponse.url());
+    const removal = await page.request.delete(
+      `${usersUrl.origin}${usersUrl.pathname}/${encodeURIComponent(listed!.id)}/permissions/` +
+        encodeURIComponent(superUserPermission.id),
+      { headers: { authorization: filteredResponse.request().headers()['authorization'] } },
+    );
+    expect(removal.status()).toBe(400);
+    expect(await removal.text()).toContain('You cannot remove your own permissions.');
+
+    // Nothing was written: the account still holds Super User.
+    await page.goto('/admin');
+    await expect(page.locator('.admin-screen-navigation')).toBeVisible(timeoutOption);
   });
 });
