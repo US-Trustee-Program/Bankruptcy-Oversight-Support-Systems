@@ -35,9 +35,12 @@ type RoleAssignmentState = {
 };
 
 /**
- * An append-only record of a change to a UserRoleAssignment. A DEACTIVATED entry's
- * replacedByAssignmentId is the id of the permission that caused it (null for CREATED, and for a
- * DEACTIVATED entry nothing replaced, which cannot currently happen).
+ * An append-only record of a change to a UserRoleAssignment. There are three kinds:
+ * - CREATED: a grant. previousState is null.
+ * - DEACTIVATED with replacedByAssignmentId set: replaced by that permission, written by the grant
+ *   that replaced it.
+ * - DEACTIVATED with replacedByAssignmentId null: removed by a Super User (performedBy is the
+ *   remover).
  */
 export type RoleAssignmentAuditEntry = {
   documentType: 'ROLE_ASSIGNMENT_AUDIT';
@@ -56,6 +59,66 @@ export type RoleAssignmentAuditEntry = {
   newState: RoleAssignmentState;
   replacedByAssignmentId: string | null;
 };
+
+/** A role and where it applies: one side of a PermissionChange. */
+export type PermissionChangeSide = PermissionScope & { role: CamsRoleType };
+
+/**
+ * One Change History row. Each ROLE_ASSIGNMENT_AUDIT record is one row (decided 2026-11-26), so a
+ * grant that replaces N permissions shows as N + 1 rows with the same performedAt.
+ * - granted:  previous null, next the granted permission
+ * - replaced: previous the replaced permission, next the permission that replaced it (null only if
+ *   that permission could not be read)
+ * - removed:  previous the removed permission, next null
+ */
+export type PermissionChange = {
+  auditId: string;
+  assignmentId: string;
+  userId: string;
+  userName: string;
+  performedBy: string;
+  performedByName: string;
+  performedAt: string;
+  kind: 'granted' | 'replaced' | 'removed';
+  previous: PermissionChangeSide | null;
+  next: PermissionChangeSide | null;
+};
+
+function sideOf(permission: PermissionChangeSide): PermissionChangeSide {
+  return {
+    role: permission.role,
+    regionId: permission.regionId,
+    officeCode: permission.officeCode,
+  };
+}
+
+/**
+ * The Change History row for an audit record. A replacement's next side comes from the permission
+ * that replaced it (the record's replacedByAssignmentId), which the caller reads and passes in.
+ */
+export function toPermissionChange(
+  entry: RoleAssignmentAuditEntry,
+  replacingPermission?: UserRoleAssignment,
+): PermissionChange {
+  const row = {
+    auditId: entry.id,
+    assignmentId: entry.assignmentId,
+    userId: entry.userId,
+    userName: entry.userName,
+    performedBy: entry.performedBy,
+    performedByName: entry.performedByName,
+    performedAt: entry.performedAt,
+  };
+  if (entry.action === 'CREATED') {
+    return { ...row, kind: 'granted', previous: null, next: sideOf(entry.newState) };
+  }
+  const previous = sideOf(entry.previousState!);
+  if (entry.replacedByAssignmentId) {
+    const next = replacingPermission ? sideOf(replacingPermission) : null;
+    return { ...row, kind: 'replaced', previous, next };
+  }
+  return { ...row, kind: 'removed', previous, next: null };
+}
 
 /** The path segment that stands for every region or every office in a grant. */
 export const ALL_SCOPE = 'all';
