@@ -58,10 +58,12 @@ describe('UserAccessController', () => {
       setup();
       const getSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
       const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
+      const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
 
       for (const [method, params] of [
         ['GET', { resource: 'users' }],
         ['PUT', GRANT_PARAMS],
+        ['DELETE', GRANT_PARAMS],
       ] as const) {
         context.request.method = method;
         context.request.params = { ...params };
@@ -70,6 +72,7 @@ describe('UserAccessController', () => {
       }
       expect(getSpy).not.toHaveBeenCalled();
       expect(grantSpy).not.toHaveBeenCalled();
+      expect(removeSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -214,6 +217,25 @@ describe('UserAccessController', () => {
     });
   });
 
+  describe('DELETE a permission', () => {
+    beforeEach(() => {
+      context.request.method = 'DELETE';
+      context.request.params = { ...GRANT_PARAMS };
+    });
+
+    test('should remove the permission named by the path and respond 204 with no body', async () => {
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'removePermission')
+        .mockResolvedValue(undefined);
+
+      const response = await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, GRANT_PARAMS);
+      expect(response.statusCode).toEqual(204);
+      expect(response.body).toBeUndefined();
+    });
+  });
+
   test('should report an unexpected use-case failure as a 500 from this controller', async () => {
     vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers').mockRejectedValue(new Error('boom'));
 
@@ -236,6 +258,7 @@ describe('UserAccessController', () => {
     context.request.params = { ...params };
     const listSpy = vi.spyOn(UserAccessUseCase.prototype, 'getCamsUsers');
     const grantSpy = vi.spyOn(UserAccessUseCase.prototype, 'grantPermission');
+    const removeSpy = vi.spyOn(UserAccessUseCase.prototype, 'removePermission');
 
     const error = await getTheThrownError(handle);
 
@@ -244,6 +267,7 @@ describe('UserAccessController', () => {
     );
     expect(listSpy).not.toHaveBeenCalled();
     expect(grantSpy).not.toHaveBeenCalled();
+    expect(removeSpy).not.toHaveBeenCalled();
   });
 
   test('should finalize deferred resources whether or not the request succeeds', async () => {

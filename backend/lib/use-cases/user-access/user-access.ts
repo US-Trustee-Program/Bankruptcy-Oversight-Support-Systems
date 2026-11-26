@@ -55,6 +55,15 @@ function badRequest(message: string) {
   return new BadRequestError(MODULE_NAME, { message });
 }
 
+/** Grants and removals share the path, so they share its validation. */
+function validateRequest(request: RoleAssignmentGrantRequest) {
+  const validation = validateObject(roleAssignmentGrantRequestSpec, request);
+  if (!validation.valid) {
+    const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
+    throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
+  }
+}
+
 /**
  * Turns the path's region and office into a scope, checking them against the office list. Super
  * User has no region or office; 'all' means every region or every office in the region.
@@ -178,11 +187,7 @@ export class UserAccessUseCase {
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
   ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
-    const validation = validateObject(roleAssignmentGrantRequestSpec, request);
-    if (!validation.valid) {
-      const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
-      throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
-    }
+    validateRequest(request);
 
     const member = (await this.getMembers(context)).find((m) => m.id === request.userId);
     if (!member) {
@@ -270,9 +275,48 @@ export class UserAccessUseCase {
   }
 
   /**
+   * Removes a permission: deactivates it (never deletes it), audits it as DEACTIVATED with no
+   * replacing permission, and clears the user's cached sessions. Addressed like a grant, by role and
+   * scope. Removing a permission the user no longer holds, or one another Super User removed or
+   * replaced first, changes nothing. The user need not still be a CAMS user: removal only reduces
+   * access.
+   */
+  async removePermission(context: ApplicationContext, request: RoleAssignmentGrantRequest) {
+    validateRequest(request);
+    const offices = await factory.getOfficesGateway(context).getOffices(context);
+    const scope = resolveScope(request, offices);
+    const activeKey = activeKeyFor(request.role, scope.regionId, scope.officeCode);
+
+    const held = await this.assignmentRepository.findActiveByUserAndRole(
+      request.userId,
+      request.role,
+    );
+    const permission = held.find((p) => p.activeKey === activeKey);
+    if (!permission) return;
+    const deactivated = await this.assignmentRepository.deactivate(permission);
+    if (!deactivated) return;
+
+    const performer = getCamsUserReference(context.session.user);
+    const now = new Date().toISOString();
+    await this.writeAudit(
+      context,
+      auditEntry(
+        'DEACTIVATED',
+        permission,
+        stateOf(permission),
+        stateOf(deactivated),
+        performer,
+        now,
+        null,
+      ),
+    );
+    await this.invalidateSessions(context, request.userId);
+  }
+
+  /**
    * Cached sessions hold the roles and offices read at sign-in, so a changed permission would not
    * apply until the user's token rotated. Dropping them makes the next request rebuild the session.
-   * A failure keeps the grant: the change then applies at the user's next token refresh.
+   * A failure keeps the grant or removal: the change then applies at the user's next token refresh.
    */
   private async invalidateSessions(context: ApplicationContext, userId: string) {
     try {

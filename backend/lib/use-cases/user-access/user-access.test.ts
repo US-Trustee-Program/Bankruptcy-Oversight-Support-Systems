@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import {
@@ -14,6 +14,7 @@ import {
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { UserAccessUseCase, resetCamsUsersCache } from './user-access';
 import { CamsError } from '../../common-errors/cams-error';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
@@ -47,8 +48,11 @@ function assignmentFor(
   };
 }
 
-function scopedAssignmentFor(userId: string, regionId: string | null): UserRoleAssignment {
-  const role = CamsRole.TrialAttorney;
+function scopedAssignmentFor(
+  userId: string,
+  regionId: string | null,
+  role: CamsRoleType = CamsRole.TrialAttorney,
+): UserRoleAssignment {
   const scope = regionId ?? 'national';
   return {
     ...assignmentFor(userId, { regionId: regionId ?? '', officeCode: '' }),
@@ -918,6 +922,213 @@ describe('UserAccessUseCase', () => {
         );
         expect(auditWrites(createSpy).map((a) => a.action)).toEqual(['CREATED']);
       });
+    });
+  });
+
+  describe('removePermission', () => {
+    const request: RoleAssignmentGrantRequest = {
+      userId: 'user-a',
+      role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
+      officeCode: MANHATTAN.officeCode,
+    };
+    const held: UserRoleAssignment = {
+      ...assignmentFor('user-a', MANHATTAN),
+      userName: 'Alice Adams',
+    };
+    const deactivated: UserRoleAssignment = {
+      ...held,
+      active: false,
+      activeKey: `inactive|${held.id}`,
+    };
+
+    function spyOnRemoval(heldPermissions: UserRoleAssignment[] = [held]) {
+      return {
+        heldSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'findActiveByUserAndRole')
+          .mockResolvedValue(heldPermissions),
+        deactivateSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'deactivate')
+          .mockResolvedValue(deactivated),
+        createSpy: vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined),
+        invalidateSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'deleteByUserId')
+          .mockResolvedValue(undefined),
+      };
+    }
+
+    test('should deactivate the matching permission and audit it as removed by the Super User', async () => {
+      const { heldSpy, deactivateSpy, createSpy } = spyOnRemoval();
+      const performer = getCamsUserReference(context.session.user);
+
+      await useCase.removePermission(context, request);
+
+      const expectedAudit: RoleAssignmentAuditEntry = {
+        documentType: 'ROLE_ASSIGNMENT_AUDIT',
+        id: expect.any(String),
+        assignmentId: held.id,
+        action: 'DEACTIVATED',
+        userId: 'user-a',
+        userName: 'Alice Adams',
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: MANHATTAN.officeCode,
+        performedBy: performer.id,
+        performedByName: performer.name,
+        performedAt: expect.any(String),
+        previousState: {
+          role: CamsRole.TrialAttorney,
+          regionId: MANHATTAN.regionId,
+          officeCode: MANHATTAN.officeCode,
+          active: true,
+        },
+        newState: {
+          role: CamsRole.TrialAttorney,
+          regionId: MANHATTAN.regionId,
+          officeCode: MANHATTAN.officeCode,
+          active: false,
+        },
+        replacedByAssignmentId: null,
+      };
+      expect(heldSpy).toHaveBeenCalledWith('user-a', CamsRole.TrialAttorney);
+      expect(deactivateSpy).toHaveBeenCalledWith(held);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(createSpy).toHaveBeenCalledWith(expectedAudit);
+    });
+
+    test("should clear the user's cached sessions so the removal applies without signing in again", async () => {
+      const { invalidateSpy } = spyOnRemoval();
+
+      await useCase.removePermission(context, request);
+
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+    });
+
+    test('should change nothing when the user no longer holds the permission', async () => {
+      const otherOffice = assignmentFor('user-a', BUFFALO);
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval([otherOffice]);
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(deactivateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should change nothing when another Super User removed or replaced it first', async () => {
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval();
+      deactivateSpy.mockResolvedValue(null);
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      {
+        name: 'a whole region',
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        held: MANHATTAN.regionId,
+      },
+      { name: 'every region', role: CamsRole.TrialAttorney, regionId: 'all', held: null },
+      { name: 'Super User', role: CamsRole.SuperUser, regionId: 'all', held: null },
+    ])(
+      'should remove a $name permission, addressed with "all"',
+      async ({ role, regionId, held }) => {
+        const regionWide = scopedAssignmentFor('user-a', held, role);
+        const { deactivateSpy } = spyOnRemoval([regionWide]);
+        deactivateSpy.mockResolvedValue({ ...regionWide, active: false });
+
+        await useCase.removePermission(context, { ...request, role, regionId, officeCode: 'all' });
+
+        expect(deactivateSpy).toHaveBeenCalledWith(regionWide);
+      },
+    );
+
+    test.each([
+      { name: 'an unknown role', change: { role: 'NotARole' } },
+      { name: 'a blank user', change: { userId: ' ' } },
+    ])('should reject a removal with $name and read nothing', async ({ change }) => {
+      const officesSpy = vi.spyOn(MockOfficesGateway.prototype, 'getOffices');
+      const { heldSpy, deactivateSpy } = spyOnRemoval();
+
+      const error = await getTheThrownError(() =>
+        useCase.removePermission(context, { ...request, ...change } as RoleAssignmentGrantRequest),
+      );
+
+      expect(error).toEqual(expect.objectContaining({ status: 400 }));
+      expect(officesSpy).not.toHaveBeenCalled();
+      expect(heldSpy).not.toHaveBeenCalled();
+      expect(deactivateSpy).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      { name: 'an office outside its region', change: { regionId: SEATTLE.regionId } },
+      { name: 'a Super User with an office', change: { role: CamsRole.SuperUser } },
+    ])(
+      "should reject a removal with $name before reading the user's permissions",
+      async ({ change }) => {
+        const { heldSpy, deactivateSpy } = spyOnRemoval();
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, {
+            ...request,
+            ...change,
+          } as RoleAssignmentGrantRequest),
+        );
+
+        expect(error).toEqual(expect.objectContaining({ status: 400 }));
+        expect(heldSpy).not.toHaveBeenCalled();
+        expect(deactivateSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    test('should remove a permission from a user who is no longer a CAMS user', async () => {
+      spyOnMembers([]);
+      const { deactivateSpy } = spyOnRemoval();
+
+      await useCase.removePermission(context, request);
+
+      expect(deactivateSpy).toHaveBeenCalledWith(held);
+    });
+
+    test('should send the removal to Log Analytics', async () => {
+      spyOnRemoval();
+      const traceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await useCase.removePermission(context, request);
+
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'RoleAssignmentAudit',
+        expect.objectContaining({
+          success: true,
+          properties: expect.objectContaining({
+            action: 'DEACTIVATED',
+            assignmentId: held.id,
+            replacedByAssignmentId: '',
+          }),
+        }),
+        undefined,
+        expect.anything(),
+      );
+    });
+
+    test('should keep the removal and log the searchable message when the audit write fails', async () => {
+      const { createSpy, invalidateSpy } = spyOnRemoval();
+      createSpy.mockRejectedValue(new Error('audit store down'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ROLE_ASSIGNMENT_AUDIT write failed'),
+        expect.anything(),
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
     });
   });
 

@@ -32,6 +32,13 @@ function optionalTrimmedString(value: unknown): string | undefined {
   return typeof first === 'string' ? first.trim() || undefined : undefined;
 }
 
+/** The permission named by users/:userId/permissions/:role/:regionId/:officeCode. */
+function permissionFromPath(context: ApplicationContext): RoleAssignmentGrantRequest {
+  const { userId, role, regionId, officeCode } = context.request.params;
+  // The use case validates the request before using it.
+  return { userId, role, regionId, officeCode } as RoleAssignmentGrantRequest;
+}
+
 export class UserAccessController implements CamsController {
   private readonly useCase: UserAccessUseCase;
 
@@ -51,6 +58,8 @@ export class UserAccessController implements CamsController {
         return await this.getUsers(context);
       } else if (method === 'PUT' && params.role) {
         return await this.grantPermission(context);
+      } else if (method === 'DELETE' && params.role) {
+        return await this.removePermission(context);
       } else {
         throw new BadRequestError(MODULE_NAME, { message: 'Unsupported HTTP Method' });
       }
@@ -72,11 +81,16 @@ export class UserAccessController implements CamsController {
 
   /** PUT users/:userId/permissions/:role/:regionId/:officeCode. */
   private async grantPermission(context: ApplicationContext) {
-    const { userId, role, regionId, officeCode } = context.request.params;
-    // The use case validates the request before using it.
-    const request = { userId, role, regionId, officeCode } as RoleAssignmentGrantRequest;
+    const request = permissionFromPath(context);
     const { result, created } = await this.useCase.grantPermission(context, request);
     return httpSuccess({ statusCode: created ? 201 : 200, body: { data: result } });
+  }
+
+  /** DELETE users/:userId/permissions/:role/:regionId/:officeCode. */
+  private async removePermission(context: ApplicationContext) {
+    const request = permissionFromPath(context);
+    await this.useCase.removePermission(context, request);
+    return httpSuccess({ statusCode: 204 });
   }
 
   private async getUsers(context: ApplicationContext) {
