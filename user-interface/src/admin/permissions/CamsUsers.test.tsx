@@ -6,7 +6,7 @@ import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
-import { CamsUsers, permissionSentence } from './CamsUsers';
+import { CamsUsers } from './CamsUsers';
 import type { AddPermissionModalProps } from './AddPermissionModal';
 import type { RemovePermissionModalProps } from './RemovePermissionModal';
 
@@ -319,9 +319,11 @@ describe('CamsUsers', () => {
       permissionRow.querySelector('.cams-users__remove-permission')!,
     );
     expect(removeButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'Remove Auditor, Region 2, Buffalo from Sarah Williams',
-      'Remove Trial Attorney, Region 2, Manhattan from Sarah Williams',
-      'Remove Super User, all regions from Sarah Williams',
+      // Includes the visible text, as Add Permission's does (WCAG 2.5.3 Label in Name); each sits in
+      // its permission's row, which gives the role, region and office.
+      'Remove Permission from Sarah Williams',
+      'Remove Permission from Sarah Williams',
+      'Remove Permission from Sarah Williams',
     ]);
     removeButtons.forEach((button) => expect(button).toHaveTextContent('Remove Permission'));
     expect(row(ALEX).querySelectorAll('.cams-users__remove-permission')).toHaveLength(0);
@@ -751,33 +753,5 @@ describe('CamsUsers', () => {
       expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
       expect(nameFilter()).toHaveValue('sarah');
     });
-  });
-});
-
-describe('permissionSentence', () => {
-  const officeName = () => 'Manhattan';
-
-  test('should name the role, region and office for an office permission', () => {
-    expect(permissionSentence(permission(MANHATTAN), officeName)).toEqual(
-      'Trial Attorney, Region 2, Manhattan',
-    );
-  });
-
-  test('should say all offices for a region-wide permission', () => {
-    const regionWide = { ...permission(MANHATTAN), officeCode: null };
-    expect(permissionSentence(regionWide, officeName)).toEqual(
-      'Trial Attorney, Region 2, all offices',
-    );
-  });
-
-  test('should say all regions for a national permission', () => {
-    expect(permissionSentence(permission(null), officeName)).toEqual('Trial Attorney, all regions');
-  });
-
-  // The table shows Super User's Region and Office as All, so the sentence says the same.
-  test('should say all regions for Super User, as the table shows', () => {
-    expect(permissionSentence(permission(null, CamsRole.SuperUser), officeName)).toEqual(
-      'Super User, all regions',
-    );
   });
 });

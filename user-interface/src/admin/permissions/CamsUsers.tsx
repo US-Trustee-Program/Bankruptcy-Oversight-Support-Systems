@@ -96,21 +96,6 @@ function TextFilter({
   );
 }
 
-/**
- * One permission read as a sentence, so a screen reader ties the role to its scope; the stacked
- * Role, Region and Office cells only line up visually.
- */
-export function permissionSentence(
-  permission: UserRoleAssignment,
-  officeName: (officeCode: string) => string,
-): string {
-  const role = CamsRoleLabels[permission.role];
-  // Also covers Super User, which has no scope; the table shows it as All, All.
-  if (permission.regionId === null) return `${role}, all regions`;
-  const office = permission.officeCode === null ? 'all offices' : officeName(permission.officeCode);
-  return `${role}, Region ${permission.regionId}, ${office}`;
-}
-
 // Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
 function EmailText({ email }: Readonly<{ email?: string }>) {
   if (!email?.includes('@')) return <span data-testid="cams-user-email">{email}</span>;
@@ -350,7 +335,7 @@ export function CamsUsers() {
                               id={`remove-permission-${permission.id}`}
                               uswdsStyle={UswdsButtonStyle.Unstyled}
                               className="cams-users__remove-permission"
-                              aria-label={`Remove ${permissionSentence(permission, officeName)} from ${user.name}`}
+                              aria-label={`Remove Permission from ${user.name}`}
                               onClick={() =>
                                 removeModalRef.current?.show(
                                   { id: user.id, name: user.name },
