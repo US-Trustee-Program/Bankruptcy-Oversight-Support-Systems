@@ -148,6 +148,7 @@ export function CamsUsers() {
   const loadTicketRef = useRef(0);
   const debounce = useDebounce();
 
+  /** Loads a page of users; resolves true only when that page is now shown. */
   const loadPage = useCallback(async (pageOffset: number, focusHeading = false) => {
     const ticket = ++loadTicketRef.current;
     const filters = filtersRef.current;
@@ -158,7 +159,7 @@ export function CamsUsers() {
       if (filters.name) predicate.name = filters.name;
       if (filters.email) predicate.email = filters.email;
       const response = await Api2.getCamsUsers(predicate);
-      if (ticket !== loadTicketRef.current) return;
+      if (ticket !== loadTicketRef.current) return false;
       setPage({
         data: response.data,
         pagination: response.pagination!,
@@ -167,6 +168,7 @@ export function CamsUsers() {
       setOffset(pageOffset);
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
+      return true;
     } catch {
       if (ticket === loadTicketRef.current) {
         // The table, pagination and row buttons all unmount on failure (gated on !loadFailed
@@ -176,6 +178,7 @@ export function CamsUsers() {
         setLoadFailed(true);
         headingRef.current?.focus();
       }
+      return false;
     } finally {
       if (ticket === loadTicketRef.current) setIsLoading(false);
     }
@@ -394,9 +397,11 @@ export function CamsUsers() {
         modalId="remove-permission-modal"
         offices={offices}
         onSuccess={async (userId) => {
-          await loadPage(offset);
-          // The Remove button that opened the modal is gone; the row's Add Permission stays.
-          document.getElementById(`add-permission-${userId}`)?.focus();
+          // The Remove button that opened the modal is gone; the row's Add Permission stays. If the
+          // reload fails, loadPage has already moved focus to the heading.
+          if (await loadPage(offset)) {
+            document.getElementById(`add-permission-${userId}`)?.focus();
+          }
         }}
       />
       <AddPermissionModal

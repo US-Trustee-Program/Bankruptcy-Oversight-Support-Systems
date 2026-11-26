@@ -287,9 +287,11 @@ describe('CamsUsers', () => {
 
     await waitFor(() => expect(table()).toBeInTheDocument());
     expect(userRows(ALEX)).toHaveLength(1);
-    expect(lines(ALEX, 'Role')).toEqual([]);
-    expect(lines(ALEX, 'Region')).toEqual([]);
-    expect(lines(ALEX, 'Office')).toEqual([]);
+    for (const column of ['.col-role', '.col-region', '.col-office']) {
+      const cell = row(ALEX).querySelector(column);
+      expect(cell).toBeInTheDocument();
+      expect(cellValue(cell)).toEqual('');
+    }
   });
 
   test('should give every row an Add Permission action that opens the modal for that user', async () => {
@@ -341,11 +343,15 @@ describe('CamsUsers', () => {
       id: `p1-${i}`,
       name: `A ${i}`,
     }));
+    // Another user comes first on page two, so focusing the page's first Add Permission would fail.
+    const pageTwoAlex = { ...ALEX, id: 'p2-alex' };
     const pageTwoSarah = { ...SARAH, id: 'p2-sarah' };
     const spy = vi
       .spyOn(Api2, 'getCamsUsers')
       .mockImplementation(async ({ offset }) =>
-        offset === 0 ? usersResponse(pageOne, 21) : usersResponse([pageTwoSarah], 21, 20),
+        offset === 0
+          ? usersResponse(pageOne, 22)
+          : usersResponse([pageTwoAlex, pageTwoSarah], 22, 20),
       );
     render(<CamsUsers />);
     await waitFor(() => expect(table()).toBeInTheDocument());
@@ -356,7 +362,7 @@ describe('CamsUsers', () => {
       ...pageTwoSarah,
       permissions: [SARAH.permissions[0], SARAH.permissions[2]],
     };
-    spy.mockResolvedValueOnce(usersResponse([withoutManhattan], 21, 20));
+    spy.mockResolvedValueOnce(usersResponse([pageTwoAlex, withoutManhattan], 22, 20));
     await act(async () => removeModalProps!.onSuccess(pageTwoSarah.id));
 
     expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
@@ -426,6 +432,19 @@ describe('CamsUsers', () => {
     expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
     expect(table()).not.toBeInTheDocument();
     expect(button).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
+  test('should move focus to the heading when the reload after a removal fails', async () => {
+    const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    spy.mockRejectedValueOnce(new Error('500'));
+
+    await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+    expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
+    expect(table()).not.toBeInTheDocument();
     expect(heading()).toHaveFocus();
   });
 
