@@ -83,7 +83,12 @@ function userWithoutPermissions(users: CamsUserWithPermissions[]): CamsUserWithP
 }
 
 /** Grants Trial Attorney in one office from the Add Permission modal and waits for the reload. */
-async function grantTrialAttorneyInAnOffice(page: Page, user: CamsUserWithPermissions) {
+async function grantTrialAttorneyInAnOffice(
+  page: Page,
+  user: CamsUserWithPermissions,
+  // 200 means the user already held it, e.g. on a retry that grants the same user again.
+  expectedStatuses: number[] = [201],
+) {
   await page.locator(`#add-permission-${user.id}`).click();
   await expect(page.getByTestId('modal-content-add-permission-modal')).toBeVisible(timeoutOption);
   const roleLabel = await chooseTrialAttorney(page);
@@ -101,7 +106,7 @@ async function grantTrialAttorneyInAnOffice(page: Page, user: CamsUserWithPermis
   await save.click();
 
   const grant = await grantResponse;
-  expect(grant.status()).toBe(201);
+  expect(expectedStatuses).toContain(grant.status());
   const { permission } = (await grant.json()).data as { permission: UserRoleAssignment };
   expect(permission).toEqual(expect.objectContaining({ userId: user.id, active: true }));
   await reloadResponse;
@@ -186,36 +191,51 @@ test.describe('Administration > Permissions', () => {
   test('does not offer removal of your own permissions, and the API refuses it', async ({
     page,
   }) => {
-    // Filter to the signed-in account, which may not be on the first page.
-    const filtered = page.waitForResponse(isUsersListResponse, timeoutOption);
+    // Filter to the signed-in account, which may not be on the first page. Only the filtered
+    // response counts: an unfiltered reload would not prove the account is listed.
+    const filtered = page.waitForResponse(
+      (response) =>
+        isUsersListResponse(response) &&
+        new URL(response.url()).searchParams.get('name') === SUPERUSER_OKTA_USER_NAME,
+      timeoutOption,
+    );
     await page.locator('#cams-users-name-filter').fill(SUPERUSER_OKTA_USER_NAME);
     const filteredResponse = await filtered;
     const listed = ((await filteredResponse.json()).data as CamsUserWithPermissions[]).find(
       (candidate) => candidate.id === SUPERUSER_OKTA_USER_ID,
     );
     expect(listed, 'the e2e account should be a CAMS user holding Super User').toBeDefined();
-    expect(listed!.permissions.map((p) => p.role)).toContain(CamsRole.SuperUser);
+    const self = listed!;
+    const superUserPermission = self.permissions.find((p) => p.role === CamsRole.SuperUser);
+    expect(superUserPermission, 'the e2e account should hold Super User').toBeDefined();
 
-    const ownRows = page.locator(
-      `[data-testid="cams-user-row-${listed!.id}"], [data-testid^="cams-user-row-${listed!.id}-"]`,
-    );
-    await expect(ownRows.first()).toBeVisible(timeoutOption);
-    await expect(ownRows.locator('.cams-users__remove-permission')).toHaveCount(0);
-    await expect(page.locator(`#add-permission-${listed!.id}`)).toBeVisible();
+    // A throwaway permission to try removing, so a broken guard cannot take away the shared
+    // account's Super User and fail every later test in the run. A CI retry grants it again.
+    const { permission } = await grantTrialAttorneyInAnOffice(page, self, [200, 201]);
+
+    await expect(page.locator(`#remove-permission-${permission.id}`)).toHaveCount(0);
+    await expect(page.locator(`#remove-permission-${superUserPermission!.id}`)).toHaveCount(0);
+    await expect(page.locator(`#add-permission-${self.id}`)).toBeEnabled();
 
     // Send the removal straight to the API with the page's own credentials.
-    const superUserPermission = listed!.permissions.find((p) => p.role === CamsRole.SuperUser)!;
+    const { authorization } = await filteredResponse.request().allHeaders();
     const usersUrl = new URL(filteredResponse.url());
     const removal = await page.request.delete(
-      `${usersUrl.origin}${usersUrl.pathname}/${encodeURIComponent(listed!.id)}/permissions/` +
-        encodeURIComponent(superUserPermission.id),
-      { headers: { authorization: filteredResponse.request().headers()['authorization'] } },
+      `${usersUrl.origin}${usersUrl.pathname}/${encodeURIComponent(self.id)}/permissions/` +
+        encodeURIComponent(permission.id),
+      { headers: { authorization } },
     );
     expect(removal.status()).toBe(400);
-    expect(await removal.text()).toContain('You cannot remove your own permissions.');
+    expect(await removal.json()).toEqual(
+      expect.objectContaining({ message: 'You cannot remove your own permissions.', status: 400 }),
+    );
 
-    // Nothing was written: the account still holds Super User.
-    await page.goto('/admin');
-    await expect(page.locator('.admin-screen-navigation')).toBeVisible(timeoutOption);
+    // Nothing was written: the permission is still active.
+    const reread = await page.request.get(filteredResponse.url(), { headers: { authorization } });
+    expect(reread.ok()).toBe(true);
+    const after = ((await reread.json()).data as CamsUserWithPermissions[]).find(
+      (candidate) => candidate.id === self.id,
+    );
+    expect(after?.permissions.map((p) => p.id)).toContain(permission.id);
   });
 });

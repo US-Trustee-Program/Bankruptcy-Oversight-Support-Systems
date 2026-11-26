@@ -363,7 +363,7 @@ describe('CamsUsers', () => {
         Array.from(r.querySelectorAll('.cams-users__remove-permission')),
       ),
     ).toHaveLength(0);
-    expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeInTheDocument();
+    expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeEnabled();
     expect(row(MARIA).querySelectorAll('.cams-users__remove-permission')).toHaveLength(1);
   });
 

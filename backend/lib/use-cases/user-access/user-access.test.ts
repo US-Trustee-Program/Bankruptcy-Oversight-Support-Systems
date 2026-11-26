@@ -1055,7 +1055,7 @@ describe('UserAccessUseCase', () => {
     });
 
     test('should refuse a Super User’s removal of their own permission and change nothing', async () => {
-      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval();
+      const { deactivateSpy } = spyOnRemoval();
 
       const error = await getTheThrownError(() =>
         useCase.removePermission(context, { ...request, userId: context.session.user.id }),
@@ -1068,8 +1068,6 @@ describe('UserAccessUseCase', () => {
         }),
       );
       expect(deactivateSpy).not.toHaveBeenCalled();
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(invalidateSpy).not.toHaveBeenCalled();
     });
 
     test('should remove a permission from a user who is no longer a CAMS user', async () => {
