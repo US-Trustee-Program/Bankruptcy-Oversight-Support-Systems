@@ -29,14 +29,13 @@ import {
 } from '@common/cams/user-access';
 import { RemovePermissionModal, RemovePermissionModalRef } from './RemovePermissionModal';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
+import { PagePredicate, PERMISSIONS_PAGE_SIZE } from './permissions-paging';
 
-const PAGE_SIZE = 20;
 const ALL = 'All';
 // Same as the data-verification searches (TrusteeSearchModal, TrusteesList).
 const MIN_FILTER_LENGTH = 2;
 const FILTER_DEBOUNCE_MS = 300;
 
-type PagePredicate = { limit: number; offset: number };
 type Filters = Pick<CamsUsersPredicate, 'name' | 'email'>;
 type UsersPage = {
   data: CamsUserWithPermissions[];
@@ -146,7 +145,7 @@ export function CamsUsers() {
     setIsLoading(true);
     setLoadFailed(false);
     try {
-      const predicate: CamsUsersPredicate = { limit: PAGE_SIZE, offset: pageOffset };
+      const predicate: CamsUsersPredicate = { limit: PERMISSIONS_PAGE_SIZE, offset: pageOffset };
       if (filters.name) predicate.name = filters.name;
       if (filters.email) predicate.email = filters.email;
       const response = await Api2.getCamsUsers(predicate);
@@ -400,7 +399,7 @@ export function CamsUsers() {
           {(page.pagination.totalPages ?? 1) > 1 && (
             <Pagination<PagePredicate>
               paginationValues={page.pagination}
-              searchPredicate={{ limit: PAGE_SIZE, offset }}
+              searchPredicate={{ limit: PERMISSIONS_PAGE_SIZE, offset }}
               retrievePage={(predicate) => loadPage(predicate.offset ?? 0, true)}
             />
           )}

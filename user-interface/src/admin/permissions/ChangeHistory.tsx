@@ -10,6 +10,7 @@ import {
   CamsTableRow,
 } from '@/lib/components/cams/CamsTable';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { formatDate } from '@/lib/utils/datetime';
@@ -22,12 +23,12 @@ import {
   PermissionSnapshot,
   scopeLabel,
 } from '@common/cams/user-access';
+import { PagePredicate, PERMISSIONS_PAGE_SIZE } from './permissions-paging';
 
-// The same page size as CAMS Users.
-const PAGE_SIZE = 20;
-
-type PagePredicate = { limit: number; offset: number };
-type ChangesPage = { data: PermissionChange[]; pagination: PaginationModel };
+// The changes endpoint always counts the rows and pages; the shared Pagination type leaves them optional.
+type ChangesPagination = PaginationModel &
+  Required<Pick<PaginationModel, 'totalCount' | 'totalPages'>>;
+type ChangesPage = { data: PermissionChange[]; pagination: ChangesPagination };
 
 function countLabel(totalCount: number) {
   return `${totalCount} ${totalCount === 1 ? 'permission change' : 'permission changes'}`;
@@ -37,7 +38,8 @@ export function ChangeHistory() {
   const [page, setPage] = useState<ChangesPage | null>(null);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadFailed, setLoadFailed] = useState(false);
+  // The offset of the page that failed to load, so Try again asks for it again.
+  const [failedOffset, setFailedOffset] = useState<number | null>(null);
   const [offices, setOffices] = useState<UstpOfficeDetails[]>([]);
   // Office names label each permission, so the table waits for them rather than flashing codes.
   const [officesLoaded, setOfficesLoaded] = useState(false);
@@ -49,18 +51,21 @@ export function ChangeHistory() {
   const loadPage = useCallback(async (pageOffset: number, focusHeading = false) => {
     const ticket = ++loadTicketRef.current;
     setIsLoading(true);
-    setLoadFailed(false);
+    setFailedOffset(null);
     try {
-      const response = await Api2.getPermissionChanges({ limit: PAGE_SIZE, offset: pageOffset });
+      const response = await Api2.getPermissionChanges({
+        limit: PERMISSIONS_PAGE_SIZE,
+        offset: pageOffset,
+      });
       if (ticket !== loadTicketRef.current) return;
-      setPage({ data: response.data, pagination: response.pagination! });
+      setPage({ data: response.data, pagination: response.pagination as ChangesPagination });
       setOffset(pageOffset);
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
     } catch {
       if (ticket === loadTicketRef.current) {
         // The table and pagination unmount on failure; the heading stays, so focus lands there.
-        setLoadFailed(true);
+        setFailedOffset(pageOffset);
         headingRef.current?.focus();
       }
     } finally {
@@ -81,7 +86,6 @@ export function ChangeHistory() {
     [offices],
   );
 
-  // 'Trial Attorney, Region 2 - Manhattan'; Super User has no scope.
   // 'Trial Attorney,' 'Region 2 -' 'Manhattan': the pieces a permission may wrap between, so it
   // breaks only after its comma or a dash, never inside a role or office name. Super User has no
   // scope.
@@ -103,11 +107,12 @@ export function ChangeHistory() {
     ));
   }
 
+  const loadFailed = failedOffset !== null;
   const isReady = officesLoaded && page !== null;
   const isWorking = isLoading || !officesLoaded;
   let status = '';
   if (isWorking) status = 'Loading change history...';
-  else if (isReady && !loadFailed) status = countLabel(page.pagination.totalCount ?? 0);
+  else if (isReady && !loadFailed) status = countLabel(page.pagination.totalCount);
 
   return (
     <div className="change-history" data-testid="change-history-panel">
@@ -131,13 +136,22 @@ export function ChangeHistory() {
         />
       )}
       {loadFailed && (
-        <Alert
-          id="change-history-load-error"
-          message="Unable to load change history. Please try again."
-          type={UswdsAlertStyle.Error}
-          show={true}
-          inline={true}
-        />
+        <>
+          <Alert
+            id="change-history-load-error"
+            message="Unable to load change history. Please try again."
+            type={UswdsAlertStyle.Error}
+            show={true}
+            inline={true}
+          />
+          <Button
+            id="change-history-try-again"
+            uswdsStyle={UswdsButtonStyle.Outline}
+            onClick={() => loadPage(failedOffset, true)}
+          >
+            Try again
+          </Button>
+        </>
       )}
       {officesFailed && (
         <Alert
@@ -187,11 +201,11 @@ export function ChangeHistory() {
               ))}
             </CamsTableBody>
           </CamsTable>
-          {(page.pagination.totalPages ?? 1) > 1 && (
+          {page.pagination.totalPages > 1 && (
             <Pagination<PagePredicate>
               paginationValues={page.pagination}
-              searchPredicate={{ limit: PAGE_SIZE, offset }}
-              retrievePage={(predicate) => loadPage(predicate.offset ?? 0, true)}
+              searchPredicate={{ limit: PERMISSIONS_PAGE_SIZE, offset }}
+              retrievePage={(predicate) => loadPage(predicate.offset, true)}
             />
           )}
         </>

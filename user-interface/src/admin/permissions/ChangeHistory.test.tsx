@@ -73,6 +73,7 @@ const heading = () => screen.getByRole('heading', { name: 'Change History' });
 const spinner = () => screen.queryByTestId('change-history-loading');
 const loadError = () => document.querySelector('#change-history-load-error');
 const nextPage = () => screen.getByTestId('pagination-button-next-results');
+const tryAgain = () => document.querySelector<HTMLButtonElement>('#change-history-try-again');
 
 // Each row's cell values, without the labels CamsTable shows in the stacked layout.
 function rowTexts() {
@@ -109,6 +110,12 @@ describe('ChangeHistory', () => {
     const spy = await showChanges(SCENARIO);
 
     expect(spy).toHaveBeenCalledWith({ limit: 20, offset: 0 });
+  });
+
+  test('should leave focus where it is after the first load', async () => {
+    await showChanges(SCENARIO);
+
+    expect(heading()).not.toHaveFocus();
   });
 
   test('should show a Change History table with the columns User, Previous, New, Changed by and Date', async () => {
@@ -242,6 +249,40 @@ describe('ChangeHistory', () => {
     await waitFor(() => expect(loadError()).toBeInTheDocument());
     expect(table()).not.toBeInTheDocument();
     expect(heading()).toHaveFocus();
+    expect(screen.getByTestId('change-history-status')).toHaveTextContent('');
+  });
+
+  test('should retry the page that failed to load', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    spy.mockRejectedValueOnce(new Error('500'));
+    await userEvent.click(nextPage());
+    await waitFor(() => expect(loadError()).toBeInTheDocument());
+    spy.mockResolvedValueOnce(changesResponse(SCENARIO.slice(0, 2), 45, 20));
+
+    await userEvent.click(tryAgain()!);
+
+    await waitFor(() => expect(rowTexts()).toHaveLength(2));
+    expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
+    expect(loadError()).not.toBeInTheDocument();
+    expect(tryAgain()).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
+  test('should keep loading while a newer page is pending, even when an older one returns', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const older = pending<ReturnType<typeof changesResponse>>();
+    const newer = pending<ReturnType<typeof changesResponse>>();
+    spy.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+
+    await userEvent.click(nextPage());
+    await userEvent.click(screen.getByTestId('pagination-button-page-3-results'));
+    await act(async () => older.resolve(changesResponse(SCENARIO.slice(0, 3), 45, 20)));
+
+    expect(spinner()).toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(SCENARIO.length);
+    await act(async () => newer.resolve(changesResponse(SCENARIO.slice(0, 1), 45, 40)));
+    expect(spinner()).not.toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(1);
   });
 
   test('should never let an older page replace a newer one', async () => {
@@ -298,6 +339,21 @@ describe('ChangeHistory', () => {
     expect(spinner()).not.toBeInTheDocument();
     expect(screen.getByTestId('change-history-status')).toHaveTextContent('');
     expect(heading()).toHaveFocus();
+  });
+
+  test('should load the changes again when the first load failed and the user tries again', async () => {
+    const spy = vi
+      .spyOn(Api2, 'getPermissionChanges')
+      .mockRejectedValueOnce(new Error('load failed'))
+      .mockResolvedValueOnce(changesResponse(SCENARIO));
+    render(<ChangeHistory />);
+    await waitFor(() => expect(tryAgain()).toBeInTheDocument());
+
+    await userEvent.click(tryAgain()!);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 0 });
+    expect(rowTexts()).toHaveLength(SCENARIO.length);
   });
 
   test.each([
