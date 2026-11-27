@@ -735,6 +735,12 @@ describe('_Api2 functions', async () => {
     });
   });
 
+  test('should call api.get with the paging predicate when calling getPermissionChanges', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getPermissionChanges({ limit: 20, offset: 40 });
+    expect(getSpy).toHaveBeenCalledWith('/user-access/changes', { limit: '20', offset: '40' });
+  });
+
   test('should PUT the grant to the encoded permission path when calling grantPermission', () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: {} });
     api2.default.grantPermission({

@@ -1565,5 +1565,249 @@ describe('UserAccessUseCase', () => {
         expect.objectContaining({ action: 'DEACTIVATED', role: CamsRole.Auditor }),
       );
     });
+
+    // One test per kind of change a Super User can make to a user, read back as Change History rows.
+    // A permission is a role in a scope (one office, a whole region, or All Regions); a grant
+    // replaces the same role's permissions whose scope contains it or is contained by it, and a
+    // replacing grant adds a row for the grant plus one for each permission it replaced.
+    describe('Change History rows for each kind of change', () => {
+      const ATTORNEY = CamsRole.TrialAttorney;
+      const manhattan = { role: ATTORNEY, regionId: '2', officeCode: MANHATTAN.officeCode };
+      const buffalo = { role: ATTORNEY, regionId: '2', officeCode: BUFFALO.officeCode };
+      const region2 = { role: ATTORNEY, regionId: '2', officeCode: null };
+      const seattle = { role: ATTORNEY, regionId: '18', officeCode: SEATTLE.officeCode };
+      const allRegions = { role: ATTORNEY, regionId: null, officeCode: null };
+      const superUser = { role: CamsRole.SuperUser, regionId: null, officeCode: null };
+      type Snapshot = { role: CamsRoleType; regionId: string | null; officeCode: string | null };
+
+      let day = 0;
+
+      beforeEach(() => {
+        spyOnMembers();
+        vi.useFakeTimers({ toFake: ['Date'] });
+        day = 0;
+      });
+
+      // Each change happens on its own day, so a test can read back just the latest change's rows.
+      function nextDay() {
+        day += 1;
+        vi.setSystemTime(new Date(Date.UTC(2026, 10, day, 10)));
+      }
+
+      function grant(snapshot: Snapshot, userId = 'user-b') {
+        nextDay();
+        return useCase.grantPermission(context, {
+          userId,
+          role: snapshot.role,
+          regionId: snapshot.regionId ?? 'all',
+          officeCode: snapshot.officeCode ?? 'all',
+        });
+      }
+
+      function remove(permissionId: string, userId = 'user-b') {
+        nextDay();
+        return useCase.removePermission(context, { userId, permissionId });
+      }
+
+      async function allRows() {
+        const { data, totalCount } = await useCase.getPermissionChanges(context, {
+          limit: 100,
+          offset: 0,
+        });
+        expect(data).toHaveLength(totalCount);
+        return data;
+      }
+
+      // The rows written by the latest change. Rows from one grant share a time, and replaced rows
+      // among themselves are ordered by audit id, so they are compared in any order.
+      async function latestRows() {
+        const rows = await allRows();
+        return rows
+          .filter((row) => row.performedAt === rows[0].performedAt)
+          .map(({ kind, previous, next }) => ({ kind, previous, next }));
+      }
+
+      async function activePermissions() {
+        const { data } = await useCase.getCamsUsers(context, { name: 'Bob', limit: 20, offset: 0 });
+        return data[0].permissions.map(({ role, regionId, officeCode }) => ({
+          role,
+          regionId,
+          officeCode,
+        }));
+      }
+
+      // Exactly these permissions are active, in any order.
+      async function expectHeld(...expected: Snapshot[]) {
+        const held = await activePermissions();
+        expect(held).toHaveLength(expected.length);
+        expect(held).toEqual(expect.arrayContaining(expected));
+      }
+
+      test('a new role: one row, (none) to the role and scope', async () => {
+        await grant(manhattan);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: manhattan }]);
+      });
+
+      test('the same role in another region: one row, and the first region is kept', async () => {
+        await grant(manhattan);
+        await grant(seattle);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: seattle }]);
+        await expectHeld(manhattan, seattle);
+      });
+
+      test('the same role in another office of the same region: one row, and both offices are kept', async () => {
+        await grant(manhattan);
+        await grant(buffalo);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: buffalo }]);
+        await expectHeld(manhattan, buffalo);
+      });
+
+      test('another role in the same scope: one row, and the first role is kept', async () => {
+        const auditor = { ...manhattan, role: CamsRole.Auditor };
+        await grant(manhattan);
+        await grant(auditor);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: auditor }]);
+        await expectHeld(manhattan, auditor);
+      });
+
+      test.each([
+        { change: 'widening an office to its region', from: manhattan, to: region2 },
+        { change: 'widening a region to All Regions', from: region2, to: allRegions },
+        { change: 'narrowing a region to one of its offices', from: region2, to: manhattan },
+        { change: 'narrowing All Regions to one region', from: allRegions, to: region2 },
+        { change: 'narrowing All Regions to one office', from: allRegions, to: seattle },
+      ])('$change: a grant row and a replacement row', async ({ from, to }) => {
+        await grant(from);
+        await grant(to);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: to },
+            { kind: 'replaced', previous: from, next: to },
+          ]),
+        );
+        expect(await activePermissions()).toEqual([to]);
+      });
+
+      test('a grant that covers some of the permissions: replaces those and keeps the others', async () => {
+        await grant(manhattan);
+        await grant(seattle);
+        await grant(region2);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: region2 },
+            { kind: 'replaced', previous: manhattan, next: region2 },
+          ]),
+        );
+        await expectHeld(seattle, region2);
+      });
+
+      test('widening to All Regions: a grant row and a replacement row for every region and office it covers', async () => {
+        await grant(manhattan);
+        await grant(buffalo);
+        await grant(seattle);
+        await grant(allRegions);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(4);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: allRegions },
+            { kind: 'replaced', previous: manhattan, next: allRegions },
+            { kind: 'replaced', previous: buffalo, next: allRegions },
+            { kind: 'replaced', previous: seattle, next: allRegions },
+          ]),
+        );
+        expect(await activePermissions()).toEqual([allRegions]);
+      });
+
+      test('a removal: one row, the role and scope to (none)', async () => {
+        const { result } = await grant(manhattan);
+        await remove(result.permission.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: manhattan, next: null }]);
+      });
+
+      test('a Super User grant: one row, (none) to Super User', async () => {
+        await grant(superUser);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: superUser }]);
+      });
+
+      test('removing a Super User while another remains: one row, Super User to (none)', async () => {
+        await grant(superUser, 'user-a');
+        const { result } = await grant(superUser);
+        await remove(result.permission.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: superUser, next: null }]);
+        await expectHeld();
+      });
+
+      describe('changes that add no row', () => {
+        test('granting a permission the user already holds', async () => {
+          await grant(manhattan);
+          await grant(manhattan);
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('granting Super User again', async () => {
+          await grant(superUser);
+          await grant(superUser);
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('removing a permission that was already removed', async () => {
+          const { result } = await grant(manhattan);
+          await remove(result.permission.id);
+          await remove(result.permission.id);
+
+          expect((await allRows()).map((row) => row.kind)).toEqual(['removed', 'granted']);
+        });
+
+        test('removing a permission that was replaced', async () => {
+          const { result } = await grant(manhattan);
+          await grant(region2);
+          const before = await allRows();
+
+          await remove(result.permission.id);
+
+          expect(await allRows()).toEqual(before);
+        });
+
+        test('a Super User removing their own permission', async () => {
+          const self = getCamsUserReference(context.session.user);
+          spyOnMembers([...members, self]);
+          const { result } = await grant(manhattan, self.id);
+
+          await expect(remove(result.permission.id, self.id)).rejects.toThrow(
+            'You cannot remove your own permissions.',
+          );
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('removing the last Super User', async () => {
+          const { result } = await grant(superUser);
+
+          await expect(remove(result.permission.id)).rejects.toThrow(
+            'CAMS must keep at least one Super User.',
+          );
+
+          expect(await allRows()).toHaveLength(1);
+          expect(await activePermissions()).toEqual([superUser]);
+        });
+      });
+    });
   });
 });

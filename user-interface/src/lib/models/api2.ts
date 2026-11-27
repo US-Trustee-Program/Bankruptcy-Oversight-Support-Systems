@@ -45,10 +45,12 @@ import MockApi2 from '../testing/mock-api2';
 import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  PermissionChange,
   PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
+import { PaginationParameters } from '@common/api/pagination';
 import LocalCache from '../utils/local-cache';
 import DateTimeUtils from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
@@ -660,6 +662,14 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   return api().get<CamsUserWithPermissions[]>('/user-access/users', params);
 }
 
+/** Change History, newest first. */
+async function getPermissionChanges(predicate: Required<PaginationParameters>) {
+  return api().get<PermissionChange[]>('/user-access/changes', {
+    limit: String(predicate.limit),
+    offset: String(predicate.offset),
+  });
+}
+
 /** users/:userId/permissions/:role/:regionId/:officeCode, each segment encoded. */
 function permissionPath(request: RoleAssignmentGrantRequest) {
   const path = [
@@ -816,6 +826,7 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
 
 export const _Api2 = {
   getCamsUsers,
+  getPermissionChanges,
   grantPermission,
   removePermission,
   getTrustees,

@@ -17,6 +17,14 @@ $divider-space-wrapped: 0.75rem;
 $add-slot-wrapped: $remove-slot-wrapped + $divider-space-wrapped + 0.0625rem;
 
 .cams-users {
+  // Figma "Full Permissions List": the count above the table ("607 CAMS Users") is 16px bold with a
+  // 25.43px line height. It stays an h2 element, the level after the page's h1.
+  .cams-users__count {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.59;
+  }
+
   // A wrapper, not the cell: CamsTable's column layout sets the cells' display.
   .cams-users__actions {
     display: flex;
@@ -104,6 +112,9 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
 // stacked cards by default, columns once the table is wide enough.
 .cams-users-table.cams-table--responsive {
   container: cams-users-table / inline-size;
+  // 22px from the heading to the column labels, with the header cells' 8px top padding. On the
+  // table, not the heading: the Admin page sets its h2 margins to 0 (.main-content-area h2).
+  margin-top: 0.875rem;
 
   @include cams-table.cams-table-stacked;
 
@@ -136,6 +147,16 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
     // first permission, and a wrapped Role or Office doesn't push the rest of its row down.
     .cams-table__row {
       align-items: flex-start;
+    }
+
+    // Figma: the column labels sit in a 26px line (16px text, 25.43px line height), 8px above the
+    // header divider. CamsTable adds 8px below the header row as well; drop it.
+    .cams-table__header-group {
+      padding-bottom: 0;
+    }
+
+    .cams-table__header-row .cams-table__cell {
+      line-height: 1.59;
     }
 
     .cams-table__cell {
@@ -267,7 +288,7 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.1875rem; // 19px above the count, as in Figma
 
   .cams-users__filter {
     flex: 0 1 20rem;
