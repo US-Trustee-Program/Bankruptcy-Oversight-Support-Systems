@@ -37,12 +37,6 @@ if (!window.location) {
   });
 }
 
-// jsdom has no Element.checkVisibility and applies no stylesheet, so everything counts as visible.
-// A test can spy on it to stand in for a layout that hides an element.
-if (!HTMLElement.prototype.checkVisibility) {
-  HTMLElement.prototype.checkVisibility = () => true;
-}
-
 // Clean up timers after each test to prevent them from running after jsdom teardown
 afterEach(() => {
   vi.clearAllTimers();

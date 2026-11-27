@@ -76,11 +76,15 @@ const assignAttorneyModalUseCase = (
       if (!store.bCase) {
         return;
       }
+      // Fetched when the modal opens, so show that the list is loading rather than empty.
+      store.setIsLoadingAttorneys(true);
       try {
         attorneys = await Api2.getOfficeAttorneys(store.bCase.officeCode ?? '');
         store.setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
       } catch (e) {
         store.setGlobalAlertError((e as Error).message);
+      } finally {
+        store.setIsLoadingAttorneys(false);
       }
     },
 

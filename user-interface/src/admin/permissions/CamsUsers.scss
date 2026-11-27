@@ -31,6 +31,8 @@ $add-slot-wrapped: $remove-slot-wrapped + $divider-space-wrapped + 0.0625rem;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    // USWDS units(1) (8px): enough to separate two stacked link-style buttons as distinct targets
+    // without reading as separate rows.
     gap: 0.5rem;
   }
 

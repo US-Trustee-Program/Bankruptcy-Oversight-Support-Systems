@@ -196,6 +196,51 @@ test.describe('Administration > Permissions', () => {
     await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
   });
 
+  // The table's container query (CamsUsers.scss) picks which Add Permission a user with several
+  // rows shows; jsdom can't evaluate it, so only a browser can test the layouts. Retry-safe like
+  // the tests around it: a retry picks a user who still has no permissions.
+  test('shows Add Permission after the last row when stacked and on the first row in columns', async ({
+    page,
+  }) => {
+    const user = userWithoutPermissions(users);
+    const listed = page.waitForResponse(isUsersListResponse, timeoutOption);
+    const { permission } = await grantTrialAttorneyInAnOffice(page, user);
+
+    // Two more roles in the same office, straight to the API with the page's own credentials, so
+    // the user has three rows and a removal leaves two.
+    const listResponse = await listed;
+    const { authorization } = await listResponse.request().allHeaders();
+    const usersUrl = new URL(listResponse.url());
+    for (const role of [CamsRole.Auditor, CamsRole.Paralegal]) {
+      const path = [user.id, 'permissions', role, permission.regionId, permission.officeCode]
+        .map((segment) => encodeURIComponent(segment ?? ''))
+        .join('/');
+      const granted = await page.request.put(`${usersUrl.origin}${usersUrl.pathname}/${path}`, {
+        headers: { authorization },
+        data: {},
+      });
+      expect(granted.status()).toBe(201);
+    }
+
+    const firstRowAdd = page.locator(`#add-permission-${user.id}`);
+    const lastRowAdd = page.locator(`#add-permission-${user.id}-last`);
+
+    // Narrower than $cams-users-columns-min-width: the rows stack.
+    await page.setViewportSize({ width: 480, height: 900 });
+    await openPermissions(page);
+    await expect(lastRowAdd).toBeVisible(timeoutOption);
+    await expect(firstRowAdd).toBeHidden();
+
+    // After a removal, focus lands on the Add Permission this layout shows.
+    await removeFromRow(page, user, permission.id);
+    await expect(lastRowAdd).toBeFocused();
+
+    // Wide enough for columns (the admin side menu takes part of the viewport).
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect(firstRowAdd).toBeVisible();
+    await expect(lastRowAdd).toBeHidden();
+  });
+
   // CAMS-941 Slice 3: "A change appears right away". Tests run one at a time (workers: 1), so the
   // removal is the newest change. Retry-safe: a retry picks a user who still has no permissions and
   // checks only that user's rows, never a row count.
@@ -323,11 +368,22 @@ test.describe('Administration > Permissions', () => {
 
       // The account's other permissions it may remove.
       expect((await removeOwn(permission.id)).status()).toBe(204);
+      const afterRemoval = await page.request.get(filteredResponse.url(), {
+        headers: { authorization },
+      });
+      expect(afterRemoval.ok()).toBe(true);
+      const removed = ((await afterRemoval.json()).data as CamsUserWithPermissions[]).find(
+        (candidate) => candidate.id === self.id,
+      );
+      expect(removed?.permissions.map((p) => p.id)).not.toContain(permission.id);
     } finally {
-      await revokePermission(self.id, permission.id);
-      // A broken guard would have taken the shared account's Super User, failing every later test
-      // in the run; put it back (a no-op while it is still held).
-      await grantSuperUser(SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME);
+      try {
+        await revokePermission(self.id, permission.id);
+      } finally {
+        // A broken guard would have taken the shared account's Super User, failing every later
+        // test in the run; put it back (a no-op while it is still held).
+        await grantSuperUser(SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME);
+      }
     }
   });
 });

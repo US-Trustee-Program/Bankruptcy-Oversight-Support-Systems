@@ -125,9 +125,19 @@ const table = () => document.querySelector('#cams-users-table');
 const heading = () => document.querySelector('#cams-users-count');
 const spinner = () => screen.queryByTestId('cams-users-loading');
 
+// jsdom applies no stylesheet and lays nothing out, so getClientRects is always empty. Stand in for
+// a layout that renders every element except those with the hidden class (as `display: none` does).
+function layOut(hiddenClass?: string) {
+  vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(function (this: Element) {
+    const rendered = !hiddenClass || !this.classList.contains(hiddenClass);
+    return (rendered ? [new DOMRect(0, 0, 1, 1)] : []) as unknown as DOMRectList;
+  });
+}
+
 describe('CamsUsers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    layOut();
     modalShow.mockReset();
     modalProps = undefined;
     removeModalShow.mockReset();
@@ -463,13 +473,9 @@ describe('CamsUsers', () => {
   );
 
   test("should move focus to the stacked layout's Add Permission when that is the one shown", async () => {
-    // jsdom applies no stylesheet; stand in for the stacked layout, which hides the first-row
-    // button (CamsUsers.scss, the container query below $cams-users-columns-min-width).
-    vi.spyOn(HTMLElement.prototype, 'checkVisibility').mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      return !this.classList.contains('cams-users__add-permission--first-row');
-    });
+    // The stacked layout hides the first-row button (CamsUsers.scss, the container query below
+    // $cams-users-columns-min-width).
+    layOut('cams-users__add-permission--first-row');
     const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
     render(<CamsUsers />);
     await waitFor(() => expect(table()).toBeInTheDocument());

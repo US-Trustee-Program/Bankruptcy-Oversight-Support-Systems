@@ -1064,7 +1064,9 @@ describe('UserAccessUseCase', () => {
         officeCode: null,
         activeKey: 'SuperUser',
       };
-      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([ownSuperUser]);
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([ownSuperUser]);
       const { deactivateSpy, createSpy } = spyOnRemoval();
 
       const error = await getTheThrownError(() =>
@@ -1077,6 +1079,7 @@ describe('UserAccessUseCase', () => {
           message: 'You cannot remove your own Super User permission.',
         }),
       );
+      expect(findSpy).toHaveBeenCalledWith([{ userId: selfId, id: ownSuperUser.id }]);
       expect(deactivateSpy).not.toHaveBeenCalled();
       expect(createSpy).not.toHaveBeenCalled();
     });
@@ -1115,7 +1118,9 @@ describe('UserAccessUseCase', () => {
     test('should let a Super User remove one of their own other permissions', async () => {
       const selfId = context.session.user.id;
       const ownHeld: UserRoleAssignment = { ...held, userId: selfId };
-      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([ownHeld]);
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([ownHeld]);
       const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval({
         ...deactivated,
         userId: selfId,
@@ -1123,6 +1128,7 @@ describe('UserAccessUseCase', () => {
 
       await useCase.removePermission(context, { userId: selfId, permissionId: ownHeld.id });
 
+      expect(findSpy).toHaveBeenCalledWith([{ userId: selfId, id: ownHeld.id }]);
       expect(deactivateSpy).toHaveBeenCalledWith({ userId: selfId, id: ownHeld.id });
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'DEACTIVATED', userId: selfId }),

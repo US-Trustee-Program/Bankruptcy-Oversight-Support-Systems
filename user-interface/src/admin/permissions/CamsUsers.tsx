@@ -225,11 +225,12 @@ export function CamsUsers() {
   async function afterRemoval(userId: string) {
     // The Remove button that opened the modal is gone; focus the user's Add Permission shown in
     // this layout, or the heading when adding is unavailable. If the reload fails, loadPage has
-    // already moved focus to the heading.
+    // already moved focus to the heading. The other layout's button is `display: none`, so it has
+    // no boxes (getClientRects, unlike checkVisibility, works in every supported browser).
     if (!(await loadPage(offset))) return;
     const add = [`add-permission-${userId}`, `add-permission-${userId}-last`]
       .map((id) => document.getElementById(id) as HTMLButtonElement | null)
-      .find((button) => button?.checkVisibility());
+      .find((button) => !!button && button.getClientRects().length > 0);
     if (add && !add.disabled) add.focus();
     else headingRef.current?.focus();
   }

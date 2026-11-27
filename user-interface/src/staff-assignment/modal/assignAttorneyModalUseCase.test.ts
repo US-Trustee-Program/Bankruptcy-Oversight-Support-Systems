@@ -74,6 +74,8 @@ const mockStore: AssignAttorneyModalStore = {
   setIsUpdatingAssignment: vi.fn(),
   attorneyList: [],
   setAttorneyList: vi.fn(),
+  isLoadingAttorneys: false,
+  setIsLoadingAttorneys: vi.fn(),
   submissionCallback: null,
   setSubmissionCallback: vi.fn(),
   globalAlertError: undefined,
@@ -338,6 +340,27 @@ describe('assignAttorneyModalUseCase tests', () => {
     await localUseCase.fetchAttorneys();
     expect(localSetGlobalAlertError).toHaveBeenCalledWith('Network error');
   });
+
+  test.each([
+    { case: 'loads', mock: () => Promise.resolve({ data: [] } as never) },
+    { case: 'fails', mock: () => Promise.reject(new Error('Network error')) },
+  ])(
+    'fetchAttorneys should mark attorneys as loading until the request $case',
+    async ({ mock }) => {
+      vi.spyOn(Api2, 'getOfficeAttorneys').mockImplementation(mock);
+      const setIsLoadingAttorneys = vi.fn();
+      const localUseCase = buildLocalUseCase({
+        bCase: { caseId: 'c1', officeCode: 'OFF' },
+        setIsLoadingAttorneys,
+      });
+
+      const fetching = localUseCase.fetchAttorneys();
+      expect(setIsLoadingAttorneys).toHaveBeenLastCalledWith(true);
+      await fetching;
+
+      expect(setIsLoadingAttorneys).toHaveBeenLastCalledWith(false);
+    },
+  );
 
   test('fetchAttorneys should do nothing when no case is supplied', async () => {
     const getOfficeAttorneysSpy = vi.spyOn(Api2, 'getOfficeAttorneys');
