@@ -12,16 +12,23 @@
     list-style: none;
   }
 
+  // Figma "Complete Permissions Flow" > "Change History": both tabs bold, 14px, in a 16px-tall label box.
+  // The current tab is ink with a 4px ink underline 4px below its label; another tab is primary and
+  // shows the same underline, in primary, on hover. No text underline on either.
   .tab-navigation__link {
     display: inline-block;
-    padding: 0.5rem 0;
+    padding: 0.5rem 0 0.25rem;
     border-bottom: 0.25rem solid transparent;
     color: colors.$primary;
+    font-size: 0.875rem;
+    font-weight: bold;
+    line-height: 1rem; // the label box is 16px tall in Figma
     text-decoration: none;
 
     &:hover {
-      color: colors.$primary-dark;
-      text-decoration: underline;
+      color: colors.$primary;
+      border-bottom-color: colors.$primary;
+      text-decoration: none;
     }
 
     &:focus {
@@ -30,9 +37,9 @@
     }
   }
 
-  .tab-navigation__link--current {
-    border-bottom-color: colors.$primary;
+  .tab-navigation__link--current,
+  .tab-navigation__link--current:hover {
+    border-bottom-color: colors.$ink;
     color: colors.$ink;
-    font-weight: bold;
   }
 }

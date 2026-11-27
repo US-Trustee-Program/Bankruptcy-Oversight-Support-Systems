@@ -67,3 +67,28 @@ describe('MockApi2.removePermission', () => {
     expect(await grayBakersPermissions()).toEqual(before);
   });
 });
+
+describe('MockApi2.getPermissionChanges', () => {
+  test('should return changes newest first, like the server', async () => {
+    const { data } = await MockApi2.getPermissionChanges({ limit: 100, offset: 0 });
+
+    const dates = data.map((change) => change.performedAt);
+    expect(dates.length).toBeGreaterThan(1);
+    expect(dates).toEqual([...dates].sort().reverse());
+  });
+
+  test('should return the requested page with its pagination', async () => {
+    const all = await MockApi2.getPermissionChanges({ limit: 100, offset: 0 });
+
+    const page = await MockApi2.getPermissionChanges({ limit: 2, offset: 2 });
+
+    expect(page.data).toEqual(all.data.slice(2, 4));
+    expect(page.pagination).toEqual({
+      count: 2,
+      totalCount: all.data.length,
+      currentPage: 2,
+      totalPages: Math.ceil(all.data.length / 2),
+      limit: 2,
+    });
+  });
+});

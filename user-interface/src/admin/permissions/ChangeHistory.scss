@@ -1,0 +1,91 @@
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+
+// Column widths, each including the 1rem cell padding. Measured in the browser 2026-11-27
+// (CAMS-941) at 16px. A permission wraps only after its comma or a dash, so Previous and New never go
+// below the widest piece: "Case Assignment Manager," 11.109rem. User and Changed by wrap between
+// words, never inside one, so their floor fits a long first or last name ("Christopher" 4.915rem) and
+// keeps "Changed" whole. Date never wraps ("11/25/2026" 4.677rem).
+$cell-side-padding: 0.5rem;
+$column-gap: 0.5rem;
+$columns-headroom: 0.375rem;
+$col-name-width: 10rem;
+$col-name-floor: 6rem;
+$col-permission-width: 17rem;
+$col-permission-floor: 12.125rem;
+$col-date-width: 5.75rem;
+// Below the sum of the floors (about 44.4rem), the table switches to stacked cards.
+$change-history-columns-min-width: 2 * $col-name-floor + 2 * $col-permission-floor +
+  $col-date-width + 4 * $column-gap + $columns-headroom;
+
+.change-history {
+  // Figma "Complete Permissions Flow" > "Change History": the H3 style, 22px bold, line height 100%.
+  // It stays an h2 element, the level after the page's h1.
+  .change-history__heading {
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .change-history__part {
+    white-space: nowrap;
+  }
+}
+
+// As on CAMS Users: the Admin side menu leaves the table narrower than the viewport, so the table
+// queries its own width instead of the viewport's.
+.change-history-table.cams-table--responsive {
+  container: change-history-table / inline-size;
+  // 22px from the heading to the column labels, with the header cells' 8px top padding. On the
+  // table, not the heading: the Admin page sets its h2 margins to 0 (.main-content-area h2).
+  margin-top: 0.875rem;
+
+  @include cams-table.cams-table-stacked;
+
+  @container change-history-table (min-width: #{$change-history-columns-min-width}) {
+    @include cams-table.cams-table-flex-row;
+
+    .cams-table__header-row,
+    .cams-table__row {
+      gap: $column-gap;
+      align-items: flex-start;
+    }
+
+    .cams-table__header-row {
+      align-items: flex-end;
+    }
+
+    // Figma: the column labels sit in a 26px line (16px text, 25.43px line height), 8px above the
+    // header divider. CamsTable adds 8px below the header row as well; drop it.
+    .cams-table__header-group {
+      padding-bottom: 0;
+    }
+
+    .cams-table__header-row .cams-table__cell {
+      line-height: 1.59;
+    }
+
+    .cams-table__cell {
+      padding-left: $cell-side-padding;
+      padding-right: $cell-side-padding;
+    }
+
+    // flex: grow, shrink, one-line width. Previous and New take most of the extra width and give
+    // it back first; min-width stops each column at its floor.
+    .col-user,
+    .col-changed-by {
+      flex: 1 1 $col-name-width;
+      min-width: $col-name-floor;
+    }
+
+    .col-previous,
+    .col-new {
+      flex: 2 2 $col-permission-width;
+      min-width: $col-permission-floor;
+    }
+
+    .col-date {
+      flex: 0 0 $col-date-width;
+      white-space: nowrap;
+    }
+  }
+}

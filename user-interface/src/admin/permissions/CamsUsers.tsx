@@ -254,7 +254,7 @@ export function CamsUsers() {
           onChange={setEmailText}
         />
       </div>
-      <h2 id="cams-users-count" ref={headingRef} tabIndex={-1}>
+      <h2 id="cams-users-count" className="cams-users__count" ref={headingRef} tabIndex={-1}>
         {heading}
       </h2>
       <div className="usa-sr-only" role="status" data-testid="cams-users-status">
