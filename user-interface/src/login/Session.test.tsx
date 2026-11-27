@@ -51,14 +51,17 @@ describe('Session', () => {
     vi.restoreAllMocks();
   });
 
-  test('should prefetch office staff for each division the user is assigned to', async () => {
+  // A user with every office would otherwise send one request per office at login, queueing the
+  // first page's own requests behind them. The Assign Attorney modal loads its office's attorneys.
+  test('should not prefetch attorneys for the offices the user is assigned to', async () => {
     const mockSession = MockData.getNonPaginatedResponseBody(MockData.getCamsSession());
     vi.spyOn(Api2, 'getMe').mockResolvedValue(mockSession);
     const getOfficeAttorneys = vi.spyOn(Api2, 'getOfficeAttorneys');
     renderWithProps();
     await waitFor(() => {
-      expect(getOfficeAttorneys).toHaveBeenCalledTimes(testSession.user.offices!.length);
+      expect(sessionEndLogout.initializeSessionEndLogout).toHaveBeenCalled();
     });
+    expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
 
   test('should write the session to local storage', async () => {

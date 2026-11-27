@@ -1,7 +1,11 @@
 import { expect, Page, Response } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
-import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
+import {
+  CamsUserWithPermissions,
+  PermissionChange,
+  UserRoleAssignment,
+} from '../../../common/src/cams/user-access';
 import { CamsRole } from '../../../common/src/cams/roles';
 import { SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME } from './superuser';
 import { grantSuperUser, revokePermission } from './login/superuser-access';
@@ -116,6 +120,30 @@ async function grantTrialAttorneyInAnOffice(
   return { permission, roleLabel, regionId, officeName };
 }
 
+/** Removes a permission from the user's row through the Remove Permission modal. */
+async function removeFromRow(page: Page, user: CamsUserWithPermissions, permissionId: string) {
+  await page.locator(`#remove-permission-${permissionId}`).click();
+  await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
+    timeoutOption,
+  );
+  await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
+    `This will remove ${user.name}'s`,
+  );
+
+  const removeResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/permissions/${encodeURIComponent(permissionId)}`) &&
+      response.request().method() === 'DELETE',
+    timeoutOption,
+  );
+  const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
+  await page.getByTestId('button-remove-permission-modal-submit-button').click();
+  expect((await removeResponse).status()).toBe(204);
+  await reloadResponse;
+
+  await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(timeoutOption);
+}
+
 // One row per permission (a user with none has one row); this column's cell in each of the user's
 // rows. Compare with useInnerText, which leaves out the labels the stacked layout shows.
 function permissionCells(page: Page, userId: string, column: 'role' | 'region' | 'office') {
@@ -159,33 +187,74 @@ test.describe('Administration > Permissions', () => {
     const user = userWithoutPermissions(users);
     const { permission } = await grantTrialAttorneyInAnOffice(page, user);
 
-    await page.locator(`#remove-permission-${permission.id}`).click();
-    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
-      timeoutOption,
-    );
-    await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
-      `This will remove ${user.name}'s`,
-    );
+    await removeFromRow(page, user, permission.id);
 
-    const removeResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith(`/permissions/${encodeURIComponent(permission.id)}`) &&
-        response.request().method() === 'DELETE',
-      timeoutOption,
-    );
-    const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
-    await page.getByTestId('button-remove-permission-modal-submit-button').click();
-    expect((await removeResponse).status()).toBe(204);
-    await reloadResponse;
-
-    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(
-      timeoutOption,
-    );
     await expect(page.getByText(`Permission successfully removed from ${user.name}.`)).toBeVisible(
       timeoutOption,
     );
     await expect(permissionCells(page, user.id, 'role')).toHaveText([''], { useInnerText: true });
     await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
+  });
+
+  // CAMS-941 Slice 3: "A change appears right away". Tests run one at a time (workers: 1), so the
+  // removal is the newest change. Retry-safe: a retry picks a user who still has no permissions and
+  // checks only that user's rows, never a row count.
+  test('shows a removal first on Change History, with its grant below it', async ({ page }) => {
+    const user = userWithoutPermissions(users);
+    const { permission, regionId, officeName } = await grantTrialAttorneyInAnOffice(page, user);
+    await removeFromRow(page, user, permission.id);
+
+    const changesResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('api/user-access/changes') &&
+        response.ok(),
+      timeoutOption,
+    );
+    await page.locator('#permissions-tabs').getByRole('link', { name: 'Change History' }).click();
+    const changes = (await (await changesResponse).json()).data as PermissionChange[];
+
+    const [removal, grant] = changes;
+    const snapshot = {
+      role: CamsRole.TrialAttorney,
+      regionId: permission.regionId,
+      officeCode: permission.officeCode,
+    };
+    expect(removal).toEqual(
+      expect.objectContaining({
+        kind: 'removed',
+        assignmentId: permission.id,
+        userId: user.id,
+        previous: snapshot,
+        next: null,
+        performedBy: SUPERUSER_OKTA_USER_ID,
+      }),
+    );
+    expect(grant).toEqual(
+      expect.objectContaining({
+        kind: 'granted',
+        assignmentId: permission.id,
+        userId: user.id,
+        previous: null,
+        next: snapshot,
+      }),
+    );
+
+    // The screen shows the same two rows, in that order, at the top of the table.
+    const rows = page.locator('#change-history-table .cams-table__body .cams-table__row');
+    await expect(rows.first()).toHaveAttribute('data-testid', `change-row-${removal.auditId}`, {
+      timeout: timeoutOption.timeout,
+    });
+    await expect(rows.nth(1)).toHaveAttribute('data-testid', `change-row-${grant.auditId}`);
+    const scope = `Trial Attorney, Region ${regionId} - ${officeName}`;
+    const cell = (row: number, column: string) => rows.nth(row).locator(`.col-${column}`);
+    const innerText = { useInnerText: true };
+    await expect(cell(0, 'user')).toContainText(user.name, innerText);
+    await expect(cell(0, 'previous')).toContainText(scope, innerText);
+    await expect(cell(0, 'new')).toContainText('(none)', innerText);
+    await expect(cell(0, 'changed-by')).toContainText(removal.performedByName, innerText);
+    await expect(cell(1, 'previous')).toContainText('(none)', innerText);
+    await expect(cell(1, 'new')).toContainText(scope, innerText);
   });
 
   // CAMS-941 Slice 2.
@@ -207,7 +276,9 @@ test.describe('Administration > Permissions', () => {
     const listed = ((await filteredResponse.json()).data as CamsUserWithPermissions[]).find(
       (candidate) => candidate.id === SUPERUSER_OKTA_USER_ID,
     );
-    expect(listed, 'the e2e account should be a CAMS user holding Super User').toBeDefined();
+    // The account must be in the Okta CAMS users group (USTP Cams Users) to be listed at all; the
+    // Super User grant in Mongo alone does not list it (CI run 46029550302 failed this way).
+    expect(listed, 'the e2e account should be in the Okta CAMS users group').toBeDefined();
     const self = listed!;
     const superUserPermission = self.permissions.find((p) => p.role === CamsRole.SuperUser);
     expect(superUserPermission, 'the e2e account should hold Super User').toBeDefined();
