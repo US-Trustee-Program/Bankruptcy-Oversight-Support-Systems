@@ -114,8 +114,9 @@ export async function revokeSuperUser(userId: string): Promise<void> {
 }
 
 /**
- * Removes one of the e2e account's own permissions, which the API refuses (a Super User cannot
- * remove their own permissions). Like the grant, it leaves cached sessions in place.
+ * Removes one of the e2e account's own permissions directly in Mongo: test cleanup that must not
+ * depend on the API under test. Does nothing when that permission is no longer active. Like the
+ * grant, it leaves cached sessions in place.
  */
 export async function revokePermission(userId: string, assignmentId: string): Promise<void> {
   await withAssignments(async (assignments, audits) => {

@@ -129,16 +129,24 @@ Feature: Super User removes a permission and reviews permission change history
   # Not included: Office Manager removal (#2654).
   # ---------------------------------------------------------------------------
 
-  Scenario: A Super User is not offered removal of their own permissions
+  # Changed 2026-11-27: a Super User may remove their own permissions other than Super User.
+  Scenario: A Super User is not offered removal of their own Super User permission
     Given Maria has an active Super User permission and an active Trial Attorney permission for "Region 2 - Manhattan"
     When Maria views her own row on the CAMS Users tab
-    Then none of her permissions has a "Remove Permission" action
+    Then her Super User permission has no "Remove Permission" action
+    And her Trial Attorney permission has a "Remove Permission" action
     And her row still has an "Add Permission" action
 
-  Scenario: The API refuses a Super User's attempt to remove their own permission
-    When Maria sends a removal request for one of her own permissions
-    Then the API rejects it with an explanation
+  Scenario: The API refuses a Super User's attempt to remove their own Super User permission
+    When Maria sends a removal request for her own Super User permission
+    Then the API rejects it with "You cannot remove your own Super User permission."
     And nothing is written
+
+  Scenario: A Super User removes one of their own other permissions
+    Given Maria has an active Super User permission and an active Trial Attorney permission for "Region 2 - Manhattan"
+    When Maria removes her Trial Attorney permission
+    Then her row no longer shows it
+    And the Change History shows the removal, changed by Maria
 
   # Added 2026-11-26 from PR #3390 review (bead cams-x52wz.4.3). Self-removal alone does not stop
   # two Super Users removing each other at once.

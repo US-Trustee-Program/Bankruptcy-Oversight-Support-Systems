@@ -25,26 +25,28 @@ $add-slot-wrapped: $remove-slot-wrapped + $divider-space-wrapped + 0.0625rem;
     line-height: 1.59;
   }
 
-  // A wrapper, not the cell: CamsTable's column layout sets the cells' display.
+  // A wrapper, not the cell: CamsTable's column layout sets the cells' display. Stacked layout:
+  // a row's Remove Permission, then, on a user's last row, Add Permission below it.
   .cams-users__actions {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: $divider-space;
+    gap: 0.5rem;
   }
 
   .cams-users__remove-permission,
   .cams-users__add-permission {
     white-space: nowrap;
+
+    // Button.scss nudges .cams-icon-label up 0.3rem to sit level with a bold card heading; here the
+    // links sit beside plain cell text, so undo it to keep their text level with the row's.
+    .cams-icon-label {
+      top: 0;
+    }
   }
 
   .cams-users__remove-permission {
     color: colors.$secondary-dark;
-  }
-
-  // Stacked layout: a divider only between the two links, none beside a lone link.
-  .cams-users__remove-permission + .cams-users__add-permission {
-    padding-left: $divider-space;
-    border-left: 1px solid colors.$disabledInputText;
   }
 }
 
@@ -131,6 +133,13 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
     padding-top: 0;
   }
 
+  // A user with several rows has an Add Permission for each layout (CamsUsers.tsx); show one.
+  @container cams-users-table (width < #{$cams-users-columns-min-width}) {
+    .cams-users__add-permission--first-row {
+      display: none;
+    }
+  }
+
   @container cams-users-table (min-width: #{$cams-users-columns-min-width}) {
     @include cams-table.cams-table-flex-row;
 
@@ -176,6 +185,10 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
 
     .cams-users__remove-permission {
       grid-column: 1;
+    }
+
+    .cams-users__add-permission--last-row {
+      display: none;
     }
 
     .cams-users__add-permission {

@@ -1054,20 +1054,49 @@ describe('UserAccessUseCase', () => {
       expect(deactivateSpy).not.toHaveBeenCalled();
     });
 
-    test('should refuse a Super User’s removal of their own permission and change nothing', async () => {
-      const { deactivateSpy } = spyOnRemoval();
+    test('should refuse a Super User’s removal of their own Super User permission and change nothing', async () => {
+      const selfId = context.session.user.id;
+      const ownSuperUser: UserRoleAssignment = {
+        ...held,
+        userId: selfId,
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        activeKey: 'SuperUser',
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([ownSuperUser]);
+      const { deactivateSpy, createSpy } = spyOnRemoval();
 
       const error = await getTheThrownError(() =>
-        useCase.removePermission(context, { ...request, userId: context.session.user.id }),
+        useCase.removePermission(context, { userId: selfId, permissionId: ownSuperUser.id }),
       );
 
       expect(error).toEqual(
         expect.objectContaining({
           status: 400,
-          message: 'You cannot remove your own permissions.',
+          message: 'You cannot remove your own Super User permission.',
         }),
       );
       expect(deactivateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('should let a Super User remove one of their own other permissions', async () => {
+      const selfId = context.session.user.id;
+      const ownHeld: UserRoleAssignment = { ...held, userId: selfId };
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([ownHeld]);
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval({
+        ...deactivated,
+        userId: selfId,
+      });
+
+      await useCase.removePermission(context, { userId: selfId, permissionId: ownHeld.id });
+
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: selfId, id: ownHeld.id });
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'DEACTIVATED', userId: selfId }),
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith(selfId);
     });
 
     describe('a Super User permission', () => {
@@ -1785,16 +1814,26 @@ describe('UserAccessUseCase', () => {
           expect(await allRows()).toEqual(before);
         });
 
-        test('a Super User removing their own permission', async () => {
+        test('a Super User removing their own Super User permission', async () => {
+          const self = getCamsUserReference(context.session.user);
+          spyOnMembers([...members, self]);
+          const { result } = await grant(superUser, self.id);
+
+          await expect(remove(result.permission.id, self.id)).rejects.toThrow(
+            'You cannot remove your own Super User permission.',
+          );
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('a Super User removing one of their own other permissions', async () => {
           const self = getCamsUserReference(context.session.user);
           spyOnMembers([...members, self]);
           const { result } = await grant(manhattan, self.id);
 
-          await expect(remove(result.permission.id, self.id)).rejects.toThrow(
-            'You cannot remove your own permissions.',
-          );
+          await remove(result.permission.id, self.id);
 
-          expect(await allRows()).toHaveLength(1);
+          expect((await allRows()).map((row) => row.kind)).toEqual(['removed', 'granted']);
         });
 
         test('removing the last Super User', async () => {
