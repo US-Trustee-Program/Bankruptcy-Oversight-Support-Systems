@@ -1242,7 +1242,8 @@ export interface UserRoleAssignmentRepository extends Releasable {
   ): Promise<UserRoleAssignment | null>;
   /**
    * Restores a deactivated assignment and its activeKey, only if it is still inactive (the reverse
-   * of deactivate). Returns null when it was already active again.
+   * of deactivate). Returns null when it was already active again, or when the user holds that
+   * permission again under a newer record (its activeKey is taken).
    */
   reactivate(
     assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
