@@ -2,9 +2,11 @@ import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
   ALL_SCOPE,
+  PermissionChange,
   PermissionScope,
   RoleAssignmentGrantResult,
   scopesOverlap,
+  toPermissionChange,
   CamsUsersPredicate,
   CamsUserWithPermissions,
   isUnscopedRole,
@@ -16,6 +18,7 @@ import {
   UserRoleAssignment,
 } from '@common/cams/user-access';
 import { CamsRole } from '@common/cams/roles';
+import { PaginationParameters } from '@common/api/pagination';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -34,6 +37,7 @@ import {
 const MODULE_NAME = 'USER-ACCESS-USE-CASE';
 const MEMBER_CACHE_TTL_MS = 15 * 60 * 1000;
 
+const MAX_CHANGES_PAGE_LIMIT = 100;
 const AUDIT_WRITE_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_AUDIT write failed';
 
 // The "USTP Cams Users" member list, cached per process. Assignments are never cached.
@@ -275,6 +279,43 @@ export class UserAccessUseCase {
     await this.invalidateSessions(context, member.id);
 
     return { result: { permission, replaced: replaced.sort(byRegionThenOffice) }, created };
+  }
+
+  /**
+   * Change History: one row per audit record, newest first. A replacement shows the permission that
+   * replaced it, read in one call; if that can't be read, the row's next side is null.
+   */
+  async getPermissionChanges(
+    _context: ApplicationContext,
+    paging: Required<PaginationParameters>,
+  ): Promise<{ data: PermissionChange[]; totalCount: number }> {
+    const { limit, offset } = paging;
+    if (
+      !Number.isInteger(offset) ||
+      offset < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_CHANGES_PAGE_LIMIT
+    ) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Offset must be a whole number of 0 or more, and limit a whole number from 1 to ${MAX_CHANGES_PAGE_LIMIT}.`,
+      });
+    }
+    const page = await this.auditRepository.search({ limit, offset });
+    const replacingRefs = page.data
+      .filter((entry) => entry.replacedByAssignmentId)
+      .map((entry) => ({ userId: entry.userId, id: entry.replacedByAssignmentId! }));
+    const replacing = await this.assignmentRepository.findByIds(replacingRefs);
+    const data = page.data.map((entry) =>
+      toPermissionChange(
+        entry,
+        replacing.find(
+          (permission) =>
+            permission.userId === entry.userId && permission.id === entry.replacedByAssignmentId,
+        ),
+      ),
+    );
+    return { data, totalCount: page.metadata.total };
   }
 
   /**

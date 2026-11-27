@@ -1,6 +1,7 @@
 import { CamsRole } from '@common/cams/roles';
 import {
   CamsUserWithPermissions,
+  PermissionChange,
   RoleAssignmentGrantRequest,
   RoleAssignmentGrantResult,
 } from '@common/cams/user-access';
@@ -15,8 +16,8 @@ import { CamsController } from '../controller';
 import { calculatePagination } from '../pagination';
 
 const MODULE_NAME = 'USER-ACCESS-CONTROLLER';
-const DEFAULT_USERS_LIMIT = 20;
-const DEFAULT_USERS_OFFSET = 0;
+const DEFAULT_PAGE_LIMIT = 20;
+const DEFAULT_PAGE_OFFSET = 0;
 
 function parseQueryInt(value: unknown, fallback: number, isValid: (n: number) => boolean) {
   const parsed = parseInt(value as string);
@@ -30,6 +31,24 @@ function parseQueryInt(value: unknown, fallback: number, isValid: (n: number) =>
 function optionalTrimmedString(value: unknown): string | undefined {
   const first = Array.isArray(value) ? value[0] : value;
   return typeof first === 'string' ? first.trim() || undefined : undefined;
+}
+
+function pagingFrom(context: ApplicationContext) {
+  const { query } = context.request;
+  return {
+    limit: parseQueryInt(query.limit, DEFAULT_PAGE_LIMIT, (n) => n > 0),
+    offset: parseQueryInt(query.offset, DEFAULT_PAGE_OFFSET, (n) => n >= 0),
+  };
+}
+
+// Change History rejects bad paging rather than defaulting it: an absent value takes the default,
+// and anything else goes to the use case unaltered (NaN when not a number) for it to validate.
+function strictPagingFrom(context: ApplicationContext) {
+  const { limit, offset } = context.request.query;
+  return {
+    limit: limit === undefined ? DEFAULT_PAGE_LIMIT : Number(limit),
+    offset: offset === undefined ? DEFAULT_PAGE_OFFSET : Number(offset),
+  };
 }
 
 /** The permission named by users/:userId/permissions/:role/:regionId/:officeCode. */
@@ -48,7 +67,9 @@ export class UserAccessController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<CamsUserWithPermissions[] | RoleAssignmentGrantResult>> {
+  ): Promise<
+    CamsHttpResponseInit<CamsUserWithPermissions[] | PermissionChange[] | RoleAssignmentGrantResult>
+  > {
     try {
       this.requireAccess(context);
 
@@ -56,6 +77,8 @@ export class UserAccessController implements CamsController {
 
       if (method === 'GET' && params.resource === 'users') {
         return await this.getUsers(context);
+      } else if (method === 'GET' && params.resource === 'changes') {
+        return await this.getPermissionChanges(context);
       } else if (method === 'PUT' && params.role) {
         return await this.grantPermission(context);
       } else if (method === 'DELETE' && params.permissionId) {
@@ -94,10 +117,25 @@ export class UserAccessController implements CamsController {
     return httpSuccess({ statusCode: 204 });
   }
 
+  /** GET changes: Change History, newest first. */
+  private async getPermissionChanges(context: ApplicationContext) {
+    const { limit, offset } = strictPagingFrom(context);
+    const { data, totalCount } = await this.useCase.getPermissionChanges(context, {
+      limit,
+      offset,
+    });
+    return httpSuccess({
+      body: {
+        meta: { self: context.request.url },
+        pagination: calculatePagination(data.length, totalCount, limit, offset),
+        data,
+      },
+    });
+  }
+
   private async getUsers(context: ApplicationContext) {
     const { query } = context.request;
-    const limit = parseQueryInt(query.limit, DEFAULT_USERS_LIMIT, (n) => n > 0);
-    const offset = parseQueryInt(query.offset, DEFAULT_USERS_OFFSET, (n) => n >= 0);
+    const { limit, offset } = pagingFrom(context);
 
     const { data, totalCount } = await this.useCase.getCamsUsers(context, {
       limit,
