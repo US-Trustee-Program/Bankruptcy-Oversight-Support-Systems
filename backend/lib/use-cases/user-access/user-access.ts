@@ -324,16 +324,22 @@ export class UserAccessUseCase {
    * it removes exactly the permission the Super User saw, even one for an office that no longer
    * exists. Removing a permission that is no longer active, or that isn't that user's, changes
    * nothing. The user need not still be a CAMS user: removal only reduces access. A Super User
-   * cannot remove their own permissions, and a removal that leaves no Super User is undone and
-   * refused (best effort; see keepASuperUser).
+   * cannot remove their own Super User permission (their other permissions they can), and a removal
+   * that leaves no Super User is undone and refused (best effort; see keepASuperUser).
    */
   async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
     validateRequest(permissionRemovalRequestSpec, request);
-    // A Super User never removes their own access; the last-Super-User check below covers the rest.
+    // A Super User never removes their own Super User access; the last-Super-User check below
+    // covers the rest. One already removed falls through and, like any other, changes nothing.
     if (request.userId === context.session.user.id) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'You cannot remove your own permissions.',
-      });
+      const [own] = await this.assignmentRepository.findByIds([
+        { userId: request.userId, id: request.permissionId },
+      ]);
+      if (own?.active && own.role === CamsRole.SuperUser) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: 'You cannot remove your own Super User permission.',
+        });
+      }
     }
     const deactivated = await this.assignmentRepository.deactivate({
       userId: request.userId,

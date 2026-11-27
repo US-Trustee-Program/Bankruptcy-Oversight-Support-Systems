@@ -625,9 +625,9 @@ const testCase = MockData.getCaseDetail({
 
 **Symptom**: Test waits for "Loading session" to disappear but never does
 
-**Cause**: Missing spy on endpoint that Session component calls during `postLoginTasks()`
+**Cause**: Missing spy on the `/me` endpoint the Session component calls to load the signed-in user
 
-**Solution**: Always use `spyOnMeEndpoint()` which includes office attorneys:
+**Solution**: Always use `spyOnMeEndpoint()` to stub the session's user lookup:
 ```typescript
 await spyOnMeEndpoint(TestSessions.caseAssignmentManager());
 ```

@@ -25,6 +25,9 @@ export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
               data-testid="case-load-table-body"
               ref={viewModel.tableContainerRef}
             >
+              {viewModel.isLoadingAttorneys && (
+                <LoadingSpinner caption="Loading attorneys..." height="40px" />
+              )}
               {viewModel.attorneyList.length > 0 &&
                 viewModel.attorneyList
                   .sort(viewModel.sortAttorneys)

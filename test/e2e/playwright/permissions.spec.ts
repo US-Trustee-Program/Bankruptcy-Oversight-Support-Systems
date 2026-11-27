@@ -1,10 +1,14 @@
 import { expect, Page, Response } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
-import { CamsUserWithPermissions, UserRoleAssignment } from '../../../common/src/cams/user-access';
+import {
+  CamsUserWithPermissions,
+  PermissionChange,
+  UserRoleAssignment,
+} from '../../../common/src/cams/user-access';
 import { CamsRole } from '../../../common/src/cams/roles';
-import { SUPERUSER_OKTA_USER_ID } from './superuser';
-import { revokePermission } from './login/superuser-access';
+import { SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME } from './superuser';
+import { grantSuperUser, revokePermission } from './login/superuser-access';
 
 const timeoutOption = { timeout: 60000 };
 
@@ -116,6 +120,30 @@ async function grantTrialAttorneyInAnOffice(
   return { permission, roleLabel, regionId, officeName };
 }
 
+/** Removes a permission from the user's row through the Remove Permission modal. */
+async function removeFromRow(page: Page, user: CamsUserWithPermissions, permissionId: string) {
+  await page.locator(`#remove-permission-${permissionId}`).click();
+  await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
+    timeoutOption,
+  );
+  await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
+    `This will remove ${user.name}'s`,
+  );
+
+  const removeResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/permissions/${encodeURIComponent(permissionId)}`) &&
+      response.request().method() === 'DELETE',
+    timeoutOption,
+  );
+  const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
+  await page.getByTestId('button-remove-permission-modal-submit-button').click();
+  expect((await removeResponse).status()).toBe(204);
+  await reloadResponse;
+
+  await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(timeoutOption);
+}
+
 // One row per permission (a user with none has one row); this column's cell in each of the user's
 // rows. Compare with useInnerText, which leaves out the labels the stacked layout shows.
 function permissionCells(page: Page, userId: string, column: 'role' | 'region' | 'office') {
@@ -159,28 +187,8 @@ test.describe('Administration > Permissions', () => {
     const user = userWithoutPermissions(users);
     const { permission } = await grantTrialAttorneyInAnOffice(page, user);
 
-    await page.locator(`#remove-permission-${permission.id}`).click();
-    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible(
-      timeoutOption,
-    );
-    await expect(page.getByTestId('modal-remove-permission-modal')).toContainText(
-      `This will remove ${user.name}'s`,
-    );
+    await removeFromRow(page, user, permission.id);
 
-    const removeResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith(`/permissions/${encodeURIComponent(permission.id)}`) &&
-        response.request().method() === 'DELETE',
-      timeoutOption,
-    );
-    const reloadResponse = page.waitForResponse(isUsersListResponse, timeoutOption);
-    await page.getByTestId('button-remove-permission-modal-submit-button').click();
-    expect((await removeResponse).status()).toBe(204);
-    await reloadResponse;
-
-    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeHidden(
-      timeoutOption,
-    );
     await expect(page.getByText(`Permission successfully removed from ${user.name}.`)).toBeVisible(
       timeoutOption,
     );
@@ -188,8 +196,114 @@ test.describe('Administration > Permissions', () => {
     await expect(page.locator(`#add-permission-${user.id}`)).toBeFocused();
   });
 
+  // The table's container query (CamsUsers.scss) picks which Add Permission a user with several
+  // rows shows; jsdom can't evaluate it, so only a browser can test the layouts. Retry-safe like
+  // the tests around it: a retry picks a user who still has no permissions.
+  test('shows Add Permission after the last row when stacked and on the first row in columns', async ({
+    page,
+  }) => {
+    const user = userWithoutPermissions(users);
+    const listed = page.waitForResponse(isUsersListResponse, timeoutOption);
+    const { permission } = await grantTrialAttorneyInAnOffice(page, user);
+
+    // Two more roles in the same office, straight to the API with the page's own credentials, so
+    // the user has three rows and a removal leaves two.
+    const listResponse = await listed;
+    const { authorization } = await listResponse.request().allHeaders();
+    const usersUrl = new URL(listResponse.url());
+    for (const role of [CamsRole.Auditor, CamsRole.Paralegal]) {
+      const path = [user.id, 'permissions', role, permission.regionId, permission.officeCode]
+        .map((segment) => encodeURIComponent(segment ?? ''))
+        .join('/');
+      const granted = await page.request.put(`${usersUrl.origin}${usersUrl.pathname}/${path}`, {
+        headers: { authorization },
+        data: {},
+      });
+      expect(granted.status()).toBe(201);
+    }
+
+    const firstRowAdd = page.locator(`#add-permission-${user.id}`);
+    const lastRowAdd = page.locator(`#add-permission-${user.id}-last`);
+
+    // Narrower than $cams-users-columns-min-width: the rows stack.
+    await page.setViewportSize({ width: 480, height: 900 });
+    await openPermissions(page);
+    await expect(lastRowAdd).toBeVisible(timeoutOption);
+    await expect(firstRowAdd).toBeHidden();
+
+    // After a removal, focus lands on the Add Permission this layout shows.
+    await removeFromRow(page, user, permission.id);
+    await expect(lastRowAdd).toBeFocused();
+
+    // Wide enough for columns (the admin side menu takes part of the viewport).
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect(firstRowAdd).toBeVisible();
+    await expect(lastRowAdd).toBeHidden();
+  });
+
+  // CAMS-941 Slice 3: "A change appears right away". Tests run one at a time (workers: 1), so the
+  // removal is the newest change. Retry-safe: a retry picks a user who still has no permissions and
+  // checks only that user's rows, never a row count.
+  test('shows a removal first on Change History, with its grant below it', async ({ page }) => {
+    const user = userWithoutPermissions(users);
+    const { permission, regionId, officeName } = await grantTrialAttorneyInAnOffice(page, user);
+    await removeFromRow(page, user, permission.id);
+
+    const changesResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('api/user-access/changes') &&
+        response.ok(),
+      timeoutOption,
+    );
+    await page.locator('#permissions-tabs').getByRole('link', { name: 'Change History' }).click();
+    const changes = (await (await changesResponse).json()).data as PermissionChange[];
+
+    const [removal, grant] = changes;
+    const snapshot = {
+      role: CamsRole.TrialAttorney,
+      regionId: permission.regionId,
+      officeCode: permission.officeCode,
+    };
+    expect(removal).toEqual(
+      expect.objectContaining({
+        kind: 'removed',
+        assignmentId: permission.id,
+        userId: user.id,
+        previous: snapshot,
+        next: null,
+        performedBy: SUPERUSER_OKTA_USER_ID,
+      }),
+    );
+    expect(grant).toEqual(
+      expect.objectContaining({
+        kind: 'granted',
+        assignmentId: permission.id,
+        userId: user.id,
+        previous: null,
+        next: snapshot,
+      }),
+    );
+
+    // The screen shows the same two rows, in that order, at the top of the table.
+    const rows = page.locator('#change-history-table .cams-table__body .cams-table__row');
+    await expect(rows.first()).toHaveAttribute('data-testid', `change-row-${removal.auditId}`, {
+      timeout: timeoutOption.timeout,
+    });
+    await expect(rows.nth(1)).toHaveAttribute('data-testid', `change-row-${grant.auditId}`);
+    const scope = `Trial Attorney, Region ${regionId} - ${officeName}`;
+    const cell = (row: number, column: string) => rows.nth(row).locator(`.col-${column}`);
+    const innerText = { useInnerText: true };
+    await expect(cell(0, 'user')).toContainText(user.name, innerText);
+    await expect(cell(0, 'previous')).toContainText(scope, innerText);
+    await expect(cell(0, 'new')).toContainText('(none)', innerText);
+    await expect(cell(0, 'changed-by')).toContainText(removal.performedByName, innerText);
+    await expect(cell(1, 'previous')).toContainText('(none)', innerText);
+    await expect(cell(1, 'new')).toContainText(scope, innerText);
+  });
+
   // CAMS-941 Slice 2.
-  test('does not offer removal of your own permissions, and the API refuses it', async ({
+  test('offers removal of your own permissions except Super User, which the API refuses', async ({
     page,
   }) => {
     // Filter to the signed-in account, which may not be on the first page. Only the filtered
@@ -207,50 +321,69 @@ test.describe('Administration > Permissions', () => {
     const listed = ((await filteredResponse.json()).data as CamsUserWithPermissions[]).find(
       (candidate) => candidate.id === SUPERUSER_OKTA_USER_ID,
     );
-    expect(listed, 'the e2e account should be a CAMS user holding Super User').toBeDefined();
+    // The account must be in the Okta CAMS users group (USTP Cams Users) to be listed at all; the
+    // Super User grant in Mongo alone does not list it (CI run 46029550302 failed this way).
+    expect(listed, 'the e2e account should be in the Okta CAMS users group').toBeDefined();
     const self = listed!;
     const superUserPermission = self.permissions.find((p) => p.role === CamsRole.SuperUser);
     expect(superUserPermission, 'the e2e account should hold Super User').toBeDefined();
 
-    // A throwaway permission to try removing, so a broken guard cannot take away the shared
-    // account's Super User and fail every later test in the run. The account cannot remove it
-    // through the API, so the finally block removes it in Mongo; 200 covers a retry after a failed
-    // cleanup.
+    // A throwaway permission the account may remove itself; 200 covers a retry after a failed
+    // cleanup. The finally block removes it in Mongo if the test stops before the API does.
     const { permission, roleLabel } = await grantTrialAttorneyInAnOffice(page, self, [200, 201]);
+    const { authorization } = await filteredResponse.request().allHeaders();
+    const usersUrl = new URL(filteredResponse.url());
+    const removeOwn = (permissionId: string) =>
+      page.request.delete(
+        `${usersUrl.origin}${usersUrl.pathname}/${encodeURIComponent(self.id)}/permissions/` +
+          encodeURIComponent(permissionId),
+        { headers: { authorization } },
+      );
     try {
-      // The account's rows are on screen, so the absent Remove buttons below mean something.
+      // The account's rows are on screen, so the absent Remove button below means something.
       await expect(permissionCells(page, self.id, 'role')).toContainText([roleLabel], {
         useInnerText: true,
       });
-      await expect(page.locator(`#remove-permission-${permission.id}`)).toHaveCount(0);
+      await expect(page.locator(`#remove-permission-${permission.id}`)).toBeVisible();
       await expect(page.locator(`#remove-permission-${superUserPermission!.id}`)).toHaveCount(0);
       await expect(page.locator(`#add-permission-${self.id}`)).toBeEnabled();
 
-      // Send the removal straight to the API with the page's own credentials.
-      const { authorization } = await filteredResponse.request().allHeaders();
-      const usersUrl = new URL(filteredResponse.url());
-      const removal = await page.request.delete(
-        `${usersUrl.origin}${usersUrl.pathname}/${encodeURIComponent(self.id)}/permissions/` +
-          encodeURIComponent(permission.id),
-        { headers: { authorization } },
-      );
-      expect(removal.status()).toBe(400);
-      expect(await removal.json()).toEqual(
+      // Send the Super User removal straight to the API with the page's own credentials.
+      const refused = await removeOwn(superUserPermission!.id);
+      expect(refused.status()).toBe(400);
+      expect(await refused.json()).toEqual(
         expect.objectContaining({
-          message: 'You cannot remove your own permissions.',
+          message: 'You cannot remove your own Super User permission.',
           status: 400,
         }),
       );
 
-      // Nothing was written: the permission is still active.
+      // Nothing was written: the Super User permission is still active.
       const reread = await page.request.get(filteredResponse.url(), { headers: { authorization } });
       expect(reread.ok()).toBe(true);
       const after = ((await reread.json()).data as CamsUserWithPermissions[]).find(
         (candidate) => candidate.id === self.id,
       );
-      expect(after?.permissions.map((p) => p.id)).toContain(permission.id);
+      expect(after?.permissions.map((p) => p.id)).toContain(superUserPermission!.id);
+
+      // The account's other permissions it may remove.
+      expect((await removeOwn(permission.id)).status()).toBe(204);
+      const afterRemoval = await page.request.get(filteredResponse.url(), {
+        headers: { authorization },
+      });
+      expect(afterRemoval.ok()).toBe(true);
+      const removed = ((await afterRemoval.json()).data as CamsUserWithPermissions[]).find(
+        (candidate) => candidate.id === self.id,
+      );
+      expect(removed?.permissions.map((p) => p.id)).not.toContain(permission.id);
     } finally {
-      await revokePermission(self.id, permission.id);
+      try {
+        await revokePermission(self.id, permission.id);
+      } finally {
+        // A broken guard would have taken the shared account's Super User, failing every later
+        // test in the run; put it back (a no-op while it is still held).
+        await grantSuperUser(SUPERUSER_OKTA_USER_ID, SUPERUSER_OKTA_USER_NAME);
+      }
     }
   });
 });

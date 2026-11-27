@@ -69,7 +69,7 @@ export async function spyOnMeEndpoint(session: CamsSession) {
     groups: session.user.roles || [],
   });
 
-  // Spy on office attorneys endpoint (called by postLoginTasks in Session.tsx)
+  // Stub office attorneys so screens that load them (e.g. Assign Attorney) don't hit MongoDB
   const { OfficesMongoRepository } =
     await import('../../../backend/lib/adapters/gateways/mongo/offices.mongo.repository');
   vi.spyOn(OfficesMongoRepository.prototype, 'getOfficeAttorneys').mockResolvedValue([]);

@@ -17,7 +17,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { CamsRoleLabels } from '@common/cams/roles';
+import { CamsRole, CamsRoleLabels } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
@@ -117,7 +117,7 @@ function countLabel(totalCount: number) {
 }
 
 export function CamsUsers() {
-  // Super Users cannot remove their own permissions; the API refuses it too.
+  // Super Users cannot remove their own Super User permission; the API refuses it too.
   const signedInUserId = LocalStorage.getSession()?.user.id;
   const [page, setPage] = useState<UsersPage | null>(null);
   const [offset, setOffset] = useState(0);
@@ -218,14 +218,45 @@ export function CamsUsers() {
     return `${name}, ${scopeLabel(permission, office)}`;
   }
 
+  function canRemove(user: CamsUserReference, permission: UserRoleAssignment) {
+    return user.id !== signedInUserId || permission.role !== CamsRole.SuperUser;
+  }
+
   async function afterRemoval(userId: string) {
-    // The Remove button that opened the modal is gone; focus the row's Add Permission, or the
-    // heading when adding is unavailable. If the reload fails, loadPage has already moved focus to
-    // the heading.
+    // The Remove button that opened the modal is gone; focus the user's Add Permission shown in
+    // this layout, or the heading when adding is unavailable. If the reload fails, loadPage has
+    // already moved focus to the heading. The other layout's button is `display: none`, so it has
+    // no boxes (getClientRects, unlike checkVisibility, works in every supported browser).
     if (!(await loadPage(offset))) return;
-    const add = document.getElementById(`add-permission-${userId}`) as HTMLButtonElement | null;
+    const add = [`add-permission-${userId}`, `add-permission-${userId}-last`]
+      .map((id) => document.getElementById(id) as HTMLButtonElement | null)
+      .find((button) => !!button && button.getClientRects().length > 0);
     if (add && !add.disabled) add.focus();
     else headingRef.current?.focus();
+  }
+
+  // Add Permission sits on a user's first row in columns (Figma) and after their last permission
+  // in the stacked layout. A user with several rows gets one button for each layout; the stylesheet
+  // hides the other layout's, which also takes it out of the tab order.
+  function addPermissionButton(user: CamsUserReference, placement?: 'first-row' | 'last-row') {
+    return (
+      <Button
+        id={
+          placement === 'last-row' ? `add-permission-${user.id}-last` : `add-permission-${user.id}`
+        }
+        uswdsStyle={UswdsButtonStyle.Unstyled}
+        className={
+          placement
+            ? `cams-users__add-permission cams-users__add-permission--${placement}`
+            : 'cams-users__add-permission'
+        }
+        aria-label={`Add Permission to ${user.name}`}
+        disabled={officesFailed}
+        onClick={() => modalRef.current?.show({ id: user.id, name: user.name })}
+      >
+        <IconLabel icon="add_circle" label="Add Permission" />
+      </Button>
+    );
   }
 
   const isReady = officesLoaded && page !== null;
@@ -311,6 +342,7 @@ export function CamsUsers() {
                   user.permissions.length > 0 ? user.permissions : [null];
                 return rows.map((permission, index) => {
                   const first = index === 0;
+                  const last = index === rows.length - 1;
                   return (
                     <CamsTableRow
                       // The first row keeps the user's key, so its Add Permission button survives
@@ -322,7 +354,7 @@ export function CamsUsers() {
                       className={[
                         first ? '' : 'cams-users__row--continued',
                         permission ? '' : 'cams-users__row--no-permissions',
-                        index < rows.length - 1 ? 'cams-users__row--continues' : '',
+                        last ? '' : 'cams-users__row--continues',
                       ]
                         .filter(Boolean)
                         .join(' ')}
@@ -358,7 +390,7 @@ export function CamsUsers() {
                       </CamsTableCell>
                       <CamsTableCell className="col-actions" data-cell="">
                         <div className="cams-users__actions">
-                          {permission && user.id !== signedInUserId && (
+                          {permission && canRemove(user, permission) && (
                             <Button
                               id={`remove-permission-${permission.id}`}
                               uswdsStyle={UswdsButtonStyle.Unstyled}
@@ -374,20 +406,8 @@ export function CamsUsers() {
                               <IconLabel icon="close" label="Remove Permission" />
                             </Button>
                           )}
-                          {first && (
-                            <Button
-                              id={`add-permission-${user.id}`}
-                              uswdsStyle={UswdsButtonStyle.Unstyled}
-                              className="cams-users__add-permission"
-                              aria-label={`Add Permission to ${user.name}`}
-                              disabled={officesFailed}
-                              onClick={() =>
-                                modalRef.current?.show({ id: user.id, name: user.name })
-                              }
-                            >
-                              <IconLabel icon="add_circle" label="Add Permission" />
-                            </Button>
-                          )}
+                          {first && addPermissionButton(user, last ? undefined : 'first-row')}
+                          {last && !first && addPermissionButton(user, 'last-row')}
                         </div>
                       </CamsTableCell>
                     </CamsTableRow>

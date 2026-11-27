@@ -74,6 +74,26 @@ describe('Test Assign Attorney Modal Component', () => {
     vi.restoreAllMocks();
   });
 
+  test('Should show that attorneys are loading until the office attorneys arrive', async () => {
+    let respond: (response: ResponseBody<AttorneyUser[]>) => void = () => {};
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockReturnValue(
+      new Promise((resolve) => {
+        respond = resolve;
+      }),
+    );
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    act(() => modalRef.current?.show({ bCase: MockData.getCaseBasics(), callback }));
+
+    expect(await screen.findByText('Loading attorneys...')).toBeVisible();
+
+    await act(async () => respond(attorneyListResponse));
+
+    expect(screen.queryByText('Loading attorneys...')).not.toBeInTheDocument();
+    expect(screen.getByText(susan.name)).toBeInTheDocument();
+  });
+
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
