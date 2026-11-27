@@ -1,0 +1,19 @@
+// A Permissions tab's text filter: its label, with Clear at the right of it, above the input. The
+// screen lays the filters out side by side (for example .cams-users__filters).
+.permissions-filter {
+  flex: 0 1 20rem;
+
+  .permissions-filter__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+
+    .usa-label {
+      margin-top: 0;
+    }
+  }
+
+  .usa-input {
+    max-width: none;
+  }
+}

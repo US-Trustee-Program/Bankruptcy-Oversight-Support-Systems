@@ -30,6 +30,7 @@ import {
 import { RemovePermissionModal, RemovePermissionModalRef } from './RemovePermissionModal';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
 import { PagePredicate, PERMISSIONS_PAGE_SIZE } from './permissions-paging';
+import { PermissionsTextFilter } from './PermissionsTextFilter';
 
 const ALL = 'All';
 // Same as the data-verification searches (TrusteeSearchModal, TrusteesList).
@@ -47,56 +48,6 @@ type UsersPage = {
 function effectiveFilter(text: string): string | undefined {
   const trimmed = text.trim();
   return trimmed.length >= MIN_FILTER_LENGTH ? trimmed : undefined;
-}
-
-function TextFilter({
-  id,
-  label,
-  placeholder,
-  value,
-  onChange,
-}: Readonly<{
-  id: string;
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}>) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  return (
-    <div className="cams-users__filter">
-      <div className="cams-users__filter-header">
-        <label className="usa-label" htmlFor={id}>
-          {label}
-        </label>
-        {value.length > 0 && (
-          <button
-            id={`${id}-clear`}
-            type="button"
-            className="usa-button usa-button--unstyled cams-users__filter-clear"
-            aria-label={`Clear ${label} filter`}
-            onClick={() => {
-              onChange('');
-              // The button unmounts once the filter is empty, so keep focus in the filter.
-              inputRef.current?.focus();
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      <input
-        ref={inputRef}
-        id={id}
-        type="text"
-        className="usa-input"
-        value={value}
-        placeholder={placeholder}
-        autoComplete="off"
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  );
 }
 
 // Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
@@ -269,14 +220,14 @@ export function CamsUsers() {
   return (
     <div className="cams-users" data-testid="cams-users-panel">
       <div className="cams-users__filters">
-        <TextFilter
+        <PermissionsTextFilter
           id="cams-users-name-filter"
           label="CAMS User Name"
           placeholder="Search by name"
           value={nameText}
           onChange={setNameText}
         />
-        <TextFilter
+        <PermissionsTextFilter
           id="cams-users-email-filter"
           label="Email"
           placeholder="Search by email"

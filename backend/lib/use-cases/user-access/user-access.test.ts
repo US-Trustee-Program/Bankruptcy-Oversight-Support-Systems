@@ -1363,6 +1363,29 @@ describe('UserAccessUseCase', () => {
         .mockResolvedValue({ metadata: { total }, data });
     }
 
+    // CAMS-941 Slice 4: the name matches CAMS users as the CAMS Users list does (any part of the
+    // name, ignoring case), then the audit search keeps only those users' changes.
+    test('should search only the changes of every CAMS user whose name matches, ignoring case', async () => {
+      // "Alice Adams" and "Alicia Diaz" match "ALI"; "Charlie Carter" has "li" but not "ali".
+      spyOnMembers([
+        ...members,
+        { id: 'user-d', name: 'Alicia Diaz', email: 'alicia@example.com' },
+      ]);
+      const searchSpy = spyOnAudits([]);
+
+      await useCase.getPermissionChanges(context, {
+        limit: 20,
+        offset: 0,
+        name: 'ALI',
+      });
+
+      // The audit search treats userIds as a set, so their order doesn't matter.
+      const [search] = searchSpy.mock.calls[0];
+      expect(search).toEqual({ limit: 20, offset: 0, userIds: expect.any(Array) });
+      expect(search.userIds).toHaveLength(2);
+      expect(search.userIds).toEqual(expect.arrayContaining(['user-a', 'user-d']));
+    });
+
     test('should return the page of changes as the audit search orders it, with the total', async () => {
       const searchSpy = spyOnAudits([removed, granted], 41);
       vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
@@ -1708,6 +1731,47 @@ describe('UserAccessUseCase', () => {
         expect(held).toHaveLength(expected.length);
         expect(held).toEqual(expect.arrayContaining(expected));
       }
+
+      // CAMS-941 Slice 4: filtering by CAMS User Name.
+      async function rowsFor(name: string) {
+        return useCase.getPermissionChanges(context, { limit: 100, offset: 0, name });
+      }
+
+      test("filtered by name: only the matching user's changes, and none for the Super User who made them", async () => {
+        const self = getCamsUserReference(context.session.user);
+        // The Super User is a CAMS user too, so their name does match one; only who the changes
+        // were made to keeps them out.
+        spyOnMembers([...members, self]);
+        await grant(manhattan, 'user-a');
+        await grant(manhattan, 'user-b');
+
+        const bob = await rowsFor('baker');
+        expect(bob.totalCount).toEqual(1);
+        expect(bob.data.map((row) => row.userId)).toEqual(['user-b']);
+
+        // Every change above was made by the signed-in Super User, to someone else.
+        expect(await rowsFor(self.name)).toEqual({ data: [], totalCount: 0 });
+      });
+
+      // Decision on bead cams-x52wz.1 (open question on cams-x52wz.6): names are matched against
+      // the current "USTP Cams Users" members, not the names saved on audit records.
+      test('filtered by the name of someone no longer a CAMS user: no rows', async () => {
+        await grant(manhattan, 'user-b');
+        // A day later (past the cached member list's 15 minutes), Bob has left the group.
+        spyOnMembers(members.filter((member) => member.id !== 'user-b'));
+        nextDay();
+
+        expect(await rowsFor('baker')).toEqual({ data: [], totalCount: 0 });
+      });
+
+      // An empty name is no filter at all, so a former member's changes still appear.
+      test("an empty name: every change, including a former CAMS user's", async () => {
+        await grant(manhattan, 'user-b');
+        spyOnMembers(members.filter((member) => member.id !== 'user-b'));
+        nextDay();
+
+        expect((await rowsFor('')).data.map((row) => row.userId)).toEqual(['user-b']);
+      });
 
       test('a new role: one row, (none) to the role and scope', async () => {
         await grant(manhattan);

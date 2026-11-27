@@ -304,22 +304,4 @@ $cams-users-columns-min-width: $col-name-floor + $col-email-floor + $col-role-fl
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.1875rem; // 19px above the count, as in Figma
-
-  .cams-users__filter {
-    flex: 0 1 20rem;
-  }
-
-  .cams-users__filter-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-
-    .usa-label {
-      margin-top: 0;
-    }
-  }
-
-  .usa-input {
-    max-width: none;
-  }
 }
