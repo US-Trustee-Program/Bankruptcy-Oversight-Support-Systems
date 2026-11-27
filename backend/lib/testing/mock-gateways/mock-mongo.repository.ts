@@ -1,4 +1,5 @@
 import {
+  activeKeyFor,
   inactiveKeyFor,
   RoleAssignmentAuditEntry,
   UserRoleAssignment,
@@ -412,6 +413,31 @@ export class MockMongoRepository
       a === held ? deactivated : a,
     );
     return Promise.resolve(deactivated);
+  }
+
+  // Like the Mongo repository: a compare-and-set on inactive, addressed by userId and id.
+  reactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
+  ): Promise<UserRoleAssignment | null> {
+    const removed = MockMongoRepository.roleAssignments.find(
+      (a) => !a.active && a.userId === assignment.userId && a.id === assignment.id,
+    );
+    if (!removed) return Promise.resolve(null);
+    const restored = {
+      ...removed,
+      active: true,
+      activeKey: activeKeyFor(removed.role, removed.regionId, removed.officeCode),
+    };
+    MockMongoRepository.roleAssignments = MockMongoRepository.roleAssignments.map((a) =>
+      a === removed ? restored : a,
+    );
+    return Promise.resolve(restored);
+  }
+
+  countActiveByRole(role: string): Promise<number> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter((a) => a.active && a.role === role).length,
+    );
   }
 
   deleteByUserId(_userId: string): Promise<void> {

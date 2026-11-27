@@ -1054,6 +1054,140 @@ describe('UserAccessUseCase', () => {
       expect(deactivateSpy).not.toHaveBeenCalled();
     });
 
+    test('should refuse a Super User’s removal of their own permission and change nothing', async () => {
+      const { deactivateSpy } = spyOnRemoval();
+
+      const error = await getTheThrownError(() =>
+        useCase.removePermission(context, { ...request, userId: context.session.user.id }),
+      );
+
+      expect(error).toEqual(
+        expect.objectContaining({
+          status: 400,
+          message: 'You cannot remove your own permissions.',
+        }),
+      );
+      expect(deactivateSpy).not.toHaveBeenCalled();
+    });
+
+    describe('a Super User permission', () => {
+      const superUser: UserRoleAssignment = {
+        ...held,
+        id: 'super-user-a',
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        activeKey: 'SuperUser',
+      };
+      const removedSuperUser: UserRoleAssignment = {
+        ...superUser,
+        active: false,
+        activeKey: `inactive|${superUser.id}`,
+      };
+      const superUserRequest = { userId: 'user-a', permissionId: superUser.id };
+
+      function spyOnSuperUsersLeft(count: number) {
+        return {
+          countSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'countActiveByRole')
+            .mockResolvedValue(count),
+          reactivateSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'reactivate')
+            .mockResolvedValue(superUser),
+        };
+      }
+
+      test('should remove it while another Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(1);
+
+        await useCase.removePermission(context, superUserRequest);
+
+        expect(countSpy).toHaveBeenCalledWith(CamsRole.SuperUser);
+        expect(reactivateSpy).not.toHaveBeenCalled();
+        expect(createSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'DEACTIVATED', assignmentId: superUser.id }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+      });
+
+      test('should restore it and refuse the removal when no other Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should restore it and fail when the remaining Super Users cannot be counted', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(0);
+        countSpy.mockRejectedValue(new Error('cosmos unavailable'));
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should log the permission to restore by hand and fail when restoring it fails', async () => {
+        const { createSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockRejectedValue(new Error('cosmos unavailable'));
+        const errorSpy = vi.spyOn(context.logger, 'error');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(errorSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE failed'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+        expect(createSpy).not.toHaveBeenCalled();
+      });
+
+      test('should warn and still refuse when the permission was already active again', async () => {
+        spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockResolvedValue(null);
+        const warnSpy = vi.spyOn(context.logger, 'warn');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+      });
+    });
+
     test('should remove a permission from a user who is no longer a CAMS user', async () => {
       spyOnMembers([]);
       const { deactivateSpy } = spyOnRemoval();

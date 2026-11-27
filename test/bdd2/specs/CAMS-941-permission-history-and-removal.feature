@@ -140,6 +140,15 @@ Feature: Super User removes a permission and reviews permission change history
     Then the API rejects it with an explanation
     And nothing is written
 
+  # Added 2026-11-26 from PR #3390 review (bead cams-x52wz.4.3). Self-removal alone does not stop
+  # two Super Users removing each other at once.
+  Scenario: Two Super Users removing each other at once cannot leave CAMS without one
+    Given Maria and "Sarah Williams" hold the only active Super User permissions
+    When Maria removes Sarah's Super User permission while Sarah removes Maria's
+    Then at least one of them still holds Super User
+    And a refused removal is explained with "CAMS must keep at least one Super User."
+    And a refused removal writes no change history
+
   Scenario: Only Super Users can remove permissions
     Given "John Davis" is signed in without the Super User role
     When John sends a removal request for one of Sarah's permissions

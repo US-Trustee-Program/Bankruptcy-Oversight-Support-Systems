@@ -1240,6 +1240,16 @@ export interface UserRoleAssignmentRepository extends Releasable {
   deactivate(
     assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
   ): Promise<UserRoleAssignment | null>;
+  /**
+   * Restores a deactivated assignment and its activeKey, only if it is still inactive (the reverse
+   * of deactivate). Returns null when it was already active again, or when the user holds that
+   * permission again under a newer record (its activeKey is taken).
+   */
+  reactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
+  ): Promise<UserRoleAssignment | null>;
+  /** How many active assignments for the role exist across all users. */
+  countActiveByRole(role: CamsRoleType): Promise<number>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
   /**
    * Permissions by id, active or inactive. Each id comes with its userId, the collection's shard

@@ -2,6 +2,8 @@ import { forwardRef, useImperativeHandle } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
+import LocalStorage from '@/lib/utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
@@ -338,6 +340,31 @@ describe('CamsUsers', () => {
       SARAH.permissions[1],
     );
     expect(removeModalProps!.offices).toEqual([MANHATTAN, BUFFALO]);
+  });
+
+  test("should not offer removal of the signed-in Super User's own permissions, but keep Add Permission", async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: { id: SARAH.id, name: SARAH.name } }),
+    );
+    const MARIA: CamsUserWithPermissions = {
+      id: 'okta-maria',
+      name: 'Maria Garcia',
+      email: 'maria@example.com',
+      permissions: [permission(MANHATTAN)],
+    };
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([MARIA, SARAH]));
+
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
+    expect(
+      userRows(SARAH).flatMap((r) =>
+        Array.from(r.querySelectorAll('.cams-users__remove-permission')),
+      ),
+    ).toHaveLength(0);
+    expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeEnabled();
+    expect(row(MARIA).querySelectorAll('.cams-users__remove-permission')).toHaveLength(1);
   });
 
   test("should reload the current page and move focus to the user's Add Permission after a removal", async () => {

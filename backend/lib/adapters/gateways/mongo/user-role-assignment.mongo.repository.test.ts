@@ -169,6 +169,86 @@ describe('UserRoleAssignmentMongoRepository', () => {
     });
   });
 
+  describe('reactivate', () => {
+    const inactive = { ...assignment, active: false, activeKey: `inactive|${assignment.id}` };
+
+    test("should restore the assignment and its activeKey only while it is still inactive, filtering on the user's shard key", async () => {
+      const findOneAndUpdate = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(assignment);
+
+      const result = await repo.reactivate(inactive);
+
+      const doc = using<UserRoleAssignment>();
+      expect(result).toEqual(assignment);
+      expect(findOneAndUpdate).toHaveBeenCalledWith(
+        and(
+          doc('userId').equals(assignment.userId),
+          doc('id').equals(assignment.id),
+          doc('active').equals(false),
+        ),
+        { $set: { active: true, activeKey: assignment.activeKey } },
+        { returnDocument: 'after' },
+      );
+    });
+
+    test('should return null when the user holds that permission again, so the activeKey is taken', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
+        new Error('Failed to update item. E11000 duplicate key error collection'),
+      );
+
+      await expect(repo.reactivate(inactive)).resolves.toBeNull();
+    });
+
+    test('should throw a CamsError when the update fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.reactivate(inactive)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to reactivate role assignment.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('countActiveByRole', () => {
+    test('should count the active assignments for that role across all users', async () => {
+      const countDocuments = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'countDocuments')
+        .mockResolvedValue(2);
+
+      const result = await repo.countActiveByRole(CamsRole.SuperUser);
+
+      const doc = using<UserRoleAssignment>();
+      expect(result).toEqual(2);
+      expect(countDocuments).toHaveBeenCalledWith(
+        and(
+          doc('documentType').equals('USER_ROLE_ASSIGNMENT'),
+          doc('role').equals(CamsRole.SuperUser),
+          doc('active').equals(true),
+        ),
+      );
+    });
+
+    test('should throw a CamsError when the count fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.countActiveByRole(CamsRole.SuperUser)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve role assignments.',
+          status: 500,
+          module: 'USER-ROLE-ASSIGNMENT-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('findActiveByUserAndRole', () => {
     test("should query the user's active assignments for that role and return them", async () => {
       const find = vi

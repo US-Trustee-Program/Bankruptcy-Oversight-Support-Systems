@@ -15,6 +15,7 @@ import {
   roleAssignmentGrantRequestSpec,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { CamsRole } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -51,6 +52,7 @@ function byRegionThenOffice(a: UserRoleAssignment, b: UserRoleAssignment): numbe
 }
 
 const DEACTIVATION_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_DEACTIVATION failed';
+const SUPER_USER_RESTORE_FAILED_MESSAGE = 'SUPER_USER_RESTORE failed';
 const SESSION_INVALIDATION_FAILED_MESSAGE = 'USER_SESSION_CACHE_INVALIDATION failed';
 
 function badRequest(message: string) {
@@ -280,15 +282,26 @@ export class UserAccessUseCase {
    * no replacing permission, and clears the user's cached sessions. Addressed by the record's id, so
    * it removes exactly the permission the Super User saw, even one for an office that no longer
    * exists. Removing a permission that is no longer active, or that isn't that user's, changes
-   * nothing. The user need not still be a CAMS user: removal only reduces access.
+   * nothing. The user need not still be a CAMS user: removal only reduces access. A Super User
+   * cannot remove their own permissions, and a removal that leaves no Super User is undone and
+   * refused (best effort; see keepASuperUser).
    */
   async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
     validateRequest(permissionRemovalRequestSpec, request);
+    // A Super User never removes their own access; the last-Super-User check below covers the rest.
+    if (request.userId === context.session.user.id) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'You cannot remove your own permissions.',
+      });
+    }
     const deactivated = await this.assignmentRepository.deactivate({
       userId: request.userId,
       id: request.permissionId,
     });
     if (!deactivated) return;
+    if (deactivated.role === CamsRole.SuperUser) {
+      await this.keepASuperUser(context, deactivated);
+    }
 
     const performer = getCamsUserReference(context.session.user);
     const now = new Date().toISOString();
@@ -305,6 +318,49 @@ export class UserAccessUseCase {
       ),
     );
     await this.invalidateSessions(context, request.userId);
+  }
+
+  /**
+   * CAMS must keep at least one Super User. Without multi-document transactions this recounts after
+   * the deactivation and undoes it when none remain. Best effort, not atomic: two Super Users
+   * removing each other at once are usually both refused, but under Session consistency each recount
+   * may miss the other's deactivation and let both through.
+   */
+  private async keepASuperUser(context: ApplicationContext, deactivated: UserRoleAssignment) {
+    let remaining: number;
+    try {
+      remaining = await this.assignmentRepository.countActiveByRole(CamsRole.SuperUser);
+    } catch (error) {
+      await this.restoreSuperUser(context, deactivated);
+      throw error;
+    }
+    if (remaining > 0) return;
+    await this.restoreSuperUser(context, deactivated);
+    throw new BadRequestError(MODULE_NAME, {
+      message: 'CAMS must keep at least one Super User.',
+    });
+  }
+
+  /** A failed restore leaves the permission removed, unaudited; the log names it for a manual fix. */
+  private async restoreSuperUser(context: ApplicationContext, deactivated: UserRoleAssignment) {
+    const ids = { userId: deactivated.userId, assignmentId: deactivated.id };
+    try {
+      const restored = await this.assignmentRepository.reactivate(deactivated);
+      if (!restored) {
+        context.logger.warn(
+          MODULE_NAME,
+          `${SUPER_USER_RESTORE_FAILED_MESSAGE}: the user holds that permission again`,
+          ids,
+        );
+      }
+    } catch (error) {
+      context.logger.error(
+        MODULE_NAME,
+        `${SUPER_USER_RESTORE_FAILED_MESSAGE}: ${error.message}`,
+        ids,
+      );
+      throw error;
+    }
   }
 
   /**
