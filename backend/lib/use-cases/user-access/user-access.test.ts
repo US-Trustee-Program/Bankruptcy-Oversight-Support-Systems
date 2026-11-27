@@ -1636,6 +1636,13 @@ describe('UserAccessUseCase', () => {
         }));
       }
 
+      // Exactly these permissions are active, in any order.
+      async function expectHeld(...expected: Snapshot[]) {
+        const held = await activePermissions();
+        expect(held).toHaveLength(expected.length);
+        expect(held).toEqual(expect.arrayContaining(expected));
+      }
+
       test('a new role: one row, (none) to the role and scope', async () => {
         await grant(manhattan);
 
@@ -1647,7 +1654,7 @@ describe('UserAccessUseCase', () => {
         await grant(seattle);
 
         expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: seattle }]);
-        expect(await activePermissions()).toEqual(expect.arrayContaining([manhattan, seattle]));
+        await expectHeld(manhattan, seattle);
       });
 
       test('the same role in another office of the same region: one row, and both offices are kept', async () => {
@@ -1655,7 +1662,7 @@ describe('UserAccessUseCase', () => {
         await grant(buffalo);
 
         expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: buffalo }]);
-        expect(await activePermissions()).toEqual(expect.arrayContaining([manhattan, buffalo]));
+        await expectHeld(manhattan, buffalo);
       });
 
       test('another role in the same scope: one row, and the first role is kept', async () => {
@@ -1664,11 +1671,12 @@ describe('UserAccessUseCase', () => {
         await grant(auditor);
 
         expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: auditor }]);
-        expect(await activePermissions()).toEqual(expect.arrayContaining([manhattan, auditor]));
+        await expectHeld(manhattan, auditor);
       });
 
       test.each([
         { change: 'widening an office to its region', from: manhattan, to: region2 },
+        { change: 'widening a region to All Regions', from: region2, to: allRegions },
         { change: 'narrowing a region to one of its offices', from: region2, to: manhattan },
         { change: 'narrowing All Regions to one region', from: allRegions, to: region2 },
         { change: 'narrowing All Regions to one office', from: allRegions, to: seattle },
@@ -1685,6 +1693,22 @@ describe('UserAccessUseCase', () => {
           ]),
         );
         expect(await activePermissions()).toEqual([to]);
+      });
+
+      test('a grant that covers some of the permissions: replaces those and keeps the others', async () => {
+        await grant(manhattan);
+        await grant(seattle);
+        await grant(region2);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: region2 },
+            { kind: 'replaced', previous: manhattan, next: region2 },
+          ]),
+        );
+        await expectHeld(seattle, region2);
       });
 
       test('widening to All Regions: a grant row and a replacement row for every region and office it covers', async () => {
@@ -1717,6 +1741,15 @@ describe('UserAccessUseCase', () => {
         await grant(superUser);
 
         expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: superUser }]);
+      });
+
+      test('removing a Super User while another remains: one row, Super User to (none)', async () => {
+        await grant(superUser, 'user-a');
+        const { result } = await grant(superUser);
+        await remove(result.permission.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: superUser, next: null }]);
+        await expectHeld();
       });
 
       describe('changes that add no row', () => {

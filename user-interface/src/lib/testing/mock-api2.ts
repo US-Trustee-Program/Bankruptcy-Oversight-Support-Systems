@@ -3442,9 +3442,12 @@ function mockChange(
   next: PermissionChange['next'],
 ): PermissionChange {
   const user = MOCK_CAMS_USERS.find((u) => u.id === userId);
+  // The permission the row is about: the granted one, or the one replaced or removed.
+  const permission = (kind === 'granted' ? next : previous)!;
+  const assignmentId = `mock-permission-${userId}-${permission.role}-${permission.regionId ?? 'all'}-${permission.officeCode ?? 'all'}`;
   return {
-    auditId: `mock-audit-${userId}-${performedAt}-${kind}`,
-    assignmentId: `mock-assignment-${userId}-${performedAt}`,
+    auditId: `mock-audit-${assignmentId}-${kind}-${performedAt}`,
+    assignmentId,
     userId,
     userName: user?.name ?? '',
     performedBy: 'mock-super-user',
@@ -3506,8 +3509,10 @@ const MOCK_PERMISSION_CHANGES: PermissionChange[] = [
     null,
     MANHATTAN_ATTORNEY,
   ),
-  ...SEEDED_PERMISSIONS.map(([userId, role, regionId, officeCode]) =>
-    mockChange(userId, SEEDED_PERMISSION_DATE, 'granted', null, { role, regionId, officeCode }),
+  // Casey Adams's Region 2 permission comes from the replacement above, not a seeded grant.
+  ...SEEDED_PERMISSIONS.filter(([userId]) => userId !== 'mock-cams-user-casey-adams').map(
+    ([userId, role, regionId, officeCode]) =>
+      mockChange(userId, SEEDED_PERMISSION_DATE, 'granted', null, { role, regionId, officeCode }),
   ),
 ];
 

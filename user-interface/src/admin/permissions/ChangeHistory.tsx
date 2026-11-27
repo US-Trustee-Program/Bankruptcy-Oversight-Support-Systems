@@ -130,7 +130,7 @@ export function ChangeHistory() {
           aria-hidden="true"
         />
       )}
-      {loadFailed && !isLoading && (
+      {loadFailed && (
         <Alert
           id="change-history-load-error"
           message="Unable to load change history. Please try again."

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import { CamsRole } from '@common/cams/roles';
@@ -71,6 +71,8 @@ function pending<T>() {
 const table = () => screen.queryByRole('table', { name: 'Change History' });
 const heading = () => screen.getByRole('heading', { name: 'Change History' });
 const spinner = () => screen.queryByTestId('change-history-loading');
+const loadError = () => document.querySelector('#change-history-load-error');
+const nextPage = () => screen.getByTestId('pagination-button-next-results');
 
 // Each row's cell values, without the labels CamsTable shows in the stacked layout.
 function rowTexts() {
@@ -187,15 +189,16 @@ describe('ChangeHistory', () => {
   test('should wait for office names before showing the table', async () => {
     const offices = pending<{ data: (typeof MANHATTAN)[] }>();
     vi.spyOn(Api2, 'getOffices').mockReturnValue(offices.promise);
-    vi.spyOn(Api2, 'getPermissionChanges').mockResolvedValue(changesResponse(SCENARIO));
+    const changesCall = Promise.resolve(changesResponse(SCENARIO));
+    vi.spyOn(Api2, 'getPermissionChanges').mockReturnValue(changesCall);
 
     render(<ChangeHistory />);
+    await act(() => changesCall); // changes have loaded; office names have not
 
-    await waitFor(() => expect(Api2.getPermissionChanges).toHaveBeenCalled());
     expect(table()).not.toBeInTheDocument();
     expect(spinner()).toBeInTheDocument();
-    offices.resolve({ data: [MANHATTAN] });
-    await waitFor(() => expect(table()).toBeInTheDocument());
+    await act(async () => offices.resolve({ data: [MANHATTAN] }));
+    expect(table()).toBeInTheDocument();
     expect(spinner()).not.toBeInTheDocument();
   });
 
@@ -209,11 +212,68 @@ describe('ChangeHistory', () => {
     const spy = await showChanges(SCENARIO, 45);
     spy.mockResolvedValue(changesResponse(SCENARIO.slice(0, 1), 45, 20));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    await userEvent.click(nextPage());
 
     await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 }));
     await waitFor(() => expect(rowTexts()).toHaveLength(1));
     expect(heading()).toHaveFocus();
+  });
+
+  test('should page forward and back from the page it is on', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const showPage = async (button: HTMLElement, offset: number, rows: number) => {
+      spy.mockResolvedValueOnce(changesResponse(SCENARIO.slice(0, rows), 45, offset));
+      await userEvent.click(button);
+      await waitFor(() => expect(rowTexts()).toHaveLength(rows));
+      expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset });
+    };
+
+    await showPage(nextPage(), 20, 2);
+    await showPage(nextPage(), 40, 3);
+    await showPage(screen.getByTestId('pagination-button-previous-results'), 20, 1);
+  });
+
+  test('should move focus to the heading when a page change fails', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    spy.mockRejectedValueOnce(new Error('500'));
+
+    await userEvent.click(nextPage());
+
+    await waitFor(() => expect(loadError()).toBeInTheDocument());
+    expect(table()).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
+  test('should never let an older page replace a newer one', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const older = pending<ReturnType<typeof changesResponse>>();
+    const newer = pending<ReturnType<typeof changesResponse>>();
+    spy.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+
+    await userEvent.click(nextPage());
+    await userEvent.click(screen.getByTestId('pagination-button-page-3-results'));
+    await act(async () => newer.resolve(changesResponse(SCENARIO.slice(0, 1), 45, 40)));
+    await act(async () => older.resolve(changesResponse(SCENARIO.slice(0, 3), 45, 20)));
+
+    expect(rowTexts()).toHaveLength(1);
+    expect(spinner()).not.toBeInTheDocument();
+  });
+
+  test('should never let an older failure hide a newer page', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const older = pending<void>();
+    spy
+      .mockReturnValueOnce(older.promise.then(() => Promise.reject(new Error('500'))))
+      .mockResolvedValueOnce(changesResponse(SCENARIO.slice(0, 1), 45, 40));
+
+    await userEvent.click(nextPage());
+    await userEvent.click(screen.getByTestId('pagination-button-page-3-results'));
+    await waitFor(() => expect(rowTexts()).toHaveLength(1));
+    await act(async () => older.resolve());
+
+    expect(loadError()).not.toBeInTheDocument();
+    expect(spinner()).not.toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(1);
   });
 
   test('should say there are no changes yet when there are none', async () => {
@@ -230,23 +290,31 @@ describe('ChangeHistory', () => {
 
     render(<ChangeHistory />);
 
-    expect(
-      await screen.findByText('Unable to load change history. Please try again.'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(loadError()).toHaveTextContent('Unable to load change history. Please try again.'),
+    );
     expect(table()).not.toBeInTheDocument();
-    expect(screen.queryByText('No permission changes yet.')).not.toBeInTheDocument();
+    expect(document.querySelector('#change-history-empty')).not.toBeInTheDocument();
     expect(spinner()).not.toBeInTheDocument();
+    expect(screen.getByTestId('change-history-status')).toHaveTextContent('');
+    expect(heading()).toHaveFocus();
   });
 
-  test('should announce loading, then the result, to screen readers', async () => {
-    const changes = pending<ReturnType<typeof changesResponse>>();
-    vi.spyOn(Api2, 'getPermissionChanges').mockReturnValue(changes.promise);
+  test.each([
+    { totalCount: 45, label: '45 permission changes' },
+    { totalCount: 1, label: '1 permission change' },
+  ])(
+    'should announce loading, then the count, to screen readers: $label',
+    async ({ totalCount, label }) => {
+      const changes = pending<ReturnType<typeof changesResponse>>();
+      vi.spyOn(Api2, 'getPermissionChanges').mockReturnValue(changes.promise);
 
-    render(<ChangeHistory />);
+      render(<ChangeHistory />);
 
-    const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('Loading change history...');
-    changes.resolve(changesResponse(SCENARIO, 45));
-    await waitFor(() => expect(status).toHaveTextContent('45 permission changes'));
-  });
+      const status = screen.getByTestId('change-history-status');
+      expect(status).toHaveTextContent('Loading change history...');
+      await act(async () => changes.resolve(changesResponse(SCENARIO.slice(0, 1), totalCount)));
+      expect(status).toHaveTextContent(new RegExp(`^${label}$`));
+    },
+  );
 });
