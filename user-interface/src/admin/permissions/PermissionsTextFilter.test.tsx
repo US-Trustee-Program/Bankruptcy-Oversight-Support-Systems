@@ -26,12 +26,13 @@ function Host({
   );
 }
 
+// Found by its label, which also checks the label is tied to the input.
 const input = () => screen.getByLabelText('CAMS User Name');
 // Screens and their tests find Clear by its id, `<id>-clear`.
 const clear = () => document.querySelector<HTMLButtonElement>('#name-filter-clear');
 
 describe('PermissionsTextFilter', () => {
-  test('should label the field and show its placeholder', () => {
+  test('should label the field, show its placeholder, and turn off autocomplete', () => {
     render(<Host />);
 
     expect(input()).toHaveAttribute('id', 'name-filter');
@@ -55,10 +56,11 @@ describe('PermissionsTextFilter', () => {
   test('should empty the field and keep focus in it when Clear is pressed', async () => {
     const onChange = vi.fn();
     render(<Host initial="Sarah" onChange={onChange} />);
+    expect(clear()).toBeInTheDocument();
 
     await userEvent.click(clear()!);
 
-    expect(onChange).toHaveBeenLastCalledWith('');
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('');
     expect(input()).toHaveValue('');
     // Clear disappears with the text, so focus returns to the field instead of being lost.
     expect(clear()).not.toBeInTheDocument();
