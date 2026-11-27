@@ -226,15 +226,28 @@ describe('UserAccessController', () => {
       );
     });
 
+    // Only an absent value takes the default; anything else reaches the use case unaltered for it to
+    // validate (the use-case tests own the paging rules).
     test.each([
-      { query: { limit: '2.5' } },
-      { query: { limit: '0' } },
-      { query: { limit: 'abc' } },
-      { query: { limit: '101' } },
-      { query: { offset: '-1' } },
-      { query: { offset: '1.5' } },
-    ])('should return 400 for invalid paging $query', async ({ query }) => {
-      context.request.query = query;
+      { query: { limit: 'abc', offset: '1.5' }, paging: { limit: NaN, offset: 1.5 } },
+      { query: { limit: '', offset: '' }, paging: { limit: 0, offset: 0 } },
+      { query: { limit: '101', offset: '-1' }, paging: { limit: 101, offset: -1 } },
+    ])(
+      'should pass invalid paging $query to the use case, not default it',
+      async ({ query, paging }) => {
+        context.request.query = query;
+        const spy = vi
+          .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
+          .mockResolvedValue({ data: [], totalCount: 0 });
+
+        await handle();
+
+        expect(spy).toHaveBeenCalledWith(context, paging);
+      },
+    );
+
+    test('should return the use case’s 400 for invalid paging', async () => {
+      context.request.query = { limit: 'abc' };
 
       const error = await getTheThrownError(handle);
 

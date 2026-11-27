@@ -18,7 +18,7 @@ import {
   UserRoleAssignment,
 } from '@common/cams/user-access';
 import { CamsRole } from '@common/cams/roles';
-import { RoleAssignmentAuditSearchPredicate } from '@common/api/search';
+import { PaginationParameters } from '@common/api/pagination';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -287,7 +287,7 @@ export class UserAccessUseCase {
    */
   async getPermissionChanges(
     _context: ApplicationContext,
-    paging: RoleAssignmentAuditSearchPredicate,
+    paging: Required<PaginationParameters>,
   ): Promise<{ data: PermissionChange[]; totalCount: number }> {
     const { limit, offset } = paging;
     if (

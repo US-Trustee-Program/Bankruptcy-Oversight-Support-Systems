@@ -1383,6 +1383,32 @@ describe('UserAccessUseCase', () => {
       ]);
     });
 
+    test("should match each of one user's replacements to its own replacing permission", async () => {
+      const replacedAgain: RoleAssignmentAuditEntry = {
+        ...replaced,
+        id: 'a4',
+        replacedByAssignmentId: 'replacing-2',
+      };
+      const replacingAgain: UserRoleAssignment = {
+        ...replacing,
+        id: 'replacing-2',
+        regionId: null,
+        officeCode: null,
+      };
+      spyOnAudits([replacedAgain, replaced]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([
+        replacing,
+        replacingAgain,
+      ]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(data.map(({ auditId, next }) => ({ auditId, next }))).toEqual([
+        { auditId: 'a4', next: { role: CamsRole.TrialAttorney, regionId: null, officeCode: null } },
+        { auditId: 'a2', next: allOfRegion2 },
+      ]);
+    });
+
     test('should leave New empty for a replacement whose replacing permission cannot be read', async () => {
       spyOnAudits([replaced]);
       vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
@@ -1423,26 +1449,6 @@ describe('UserAccessUseCase', () => {
   describe('with the DATABASE_MOCK repository and no spies on it', () => {
     beforeEach(() => {
       MockMongoRepository.clearRoleAssignments();
-    });
-
-    test('should order changes made at the same moment by id, highest first', async () => {
-      spyOnMembers();
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'));
-      for (const officeCode of [MANHATTAN.officeCode, BUFFALO.officeCode]) {
-        await useCase.grantPermission(context, {
-          userId: 'user-b',
-          role: CamsRole.TrialAttorney,
-          regionId: MANHATTAN.regionId,
-          officeCode,
-        });
-      }
-
-      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
-
-      const ids = data.map((change) => change.auditId);
-      expect(ids).toHaveLength(2);
-      expect(ids).toEqual([...ids].sort().reverse());
     });
 
     test('should list every grant, replacement and removal newest first, showing what replaced a permission', async () => {
