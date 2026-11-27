@@ -1129,6 +1129,63 @@ describe('UserAccessUseCase', () => {
         expect(createSpy).not.toHaveBeenCalled();
         expect(invalidateSpy).not.toHaveBeenCalled();
       });
+
+      test('should restore it and fail when the remaining Super Users cannot be counted', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(0);
+        countSpy.mockRejectedValue(new Error('cosmos unavailable'));
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should log the permission to restore by hand and fail when restoring it fails', async () => {
+        const { createSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockRejectedValue(new Error('cosmos unavailable'));
+        const errorSpy = vi.spyOn(context.logger, 'error');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(errorSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE failed'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+        expect(createSpy).not.toHaveBeenCalled();
+      });
+
+      test('should warn and still refuse when the permission was already active again', async () => {
+        spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockResolvedValue(null);
+        const warnSpy = vi.spyOn(context.logger, 'warn');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+      });
     });
 
     test('should remove a permission from a user who is no longer a CAMS user', async () => {

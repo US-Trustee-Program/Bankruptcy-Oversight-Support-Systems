@@ -126,6 +126,7 @@ export class UserRoleAssignmentMongoRepository
         { returnDocument: 'after' },
       );
     } catch (originalError) {
+      if (isDuplicateKeyError(originalError)) return null;
       throw getCamsError(originalError, MODULE_NAME, 'Unable to reactivate role assignment.');
     }
   }

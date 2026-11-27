@@ -192,9 +192,17 @@ describe('UserRoleAssignmentMongoRepository', () => {
       );
     });
 
+    test('should return null when the user holds that permission again, so the activeKey is taken', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
+        new Error('Failed to update item. E11000 duplicate key error collection'),
+      );
+
+      await expect(repo.reactivate(inactive)).resolves.toBeNull();
+    });
+
     test('should throw a CamsError when the update fails', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(
-        new Error('E11000 duplicate key error'),
+        new Error('connection error'),
       );
 
       await expect(repo.reactivate(inactive)).rejects.toThrow(
