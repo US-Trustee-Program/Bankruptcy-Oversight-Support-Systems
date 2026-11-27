@@ -75,4 +75,24 @@ test.describe('Administration > Permissions', () => {
 
     await expectNoViolations(page);
   });
+
+  // CAMS-941 Slice 1.
+  test('Remove Permission modal should not have accessibility issues', async ({ page }) => {
+    await page.locator('#cams-users-table [id^="remove-permission-"]').first().click();
+    await expect(page.getByTestId('modal-content-remove-permission-modal')).toBeVisible();
+
+    await expectNoViolations(page);
+  });
+});
+
+// CAMS-941 Slice 3.
+test.describe('Administration > Permissions > Change History', () => {
+  test.describe.configure({ retries: 0 });
+
+  test('Change History table should not have accessibility issues', async ({ page }) => {
+    await page.goto(getUrl('/admin/permissions/change-history'));
+    await expect(page.locator('#change-history-table')).toBeVisible();
+
+    await expectNoViolations(page);
+  });
 });

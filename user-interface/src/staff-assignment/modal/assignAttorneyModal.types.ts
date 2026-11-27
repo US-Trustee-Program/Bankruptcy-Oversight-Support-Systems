@@ -20,6 +20,8 @@ export interface AssignAttorneyModalStore {
   setIsUpdatingAssignment(val: boolean): void;
   attorneyList: AttorneyUser[];
   setAttorneyList(val: AttorneyUser[]): void;
+  isLoadingAttorneys: boolean;
+  setIsLoadingAttorneys(val: boolean): void;
   submissionCallback: AssignAttorneyModalCallbackFunction | null;
   setSubmissionCallback(val: AssignAttorneyModalCallbackFunction | null): void;
   globalAlertError: string | undefined;
@@ -36,6 +38,7 @@ export interface AssignAttorneyModalViewModel {
   alertMessage: AlertDetails | undefined;
   attorneyIsInCheckList(val: AttorneyUser): boolean;
   attorneyList: AttorneyUser[];
+  isLoadingAttorneys: boolean;
   cancelModal(): void;
   handleFocus(event: React.FocusEvent<HTMLElement>): void;
   handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;

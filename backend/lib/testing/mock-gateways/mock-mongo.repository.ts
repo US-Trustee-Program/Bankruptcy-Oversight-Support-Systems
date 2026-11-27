@@ -1,4 +1,10 @@
-import { inactiveKeyFor, UserRoleAssignment } from '@common/cams/user-access';
+import {
+  activeKeyFor,
+  inactiveKeyFor,
+  RoleAssignmentAuditEntry,
+  UserRoleAssignment,
+} from '@common/cams/user-access';
+import { RoleAssignmentAuditSearchPredicate } from '@common/api/search';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SyncedCase } from '@common/cams/cases';
 import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@common/cams/events';
@@ -135,6 +141,8 @@ export class MockMongoRepository
   private static trusteeDataReportLock: TrusteeDataReportRunState | null = null;
   // Role assignments granted while DATABASE_MOCK=true, kept for the life of the process.
   private static roleAssignments: UserRoleAssignment[] = [];
+  // Role assignment audit records written while DATABASE_MOCK=true, kept for the life of the process.
+  private static roleAssignmentAudits: RoleAssignmentAuditEntry[] = [];
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -167,6 +175,12 @@ export class MockMongoRepository
 
   release() {
     return;
+  }
+
+  /** Tests only: empties the role assignments and audit records kept for the life of the process. */
+  static clearRoleAssignments() {
+    MockMongoRepository.roleAssignments = [];
+    MockMongoRepository.roleAssignmentAudits = [];
   }
 
   static getInstance(_context: ApplicationContext) {
@@ -326,8 +340,36 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  search(..._ignore): Promise<any[]> {
+  search(...args): Promise<any> {
+    const predicate = args[0];
+    if (typeof predicate?.offset === 'number' && typeof predicate?.limit === 'number') {
+      return this.searchRoleAssignmentAudits(predicate as RoleAssignmentAuditSearchPredicate);
+    }
     throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Mirrors RoleAssignmentAuditMongoRepository.search's sort: performedAt descending, then
+   * DEACTIVATED before CREATED, then id descending.
+   */
+  private searchRoleAssignmentAudits(
+    predicate: RoleAssignmentAuditSearchPredicate,
+  ): Promise<CamsPaginationResponse<RoleAssignmentAuditEntry>> {
+    if (predicate.userIds && predicate.userIds.length === 0) {
+      return Promise.resolve({ metadata: { total: 0 }, data: [] });
+    }
+    const filtered = predicate.userIds
+      ? MockMongoRepository.roleAssignmentAudits.filter((entry) =>
+          predicate.userIds!.includes(entry.userId),
+        )
+      : MockMongoRepository.roleAssignmentAudits;
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.performedAt !== b.performedAt) return a.performedAt > b.performedAt ? -1 : 1;
+      if (a.action !== b.action) return a.action > b.action ? -1 : 1;
+      return a.id > b.id ? -1 : 1;
+    });
+    const data = sorted.slice(predicate.offset, predicate.offset + predicate.limit);
+    return Promise.resolve({ metadata: { total: sorted.length }, data });
   }
 
   searchPaginated(..._ignore): Promise<CamsPaginationResponse<any>> {
@@ -348,6 +390,14 @@ export class MockMongoRepository
     );
   }
 
+  findByIds(refs: Pick<UserRoleAssignment, 'userId' | 'id'>[]): Promise<UserRoleAssignment[]> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter((a) =>
+        refs.some((ref) => ref.userId === a.userId && ref.id === a.id),
+      ),
+    );
+  }
+
   findActiveByUserAndRole(userId: string, role: string): Promise<UserRoleAssignment[]> {
     return Promise.resolve(
       MockMongoRepository.roleAssignments.filter(
@@ -356,16 +406,44 @@ export class MockMongoRepository
     );
   }
 
-  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
-    const deactivated = {
-      ...assignment,
-      active: false,
-      activeKey: inactiveKeyFor(assignment.id),
-    };
+  // Like the Mongo repository: a compare-and-set on active, addressed by userId and id.
+  deactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
+  ): Promise<UserRoleAssignment | null> {
+    const held = MockMongoRepository.roleAssignments.find(
+      (a) => a.active && a.userId === assignment.userId && a.id === assignment.id,
+    );
+    if (!held) return Promise.resolve(null);
+    const deactivated = { ...held, active: false, activeKey: inactiveKeyFor(held.id) };
     MockMongoRepository.roleAssignments = MockMongoRepository.roleAssignments.map((a) =>
-      a.id === assignment.id ? deactivated : a,
+      a === held ? deactivated : a,
     );
     return Promise.resolve(deactivated);
+  }
+
+  // Like the Mongo repository: a compare-and-set on inactive, addressed by userId and id.
+  reactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
+  ): Promise<UserRoleAssignment | null> {
+    const removed = MockMongoRepository.roleAssignments.find(
+      (a) => !a.active && a.userId === assignment.userId && a.id === assignment.id,
+    );
+    if (!removed) return Promise.resolve(null);
+    const restored = {
+      ...removed,
+      active: true,
+      activeKey: activeKeyFor(removed.role, removed.regionId, removed.officeCode),
+    };
+    MockMongoRepository.roleAssignments = MockMongoRepository.roleAssignments.map((a) =>
+      a === removed ? restored : a,
+    );
+    return Promise.resolve(restored);
+  }
+
+  countActiveByRole(role: string): Promise<number> {
+    return Promise.resolve(
+      MockMongoRepository.roleAssignments.filter((a) => a.active && a.role === role).length,
+    );
   }
 
   deleteByUserId(_userId: string): Promise<void> {
@@ -385,6 +463,7 @@ export class MockMongoRepository
       return Promise.resolve(assignment);
     }
     if (item?.documentType === 'ROLE_ASSIGNMENT_AUDIT') {
+      MockMongoRepository.roleAssignmentAudits.push(item as RoleAssignmentAuditEntry);
       return Promise.resolve();
     }
     throw new Error('Method not implemented.');

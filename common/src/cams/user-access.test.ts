@@ -7,9 +7,66 @@ import {
   isUnscopedRole,
   scopeLabel,
   scopesOverlap,
+  RoleAssignmentAuditEntry,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
+  toPermissionChange,
+  UserRoleAssignment,
 } from './user-access';
+
+const MANHATTAN = 'USTP_CAMS_Region_2_Office_Manhattan';
+const BUFFALO = 'USTP_CAMS_Region_2_Office_Buffalo';
+
+// Each source of a scope gets a different one, so a test fails if a row reads the wrong one:
+// auditEntry's top-level fields are Manhattan and its newState is Buffalo.
+function auditEntry(overrides: Partial<RoleAssignmentAuditEntry> = {}): RoleAssignmentAuditEntry {
+  return {
+    documentType: 'ROLE_ASSIGNMENT_AUDIT',
+    id: 'audit-1',
+    assignmentId: 'assignment-1',
+    action: 'CREATED',
+    userId: 'user-1',
+    userName: 'Sarah Williams',
+    role: CamsRole.TrialAttorney,
+    regionId: '02',
+    officeCode: MANHATTAN,
+    performedBy: 'super-1',
+    performedByName: 'Maria Garcia',
+    performedAt: '2026-11-20T15:00:00.000Z',
+    previousState: null,
+    newState: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: BUFFALO, active: true },
+    replacedByAssignmentId: null,
+    ...overrides,
+  };
+}
+
+/**
+ * A DEACTIVATED record by a different Super User than auditEntry's grant. Its previousState is
+ * Region 2 - All Offices, distinct from the top-level and newState scopes.
+ */
+function deactivation(overrides: Partial<RoleAssignmentAuditEntry> = {}): RoleAssignmentAuditEntry {
+  return auditEntry({
+    id: 'audit-2',
+    action: 'DEACTIVATED',
+    performedBy: 'super-2',
+    performedByName: 'Lisa Okafor',
+    performedAt: '2026-11-25T16:30:00.000Z',
+    previousState: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null, active: true },
+    newState: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: BUFFALO, active: false },
+    ...overrides,
+  });
+}
+
+/** The fields every row copies from its audit record, for a record built by deactivation(). */
+const DEACTIVATION_ROW_FIELDS = {
+  auditId: 'audit-2',
+  assignmentId: 'assignment-1',
+  userId: 'user-1',
+  userName: 'Sarah Williams',
+  performedBy: 'super-2',
+  performedByName: 'Lisa Okafor',
+  performedAt: '2026-11-25T16:30:00.000Z',
+};
 
 describe('user-access', () => {
   describe('activeKeyFor', () => {
@@ -161,6 +218,101 @@ describe('user-access', () => {
       },
     ])('should label $name as "$label"', ({ scope, officeName, label }) => {
       expect(scopeLabel(scope, officeName)).toEqual(label);
+    });
+  });
+
+  describe('toPermissionChange', () => {
+    const replacingPermission: UserRoleAssignment = {
+      documentType: 'USER_ROLE_ASSIGNMENT',
+      id: 'assignment-2',
+      userId: 'user-1',
+      userName: 'Sarah Williams',
+      role: CamsRole.TrialAttorney,
+      regionId: '03',
+      officeCode: null,
+      assignedBy: 'super-2',
+      assignedByName: 'Lisa Okafor',
+      assignedAt: '2026-11-25T16:30:00.000Z',
+      active: true,
+      activeKey: 'TrialAttorney|03|*',
+    };
+
+    test('should show a grant as a change from nothing to the granted permission', () => {
+      const change = toPermissionChange(auditEntry());
+
+      expect(change).toEqual({
+        auditId: 'audit-1',
+        assignmentId: 'assignment-1',
+        userId: 'user-1',
+        userName: 'Sarah Williams',
+        performedBy: 'super-1',
+        performedByName: 'Maria Garcia',
+        performedAt: '2026-11-20T15:00:00.000Z',
+        kind: 'granted',
+        previous: null,
+        next: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: BUFFALO },
+      });
+    });
+
+    test('should keep a Super User grant unscoped', () => {
+      const superUserGrant = auditEntry({
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
+      });
+
+      expect(toPermissionChange(superUserGrant).next).toEqual({
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+      });
+    });
+
+    test('should show a removal as a change from the removed permission to nothing, by the remover', () => {
+      const change = toPermissionChange(deactivation({ replacedByAssignmentId: null }));
+
+      expect(change).toEqual({
+        ...DEACTIVATION_ROW_FIELDS,
+        kind: 'removed',
+        previous: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null },
+        next: null,
+      });
+    });
+
+    test('should still show a removal when a replacing permission is passed', () => {
+      const change = toPermissionChange(
+        deactivation({ replacedByAssignmentId: null }),
+        replacingPermission,
+      );
+
+      expect(change.kind).toEqual('removed');
+      expect(change.next).toBeNull();
+    });
+
+    test('should show a replacement as a change from the replaced permission to the one that replaced it', () => {
+      const change = toPermissionChange(
+        deactivation({ replacedByAssignmentId: 'assignment-2' }),
+        replacingPermission,
+      );
+
+      expect(change).toEqual({
+        ...DEACTIVATION_ROW_FIELDS,
+        kind: 'replaced',
+        previous: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null },
+        next: { role: CamsRole.TrialAttorney, regionId: '03', officeCode: null },
+      });
+    });
+
+    test('should still show a replacement when the replacing permission is not supplied', () => {
+      const change = toPermissionChange(deactivation({ replacedByAssignmentId: 'assignment-2' }));
+
+      expect(change).toEqual({
+        ...DEACTIVATION_ROW_FIELDS,
+        kind: 'replaced',
+        previous: { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null },
+        next: null,
+      });
     });
   });
 

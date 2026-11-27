@@ -1,6 +1,7 @@
 import './CamsUsers.scss';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Api2 from '@/lib/models/api2';
+import LocalStorage from '@/lib/utils/local-storage';
 import {
   CamsTable,
   CamsTableBody,
@@ -16,22 +17,25 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { CamsRoleLabels } from '@common/cams/roles';
+import { CamsRole, CamsRoleLabels } from '@common/cams/roles';
+import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import {
   CamsUsersPredicate,
   CamsUserWithPermissions,
+  isUnscopedRole,
+  scopeLabel,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { RemovePermissionModal, RemovePermissionModalRef } from './RemovePermissionModal';
 import { AddPermissionModal, AddPermissionModalRef } from './AddPermissionModal';
+import { PagePredicate, PERMISSIONS_PAGE_SIZE } from './permissions-paging';
 
-const PAGE_SIZE = 20;
 const ALL = 'All';
 // Same as the data-verification searches (TrusteeSearchModal, TrusteesList).
 const MIN_FILTER_LENGTH = 2;
 const FILTER_DEBOUNCE_MS = 300;
 
-type PagePredicate = { limit: number; offset: number };
 type Filters = Pick<CamsUsersPredicate, 'name' | 'email'>;
 type UsersPage = {
   data: CamsUserWithPermissions[];
@@ -95,33 +99,6 @@ function TextFilter({
   );
 }
 
-/**
- * One permission read as a sentence, so a screen reader ties the role to its scope; the stacked
- * Role, Region and Office cells only line up visually.
- */
-export function permissionSentence(
-  permission: UserRoleAssignment,
-  officeName: (officeCode: string) => string,
-): string {
-  const role = CamsRoleLabels[permission.role];
-  // Also covers Super User, which has no scope; the table shows it as All, All.
-  if (permission.regionId === null) return `${role}, all regions`;
-  const office = permission.officeCode === null ? 'all offices' : officeName(permission.officeCode);
-  return `${role}, Region ${permission.regionId}, ${office}`;
-}
-
-function PermissionLines({ lines }: Readonly<{ lines: string[] }>) {
-  if (lines.length === 0) return null;
-  return (
-    // Hidden from assistive technology: the Role cell reads each permission as a sentence instead.
-    <ul className="cams-users__permission-lines" aria-hidden="true">
-      {lines.map((line, index) => (
-        <li key={index}>{line}</li>
-      ))}
-    </ul>
-  );
-}
-
 // Email is the widest column; a break point after the @ lets it wrap there instead of mid-word.
 function EmailText({ email }: Readonly<{ email?: string }>) {
   if (!email?.includes('@')) return <span data-testid="cams-user-email">{email}</span>;
@@ -135,32 +112,13 @@ function EmailText({ email }: Readonly<{ email?: string }>) {
   );
 }
 
-// Region and Office are read as part of each Role sentence. This gives their labels text to read.
-function ScopeCellText({ hasPermissions }: Readonly<{ hasPermissions: boolean }>) {
-  return <span className="usa-sr-only">{hasPermissions ? 'See Role' : 'None'}</span>;
-}
-
-function PermissionSentences({
-  permissions,
-  officeName,
-}: Readonly<{ permissions: UserRoleAssignment[]; officeName: (officeCode: string) => string }>) {
-  if (permissions.length === 0) return <span className="usa-sr-only">No permissions</span>;
-  return (
-    // role="list" keeps list semantics in Safari/VoiceOver, which drop them when list-style is none.
-    // eslint-disable-next-line jsx-a11y/no-redundant-roles
-    <ul className="usa-sr-only" role="list">
-      {permissions.map((permission) => (
-        <li key={permission.id}>{permissionSentence(permission, officeName)}</li>
-      ))}
-    </ul>
-  );
-}
-
 function countLabel(totalCount: number) {
   return `${totalCount} ${totalCount === 1 ? 'CAMS User' : 'CAMS Users'}`;
 }
 
 export function CamsUsers() {
+  // Super Users cannot remove their own Super User permission; the API refuses it too.
+  const signedInUserId = LocalStorage.getSession()?.user.id;
   const [page, setPage] = useState<UsersPage | null>(null);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,23 +131,25 @@ export function CamsUsers() {
   const [emailText, setEmailText] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
   const modalRef = useRef<AddPermissionModalRef>(null);
+  const removeModalRef = useRef<RemovePermissionModalRef>(null);
   // The filters the current rows were loaded with; paging and reloads reuse them.
   const filtersRef = useRef<Filters>({});
   // Each load takes a ticket; only the latest load may update the table.
   const loadTicketRef = useRef(0);
   const debounce = useDebounce();
 
+  /** Loads a page of users; resolves true only when that page is now shown. */
   const loadPage = useCallback(async (pageOffset: number, focusHeading = false) => {
     const ticket = ++loadTicketRef.current;
     const filters = filtersRef.current;
     setIsLoading(true);
     setLoadFailed(false);
     try {
-      const predicate: CamsUsersPredicate = { limit: PAGE_SIZE, offset: pageOffset };
+      const predicate: CamsUsersPredicate = { limit: PERMISSIONS_PAGE_SIZE, offset: pageOffset };
       if (filters.name) predicate.name = filters.name;
       if (filters.email) predicate.email = filters.email;
       const response = await Api2.getCamsUsers(predicate);
-      if (ticket !== loadTicketRef.current) return;
+      if (ticket !== loadTicketRef.current) return false;
       setPage({
         data: response.data,
         pagination: response.pagination!,
@@ -198,6 +158,7 @@ export function CamsUsers() {
       setOffset(pageOffset);
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
+      return true;
     } catch {
       if (ticket === loadTicketRef.current) {
         // The table, pagination and row buttons all unmount on failure (gated on !loadFailed
@@ -207,6 +168,7 @@ export function CamsUsers() {
         setLoadFailed(true);
         headingRef.current?.focus();
       }
+      return false;
     } finally {
       if (ticket === loadTicketRef.current) setIsLoading(false);
     }
@@ -246,6 +208,57 @@ export function CamsUsers() {
     return permission.officeCode === null ? ALL : officeName(permission.officeCode);
   }
 
+  // Starts with the visible text (WCAG 2.5.3 Label in Name) and names the permission, so a user's
+  // Remove buttons can be told apart out of context: "...: Trial Attorney, Region 2 - Manhattan".
+  function removeLabel(user: CamsUserReference, permission: UserRoleAssignment) {
+    const role = CamsRoleLabels[permission.role];
+    const name = `Remove Permission from ${user.name}: ${role}`;
+    if (isUnscopedRole(permission.role)) return name;
+    const office = permission.officeCode ? officeNames.get(permission.officeCode) : undefined;
+    return `${name}, ${scopeLabel(permission, office)}`;
+  }
+
+  function canRemove(user: CamsUserReference, permission: UserRoleAssignment) {
+    return user.id !== signedInUserId || permission.role !== CamsRole.SuperUser;
+  }
+
+  async function afterRemoval(userId: string) {
+    // The Remove button that opened the modal is gone; focus the user's Add Permission shown in
+    // this layout, or the heading when adding is unavailable. If the reload fails, loadPage has
+    // already moved focus to the heading. The other layout's button is `display: none`, so it has
+    // no boxes (getClientRects, unlike checkVisibility, works in every supported browser).
+    if (!(await loadPage(offset))) return;
+    const add = [`add-permission-${userId}`, `add-permission-${userId}-last`]
+      .map((id) => document.getElementById(id) as HTMLButtonElement | null)
+      .find((button) => !!button && button.getClientRects().length > 0);
+    if (add && !add.disabled) add.focus();
+    else headingRef.current?.focus();
+  }
+
+  // Add Permission sits on a user's first row in columns (Figma) and after their last permission
+  // in the stacked layout. A user with several rows gets one button for each layout; the stylesheet
+  // hides the other layout's, which also takes it out of the tab order.
+  function addPermissionButton(user: CamsUserReference, placement?: 'first-row' | 'last-row') {
+    return (
+      <Button
+        id={
+          placement === 'last-row' ? `add-permission-${user.id}-last` : `add-permission-${user.id}`
+        }
+        uswdsStyle={UswdsButtonStyle.Unstyled}
+        className={
+          placement
+            ? `cams-users__add-permission cams-users__add-permission--${placement}`
+            : 'cams-users__add-permission'
+        }
+        aria-label={`Add Permission to ${user.name}`}
+        disabled={officesFailed}
+        onClick={() => modalRef.current?.show({ id: user.id, name: user.name })}
+      >
+        <IconLabel icon="add_circle" label="Add Permission" />
+      </Button>
+    );
+  }
+
   const isReady = officesLoaded && page !== null;
   const heading = isReady ? countLabel(page.pagination.totalCount ?? 0) : 'CAMS Users';
   const isWorking = isLoading || !officesLoaded;
@@ -271,7 +284,7 @@ export function CamsUsers() {
           onChange={setEmailText}
         />
       </div>
-      <h2 id="cams-users-count" ref={headingRef} tabIndex={-1}>
+      <h2 id="cams-users-count" className="cams-users__count" ref={headingRef} tabIndex={-1}>
         {heading}
       </h2>
       <div className="usa-sr-only" role="status" data-testid="cams-users-status">
@@ -323,50 +336,101 @@ export function CamsUsers() {
               </CamsTableHeaderCell>
             </CamsTableHeader>
             <CamsTableBody>
-              {page.data.map((user) => (
-                <CamsTableRow key={user.id} data-testid={`cams-user-row-${user.id}`}>
-                  <CamsTableCell className="col-name" data-cell="Name">
-                    {user.name}
-                  </CamsTableCell>
-                  <CamsTableCell className="col-email" data-cell="Email">
-                    <EmailText email={user.email} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-role" data-cell="Role">
-                    <PermissionSentences permissions={user.permissions} officeName={officeName} />
-                    <PermissionLines lines={user.permissions.map((p) => CamsRoleLabels[p.role])} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-region" data-cell="Region">
-                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
-                    <PermissionLines lines={user.permissions.map((p) => p.regionId ?? ALL)} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-office" data-cell="Office">
-                    <ScopeCellText hasPermissions={user.permissions.length > 0} />
-                    <PermissionLines lines={user.permissions.map(officeLabel)} />
-                  </CamsTableCell>
-                  <CamsTableCell className="col-actions" data-cell="">
-                    <Button
-                      id={`add-permission-${user.id}`}
-                      uswdsStyle={UswdsButtonStyle.Unstyled}
-                      aria-label={`Add Permission to ${user.name}`}
-                      disabled={officesFailed}
-                      onClick={() => modalRef.current?.show({ id: user.id, name: user.name })}
+              {page.data.flatMap((user) => {
+                // One row per permission, as on the Trustees list; a user with none still gets one.
+                const rows: (UserRoleAssignment | null)[] =
+                  user.permissions.length > 0 ? user.permissions : [null];
+                return rows.map((permission, index) => {
+                  const first = index === 0;
+                  const last = index === rows.length - 1;
+                  return (
+                    <CamsTableRow
+                      // The first row keeps the user's key, so its Add Permission button survives
+                      // a reload that removes the user's first permission, and can keep focus.
+                      key={first ? user.id : permission!.id}
+                      data-testid={
+                        first ? `cams-user-row-${user.id}` : `cams-user-row-${user.id}-${index}`
+                      }
+                      className={[
+                        first ? '' : 'cams-users__row--continued',
+                        permission ? '' : 'cams-users__row--no-permissions',
+                        last ? '' : 'cams-users__row--continues',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                     >
-                      <IconLabel icon="add_circle" label="Add Permission" />
-                    </Button>
-                  </CamsTableCell>
-                </CamsTableRow>
-              ))}
+                      {first ? (
+                        <>
+                          <CamsTableCell className="col-name" data-cell="Name">
+                            {user.name}
+                          </CamsTableCell>
+                          <CamsTableCell className="col-email" data-cell="Email">
+                            <EmailText email={user.email} />
+                          </CamsTableCell>
+                        </>
+                      ) : (
+                        <>
+                          <CamsTableCell className="col-name">
+                            {/* Says whose permission this row is when moving through the table. */}
+                            <span className="usa-sr-only">{user.name}</span>
+                          </CamsTableCell>
+                          <CamsTableCell className="col-email">
+                            <span aria-hidden="true"></span>
+                          </CamsTableCell>
+                        </>
+                      )}
+                      <CamsTableCell className="col-role" data-cell="Role">
+                        {permission ? CamsRoleLabels[permission.role] : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-region" data-cell="Region">
+                        {permission ? (permission.regionId ?? ALL) : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-office" data-cell="Office">
+                        {permission ? officeLabel(permission) : ''}
+                      </CamsTableCell>
+                      <CamsTableCell className="col-actions" data-cell="">
+                        <div className="cams-users__actions">
+                          {permission && canRemove(user, permission) && (
+                            <Button
+                              id={`remove-permission-${permission.id}`}
+                              uswdsStyle={UswdsButtonStyle.Unstyled}
+                              className="cams-users__remove-permission"
+                              aria-label={removeLabel(user, permission)}
+                              onClick={() =>
+                                removeModalRef.current?.show(
+                                  { id: user.id, name: user.name },
+                                  permission,
+                                )
+                              }
+                            >
+                              <IconLabel icon="close" label="Remove Permission" />
+                            </Button>
+                          )}
+                          {first && addPermissionButton(user, last ? undefined : 'first-row')}
+                          {last && !first && addPermissionButton(user, 'last-row')}
+                        </div>
+                      </CamsTableCell>
+                    </CamsTableRow>
+                  );
+                });
+              })}
             </CamsTableBody>
           </CamsTable>
           {(page.pagination.totalPages ?? 1) > 1 && (
             <Pagination<PagePredicate>
               paginationValues={page.pagination}
-              searchPredicate={{ limit: PAGE_SIZE, offset }}
+              searchPredicate={{ limit: PERMISSIONS_PAGE_SIZE, offset }}
               retrievePage={(predicate) => loadPage(predicate.offset ?? 0, true)}
             />
           )}
         </>
       )}
+      <RemovePermissionModal
+        ref={removeModalRef}
+        modalId="remove-permission-modal"
+        offices={offices}
+        onSuccess={afterRemoval}
+      />
       <AddPermissionModal
         ref={modalRef}
         modalId="add-permission-modal"

@@ -26,6 +26,7 @@ import {
   OfficeAssigneePredicate,
   OfficeUserRolesPredicate,
   OrdersSearchPredicate,
+  RoleAssignmentAuditSearchPredicate,
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import {
@@ -1236,8 +1237,26 @@ export interface UserRoleAssignmentRepository extends Releasable {
    * compare-and-set, like TrusteeMatchVerificationRepository.updateIfPending); returns it as
    * stored. Returns null when it was already inactive, e.g. another grant replaced it first.
    */
-  deactivate(assignment: UserRoleAssignment): Promise<UserRoleAssignment | null>;
+  deactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id'>,
+  ): Promise<UserRoleAssignment | null>;
+  /**
+   * Restores a deactivated assignment and its activeKey, only if it is still inactive (the reverse
+   * of deactivate). Returns null when it was already active again, or when the user holds that
+   * permission again under a newer record (its activeKey is taken).
+   */
+  reactivate(
+    assignment: Pick<UserRoleAssignment, 'userId' | 'id' | 'role' | 'regionId' | 'officeCode'>,
+  ): Promise<UserRoleAssignment | null>;
+  /** How many active assignments for the role exist across all users. */
+  countActiveByRole(role: CamsRoleType): Promise<number>;
   findActiveByUserIds(userIds: string[]): Promise<UserRoleAssignment[]>;
+  /**
+   * Permissions by id, active or inactive. Each id comes with its userId, the collection's shard
+   * key, so the read stays within those users' partitions. An empty input returns [] without
+   * querying.
+   */
+  findByIds(refs: Pick<UserRoleAssignment, 'userId' | 'id'>[]): Promise<UserRoleAssignment[]>;
 }
 
 /**
@@ -1245,6 +1264,15 @@ export interface UserRoleAssignmentRepository extends Releasable {
  */
 export interface RoleAssignmentAuditRepository extends Releasable {
   create(entry: RoleAssignmentAuditEntry): Promise<void>;
+  /**
+   * Newest first: performedAt descending, then DEACTIVATED before CREATED (so a grant's
+   * replacement rows appear above its own CREATED row), then id descending for a stable order.
+   * predicate.userIds absent returns every record; present but empty returns an empty page
+   * without querying.
+   */
+  search(
+    predicate: RoleAssignmentAuditSearchPredicate,
+  ): Promise<CamsPaginationResponse<RoleAssignmentAuditEntry>>;
 }
 
 export type ObjectStorageGateway = {

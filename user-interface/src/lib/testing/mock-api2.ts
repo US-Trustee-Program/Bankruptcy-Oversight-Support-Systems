@@ -76,9 +76,12 @@ import {
   PermissionScope,
   scopesOverlap,
   CamsUserWithPermissions,
+  PermissionChange,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { PaginationParameters } from '@common/api/pagination';
 import {
   TrusteeDataReportRun,
   TrusteeDataReportStatus,
@@ -3428,6 +3431,105 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
   };
 }
 
+// Change History rows for the fake API, newest first: one of each kind the table shows (granted,
+// replaced, removed, Super User). Static: grants and removals made through the fake API are not
+// added.
+function mockChange(
+  userId: string,
+  performedAt: string,
+  kind: PermissionChange['kind'],
+  previous: PermissionChange['previous'],
+  next: PermissionChange['next'],
+): PermissionChange {
+  const user = MOCK_CAMS_USERS.find((u) => u.id === userId);
+  // The permission the row is about: the granted one, or the one replaced or removed.
+  const permission = (kind === 'granted' ? next : previous)!;
+  const assignmentId = `mock-permission-${userId}-${permission.role}-${permission.regionId ?? 'all'}-${permission.officeCode ?? 'all'}`;
+  return {
+    auditId: `mock-audit-${assignmentId}-${kind}-${performedAt}`,
+    assignmentId,
+    userId,
+    userName: user?.name ?? '',
+    performedBy: 'mock-super-user',
+    performedByName: 'Mock Super User',
+    performedAt,
+    kind,
+    previous,
+    next,
+  };
+}
+
+const MANHATTAN_ATTORNEY = {
+  role: CamsRole.TrialAttorney,
+  regionId: '2',
+  officeCode: MANHATTAN_CODE,
+};
+const REGION_2_ATTORNEY = { role: CamsRole.TrialAttorney, regionId: '2', officeCode: null };
+const BUFFALO_AUDITOR = { role: CamsRole.Auditor, regionId: '2', officeCode: BUFFALO_CODE };
+const MOCK_PERMISSION_CHANGES: PermissionChange[] = [
+  mockChange(
+    'mock-cams-user-finley-adams',
+    '2026-11-25T15:00:00.000Z',
+    'removed',
+    BUFFALO_AUDITOR,
+    null,
+  ),
+  mockChange(
+    'mock-cams-user-casey-adams',
+    '2026-11-20T15:00:00.000Z',
+    'replaced',
+    MANHATTAN_ATTORNEY,
+    REGION_2_ATTORNEY,
+  ),
+  mockChange(
+    'mock-cams-user-casey-adams',
+    '2026-11-20T15:00:00.000Z',
+    'granted',
+    null,
+    REGION_2_ATTORNEY,
+  ),
+  mockChange(
+    'mock-cams-user-gray-adams',
+    '2026-11-04T15:00:00.000Z',
+    'granted',
+    null,
+    MANHATTAN_ATTORNEY,
+  ),
+  mockChange(
+    'mock-cams-user-finley-adams',
+    '2026-11-03T15:00:00.000Z',
+    'granted',
+    null,
+    BUFFALO_AUDITOR,
+  ),
+  mockChange(
+    'mock-cams-user-casey-adams',
+    '2026-11-02T15:00:00.000Z',
+    'granted',
+    null,
+    MANHATTAN_ATTORNEY,
+  ),
+  // Casey Adams's Region 2 permission comes from the replacement above, not a seeded grant.
+  ...SEEDED_PERMISSIONS.filter(([userId]) => userId !== 'mock-cams-user-casey-adams').map(
+    ([userId, role, regionId, officeCode]) =>
+      mockChange(userId, SEEDED_PERMISSION_DATE, 'granted', null, { role, regionId, officeCode }),
+  ),
+];
+
+async function getPermissionChanges(predicate: Required<PaginationParameters>) {
+  const data = MOCK_PERMISSION_CHANGES.slice(predicate.offset, predicate.offset + predicate.limit);
+  return {
+    data,
+    pagination: {
+      count: data.length,
+      totalCount: MOCK_PERMISSION_CHANGES.length,
+      currentPage: Math.floor(predicate.offset / predicate.limit) + 1,
+      totalPages: Math.ceil(MOCK_PERMISSION_CHANGES.length / predicate.limit),
+      limit: predicate.limit,
+    },
+  };
+}
+
 // A simplified copy of the server rules (scope checks, idempotent repeats, the overlap rule) for the
 // fake API only. The server, UserAccessUseCase.grantPermission, is the source of truth.
 async function grantPermission(request: RoleAssignmentGrantRequest) {
@@ -3466,6 +3568,14 @@ async function grantPermission(request: RoleAssignmentGrantRequest) {
     permission,
   ];
   return { data: { permission, replaced } };
+}
+
+// Like the server's UserAccessUseCase.removePermission: a permission the user doesn't hold is a
+// no-op. The fake API drops it from the list; the server keeps it, inactive.
+async function removePermission(request: PermissionRemovalRequest) {
+  const user = MOCK_CAMS_USERS.find((u) => u.id === request.userId);
+  if (!user) return;
+  user.permissions = user.permissions.filter((p) => p.id !== request.permissionId);
 }
 
 function mockScope(request: RoleAssignmentGrantRequest): PermissionScope {
@@ -3857,7 +3967,9 @@ const MockApi2 = {
   getBankHistory,
   getBankTrustees,
   getCamsUsers,
+  getPermissionChanges,
   grantPermission,
+  removePermission,
   getSoftwareList,
   createSoftware,
   getSoftware,

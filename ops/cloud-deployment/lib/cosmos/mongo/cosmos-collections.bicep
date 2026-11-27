@@ -1022,6 +1022,13 @@ resource roleAssignmentAuditCollection 'Microsoft.DocumentDB/databaseAccounts/mo
             keys: ['assignmentId']
           }
         }
+        {
+          // Supports search's newest-first sort: performedAt descending, DEACTIVATED before
+          // CREATED, then id descending (cams-x52wz.1.2).
+          key: {
+            keys: ['performedAt', 'action', 'id']
+          }
+        }
       ]
     }
   }

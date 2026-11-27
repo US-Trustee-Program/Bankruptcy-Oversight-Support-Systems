@@ -66,3 +66,11 @@ export type OfficeUserRolesPredicate = {
   userId?: string;
   role?: string;
 };
+
+/**
+ * userIds absent returns every record; userIds present but empty returns an empty page without
+ * querying (see RoleAssignmentAuditRepository.search).
+ */
+export type RoleAssignmentAuditSearchPredicate = Required<PaginationParameters> & {
+  userIds?: string[];
+};

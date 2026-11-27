@@ -35,9 +35,12 @@ type RoleAssignmentState = {
 };
 
 /**
- * An append-only record of a change to a UserRoleAssignment. A DEACTIVATED entry's
- * replacedByAssignmentId is the id of the permission that caused it (null for CREATED, and for a
- * DEACTIVATED entry nothing replaced, which cannot currently happen).
+ * An append-only record of a change to a UserRoleAssignment. There are three kinds:
+ * - CREATED: a grant. previousState is null.
+ * - DEACTIVATED with replacedByAssignmentId set: replaced by that permission, written by the grant
+ *   that replaced it.
+ * - DEACTIVATED with replacedByAssignmentId null: removed by a Super User (performedBy is the
+ *   remover).
  */
 export type RoleAssignmentAuditEntry = {
   documentType: 'ROLE_ASSIGNMENT_AUDIT';
@@ -57,6 +60,70 @@ export type RoleAssignmentAuditEntry = {
   replacedByAssignmentId: string | null;
 };
 
+/**
+ * A permission as it was at the moment of a change: its role and where it applies (e.g. Trial
+ * Attorney, Region 2 - Manhattan). A PermissionChange has one before the change (previous) and one
+ * after (next). Who holds it, whether it is active and its id are on the row, not here.
+ */
+export type PermissionSnapshot = PermissionScope & { role: CamsRoleType };
+
+/**
+ * One Change History row. Each ROLE_ASSIGNMENT_AUDIT record is one row (decided 2026-11-26), so a
+ * grant that replaces N permissions shows as N + 1 rows with the same performedAt.
+ * - granted:  previous null, next the granted permission
+ * - replaced: previous the replaced permission, next the permission that replaced it (null only if
+ *   that permission could not be read)
+ * - removed:  previous the removed permission, next null
+ */
+export type PermissionChange = {
+  auditId: string;
+  assignmentId: string;
+  userId: string;
+  userName: string;
+  performedBy: string;
+  performedByName: string;
+  performedAt: string;
+  kind: 'granted' | 'replaced' | 'removed';
+  previous: PermissionSnapshot | null;
+  next: PermissionSnapshot | null;
+};
+
+function snapshotOf(permission: PermissionSnapshot): PermissionSnapshot {
+  return {
+    role: permission.role,
+    regionId: permission.regionId,
+    officeCode: permission.officeCode,
+  };
+}
+
+/**
+ * The Change History row for an audit record. A replacement's next side comes from the permission
+ * that replaced it (the record's replacedByAssignmentId), which the caller reads and passes in.
+ */
+export function toPermissionChange(
+  entry: RoleAssignmentAuditEntry,
+  replacingPermission?: UserRoleAssignment,
+): PermissionChange {
+  const row = {
+    auditId: entry.id,
+    assignmentId: entry.assignmentId,
+    userId: entry.userId,
+    userName: entry.userName,
+    performedBy: entry.performedBy,
+    performedByName: entry.performedByName,
+    performedAt: entry.performedAt,
+  };
+  if (entry.action === 'CREATED') {
+    return { ...row, kind: 'granted', previous: null, next: snapshotOf(entry.newState) };
+  }
+  const previous = snapshotOf(entry.previousState!);
+  if (entry.replacedByAssignmentId) {
+    const next = replacingPermission ? snapshotOf(replacingPermission) : null;
+    return { ...row, kind: 'replaced', previous, next };
+  }
+  return { ...row, kind: 'removed', previous, next: null };
+}
+
 /** The path segment that stands for every region or every office in a grant. */
 export const ALL_SCOPE = 'all';
 
@@ -70,6 +137,16 @@ export type RoleAssignmentGrantRequest = {
   role: CamsRoleType;
   regionId: string;
   officeCode: string;
+};
+
+/**
+ * A removal, as sent to DELETE /user-access/users/:userId/permissions/:permissionId. It names the
+ * permission record itself, so a stale table can't remove a permission granted again since, and a
+ * permission for an office that no longer exists can still be removed.
+ */
+export type PermissionRemovalRequest = {
+  userId: string;
+  permissionId: string;
 };
 
 /** The outcome of a grant: the permission the user now holds, and any it replaced. */
@@ -160,4 +237,9 @@ export const roleAssignmentGrantRequestSpec: ValidationSpec<RoleAssignmentGrantR
   role: [V.isInSet<CamsRoleType>(CamsRoles, 'A valid role is required')],
   regionId: [V.matches(NOT_BLANK, 'A region is required')],
   officeCode: [V.matches(NOT_BLANK, 'An office is required')],
+};
+
+export const permissionRemovalRequestSpec: ValidationSpec<PermissionRemovalRequest> = {
+  userId: [V.matches(NOT_BLANK, 'A user is required')],
+  permissionId: [V.matches(NOT_BLANK, 'A permission is required')],
 };

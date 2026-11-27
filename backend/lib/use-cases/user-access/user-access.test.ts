@@ -3,17 +3,19 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import {
   RoleAssignmentAuditEntry,
+  PermissionRemovalRequest,
   RoleAssignmentGrantRequest,
   UserRoleAssignment,
 } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import { UserAccessUseCase, resetCamsUsersCache } from './user-access';
 import { CamsError } from '../../common-errors/cams-error';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
@@ -47,8 +49,11 @@ function assignmentFor(
   };
 }
 
-function scopedAssignmentFor(userId: string, regionId: string | null): UserRoleAssignment {
-  const role = CamsRole.TrialAttorney;
+function scopedAssignmentFor(
+  userId: string,
+  regionId: string | null,
+  role: CamsRoleType = CamsRole.TrialAttorney,
+): UserRoleAssignment {
   const scope = regionId ?? 'national';
   return {
     ...assignmentFor(userId, { regionId: regionId ?? '', officeCode: '' }),
@@ -921,8 +926,667 @@ describe('UserAccessUseCase', () => {
     });
   });
 
-  // Last in the file: the DATABASE_MOCK repository keeps grants for the rest of the run.
+  describe('removePermission', () => {
+    const held: UserRoleAssignment = {
+      ...assignmentFor('user-a', MANHATTAN),
+      userName: 'Alice Adams',
+    };
+    const request: PermissionRemovalRequest = { userId: 'user-a', permissionId: held.id };
+    const deactivated: UserRoleAssignment = {
+      ...held,
+      active: false,
+      activeKey: `inactive|${held.id}`,
+    };
+
+    function spyOnRemoval(removed: UserRoleAssignment | null = deactivated) {
+      return {
+        deactivateSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'deactivate')
+          .mockResolvedValue(removed),
+        createSpy: vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined),
+        invalidateSpy: vi
+          .spyOn(MockMongoRepository.prototype, 'deleteByUserId')
+          .mockResolvedValue(undefined),
+      };
+    }
+
+    test('should deactivate the permission with that id and audit it as removed by the Super User', async () => {
+      const { deactivateSpy, createSpy } = spyOnRemoval();
+      const performer = getCamsUserReference(context.session.user);
+
+      await useCase.removePermission(context, request);
+
+      const expectedAudit: RoleAssignmentAuditEntry = {
+        documentType: 'ROLE_ASSIGNMENT_AUDIT',
+        id: expect.any(String),
+        assignmentId: held.id,
+        action: 'DEACTIVATED',
+        userId: 'user-a',
+        userName: 'Alice Adams',
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: MANHATTAN.officeCode,
+        performedBy: performer.id,
+        performedByName: performer.name,
+        performedAt: expect.any(String),
+        previousState: {
+          role: CamsRole.TrialAttorney,
+          regionId: MANHATTAN.regionId,
+          officeCode: MANHATTAN.officeCode,
+          active: true,
+        },
+        newState: {
+          role: CamsRole.TrialAttorney,
+          regionId: MANHATTAN.regionId,
+          officeCode: MANHATTAN.officeCode,
+          active: false,
+        },
+        replacedByAssignmentId: null,
+      };
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: 'user-a', id: held.id });
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(createSpy).toHaveBeenCalledWith(expectedAudit);
+    });
+
+    test("should clear the user's cached sessions so the removal applies without signing in again", async () => {
+      const { invalidateSpy } = spyOnRemoval();
+
+      await useCase.removePermission(context, request);
+
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+    });
+
+    test('should keep the removal and log the failure when clearing cached sessions fails', async () => {
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval();
+      invalidateSpy.mockRejectedValue(new Error('session cache down'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(deactivateSpy).toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('session cache down'),
+        { userId: 'user-a' },
+      );
+    });
+
+    test('should change nothing when the permission is no longer active, or is not that user’s', async () => {
+      const { createSpy, invalidateSpy } = spyOnRemoval(null);
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should remove a permission for an office that no longer exists, without reading the office list', async () => {
+      const officesSpy = vi.spyOn(MockOfficesGateway.prototype, 'getOffices');
+      const retired = { ...deactivated, regionId: '99', officeCode: 'RETIRED_OFFICE' };
+      const { createSpy } = spyOnRemoval(retired);
+
+      await useCase.removePermission(context, request);
+
+      expect(officesSpy).not.toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'DEACTIVATED',
+          regionId: '99',
+          officeCode: 'RETIRED_OFFICE',
+          previousState: expect.objectContaining({ officeCode: 'RETIRED_OFFICE', active: true }),
+        }),
+      );
+    });
+
+    test.each([
+      { name: 'a blank user', change: { userId: ' ' } },
+      { name: 'a blank permission', change: { permissionId: '' } },
+      { name: 'a missing permission', change: { permissionId: undefined } },
+    ])('should reject a removal with $name and change nothing', async ({ change }) => {
+      const { deactivateSpy } = spyOnRemoval();
+
+      const error = await getTheThrownError(() =>
+        useCase.removePermission(context, { ...request, ...change } as PermissionRemovalRequest),
+      );
+
+      expect(error).toEqual(expect.objectContaining({ status: 400 }));
+      expect(deactivateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should refuse a Super User’s removal of their own Super User permission and change nothing', async () => {
+      const selfId = context.session.user.id;
+      const ownSuperUser: UserRoleAssignment = {
+        ...held,
+        userId: selfId,
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        activeKey: 'SuperUser',
+      };
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([ownSuperUser]);
+      const { deactivateSpy, createSpy } = spyOnRemoval();
+
+      const error = await getTheThrownError(() =>
+        useCase.removePermission(context, { userId: selfId, permissionId: ownSuperUser.id }),
+      );
+
+      expect(error).toEqual(
+        expect.objectContaining({
+          status: 400,
+          message: 'You cannot remove your own Super User permission.',
+        }),
+      );
+      expect(findSpy).toHaveBeenCalledWith([{ userId: selfId, id: ownSuperUser.id }]);
+      expect(deactivateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      { case: 'is not theirs or does not exist', found: [] },
+      {
+        case: 'is their own Super User permission, already removed',
+        found: [
+          {
+            ...held,
+            role: CamsRole.SuperUser,
+            regionId: null,
+            officeCode: null,
+            active: false,
+            activeKey: `inactive|${held.id}`,
+          },
+        ],
+      },
+    ])(
+      'should change nothing when a Super User removes a permission of theirs that $case',
+      async ({ found }) => {
+        const selfId = context.session.user.id;
+        vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue(
+          found.map((permission) => ({ ...permission, userId: selfId })),
+        );
+        const { createSpy, invalidateSpy } = spyOnRemoval(null);
+
+        await useCase.removePermission(context, { userId: selfId, permissionId: held.id });
+
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    test('should let a Super User remove one of their own other permissions', async () => {
+      const selfId = context.session.user.id;
+      const ownHeld: UserRoleAssignment = { ...held, userId: selfId };
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([ownHeld]);
+      const { deactivateSpy, createSpy, invalidateSpy } = spyOnRemoval({
+        ...deactivated,
+        userId: selfId,
+      });
+
+      await useCase.removePermission(context, { userId: selfId, permissionId: ownHeld.id });
+
+      expect(findSpy).toHaveBeenCalledWith([{ userId: selfId, id: ownHeld.id }]);
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: selfId, id: ownHeld.id });
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'DEACTIVATED', userId: selfId }),
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith(selfId);
+    });
+
+    describe('a Super User permission', () => {
+      const superUser: UserRoleAssignment = {
+        ...held,
+        id: 'super-user-a',
+        role: CamsRole.SuperUser,
+        regionId: null,
+        officeCode: null,
+        activeKey: 'SuperUser',
+      };
+      const removedSuperUser: UserRoleAssignment = {
+        ...superUser,
+        active: false,
+        activeKey: `inactive|${superUser.id}`,
+      };
+      const superUserRequest = { userId: 'user-a', permissionId: superUser.id };
+
+      function spyOnSuperUsersLeft(count: number) {
+        return {
+          countSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'countActiveByRole')
+            .mockResolvedValue(count),
+          reactivateSpy: vi
+            .spyOn(MockMongoRepository.prototype, 'reactivate')
+            .mockResolvedValue(superUser),
+        };
+      }
+
+      test('should remove it while another Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(1);
+
+        await useCase.removePermission(context, superUserRequest);
+
+        expect(countSpy).toHaveBeenCalledWith(CamsRole.SuperUser);
+        expect(reactivateSpy).not.toHaveBeenCalled();
+        expect(createSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'DEACTIVATED', assignmentId: superUser.id }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+      });
+
+      test('should restore it and refuse the removal when no other Super User remains', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should restore it and fail when the remaining Super Users cannot be counted', async () => {
+        const { createSpy, invalidateSpy } = spyOnRemoval(removedSuperUser);
+        const { countSpy, reactivateSpy } = spyOnSuperUsersLeft(0);
+        countSpy.mockRejectedValue(new Error('cosmos unavailable'));
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(reactivateSpy).toHaveBeenCalledWith(removedSuperUser);
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(invalidateSpy).not.toHaveBeenCalled();
+      });
+
+      test('should log the permission to restore by hand and fail when restoring it fails', async () => {
+        const { createSpy } = spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockRejectedValue(new Error('cosmos unavailable'));
+        const errorSpy = vi.spyOn(context.logger, 'error');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error.message).toEqual('cosmos unavailable');
+        expect(errorSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE failed'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+        expect(createSpy).not.toHaveBeenCalled();
+      });
+
+      test('should warn and still refuse when the permission was already active again', async () => {
+        spyOnRemoval(removedSuperUser);
+        const { reactivateSpy } = spyOnSuperUsersLeft(0);
+        reactivateSpy.mockResolvedValue(null);
+        const warnSpy = vi.spyOn(context.logger, 'warn');
+
+        const error = await getTheThrownError(() =>
+          useCase.removePermission(context, superUserRequest),
+        );
+
+        expect(error).toEqual(
+          expect.objectContaining({
+            status: 400,
+            message: 'CAMS must keep at least one Super User.',
+          }),
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          'USER-ACCESS-USE-CASE',
+          expect.stringContaining('SUPER_USER_RESTORE'),
+          { userId: 'user-a', assignmentId: superUser.id },
+        );
+      });
+    });
+
+    test('should remove a permission from a user who is no longer a CAMS user', async () => {
+      spyOnMembers([]);
+      const { deactivateSpy } = spyOnRemoval();
+
+      await useCase.removePermission(context, request);
+
+      expect(deactivateSpy).toHaveBeenCalledWith({ userId: 'user-a', id: held.id });
+    });
+
+    test('should send the removal to Log Analytics', async () => {
+      spyOnRemoval();
+      const traceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await useCase.removePermission(context, request);
+
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'RoleAssignmentAudit',
+        expect.objectContaining({
+          success: true,
+          properties: expect.objectContaining({
+            action: 'DEACTIVATED',
+            assignmentId: held.id,
+            replacedByAssignmentId: '',
+          }),
+        }),
+        undefined,
+        expect.anything(),
+      );
+    });
+
+    test('should keep the removal and log the searchable message when the audit write fails', async () => {
+      const { createSpy, invalidateSpy } = spyOnRemoval();
+      createSpy.mockRejectedValue(new Error('audit store down'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(useCase.removePermission(context, request)).resolves.toBeUndefined();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ROLE_ASSIGNMENT_AUDIT write failed'),
+        expect.anything(),
+      );
+      expect(invalidateSpy).toHaveBeenCalledWith('user-a');
+    });
+  });
+
+  describe('getPermissionChanges', () => {
+    const performer = { performedBy: 'super-1', performedByName: 'Maria Garcia' };
+    const manhattan = {
+      role: CamsRole.TrialAttorney,
+      regionId: MANHATTAN.regionId,
+      officeCode: MANHATTAN.officeCode,
+    };
+    const allOfRegion2 = { role: CamsRole.TrialAttorney, regionId: '02', officeCode: null };
+
+    function audit(
+      id: string,
+      action: 'CREATED' | 'DEACTIVATED',
+      performedAt: string,
+      states: Pick<
+        RoleAssignmentAuditEntry,
+        'previousState' | 'newState' | 'replacedByAssignmentId'
+      >,
+    ): RoleAssignmentAuditEntry {
+      const scope = (states.newState ?? states.previousState)!;
+      return {
+        documentType: 'ROLE_ASSIGNMENT_AUDIT',
+        id,
+        assignmentId: `assignment-${id}`,
+        action,
+        userId: 'user-a',
+        userName: 'Sarah Williams',
+        role: scope.role,
+        regionId: scope.regionId,
+        officeCode: scope.officeCode,
+        ...performer,
+        performedAt,
+        ...states,
+      };
+    }
+
+    const granted = audit('a1', 'CREATED', '2026-11-02T10:00:00.000Z', {
+      previousState: null,
+      newState: { ...manhattan, active: true },
+      replacedByAssignmentId: null,
+    });
+    const replaced = audit('a2', 'DEACTIVATED', '2026-11-20T10:00:00.000Z', {
+      previousState: { ...manhattan, active: true },
+      newState: { ...manhattan, active: false },
+      replacedByAssignmentId: 'replacing-1',
+    });
+    const removed = audit('a3', 'DEACTIVATED', '2026-11-25T10:00:00.000Z', {
+      previousState: { ...allOfRegion2, active: true },
+      newState: { ...allOfRegion2, active: false },
+      replacedByAssignmentId: null,
+    });
+    const replacing: UserRoleAssignment = {
+      ...assignmentFor('user-a', MANHATTAN),
+      id: 'replacing-1',
+      ...allOfRegion2,
+    };
+
+    function spyOnAudits(data: RoleAssignmentAuditEntry[], total = data.length) {
+      return vi
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockResolvedValue({ metadata: { total }, data });
+    }
+
+    test('should return the page of changes as the audit search orders it, with the total', async () => {
+      const searchSpy = spyOnAudits([removed, granted], 41);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      const result = await useCase.getPermissionChanges(context, { limit: 20, offset: 20 });
+
+      expect(searchSpy).toHaveBeenCalledWith({ limit: 20, offset: 20 });
+      expect(result).toEqual({
+        totalCount: 41,
+        data: [
+          {
+            auditId: 'a3',
+            assignmentId: 'assignment-a3',
+            userId: 'user-a',
+            userName: 'Sarah Williams',
+            ...performer,
+            performedAt: '2026-11-25T10:00:00.000Z',
+            kind: 'removed',
+            previous: allOfRegion2,
+            next: null,
+          },
+          {
+            auditId: 'a1',
+            assignmentId: 'assignment-a1',
+            userId: 'user-a',
+            userName: 'Sarah Williams',
+            ...performer,
+            performedAt: '2026-11-02T10:00:00.000Z',
+            kind: 'granted',
+            previous: null,
+            next: manhattan,
+          },
+        ],
+      });
+    });
+
+    test('should show what replaced a permission, reading the replacing permissions once, by user and id', async () => {
+      spyOnAudits([replaced]);
+      const findByIdsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([replacing]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(findByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findByIdsSpy).toHaveBeenCalledWith([{ userId: 'user-a', id: 'replacing-1' }]);
+      expect(data).toEqual([
+        expect.objectContaining({ kind: 'replaced', previous: manhattan, next: allOfRegion2 }),
+      ]);
+    });
+
+    test("should match each replacement to its own user's replacing permission, even when ids repeat", async () => {
+      const replacedForB: RoleAssignmentAuditEntry = {
+        ...replaced,
+        id: 'b2',
+        userId: 'user-b',
+        userName: 'Bob Brown',
+      };
+      const replacingForB: UserRoleAssignment = {
+        ...replacing,
+        userId: 'user-b',
+        regionId: null,
+        officeCode: null,
+      };
+      spyOnAudits([replaced, replacedForB]);
+      const findByIdsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findByIds')
+        .mockResolvedValue([replacingForB, replacing]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(findByIdsSpy).toHaveBeenCalledTimes(1);
+      expect(findByIdsSpy).toHaveBeenCalledWith([
+        { userId: 'user-a', id: 'replacing-1' },
+        { userId: 'user-b', id: 'replacing-1' },
+      ]);
+
+      expect(data.map(({ userId, next }) => ({ userId, next }))).toEqual([
+        { userId: 'user-a', next: allOfRegion2 },
+        {
+          userId: 'user-b',
+          next: { role: CamsRole.TrialAttorney, regionId: null, officeCode: null },
+        },
+      ]);
+    });
+
+    test("should match each of one user's replacements to its own replacing permission", async () => {
+      const replacedAgain: RoleAssignmentAuditEntry = {
+        ...replaced,
+        id: 'a4',
+        replacedByAssignmentId: 'replacing-2',
+      };
+      const replacingAgain: UserRoleAssignment = {
+        ...replacing,
+        id: 'replacing-2',
+        regionId: null,
+        officeCode: null,
+      };
+      spyOnAudits([replacedAgain, replaced]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([
+        replacing,
+        replacingAgain,
+      ]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(data.map(({ auditId, next }) => ({ auditId, next }))).toEqual([
+        { auditId: 'a4', next: { role: CamsRole.TrialAttorney, regionId: null, officeCode: null } },
+        { auditId: 'a2', next: allOfRegion2 },
+      ]);
+    });
+
+    test('should leave New empty for a replacement whose replacing permission cannot be read', async () => {
+      spyOnAudits([replaced]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      const { data } = await useCase.getPermissionChanges(context, { limit: 20, offset: 0 });
+
+      expect(data).toEqual([
+        expect.objectContaining({ kind: 'replaced', previous: manhattan, next: null }),
+      ]);
+    });
+
+    test('should accept a limit of 100', async () => {
+      const searchSpy = spyOnAudits([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByIds').mockResolvedValue([]);
+
+      await useCase.getPermissionChanges(context, { limit: 100, offset: 0 });
+
+      expect(searchSpy).toHaveBeenCalledWith({ limit: 100, offset: 0 });
+    });
+
+    test.each([
+      { name: 'a negative offset', paging: { limit: 20, offset: -1 } },
+      { name: 'a zero limit', paging: { limit: 0, offset: 0 } },
+      { name: 'a fractional limit', paging: { limit: 1.5, offset: 0 } },
+      { name: 'a fractional offset', paging: { limit: 20, offset: 1.5 } },
+      { name: 'a limit over 100', paging: { limit: 101, offset: 0 } },
+      { name: 'a limit that is not a number', paging: { limit: NaN, offset: 0 } },
+    ])('should reject $name without reading the history', async ({ paging }) => {
+      const searchSpy = spyOnAudits([]);
+
+      const error = await getTheThrownError(() => useCase.getPermissionChanges(context, paging));
+
+      expect(error).toEqual(expect.objectContaining({ status: 400 }));
+      expect(searchSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('with the DATABASE_MOCK repository and no spies on it', () => {
+    beforeEach(() => {
+      MockMongoRepository.clearRoleAssignments();
+    });
+
+    test('should list every grant, replacement and removal newest first, showing what replaced a permission', async () => {
+      spyOnMembers();
+      vi.useFakeTimers({ toFake: ['Date'] });
+      const grant = (regionId: string, officeCode: string) =>
+        useCase.grantPermission(context, {
+          userId: 'user-b',
+          role: CamsRole.TrialAttorney,
+          regionId,
+          officeCode,
+        });
+
+      vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'));
+      await grant(MANHATTAN.regionId, MANHATTAN.officeCode);
+      vi.setSystemTime(new Date('2026-11-20T10:00:00.000Z'));
+      const { result } = await grant(MANHATTAN.regionId, 'all');
+      vi.setSystemTime(new Date('2026-11-25T10:00:00.000Z'));
+      await useCase.removePermission(context, {
+        userId: 'user-b',
+        permissionId: result.permission.id,
+      });
+
+      const firstPage = await useCase.getPermissionChanges(context, { limit: 3, offset: 0 });
+      const secondPage = await useCase.getPermissionChanges(context, { limit: 3, offset: 3 });
+
+      const manhattan = {
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: MANHATTAN.officeCode,
+      };
+      const allOffices = {
+        role: CamsRole.TrialAttorney,
+        regionId: MANHATTAN.regionId,
+        officeCode: null,
+      };
+      expect(firstPage.totalCount).toEqual(4);
+      expect(
+        [...firstPage.data, ...secondPage.data].map(({ kind, previous, next, performedAt }) => ({
+          kind,
+          previous,
+          next,
+          performedAt,
+        })),
+      ).toEqual([
+        {
+          kind: 'removed',
+          previous: allOffices,
+          next: null,
+          performedAt: '2026-11-25T10:00:00.000Z',
+        },
+        {
+          kind: 'replaced',
+          previous: manhattan,
+          next: allOffices,
+          performedAt: '2026-11-20T10:00:00.000Z',
+        },
+        {
+          kind: 'granted',
+          previous: null,
+          next: allOffices,
+          performedAt: '2026-11-20T10:00:00.000Z',
+        },
+        {
+          kind: 'granted',
+          previous: null,
+          next: manhattan,
+          performedAt: '2026-11-02T10:00:00.000Z',
+        },
+      ]);
+    });
+
     test('should grant a permission, list it, and treat a repeat grant as already held', async () => {
       spyOnMembers();
       const request: RoleAssignmentGrantRequest = {
@@ -942,6 +1606,285 @@ describe('UserAccessUseCase', () => {
         created: false,
       });
       expect(data[0].permissions).toEqual([first.result.permission]);
+    });
+
+    test('should remove a granted permission by its id, and change nothing when removing it again', async () => {
+      spyOnMembers();
+      const { result } = await useCase.grantPermission(context, {
+        userId: 'user-b',
+        role: CamsRole.Auditor,
+        regionId: 'all',
+        officeCode: 'all',
+      });
+      const removal = { userId: 'user-b', permissionId: result.permission.id };
+      const auditSpy = vi.spyOn(MockMongoRepository.prototype, 'create');
+
+      await useCase.removePermission(context, removal);
+      await useCase.removePermission(context, removal);
+      const { data } = await useCase.getCamsUsers(context, { name: 'Bob', limit: 20, offset: 0 });
+
+      expect(data[0].permissions).not.toContainEqual(
+        expect.objectContaining({ id: result.permission.id }),
+      );
+      expect(auditSpy).toHaveBeenCalledTimes(1);
+      expect(auditSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'DEACTIVATED', role: CamsRole.Auditor }),
+      );
+    });
+
+    // One test per kind of change a Super User can make to a user, read back as Change History rows.
+    // A permission is a role in a scope (one office, a whole region, or All Regions); a grant
+    // replaces the same role's permissions whose scope contains it or is contained by it, and a
+    // replacing grant adds a row for the grant plus one for each permission it replaced.
+    describe('Change History rows for each kind of change', () => {
+      const ATTORNEY = CamsRole.TrialAttorney;
+      const manhattan = { role: ATTORNEY, regionId: '2', officeCode: MANHATTAN.officeCode };
+      const buffalo = { role: ATTORNEY, regionId: '2', officeCode: BUFFALO.officeCode };
+      const region2 = { role: ATTORNEY, regionId: '2', officeCode: null };
+      const seattle = { role: ATTORNEY, regionId: '18', officeCode: SEATTLE.officeCode };
+      const allRegions = { role: ATTORNEY, regionId: null, officeCode: null };
+      const superUser = { role: CamsRole.SuperUser, regionId: null, officeCode: null };
+      type Snapshot = { role: CamsRoleType; regionId: string | null; officeCode: string | null };
+
+      let day = 0;
+
+      beforeEach(() => {
+        spyOnMembers();
+        vi.useFakeTimers({ toFake: ['Date'] });
+        day = 0;
+      });
+
+      // Each change happens on its own day, so a test can read back just the latest change's rows.
+      function nextDay() {
+        day += 1;
+        vi.setSystemTime(new Date(Date.UTC(2026, 10, day, 10)));
+      }
+
+      function grant(snapshot: Snapshot, userId = 'user-b') {
+        nextDay();
+        return useCase.grantPermission(context, {
+          userId,
+          role: snapshot.role,
+          regionId: snapshot.regionId ?? 'all',
+          officeCode: snapshot.officeCode ?? 'all',
+        });
+      }
+
+      function remove(permissionId: string, userId = 'user-b') {
+        nextDay();
+        return useCase.removePermission(context, { userId, permissionId });
+      }
+
+      async function allRows() {
+        const { data, totalCount } = await useCase.getPermissionChanges(context, {
+          limit: 100,
+          offset: 0,
+        });
+        expect(data).toHaveLength(totalCount);
+        return data;
+      }
+
+      // The rows written by the latest change. Rows from one grant share a time, and replaced rows
+      // among themselves are ordered by audit id, so they are compared in any order.
+      async function latestRows() {
+        const rows = await allRows();
+        return rows
+          .filter((row) => row.performedAt === rows[0].performedAt)
+          .map(({ kind, previous, next }) => ({ kind, previous, next }));
+      }
+
+      async function activePermissions() {
+        const { data } = await useCase.getCamsUsers(context, { name: 'Bob', limit: 20, offset: 0 });
+        return data[0].permissions.map(({ role, regionId, officeCode }) => ({
+          role,
+          regionId,
+          officeCode,
+        }));
+      }
+
+      // Exactly these permissions are active, in any order.
+      async function expectHeld(...expected: Snapshot[]) {
+        const held = await activePermissions();
+        expect(held).toHaveLength(expected.length);
+        expect(held).toEqual(expect.arrayContaining(expected));
+      }
+
+      test('a new role: one row, (none) to the role and scope', async () => {
+        await grant(manhattan);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: manhattan }]);
+      });
+
+      test('the same role in another region: one row, and the first region is kept', async () => {
+        await grant(manhattan);
+        await grant(seattle);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: seattle }]);
+        await expectHeld(manhattan, seattle);
+      });
+
+      test('the same role in another office of the same region: one row, and both offices are kept', async () => {
+        await grant(manhattan);
+        await grant(buffalo);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: buffalo }]);
+        await expectHeld(manhattan, buffalo);
+      });
+
+      test('another role in the same scope: one row, and the first role is kept', async () => {
+        const auditor = { ...manhattan, role: CamsRole.Auditor };
+        await grant(manhattan);
+        await grant(auditor);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: auditor }]);
+        await expectHeld(manhattan, auditor);
+      });
+
+      test.each([
+        { change: 'widening an office to its region', from: manhattan, to: region2 },
+        { change: 'widening a region to All Regions', from: region2, to: allRegions },
+        { change: 'narrowing a region to one of its offices', from: region2, to: manhattan },
+        { change: 'narrowing All Regions to one region', from: allRegions, to: region2 },
+        { change: 'narrowing All Regions to one office', from: allRegions, to: seattle },
+      ])('$change: a grant row and a replacement row', async ({ from, to }) => {
+        await grant(from);
+        await grant(to);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: to },
+            { kind: 'replaced', previous: from, next: to },
+          ]),
+        );
+        expect(await activePermissions()).toEqual([to]);
+      });
+
+      test('a grant that covers some of the permissions: replaces those and keeps the others', async () => {
+        await grant(manhattan);
+        await grant(seattle);
+        await grant(region2);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: region2 },
+            { kind: 'replaced', previous: manhattan, next: region2 },
+          ]),
+        );
+        await expectHeld(seattle, region2);
+      });
+
+      test('widening to All Regions: a grant row and a replacement row for every region and office it covers', async () => {
+        await grant(manhattan);
+        await grant(buffalo);
+        await grant(seattle);
+        await grant(allRegions);
+
+        const rows = await latestRows();
+        expect(rows).toHaveLength(4);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            { kind: 'granted', previous: null, next: allRegions },
+            { kind: 'replaced', previous: manhattan, next: allRegions },
+            { kind: 'replaced', previous: buffalo, next: allRegions },
+            { kind: 'replaced', previous: seattle, next: allRegions },
+          ]),
+        );
+        expect(await activePermissions()).toEqual([allRegions]);
+      });
+
+      test('a removal: one row, the role and scope to (none)', async () => {
+        const { result } = await grant(manhattan);
+        await remove(result.permission.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: manhattan, next: null }]);
+      });
+
+      test('a Super User removing one of their own other permissions: one row, the role and scope to (none)', async () => {
+        const self = getCamsUserReference(context.session.user);
+        spyOnMembers([...members, self]);
+        const { result } = await grant(manhattan, self.id);
+        await remove(result.permission.id, self.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: manhattan, next: null }]);
+      });
+
+      test('a Super User grant: one row, (none) to Super User', async () => {
+        await grant(superUser);
+
+        expect(await latestRows()).toEqual([{ kind: 'granted', previous: null, next: superUser }]);
+      });
+
+      test('removing a Super User while another remains: one row, Super User to (none)', async () => {
+        await grant(superUser, 'user-a');
+        const { result } = await grant(superUser);
+        await remove(result.permission.id);
+
+        expect(await latestRows()).toEqual([{ kind: 'removed', previous: superUser, next: null }]);
+        await expectHeld();
+      });
+
+      describe('changes that add no row', () => {
+        test('granting a permission the user already holds', async () => {
+          await grant(manhattan);
+          await grant(manhattan);
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('granting Super User again', async () => {
+          await grant(superUser);
+          await grant(superUser);
+
+          expect(await allRows()).toHaveLength(1);
+        });
+
+        test('removing a permission that was already removed', async () => {
+          const { result } = await grant(manhattan);
+          await remove(result.permission.id);
+          await remove(result.permission.id);
+
+          expect((await allRows()).map((row) => row.kind)).toEqual(['removed', 'granted']);
+        });
+
+        test('removing a permission that was replaced', async () => {
+          const { result } = await grant(manhattan);
+          await grant(region2);
+          const before = await allRows();
+
+          await remove(result.permission.id);
+
+          expect(await allRows()).toEqual(before);
+        });
+
+        test('a Super User removing their own Super User permission', async () => {
+          const self = getCamsUserReference(context.session.user);
+          spyOnMembers([...members, self]);
+          // Another Super User remains, so only the self-removal rule can refuse this.
+          await grant(superUser, 'user-a');
+          const { result } = await grant(superUser, self.id);
+
+          await expect(remove(result.permission.id, self.id)).rejects.toThrow(
+            'You cannot remove your own Super User permission.',
+          );
+
+          expect(await allRows()).toHaveLength(2);
+        });
+
+        test('removing the last Super User', async () => {
+          const { result } = await grant(superUser);
+
+          await expect(remove(result.permission.id)).rejects.toThrow(
+            'CAMS must keep at least one Super User.',
+          );
+
+          expect(await allRows()).toHaveLength(1);
+          expect(await activePermissions()).toEqual([superUser]);
+        });
+      });
     });
   });
 });

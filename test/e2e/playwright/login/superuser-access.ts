@@ -109,29 +109,54 @@ export async function revokeSuperUser(userId: string): Promise<void> {
     });
     // Nothing held — the grant step didn't run, or a retry already cleaned this up.
     if (!held) return;
-
-    await assignments.updateOne(
-      { id: held.id, active: true },
-      { $set: { active: false, activeKey: inactiveKeyFor(held.id) } },
-    );
-
-    const audit: RoleAssignmentAuditEntry = {
-      documentType: 'ROLE_ASSIGNMENT_AUDIT',
-      id: randomUUID(),
-      assignmentId: held.id,
-      action: 'DEACTIVATED',
-      userId: held.userId,
-      userName: held.userName,
-      role: CamsRole.SuperUser,
-      regionId: null,
-      officeCode: null,
-      performedBy: PERFORMER.id,
-      performedByName: 'E2E SuperUser teardown',
-      performedAt: new Date().toISOString(),
-      previousState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: true },
-      newState: { role: CamsRole.SuperUser, regionId: null, officeCode: null, active: false },
-      replacedByAssignmentId: null,
-    };
-    await audits.insertOne(audit);
+    await deactivateWithAudit(assignments, audits, held as unknown as UserRoleAssignment);
   });
+}
+
+/**
+ * Removes one of the e2e account's own permissions directly in Mongo: test cleanup that must not
+ * depend on the API under test. Does nothing when that permission is no longer active. Like the
+ * grant, it leaves cached sessions in place.
+ */
+export async function revokePermission(userId: string, assignmentId: string): Promise<void> {
+  await withAssignments(async (assignments, audits) => {
+    const held = await assignments.findOne({
+      documentType: 'USER_ROLE_ASSIGNMENT',
+      userId,
+      id: assignmentId,
+      active: true,
+    });
+    if (!held) return;
+    await deactivateWithAudit(assignments, audits, held as unknown as UserRoleAssignment);
+  });
+}
+
+async function deactivateWithAudit(
+  assignments: Collection<Document>,
+  audits: Collection<Document>,
+  held: UserRoleAssignment,
+): Promise<void> {
+  // userId is the collection's shard key.
+  await assignments.updateOne(
+    { userId: held.userId, id: held.id, active: true },
+    { $set: { active: false, activeKey: inactiveKeyFor(held.id) } },
+  );
+
+  const scope = { role: held.role, regionId: held.regionId, officeCode: held.officeCode };
+  const audit: RoleAssignmentAuditEntry = {
+    documentType: 'ROLE_ASSIGNMENT_AUDIT',
+    id: randomUUID(),
+    assignmentId: held.id,
+    action: 'DEACTIVATED',
+    userId: held.userId,
+    userName: held.userName,
+    ...scope,
+    performedBy: PERFORMER.id,
+    performedByName: 'E2E SuperUser teardown',
+    performedAt: new Date().toISOString(),
+    previousState: { ...scope, active: true },
+    newState: { ...scope, active: false },
+    replacedByAssignmentId: null,
+  };
+  await audits.insertOne(audit);
 }

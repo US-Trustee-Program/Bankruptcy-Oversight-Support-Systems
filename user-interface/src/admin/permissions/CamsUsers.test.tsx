@@ -2,12 +2,15 @@ import { forwardRef, useImperativeHandle } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
+import LocalStorage from '@/lib/utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserWithPermissions, UserRoleAssignment } from '@common/cams/user-access';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
-import { CamsUsers, permissionSentence } from './CamsUsers';
+import { CamsUsers } from './CamsUsers';
 import type { AddPermissionModalProps } from './AddPermissionModal';
+import type { RemovePermissionModalProps } from './RemovePermissionModal';
 
 const MANHATTAN = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!;
 const BUFFALO = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo')!;
@@ -19,6 +22,20 @@ vi.mock('./AddPermissionModal', () => ({
     modalProps = props;
     useImperativeHandle(ref, () => ({ show: modalShow }));
     return <div data-testid="mocked-add-permission-modal" />;
+  }),
+}));
+
+const removeModalShow = vi.fn();
+let removeModalProps: RemovePermissionModalProps | undefined;
+
+vi.mock('./RemovePermissionModal', () => ({
+  RemovePermissionModal: forwardRef(function MockRemoveModal(
+    props: RemovePermissionModalProps,
+    ref,
+  ) {
+    removeModalProps = props;
+    useImperativeHandle(ref, () => ({ show: removeModalShow }));
+    return <div data-testid="mocked-remove-permission-modal" />;
   }),
 }));
 
@@ -84,25 +101,47 @@ const nameFilter = () => document.querySelector<HTMLInputElement>('#cams-users-n
 const emailFilter = () => document.querySelector<HTMLInputElement>('#cams-users-email-filter')!;
 const emptyState = () => document.querySelector('#cams-users-empty');
 
+// A user's first row holds their name, email and Add Permission; each further permission has its own
+// row (the Trustees list pattern).
 const row = (user: CamsUserWithPermissions) => screen.getByTestId(`cams-user-row-${user.id}`);
-const visibleLines = (user: CamsUserWithPermissions, column: string) =>
-  row(user).querySelector(`[data-cell="${column}"] .cams-users__permission-lines`);
-const lines = (user: CamsUserWithPermissions, column: string) =>
-  Array.from(visibleLines(user, column)?.querySelectorAll('li') ?? [], (li) => li.textContent);
-const sentences = (user: CamsUserWithPermissions) =>
+const userRows = (user: CamsUserWithPermissions) =>
   Array.from(
-    row(user).querySelectorAll('[data-cell="Role"] .usa-sr-only li'),
-    (li) => li.textContent,
+    document.querySelectorAll<HTMLElement>(
+      `[data-testid="cams-user-row-${user.id}"], [data-testid^="cams-user-row-${user.id}-"]`,
+    ),
   );
+// A cell's value, without the label CamsTable shows in the stacked layout.
+const cellValue = (cell: Element | null) => {
+  const copy = cell?.cloneNode(true) as Element | undefined;
+  copy?.querySelector('.cams-table__cell-label')?.remove();
+  return copy?.textContent ?? '';
+};
+// One value per permission row, in row order.
+const lines = (user: CamsUserWithPermissions, column: 'Role' | 'Region' | 'Office') =>
+  userRows(user)
+    .map((r) => cellValue(r.querySelector(`.col-${column.toLowerCase()}`)))
+    .filter((value) => value !== '');
 const table = () => document.querySelector('#cams-users-table');
 const heading = () => document.querySelector('#cams-users-count');
 const spinner = () => screen.queryByTestId('cams-users-loading');
 
+// jsdom applies no stylesheet and lays nothing out, so getClientRects is always empty. Stand in for
+// a layout that renders every element except those with the hidden class (as `display: none` does).
+function layOut(hiddenClass?: string) {
+  vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(function (this: Element) {
+    const rendered = !hiddenClass || !this.classList.contains(hiddenClass);
+    return (rendered ? [new DOMRect(0, 0, 1, 1)] : []) as unknown as DOMRectList;
+  });
+}
+
 describe('CamsUsers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    layOut();
     modalShow.mockReset();
     modalProps = undefined;
+    removeModalShow.mockReset();
+    removeModalProps = undefined;
     vi.spyOn(Api2, 'getOffices').mockResolvedValue({ data: [MANHATTAN, BUFFALO] });
   });
 
@@ -160,7 +199,7 @@ describe('CamsUsers', () => {
     expect(screen.getByTestId('cams-users-status')).toHaveTextContent(label);
   });
 
-  test('should show each user with their permissions stacked by role, region and office', async () => {
+  test('should show one row per permission, with the name and email on the first row only', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
 
     render(<CamsUsers />);
@@ -174,10 +213,29 @@ describe('CamsUsers', () => {
       'Office',
       'Actions',
     ]);
-    expect(row(SARAH).querySelector('[data-cell="Email"]')).toHaveTextContent(SARAH.email!);
+    const rows = userRows(SARAH);
+    expect(rows).toHaveLength(3);
+    expect(cellValue(rows[0].querySelector('.col-name'))).toEqual(SARAH.name);
+    expect(cellValue(rows[0].querySelector('.col-email'))).toEqual(SARAH.email);
     expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
     expect(lines(SARAH, 'Region')).toEqual(['2', '2', 'All']);
     expect(lines(SARAH, 'Office')).toEqual(['Buffalo', 'Manhattan', 'All']);
+  });
+
+  test("should show a user's name and email on their first row only, naming them on later rows for screen readers alone", async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+
+    render(<CamsUsers />);
+
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    for (const later of userRows(SARAH).slice(1)) {
+      const nameCell = later.querySelector('.col-name')!;
+      expect(nameCell.querySelector('.usa-sr-only')).toHaveTextContent(SARAH.name);
+      expect(nameCell.textContent).toEqual(SARAH.name);
+      const emailCell = later.querySelector('.col-email')!;
+      expect(emailCell.textContent).toEqual('');
+      expect(emailCell.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+    }
   });
 
   const emailText = (user: CamsUserWithPermissions) =>
@@ -235,51 +293,21 @@ describe('CamsUsers', () => {
     expect(emailText(user).textContent).toBe(email ?? '');
   });
 
-  test('should read each permission to screen readers as one sentence, in the Role cell', async () => {
-    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
-
-    render(<CamsUsers />);
-
-    await waitFor(() => expect(table()).toBeInTheDocument());
-    expect(sentences(SARAH)).toEqual([
-      'Auditor, Region 2, Buffalo',
-      'Trial Attorney, Region 2, Manhattan',
-      'Super User, all regions',
-    ]);
-    for (const column of ['Role', 'Region', 'Office']) {
-      expect(visibleLines(SARAH, column)).toHaveAttribute('aria-hidden', 'true');
-    }
-  });
-
-  test('should give screen readers text after the Region and Office labels', async () => {
-    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
-
-    render(<CamsUsers />);
-
-    await waitFor(() => expect(table()).toBeInTheDocument());
-    for (const column of ['Region', 'Office']) {
-      const srText = (user: CamsUserWithPermissions) =>
-        row(user).querySelector(`[data-cell="${column}"] .usa-sr-only`);
-      expect(srText(SARAH)).toHaveTextContent('See Role');
-      expect(srText(ALEX)).toHaveTextContent('None');
-    }
-  });
-
-  test('should show a user with no permissions as having none', async () => {
+  test('should show a user with no permissions as one row with empty Role, Region and Office', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX]));
 
     render(<CamsUsers />);
 
     await waitFor(() => expect(table()).toBeInTheDocument());
-    expect(lines(ALEX, 'Role')).toEqual([]);
-    expect(lines(ALEX, 'Region')).toEqual([]);
-    expect(lines(ALEX, 'Office')).toEqual([]);
-    expect(row(ALEX).querySelector('[data-cell="Role"] .usa-sr-only')).toHaveTextContent(
-      'No permissions',
-    );
+    expect(userRows(ALEX)).toHaveLength(1);
+    for (const column of ['.col-role', '.col-region', '.col-office']) {
+      const cell = row(ALEX).querySelector(column);
+      expect(cell).toBeInTheDocument();
+      expect(cellValue(cell)).toEqual('');
+    }
   });
 
-  test('should give every row an Add Permission action that opens the modal for that user', async () => {
+  test('should give every user an Add Permission action that opens the modal for that user', async () => {
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
 
     render(<CamsUsers />);
@@ -292,6 +320,185 @@ describe('CamsUsers', () => {
     await userEvent.click(sarahButton);
     expect(modalShow).toHaveBeenCalledWith({ id: SARAH.id, name: SARAH.name });
     expect(modalProps!.offices).toEqual([MANHATTAN, BUFFALO]);
+  });
+
+  test("should place Add Permission on a user's first row for columns and after their last permission for the stacked layout", async () => {
+    const ONE: CamsUserWithPermissions = {
+      ...ALEX,
+      id: 'okta-one',
+      permissions: [permission(MANHATTAN)],
+    };
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, ONE, SARAH]));
+
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    // First row for columns, none in between, last row for the stacked layout.
+    const sarahRows = userRows(SARAH);
+    expect(sarahRows.map((r) => r.querySelectorAll('.cams-users__add-permission').length)).toEqual([
+      1, 0, 1,
+    ]);
+    const firstRowAdd = sarahRows[0].querySelector(`#add-permission-${SARAH.id}`)!;
+    const lastRowAdd = sarahRows[2].querySelector(`#add-permission-${SARAH.id}-last`)!;
+    expect(firstRowAdd).toHaveClass('cams-users__add-permission--first-row');
+    expect(lastRowAdd).toHaveClass('cams-users__add-permission--last-row');
+    expect(lastRowAdd).toHaveAccessibleName('Add Permission to Sarah Williams');
+    // In the last row it comes after that row's Remove Permission.
+    const lastRowButtons = Array.from(sarahRows[2].querySelectorAll('button'));
+    expect(lastRowButtons.map((button) => button.className)).toEqual([
+      expect.stringContaining('cams-users__remove-permission'),
+      expect.stringContaining('cams-users__add-permission--last-row'),
+    ]);
+    await userEvent.click(lastRowAdd);
+    expect(modalShow).toHaveBeenCalledWith({ id: SARAH.id, name: SARAH.name });
+
+    // A user with one row has a single Add Permission, shown in both layouts.
+    for (const user of [ALEX, ONE]) {
+      const adds = userRows(user).flatMap((r) =>
+        Array.from(r.querySelectorAll('.cams-users__add-permission')),
+      );
+      expect(adds).toHaveLength(1);
+      expect(adds[0].className).not.toMatch(/--(first|last)-row/);
+    }
+  });
+
+  test('should give each permission a Remove Permission action that opens the remove modal for it', async () => {
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    const removeButtons = userRows(SARAH).map((permissionRow) =>
+      permissionRow.querySelector('.cams-users__remove-permission')!,
+    );
+    expect(removeButtons.map((button) => button.getAttribute('aria-label'))).toEqual([
+      // Starts with the visible text, as Add Permission's does (WCAG 2.5.3 Label in Name), and names
+      // the permission, so a list of a user's buttons tells them apart.
+      'Remove Permission from Sarah Williams: Auditor, Region 2 - Buffalo',
+      'Remove Permission from Sarah Williams: Trial Attorney, Region 2 - Manhattan',
+      'Remove Permission from Sarah Williams: Super User',
+    ]);
+    removeButtons.forEach((button) => expect(button).toHaveTextContent('Remove Permission'));
+    expect(row(ALEX).querySelectorAll('.cams-users__remove-permission')).toHaveLength(0);
+
+    await userEvent.click(document.querySelector(`#remove-permission-${SARAH.permissions[1].id}`)!);
+    expect(removeModalShow).toHaveBeenCalledWith(
+      { id: SARAH.id, name: SARAH.name },
+      SARAH.permissions[1],
+    );
+    expect(removeModalProps!.offices).toEqual([MANHATTAN, BUFFALO]);
+  });
+
+  test("should not offer removal of the signed-in Super User's own Super User permission, but offer their others", async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({
+        user: { id: SARAH.id, name: SARAH.name, roles: [CamsRole.SuperUser] },
+      }),
+    );
+    // Another Super User's Super User permission stays removable: only your own is protected.
+    const MARIA: CamsUserWithPermissions = {
+      id: 'okta-maria',
+      name: 'Maria Garcia',
+      email: 'maria@example.com',
+      permissions: [permission(MANHATTAN), permission(null, CamsRole.SuperUser)],
+    };
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([MARIA, SARAH]));
+
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    expect(lines(SARAH, 'Role')).toEqual(['Auditor', 'Trial Attorney', 'Super User']);
+    expect(
+      userRows(SARAH).map((r) => r.querySelectorAll('.cams-users__remove-permission').length),
+    ).toEqual([1, 1, 0]);
+    // Gherkin: her row still has an Add Permission action.
+    expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeEnabled();
+    expect(lines(MARIA, 'Role')).toEqual(['Trial Attorney', 'Super User']);
+    expect(
+      userRows(MARIA).map((r) => r.querySelectorAll('.cams-users__remove-permission').length),
+    ).toEqual([1, 1]);
+  });
+
+  test("should reload the current page and move focus to the user's Add Permission after a removal", async () => {
+    const pageOne = Array.from({ length: 20 }, (_, i) => ({
+      ...ALEX,
+      id: `p1-${i}`,
+      name: `A ${i}`,
+    }));
+    // Another user comes first on page two, so focusing the page's first Add Permission would fail.
+    const pageTwoAlex = { ...ALEX, id: 'p2-alex' };
+    const pageTwoSarah = { ...SARAH, id: 'p2-sarah' };
+    const spy = vi
+      .spyOn(Api2, 'getCamsUsers')
+      .mockImplementation(async ({ offset }) =>
+        offset === 0
+          ? usersResponse(pageOne, 22)
+          : usersResponse([pageTwoAlex, pageTwoSarah], 22, 20),
+      );
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('pagination-button-next-results'));
+    await waitFor(() => expect(row(pageTwoSarah)).toBeInTheDocument());
+
+    const withoutManhattan = {
+      ...pageTwoSarah,
+      permissions: [SARAH.permissions[0], SARAH.permissions[2]],
+    };
+    spy.mockResolvedValueOnce(usersResponse([pageTwoAlex, withoutManhattan], 22, 20));
+    await act(async () => removeModalProps!.onSuccess(pageTwoSarah.id));
+
+    expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 });
+    expect(lines(pageTwoSarah, 'Office')).toEqual(['Buffalo', 'All']);
+    expect(document.querySelector(`#add-permission-${pageTwoSarah.id}`)).toHaveFocus();
+  });
+
+  test.each([
+    {
+      case: 'the first of their permissions',
+      remaining: [SARAH.permissions[1], SARAH.permissions[2]],
+    },
+    { case: 'their only permission', remaining: [] },
+  ])(
+    "should move focus to the user's Add Permission after removing $case",
+    async ({ remaining }) => {
+      const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+      render(<CamsUsers />);
+      await waitFor(() => expect(table()).toBeInTheDocument());
+
+      spy.mockResolvedValueOnce(usersResponse([ALEX, { ...SARAH, permissions: remaining }]));
+      await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+      expect(document.querySelector(`#add-permission-${SARAH.id}`)).toHaveFocus();
+    },
+  );
+
+  test("should move focus to the stacked layout's Add Permission when that is the one shown", async () => {
+    // The stacked layout hides the first-row button (CamsUsers.scss, the container query below
+    // $cams-users-columns-min-width).
+    layOut('cams-users__add-permission--first-row');
+    const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([ALEX, SARAH]));
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+
+    spy.mockResolvedValueOnce(
+      usersResponse([ALEX, { ...SARAH, permissions: SARAH.permissions.slice(1) }]),
+    );
+    await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+    expect(document.querySelector(`#add-permission-${SARAH.id}-last`)).toHaveFocus();
+  });
+
+  test('should move focus to the heading after a removal when adding permissions is unavailable', async () => {
+    vi.spyOn(Api2, 'getOffices').mockRejectedValue(new Error('500'));
+    vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+    render(<CamsUsers />);
+    await waitFor(() =>
+      expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeDisabled(),
+    );
+
+    await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+    expect(heading()).toHaveFocus();
   });
 
   test('should page 20 at a time, focus the heading, and reload the current page after a grant', async () => {
@@ -359,6 +566,19 @@ describe('CamsUsers', () => {
     expect(heading()).toHaveFocus();
   });
 
+  test('should move focus to the heading when the reload after a removal fails', async () => {
+    const spy = vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse([SARAH]));
+    render(<CamsUsers />);
+    await waitFor(() => expect(table()).toBeInTheDocument());
+    spy.mockRejectedValueOnce(new Error('500'));
+
+    await act(async () => removeModalProps!.onSuccess(SARAH.id));
+
+    expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
+    expect(table()).not.toBeInTheDocument();
+    expect(heading()).toHaveFocus();
+  });
+
   test('should move focus to the heading when a page change fails', async () => {
     const pageOne = Array.from({ length: 20 }, (_, i) => ({ ...ALEX, id: `p1-${i}` }));
     vi.spyOn(Api2, 'getCamsUsers').mockResolvedValue(usersResponse(pageOne, 21));
@@ -421,6 +641,7 @@ describe('CamsUsers', () => {
     await waitFor(() =>
       expect(document.querySelector(`#add-permission-${SARAH.id}`)).toBeDisabled(),
     );
+    expect(document.querySelector(`#add-permission-${SARAH.id}-last`)).toBeDisabled();
   });
 
   describe('filters', () => {
@@ -662,33 +883,5 @@ describe('CamsUsers', () => {
       expect(document.querySelector('#cams-users-load-error')).toBeInTheDocument();
       expect(nameFilter()).toHaveValue('sarah');
     });
-  });
-});
-
-describe('permissionSentence', () => {
-  const officeName = () => 'Manhattan';
-
-  test('should name the role, region and office for an office permission', () => {
-    expect(permissionSentence(permission(MANHATTAN), officeName)).toEqual(
-      'Trial Attorney, Region 2, Manhattan',
-    );
-  });
-
-  test('should say all offices for a region-wide permission', () => {
-    const regionWide = { ...permission(MANHATTAN), officeCode: null };
-    expect(permissionSentence(regionWide, officeName)).toEqual(
-      'Trial Attorney, Region 2, all offices',
-    );
-  });
-
-  test('should say all regions for a national permission', () => {
-    expect(permissionSentence(permission(null), officeName)).toEqual('Trial Attorney, all regions');
-  });
-
-  // The table shows Super User's Region and Office as All, so the sentence says the same.
-  test('should say all regions for Super User, as the table shows', () => {
-    expect(permissionSentence(permission(null, CamsRole.SuperUser), officeName)).toEqual(
-      'Super User, all regions',
-    );
   });
 });

@@ -27,9 +27,6 @@ function useStateAndActions() {
 
   const postLoginTasks = (session: CamsSession) => {
     initializeSessionEndLogout(session);
-    session.user.offices?.forEach((office) => {
-      Api2.getOfficeAttorneys(office.officeCode);
-    });
   };
 
   const getMe = () => {

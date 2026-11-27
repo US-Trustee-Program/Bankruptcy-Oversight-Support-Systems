@@ -2,22 +2,28 @@ import { randomUUID } from 'crypto';
 import {
   activeKeyFor,
   ALL_SCOPE,
+  PermissionChange,
   PermissionScope,
   RoleAssignmentGrantResult,
   scopesOverlap,
+  toPermissionChange,
   CamsUsersPredicate,
   CamsUserWithPermissions,
   isUnscopedRole,
   RoleAssignmentAuditEntry,
+  PermissionRemovalRequest,
+  permissionRemovalRequestSpec,
   RoleAssignmentGrantRequest,
   roleAssignmentGrantRequestSpec,
   UserRoleAssignment,
 } from '@common/cams/user-access';
+import { CamsRole } from '@common/cams/roles';
+import { PaginationParameters } from '@common/api/pagination';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { includesIgnoringCase } from '@common/string-helper';
-import { flatten, validateObject } from '@common/cams/validation';
+import { flatten, validateObject, ValidationSpec } from '@common/cams/validation';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
@@ -31,6 +37,7 @@ import {
 const MODULE_NAME = 'USER-ACCESS-USE-CASE';
 const MEMBER_CACHE_TTL_MS = 15 * 60 * 1000;
 
+const MAX_CHANGES_PAGE_LIMIT = 100;
 const AUDIT_WRITE_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_AUDIT write failed';
 
 // The "USTP Cams Users" member list, cached per process. Assignments are never cached.
@@ -49,10 +56,19 @@ function byRegionThenOffice(a: UserRoleAssignment, b: UserRoleAssignment): numbe
 }
 
 const DEACTIVATION_FAILED_MESSAGE = 'ROLE_ASSIGNMENT_DEACTIVATION failed';
+const SUPER_USER_RESTORE_FAILED_MESSAGE = 'SUPER_USER_RESTORE failed';
 const SESSION_INVALIDATION_FAILED_MESSAGE = 'USER_SESSION_CACHE_INVALIDATION failed';
 
 function badRequest(message: string) {
   return new BadRequestError(MODULE_NAME, { message });
+}
+
+function validateRequest<T extends object>(spec: ValidationSpec<T>, request: T) {
+  const validation = validateObject(spec, request);
+  if (!validation.valid) {
+    const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
+    throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
+  }
 }
 
 /**
@@ -178,11 +194,7 @@ export class UserAccessUseCase {
     context: ApplicationContext,
     request: RoleAssignmentGrantRequest,
   ): Promise<{ result: RoleAssignmentGrantResult; created: boolean }> {
-    const validation = validateObject(roleAssignmentGrantRequestSpec, request);
-    if (!validation.valid) {
-      const reasons = [...(validation.reasons ?? []), ...flatten(validation.reasonMap ?? {})];
-      throw new BadRequestError(MODULE_NAME, { message: reasons.join('. ') + '.' });
-    }
+    validateRequest(roleAssignmentGrantRequestSpec, request);
 
     const member = (await this.getMembers(context)).find((m) => m.id === request.userId);
     if (!member) {
@@ -270,9 +282,138 @@ export class UserAccessUseCase {
   }
 
   /**
+   * Change History: one row per audit record, newest first. A replacement shows the permission that
+   * replaced it, read in one call; if that can't be read, the row's next side is null.
+   */
+  async getPermissionChanges(
+    _context: ApplicationContext,
+    paging: Required<PaginationParameters>,
+  ): Promise<{ data: PermissionChange[]; totalCount: number }> {
+    const { limit, offset } = paging;
+    if (
+      !Number.isInteger(offset) ||
+      offset < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_CHANGES_PAGE_LIMIT
+    ) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Offset must be a whole number of 0 or more, and limit a whole number from 1 to ${MAX_CHANGES_PAGE_LIMIT}.`,
+      });
+    }
+    const page = await this.auditRepository.search({ limit, offset });
+    const replacingRefs = page.data
+      .filter((entry) => entry.replacedByAssignmentId)
+      .map((entry) => ({ userId: entry.userId, id: entry.replacedByAssignmentId! }));
+    const replacing = await this.assignmentRepository.findByIds(replacingRefs);
+    const data = page.data.map((entry) =>
+      toPermissionChange(
+        entry,
+        replacing.find(
+          (permission) =>
+            permission.userId === entry.userId && permission.id === entry.replacedByAssignmentId,
+        ),
+      ),
+    );
+    return { data, totalCount: page.metadata.total };
+  }
+
+  /**
+   * Removes a permission: deactivates that record (never deletes it), audits it as DEACTIVATED with
+   * no replacing permission, and clears the user's cached sessions. Addressed by the record's id, so
+   * it removes exactly the permission the Super User saw, even one for an office that no longer
+   * exists. Removing a permission that is no longer active, or that isn't that user's, changes
+   * nothing. The user need not still be a CAMS user: removal only reduces access. A Super User
+   * cannot remove their own Super User permission (their other permissions they can), and a removal
+   * that leaves no Super User is undone and refused (best effort; see keepASuperUser).
+   */
+  async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
+    validateRequest(permissionRemovalRequestSpec, request);
+    // A Super User never removes their own Super User access; the last-Super-User check below
+    // covers the rest. One already removed falls through and, like any other, changes nothing.
+    if (request.userId === context.session.user.id) {
+      const [own] = await this.assignmentRepository.findByIds([
+        { userId: request.userId, id: request.permissionId },
+      ]);
+      if (own?.active && own.role === CamsRole.SuperUser) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: 'You cannot remove your own Super User permission.',
+        });
+      }
+    }
+    const deactivated = await this.assignmentRepository.deactivate({
+      userId: request.userId,
+      id: request.permissionId,
+    });
+    if (!deactivated) return;
+    if (deactivated.role === CamsRole.SuperUser) {
+      await this.keepASuperUser(context, deactivated);
+    }
+
+    const performer = getCamsUserReference(context.session.user);
+    const now = new Date().toISOString();
+    await this.writeAudit(
+      context,
+      auditEntry(
+        'DEACTIVATED',
+        deactivated,
+        { ...stateOf(deactivated), active: true },
+        stateOf(deactivated),
+        performer,
+        now,
+        null,
+      ),
+    );
+    await this.invalidateSessions(context, request.userId);
+  }
+
+  /**
+   * CAMS must keep at least one Super User. Without multi-document transactions this recounts after
+   * the deactivation and undoes it when none remain. Best effort, not atomic: two Super Users
+   * removing each other at once are usually both refused, but under Session consistency each recount
+   * may miss the other's deactivation and let both through.
+   */
+  private async keepASuperUser(context: ApplicationContext, deactivated: UserRoleAssignment) {
+    let remaining: number;
+    try {
+      remaining = await this.assignmentRepository.countActiveByRole(CamsRole.SuperUser);
+    } catch (error) {
+      await this.restoreSuperUser(context, deactivated);
+      throw error;
+    }
+    if (remaining > 0) return;
+    await this.restoreSuperUser(context, deactivated);
+    throw new BadRequestError(MODULE_NAME, {
+      message: 'CAMS must keep at least one Super User.',
+    });
+  }
+
+  /** A failed restore leaves the permission removed, unaudited; the log names it for a manual fix. */
+  private async restoreSuperUser(context: ApplicationContext, deactivated: UserRoleAssignment) {
+    const ids = { userId: deactivated.userId, assignmentId: deactivated.id };
+    try {
+      const restored = await this.assignmentRepository.reactivate(deactivated);
+      if (!restored) {
+        context.logger.warn(
+          MODULE_NAME,
+          `${SUPER_USER_RESTORE_FAILED_MESSAGE}: the user holds that permission again`,
+          ids,
+        );
+      }
+    } catch (error) {
+      context.logger.error(
+        MODULE_NAME,
+        `${SUPER_USER_RESTORE_FAILED_MESSAGE}: ${error.message}`,
+        ids,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Cached sessions hold the roles and offices read at sign-in, so a changed permission would not
    * apply until the user's token rotated. Dropping them makes the next request rebuild the session.
-   * A failure keeps the grant: the change then applies at the user's next token refresh.
+   * A failure keeps the grant or removal: the change then applies at the user's next token refresh.
    */
   private async invalidateSessions(context: ApplicationContext, userId: string) {
     try {

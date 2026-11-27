@@ -90,6 +90,7 @@ function AssignAttorneyModal_(
     alertMessage: props.alertMessage,
     attorneyIsInCheckList: useCase.attorneyIsInCheckList,
     attorneyList: store.attorneyList,
+    isLoadingAttorneys: store.isLoadingAttorneys,
     cancelModal: useCase.cancelModal,
     handleFocus: useCase.handleFocus,
     handleTab: useCase.handleTab,
@@ -117,6 +118,7 @@ function useAssignAttorneyModalStoreReact() {
   const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
   const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
+  const [isLoadingAttorneys, setIsLoadingAttorneys] = useState<boolean>(false);
   const [submissionCallback, setSubmissionCallback] =
     useState<AssignAttorneyModalCallbackFunction | null>(null);
   const [globalAlertError, setGlobalAlertError] = useState<string | undefined>(undefined);
@@ -132,6 +134,8 @@ function useAssignAttorneyModalStoreReact() {
     setIsUpdatingAssignment,
     attorneyList,
     setAttorneyList,
+    isLoadingAttorneys,
+    setIsLoadingAttorneys,
     submissionCallback,
     setSubmissionCallback,
     globalAlertError,
