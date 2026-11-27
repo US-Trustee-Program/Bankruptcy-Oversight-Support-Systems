@@ -24,7 +24,7 @@
 # unpinned `npx playwright install` fetches npm's latest, and a newer
 # Playwright's install step garbage-collects the base image's chromium
 # and chromium_headless_shell builds, so tests fail at browser launch.
-ARG PLAYWRIGHT_VERSION=1.65.0
+ARG PLAYWRIGHT_VERSION=1.65.1
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
 ARG PLAYWRIGHT_VERSION
 
