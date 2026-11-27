@@ -66,4 +66,21 @@ describe('PermissionsTextFilter', () => {
     expect(clear()).not.toBeInTheDocument();
     expect(input()).toHaveFocus();
   });
+
+  test.each([
+    { keyName: 'Enter', key: '{Enter}' },
+    { keyName: 'Space', key: ' ' },
+  ])('should clear the field when Clear is pressed with $keyName', async ({ key }) => {
+    const onChange = vi.fn();
+    render(<Host initial="Sarah" onChange={onChange} />);
+
+    // Clear sits beside the label, ahead of the field, so it is the first stop.
+    await userEvent.tab();
+    expect(clear()).toHaveFocus();
+    await userEvent.keyboard(key);
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('');
+    expect(input()).toHaveValue('');
+    expect(input()).toHaveFocus();
+  });
 });

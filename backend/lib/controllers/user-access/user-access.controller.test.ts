@@ -261,6 +261,20 @@ describe('UserAccessController', () => {
       expect(spy).toHaveBeenCalledWith(context, { limit: 20, offset: 0, name });
     });
 
+    test('should use the first name and not throw when the name repeats in the query string', async () => {
+      // Express's req.query holds an array for a repeated key (e.g. `?name=a&name=b`).
+      context.request.query = {
+        name: ['sarah', 'other'],
+      } as unknown as typeof context.request.query;
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
+        .mockResolvedValue({ data: [], totalCount: 0 });
+
+      await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, { limit: 20, offset: 0, name: 'sarah' });
+    });
+
     test('should return the use case’s 400 for invalid paging', async () => {
       context.request.query = { limit: 'abc' };
 
