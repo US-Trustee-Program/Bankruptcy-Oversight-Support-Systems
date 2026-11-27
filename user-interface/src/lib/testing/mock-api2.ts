@@ -3432,8 +3432,8 @@ async function getCamsUsers(predicate: CamsUsersPredicate) {
 }
 
 // Change History rows for the fake API, newest first: one of each kind the table shows (granted,
-// replaced, removed, Super User). Static:
-// grants and removals made through the fake API are not added.
+// replaced, removed, Super User). Static: grants and removals made through the fake API are not
+// added.
 function mockChange(
   userId: string,
   performedAt: string,

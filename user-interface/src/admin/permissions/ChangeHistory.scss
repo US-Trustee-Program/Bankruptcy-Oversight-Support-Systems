@@ -2,7 +2,7 @@
 
 // Column widths, each including the 1rem cell padding. Measured in the browser 2026-11-27
 // (CAMS-941) at 16px. A permission wraps only after its comma or a dash, so Previous and New never go
-// below the widest piece: "Case Assignment Manager," 11.109rem. User and Changed by wrap between
+// below the widest piece: "Case Assignment Manager," 11.109rem. User and Changed By wrap between
 // words, never inside one, so their floor fits a long first or last name ("Christopher" 4.915rem) and
 // keeps "Changed" whole. Date never wraps ("11/25/2026" 4.677rem).
 $cell-side-padding: 0.5rem;

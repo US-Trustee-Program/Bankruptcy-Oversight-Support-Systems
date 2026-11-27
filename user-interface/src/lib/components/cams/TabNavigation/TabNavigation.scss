@@ -42,4 +42,22 @@
     border-bottom-color: colors.$ink;
     color: colors.$ink;
   }
+
+  // High contrast (forced colors) replaces the ink and primary colors and draws the transparent
+  // underlines, so every tab would look current. Hide the bar on other tabs and draw the current
+  // tab's in Highlight.
+  @media (forced-colors: active) {
+    .tab-navigation__link {
+      border-bottom-color: Canvas;
+
+      &:hover {
+        border-bottom-color: LinkText;
+      }
+    }
+
+    .tab-navigation__link--current,
+    .tab-navigation__link--current:hover {
+      border-bottom-color: Highlight;
+    }
+  }
 }

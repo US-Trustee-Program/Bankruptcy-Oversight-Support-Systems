@@ -38,8 +38,7 @@ export function ChangeHistory() {
   const [page, setPage] = useState<ChangesPage | null>(null);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  // The offset of the page that failed to load, so Try again asks for it again.
-  const [failedOffset, setFailedOffset] = useState<number | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [offices, setOffices] = useState<UstpOfficeDetails[]>([]);
   // Office names label each permission, so the table waits for them rather than flashing codes.
   const [officesLoaded, setOfficesLoaded] = useState(false);
@@ -51,7 +50,10 @@ export function ChangeHistory() {
   const loadPage = useCallback(async (pageOffset: number, focusHeading = false) => {
     const ticket = ++loadTicketRef.current;
     setIsLoading(true);
-    setFailedOffset(null);
+    // The requested page, not the last loaded one: a second Next before the first page arrives
+    // moves on from the requested page, and Try Again asks for the page that failed.
+    setOffset(pageOffset);
+    setLoadFailed(false);
     try {
       const response = await Api2.getPermissionChanges({
         limit: PERMISSIONS_PAGE_SIZE,
@@ -59,13 +61,12 @@ export function ChangeHistory() {
       });
       if (ticket !== loadTicketRef.current) return;
       setPage({ data: response.data, pagination: response.pagination as ChangesPagination });
-      setOffset(pageOffset);
       // A page change replaces the rows the user was on; start them at the top of the new page.
       if (focusHeading) headingRef.current?.focus();
     } catch {
       if (ticket === loadTicketRef.current) {
         // The table and pagination unmount on failure; the heading stays, so focus lands there.
-        setFailedOffset(pageOffset);
+        setLoadFailed(true);
         headingRef.current?.focus();
       }
     } finally {
@@ -107,7 +108,6 @@ export function ChangeHistory() {
     ));
   }
 
-  const loadFailed = failedOffset !== null;
   const isReady = officesLoaded && page !== null;
   const isWorking = isLoading || !officesLoaded;
   let status = '';
@@ -147,9 +147,9 @@ export function ChangeHistory() {
           <Button
             id="change-history-try-again"
             uswdsStyle={UswdsButtonStyle.Outline}
-            onClick={() => loadPage(failedOffset, true)}
+            onClick={() => loadPage(offset, true)}
           >
-            Try again
+            Try Again
           </Button>
         </>
       )}
@@ -176,7 +176,7 @@ export function ChangeHistory() {
               <CamsTableHeaderCell className="col-user">User</CamsTableHeaderCell>
               <CamsTableHeaderCell className="col-previous">Previous</CamsTableHeaderCell>
               <CamsTableHeaderCell className="col-new">New</CamsTableHeaderCell>
-              <CamsTableHeaderCell className="col-changed-by">Changed by</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-changed-by">Changed By</CamsTableHeaderCell>
               <CamsTableHeaderCell className="col-date">Date</CamsTableHeaderCell>
             </CamsTableHeader>
             <CamsTableBody>
@@ -191,7 +191,7 @@ export function ChangeHistory() {
                   <CamsTableCell className="col-new" data-cell="New">
                     {sideText(change.next)}
                   </CamsTableCell>
-                  <CamsTableCell className="col-changed-by" data-cell="Changed by">
+                  <CamsTableCell className="col-changed-by" data-cell="Changed By">
                     {change.performedByName}
                   </CamsTableCell>
                   <CamsTableCell className="col-date" data-cell="Date">

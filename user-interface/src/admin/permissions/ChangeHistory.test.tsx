@@ -39,7 +39,7 @@ function change(
   };
 }
 
-// The Slice 3 scenario, newest first as the API returns it.
+// Grant Manhattan, widen to Region 2 (a replacement), then remove; newest first, as the API returns it.
 const SCENARIO: PermissionChange[] = [
   change('removed', REGION_2_ATTORNEY, null, '2026-11-25T15:00:00.000Z'),
   change('replaced', MANHATTAN_ATTORNEY, REGION_2_ATTORNEY, '2026-11-20T15:00:00.000Z'),
@@ -118,7 +118,7 @@ describe('ChangeHistory', () => {
     expect(heading()).not.toHaveFocus();
   });
 
-  test('should show a Change History table with the columns User, Previous, New, Changed by and Date', async () => {
+  test('should show a Change History table with the columns User, Previous, New, Changed By and Date', async () => {
     await showChanges(SCENARIO);
 
     const headers = within(table()!).getAllByRole('columnheader');
@@ -126,7 +126,7 @@ describe('ChangeHistory', () => {
       'User',
       'Previous',
       'New',
-      'Changed by',
+      'Changed By',
       'Date',
     ]);
   });
@@ -224,6 +224,36 @@ describe('ChangeHistory', () => {
     await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 20 }));
     await waitFor(() => expect(rowTexts()).toHaveLength(1));
     expect(heading()).toHaveFocus();
+  });
+
+  test('should show loading while the next page loads', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const next = pending<ReturnType<typeof changesResponse>>();
+    spy.mockReturnValueOnce(next.promise);
+
+    await userEvent.click(nextPage());
+
+    expect(spinner()).toBeInTheDocument();
+    expect(screen.getByTestId('change-history-status')).toHaveTextContent(
+      'Loading change history...',
+    );
+    await act(async () => next.resolve(changesResponse(SCENARIO.slice(0, 1), 45, 20)));
+    expect(spinner()).not.toBeInTheDocument();
+  });
+
+  test('should go two pages forward when Next is clicked twice before the first page loads', async () => {
+    const spy = await showChanges(SCENARIO, 45);
+    const page2 = pending<ReturnType<typeof changesResponse>>();
+    const page3 = pending<ReturnType<typeof changesResponse>>();
+    spy.mockReturnValueOnce(page2.promise).mockReturnValueOnce(page3.promise);
+
+    await userEvent.click(nextPage());
+    await userEvent.click(nextPage());
+    await act(async () => page3.resolve(changesResponse(SCENARIO.slice(0, 1), 45, 40)));
+    await act(async () => page2.resolve(changesResponse(SCENARIO.slice(0, 3), 45, 20)));
+
+    expect(spy).toHaveBeenLastCalledWith({ limit: 20, offset: 40 });
+    expect(rowTexts()).toHaveLength(1);
   });
 
   test('should page forward and back from the page it is on', async () => {
