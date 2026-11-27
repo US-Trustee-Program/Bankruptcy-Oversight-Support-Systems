@@ -123,6 +123,7 @@ export class UserAccessController implements CamsController {
     const { data, totalCount } = await this.useCase.getPermissionChanges(context, {
       limit,
       offset,
+      name: optionalTrimmedString(context.request.query.name),
     });
     return httpSuccess({
       body: {

@@ -19,6 +19,7 @@ import {
 } from '@common/cams/user-access';
 import { CamsRole } from '@common/cams/roles';
 import { PaginationParameters } from '@common/api/pagination';
+import { RoleAssignmentAuditSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -283,13 +284,16 @@ export class UserAccessUseCase {
 
   /**
    * Change History: one row per audit record, newest first. A replacement shows the permission that
-   * replaced it, read in one call; if that can't be read, the row's next side is null.
+   * replaced it, read in one call; if that can't be read, the row's next side is null. A name keeps
+   * only the changes to "USTP Cams Users" members whose name contains it, ignoring case, as the CAMS
+   * Users list matches names. It never matches the Super User who made a change, and a former member
+   * can't be found by name (decision on bead cams-x52wz.1; open question on cams-x52wz.6).
    */
   async getPermissionChanges(
-    _context: ApplicationContext,
-    paging: Required<PaginationParameters>,
+    context: ApplicationContext,
+    predicate: Required<PaginationParameters> & { name?: string },
   ): Promise<{ data: PermissionChange[]; totalCount: number }> {
-    const { limit, offset } = paging;
+    const { limit, offset, name } = predicate;
     if (
       !Number.isInteger(offset) ||
       offset < 0 ||
@@ -301,7 +305,14 @@ export class UserAccessUseCase {
         message: `Offset must be a whole number of 0 or more, and limit a whole number from 1 to ${MAX_CHANGES_PAGE_LIMIT}.`,
       });
     }
-    const page = await this.auditRepository.search({ limit, offset });
+    const search: RoleAssignmentAuditSearchPredicate = { limit, offset };
+    if (name) {
+      // The changes TO the matching users, found as the CAMS Users list finds them by name.
+      search.userIds = (await this.getMembers(context))
+        .filter((member) => includesIgnoringCase(member.name, name))
+        .map((member) => member.id);
+    }
+    const page = await this.auditRepository.search(search);
     const replacingRefs = page.data
       .filter((entry) => entry.replacedByAssignmentId)
       .map((entry) => ({ userId: entry.userId, id: entry.replacedByAssignmentId! }));

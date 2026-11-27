@@ -246,6 +246,21 @@ describe('UserAccessController', () => {
       },
     );
 
+    // CAMS-941 Slice 4: the CAMS User Name filter, read as the CAMS Users list reads its name.
+    test.each([
+      { query: { name: '  Sarah ' }, name: 'Sarah' },
+      { query: { name: '   ' }, name: undefined },
+    ])('should pass the name filter $query to the use case as $name', async ({ query, name }) => {
+      context.request.query = query;
+      const spy = vi
+        .spyOn(UserAccessUseCase.prototype, 'getPermissionChanges')
+        .mockResolvedValue({ data: [], totalCount: 0 });
+
+      await handle();
+
+      expect(spy).toHaveBeenCalledWith(context, { limit: 20, offset: 0, name });
+    });
+
     test('should return the use case’s 400 for invalid paging', async () => {
       context.request.query = { limit: 'abc' };
 
