@@ -330,12 +330,12 @@ export class UserAccessUseCase {
   async removePermission(context: ApplicationContext, request: PermissionRemovalRequest) {
     validateRequest(permissionRemovalRequestSpec, request);
     // A Super User never removes their own Super User access; the last-Super-User check below
-    // covers the rest.
+    // covers the rest. One already removed falls through and, like any other, changes nothing.
     if (request.userId === context.session.user.id) {
       const [own] = await this.assignmentRepository.findByIds([
         { userId: request.userId, id: request.permissionId },
       ]);
-      if (own?.role === CamsRole.SuperUser) {
+      if (own?.active && own.role === CamsRole.SuperUser) {
         throw new BadRequestError(MODULE_NAME, {
           message: 'You cannot remove your own Super User permission.',
         });

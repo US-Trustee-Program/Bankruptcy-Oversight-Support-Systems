@@ -38,6 +38,7 @@ describe('Session', () => {
   }
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
       return navigate;
     });
@@ -47,19 +48,16 @@ describe('Session', () => {
     });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   // A user with every office would otherwise send one request per office at login, queueing the
   // first page's own requests behind them. The Assign Attorney modal loads its office's attorneys.
+  // The mock session has an office, so the old prefetch would have called getOfficeAttorneys.
   test('should not prefetch attorneys for the offices the user is assigned to', async () => {
     const mockSession = MockData.getNonPaginatedResponseBody(MockData.getCamsSession());
     vi.spyOn(Api2, 'getMe').mockResolvedValue(mockSession);
     const getOfficeAttorneys = vi.spyOn(Api2, 'getOfficeAttorneys');
     renderWithProps();
     await waitFor(() => {
-      expect(sessionEndLogout.initializeSessionEndLogout).toHaveBeenCalled();
+      expect(sessionEndLogout.initializeSessionEndLogout).toHaveBeenCalledWith(mockSession.data);
     });
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });

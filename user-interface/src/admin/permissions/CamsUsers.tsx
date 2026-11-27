@@ -229,7 +229,7 @@ export function CamsUsers() {
     if (!(await loadPage(offset))) return;
     const add = [`add-permission-${userId}`, `add-permission-${userId}-last`]
       .map((id) => document.getElementById(id) as HTMLButtonElement | null)
-      .find((button) => button && button.checkVisibility?.() !== false);
+      .find((button) => button?.checkVisibility());
     if (add && !add.disabled) add.focus();
     else headingRef.current?.focus();
   }
