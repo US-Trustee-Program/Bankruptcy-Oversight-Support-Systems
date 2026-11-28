@@ -108,6 +108,11 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
   const justResolvedRef = useRef(false);
   const resolvedStatementRef = useRef<HTMLParagraphElement>(null);
   const refreshAlertRef = useRef<AlertRefType>(null);
+  // Refreshing unmounts the guidance (and its button), so focus moves to the progress message
+  // that replaces it, then back to the button once the guidance remounts after a non-resolving
+  // refresh. Guarded so only a refresh made here moves focus, not an incidental re-render.
+  const wasRefreshingRef = useRef(false);
+  const refreshStatusRef = useRef<HTMLDivElement>(null);
 
   /**
    * Refetches on every expand rather than caching the first load: another write (e.g. a case
@@ -216,6 +221,16 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
     }
   }, [refreshAlert]);
 
+  useEffect(() => {
+    if (isRefreshing) {
+      wasRefreshingRef.current = true;
+      refreshStatusRef.current?.focus();
+    } else if (wasRefreshingRef.current) {
+      wasRefreshingRef.current = false;
+      document.getElementById(`refresh-trustee-appointments-${order.id}`)?.focus();
+    }
+  }, [isRefreshing, order.id]);
+
   function renderContent() {
     return (
       <>
@@ -260,24 +275,27 @@ export function TrusteeAppointmentVerificationRow(props: TrusteeAppointmentVerif
             <AppointmentsTable appointments={detail.appointments} />
             {order.status === 'pending' && (
               <>
-                <p className="refresh-guidance" data-testid="refresh-guidance">
-                  To fix this, a Trustee Admin must add or reactivate the appointment on the
-                  trustee&apos;s profile. Then{' '}
-                  <Button
-                    id={`refresh-trustee-appointments-${order.id}`}
-                    className="refresh-trustee-appointments-button"
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    onClick={refresh}
-                    aria-disabled={isRefreshing}
-                  >
-                    <Icon name="autorenew" />
-                    Refresh Trustee Appointments
-                  </Button>{' '}
-                  to check again.
-                </p>
+                {!isRefreshing && (
+                  <p className="refresh-guidance" data-testid="refresh-guidance">
+                    To fix this, a Trustee Admin must add or reactivate the appointment on the
+                    trustee&apos;s profile. Then{' '}
+                    <Button
+                      id={`refresh-trustee-appointments-${order.id}`}
+                      className="refresh-trustee-appointments-button"
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      onClick={refresh}
+                    >
+                      <Icon name="autorenew" />
+                      Refresh Trustee Appointments
+                    </Button>{' '}
+                    to check again.
+                  </p>
+                )}
                 <div
                   className="refresh-status"
                   role="status"
+                  ref={refreshStatusRef}
+                  tabIndex={-1}
                   data-testid={`refresh-status-${order.id}`}
                 >
                   {isRefreshing && (

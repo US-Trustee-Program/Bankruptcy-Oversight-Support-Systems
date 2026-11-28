@@ -504,49 +504,22 @@ describe('TrusteeAppointmentVerificationRow', () => {
       expect(alertRegion()).toBeEmptyDOMElement();
     });
 
-    test('while refreshing, the progress region announces the progress and the spinner is hidden from screen readers', async () => {
-      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
-        new Promise(() => {}) as never,
-      );
-      await expandAndLoad();
-
-      fireEvent.click(refreshButton());
-
-      await waitFor(() =>
-        expect(statusRegion()).toHaveTextContent('Refreshing trustee appointments...'),
-      );
-      expect(screen.getByTestId(`refresh-progress-${task.id}`)).toHaveAttribute(
-        'aria-hidden',
-        'true',
-      );
-    });
-
-    test('refreshes the task within its trustee, and marks the button aria-disabled rather than disabled while it runs', async () => {
-      let finish: (value: unknown) => void = () => {};
-      const refreshSpy = vi
-        .spyOn(Api2, 'refreshTrusteeAppointmentVerification')
-        .mockReturnValue(new Promise((r) => (finish = r)) as never);
-      await expandAndLoad();
-
-      fireEvent.click(refreshButton());
-
-      expect(refreshSpy).toHaveBeenCalledWith('task-1', 'trustee-1');
-      expect(refreshButton()).toHaveAttribute('aria-disabled', 'true');
-      expect(refreshButton()).toBeEnabled();
-      finish({ data: stillUncovered });
-    });
-
-    test('a second press while a refresh runs starts no second refresh', async () => {
-      const user = userEvent.setup({ delay: null });
+    test('while refreshing, the guidance is replaced by the progress message and focus moves there', async () => {
       const refreshSpy = vi
         .spyOn(Api2, 'refreshTrusteeAppointmentVerification')
         .mockReturnValue(new Promise(() => {}) as never);
       await expandAndLoad();
 
-      await user.click(refreshButton());
-      await user.click(refreshButton());
+      fireEvent.click(refreshButton());
 
-      expect(refreshSpy).toHaveBeenCalledTimes(1);
+      expect(refreshSpy).toHaveBeenCalledWith('task-1', 'trustee-1');
+      await waitFor(() => expect(screen.queryByTestId('refresh-guidance')).not.toBeInTheDocument());
+      expect(statusRegion()).toHaveTextContent('Refreshing trustee appointments...');
+      expect(screen.getByTestId(`refresh-progress-${task.id}`)).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+      expect(statusRegion()).toHaveFocus();
     });
 
     test('ends the refreshing state as soon as the refresh call settles, before the silent reload finishes', async () => {
@@ -564,7 +537,7 @@ describe('TrusteeAppointmentVerificationRow', () => {
       await waitFor(() => expect(alertMessage()).toHaveTextContent(uncoveredMessage));
       expect(detailSpy).toHaveBeenCalledTimes(2);
       expect(statusRegion()).toBeEmptyDOMElement();
-      expect(refreshButton()).toHaveAttribute('aria-disabled', 'false');
+      expect(screen.getByTestId('refresh-guidance')).toBeInTheDocument();
       expect(refreshButton()).toBeEnabled();
       finishReload({ data: detail });
     });
@@ -666,18 +639,6 @@ describe('TrusteeAppointmentVerificationRow', () => {
       fireEvent.click(refreshButton());
 
       await waitFor(() => expect(alertRegion()).toBeEmptyDOMElement());
-    });
-
-    test('while a refresh runs, focus stays on the refresh button', async () => {
-      const user = userEvent.setup({ delay: null });
-      vi.spyOn(Api2, 'refreshTrusteeAppointmentVerification').mockReturnValue(
-        new Promise(() => {}) as never,
-      );
-      await expandAndLoad();
-
-      await user.click(refreshButton());
-
-      expect(refreshButton()).toHaveFocus();
     });
 
     test('after a refresh resolves the task, focus moves to a resolved statement saying the appointment is verified', async () => {
